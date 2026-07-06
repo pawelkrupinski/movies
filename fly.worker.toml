@@ -62,6 +62,15 @@ primary_region = 'arn'
   # watch Mongo CPU-credit/throttle after raising this. Pairs with the 30min scrape
   # freshness TTL below, which bounds the per-pass write volume.
   KINOWO_WORKER_POOL_SIZE = '4'
+  # Credit-throttle thresholds (ms of fly_instance_cpu_balance) — raised for shared-cpu-2x.
+  # 2x has a smaller credit bucket + a lower ~13cc breakeven (vs 4x's ~26cc), so a drain
+  # eats a bigger fraction of the budget; engage the reaper scrape-backoff EARLIER (8000
+  # vs the 6000 default) and hold until a deeper recovery (14000 vs 12000) so a transient
+  # (a boot-JIT spike, a projection burst) can't walk credit to the absolute floor before
+  # the backoff bites. Scraping is ~half the worker's CPU, so backing it off is the main
+  # lever credit recovery has. Retune if 2x credit behaviour differs once observed.
+  KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
+  KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
   # Cinema-scrape freshness window (uniform across ALL venues — Multikino's
   # separate 60min path was removed once it moved onto the flat-fee residential
   # proxy). It's the dominant lever on the worker's CPU + Mongo write rate (each
@@ -147,7 +156,13 @@ primary_region = 'arn'
   #     working set that simply outgrew 320m. The LivenessWatchdog writes the same
   #     dump when it pre-empts the OOM during a death-spiral. Pull dumps off the
   #     volume after an event; clear them so it doesn't fill.
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
+  # -XX:CICompilerCount=2 caps the JIT compiler threads (the boot-cc trim): boot CPU is
+  # ~70-80% JIT (cold-JVM compile), so bounding the parallel compile flattens the boot
+  # spike toward the credit breakeven; 2 is also the tiered-JIT minimum + the shared-cpu-2x
+  # core count. Steady JIT is ~0, so no steady-state cost. If a 2x boot ever JIT-THRASHES
+  # (the 2026-07-05 failure — see [[vm]]), escalate to -XX:TieredStopAtLevel=1 (drop C2
+  # entirely; steady-state ~5cc can afford C1-only under the ~13cc 2x breakeven).
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
@@ -186,21 +201,22 @@ primary_region = 'arn'
   destination = '/data'
 
 [[vm]]
-  # 4 shared vCPUs / 1 GB. A 2x downgrade was TRIED and REVERTED on 2026-07-05 — do not
-  # retry without re-measuring on a genuinely-2x machine. What went wrong: on 2x the
-  # baseline (~13 cc) is below what the JVM needs to WARM UP. Profiled the floored 2x
-  # machine — process CPU ~17 cc of which JIT compilation was ~14 cc (~80%, sustained
-  # for hours, never tapering): the throttle (steal ~150 cc) starves the compiler so
-  # tiered JIT never completes, so the JVM stays hot on compilation, so credit stays
-  # floored (balance stuck at 1), so the health check/watchdog restarts it, so the cold
-  # JVM re-JITs from scratch — a death spiral (uptime never exceeded ~90 min). The
-  # earlier "2x viable, credit climbs +10/s" reading was CONTAMINATED: a co-agent deploy
-  # had reverted the machine to 4x mid-observation, so that climb was on 4x, not 2x.
-  # On 4x the compiler has headroom to finish warmup (JIT → ~0) and warm steady-state
-  # real work is only ~10 cc, so credit climbs and the machine stays up. The boot-path
-  # fixes (gated boot reproject @7c01226f, keyset-paged read-model/freshness seeds) DID
-  # remove the big bursts — they're why 4x now hoards ~150k credit — but they don't
-  # shrink the JVM's warmup CPU, which is the real 4x-vs-2x deciding cost.
+  # 2 shared vCPUs / 1 GB. RE-DOWNGRADED to 2x on 2026-07-06 — the premise that killed
+  # the 2026-07-05 2x attempt is now GONE. That attempt died in a death spiral: on 2x the
+  # baseline (~13 cc) was below the worker's STEADY CPU (then ~30 cc — the read-model
+  # projection over-cost), so credit floored → the throttle starved the JIT compiler →
+  # tiered JIT never completed (process CPU ~17 cc, ~14 cc of it sustained compilation) →
+  # credit stayed pinned → watchdog restarted → cold JVM re-JITed — never > ~90 min uptime.
+  # The death spiral REQUIRED steady CPU > breakeven → perpetual floor → throttle → JIT
+  # starvation. That's void now: the synopsis memoization + metadata-reuse cache (2026-07-06)
+  # cut steady-state projection from ~22 cc to ~1 cc, so warm steady-state is ~5 cc —
+  # COMFORTABLY under the ~13 cc 2x breakeven. Measured post-fix: daytime cc 4-9 cc, credit
+  # holding at the cap. With no floor there is no throttle, so JIT warms up normally (minutes,
+  # then → 0) and never starves. The "14 cc JIT for hours" was a CONSEQUENCE of the throttle
+  # starvation, not an inherent 2x cost. Boot JIT is bounded further by -XX:CICompilerCount=2
+  # (JAVA_OPTS). If a 2x boot ever JIT-thrashes despite this, escalate to
+  # -XX:TieredStopAtLevel=1 (kill C2) before reverting to 4x; if steady CPU ever climbs back
+  # over ~13 cc, go performance-2x (dedicated, no credit bucket) rather than back to shared-4x.
   #
   # Self-heal stays wired: `ScrapeThrottleMonitor` (in-process scrape-duration backstop)
   # + the EXTERNAL Grafana credit gate (fly_instance_cpu_balance < 6000 → /throttle
@@ -213,4 +229,4 @@ primary_region = 'arn'
   # the JAVA_OPTS note); the 4x price includes 1 GB, so this is the cheapest 4x.
   memory = '1gb'
   cpu_kind = 'shared'
-  cpus = 4
+  cpus = 2

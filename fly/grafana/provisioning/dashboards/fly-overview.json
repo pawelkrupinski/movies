@@ -448,7 +448,7 @@
     {
       "id": 45,
       "title": "kinowo-worker CPU vs credit-earn breakeven (centi-cores) — sustained ABOVE the line drains credit",
-      "description": "Worker CPU in centi-cores (100 = 1 core). 'java (fresh)' is the JVM's own process CPU from the app-metrics sidecar (~15s fresh, leading); 'host busy (authoritative)' is sum(rate(fly_instance_cpu{mode!=idle|steal})) — what Fly actually bills credit against (~15-25min lagged). The dashed breakeven line (~26cc) is the shared-cpu-4x credit EARN rate (empirical): while CPU sits ABOVE it the credit bucket drains, below it refills. Dead-flat CPU pinned above the line with no dips = a spin (the JDK-NIO2 epoll wedge) OR a structural overload — a reboot re-grant just re-drains; a bursty CPU that dips well under the line rebuilds credit. Pair with 'CPU credit balance'.",
+      "description": "Worker CPU in centi-cores (100 = 1 core). 'java (fresh)' is the JVM's own process CPU from the app-metrics sidecar (~15s fresh, leading); 'host busy (authoritative)' is sum(rate(fly_instance_cpu{mode!=idle|steal})) — what Fly actually bills credit against (~15-25min lagged). The dashed breakeven line (~13cc) is the shared-cpu-2x credit EARN rate (empirical): while CPU sits ABOVE it the credit bucket drains, below it refills. Dead-flat CPU pinned above the line with no dips = a spin (the JDK-NIO2 epoll wedge) OR a structural overload — a reboot re-grant just re-drains; a bursty CPU that dips well under the line rebuilds credit. Pair with 'CPU credit balance'.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 182 },
@@ -458,20 +458,20 @@
           "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 12, "lineWidth": 2, "axisLabel": "centi-cores (100 = 1 core)" }
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "breakeven ~26cc (drains above)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 6] } }, { "id": "custom.fillOpacity", "value": 0 } ] },
+          { "matcher": { "id": "byName", "options": "breakeven ~13cc (drains above)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 6] } }, { "id": "custom.fillOpacity", "value": 0 } ] },
           { "matcher": { "id": "byName", "options": "host busy (cc, authoritative — lagged)" }, "properties": [ { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [4, 4] } } ] }
         ]
       },
       "targets": [
         { "refId": "A", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100", "legendFormat": "java (cc, fresh)" },
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-worker\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "host busy (cc, authoritative — lagged)" },
-        { "refId": "C", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "vector(26)", "legendFormat": "breakeven ~26cc (drains above)" }
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "vector(13)", "legendFormat": "breakeven ~13cc (drains above)" }
       ]
     },
     {
       "id": 46,
       "title": "kinowo-worker CPU drivers — projection vs JIT vs other (stacked = total CPU)",
-      "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the ~30cc daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_duration_seconds_sum)*100 — the pure ReadModelProjection.projectAll CPU (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it. The ~26cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes → no projection). Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
+      "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the ~30cc daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_duration_seconds_sum)*100 — the pure ReadModelProjection.projectAll CPU (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it. The ~13cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes → no projection). Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
       "gridPos": {"h": 9, "w": 24, "x": 0, "y": 191},
@@ -488,7 +488,7 @@
           },
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"value": null, "color": "transparent"}, {"value": 26, "color": "orange"}]
+            "steps": [{"value": null, "color": "transparent"}, {"value": 13, "color": "orange"}]
           }
         },
         "overrides": [
