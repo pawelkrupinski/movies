@@ -741,7 +741,15 @@ class MovieService(
     // once and the answer is reused for 24h. The key is built from exactly those
     // hints (sorted, so it's order-independent — see `ResolutionKeys`). Only a
     // HIT is cached; a no-match re-resolves next cycle.
-    val hintKey = ResolutionKeys.tmdb(title, year, rowDirectors, originalTitle)
+    // A row with no scraped year but a parenthesised "(YYYY)" in its title
+    // ("Klasyka w NCKF: Generał (1926) 4K") reads that as the lookup year — a
+    // deterministic hint (pure function of the title), used only for the SEARCH,
+    // not for keying, so it can't race the canonical rank. It unblocks the
+    // year-less singleton guard below: with a year the director-less branch takes
+    // the safe year-scoped exact-title path instead of refusing every multi-hit
+    // title as `searchUnique` does when the year is absent.
+    val effectiveYear = year.orElse(MovieService.embeddedYear(Seq(title) ++ candidates ++ cinemaTitles))
+    val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
     // this thread), so the caller keeps the hit's title/year as a fallback when
     // the full-details fetch fails. On a cache HIT the loader doesn't run and it
@@ -756,7 +764,6 @@ class MovieService(
     // director-bearing row keeps the richer director-walk path below, which can
     // disambiguate. This is the generalised "Zaproszenie" guard (a bare title with two
     // same-title TMDB entries) — see StagingOrderDeterminismSpec.
-    val titleOnly = year.isEmpty && rowDirectors.isEmpty && originalTitle.isEmpty && slotOriginals.isEmpty
     var freshHit: Option[TmdbClient.SearchResult] = None
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
       val hit =
@@ -767,8 +774,8 @@ class MovieService(
           // Sundown"). The year + verbatim top is confidence the singleton rule
           // lacks — still no popularity guess (a non-exact top doesn't resolve), and
           // yearless rows are untouched (searchYearExactTop is a no-op without a year).
-          candidates.iterator.flatMap(q => tmdb.searchUnique(q, year)).nextOption()
-            .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, year)).nextOption())
+          candidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear)).nextOption()
+            .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption())
         else {
           // Resolve from this row's own titles only — no sister-row shortcut. Copying
           // a tmdbId from an already-resolved relative was order-dependent (it could
@@ -784,14 +791,14 @@ class MovieService(
           // pick the duplicate matching the row's KEY year, and that key year drifts
           // with scrape/merge order, flipping the id (StagingOrderDeterminismSpec).
           // The search stays the fallback for a row whose director TMDB can't find.
-          val byDirector = rowDirectors.iterator.flatMap(d => directorWalk(Some(d), year, candidates)).nextOption()
+          val byDirector = rowDirectors.iterator.flatMap(d => directorWalk(Some(d), effectiveYear, candidates)).nextOption()
           // The row's own cinema blurb (Polish, same language as TMDB's pl-PL
           // `overview`) breaks a same-year same-title tie inside `pickBest`; None
           // when no cinema published one, leaving the search unchanged.
           val cinemaSynopsis = row.synopsisCinema
           byDirector.orElse(
             candidates.iterator
-              .flatMap(q => verifyByDirector(tmdb.search(q, year, cinemaSynopsis), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
+              .flatMap(q => verifyByDirector(tmdb.search(q, effectiveYear, cinemaSynopsis), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
               .nextOption())
         }
       freshHit = hit
@@ -1025,6 +1032,30 @@ object MovieService {
    *  canonical `cleanTitle`, it reproduces the cased query the per-client casing
    *  used to produce (now that cinema slots keep their raw spelling). */
   def searchQuery(title: String): String = TitleNormalizer.apiQuery(TitleNormalizer.recase(title))
+
+  /** A release year written into the title as a parenthesised "(YYYY)" — the ONLY
+   *  form safe to read as a year. A bare trailing number is part of the title, not
+   *  an annotation ("Blade Runner 2049", "1917", "2001: Odyseja kosmiczna"), so only
+   *  the parenthesised shape is matched. Used solely as a LOOKUP hint for a row that
+   *  carries no scraped year, so a yearless retrospective screening ("Klasyka w NCKF:
+   *  Generał (1926) 4K", "KINO LETNIE 2026: Miś (1981)") resolves via the year-scoped
+   *  exact-title path instead of stalling at the year-less singleton guard. It does
+   *  NOT re-key the row (identity stays on the scraped year-less key), so it can't
+   *  race the canonical rank. Abstains when there's no parenthesised year, when it's
+   *  outside the plausible film-year range [1888, maxYear], or when SEVERAL distinct
+   *  years appear across the given titles (ambiguous) — a wrong/absent hint then
+   *  yields a MISS, never a mis-resolve (`searchYearExactTop` still requires an
+   *  exact-title top).
+   *
+   *  Scans SEVERAL title spellings, not one: the row's canonical `cleanTitle` has
+   *  the parenthesised year stripped (it's a Canonical merge-key strip — see the
+   *  'KINO LETNIE 2026: … (1984)' rule), so the year survives only on the raw
+   *  cinema-slot titles / search candidates. Collecting across them recovers it. */
+  def embeddedYear(titles: Iterable[String], maxYear: Int = java.time.Year.now().getValue + 1): Option[Int] = {
+    val years = titles.iterator.flatMap("""\((\d{4})\)""".r.findAllMatchIn(_))
+      .map(_.group(1).toInt).filter(y => y >= 1888 && y <= maxYear).toSeq.distinct
+    years match { case Seq(single) => Some(single); case _ => None }
+  }
 
   /** TMDB title-search candidates for a row, in priority order: the row's title,
    *  the cinema-provided original title, then every other reported title

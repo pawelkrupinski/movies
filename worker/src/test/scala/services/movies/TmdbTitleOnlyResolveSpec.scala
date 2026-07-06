@@ -152,4 +152,61 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     service.reEnrichSync("The Visitor", Some(2022))
     cache.get(cache.keyOf("The Visitor", Some(2022))).flatMap(_.tmdbId) shouldBe Some(881487)
   }
+
+  // ── Embedded "(YYYY)" year hint — a year-less retrospective screening whose
+  //    title carries the film year in parens ("Generał (1926) 4K") reads it as the
+  //    lookup year, so it takes the safe year-scoped exact-title path instead of
+  //    stalling at the singleton guard. Only when the row has NO scraped year. ──
+
+  it should "resolve a year-LESS row via a parenthesised (YYYY) in its title (several same-title films)" in {
+    val cache = bareRow("Generał (1926)")
+    // Two same-title films → searchUnique refuses; the (1926) hint makes it a
+    // year-scoped search whose exact-title top (961) resolves.
+    val search = s"""{"results":[${result(961, "Generał", "1926-12-25", 12.0)},${result(999, "Generał brygady", "1926-01-01", 3.0)}]}"""
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb(
+        "/search/movie"           -> search,
+        "/movie/961/external_ids" -> """{"id":961,"imdb_id":"tt0017925"}"""
+      ))
+
+    service.reEnrichSync("Generał (1926)", None)
+    cache.snapshot().flatMap(_.record.tmdbId) should contain (961)
+  }
+
+  it should "NOT read an embedded (YYYY) when the row already carries a scraped year (scraped year wins)" in {
+    // Row scraped as 2015; title also carries a decorative "(1926)". The scraped
+    // year must win — a 2015-scoped exact-title top resolves, the (1926) is ignored.
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      CinemaCityPoznanPlaza -> SourceData(title = Some("Generał (1926)"), releaseYear = Some(2015))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Generał (1926)", Some(2015), seed))))
+    val search = s"""{"results":[${result(700, "Generał", "2015-05-01", 8.0)},${result(701, "Generał brygady", "2015-01-01", 2.0)}]}"""
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb(
+        "/search/movie"           -> search,
+        "/movie/700/external_ids" -> """{"id":700,"imdb_id":"tt7000000"}"""
+      ))
+
+    service.reEnrichSync("Generał (1926)", Some(2015))
+    cache.get(cache.keyOf("Generał (1926)", Some(2015))).flatMap(_.tmdbId) shouldBe Some(700)
+  }
+
+  "MovieService.embeddedYear" should "read only a parenthesised, in-range, unambiguous year" in {
+    val max = 2027
+    def y(ts: String*) = MovieService.embeddedYear(ts, max)
+    y("Generał (1926) 4K")            shouldBe Some(1926)
+    y("KINO LETNIE 2026: Miś (1981)") shouldBe Some(1981) // bare 2026 ignored
+    y("Requiem dla snu (2000)")       shouldBe Some(2000)
+    // Scans across spellings: the stripped key title + the slot title that kept the year.
+    y("Generał", "Generał (1926)")    shouldBe Some(1926)
+    // False positives it must REFUSE:
+    y("2001: Odyseja kosmiczna")      shouldBe None // bare leading number
+    y("Blade Runner 2049")            shouldBe None // bare trailing number
+    y("1917")                         shouldBe None // bare
+    y("Rok (3000)")                   shouldBe None // out of range (future)
+    y("Coś (1887)")                   shouldBe None // before first film
+    y("Film (2018) (2020)")           shouldBe None // ambiguous — two distinct years
+    y("Film (2018)", "Inne (2020)")   shouldBe None // ambiguous across titles
+    y("Film (2018) (2018)")           shouldBe Some(2018) // same year twice = unambiguous
+    y("No year here")                 shouldBe None
+  }
 }
