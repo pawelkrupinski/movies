@@ -78,8 +78,19 @@ class FilmwebRatings(
         val resolved = resolveUrl(key, e)
         (e.filmwebUrl, resolved) match {
           case (Some(before), Some(fw)) if fw.url == before =>
-            if (fw.rating.isDefined && fw.rating != e.filmwebRating)
-              cache.putIfPresent(key, _.copy(filmwebRating = fw.rating))
+            // URL unchanged, but BACKFILL the full content slot (originalTitle /
+            // director / year / genres / Polish synopsis) — rows enriched before
+            // Filmweb became a full source carry a genres-only (or empty) slot, and
+            // the cheap rating-only refresh path never fills it. `fw` already carries
+            // the content (resolveUrl fetched it), so this is zero extra HTTP, and it
+            // gives TMDB re-resolution the Filmweb hints for a film it missed. Only
+            // write when the rating or slot actually changed (no redundant churn).
+            val rating   = fw.rating.orElse(e.filmwebRating)
+            val slotData = withFilmwebData(e.data, fw)
+            if (rating != e.filmwebRating || slotData != e.data) {
+              cache.putIfPresent(key, r => r.copy(filmwebRating = rating, data = withFilmwebData(r.data, fw)))
+              cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
+            }
             FilmwebRatings.Kept(before)
           case (_, Some(fw)) =>
             val before = e.filmwebUrl

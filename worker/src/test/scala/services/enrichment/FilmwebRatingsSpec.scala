@@ -404,9 +404,10 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     ))
     val cache = new CaffeineMovieCache(repository)
     val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
-      "/live/search"          -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
-      s"/film/$rightId/info"  -> """{"title":"Foo","year":2024}""",
-      s"/film/$rightId/rating"-> """{"rate":7.0,"count":1}"""
+      "/live/search"           -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
+      s"/film/$rightId/info"   -> """{"title":"Foo","originalTitle":"Foo Original","year":2024}""",
+      s"/film/$rightId/preview"-> """{"directors":[{"id":1,"name":"Jane Doe"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Blurb po polsku."}}""",
+      s"/film/$rightId/rating" -> """{"rate":7.0,"count":1}"""
     )))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
@@ -416,6 +417,13 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val after = cache.get(cache.keyOf("Foo", Some(2024))).get
     after.filmwebUrl    shouldBe Some(rightUrl)
     after.filmwebRating shouldBe Some(7.0)
+    // A Kept (same-URL) audit still BACKFILLS the full Filmweb content slot, so a
+    // row enriched before Filmweb became a full source gains its metadata.
+    val slot = after.data(models.Filmweb)
+    slot.originalTitle shouldBe Some("Foo Original")
+    slot.director      shouldBe Seq("Jane Doe")
+    slot.genres        shouldBe Seq("Dramat")
+    slot.synopsis      shouldBe Some("Blurb po polsku.")
   }
 
   // ── hint-keyed url cache ─────────────────────────────────────────────────────
