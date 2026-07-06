@@ -434,6 +434,43 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     r.get.rating shouldBe Some(7.8)
   }
 
+  it should "return the winner's full content slot — originalTitle, year, directors, genres, plot" in {
+    // Filmweb is a first-class enrichment source now: the winner's /info +
+    // /preview content is carried on FilmwebInfo (not just url + rating + genres)
+    // so callers can persist a full slot. Caller passes no directors, so the
+    // winner-only /preview fetch supplies directors/genres/plot.
+    val routes = Map(
+      "/live/search"     -> """{"searchHits":[{"id":42,"type":"film","matchedTitle":"Diuna"}]}""",
+      "/film/42/info"    -> """{"title":"Diuna: Część druga","originalTitle":"Dune: Part Two","year":2024}""",
+      "/film/42/preview" -> """{"directors":[{"id":1,"name":"Denis Villeneuve"}],"genres":[{"id":2,"name":{"text":"Sci-Fi"}}],"plot":{"synopsis":"Paul Atryda łączy siły z Fremenami."}}""",
+      "/film/42/rating"  -> """{"rate":8.2,"count":100}"""
+    )
+    val r = new FilmwebClient(new StubFetch(routes)).lookup("Diuna: Część druga", Some(2024)).get
+    r.originalTitle shouldBe Some("Dune: Part Two")
+    r.year          shouldBe Some(2024)
+    r.directors     shouldBe Seq("Denis Villeneuve")
+    r.genres        shouldBe Seq("Sci-Fi")
+    r.plot          shouldBe Some("Paul Atryda łączy siły z Fremenami.")
+    r.rating        shouldBe Some(8.2)
+  }
+
+  "detailsFor" should "rebuild the full content slot from a stored canonical URL" in {
+    // The resolution-cache HIT path: only the URL survived, so /info + /preview +
+    // /rating are re-fetched off the id to repopulate the whole slot.
+    val routes = Map(
+      "/film/42/info"    -> """{"title":"X","originalTitle":"Y","year":2001}""",
+      "/film/42/preview" -> """{"directors":[{"id":1,"name":"Dir Name"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Blurb."}}""",
+      "/film/42/rating"  -> """{"rate":7.0,"count":1}"""
+    )
+    val r = new FilmwebClient(new StubFetch(routes)).detailsFor("https://www.filmweb.pl/film/X-2001-42").get
+    r.originalTitle shouldBe Some("Y")
+    r.year          shouldBe Some(2001)
+    r.directors     shouldBe Seq("Dir Name")
+    r.genres        shouldBe Seq("Dramat")
+    r.plot          shouldBe Some("Blurb.")
+    r.rating        shouldBe Some(7.0)
+  }
+
   it should "fall back to the fallback title when the primary query has no acceptable match" in {
     // Cinema's Polish title doesn't resolve, but TMDB's originalTitle does.
     val routes = Map(

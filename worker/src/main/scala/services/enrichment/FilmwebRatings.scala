@@ -84,7 +84,7 @@ class FilmwebRatings(
           case (_, Some(fw)) =>
             val before = e.filmwebUrl
             cache.putIfPresent(key, r =>
-              r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
+              r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
             before match {
               case Some(b) => FilmwebRatings.Corrected(b, fw.url)
               case None    => FilmwebRatings.Kept(fw.url) // first-time discovery counts as Kept-like.
@@ -154,7 +154,7 @@ class FilmwebRatings(
         val changed = fw.rating != e.filmwebRating   // fw.rating is display-rounded by resolveUrl
         logger.info(s"Filmweb: $label → URL discovered ${fw.url} rating=${fw.rating.getOrElse("—")}")
         cache.putIfPresent(key, r =>
-          r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebGenres(r.data, fw.genres)))
+          r.copy(filmwebUrl = Some(fw.url), filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
         if (e.imdbId.isEmpty)
           onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
         if (changed) fw.rating.map(RatingDisplay.label) else None
@@ -164,12 +164,25 @@ class FilmwebRatings(
     }
   }
 
-  /** Merge freshly-resolved Filmweb genres into the per-source slot map.
-   *  Empty genres → drop the Filmweb slot entirely (don't store a slot that
-   *  contributes nothing); non-empty genres → set/replace the slot. */
-  private def withFilmwebGenres(data: Map[Source, SourceData], genres: Seq[String]): Map[Source, SourceData] =
-    if (genres.isEmpty) data - (Filmweb: Source)
-    else data + ((Filmweb: Source) -> SourceData(genres = genres))
+  /** Merge freshly-resolved Filmweb metadata into the per-source slot map — the
+   *  Filmweb counterpart of [[ImdbRatings.makeSlot]]. Filmweb now contributes a
+   *  full content slot (originalTitle, year, directors, Polish genres, Polish
+   *  plot), not just genres, so it can back the display fields — and drive
+   *  re-resolution of the other sources — when TMDB/IMDb are absent. An empty
+   *  slot (no content at all) drops the Filmweb entry rather than storing a slot
+   *  that contributes nothing. */
+  private def withFilmwebData(data: Map[Source, SourceData], fw: FilmwebClient.FilmwebInfo): Map[Source, SourceData] = {
+    val slot = SourceData(
+      originalTitle = fw.originalTitle,
+      releaseYear   = fw.year,
+      director      = fw.directors,
+      genres        = fw.genres,
+      synopsis      = fw.plot
+    )
+    val hasContent = slot.originalTitle.isDefined || slot.releaseYear.isDefined ||
+                     slot.director.nonEmpty || slot.genres.nonEmpty || slot.synopsis.isDefined
+    if (hasContent) data + ((Filmweb: Source) -> slot) else data - (Filmweb: Source)
+  }
 
   // Pure re-resolve — never writes. Shared by `resolveAndPersistUrl` (production
   // URL-discovery path) and `auditOneSync` (one-off backfill that compares
@@ -210,7 +223,7 @@ class FilmwebRatings(
       info.map(_.url)
     }
     cachedUrl.map { url =>
-      val info = fresh.getOrElse(FilmwebClient.FilmwebInfo(url, filmweb.ratingFor(url), filmweb.genresFor(url)))
+      val info = fresh.orElse(filmweb.detailsFor(url)).getOrElse(FilmwebClient.FilmwebInfo(url, filmweb.ratingFor(url)))
       // Persist at the precision the badge shows, here at the single seam every
       // discovery + audit caller funnels through.
       info.copy(rating = info.rating.map(RatingDisplay.oneDecimal))

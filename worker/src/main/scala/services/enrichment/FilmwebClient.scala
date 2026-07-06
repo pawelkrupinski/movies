@@ -89,14 +89,26 @@ class FilmwebClient(http: HttpFetch) {
             case None    => c
           }
         }
-      pickBest(candidates, query, year, directors, referenceSynopsis).flatMap { c =>
+      pickBest(candidates, query, year, directors, referenceSynopsis).map { c =>
         val url = canonicalUrl(c.id, c.kind, c.title, c.year)
         // Fall back to a winner-only /preview when director verification was
-        // skipped (caller didn't supply directors) so the Filmweb slot still
-        // carries genres — single extra round-trip, only on the winner.
-        val genres = if (c.genres.nonEmpty) c.genres
-                     else preview(c.id).map(_.genres).getOrElse(Seq.empty)
-        Some(FilmwebInfo(url, rating(c.id), genres))
+        // skipped (caller didn't supply directors) so the Filmweb slot carries
+        // its full content (directors + genres + plot) — single extra round-trip,
+        // only on the winner. Skipped when `c` already carries that data from the
+        // director-verification path.
+        val winnerPreview =
+          if (c.directors.nonEmpty || c.genres.nonEmpty || c.plot.isDefined) None
+          else preview(c.id)
+        FilmwebInfo(
+          url           = url,
+          rating        = rating(c.id),
+          genres        = if (c.genres.nonEmpty) c.genres else winnerPreview.map(_.genres).getOrElse(Seq.empty),
+          title         = Some(c.title),
+          originalTitle = c.originalTitle,
+          year          = c.year,
+          directors     = (if (c.directors.nonEmpty) c.directors else winnerPreview.map(_.directors).getOrElse(Set.empty)).toSeq.sorted,
+          plot          = c.plot.orElse(winnerPreview.flatMap(_.plot))
+        )
       }
     }.toOption.flatten
 
@@ -141,6 +153,27 @@ class FilmwebClient(http: HttpFetch) {
   def genresFor(url: String): Seq[String] =
     idFromUrl(url).flatMap(preview).map(_.genres).getOrElse(Seq.empty)
 
+  /** Rebuild the FULL Filmweb metadata for a stored canonical URL — the
+   *  resolution-cache HIT path, where only the URL survived (the search + pickBest
+   *  ran on a prior enrichment). /info (title, originalTitle, year) + /preview
+   *  (directors, genres, plot) + /rating, all keyed off the id parsed from the URL,
+   *  so a cached hit still populates the same content slot a fresh `lookup` would. */
+  def detailsFor(url: String): Option[FilmwebInfo] =
+    idFromUrl(url).map { id =>
+      val i = info(id)
+      val p = preview(id)
+      FilmwebInfo(
+        url           = url,
+        rating        = rating(id),
+        genres        = p.map(_.genres).getOrElse(Seq.empty),
+        title         = i.map(_.title),
+        originalTitle = i.flatMap(_.originalTitle),
+        year          = i.flatMap(_.year),
+        directors     = p.map(_.directors.toSeq.sorted).getOrElse(Seq.empty),
+        plot          = p.flatMap(_.plot)
+      )
+    }
+
   private def idFromUrl(url: String): Option[Int] =
     FilmwebClient.IdFromUrl.findFirstMatchIn(url).flatMap(m => Try(m.group(1).toInt).toOption)
 
@@ -173,7 +206,8 @@ class FilmwebClient(http: HttpFetch) {
       .flatMap(j => (j \ "name" \ "text").asOpt[String].filter(_.nonEmpty))
       .toSeq
     // Filmweb nests the Polish plot under `plot.synopsis` (alongside sourceType
-    // + author). Used only as the synopsis-tie-break signal, never displayed.
+    // + author). Feeds the synopsis tie-break in `pickBest` AND is stored on the
+    // Filmweb slot as a Polish synopsis fallback for films TMDB/IMDb didn't cover.
     val plot = (json \ "plot" \ "synopsis").asOpt[String].filter(_.nonEmpty)
     FilmPreview(directors, genres, plot)
   }
@@ -306,14 +340,28 @@ object FilmwebClient {
 
   /** /preview response — director names + Polish genre labels + the Polish
    *  plot blurb (`plot.synopsis`). `plot` feeds the synopsis tie-break in
-   *  [[FilmwebClient.pickBest]] only; it is NOT stored on the Filmweb slot (the
-   *  row's displayed synopsis stays TMDB/cinema-sourced). Other /preview fields
-   *  (cast, duration, countries) are present in the JSON but unused. */
+   *  [[FilmwebClient.pickBest]] and is stored on the Filmweb slot as a Polish
+   *  synopsis fallback. Other /preview fields (cast, duration, countries) are
+   *  present in the JSON but unused. */
   case class FilmPreview(directors: Set[String], genres: Seq[String] = Seq.empty, plot: Option[String] = None)
 
-  /** Resolved Filmweb metadata for a film — canonical URL + optional 1–10
-   *  user rating + Polish genre labels (empty when /preview didn't return any). */
-  case class FilmwebInfo(url: String, rating: Option[Double], genres: Seq[String] = Seq.empty)
+  /** Resolved Filmweb metadata for a film — the Filmweb counterpart of a TMDB /
+   *  IMDb content slot. Canonical URL + optional 1–10 user rating + Polish genre
+   *  labels, plus the winner's `/info` + `/preview` content: canonical `title`,
+   *  `originalTitle`, `year`, `directors`, and the Polish `plot`. The extra fields
+   *  are empty when Filmweb didn't return them; callers persist whatever is present
+   *  onto the Filmweb `SourceData` slot so it can back the display fields and drive
+   *  re-resolution when TMDB/IMDb are absent. */
+  case class FilmwebInfo(
+    url:           String,
+    rating:        Option[Double],
+    genres:        Seq[String]    = Seq.empty,
+    title:         Option[String] = None,
+    originalTitle: Option[String] = None,
+    year:          Option[Int]    = None,
+    directors:     Seq[String]    = Seq.empty,
+    plot:          Option[String] = None
+  )
 
   /** One search hit — id + Filmweb's content-type tag (`film` or `serial`).
    *  The same `/api/v1/film/{id}/info` and `/rating` endpoints serve both,

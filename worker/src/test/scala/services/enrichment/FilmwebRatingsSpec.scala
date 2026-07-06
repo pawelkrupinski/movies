@@ -2,7 +2,7 @@ package services.enrichment
 
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import clients.TmdbClient
-import models.{MovieRecord, Multikino, Source, SourceData, Tmdb}
+import models.{Filmweb, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch}
@@ -208,6 +208,36 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val after = cache.get(key).get
     after.filmwebUrl.get should include ("-111")
     after.filmwebUrl.get should not include ("719437")
+  }
+
+  it should "store Filmweb's originalTitle, year, directors, genres and plot on the Filmweb slot" in {
+    // Filmweb-only row (TMDB never resolved). On URL discovery it must persist a
+    // FULL content slot — the Filmweb counterpart of an IMDb/TMDB slot — so the
+    // Polish plot, directors, original title and year are available to back the
+    // display fields when no other source has them.
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Ostatni konsjerż", None, MovieRecord(
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż")))
+      ))
+    ))
+    val cache = new CaffeineMovieCache(repository)
+    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+      "/live/search"      -> """{"searchHits":[{"id":900,"type":"film","matchedTitle":"Ostatni konsjerż"}]}""",
+      "/film/900/info"    -> """{"title":"Ostatni konsjerż","originalTitle":"Der letzte Concierge","year":2025}""",
+      "/film/900/preview" -> """{"directors":[{"id":1,"name":"Gastón Solnicki"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Lucius Glantz walczy o hotel."}}""",
+      "/film/900/rating"  -> """{"rate":4.7,"count":50}"""
+    )))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    val key = cache.entries.head._1
+    ratings.refreshOneSync(key)
+
+    val slot = cache.get(key).get.data(Filmweb)
+    slot.originalTitle shouldBe Some("Der letzte Concierge")
+    slot.releaseYear   shouldBe Some(2025)
+    slot.director      shouldBe Seq("Gastón Solnicki")
+    slot.genres        shouldBe Seq("Dramat")
+    slot.synopsis      shouldBe Some("Lucius Glantz walczy o hotel.")
   }
 
   // ── Failure handling ───────────────────────────────────────────────────────
