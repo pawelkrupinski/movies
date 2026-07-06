@@ -105,22 +105,15 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     names should not contain "zlib"
   }
 
-  // Route Mongo socket I/O through Netty NATIVE-epoll, not the driver's default JDK
-  // NIO2 transport. Both NIO2 and Netty's default NIO transport sit on the JDK
-  // `sun.nio.ch` epoll selector, which busy-spins (~31cc, ~1.5 voluntary ctxt-switches/s
-  // = never parks — the recurring credit floor, proven on-box); native epoll runs its
-  // own JNI epoll loop instead, so the spin can't occur. Where the native lib loads
-  // (Linux — CI + the prod worker's arch) the channel is an EpollSocketChannel; off-Linux
-  // (macOS dev) `Epoll.isAvailable` is false and it falls back to Netty NIO. Either way
-  // the transport is a NettyTransportSettings (before this it was null — driver NIO2).
-  "MongoConnection.clientSettings" should "route socket I/O through Netty, preferring native epoll where the lib loads" in {
-    def transport(uri: String) =
-      MongoConnection.clientSettings(uri).getTransportSettings.asInstanceOf[com.mongodb.connection.NettyTransportSettings]
-    transport(ValidUri)  should not be null
-    transport(RemoteUri) should not be null
-    if (io.netty.channel.epoll.Epoll.isAvailable)   // Linux (CI + prod): the actual spin fix
-      transport(ValidUri).getSocketChannelClass shouldBe classOf[io.netty.channel.epoll.EpollSocketChannel]
-    // else macOS/dev: NIO fallback — socketChannelClass left null, driver fills NioSocketChannel.
+  // Socket I/O uses the driver's DEFAULT transport (JDK NIO2), so no TransportSettings
+  // is applied. We briefly routed it through Netty native-epoll to escape a suspected
+  // `sun.nio.ch` selector spin, but that was a red herring — the CPU-credit floor was
+  // read-model projection cost, not an epoll spin (the fix was offloading projection off
+  // the I/O threads + making it cheap). Reverting to the default drops the netty dep;
+  // `getTransportSettings` is now null.
+  "MongoConnection.clientSettings" should "leave the driver-default transport (no Netty TransportSettings)" in {
+    MongoConnection.clientSettings(ValidUri).getTransportSettings  shouldBe null
+    MongoConnection.clientSettings(RemoteUri).getTransportSettings shouldBe null
   }
 
   "MongoConnection.isLoopbackLink" should "recognise loopback hosts (localhost / 127.x / [::1]) and reject a 6PN host" in {

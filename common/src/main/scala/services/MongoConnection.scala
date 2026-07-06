@@ -1,8 +1,6 @@
 package services
 
 import com.mongodb.{ConnectionString, MongoCompressor}
-import com.mongodb.connection.TransportSettings
-import io.netty.channel.epoll.{Epoll, EpollEventLoopGroup, EpollSocketChannel}
 import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
@@ -207,42 +205,17 @@ object MongoConnection extends Logging {
    *  would only burn CPU on the driver's I/O event-loop threads — the worker's
    *  measured CPU sink — for bandwidth we don't need. So a non-loopback link stays
    *  uncompressed. A URI that names its own `compressors=` always wins either way. */
-  /** Shared Netty transport for all Mongo socket I/O — created ONCE (its event-loop
-   *  group is process-lifetime and safely shared across the prod + mirror clients).
-   *
-   *  PREFERS native epoll to escape a PROVEN busy-spin in the JDK `sun.nio.ch` epoll
-   *  selector (the recurring worker CPU-credit floor). On-box a single selector thread
-   *  burns ~31cc while making only ~1.5 voluntary context switches/sec — a healthy
-   *  selector parks thousands of times/sec (one per `epoll_wait` block), so ~1.5/s means
-   *  it never sleeps, it loops — and the CPU is decoupled from real work (change-events
-   *  ~0.1/s). It is NOT a wedged Mongo socket (0 CLOSE_WAIT on-box); the trigger is a
-   *  spurious selector readiness — the classic JDK NIO epoll spin. Neither the driver's
-   *  default NIO2 transport nor Netty's default NIO transport avoids it (both use
-   *  `sun.nio.ch`; Netty's select-auto-rebuild only trips on ZERO-key wakeups, not this
-   *  one — the spin re-formed after we moved to Netty NIO). Native epoll runs its own JNI
-   *  epoll loop instead of the JDK selector, so the spin can't occur. When the native lib
-   *  can't load (non-Linux dev/tests, missing arch), `Epoll.isAvailable` is false → fall
-   *  back to Netty NIO (which still spins — but that path is off-Linux only). */
-  private lazy val nettyTransport: TransportSettings = {
-    val builder = TransportSettings.nettyBuilder()
-    if (Epoll.isAvailable) {
-      logger.info("MongoConnection: using Netty NATIVE-epoll transport (reaps EPOLLRDHUP on a wedged FD).")
-      builder.eventLoopGroup(new EpollEventLoopGroup()).socketChannelClass(classOf[EpollSocketChannel])
-    } else
-      logger.warn(s"MongoConnection: native epoll unavailable (${Option(Epoll.unavailabilityCause).map(_.toString).getOrElse("n/a")}) " +
-        s"— falling back to Netty NIO transport, which CANNOT reap a wedged-FD epoll spin. Expected only off-Linux (dev/tests).")
-    builder.build()
-  }
-
   private[services] def clientSettings(
       connectionString: String,
       serverSelectionTimeout: Option[FiniteDuration] = None): MongoClientSettings = {
     val cs      = new ConnectionString(connectionString)
     val builder = MongoClientSettings.builder().applyConnectionString(cs)
-    // Route socket I/O through Netty native-epoll (see `nettyTransport`) so a wedged
-    // half-closed Mongo socket is reaped, not busy-spun on — the recurring credit floor.
-    // Applies to every connection (prod 6PN + the loopback proxy/mirror alike).
-    builder.transportSettings(nettyTransport)
+    // Socket I/O uses the driver's DEFAULT transport (JDK NIO2). We briefly routed it
+    // through Netty native-epoll to escape a suspected `sun.nio.ch` selector spin, but
+    // that was a red herring: the recurring CPU-credit floor was read-model PROJECTION
+    // cost, not an epoll spin. The fix was moving projection OFF the Mongo I/O threads
+    // (change-stream apply offload) and making projection cheap — the transport was
+    // irrelevant, so it's back to the driver default.
     if ((cs.getCompressorList == null || cs.getCompressorList.isEmpty) && isLoopbackLink(cs))
       builder.compressorList(java.util.List.of(MongoCompressor.createZlibCompressor()))
     serverSelectionTimeout.foreach { timeout =>
