@@ -90,6 +90,30 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     m.synopsisFor(Wroclaw) shouldBe Some("Wrocławski opis kina, wyraźnie dłuższy niż TMDB.")
   }
 
+  it should "scope synopsis correctly across MANY cities sharing one candidate pool" in {
+    // Guards the memoised per-candidate processing (bestSynopsis reuses the collapse →
+    // stripUrls → strip work per raw string across every city the film screens in):
+    // three cities, each with its own longer cinema blurb, plus one shared TMDB blurb
+    // that every city's candidate pool contains. A memo that cross-contaminated cities —
+    // or keyed the processed result to the wrong raw string — would leak one city's text
+    // into another; each city must still show only its own.
+    val rec = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino      -> SourceData(title = Some("X"),
+        synopsis = Some("Poznański opis kina, wyraźnie dłuższy niż blurb z TMDB."), showtimes = Seq(at("2026-06-12T18:00"))),
+      HeliosMagnolia -> SourceData(title = Some("X"),
+        synopsis = Some("Wrocławski opis kina, wyraźnie dłuższy niż blurb z TMDB."), showtimes = Seq(at("2026-06-12T19:00"))),
+      KinoMuranow    -> SourceData(title = Some("X"),
+        synopsis = Some("Warszawski opis kina, wyraźnie dłuższy niż blurb z TMDB."), showtimes = Seq(at("2026-06-12T20:00"))),
+      Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
+    ))
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec))
+    m.synopsis shouldBe Some("Opis z TMDB.")                              // shared, memoised, fallback
+    m.synopsisByCity.keySet shouldBe Set("poznan", "wroclaw", "warszawa")
+    m.synopsisFor(Poznan).get   should (include ("Poznański")  and not include ("Wrocławski") and not include ("Warszawski"))
+    m.synopsisFor(Wroclaw).get  should (include ("Wrocławski") and not include ("Poznański")  and not include ("Warszawski"))
+    m.synopsisFor(Warszawa).get should (include ("Warszawski") and not include ("Poznański")  and not include ("Wrocławski"))
+  }
+
   it should "resolve every rating with its click-through URL" in {
     movie.ratings.imdb shouldBe Some(9.3)
     movie.ratings.imdbUrl shouldBe Some("https://www.imdb.com/title/tt0111161/")

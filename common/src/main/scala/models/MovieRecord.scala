@@ -353,12 +353,32 @@ case class MovieRecord(
    *  sees well-formed markdown regardless of which source produced it. */
   private def bestSynopsis(candidates: Seq[String]): Option[String] =
     candidates
-      .map(tools.SynopsisMarkdown.collapseRepeats)
-      .map(tools.TextNormalization.stripUrls)
-      .filter(_.nonEmpty)
-      .map(candidate => candidate -> tools.SynopsisMarkdown.strip(candidate))
+      .flatMap(processedSynopsisCandidate)
       .sortBy { case (_, plainText) => (if (plainText.contains('\n')) 0 else 1, -plainText.length) }
       .headOption.map { case (candidate, _) => tools.SynopsisMarkdown.sanitize(candidate) }
+
+  // The per-candidate processing (collapseRepeats → stripUrls → strip) is a pure,
+  // deterministic function of the raw candidate string — but `bestSynopsis` runs it once
+  // per (city × display-title variant) during a read-model projection, so a blurb on a
+  // film screening in many cities gets re-collapsed/re-stripped dozens of times. Memoise
+  // it by raw candidate so each distinct string is processed once per record instance.
+  // Pure caching: the winner and the value it wins with are unchanged — the read-model
+  // output is byte-identical. Concurrent because a record is shared across reader threads.
+  private val synopsisProcessCache =
+    new java.util.concurrent.ConcurrentHashMap[String, Option[(String, String)]]()
+
+  /** One raw synopsis candidate processed into `(processedMarkdown, plainText)` for the
+   *  [[bestSynopsis]] paragraph-then-length pick — `None` when nothing survives
+   *  URL-stripping (a source that was nothing but a link). `plainText` is the emphasis-
+   *  stripped form the length/`\n` comparison uses; the winning `processedMarkdown` is
+   *  what gets `sanitize`d. Memoised on the raw string — the projection asks for the same
+   *  candidate across every city the film screens in. */
+  private def processedSynopsisCandidate(raw: String): Option[(String, String)] =
+    synopsisProcessCache.computeIfAbsent(raw, (rawValue: String) => {
+      val processed = tools.TextNormalization.stripUrls(tools.SynopsisMarkdown.collapseRepeats(rawValue))
+      if (processed.isEmpty) None
+      else Some(processed -> tools.SynopsisMarkdown.strip(processed))
+    })
 
   /** Synopsis candidates whose source passes `keep`, in source-priority order —
    *  each source's live slot synopsis followed by its retained (post-prune) one.
