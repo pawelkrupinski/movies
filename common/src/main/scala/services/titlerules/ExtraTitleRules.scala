@@ -132,7 +132,7 @@ object ExtraTitleRules {
     prog("xtra-pp-rodzina-w-kinie",    """(?iu)^Rodzina\s+w\s+kinie:\s+""",                  "'Rodzina w kinie: <film>' family-screening strand (Belle, Chłopiec na krańcach świata, Kicia Kocia, K-popowe łowczynie demonów, Niesamowite przygody skarpetek 3)"),
     prog("xtra-pp-tani-wtorek",        """(?iu)^Tani\s+wtorek:\s+""",                        "'Tani wtorek: <film>' cheap-Tuesday promo (Czytając Lolitę w Teheranie, Drugie życie, Kumotry, Ojczyzna, Robin Hood)"),
     prog("xtra-pp-filmowe-popoludnie", """(?iu)^Filmowe\s+popołudnie\s+dla\s+dzieci:\s+""",  "'Filmowe popołudnie dla dzieci: <film>' kids-afternoon strand (Indianie i kowboje, Złoto)"),
-    prog("xtra-pp-klasyk-w-kinie",     """(?iu)^Klasyk\s+w\s+kinie:\s+""",                   "'Klasyk w kinie: <film>' classics strand (Milczenie owiec, Rozmowa)"),
+    prog("xtra-pp-klasyk-w-kinie",     """(?iu)^Klasyk\s+w\s+kinie[.:]\s+""",                 "'Klasyk w kinie: / . <film>' classics strand — colon AND dot separators (Milczenie owiec, Rozmowa, Przekleństwa niewinności)"),
     prog("xtra-pp-seans-sensoryczny",  """(?iu)^Seans\s+Przyjazny\s+Sensorycznie:\s+""",     "'Seans Przyjazny Sensorycznie: <film>' sensory-friendly screening (Willow i tajemniczy las, Chłopiec na krańcach świata)"),
     prog("xtra-pp-fiesta-hiszpanskiego", """(?iu)^FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+""",      "'FIESTA KINA HISZPAŃSKIEGO: <film>' Spanish-cinema fiesta prefix (Prawo pożądania); the '| / – fiesta …' suffix forms are handled by xtra-fiesta-hiszpanskiego-suffix"),
     // Chain recurring-programme banners that were per-cinema (client `cleanTitle`)
@@ -144,7 +144,11 @@ object ExtraTitleRules {
     prog("xtra-pp-kino-na-obcasach",   """(?iu)^Kino\s+na\s+obcasach{{SEP}}""",              "'Kino na obcasach: <film>' Multikino ladies'-programme banner (Zaproszenie, Diabeł ubiera się u Prady 2, Drugie życie)"),
     prog("xtra-pp-ladies-night",       """(?i)^Ladies\s+Night{{SEP}}""",                     "'Ladies Night - <film>' Cinema City ladies'-programme banner"),
     prog("xtra-pp-mamoru-hosody",      """(?iu)^Kolekcja\s+Mamoru\s+Hosody{{SEP}}""",        "'Kolekcja Mamoru Hosody: <film>' anime-retrospective banner (Cinema City + Multikino) — sibling of the 'Hosoda. <film>' dot-prefix"),
-    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner")
+    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner"),
+    // Sixteenth-wave (2026-07-06) audit of the TMDB-no-match corpus (prod mirror, 220
+    // rating-less rows): programme banner that prefixes the film (own display row,
+    // query stripped to the bare film so it enriches).
+    prog("xtra-pp-wsp",                """(?i)^WSP:\s+""",                                   "'WSP: <film>' Kino Wisła preview series (Młody Waszyngton → TMDB 1308767, O czym sobie nie mówimy → 1473635, Wędrówka na północ → 1434113) — cinema abbreviation made global like KMW:/TNKF:")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -232,7 +236,7 @@ object ExtraTitleRules {
     // appended by a few art-house venues; query-only strip resolves the bare film
     // (Perfect Days, Droga do Vermiglio, Za duży na bajki 3). Anchored on a
     // separator + a following name so a real title can't be amputated.
-    searchStrip("xtra-rezyseria-suffix",           """(?iu)\s+re[zż](?:yseria)?\s*[.:]\s+\S.*$""", "'<film> reż. / reżyseria: <director>' authorship suffix (Perfect Days, Droga do Vermiglio, Za duży na bajki 3)"),
+    searchStrip("xtra-rezyseria-suffix",           """(?iu)\s*,?\s+re[zż](?:yseria)?\s*[.:]\s+\S.*$""", "'<film>[,] reż. / reżyseria: <director>' authorship suffix — optional leading comma (Perfect Days, Droga do Vermiglio, Za duży na bajki 3, 'Przekleństwa niewinności, reż. Sofia Coppola (2021)')"),
     // Bare 'DKF - ' / 'DKF: ' film-club prefix (no club name) — the existing
     // 'xtra-pp-dkf-named' only matches 'DKF <name>: ', so a clubless 'DKF: <film>'
     // / 'DKF - <film>' never stripped. Query-only (Drugie życie, Czytając Lolitę
@@ -406,7 +410,13 @@ object ExtraTitleRules {
     searchStrip("xtra-przeglad-colon-prefix",       """(?iu)^Przegląd\s+{{NSEP}}+:\s+""", "'Przegląd <name>: <film>' generic festival/review COLON prefix — complements the dash-form 'Przegląd filmów <reż> - <film>' rule (Przegląd Nowego Kina Francuskiego:, Przegląd Kina Hiszpańskiego:)"),
     searchStrip("xtra-filmowe-lato-named",          """(?iu)^Filmowe\s+lato\s+{{NSEP}}+:\s+""", "'Filmowe Lato <name>: <film>' named summer strand — the bare 'Filmowe lato:' rule needs the colon right after 'lato' (Filmowe Lato w Kinie:)"),
     searchStrip("xtra-wakacje-z-klasyka-prefix",    """(?iu)^Wakacje\s+z\s+klasyką(?:\s+{{NSEP}}+)?:\s+""", "'Wakacje z klasyką [kina]: <film>' summer-classics strand — the bare form the LATO-prefixed 'Wakacje z Klasyką Kina' rule doesn't cover"),
-    searchStrip("xtra-pipe-cycle-banner",           """(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|DKF|Retrospektywa|Klasyka|Klub\s+Filmowy|Poniedziałki\s+z|Wtorki\s+z)\b.*$""", "'<film> | <cycle/festival banner>' generic PIPE-suffix strip, keyword-guarded so it only fires when the segment right after the pipe is a recognised cycle word — never amputates a 'Banner | Film' shape where the film FOLLOWS the pipe (KINO SENIORA | Ojczyzna, LATO w LUNIE | Drzewo magii stay intact)")
+    searchStrip("xtra-pipe-cycle-banner",           """(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|DKF|Retrospektywa|Klasyka|Klub\s+Filmowy|Poniedziałki\s+z|Wtorki\s+z)\b.*$""", "'<film> | <cycle/festival banner>' generic PIPE-suffix strip, keyword-guarded so it only fires when the segment right after the pipe is a recognised cycle word — never amputates a 'Banner | Film' shape where the film FOLLOWS the pipe (KINO SENIORA | Ojczyzna, LATO w LUNIE | Drzewo magii stay intact)"),
+    // Sixteenth-wave (2026-07-06) audit of the TMDB-no-match corpus (prod mirror,
+    // 220 rating-less rows): decoration that SUFFIXES a real, TMDB-resolvable film.
+    // Query-only strips — the screening keeps its own decorated display row/merge
+    // key, it just resolves ratings off the bare film. Each verified on TMDB.
+    searchStrip("xtra-4k-suffix",                   """(?iu)\s+4K\b\s*$""",                               "'<film> (YYYY) 4K' trailing restoration-resolution tag — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323)"),
+    searchStrip("xtra-helios-replay-suffix",        """(?iu)\s+w\s+Helios\s+RePlay\s*$""",                "'<film> w Helios RePlay' Helios classics re-release strand suffix (Wejście smoka w Helios RePlay → TMDB 9461)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in

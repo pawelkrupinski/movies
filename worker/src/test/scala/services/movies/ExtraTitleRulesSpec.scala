@@ -75,7 +75,11 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Kino na obcasach: Zaproszenie"                   -> ("Kino na obcasach: ",                "Zaproszenie"),
     "Ladies Night - Narodziny gwiazdy"                -> ("Ladies Night - ",                   "Narodziny gwiazdy"),
     "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas" -> ("Kolekcja Mamoru Hosody: ", "O dziewczynie skaczącej przez czas"),
-    "DZIEŃ DZIECKA W APOLLO - Drzewo Magii"           -> ("DZIEŃ DZIECKA W APOLLO - ",         "Drzewo Magii")
+    "DZIEŃ DZIECKA W APOLLO - Drzewo Magii"           -> ("DZIEŃ DZIECKA W APOLLO - ",         "Drzewo Magii"),
+    // Sixteenth-wave (2026-07-06) TMDB-no-match audit: cinema preview banner +
+    // the dot separator variant of the existing 'Klasyk w kinie:' colon strand.
+    "WSP: Wędrówka na północ"                         -> ("WSP: ",                             "Wędrówka na północ"),
+    "Klasyk w kinie. Milczenie owiec"                 -> ("Klasyk w kinie. ",                  "Milczenie owiec")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -312,7 +316,13 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Wakacje z klasyką kina: Rejs"                         -> "Rejs",
     // The generic keyword-guarded pipe SUFFIX (banner follows the pipe).
     "Persona | Cykl Bergmana"                              -> "Persona",
-    "Stalker | Przegląd Tarkowskiego"                      -> "Stalker"
+    "Stalker | Przegląd Tarkowskiego"                      -> "Stalker",
+    // Sixteenth-wave (2026-07-06) TMDB-no-match audit: authorship suffix with a
+    // leading comma, the '(YYYY) 4K' restoration tag, and the Helios RePlay strand.
+    "Przekleństwa niewinności, reż. Sofia Coppola (2021)"  -> "Przekleństwa niewinności",
+    "Generał (1926) 4K"                                    -> "Generał (1926)",
+    "Ghost in the shell (1995) 4K"                         -> "Ghost in the shell (1995)",
+    "Wejście smoka w Helios RePlay"                        -> "Wejście smoka"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
