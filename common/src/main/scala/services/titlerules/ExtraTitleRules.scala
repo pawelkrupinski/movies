@@ -144,11 +144,7 @@ object ExtraTitleRules {
     prog("xtra-pp-kino-na-obcasach",   """(?iu)^Kino\s+na\s+obcasach{{SEP}}""",              "'Kino na obcasach: <film>' Multikino ladies'-programme banner (Zaproszenie, Diabeł ubiera się u Prady 2, Drugie życie)"),
     prog("xtra-pp-ladies-night",       """(?i)^Ladies\s+Night{{SEP}}""",                     "'Ladies Night - <film>' Cinema City ladies'-programme banner"),
     prog("xtra-pp-mamoru-hosody",      """(?iu)^Kolekcja\s+Mamoru\s+Hosody{{SEP}}""",        "'Kolekcja Mamoru Hosody: <film>' anime-retrospective banner (Cinema City + Multikino) — sibling of the 'Hosoda. <film>' dot-prefix"),
-    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner"),
-    // Sixteenth-wave (2026-07-06) audit of the TMDB-no-match corpus (prod mirror, 220
-    // rating-less rows): programme banner that prefixes the film (own display row,
-    // query stripped to the bare film so it enriches).
-    prog("xtra-pp-wsp",                """(?i)^WSP:\s+""",                                   "'WSP: <film>' Kino Wisła preview series (Młody Waszyngton → TMDB 1308767, O czym sobie nie mówimy → 1473635, Wędrówka na północ → 1434113) — cinema abbreviation made global like KMW:/TNKF:")
+    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -412,9 +408,14 @@ object ExtraTitleRules {
     searchStrip("xtra-wakacje-z-klasyka-prefix",    """(?iu)^Wakacje\s+z\s+klasyką(?:\s+{{NSEP}}+)?:\s+""", "'Wakacje z klasyką [kina]: <film>' summer-classics strand — the bare form the LATO-prefixed 'Wakacje z Klasyką Kina' rule doesn't cover"),
     searchStrip("xtra-pipe-cycle-banner",           """(?iu)\s*\|\s*(?:Cykl|Przegląd|Festiwal|DKF|Retrospektywa|Klasyka|Klub\s+Filmowy|Poniedziałki\s+z|Wtorki\s+z)\b.*$""", "'<film> | <cycle/festival banner>' generic PIPE-suffix strip, keyword-guarded so it only fires when the segment right after the pipe is a recognised cycle word — never amputates a 'Banner | Film' shape where the film FOLLOWS the pipe (KINO SENIORA | Ojczyzna, LATO w LUNIE | Drzewo magii stay intact)"),
     // Sixteenth-wave (2026-07-06) audit of the TMDB-no-match corpus (prod mirror,
-    // 220 rating-less rows): decoration that SUFFIXES a real, TMDB-resolvable film.
-    // Query-only strips — the screening keeps its own decorated display row/merge
-    // key, it just resolves ratings off the bare film. Each verified on TMDB.
+    // 220 rating-less rows): decoration that PREFIXES or SUFFIXES a real,
+    // TMDB-resolvable film. Query-only strips — the screening keeps its own
+    // decorated display row/merge key, it just resolves ratings off the bare film.
+    // Each verified on TMDB. (A 'WSP: <film>' Kino Wisła preview-series prefix was
+    // trialled here but dropped: ANY leading strip makes `leadingBannerBoundary`
+    // split the title, and `caseSegment` then sentence-cases the isolated all-caps
+    // 'WSP' banner to 'Wsp:' — a display regression the 3 rows it helped don't
+    // justify. An acronym cycle needs a recase carve-out before it can be stripped.)
     searchStrip("xtra-4k-suffix",                   """(?iu)\s+4K\b\s*$""",                               "'<film> (YYYY) 4K' trailing restoration-resolution tag — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323)"),
     searchStrip("xtra-helios-replay-suffix",        """(?iu)\s+w\s+Helios\s+RePlay\s*$""",                "'<film> w Helios RePlay' Helios classics re-release strand suffix (Wejście smoka w Helios RePlay → TMDB 9461)")
   )

@@ -76,9 +76,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Ladies Night - Narodziny gwiazdy"                -> ("Ladies Night - ",                   "Narodziny gwiazdy"),
     "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas" -> ("Kolekcja Mamoru Hosody: ", "O dziewczynie skaczącej przez czas"),
     "DZIEŃ DZIECKA W APOLLO - Drzewo Magii"           -> ("DZIEŃ DZIECKA W APOLLO - ",         "Drzewo Magii"),
-    // Sixteenth-wave (2026-07-06) TMDB-no-match audit: cinema preview banner +
-    // the dot separator variant of the existing 'Klasyk w kinie:' colon strand.
-    "WSP: Wędrówka na północ"                         -> ("WSP: ",                             "Wędrówka na północ"),
+    // Sixteenth-wave (2026-07-06) TMDB-no-match audit: the dot separator variant
+    // of the existing 'Klasyk w kinie:' colon strand. (WSP: is a search-only strip
+    // — see searchStripCases — so the all-caps acronym isn't re-cased on display.)
     "Klasyk w kinie. Milczenie owiec"                 -> ("Klasyk w kinie. ",                  "Milczenie owiec")
   )
 
