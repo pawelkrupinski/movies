@@ -470,24 +470,109 @@
     },
     {
       "id": 46,
-      "title": "kinowo-worker CPU drivers — is it JIT / scrape / projection?",
-      "description": "Attribute the worker's CPU (left axis, centi-cores) to a driver by what it TRACKS (right axis). JIT (cc) high + process CPU high = boot warm-up (transient). tasks-started/s high + CPU high = scrape/enrich work (normal). CPU high while JIT≈0 AND tasks/writes are LOW = DECOUPLED — the read-model projection signature (the 2026-07 credit-floor cause: synopsisByCity re-projecting festival/wide-release films on every screenings change; ~22cc on the movie-change-apply thread, invisible here because most projections dedupe to a no-op write). change-events/s is the projection TRIGGER (a movies/screenings write); readmodel-writes/s is the projection OUTPUT (post-dedup, near-0 even when projection is hot). NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes). There is no direct projection-CPU metric yet — add a readmodel_project_duration histogram to make this a one-glance query. See toolkit memory.",
+      "title": "kinowo-worker CPU drivers — projection vs JIT vs other (stacked = total CPU)",
+      "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the ~30cc daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_duration_seconds_sum)*100 — the pure ReadModelProjection.projectAll CPU (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it. The ~26cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes → no projection). Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
       "type": "timeseries",
-      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 191 },
+      "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 191},
       "fieldConfig": {
-        "defaults": { "unit": "short", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 8, "axisLabel": "centi-cores" } },
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 35,
+            "axisLabel": "centi-cores",
+            "stacking": {"mode": "normal", "group": "A"},
+            "thresholdsStyle": {"mode": "line"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"value": null, "color": "transparent"}, {"value": 26, "color": "orange"}]
+          }
+        },
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": "/\\/s$/" }, "properties": [ { "id": "custom.axisPlacement", "value": "right" }, { "id": "custom.axisLabel", "value": "events / writes / tasks per sec" }, { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [6, 4] } } ] },
-          { "matcher": { "id": "byName", "options": "JIT (cc)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "purple" } } ] }
+          {
+            "matcher": {"id": "byName", "options": "projection (cc)"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "red"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "JIT (cc)"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "purple"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "other: scrape + Mongo I/O + GC (cc)"},
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "#8e8e8e"}}]
+          },
+          {
+            "matcher": {"id": "byName", "options": "process CPU total (cc)"},
+            "properties": [
+              {"id": "custom.stacking", "value": {"mode": "none", "group": "A"}},
+              {"id": "custom.fillOpacity", "value": 0},
+              {"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [6, 4]}},
+              {"id": "color", "value": {"mode": "fixed", "fixedColor": "blue"}}
+            ]
+          }
         ]
       },
       "targets": [
-        { "refId": "A", "expr": "rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100", "legendFormat": "process CPU (cc)" },
-        { "refId": "B", "expr": "rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100", "legendFormat": "JIT (cc)" },
-        { "refId": "C", "expr": "sum(rate(kinowo_worker_tasks_started_total{app=\"kinowo-worker\"}[5m]))", "legendFormat": "tasks started /s" },
-        { "refId": "D", "expr": "sum(rate(kinowo_worker_movie_change_events_total{app=\"kinowo-worker\"}[5m]))", "legendFormat": "movie change-events /s (projection trigger)" },
-        { "refId": "E", "expr": "sum(rate(kinowo_worker_readmodel_writes_total{app=\"kinowo-worker\"}[5m]))", "legendFormat": "readmodel writes /s (projection output)" }
+        {
+          "refId": "A",
+          "expr": "rate(kinowo_worker_readmodel_project_duration_seconds_sum{app=\"kinowo-worker\"}[5m])*100",
+          "legendFormat": "projection (cc)"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100",
+          "legendFormat": "JIT (cc)"
+        },
+        {
+          "refId": "C",
+          "expr": "clamp_min( (rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100) - (rate(kinowo_worker_readmodel_project_duration_seconds_sum{app=\"kinowo-worker\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100), 0 )",
+          "legendFormat": "other: scrape + Mongo I/O + GC (cc)"
+        },
+        {
+          "refId": "D",
+          "expr": "rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100",
+          "legendFormat": "process CPU total (cc)"
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "title": "kinowo-worker projection triggers & output (per-sec)",
+      "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. change-events/s is the projection TRIGGER (a movies/screenings write); projection-calls/s is how many rows projectAll ran on; readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU and the duration metric above was needed).",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 200},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {"spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "axisLabel": "per second"}
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(kinowo_worker_movie_change_events_total{app=\"kinowo-worker\"}[5m]))",
+          "legendFormat": "movie change-events /s (projection trigger)"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{app=\"kinowo-worker\"}[5m]))",
+          "legendFormat": "projection calls /s"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(kinowo_worker_readmodel_writes_total{app=\"kinowo-worker\"}[5m]))",
+          "legendFormat": "readmodel writes /s (projection output)"
+        },
+        {
+          "refId": "D",
+          "expr": "sum(rate(kinowo_worker_tasks_started_total{app=\"kinowo-worker\"}[5m]))",
+          "legendFormat": "tasks started /s"
+        }
       ]
     }
   ]

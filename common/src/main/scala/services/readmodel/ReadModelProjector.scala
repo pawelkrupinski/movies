@@ -89,9 +89,14 @@ class ReadModelProjector(
     if (!stored.record.readyToProject) return 0
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
-    // exactly one. Each variant card is diffed and written independently.
+    // exactly one. Each variant card is diffed and written independently. Time the
+    // pure projection (CPU-bound, no I/O) — its rate() in centi-cores attributes how
+    // much worker CPU the reproject/enrich churn spends here (the credit-floor driver).
+    val projectStart = System.nanoTime()
+    val variants     = ReadModelProjection.projectAll(stored)
+    metrics.recordProject((System.nanoTime() - projectStart) / 1e9)
     var written = 0
-    ReadModelProjection.projectAll(stored).foreach { case (movie, screenings) =>
+    variants.foreach { case (movie, screenings) =>
       if (!lastMovie.get(movie._id).contains(movie.##)) {
         writer.upsertMovie(movie)
         metrics.recordWrite(Target.Movie, Op.Upsert, 1)

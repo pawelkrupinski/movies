@@ -159,6 +159,18 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     .help("Films whose derived documents were removed from the read model during reconcile since boot — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
     .register(registry)
 
+  private val readModelProjectDuration = Histogram.builder()
+    .name("kinowo_worker_readmodel_project_duration_seconds")
+    .help("Wall-clock of one pure ReadModelProjection.projectAll (CPU-bound, no I/O) per source row since boot. rate(_sum)*100 is projection's share of worker CPU in centi-cores — the credit-floor driver the CPU-drivers dashboard stacks against JIT + everything else.")
+    .classicUpperBounds(ProjectBucketsSeconds*)
+    .classicOnly()
+    .register(registry)
+
+  private val readModelProjectCalls = Counter.builder()
+    .name("kinowo_worker_readmodel_project_calls")
+    .help("Source rows projected (projectAll invoked) since boot — the throughput denominator for readmodel_project_duration_seconds. Spikes during the periodic full reproject sweep (~800 rows) and on the boot catch-up.")
+    .register(registry)
+
   private val cacheRehydrateChanges = Counter.builder()
     .name("kinowo_worker_cache_rehydrate_changes")
     .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
@@ -205,6 +217,8 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
     ReadModelProjectionMetrics.Targets.foreach(t =>
       ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(t, o)))
     readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
+    readModelProjectCalls.inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
+    readModelProjectDuration.observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
     ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
       Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(k, w)))
     Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(k))
@@ -232,6 +246,11 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   def recordFilmPruned(count: Int): Unit =
     if (count > 0) readModelFilmsPruned.inc(count.toDouble)
+
+  def recordProject(seconds: Double): Unit = {
+    readModelProjectDuration.observe(math.max(0.0, seconds))
+    readModelProjectCalls.inc()
+  }
 
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit =
     readModelReconcileSweeps.labelValues(kind, didWork.toString).inc()
@@ -307,6 +326,11 @@ object WorkerTaskMetrics {
   /** Fixed histogram upper bounds (seconds), spanning a sub-second freshness
    *  skip up to a slow multi-minute scrape/detail fetch. */
   val DurationBucketsSeconds: Seq[Double] = Seq(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0)
+
+  /** Upper bounds (seconds) for one pure projectAll — sub-millisecond for a
+   *  single-variant row up to the ~0.3s worst-case many-variant film (post
+   *  synopsis-memoization; pre-memoization the tail reached ~2.3s). */
+  val ProjectBucketsSeconds: Seq[Double] = Seq(0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5)
 
   /** Upper bounds (seconds) for the TMDB-resolved → first-rating-attempt delay:
    *  ~one reaper tick (≤1min) in steady state, stretching to hours when a large

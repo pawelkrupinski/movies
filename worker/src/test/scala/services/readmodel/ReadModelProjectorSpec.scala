@@ -40,8 +40,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val writes = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
     var prunes = 0
     val sweeps = scala.collection.mutable.Buffer.empty[(String, Boolean)]
+    val projectDurations = scala.collection.mutable.Buffer.empty[Double]
+    def projectCalls: Int = projectDurations.size
     def recordWrite(target: String, op: String, count: Int): Unit = writes((target, op)) += count
     def recordFilmPruned(count: Int): Unit                        = prunes += count
+    def recordProject(seconds: Double): Unit                      = projectDurations += seconds
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
   }
 
@@ -265,6 +268,28 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     m.writes((Target.Movie, Op.Upsert))     shouldBe 1
     m.writes((Target.Screening, Op.Upsert)) shouldBe 1
     m.prunes                                shouldBe 0
+  }
+
+  "the project-duration metric" should "record one timed projectAll per ready row projected" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+
+    // A ready row projected via the change-stream path → one timing recorded.
+    projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
+    m.projectCalls shouldBe 1
+    m.projectDurations.head should be >= 0.0
+
+    // A row still enriching (no tmdbId → !readyToProject) is held back before
+    // projectAll runs, so it must NOT be metered — the counter stays put.
+    val notReady = MovieRecord(imdbRating = Some(7.0), data = Map[Source, SourceData](Multikino -> slot(Seq(at("2026-06-12T20:00")))))
+    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), notReady))
+    m.projectCalls shouldBe 1
+
+    // A full reproject sweep projects the live row → one more timing.
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()
+    m.projectCalls shouldBe 2
   }
 
   "a re-key that prunes the old film in reconcile" should "meter a film prune + its document deletes" in {

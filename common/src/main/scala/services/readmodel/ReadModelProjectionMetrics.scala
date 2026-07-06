@@ -25,6 +25,14 @@ trait ReadModelProjectionMetrics {
   def recordWrite(target: String, op: String, count: Int): Unit
   def recordFilmPruned(count: Int): Unit
 
+  /** One `ReadModelProjection.projectAll` ran for a source row — `seconds` is its
+   *  wall-clock (CPU-bound: no I/O in the pure projection). Fed from
+   *  [[ReadModelProjector.project]]. `rate(..._duration_seconds_sum)` in centi-cores
+   *  is the projection's share of worker CPU — the driver behind the periodic
+   *  reproject burst and the boot-path credit floor; `..._calls_total` is how many
+   *  rows were projected. The observability gap that made attributing that CPU hard. */
+  def recordProject(seconds: Double): Unit
+
   /** One reconciliation sweep finished. `kind` distinguishes the cheap frequent
    *  orphan prune from the expensive periodic full re-projection; `didWork` is
    *  whether it pruned or reprojected at least one document. The point of the
@@ -48,6 +56,7 @@ object ReadModelProjectionMetrics {
   val noop: ReadModelProjectionMetrics = new ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
     def recordFilmPruned(count: Int): Unit                        = ()
+    def recordProject(seconds: Double): Unit                      = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
   }
 }
