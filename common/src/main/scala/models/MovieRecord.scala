@@ -498,13 +498,16 @@ case class MovieRecord(
 
   /** Best available original (production-language) title across sources —
    *  the TMDB-resolved one first, then IMDb's `originalTitleText`, then
-   *  whatever a cinema's own API exposed (only Multikino does). None when no
-   *  source supplied one. Distinct from `originalTitle`, which is TMDB-only
-   *  and stays that way for the search/URL fallbacks that rely on it. */
+   *  whatever a cinema's own API exposed (only Multikino does), then Filmweb's
+   *  `/info` originalTitle as a last-resort gap-filler (surfaces on a
+   *  Filmweb-only row TMDB never resolved). None when no source supplied one.
+   *  Distinct from `originalTitle`, which is TMDB-only and stays that way for
+   *  the search/URL fallbacks that rely on it. */
   def anyOriginalTitle: Option[String] =
     originalTitle
       .orElse(data.get(Imdb).flatMap(_.originalTitle))
       .orElse(cinemaOriginalTitle)
+      .orElse(data.get(Filmweb).flatMap(_.originalTitle))
 
   /** Original (production-language) titles contributed by the resolved-metadata
    *  sources — TMDB, IMDb, Filmweb. These are the alternate search terms the

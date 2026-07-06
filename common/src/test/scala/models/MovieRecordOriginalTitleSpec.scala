@@ -5,9 +5,9 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * `MovieRecord.anyOriginalTitle` — best original (production-language) title
- * across sources, TMDB → IMDb → cinema. `distinctOriginalTitle` then drops it
- * when it's only a case/whitespace re-spelling of the title already shown, so
- * frontends can render the result unconditionally.
+ * across sources, TMDB → IMDb → cinema → Filmweb. `distinctOriginalTitle` then
+ * drops it when it's only a case/whitespace re-spelling of the title already
+ * shown, so frontends can render the result unconditionally.
  */
 class MovieRecordOriginalTitleSpec extends AnyFlatSpec with Matchers {
 
@@ -36,6 +36,26 @@ class MovieRecordOriginalTitleSpec extends AnyFlatSpec with Matchers {
   it should "fall back to the cinema-reported title when only a cinema has one" in {
     val record = MovieRecord(
       data = Map[Source, SourceData](Multikino -> SourceData(originalTitle = Some("Cinema Original")))
+    )
+    record.anyOriginalTitle shouldBe Some("Cinema Original")
+  }
+
+  it should "fall back to the Filmweb slot when only Filmweb has one (Filmweb-only row)" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Ostatni konsjerż")),
+        Filmweb   -> SourceData(originalTitle = Some("Der letzte Concierge"))
+      )
+    )
+    record.anyOriginalTitle shouldBe Some("Der letzte Concierge")
+  }
+
+  it should "prefer a cinema original title over Filmweb's" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(originalTitle = Some("Cinema Original")),
+        Filmweb   -> SourceData(originalTitle = Some("Filmweb Original"))
+      )
     )
     record.anyOriginalTitle shouldBe Some("Cinema Original")
   }
