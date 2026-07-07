@@ -127,7 +127,12 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   //     limiter stalling our detail fetches: no logs, just silently empty
   //     synopses).
   //   - **5xx response** — the service returned an error status. Also WARN.
-  //   - **4xx response** — DEBUG only. Several callers (MetacriticClient's
+  //   - **403 / 429 response** — WARN. A soft-block / rate-limit (a Cloudflare
+  //     or datacenter-IP block) is a real outage the enrichment sources hit; at
+  //     DEBUG it was INVISIBLE at the prod INFO level, hiding e.g. a Filmweb
+  //     block for days. Also classified as a failure by MonitoringHttpFetch, so
+  //     it now surfaces on /uptime instead of reading green.
+  //   - **other 4xx (esp. 404)** — DEBUG only. Several callers (MetacriticClient's
   //     slug probe, RT's URL probe) deliberately use 404 as the "this
   //     slug doesn't exist" signal; WARN-ing every probe miss would flood
   //     the logs with hundreds of expected 404s per refresh tick.
@@ -145,8 +150,9 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     val code = response.statusCode()
     if (code >= 200 && code < 300) decodeBody(response.body())
     else {
-      if (code >= 500) logger.warn(s"HTTP $code from $method $url (server-side)")
-      else             logger.debug(s"HTTP $code from $method $url")
+      if (code >= 500)                     logger.warn(s"HTTP $code from $method $url (server-side)")
+      else if (code == 403 || code == 429) logger.warn(s"HTTP $code from $method $url (blocked/throttled)")
+      else                                 logger.debug(s"HTTP $code from $method $url")
       // Typed so a decorator (ThrottledHttpFetch) can react to 429 + Retry-After.
       // Message shape is unchanged, so MonitoringHttpFetch's 5xx classifier and
       // any message-matching caller keep working.

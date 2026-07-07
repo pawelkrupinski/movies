@@ -59,10 +59,21 @@ class MonitoringHttpFetch(
       case _: Exception => None
     }
 
-  private[tools] def isConnectionFailure(e: Throwable): Boolean = e match {
-    case _: IOException      => true
-    case e: RuntimeException => e.getMessage != null && e.getMessage.matches("HTTP 5\\d\\d .*")
-    case _                   => false
+  /** True when an exception means the call FAILED for uptime purposes: a
+   *  transport/connection error (`IOException` — DNS, refused, socket/request
+   *  timeout), a 5xx server error, OR a soft-block / throttle (HTTP 403
+   *  Forbidden, 429 Too Many Requests). A 404 — and any other 4xx — is NOT a
+   *  failure: several enrichment callers (Metacritic's slug probe, Rotten
+   *  Tomatoes' URL probe) use 404 as a legitimate "this doesn't exist" signal,
+   *  and the call DID reach the server. Counting 403/429 is what makes a
+   *  Cloudflare / datacenter-IP soft-block VISIBLE on /uptime instead of
+   *  silently recording as a success (which hid the Filmweb-block class of
+   *  outage — a blocked enrichment source read green on the page). */
+  private[tools] def isFailure(e: Throwable): Boolean = e match {
+    case _: IOException         => true
+    case e: HttpStatusException => e.code >= 500 || e.code == 403 || e.code == 429
+    case e: RuntimeException    => e.getMessage != null && e.getMessage.matches("HTTP (5\\d\\d|403|429) .*")
+    case _                      => false
   }
 
   private def errorDescription(e: Throwable): String = {
@@ -83,8 +94,8 @@ class MonitoringHttpFetch(
           result
         } catch {
           case e: Exception =>
-            if (isConnectionFailure(e)) monitor.recordFailure(service, errorDescription(e))
-            else monitor.recordSuccess(service, ms)  // non-connection error → the call still reached the server
+            if (isFailure(e)) monitor.recordFailure(service, errorDescription(e))
+            else monitor.recordSuccess(service, ms)  // reached the server (e.g. 404 not-found) → success
             throw e
         }
     }
@@ -112,7 +123,7 @@ class MonitoringHttpFetch(
           if (exception == null) monitor.recordSuccess(service, ms)
           else {
             val cause = unwrap(exception)
-            if (isConnectionFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
+            if (isFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
             else monitor.recordSuccess(service, ms)
           }
         }

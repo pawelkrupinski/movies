@@ -80,24 +80,40 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
     evaluations shouldBe 1
   }
 
-  "isConnectionFailure" should "classify IOException as failure" in {
+  "isFailure" should "classify IOException as failure" in {
     val (fetch, _, _) = fixture()
-    fetch.isConnectionFailure(new IOException("Connection refused")) shouldBe true
+    fetch.isFailure(new IOException("Connection refused")) shouldBe true
   }
 
   it should "classify ConnectException as failure" in {
     val (fetch, _, _) = fixture()
-    fetch.isConnectionFailure(new ConnectException("Connection refused")) shouldBe true
+    fetch.isFailure(new ConnectException("Connection refused")) shouldBe true
   }
 
   it should "classify HTTP 5xx as failure" in {
     val (fetch, _, _) = fixture()
-    fetch.isConnectionFailure(new RuntimeException("HTTP 503 for GET https://example.com")) shouldBe true
+    fetch.isFailure(new RuntimeException("HTTP 503 for GET https://example.com")) shouldBe true
   }
 
-  it should "not classify HTTP 4xx as failure" in {
+  // A soft-block / rate-limit is a REAL outage the enrichment sources hit
+  // (Filmweb / Multikino behind Cloudflare, blocking the Fly datacenter IP).
+  // Before this it read as a success, so a blocked source rendered green on
+  // /uptime — the whole reason a Filmweb block stayed invisible for days.
+  it should "classify HTTP 403 (soft-block) as failure" in {
     val (fetch, _, _) = fixture()
-    fetch.isConnectionFailure(new RuntimeException("HTTP 404 for GET https://example.com")) shouldBe false
+    fetch.isFailure(new HttpStatusException(403, "GET", "https://www.filmweb.pl/x", None)) shouldBe true
+  }
+
+  it should "classify HTTP 429 (rate-limited) as failure" in {
+    val (fetch, _, _) = fixture()
+    fetch.isFailure(new HttpStatusException(429, "GET", "https://www.filmweb.pl/x", None)) shouldBe true
+  }
+
+  it should "not classify HTTP 404 as failure (probe not-found signal)" in {
+    val (fetch, _, _) = fixture()
+    // Both the typed exception and the bare-message form MC/RT probes throw.
+    fetch.isFailure(new HttpStatusException(404, "GET", "https://www.metacritic.com/x", None)) shouldBe false
+    fetch.isFailure(new RuntimeException("HTTP 404 for GET https://example.com")) shouldBe false
   }
 
   "get" should "record success for enrichment service calls" in {
@@ -132,6 +148,19 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
     val bucket = monitor.history("Filmweb").head
     bucket.failures shouldBe 1
     bucket.errors.head should include ("HTTP 503")
+  }
+
+  // End-to-end: a Filmweb 403 soft-block must record a FAILURE (visible on
+  // /uptime), not a success. This is the gap that hid a datacenter-IP block —
+  // MonitoringHttpFetch sees the throw before FilmwebClient's Try swallows it.
+  it should "record a FAILURE on an HTTP 403 soft-block (so it shows on /uptime)" in {
+    val (fetch, delegate, monitor) = fixture()
+    delegate.nextError = Some(new HttpStatusException(403, "GET", "https://www.filmweb.pl/x", None))
+    intercept[HttpStatusException] { fetch.get("https://www.filmweb.pl/x") }
+    val bucket = monitor.history("Filmweb").head
+    bucket.failures shouldBe 1
+    bucket.successes shouldBe 0
+    bucket.errors.head should include ("HTTP 403")
   }
 
   it should "not record calls to a suppressed cinema host" in {
