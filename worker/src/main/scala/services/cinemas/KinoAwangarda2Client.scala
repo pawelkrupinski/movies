@@ -44,9 +44,16 @@ class KinoAwangarda2Client(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoAwangarda2Client.BaseUrl)
   override def sourceUrl: Option[String] = Some(KinoAwangarda2Client.RepertoireUrl)
 
-  def fetch(): Seq[CinemaMovie] =
-    Try(KinoAwangarda2Client.parse(http.get(KinoAwangarda2Client.RepertoireUrl), today, cinema))
-      .getOrElse(Seq.empty)
+  def fetch(): Seq[CinemaMovie] = {
+    // Fetch OUTSIDE the Try so a 5xx/timeout from the venue's (flaky, shared-
+    // hosting) server propagates and surfaces as a red uptime error — not a
+    // silently swallowed empty, which `RetryingCinemaScraper` records as a
+    // successful "0 showtimes" scrape (white on the uptime bar, indistinguishable
+    // from a genuinely film-dormant venue). Only a PARSE failure on fetched HTML
+    // is swallowed to an empty list. Mirrors the same guard in KinoZamekClient.
+    val html = http.get(KinoAwangarda2Client.RepertoireUrl)
+    Try(KinoAwangarda2Client.parse(html, today, cinema)).getOrElse(Seq.empty)
+  }
 }
 
 object KinoAwangarda2Client {

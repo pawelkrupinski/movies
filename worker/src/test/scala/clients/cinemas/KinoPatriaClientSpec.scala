@@ -1,11 +1,12 @@
 package clients.cinemas
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import models.KinoPatria
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.KinoPatriaClient
+import tools.HttpStatusException
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -70,5 +71,13 @@ class KinoPatriaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "carry a filmUrl for each movie" in {
     all(movies.flatMap(_.filmUrl)) should startWith("https://kinopatria.com/")
+  }
+
+  // A 5xx/timeout from the venue's server must propagate so it surfaces red on
+  // /uptime — not be swallowed into an empty list that reads as a successful
+  // "0 showtimes" scrape (white, indistinguishable from a film-dormant venue).
+  it should "propagate a fetch failure instead of swallowing it into an empty (white) scrape" in {
+    val client = new KinoPatriaClient(new FailingHttpFetch(503), KinoPatria, today)
+    a[HttpStatusException] should be thrownBy client.fetch()
   }
 }

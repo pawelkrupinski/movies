@@ -1,11 +1,12 @@
 package clients.cinemas
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import models.KinoAwangarda2
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.KinoAwangarda2Client
+import tools.HttpStatusException
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -56,5 +57,15 @@ class KinoAwangarda2ClientSpec extends AnyFlatSpec with Matchers with OptionValu
     // `Federico Fellini : Ciao a tutti "Wałkonie"` → title is the quoted film.
     val film = movies.find(_.movie.title == "Wałkonie").value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 25, 19, 45))
+  }
+
+  // The venue is on cheap shared hosting (cyberfolks.pl) that intermittently
+  // 503s ("Script execution exceeded allocated limits"). A swallowed 503 would
+  // record a false "0 showtimes" scrape — white on /uptime, indistinguishable
+  // from a genuinely film-dormant venue. The fetch failure must propagate so it
+  // surfaces red instead.
+  it should "propagate a fetch failure instead of swallowing it into an empty (white) scrape" in {
+    val client = new KinoAwangarda2Client(new FailingHttpFetch(503), LocalDate.of(2026, 6, 21))
+    a[HttpStatusException] should be thrownBy client.fetch()
   }
 }
