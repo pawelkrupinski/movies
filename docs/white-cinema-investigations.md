@@ -32,6 +32,108 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-07
+
+**16 cinemas were 3-scrape-white** (real overnight buckets ~00:30–03:30 local, not
+a boot artifact). **Twelve are carried-over film-dormant venues; one new venue
+(Kino Paradox) is dormant; one (Kino Zamek) is the same festival filter-gap still
+`needs-human`; and TWO — Kino Awangarda 2 and Kino Patria — shared a real bug that
+was `fixed` this run.**
+
+The fix: `KinoAwangarda2Client` and `KinoPatriaClient` wrapped their PRIMARY
+repertoire fetch inside `Try(parse(http.get(...))).getOrElse(Seq.empty)`, so a
+5xx/timeout was swallowed into an empty list and recorded as a successful "0
+showtimes" scrape — **white**, indistinguishable from a genuinely dormant venue,
+when the fetch was actually FAILING (should be red). Moved the fetch outside the
+Try so the HTTP exception propagates (the guard `KinoZamekClient` already
+documents). Awangarda 2 is *live-proven* to hit this: its host (cyberfolks.pl
+shared hosting) returned HTTP 503 "Serwer tymczasowo niedostępny / Script
+execution exceeded allocated limits" to 6 consecutive retries — that 503 was being
+mis-painted white. **Fixed @a4a2c149a** (+ shared `FailingHttpFetch` testkit fake;
+fail-before/pass-after unit tests in both client specs). Patria was fixed in the
+same commit for consistency (identical anti-pattern) though it is *currently*
+dormant, not failing.
+
+**Audit-only heads-up (not fixed):** three more clients swallow their PRIMARY
+fetch the looser way — `Try(http.get(...)).getOrElse("")` feeding a parser:
+`KinoDianaClient`, `KinoTatryClient`, `VisualTicketClient`. None is white today
+for that reason (Tatry is intentionally-dormant per memory), so left alone;
+worth a follow-up sweep to make fetch-failure→red uniform across all scrapers.
+
+**Set changes vs 2026-07-03:**
+- **New white:** Kino Awangarda 2 (fixed), Kino Paradox (dormant), Kino Zamek
+  (back — was needs-human, off the set on 07-03).
+- **Fell off (recovered / no longer 3-white):** ADA Kino Studyjne, Żuławski
+  Ośrodek Kultury.
+- **Carried dormant (unchanged, still white):** DKF Politechnika, Kino Chatka
+  Żaka, Kino CK Lublin, Kino Krapkowice, Kino nad Wartą, Kino PDK, Kino Świt,
+  Kino Warszawa (Przeworsk), Kino Wisła Brzeszcze, Teatr Ziemi Rybnickiej,
+  Studio (Opole), Kino Malta Charlie Monroe.
+
+Scope note: the twelve carried-over dormant venues were each diagnosed with live
+evidence in prior runs and remain within their known dormancy/break windows
+(Krapkowice → 31 Jul, Studio → 3 Sept, Charlie Monroe hiatus → 16 Jul). They stay
+white; not deep-re-probed this run. The four changed venues below were probed live.
+
+### Kino Awangarda 2 (Olsztyn) — `fixed` @a4a2c149a
+- Client: `KinoAwangarda2Client` @ `awangarda.olsztyn.pl` (Joomla article id=77).
+- Live: the host returned **HTTP 503** ("Serwer tymczasowo niedostępny … Script
+  execution exceeded allocated limits") on every one of 6 retries — a genuine
+  fetch failure, not an empty repertoire. `RealHttpFetch` throws
+  `HttpStatusException` on a 503, but the client's `Try(parse(http.get)).getOrElse`
+  swallowed it → white. Fix moves the fetch outside the Try (propagates → red).
+  Cannot judge dormant-vs-parser-drift for THIS venue right now because the page
+  is unfetchable; but the misclassification itself is fixed and regression-tested.
+  Re-check the underlying repertoire once the host is reachable.
+
+### Kino Patria (Ruda Śląska) — `intentionally-dormant` (+ swallow hardened @a4a2c149a)
+- Client: `KinoPatriaClient` @ `kinopatria.com/repertuar/`. Live: HTTP 200 (36 KB),
+  markup intact (`amy-movie-showtimews-daily-1` + weekly grid present, July date
+  tabs present) but every movie item reads **"Brak filmu"** — no films programmed
+  (typical mid-July single-screen closure). Parser correct. Its identical
+  fetch-swallow anti-pattern was fixed in the same commit (not the cause of
+  today's white, but corrected so a future 503 shows red not white).
+
+### Kino Paradox (Kraków) — `intentionally-dormant`
+- Client: `KinoParadoxClient` @ `kinoparadox.pl/repertuar/`. Live: HTTP 200 but the
+  schedule now loads client-side via the WordPress `visualnet-importer` plugin,
+  which shows `Błąd przy pobieraniu kategorii`; the old server-rendered selector
+  `div.list-item__content__row[data-date]` finds **0** rows. That error is a red
+  herring, though: the underlying VisualNet ticketing backend
+  `bilety.kinoparadox.pl/index.php/repertoire` IS server-fetchable and returns
+  `data-events-count="0"` for **every** day Jul–Dec 2026 (`"messages":"empty"`).
+  So there is genuinely nothing to parse — venue film-dormant for the summer, no
+  test-backable fix possible. **Re-check in autumn:** if VisualNet fills with
+  events but our `/repertuar/` selector still finds nothing, THEN rebuild the
+  scraper against the VisualNet `repertoire` HTML (structure is present + parseable)
+  instead of the JS-injected WordPress page.
+
+### Kino Zamek (Szczecin) — `needs-human` (same festival filter-gap as 2026-06-28)
+- Client: `KinoZamekClient`. Strategy unchanged: intersect MSI ticketing titles
+  with a film allow-list scraped from `zamek.szczecin.pl/wydarzenia/kino/`
+  (`/wydarzenie/kino/<slug>/` links), keeping an MSI title only if its derived slug
+  prefix-matches a listing slug.
+- Live: MSI has genuine films for Jul–Aug (MOJA DROGA B., PANI Z TELEWIZJI, plus
+  animated shorts CZERWONY KAPTUREK / OPOWIEŚĆ O ZŁOTEJ RYBCE / WIEŻA DZWONÓW …)
+  mixed with non-film events (yoga, concerts, "LATO NA TARASACH"). But the castle
+  listing now yields only **2 slugs**, both banners:
+  `zamkowe-noce-filmowe-2026` (festival) and `44-45-pomorskie-spotkania-z-diaporama`
+  (slideshow). The per-title→slug prefix match can't bridge an individual film to
+  a festival-banner slug, so every genuine film is filtered out → white. This is
+  the identical under-reporting escalated on 2026-06-28, now concretely the
+  "Zamkowe Noce Filmowe 2026" summer festival.
+- Why still no fix: unchanged product call — either follow the festival-banner page
+  to enumerate its films and add them to the allow-list (concrete but adds
+  banner-page parsing + uncertain whether those festival classics are what we want
+  to surface), or drop the allow-list for a `NonMovieEventClassifier` (risks
+  letting the MSI concerts/yoga through). Both are speculative without a confident
+  ground-truth of "what should Kino Zamek show." **needs-human** — decide the
+  policy; evidence reproducible via the two live URLs. Likely self-resolves when
+  normal (non-festival) repertoire resumes and individual film slugs return to the
+  listing.
+
+---
+
 ## 2026-07-03
 
 **14 cinemas were 3-scrape-white. Thirteen are genuinely film-dormant (parsers
