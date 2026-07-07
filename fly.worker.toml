@@ -162,7 +162,18 @@ primary_region = 'arn'
   # core count. Steady JIT is ~0, so no steady-state cost. If a 2x boot ever JIT-THRASHES
   # (the 2026-07-05 failure — see [[vm]]), escalate to -XX:TieredStopAtLevel=1 (drop C2
   # entirely; steady-state ~5cc can afford C1-only under the ~13cc 2x breakeven).
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
+  #
+  # [DIAG-TEMP 2026-07-07] -XX:+PrintCompilation — diagnostic ONLY, REVERT after capture.
+  # On 2026-07-06 (evening, ~18:30 UTC) JIT compilation rose to ~40-50% of process CPU for
+  # hours, pushing CPU over the ~13cc 2x breakeven and draining credit to a near-floor (7.1k)
+  # before an unrelated deploy recycled the JVM and erased the evidence. Cause UNPROVEN — the
+  # leading Filmweb-softblock theory was refuted (Filmweb is ~98% healthy). PrintCompilation
+  # streams every compile + "made not entrant" deopt event to stdout (→ flyctl logs, NOT the
+  # /data logback file, so no disk risk), so the NEXT time the churn re-forms we can see whether
+  # it's deopt/recompile churn (repeated "made not entrant" on one method) or just high compile
+  # volume, and WHICH method. Capture flyctl logs across the evening window, then REVERT this
+  # flag (its per-compile logging is pure overhead once we have the answer).
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:+PrintCompilation -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
