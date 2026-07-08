@@ -161,28 +161,36 @@ primary_region = 'arn'
   # spike toward the credit breakeven; 2 is also the tiered-JIT minimum + the shared-cpu-2x
   # core count.
   #
-  # -XX:TieredStopAtLevel=1 (C1 only, NO C2) — the escalation this comment used to only
-  # threaten, now ENGAGED, because the 2026-07-07 -XX:+PrintCompilation capture PROVED the
-  # evening credit drain is C2 deopt/recompile CHURN, not boot warmup:
-  #   - On a JVM warm ~45min the compile rate spiked to ~480 lines/min with 179 "made not
-  #     entrant: uncommon trap" deopts/hr; process CPU hit 30-36cc of which ~80-86% was pure
-  #     jvm_compilation — every evening, draining the 100k bucket below the 8000 throttle line
-  #     (min 6.4k overnight 07-06→07-07).
-  #   - The churners are the SHARED third-party PARSE surface fed heterogeneous inputs by
-  #     ~299 cinema scrapers: jsoup HtmlTreeBuilderState$7::inBody{Start,End}Tag (top deopts),
-  #     java.time NumberPrinterParser/IsoChronology (showtime datetimes), java.util.regex
-  #     Pattern$Bound, jackson ReaderBasedJsonParser. Each cinema's differently-shaped HTML/JSON
-  #     re-pollutes the branch profile → C2 speculates → uncommon trap → deopt → recompile (up
-  #     to 12x/method/hr). NOT fixable in our Scala — the churn is inside jsoup/java.time/jackson.
-  #   - C1 does no speculative optimisation, so it emits no uncommon-trap deopts → the recompile
-  #     storm is structurally impossible, and warmup CPU drops too. The worker is I/O-bound
-  #     (network wait dominates scraping), so losing C2 peak throughput is ~free; the read-model
-  #     projection hot path is already incremental/cached (@20adfa16), daytime ~5-8cc, so C1-only
-  #     stays well under the ~13cc 2x breakeven while the 26cc evening JIT storms vanish.
-  #   Validate post-deploy on rate(jvm_compilation_time_seconds_total): the evening spikes above
-  #   ~7cc should be GONE. If C1-only ever regresses real throughput (projection cc climbs toward
-  #   breakeven in daylight), the next lever is off shared-2x entirely (4x, or performance-2x).
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
+  # C2 kept ON (full tiered) but the evening deopt/recompile FLAP bounded by targeted flags —
+  # replacing the blunt -XX:TieredStopAtLevel=1 (C1-only). Background: the 2026-07-07 PrintCompilation
+  # capture PROVED the evening credit drain is C2 deopt/recompile CHURN (179 "made not entrant:
+  # uncommon trap"/hr on the SHARED third-party parse surface — jsoup HtmlTreeBuilderState$7,
+  # java.time NumberPrinterParser/IsoChronology, java.util.regex Pattern$Bound, jackson — as ~299
+  # heterogeneous cinema scrapers re-pollute each shared method's branch profile). C1-only killed
+  # the flap but ran that CPU-bound parse code ~2x slower → steady process cc DOUBLED 5-7→10-12cc
+  # (measured 07-08, on task-worker/scrape threads; Mongo driver ~0cc). We'd rather NOT pay the C1
+  # tax all day, so this config keeps C2 (fast, low daytime cc) and suppresses the flap two ways:
+  #   -XX:-UseTypeSpeculation — removes C2's SPECULATIVE type profiling, the main source of the
+  #     class_check/uncommon-trap deopts on polymorphic parse code, while keeping C2 inlining/loop
+  #     opts. Attacks the deopt at the source.
+  #   -XX:PerMethodRecompilationCutoff=20 / -XX:PerBytecodeRecompilationCutoff=20 — SAFETY CAP
+  #     (default 400): a method that thrashes >20 recompiles is frozen (made not-compilable) instead
+  #     of storming for an hour. Bounds any residual flap regardless of cause.
+  #   (DEFERRED: -XX:-ClassUnloading — would cut the minor 16/hr CHA-invalidation deopts, but the
+  #     worker is chronically OOM-ing on NON-heap memory (~11.5MB heap dumps = near-empty heap;
+  #     likely direct-buffer/Metaspace, ~6 dumps in /data/heapdumps over 4 days → most of the ~10
+  #     daily cold restarts). Disabling unloading + growing Metaspace could WORSEN those OOMs → more
+  #     restarts, so it stays out until the OOM type is confirmed.)
+  #   -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa — dynamic AppCDS: persist the
+  #     app class archive on the /data volume so each of the ~10 daily cold restarts loads classes
+  #     faster and re-JITs less (attacks the cold-restart re-JIT half of the night cost). Self-heals
+  #     after a deploy (stale archive → regenerated at next clean exit; falls back to base CDS if absent).
+  # -XX:+PrintCompilation is DIAG-TEMP again to SCORE this experiment: after an evening, the uncommon-
+  # trap count should be far below 179/hr AND daytime cc back toward 5-7cc. ROLLBACK if the evening
+  # storm/throttle-trip returns: re-add -XX:TieredStopAtLevel=1 (the known-good C1-only from @614b2799),
+  # which trades daytime cc for a guaranteed-no-flap. If flags alone don't get there, next is the JDK 25
+  # AOT cache (Leyden training run) and/or reducing the restart rate; last resort is off shared-2x (4x).
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:+PrintCompilation -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
