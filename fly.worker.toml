@@ -190,7 +190,22 @@ primary_region = 'arn'
   # storm/throttle-trip returns: re-add -XX:TieredStopAtLevel=1 (the known-good C1-only from @614b2799),
   # which trades daytime cc for a guaranteed-no-flap. If flags alone don't get there, next is the JDK 25
   # AOT cache (Leyden training run) and/or reducing the restart rate; last resort is off shared-2x (4x).
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:+PrintCompilation -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
+  #
+  # -XX:StartFlightRecording (DIAG, added 2026-07-08) — continuous low-overhead JFR to catch the SOURCE
+  # of the transient GC/allocation storm behind the occasional ~1hr credit-drain flare (2026-07-08
+  # 13:20-14:25 UTC: GC 1.5->11.6cc, JIT 0.3->14cc, process CPU 6->24.5cc, bucket cap->82k — while
+  # scrape/projection/change-event rates were ALL FLAT and every memory pool was flat, so it's a heap-
+  # garbage storm of unidentified source, not projection cost or a leak; see the read-model-projection
+  # memory). Metrics are exhausted and the flare self-clears, so the ONLY way to name the allocator is a
+  # live capture. settings=default enables the throttled jdk.ObjectAllocationSample (~1% overhead, fine
+  # under the 5-8cc baseline) → the allocation call sites. Box is JRE-only (no jcmd) so we can't dump on
+  # demand; instead disk=true writes rolling chunks to the /data volume (maxage=2h, maxsize=64m) that
+  # SURVIVE a restart, and dumponexit consolidates on a clean exit — the worker restarts several
+  # times/day (the 14:25 flare ended in one), so a flare is captured either way. Pull + analyse after an
+  # event:  flyctl ssh sftp get /data/jfr/exit.jfr ./  (or tar the repo)  then  jfr print --events
+  # jdk.ObjectAllocationSample,jdk.GCPhasePause exit.jfr | sort | uniq -c | sort -rn. REMOVE this flag
+  # (and PrintCompilation) once the allocator is identified and fixed — it's diagnostic, not permanent.
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:+PrintCompilation -XX:StartFlightRecording=name=alloc,disk=true,maxage=2h,maxsize=64m,dumponexit=true,filename=/data/jfr/exit.jfr,settings=default -XX:FlightRecorderOptions=repository=/data/jfr,maxchunksize=8m -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
