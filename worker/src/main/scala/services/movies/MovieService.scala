@@ -359,8 +359,8 @@ class MovieService(
     val (origHint, directoryHint) = tmdbHints(existing)
     val label = s"'$cleanTitle' (${year.getOrElse("?")})"
     Try(lookupTmdb(cleanTitle, year, existing, origHint, directoryHint)) match {
-      case Success(Some((tmdbId, hit, imdbId, detailsOpt))) =>
-        val resolved = buildResolvedRecord(tmdbId, hit, imdbId, detailsOpt, existing)
+      case Success(Some((tmdbId, hit, externalIds, detailsOpt))) =>
+        val resolved = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, existing)
         logger.info(s"TMDB (staging): $label → matched tmdbId=${resolved.tmdbId.getOrElse("—")} imdbId=${resolved.imdbId.getOrElse("—")}")
         Some(resolved)
       case Success(None) =>
@@ -441,7 +441,7 @@ class MovieService(
     // internally before `row` was passed in) — outside the lock, like the slow
     // lookup it feeds.
     val candidateRow = cache.get(cache.keyOf(key.cleanTitle, key.year)).getOrElse(MovieRecord())
-    lookupTmdb(key.cleanTitle, key.year, candidateRow, originalTitleHint, directorHint).map { case (tmdbId, hit, imdbId, detailsOpt) =>
+    lookupTmdb(key.cleanTitle, key.year, candidateRow, originalTitleHint, directorHint).map { case (tmdbId, hit, externalIds, detailsOpt) =>
       // Read → modify → write under the per-title lock so a cinema scrape's
       // freshly-written slot, landing just before this thread enters the
       // critical section, is visible to the carry-forward below — and so
@@ -459,7 +459,7 @@ class MovieService(
         // `canonicalKeyFor` shares this row's sanitize (so the same title lock),
         // and falls back to `key` only when no live row exists yet (first resolve).
         val writeKey = cache.canonicalKeyFor(rawKey).getOrElse(key)
-        val enr      = buildResolvedRecord(tmdbId, hit, imdbId, detailsOpt, cache.get(writeKey).getOrElse(MovieRecord()))
+        val enr      = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, cache.get(writeKey).getOrElse(MovieRecord()))
         // Settle this film at conclusion: write the resolved record AND fold any
         // yearless+idless sibling a concurrent scrape stranded (the "Dzień
         // objawienia" Multikino row) onto it in ONE merged write — so the row's
@@ -489,9 +489,9 @@ class MovieService(
     row:               MovieRecord,
     originalTitleHint: Option[String],
     directorHint:      Option[String]
-  ): Option[(Int, Option[TmdbClient.SearchResult], Option[String], Option[TmdbClient.FullDetails])] =
+  ): Option[(Int, Option[TmdbClient.SearchResult], TmdbClient.ExternalIds, Option[TmdbClient.FullDetails])] =
     resolveTmdbId(cleanTitle, year, row, originalTitleHint, directorHint).map { case (tmdbId, hit) =>
-      (tmdbId, hit, tmdb.imdbId(tmdbId), tmdb.fullDetails(tmdbId))
+      (tmdbId, hit, tmdb.externalIds(tmdbId), tmdb.fullDetails(tmdbId))
     }
 
   /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
@@ -500,18 +500,20 @@ class MovieService(
    *  how a resolution writes the TMDB-side fields + `Tmdb` slot while carrying the
    *  cinema-side data and score fields forward. */
   private def buildResolvedRecord(
-    tmdbId:     Int,
-    hit:        Option[TmdbClient.SearchResult],
-    imdbId:     Option[String],
-    detailsOpt: Option[TmdbClient.FullDetails],
-    existing:   MovieRecord
+    tmdbId:      Int,
+    hit:         Option[TmdbClient.SearchResult],
+    externalIds: TmdbClient.ExternalIds,
+    detailsOpt:  Option[TmdbClient.FullDetails],
+    existing:    MovieRecord
   ): MovieRecord = {
-    // Preserve the previously-known `imdbId` when TMDB resolved the same film
-    // (same `tmdbId`) but momentarily dropped the cross-reference — happens for
-    // very recent releases and occasional TMDB data hiccups. A DIFFERENT tmdbId
-    // accepts the new film's imdbId (even None) so a stale id can't leak across.
-    val preserveImdbId = existing.tmdbId.contains(tmdbId)
-    val resolvedImdbId = imdbId.orElse(if (preserveImdbId) existing.imdbId else None)
+    // Preserve the previously-known `imdbId`/`wikidataId` when TMDB resolved the
+    // same film (same `tmdbId`) but momentarily dropped a cross-reference —
+    // happens for very recent releases and occasional TMDB data hiccups. A
+    // DIFFERENT tmdbId accepts the new film's ids (even None) so a stale id
+    // can't leak across.
+    val preserveImdbId   = existing.tmdbId.contains(tmdbId)
+    val resolvedImdbId   = externalIds.imdbId.orElse(if (preserveImdbId) existing.imdbId else None)
+    val resolvedWikidata = externalIds.wikidataId.orElse(if (preserveImdbId) existing.wikidataId else None)
     // Carry the cinema-side fields forward — the TMDB stage doesn't own cinema
     // data; without this a fresh resolve would wipe every cinema's slot.
     val carriedData      = existing.data
@@ -564,6 +566,7 @@ class MovieService(
       filmwebRating     = existing.filmwebRating,
       rottenTomatoes    = existing.rottenTomatoes,
       tmdbId            = Some(tmdbId),
+      wikidataId        = resolvedWikidata,
       metacriticUrl     = existing.metacriticUrl,
       rottenTomatoesUrl = existing.rottenTomatoesUrl,
       // A resolve clears any prior `tmdbNoMatch` (default `false` here); carry a

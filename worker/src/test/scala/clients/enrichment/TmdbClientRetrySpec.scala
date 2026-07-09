@@ -60,4 +60,17 @@ class TmdbClientRetrySpec extends AnyFlatSpec with Matchers {
     a[java.io.FileNotFoundException] should be thrownBy client(http).imdbId(1)
     http.calls shouldBe 1 // fired once, not retried
   }
+
+  // ── external_ids: capture wikidata_id alongside imdb_id ─────────────────────
+
+  it should "parse both imdb_id and wikidata_id from one /external_ids call" in {
+    val http = new FakeHttp(_ => """{"id":603,"imdb_id":"tt0133093","wikidata_id":"Q83495"}""")
+    client(http).externalIds(603) shouldBe TmdbClient.ExternalIds(Some("tt0133093"), Some("Q83495"))
+    http.calls shouldBe 1 // both ids from the SAME round-trip
+  }
+
+  it should "leave wikidata_id None when TMDB records no Wikidata cross-reference" in {
+    val http = new FakeHttp(_ => """{"id":1,"imdb_id":"tt0000001"}""")
+    client(http).externalIds(1) shouldBe TmdbClient.ExternalIds(Some("tt0000001"), None)
+  }
 }

@@ -28,6 +28,9 @@ case class StoredMovieDto(
   filmwebRating:     Option[Double],
   rottenTomatoes:    Option[Int],
   tmdbId:            Option[Int],
+  // Optional on the wire so legacy documents (written before this existed)
+  // decode to None.
+  wikidataId:        Option[String],
   metacriticUrl:     Option[String],
   rottenTomatoesUrl: Option[String],
   searchTitle:       Option[String],
@@ -60,6 +63,7 @@ object StoredMovieDto {
       filmwebRating     = r.filmwebRating,
       rottenTomatoes    = r.rottenTomatoes,
       tmdbId            = r.tmdbId,
+      wikidataId        = r.wikidataId,
       metacriticUrl     = r.metacriticUrl,
       rottenTomatoesUrl = r.rottenTomatoesUrl,
       searchTitle       = r.searchTitle,
@@ -80,6 +84,7 @@ object StoredMovieDto {
       filmwebRating     = dto.filmwebRating,
       rottenTomatoes    = dto.rottenTomatoes,
       tmdbId            = dto.tmdbId,
+      wikidataId        = dto.wikidataId,
       metacriticUrl     = dto.metacriticUrl,
       rottenTomatoesUrl = dto.rottenTomatoesUrl,
       searchTitle       = dto.searchTitle,

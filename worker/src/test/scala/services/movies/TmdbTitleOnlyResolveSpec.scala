@@ -63,6 +63,20 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().flatMap(_.record.tmdbId) should contain (555)
   }
 
+  it should "persist the wikidata_id from TMDB's /external_ids onto the resolved row" in {
+    val cache = bareRow("Osobliwość")
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb(
+        "/search/movie"            -> s"""{"results":[${result(888, "Osobliwość", "2023-01-01", 2.0)}]}""",
+        // /external_ids carries wikidata_id alongside imdb_id — capture both.
+        "/movie/888/external_ids"  -> """{"id":888,"imdb_id":"tt8880000","wikidata_id":"Q888"}"""
+      ))
+
+    service.reEnrichSync("Osobliwość", None)
+    val record = cache.snapshot().find(_.record.tmdbId.contains(888)).map(_.record)
+    record.flatMap(_.wikidataId) shouldBe Some("Q888")
+  }
+
   it should "capture TMDB's English release title into the Tmdb slot (the cross-title merge alias)" in {
     // A non-Latin-original film: the search hit carries the Polish title and the
     // Chinese original; the English release title is only on the en-US `details`

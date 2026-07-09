@@ -238,12 +238,23 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
 
   /** Look up the IMDB id of a TMDB movie. Returns None when TMDB knows the
    *  movie but hasn't been told its IMDB cross-reference yet (rare for theatrical
-   *  releases, common for film festival items).
+   *  releases, common for film festival items). Thin accessor over
+   *  [[externalIds]] for callers that only want the IMDb id.
    */
-  def imdbId(tmdbId: Int): Option[String] = authHeader.flatMap { auth =>
+  def imdbId(tmdbId: Int): Option[String] = externalIds(tmdbId).imdbId
+
+  /** Read every cross-reference id `/movie/{id}/external_ids` carries in one
+   *  call. Besides the IMDb id we capture `wikidata_id` — a resolved tmdbId then
+   *  gives a Wikidata entity directly (no Filmweb id needed), from which
+   *  [[WikidataClient]] can harvest the remaining film-database ids. */
+  def externalIds(tmdbId: Int): TmdbClient.ExternalIds = authHeader.map { auth =>
     val body = httpGet(s"$ApiBase/movie/$tmdbId/external_ids${apiKeyParameter("?")}", auth)
-    (Json.parse(body) \ "imdb_id").asOpt[String].filter(_.startsWith("tt"))
-  }
+    val js   = Json.parse(body)
+    TmdbClient.ExternalIds(
+      imdbId     = (js \ "imdb_id").asOpt[String].filter(_.startsWith("tt")),
+      wikidataId = (js \ "wikidata_id").asOpt[String].filter(_.startsWith("Q"))
+    )
+  }.getOrElse(TmdbClient.ExternalIds(None, None))
 
   /** Reverse lookup: find a TMDB movie record by its IMDB id. Used when the
    *  Polish exhibitor title doesn't resolve via TMDB's search (no Polish
@@ -496,6 +507,9 @@ object TmdbClient {
     case _: java.io.IOException           => true
     case _                                => false
   }
+
+  /** The cross-reference ids TMDB's `/external_ids` endpoint carries for a movie. */
+  case class ExternalIds(imdbId: Option[String], wikidataId: Option[String])
 
   case class SearchResult(
     id:            Int,

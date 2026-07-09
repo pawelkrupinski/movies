@@ -34,6 +34,10 @@ case class MovieRecord(
   filmwebRating:     Option[Double]   = None,
   rottenTomatoes:    Option[Int]      = None,
   tmdbId:            Option[Int]      = None,
+  // Wikidata entity id (e.g. "Q83495") captured from TMDB's `/external_ids`.
+  // A resolved tmdbId thus gives a Wikidata entity directly (no Filmweb id
+  // needed), from which the remaining film-database ids can be harvested.
+  wikidataId:        Option[String]   = None,
   metacriticUrl:     Option[String]   = None,
   rottenTomatoesUrl: Option[String]   = None,
   // Cased + decoration-stripped title, generated once at scrape ingestion
