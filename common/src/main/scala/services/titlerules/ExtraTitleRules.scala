@@ -431,7 +431,17 @@ object ExtraTitleRules {
     // 'WSP' banner to 'Wsp:' — a display regression the 3 rows it helped don't
     // justify. An acronym cycle needs a recase carve-out before it can be stripped.)
     searchStrip("xtra-4k-suffix",                   """(?iu)\s+4K\b\s*$""",                               "'<film> (YYYY) 4K' trailing restoration-resolution tag — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323)"),
-    searchStrip("xtra-helios-replay-suffix",        """(?iu)\s+w\s+Helios\s+RePlay\s*$""",                "'<film> w Helios RePlay' Helios classics re-release strand suffix (Wejście smoka w Helios RePlay → TMDB 9461)")
+    searchStrip("xtra-helios-replay-suffix",        """(?iu)\s+w\s+Helios\s+RePlay\s*$""",                "'<film> w Helios RePlay' Helios classics re-release strand suffix (Wejście smoka w Helios RePlay → TMDB 9461)"),
+    // Eighteenth-wave (2026-07-09) audit of the TMDB-no-match corpus (prod mirror,
+    // 200 rating-less rows). An English-subtitled screening is a DISTINCT version
+    // (separate audience), so — exactly like the Ukrainian-language rule above — it
+    // keeps its own display row/merge key, but a query-only strip lets it resolve the
+    // base film's TMDB id/poster/ratings. Covers the dash ('<film> - english
+    // subtitles') and bracketed ('<film> [eng subtitles only]', '[english
+    // subtitles]') shapes and the 'eng' abbreviation. Anchored on a leading
+    // separator + the exact 'subtitles' keyword so a real title can't be amputated.
+    // (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696.)
+    searchStrip("xtra-english-subtitles-suffix",    """(?iu)\s*[-–—\[(]\s*eng(?:lish)?\s+subtitles(?:\s+only)?\s*[\])]?\s*$""", "'<film> - english subtitles' / '<film> [eng subtitles only]' English-subtitled-screening marker — sibling of xtra-ukrainski-lang-suffix; query-only strip so the EN-subtitle screening keeps its own row but resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in

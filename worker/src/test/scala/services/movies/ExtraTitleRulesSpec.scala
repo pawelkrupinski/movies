@@ -332,7 +332,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Przekleństwa niewinności, reż. Sofia Coppola (2021)"  -> "Przekleństwa niewinności",
     "Generał (1926) 4K"                                    -> "Generał (1926)",
     "Ghost in the shell (1995) 4K"                         -> "Ghost in the shell (1995)",
-    "Wejście smoka w Helios RePlay"                        -> "Wejście smoka"
+    "Wejście smoka w Helios RePlay"                        -> "Wejście smoka",
+    // Eighteenth-wave (2026-07-09) TMDB-no-match audit: English-subtitled-screening
+    // marker (dash + bracketed shapes, 'eng' abbreviation). Query-only strip — the
+    // EN-subtitle screening keeps its own row (like the Ukrainian version markers) but
+    // resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland → 1437696).
+    "Sakr w Canaria - english subtitles"                   -> "Sakr w Canaria",
+    "Fatherland (Ojczyzna) [eng subtitles only]"           -> "Fatherland (Ojczyzna)",
+    "Perfect Days [english subtitles]"                     -> "Perfect Days"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -425,7 +432,11 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // 'Replika' and the bare director name 'Radu Jude' (the cycle needs the literal
     // '. Retrospektywa:' / 'KFF:'/'Młodzi i Film:' tail) must survive untouched.
     "Replika",
-    "Radu Jude"
+    "Radu Jude",
+    // The English-subtitles suffix needs the literal 'subtitles' keyword at the end
+    // after a separator — a real title merely CONTAINING 'English' must survive.
+    "The English Patient",
+    "An Englishman in New York"
   )
 
   it should "never touch a plain colon/word title" in {
