@@ -21,4 +21,11 @@ object PrometheusExposition {
     text.linesIterator
       .find(_.startsWith(s"$name{$labels}"))
       .map(_.trim.split("\\s+").last.toDouble)
+
+  /** The value of a label-less `name value` gauge line (skips the `# HELP`/`# TYPE`
+   *  header lines and any `name…{…}` labelled sibling), or None if absent. */
+  def value(text: String, name: String): Option[Double] =
+    text.linesIterator
+      .find(l => l.startsWith(s"$name ") && !l.startsWith("#"))
+      .map(_.trim.split("\\s+").last.toDouble)
 }

@@ -202,18 +202,27 @@ primary_region = 'arn'
   # life, invisible to JVM pool metrics — so NMT (which breaks native memory into Thread/Code/GC/
   # Internal/etc.) is the right tool. NMT=summary is ~zero overhead. Box is JRE-only (no jcmd), so read
   # (PrintNMTStatistics is a DIAGNOSTIC flag → needs -XX:+UnlockDiagnosticVMOptions BEFORE it, else the
-  # JVM refuses to boot; both are in JAVA_OPTS below.) Read
+  # JVM refuses to boot; both are in JAVA_OPTS below.) The Dockerfile CMD now redirects the JVM's stderr
+  # to /data/logs/worker-stderr.log (durable), so the dying ExitOnOOM native-OOM line AND the
+  # PrintNMTStatistics summary SURVIVE the restart instead of rolling away with `flyctl logs`. Read
   # the breakdown via PrintNMTStatistics at a CLEAN exit: `flyctl machine restart` sends SIGTERM →
-  # graceful shutdown → NMT summary to stderr → `flyctl logs -a kinowo-worker`. Trigger it on a ~5h-old
-  # machine (pre-OOM) and compare vs a fresh boot to see which native category grew. (PrintNMTStatistics
-  # likely does NOT fire on the hard ExitOnOOM path — use the graceful-restart readout.) REMOVE once the
-  # native grower is identified + fixed. See the worker native-OOM/disk memory.
+  # graceful shutdown → NMT summary to stderr → durable file. Read it back:
+  #   flyctl ssh console --app kinowo-worker -C 'tail -n 400 /data/logs/worker-stderr.log'
+  # Trigger it on a ~5h-old machine (pre-OOM) and compare vs a fresh boot to see which native category
+  # grew. (PrintNMTStatistics likely does NOT fire on the hard ExitOnOOM path — but the malloc-failed OOM
+  # line still lands in the durable file; use the graceful-restart readout for the full NMT breakdown.)
+  # REMOVE once the native grower is identified + fixed. See the worker native-OOM/disk memory.
+  #
+  # -XX:ErrorFile=/data/logs/hs_err_%p.log — durable target for a HARD JVM crash (SIGSEGV / internal
+  # fatal error), which writes an hs_err_pid<PID>.log rather than an OOM stderr line. Default location is
+  # the CWD (ephemeral) — point it at the /data volume so a fatal crash's diagnostics survive too. The
+  # Dockerfile boot-prune keeps the 3 newest hs_err logs so they can't fill /data.
   #
   # NOTE (2026-07-09): /data (1GB vol) had filled to 100% with ~750MB of never-cleaned OOM heap dumps
   # (HeapDumpOnOutOfMemoryError writes ~11MB/OOM and never prunes) — which is why the 01:08 OOM wrote no
   # dump. Cleaned to 15%; the Dockerfile CMD now prunes /data/heapdumps to the 3 newest + drops the
   # retired /data/jfr on every boot, so it can't refill.
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -Djdk.http.auth.tunneling.disabledSchemes='
+  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'

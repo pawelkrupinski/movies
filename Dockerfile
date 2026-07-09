@@ -48,15 +48,31 @@ EXPOSE 9000
 # Boot-prune the /data volume (worker only; the paths don't exist on web → no-op).
 # HeapDumpOnOutOfMemoryError writes a ~11MB dump per OOM and never cleans up; a
 # 2026-07-09 investigation found /data 100% full (750MB of stale dumps), which
-# blocks new dumps + log writes. Keep the 3 newest dumps, drop the retired JFR
-# repo dir, then `exec` so the JVM is PID-adjacent and receives SIGTERM directly.
+# blocks new dumps + log writes. Keep the 3 newest dumps + the 3 newest hs_err
+# crash logs, drop the retired JFR repo dir.
+#
+# DURABLE STDERR (worker only): the JVM's dying stderr — the `ExitOnOutOfMemoryError`
+# native-OOM line (`Native memory allocation (mmap/malloc) failed…`) and, on a clean
+# SIGTERM restart, the `-XX:+PrintNMTStatistics` summary — otherwise goes only to the
+# container stderr → `flyctl logs`, whose short retention rolls away before the ~5 h
+# OOM can be read. Append it to /data/logs/worker-stderr.log so the pre-death readout
+# SURVIVES the restart. `launch()` keeps the `exec` (JVM stays PID-adjacent, receives
+# SIGTERM directly for the graceful NMT dump) while the redirect at the call site
+# hands the JVM an fd-2 pointing at the durable file. web has no /data volume → the
+# `else` branch runs the JVM unredirected, exactly as before. Cap the file on boot so
+# a crash-loop can't fill /data (keep the last ~4 MB). Hard JVM crashes (SIGSEGV) go
+# to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in fly.worker.toml JAVA_OPTS).
 CMD if [ -d /data/heapdumps ]; then ls -1t /data/heapdumps/*.hprof 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
+    if [ -d /data/logs ]; then ls -1t /data/logs/hs_err_*.log 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
+    if [ -f /data/logs/worker-stderr.log ] && [ "$(wc -c < /data/logs/worker-stderr.log)" -gt 16777216 ]; then \
+      tail -c 4194304 /data/logs/worker-stderr.log > /data/logs/worker-stderr.log.tmp && mv /data/logs/worker-stderr.log.tmp /data/logs/worker-stderr.log; fi; \
     rm -rf /data/jfr 2>/dev/null; \
-    exec bin/$BIN \
+    launch() { exec bin/$BIN \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
-    -Dpidfile.path=/dev/null
+    -Dpidfile.path=/dev/null; }; \
+    if [ -d /data ]; then mkdir -p /data/logs; launch 2>> /data/logs/worker-stderr.log; else launch; fi
     # JVM sizing (heap/GC/non-heap caps) is now per-app via `JAVA_OPTS` in each
     # app's fly.toml — the launcher reads it — so the serving web app (kinowo)
     # and the scrape/enrich worker can be sized independently from this one

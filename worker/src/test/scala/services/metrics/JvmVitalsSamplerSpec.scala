@@ -30,6 +30,20 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
       |-        Shared class space (reserved=16384KB, committed=12944KB, readonly=0KB)
       |""".stripMargin
 
+  // A trimmed real `/proc/self/status` blob. Includes the sibling Vm* fields
+  // (VmHWM/VmData/VmSize) most likely to trip a parser that matches too loosely —
+  // only VmRSS is the resident-set gauge we want.
+  private val procStatus =
+    """Name:	java
+      |State:	S (sleeping)
+      |VmPeak:	 2410960 kB
+      |VmSize:	 2400000 kB
+      |VmHWM:	  900000 kB
+      |VmRSS:	  812345 kB
+      |VmData:	 1700000 kB
+      |Threads:	88
+      |""".stripMargin
+
   "parseCommittedByCategory" should "read committed KB→bytes for each category" in {
     val m = JvmVitalsSampler.parseCommittedByCategory(nmtSummary)
     m("Thread")    shouldBe 59815L * 1024
@@ -51,9 +65,19 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
     JvmVitalsSampler.parseCommittedByCategory("") shouldBe empty
   }
 
+  "parseVmRssBytes" should "read VmRSS kB→bytes, not a sibling Vm* field" in {
+    JvmVitalsSampler.parseVmRssBytes(procStatus) shouldBe Some(812345L * 1024)
+  }
+
+  it should "yield None when VmRSS is absent (non-Linux/empty)" in {
+    JvmVitalsSampler.parseVmRssBytes("") shouldBe None
+    JvmVitalsSampler.parseVmRssBytes("Name:\tjava\nVmSize:\t100 kB\n") shouldBe None
+  }
+
   "JvmVitalsSampler.sample" should "publish per-category committed bytes onto the registry" in {
     val registry = new PrometheusRegistry()
-    val sampler  = new JvmVitalsSampler(registry, readNmtSummary = () => nmtSummary)
+    val sampler  = new JvmVitalsSampler(
+      registry, readNmtSummary = () => nmtSummary, readProcStatus = () => procStatus)
 
     sampler.sample()
     val text = PrometheusExposition.render(registry)
@@ -64,6 +88,20 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
       Some(68058.0 * 1024)
   }
 
+  it should "publish RSS and the RSS − NMT-committed off-book gap" in {
+    val registry = new PrometheusRegistry()
+    val sampler  = new JvmVitalsSampler(
+      registry, readNmtSummary = () => nmtSummary, readProcStatus = () => procStatus)
+
+    sampler.sample()
+    val text = PrometheusExposition.render(registry)
+
+    val committedSum = JvmVitalsSampler.parseCommittedByCategory(nmtSummary).values.sum
+    PrometheusExposition.value(text, JvmVitalsSampler.RssName) shouldBe Some(812345.0 * 1024)
+    PrometheusExposition.value(text, JvmVitalsSampler.GapName) shouldBe
+      Some((812345L * 1024 - committedSum).toDouble)
+  }
+
   it should "seed the common categories at 0 before the first sample" in {
     val registry = new PrometheusRegistry()
     new JvmVitalsSampler(registry, readNmtSummary = () => "") // constructed, not sampled
@@ -72,5 +110,7 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
     JvmVitalsSampler.SeedCategories.foreach { c =>
       PrometheusExposition.sample(text, JvmVitalsSampler.Name, s"""category="$c"""") shouldBe Some(0.0)
     }
+    PrometheusExposition.value(text, JvmVitalsSampler.RssName) shouldBe Some(0.0)
+    PrometheusExposition.value(text, JvmVitalsSampler.GapName) shouldBe Some(0.0)
   }
 }
