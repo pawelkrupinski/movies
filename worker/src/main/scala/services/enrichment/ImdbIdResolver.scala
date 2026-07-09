@@ -3,7 +3,7 @@ package services.enrichment
 import play.api.Logging
 import services.Stoppable
 import services.events.{DomainEvent, ImdbIdMissing}
-import services.movies.MovieCache
+import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.DaemonExecutors
 
@@ -109,16 +109,24 @@ class ImdbIdResolver(
           else None
         }
         .orElse {
-          // Wikidata fallback: cross-reference via Filmweb entity id (P5032 → P345).
-          // Only fires when the filmwebUrl is a real entity page (not a search redirect)
-          // and a WikidataClient has been wired. Never throws — WikidataClient.findImdbIdByFilmwebId
-          // absorbs all network failures and returns None.
-          for {
+          // Wikidata fallback: ONE claims call cross-references via the Filmweb
+          // entity id (P5032) and yields every film-database id at once. Only fires
+          // when the filmwebUrl is a real entity page (not a search redirect) and a
+          // WikidataClient has been wired. Never throws — findIdsByFilmwebId absorbs
+          // all network failures and returns None.
+          val harvested = for {
             client    <- wikidata
             url       <- record.filmwebUrl
             filmwebId <- WikidataClient.filmwebEntityId(url)
-            id        <- client.findImdbIdByFilmwebId(filmwebId)
-          } yield id
+            ids       <- client.findIdsByFilmwebId(filmwebId)
+          } yield ids
+          // Backfill the RT / Metacritic page URLs the harvest turned up — their
+          // rating clients otherwise slug-probe/scrape to discover them. (TMDB's
+          // P4947 is intentionally NOT applied here: a film reaching this bridge
+          // already has a tmdbId — that's what fired `ImdbIdMissing` and gated its
+          // Filmweb enrichment — so harvesting it would be a no-op.)
+          harvested.foreach(backfillRatingUrls(key, _))
+          harvested.flatMap(_.imdbId)
         }
       found match {
         case Some(id) =>
@@ -130,6 +138,22 @@ class ImdbIdResolver(
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match [search='$searchTitle']")
       }
     }
+  }
+
+  /** Fill the row's Rotten Tomatoes / Metacritic page URLs from a Wikidata
+   *  harvest when they're still empty. Those rating clients skip their expensive
+   *  slug-probe/scrape once the URL is present (`e.rottenTomatoesUrl.orElse(...)`
+   *  / `e.metacriticUrl match`). `orElse` against the live row so a canonical
+   *  writer that filled either in between keeps its value — Wikidata only
+   *  unblocks a still-empty slug (the `OmdbBackfill` precedent for RT). */
+  private def backfillRatingUrls(key: CacheKey, ids: WikidataIds): Unit = {
+    val rtUrl = ids.rottenTomatoesId.map(WikidataClient.rottenTomatoesUrl)
+    val mcUrl = ids.metacriticId.map(WikidataClient.metacriticUrl)
+    if (rtUrl.isDefined || mcUrl.isDefined)
+      cache.putIfPresent(key, cur => cur.copy(
+        rottenTomatoesUrl = cur.rottenTomatoesUrl.orElse(rtUrl),
+        metacriticUrl     = cur.metacriticUrl.orElse(mcUrl)
+      ))
   }
 
   /** Drain the worker pool so in-flight id write-backs have completed before the

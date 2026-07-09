@@ -2,7 +2,7 @@ package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.enrichment.{WikidataClient, WikidataClient as WD}
+import services.enrichment.{WikidataClient, WikidataClient as WD, WikidataIds}
 import tools.HttpFetch
 
 /**
@@ -86,5 +86,45 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String = ???
     })
     client.findImdbIdByFilmwebId("1118") shouldBe None
+  }
+
+  // ── findIdsByFilmwebId (full external-id harvest) ───────────────────────────
+
+  "findIdsByFilmwebId" should "harvest every film-database id from one claims call" in {
+    // Filmweb ID 33986 = "The Matrix" (1999) = Wikidata Q83495, carrying all five
+    // external-id claims (P345 IMDb, P4947 TMDB, P1258 RT, P1712 MC, P6127 LBXD).
+    val client = wikidataStub(Map(
+      "haswbstatement" -> """{"query":{"search":[{"title":"Q83495"}]}}""",
+      "wbgetentities"  -> loadFixture("/fixtures/wikidata/entities_Q83495_allids.json"),
+    ))
+    client.findIdsByFilmwebId("33986") shouldBe Some(WikidataIds(
+      imdbId           = Some("tt0133093"),
+      tmdbId           = Some(603),
+      rottenTomatoesId = Some("m/the_matrix"),
+      metacriticId     = Some("movie/the-matrix"),
+      letterboxdId     = Some("the-matrix")
+    ))
+  }
+
+  it should "omit ids the item doesn't record (partial harvest)" in {
+    // A repertoire item that has only IMDb + RT, no TMDB/MC/Letterboxd.
+    val partial =
+      """{"entities":{"Q1":{"claims":{
+        |"P345": [{"mainsnak":{"datavalue":{"value":"tt0052080"}}}],
+        |"P1258":[{"mainsnak":{"datavalue":{"value":"m/ashes_and_diamonds"}}}]
+        |}}}}""".stripMargin
+    val client = wikidataStub(Map(
+      "haswbstatement" -> """{"query":{"search":[{"title":"Q1"}]}}""",
+      "wbgetentities"  -> partial,
+    ))
+    client.findIdsByFilmwebId("1118") shouldBe Some(WikidataIds(
+      imdbId = Some("tt0052080"), tmdbId = None,
+      rottenTomatoesId = Some("m/ashes_and_diamonds"), metacriticId = None, letterboxdId = None
+    ))
+  }
+
+  it should "build canonical RT and Metacritic URLs from the harvested ids" in {
+    WikidataClient.rottenTomatoesUrl("m/the_matrix") shouldBe "https://www.rottentomatoes.com/m/the_matrix"
+    WikidataClient.metacriticUrl("movie/the-matrix") shouldBe "https://www.metacritic.com/movie/the-matrix"
   }
 }

@@ -172,6 +172,45 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "backfill the RT and Metacritic page URLs from the Wikidata harvest" in {
+    val bus = new InProcessEventBus()
+    // A film with no imdbId AND no RT/MC page URL yet — one Wikidata claims call
+    // recovers the imdbId and the RT/MC slugs (which those rating clients would
+    // otherwise slug-probe for).
+    val record = MovieRecord(
+      tmdbId     = Some(603),
+      filmwebUrl = Some("https://www.filmweb.pl/film/Matrix-1999-33986"),
+      data       = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("The Matrix")))
+    )
+    val repository = new InMemoryMovieRepository(Seq(("Matrix", Some(1999), record)))
+    val cache      = new CaffeineMovieCache(repository)
+    val wikidataStub = new WikidataClient(new HttpFetch {
+      def get(url: String): String =
+        if (url.contains("haswbstatement")) """{"query":{"search":[{"title":"Q83495"}]}}"""
+        else if (url.contains("wbgetentities"))
+          """{"entities":{"Q83495":{"claims":{
+            |"P345":[{"mainsnak":{"datavalue":{"value":"tt0133093"}}}],
+            |"P1258":[{"mainsnak":{"datavalue":{"value":"m/the_matrix"}}}],
+            |"P1712":[{"mainsnak":{"datavalue":{"value":"movie/the-matrix"}}}]
+            |}}}}""".stripMargin
+        else throw new RuntimeException(s"unexpected url: $url")
+      override def get(url: String, headers: Map[String, String]): String = get(url)
+      override def post(url: String, body: String, contentType: String): String = ???
+    })
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
+      wikidata = Some(wikidataStub))
+    bus.subscribe(resolver.onImdbIdMissing)
+
+    bus.publish(ImdbIdMissing("Matrix", Some(1999), "The Matrix"))
+
+    eventually {
+      val row = cache.get(cache.keyOf("Matrix", Some(1999)))
+      row.flatMap(_.imdbId)            shouldBe Some("tt0133093")
+      row.flatMap(_.rottenTomatoesUrl) shouldBe Some("https://www.rottentomatoes.com/m/the_matrix")
+      row.flatMap(_.metacriticUrl)     shouldBe Some("https://www.metacritic.com/movie/the-matrix")
+    }
+  }
+
   it should "skip the Wikidata fallback when filmwebUrl is a search redirect (no entity id)" in {
     val bus = new InProcessEventBus()
     val record = MovieRecord(

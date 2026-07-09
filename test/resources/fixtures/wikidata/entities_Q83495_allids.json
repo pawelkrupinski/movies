@@ -1,0 +1,16 @@
+{
+  "entities": {
+    "Q83495": {
+      "type": "item",
+      "id": "Q83495",
+      "claims": {
+        "P345":  [{"mainsnak":{"snaktype":"value","property":"P345","datavalue":{"value":"tt0133093","type":"string"},"datatype":"external-id"},"type":"statement","rank":"normal"}],
+        "P4947": [{"mainsnak":{"snaktype":"value","property":"P4947","datavalue":{"value":"603","type":"string"},"datatype":"external-id"},"type":"statement","rank":"normal"}],
+        "P1258": [{"mainsnak":{"snaktype":"value","property":"P1258","datavalue":{"value":"m/the_matrix","type":"string"},"datatype":"external-id"},"type":"statement","rank":"normal"}],
+        "P1712": [{"mainsnak":{"snaktype":"value","property":"P1712","datavalue":{"value":"movie/the-matrix","type":"string"},"datatype":"external-id"},"type":"statement","rank":"normal"}],
+        "P6127": [{"mainsnak":{"snaktype":"value","property":"P6127","datavalue":{"value":"the-matrix","type":"string"},"datatype":"external-id"},"type":"statement","rank":"normal"}],
+        "P5032": [{"mainsnak":{"snaktype":"value","property":"P5032","datavalue":{"value":"33986","type":"string"},"datatype":"external-id"},"type":"statement","rank":"normal"}]
+      }
+    }
+  }
+}
