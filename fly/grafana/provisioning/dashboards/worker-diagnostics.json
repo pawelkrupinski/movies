@@ -1,0 +1,498 @@
+{
+  "uid": "kinowo-worker-diag",
+  "title": "Kinowo \u2014 Worker Diagnostics",
+  "tags": [
+    "worker",
+    "diagnostics"
+  ],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "purple",
+        "name": "Deploys",
+        "tags": [
+          "deploy"
+        ],
+        "type": "tags"
+      }
+    ]
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Native memory by NMT category (committed)",
+      "description": "kinowo_worker_native_memory_bytes \u2014 the native buckets invisible to jvm_memory_*. The one that climbs toward each ~5-6h non-heap OOM restart is the culprit. Needs -XX:NativeMemoryTracking=summary.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_native_memory_bytes{app=\"kinowo-worker\"}",
+          "legendFormat": "{{category}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Resident set size (RSS) vs cgroup limit",
+      "description": "process_resident_memory_bytes. The dashed line is the ~960MB cgroup ceiling. A slow climb that resets at a restart = the native working set; a spike to the line = a Fly RSS-kill.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "process_resident_memory_bytes{app=\"kinowo-worker\"}",
+          "legendFormat": "RSS",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "1006632960",
+          "legendFormat": "cgroup limit (960MB)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "CPU breakdown \u2014 centicores (process / JIT / GC)",
+      "description": "process CPU vs JIT-compilation vs GC, in centicores (100=1 core). Dashed = the 13cc shared-cpu-2x credit breakeven; sustained above it drains the credit bucket.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m]))*100",
+          "legendFormat": "process cc",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100",
+          "legendFormat": "JIT cc",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(jvm_gc_collection_seconds_sum{app=\"kinowo-worker\"}[5m]))*100",
+          "legendFormat": "GC cc",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "13",
+          "legendFormat": "breakeven (13cc)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Fly CPU-credit balance vs throttle floor",
+      "description": "fly_instance_cpu_balance. Dashed = the 8000 throttle-enter floor. Draining below it trips the scrape throttle.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "fly-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fly_instance_cpu_balance{app=\"kinowo-worker\"}",
+          "legendFormat": "credit balance",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fly-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "8000",
+          "legendFormat": "throttle floor (8000)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "fly-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Uptime (hours) \u2014 drops mark restarts",
+      "description": "(now - process_start_time)/3600. Each drop to ~0 is a restart; the cadence (~5-6h) is the OOM cycle. Cross-check the reason with `flyctl machine status` (exit_code=3 = ExitOnOutOfMemoryError).",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time()-process_start_time_seconds{app=\"kinowo-worker\"})/3600",
+          "legendFormat": "uptime h",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "JVM threads (current / peak)",
+      "description": "jvm_threads_current & _peak. A climbing thread count \u2192 'unable to create native thread' OOM. The 2026-07-09 probe found these STABLE (~86-92), so the OOM is not a thread leak \u2014 watch for drift.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_threads_current{app=\"kinowo-worker\"}",
+          "legendFormat": "current",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "jvm_threads_peak{app=\"kinowo-worker\"}",
+          "legendFormat": "peak",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Heap used",
+      "description": "jvm_memory_used_bytes{area=heap}. Healthy = sawtooth well under Xmx=320MB; a rising floor = a heap leak (NOT the current failure mode).",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_memory_used_bytes{app=\"kinowo-worker\",area=\"heap\"}",
+          "legendFormat": "heap used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Read-model projection \u2014 avg duration (ms)",
+      "description": "Per-call cost of the read-model projection. A 3-5x inflation at a FLAT call rate = the daytime GC-thrash flare (projection is a victim of GC pauses, not the cause).",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{app=\"kinowo-worker\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{app=\"kinowo-worker\"}[5m]))",
+          "legendFormat": "avg project ms",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -192,6 +192,53 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+      # ---- Worker crash-looping (restarts far above the normal cadence) -----
+      # The worker restarts a few times a day BY DESIGN — a JVM-internal non-heap
+      # OOM (exit_code=3, ExitOnOutOfMemoryError) every ~5-6h; flyd restarts it in
+      # 2s and credit recovers, so the baseline (~0.5 restarts/h) is not an
+      # incident (see reference_worker_native_oom_and_disk). But a BURST — a bad
+      # deploy, a boot failure, or the OOM cadence collapsing — is a crash loop.
+      # >4 restarts in 1h clears the baseline with wide margin. `changes()` on the
+      # ever-increasing process_start_time counts boots in the window.
+      - uid: kinowo-worker-crash-looping
+        title: Worker crash-looping
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: 'kinowo-worker restarted > 4 times in the last hour'
+          description: 'changes(process_start_time_seconds{app="kinowo-worker"}[1h]) > 4 — the worker is restarting far above its normal ~5-6h cadence. Check the `flyctl machine status <id>` event log for the exit reason (exit_code=3 = ExitOnOutOfMemoryError native OOM; 126/127 = bad launcher; 1 = boot failure), recent worker deploys, and the "Kinowo — Worker Diagnostics" dashboard (native memory + RSS climb). See reference_worker_native_oom_and_disk.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (changes(process_start_time_seconds{app="kinowo-worker"}[1h]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [4] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
       # ---- Memory pressure (pre-OOM, the Mongo-cascade precursor) -----------
       - uid: kinowo-memory-pressure
         title: Memory pressure (pre-OOM)
