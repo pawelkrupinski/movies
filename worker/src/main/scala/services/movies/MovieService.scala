@@ -816,6 +816,19 @@ class MovieService(
       // outcome can't drift with scrape/merge order. No-op when no director or no dup.
       .map(rid => if (rowDirectors.nonEmpty) collapseDirectorDuplicate(rid, rowDirectors) else rid)
     resolvedId.map(id => (id, freshHit))
+      // FALLBACK — exact reverse lookup by a known imdbId, only when the title /
+      // director search above found nothing AND the row has no tmdbId yet. Such a
+      // row can carry an imdbId from a NON-TMDB source (`OmdbBackfill` recovers one
+      // by title+year search for exactly the films TMDB's fuzzy search misses), so
+      // TMDB's `/find` returns the exact tmdbId that search couldn't. Gated on an
+      // absent tmdbId so a row that's already TMDB-resolved never resurrects a
+      // drifted resolution from its TMDB-DERIVED imdbId — a re-enrich whose search
+      // now misses must leave that row untouched, not re-confirm the stale id.
+      .orElse {
+        if (row.tmdbId.isEmpty)
+          row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit)))
+        else None
+      }
   }
 
   /** When the cinema reports a director, drop title-search candidates whose
