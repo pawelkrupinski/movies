@@ -1,0 +1,16 @@
+[
+  {
+    "type": "movie",
+    "score": 1000,
+    "movie": {
+      "title": "The Shawshank Redemption",
+      "year": 1994,
+      "ids": {
+        "trakt": 234,
+        "slug": "the-shawshank-redemption-1994",
+        "imdb": "tt0111161",
+        "tmdb": 278
+      }
+    }
+  }
+]
