@@ -10,7 +10,7 @@ import tools.HttpFetch
  * (fixtures on disk) — so the resolution rules are exercised end-to-end through
  * the actual parser, not a re-implemented fake. Fixtures:
  *   /search/imdb/tt0111161 → The Shawshank Redemption (tmdb 278)
- *   /search/movie?query=Dune&years=2021 → Dune 2021 (tmdb 438631) + Dune 1984 decoy
+ *   /search/movie?query=Dune → Dune 2021 (tmdb 438631) + Dune 1984 (tmdb 841) decoy
  */
 class TraktIdResolverSpec extends AnyFlatSpec with Matchers {
 
@@ -52,7 +52,7 @@ class TraktIdResolverSpec extends AnyFlatSpec with Matchers {
   // ── title search fallback: corroborated LONE match ───────────────────────────
 
   it should "resolve tmdb id by corroborated title+year, filtering the wrong-year decoy" in {
-    val r = resolver(Map("search/movie" -> loadFixture("/fixtures/trakt/search_movie_dune_2021.json")))
+    val r = resolver(Map("search/movie" -> loadFixture("/fixtures/trakt/search_movie_dune.json")))
     // Only the 2021 Dune survives the year gate; the 1984 decoy is discarded.
     r.resolve(imdbId = None, titles = Seq("Dune"), year = Some(2021)) shouldBe
       TraktResolution(tmdbId = Some(438631), imdbId = Some("tt1160419"))
@@ -60,12 +60,12 @@ class TraktIdResolverSpec extends AnyFlatSpec with Matchers {
 
   it should "REFUSE to guess when two same-title films remain and no year disambiguates" in {
     // Both Dune entries have the exact title; without a year both survive → ambiguous.
-    val r = resolver(Map("search/movie" -> loadFixture("/fixtures/trakt/search_movie_dune_2021.json")))
+    val r = resolver(Map("search/movie" -> loadFixture("/fixtures/trakt/search_movie_dune.json")))
     r.resolve(imdbId = None, titles = Seq("Dune"), year = None) shouldBe TraktResolution(None, None)
   }
 
   it should "return empty when the title does not match exactly" in {
-    val r = resolver(Map("search/movie" -> loadFixture("/fixtures/trakt/search_movie_dune_2021.json")))
+    val r = resolver(Map("search/movie" -> loadFixture("/fixtures/trakt/search_movie_dune.json")))
     r.resolve(imdbId = None, titles = Seq("Duna: Part Three"), year = Some(2021)) shouldBe TraktResolution(None, None)
   }
 

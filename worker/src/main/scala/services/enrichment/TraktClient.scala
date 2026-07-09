@@ -20,8 +20,10 @@ import scala.util.Try
  *     returning candidates that each carry both ids; the caller
  *     ([[TraktIdResolver]]) corroborates before binding one.
  *
- * Feature gate: the `TRAKT_API_KEY` secret (Trakt's `client_id`), sent as the
- * `trakt-api-key` header Trakt requires on every request. Unset → every method
+ * Feature gate: the `TRAKT_API_CLIENT_ID` secret (Trakt's `client_id`), sent
+ * as the `trakt-api-key` header Trakt requires on every request — for the
+ * public search endpoints the header value IS the client_id (no OAuth, so the
+ * paired `TRAKT_API_SECRET` isn't needed here). Unset → every method
  * short-circuits (None / empty) WITHOUT any HTTP call — the OMDbClient pattern.
  */
 class TraktClient(http: HttpFetch, apiKey: => Option[String] = TraktClient.ApiKey) {
@@ -52,8 +54,9 @@ class TraktClient(http: HttpFetch, apiKey: => Option[String] = TraktClient.ApiKe
 object TraktClient {
   private val ApiBase = "https://api.trakt.tv"
 
-  /** Feature flag: the client is OFF (no HTTP) whenever this is unset. */
-  val ApiKey: Option[String] = Env.get("TRAKT_API_KEY")
+  /** Feature flag: the client is OFF (no HTTP) whenever this is unset. Trakt's
+   *  `client_id`, sent as the `trakt-api-key` header on every request. */
+  val ApiKey: Option[String] = Env.get("TRAKT_API_CLIENT_ID")
 
   /** One Trakt film — title/year for corroboration, plus the cross-ids. */
   final case class TraktMovie(title: String, year: Option[Int], imdbId: Option[String], tmdbId: Option[Int])

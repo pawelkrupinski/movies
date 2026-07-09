@@ -10,13 +10,14 @@ import scala.collection.mutable.ListBuffer
 /**
  * Fixture-driven tests for TraktClient.
  *
- * Fixtures shaped from the Trakt API search endpoints (every result carries an
- * `ids` block with `imdb` + `tmdb` together — that is the whole point of Trakt
- * as an id bridge):
+ * Fixtures are REAL captures (every result carries an `ids` block with `imdb` +
+ * `tmdb` together — that is the whole point of Trakt as an id bridge), trimmed
+ * to the fields the parser reads:
  *   id lookup: GET https://api.trakt.tv/search/imdb/tt0111161?type=movie
- *   title:     GET https://api.trakt.tv/search/movie?query=Dune&years=2021
+ *   title:     GET https://api.trakt.tv/search/movie?query=Dune  (two exact-title
+ *              "Dune" entries: 2021 tmdb 438631 + 1984 tmdb 841, unfiltered by year)
  * Trakt requires the `trakt-api-key` (client_id) header on every call, so the
- * client is feature-gated on TRAKT_API_KEY and makes NO HTTP without it.
+ * client is feature-gated on TRAKT_API_CLIENT_ID and makes NO HTTP without it.
  */
 class TraktClientSpec extends AnyFlatSpec with Matchers {
 
@@ -75,8 +76,8 @@ class TraktClientSpec extends AnyFlatSpec with Matchers {
   // ── search: title candidates each carrying both ids ──────────────────────────
 
   "search" should "return every candidate with its imdb + tmdb ids" in {
-    val trakt = client(_ => loadFixture("/fixtures/trakt/search_movie_dune_2021.json"))
-    val hits  = trakt.search("Dune", Some(2021))
+    val trakt = client(_ => loadFixture("/fixtures/trakt/search_movie_dune.json"))
+    val hits  = trakt.search("Dune", None)
     hits.flatMap(_.tmdbId) shouldBe Seq(438631, 841)
     hits.map(_.year) shouldBe Seq(Some(2021), Some(1984))
   }

@@ -1,12 +1,12 @@
 [
   {
     "type": "movie",
-    "score": 98.5,
+    "score": 578730123365189600,
     "movie": {
       "title": "Dune",
       "year": 2021,
       "ids": {
-        "trakt": 291579,
+        "trakt": 287071,
         "slug": "dune-2021",
         "imdb": "tt1160419",
         "tmdb": 438631
@@ -15,12 +15,12 @@
   },
   {
     "type": "movie",
-    "score": 45.1,
+    "score": 578730123365189600,
     "movie": {
       "title": "Dune",
       "year": 1984,
       "ids": {
-        "trakt": 358,
+        "trakt": 684,
         "slug": "dune-1984",
         "imdb": "tt0087182",
         "tmdb": 841
