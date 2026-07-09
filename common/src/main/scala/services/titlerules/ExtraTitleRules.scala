@@ -144,7 +144,21 @@ object ExtraTitleRules {
     prog("xtra-pp-kino-na-obcasach",   """(?iu)^Kino\s+na\s+obcasach{{SEP}}""",              "'Kino na obcasach: <film>' Multikino ladies'-programme banner (Zaproszenie, Diabeł ubiera się u Prady 2, Drugie życie)"),
     prog("xtra-pp-ladies-night",       """(?i)^Ladies\s+Night{{SEP}}""",                     "'Ladies Night - <film>' Cinema City ladies'-programme banner"),
     prog("xtra-pp-mamoru-hosody",      """(?iu)^Kolekcja\s+Mamoru\s+Hosody{{SEP}}""",        "'Kolekcja Mamoru Hosody: <film>' anime-retrospective banner (Cinema City + Multikino) — sibling of the 'Hosoda. <film>' dot-prefix"),
-    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner")
+    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner"),
+    // Seventeenth-wave (2026-07-09) audit of the prod-mirror TMDB-no-match corpus
+    // (200 / 806 rating-less rows). Mixed-case retrospective / festival-replay
+    // banners that PREFIX a real, TMDB-resolvable film — safe as own-row programme
+    // prefixes (unlike the all-caps 'WSP:' the sixteenth wave dropped, these lead
+    // with a title-case word so `caseSegment` leaves the extracted banner intact).
+    // Each film verified to resolve on TMDB after the strip. The Radu Jude films
+    // carry a trailing '(YYYY)' the series glues on; it stays in the query but the
+    // resolver's `deDecorate` also tries the paren-dropped form and `EmbeddedYear`
+    // reads the year for a year-scoped lookup, so each resolves UNIQUELY there —
+    // 'Aferim! (2015)' as a bare query returns nothing, but 'Aferim!' + year 2015 is
+    // a single hit (see MovieService.searchTitleCandidates / effectiveYear).
+    prog("xtra-pp-radu-jude-retro",    """(?iu)^Radu\s+Jude\.\s+Retrospektywa:\s+""", "'Radu Jude. Retrospektywa: <film> (YYYY)' director-retrospective prefix — 5 films, each year-scoped-unique on TMDB (Aferim! 2015, Nie obchodzi mnie… 2018, Niefortunny numerek lub szalone porno 2021, Nie obiecujcie sobie… 2023, Dracula 2025)"),
+    prog("xtra-pp-mikrofeminizacje",   """(?iu)^Mikrofeminizacje:\s+""",              "'Mikrofeminizacje: <film> (przedpremierowo)' art-cycle prefix (Pejzaż w kolorze sepii → TMDB, the trailing '(przedpremierowo)' peels via the resolver's trailing-paren deDecorate)"),
+    prog("xtra-pp-replika",            """(?iu)^Replika\s+(?:KFF|Młodzi\s+i\s+Film):\s+""", "'Replika KFF: / Replika Młodzi i Film: <film>' festival-replay prefix (KFF = Krakowski Festiwal Filmowy, 'Młodzi i Film' = Koszalin) — Igrając z diabłem 2026 resolves; siblings (Capo, La petite mort, Magic Hour, Zero) are too generic to resolve year-less but the banner is still non-title decoration")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a

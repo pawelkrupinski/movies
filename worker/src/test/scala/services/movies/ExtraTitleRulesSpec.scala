@@ -79,7 +79,17 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // Sixteenth-wave (2026-07-06) TMDB-no-match audit: the dot separator variant
     // of the existing 'Klasyk w kinie:' colon strand. (WSP: is a search-only strip
     // — see searchStripCases — so the all-caps acronym isn't re-cased on display.)
-    "Klasyk w kinie. Milczenie owiec"                 -> ("Klasyk w kinie. ",                  "Milczenie owiec")
+    "Klasyk w kinie. Milczenie owiec"                 -> ("Klasyk w kinie. ",                  "Milczenie owiec"),
+    // Seventeenth-wave (2026-07-09) retrospective / festival-replay prefixes. Each
+    // reveals a TMDB-resolvable film; the Radu Jude '(YYYY)' stays in the query (a
+    // Canonical-only strip), the resolver reads it as the lookup year (cf. the
+    // KINO LETNIE cases above). '(przedpremierowo)' stays too — `SepChars` excludes
+    // parens, so the seed przedpremiera-suffix can't reach it; the resolver's
+    // trailing-paren deDecorate drops it at lookup time.
+    "Radu Jude. Retrospektywa: Aferim! (2015)"        -> ("Radu Jude. Retrospektywa: ",        "Aferim! (2015)"),
+    "Mikrofeminizacje: Pejzaż w kolorze sepii (przedpremierowo)" -> ("Mikrofeminizacje: ",     "Pejzaż w kolorze sepii (przedpremierowo)"),
+    "Replika KFF: Magic Hour"                         -> ("Replika KFF: ",                     "Magic Hour"),
+    "Replika Młodzi i Film: La petite mort"           -> ("Replika Młodzi i Film: ",           "La petite mort")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -410,7 +420,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Szlagierowy zawrót głowy",            // ⊅ 'Zawrót głowy' (Vertigo) — ordinary words
     // 'po śląsku' is part of the release's own title, not a strippable dub suffix —
     // a twelfth-wave rule that stripped it was dropped; this guards against re-adding.
-    "Seksmisja po śląsku"
+    "Seksmisja po śląsku",
+    // Seventeenth-wave prefixes are specific banners, not bare words: a bare
+    // 'Replika' and the bare director name 'Radu Jude' (the cycle needs the literal
+    // '. Retrospektywa:' / 'KFF:'/'Młodzi i Film:' tail) must survive untouched.
+    "Replika",
+    "Radu Jude"
   )
 
   it should "never touch a plain colon/word title" in {
