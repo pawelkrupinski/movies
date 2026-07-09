@@ -45,7 +45,14 @@ COPY stage/ ./
 # by re-applying 0755.
 RUN chmod +x bin/*
 EXPOSE 9000
-CMD exec bin/$BIN \
+# Boot-prune the /data volume (worker only; the paths don't exist on web → no-op).
+# HeapDumpOnOutOfMemoryError writes a ~11MB dump per OOM and never cleans up; a
+# 2026-07-09 investigation found /data 100% full (750MB of stale dumps), which
+# blocks new dumps + log writes. Keep the 3 newest dumps, drop the retired JFR
+# repo dir, then `exec` so the JVM is PID-adjacent and receives SIGTERM directly.
+CMD if [ -d /data/heapdumps ]; then ls -1t /data/heapdumps/*.hprof 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
+    rm -rf /data/jfr 2>/dev/null; \
+    exec bin/$BIN \
     -Dplay.http.secret.key="${APPLICATION_SECRET}" \
     -Dplay.server.http.address=0.0.0.0 \
     -Dhttp.address=0.0.0.0 \
