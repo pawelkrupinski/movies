@@ -4,7 +4,7 @@ import clients.TmdbClient
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
-import services.enrichment.{LetterboxdIdResolver, TraktIdResolver}
+import services.enrichment.{LetterboxdIdResolver, TraktIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, ResolutionKeys}
@@ -81,7 +81,15 @@ class MovieService(
   // they never guess. Default None so unit specs/scripts resolve as before;
   // `Wiring` injects them (Trakt itself no-ops without `TRAKT_API_CLIENT_ID`).
   traktIdResolver:      Option[TraktIdResolver]      = None,
-  letterboxdIdResolver: Option[LetterboxdIdResolver] = None
+  letterboxdIdResolver: Option[LetterboxdIdResolver] = None,
+  // Resolves a `tmdbId`-less row that carries a Filmweb URL via the Filmweb
+  // entity id → Wikidata (P5032 → P4947 = TMDB id). Once Filmweb enrichment is
+  // un-gated for `tmdbId`-less rows (see `RatingSources`), a scraper-supplied or
+  // Filmweb-discovered URL becomes a resolution route TMDB's own fuzzy search
+  // misses — but only under hard year corroboration (see `resolveTmdbId`). Same
+  // `WikidataClient` `ImdbIdResolver` uses; default None so specs resolve as
+  // before; `Wiring` injects it.
+  wikidata:             Option[WikidataClient]        = None
 ) extends Stoppable with Logging {
 
   // How a needed single-movie TMDB resolution is dispatched (see the `dispatcher`
@@ -857,9 +865,32 @@ class MovieService(
               resolver <- letterboxdIdResolver
               tmdbId   <- resolver.resolveTmdbId(id)
             } yield tmdbId
+          // Filmweb→Wikidata backstop — for a row with a Filmweb URL but no
+          // imdbId to cross-walk. Filmweb enrichment is now un-gated for
+          // tmdbId-less rows (see `RatingSources`), so a scraper-supplied /
+          // Filmweb-discovered URL yields an entity id Wikidata maps to a TMDB id
+          // (P5032 → P4947) — the route for the arthouse/repertoire long tail
+          // TMDB's own fuzzy search misses. The chain crosses two external
+          // cross-references either of which can be mis-linked (the stored URL can
+          // point at the wrong edition), so accept the tmdbId ONLY when the
+          // resolved TMDB film's OWN year equals the row's — hard equality, the
+          // same-title-different-film guard. `/serial/` URLs (TV, never the
+          // screened film) and rows without a year to check both abstain.
+          def viaFilmwebWikidata: Option[Int] =
+            for {
+              client   <- wikidata
+              url      <- row.filmwebUrl
+              if !url.contains("/serial/")
+              filmwebId <- WikidataClient.filmwebEntityId(url)
+              ids      <- client.findIdsByFilmwebId(filmwebId)
+              tmdbId   <- ids.tmdbId
+              rowYear  <- effectiveYear
+              if tmdb.fullDetails(tmdbId).flatMap(_.releaseYear).contains(rowYear)
+            } yield tmdbId
           row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit)))
             .orElse(viaTrakt.map((_, Option.empty[TmdbClient.SearchResult])))
             .orElse(viaLetterboxd.map((_, Option.empty[TmdbClient.SearchResult])))
+            .orElse(viaFilmwebWikidata.map((_, Option.empty[TmdbClient.SearchResult])))
         } else None
       }
   }

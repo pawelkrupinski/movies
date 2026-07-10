@@ -427,7 +427,7 @@ class WorkerWiring extends play.api.Logging {
   protected def resolutionCache(collection: String): ResolutionCache =
     new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, collection))
   lazy val tmdbIdCache: ResolutionCache = resolutionCache("resolve_tmdb")
-  lazy val movieService = new MovieService(
+  lazy val movieService: MovieService = new MovieService(
     movieCache, eventBus, tmdbClient,
     dispatcher = Some(new QueueResolveDispatcher(taskQueue)),
     tmdbIdCache = tmdbIdCache,
@@ -439,7 +439,10 @@ class WorkerWiring extends play.api.Logging {
     // reaper sweep share the eligibility + due gate. A fold is a trickle, so this
     // doesn't recreate the old TmdbResolved corpus-wide burst.
     enqueueNewcomerRatings = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now()); () },
-    traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver))
+    traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver),
+    // Same WikidataClient ImdbIdResolver uses — lets a tmdbId-less row with a
+    // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.
+    wikidata = Some(wikidataClient))
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
