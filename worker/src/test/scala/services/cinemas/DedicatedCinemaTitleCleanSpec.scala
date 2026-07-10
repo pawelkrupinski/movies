@@ -31,13 +31,10 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
   private def seedOnly[A](body: => A): A =
     TitleNormalizer.withRules(TitleRuleDefaults.ruleSet)(body)
 
+  // The repertoire ships as a `data-dane` JSON blob on `<div id="rep2">`; the SPS
+  // screening-code lives in the film's `t` title, which cinemaClean must strip.
   private val bajkaHtml =
-    """<div class="screening-day" id="screening-20260820">
-      |  <div class="screening-item">
-      |    <div class="title-age-group"><h4><a href="/film/ts5">TOY STORY 5 2D DUB. SPS</a></h4></div>
-      |    <div class="screening-link" data-url="https://book/1"><span class="time">18:00</span></div>
-      |  </div>
-      |</div>""".stripMargin
+    """<div id="rep2" data-dane='{"buy":"https://book/1","dni":{"2026-08-20":[{"t":"TOY STORY 5 2D DUB. SPS","s":[{"g":"18:00","h":"nb","x":0}]}]}}'></div>"""
 
   private def bajkaTitles() =
     new KinoBajkaClient(NoopHttp, KinoBajka).parseHtml(bajkaHtml).map(_.movie.title)
