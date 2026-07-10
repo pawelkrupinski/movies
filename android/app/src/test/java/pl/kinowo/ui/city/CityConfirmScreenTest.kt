@@ -19,8 +19,12 @@ import pl.kinowo.model.Cities
  * it names the detected city and routes the two choices to the right callbacks
  * (adopt it vs. fall through to the manual picker).
  */
+// Pin the resource locale to Polish (the app's default deployment): the screen
+// now reads its strings from resources, so under Robolectric's default en-US
+// locale it would render the values-en translations instead of the Polish text
+// these assertions expect.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "pl")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CityConfirmScreenTest {
 

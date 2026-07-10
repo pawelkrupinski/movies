@@ -19,8 +19,12 @@ import pl.kinowo.model.City
  * box: typing narrows the rendered list by diacritic-insensitive substring
  * match, and tapping a surviving row reports the right city.
  */
+// Pin the resource locale to Polish (the app's default deployment): the screen
+// now reads its strings from resources, so under Robolectric's default en-US
+// locale the empty-state text would render the values-en translation instead of
+// the Polish "Brak miasta…" this test expects.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "pl")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CityChoiceSearchTest {
 
