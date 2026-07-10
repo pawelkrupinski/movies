@@ -30,6 +30,13 @@ let authTargets: [Target] = [
             "Auth/UserStateClient.swift",
             "Auth/StateSyncService.swift",
             "Storage/UserPreferences.swift",
+            // The country registry + persisted selection: `kinowoBaseURL`
+            // (UserProfile) and `UserPreferences` route the API base URL and
+            // forced language through these. `Country` also compiles into
+            // `KinowoCore` (where it's unit-tested); the Xcode app target
+            // compiles each file exactly once via the pbxproj.
+            "Models/Country.swift",
+            "Storage/CountrySelection.swift",
         ]
     ),
     .testTarget(
@@ -97,6 +104,15 @@ let package = Package(
                 "Storage",
                 // Asset catalog — not a Swift source.
                 "Assets.xcassets",
+                // String Catalog — an app-target resource; KinowoCore is
+                // Foundation-only and ships no localized bundle.
+                "Localizable.xcstrings",
+                // Country registry — Foundation-only, but it's owned by the
+                // `KinowoAuth` SPM target (below) because `kinowoBaseURL` +
+                // `UserPreferences` there route the base URL / language through
+                // it, and SPM forbids one file in two targets. Tested in
+                // `KinowoAuthTests`. (The Xcode app compiles it once via pbxproj.)
+                "Models/Country.swift",
             ]
         ),
         .testTarget(
