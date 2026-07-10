@@ -213,7 +213,10 @@ class ReadModelProjector(
    *  A row that fails to project must not abort the prune (the prune is what removes the
    *  duplicates), so each projection is guarded individually. */
   private def sweep(reproject: Boolean): Unit = lock.synchronized {
-    val kind = if (reproject) ReconcileKind.Reproject else ReconcileKind.Prune
+    // Log-only label. The reconcile-sweep metric now tracks ONLY the prune (the live,
+    // scheduled backstop); the reproject path survives as a test/backfill seed and is
+    // no longer metered — the reproject retirement gate it fed has been removed.
+    val kind = if (reproject) "reproject" else ReconcileKind.Prune
     val liveIds = scala.collection.mutable.Set.empty[String]
     var reprojected = 0
     val scanComplete = movieRepository.foreachRecord { row =>
@@ -246,12 +249,10 @@ class ReadModelProjector(
         prunedScreenings += 1
       }
     }
-    // Measurement: does this sweep still do anything? A `reproject` sweep that is
-    // consistently didWork=false proves the change stream is reliable and the full
-    // sweep is redundant; a `prune` sweep with didWork=true is the deletes/re-keys the
-    // stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
+    // Measurement (prune only): a `prune` sweep with didWork=true is the deletes/re-keys
+    // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
-    metrics.recordReconcileSweep(kind, didWork)
+    if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }

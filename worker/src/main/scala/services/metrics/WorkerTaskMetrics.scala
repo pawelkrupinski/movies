@@ -168,7 +168,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   private val readModelProjectCalls = Counter.builder()
     .name("kinowo_worker_readmodel_project_calls")
-    .help("Source rows projected (projectAll invoked) since boot — the throughput denominator for readmodel_project_duration_seconds. Spikes during the periodic full reproject sweep (~800 rows) and on the boot catch-up.")
+    .help("Source rows projected (projectAll invoked) since boot — the throughput denominator for readmodel_project_duration_seconds. Driven by the incremental change-stream path (the periodic full reproject sweep was retired).")
     .register(registry)
 
   private val readModelMetadataProjections = Counter.builder()
@@ -185,7 +185,7 @@ class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new Promet
 
   private val readModelReconcileSweeps = Counter.builder()
     .name("kinowo_worker_readmodel_reconcile_sweeps")
-    .help("Read-model reconciliation sweeps since boot, by kind (prune=cheap id-only orphan prune, frequent; reproject=full re-projection catching change-stream gaps, rare) and did_work (true=pruned or reprojected >=1 doc, false=no-op). A reproject that is almost always did_work=false proves the change stream is reliable and the full sweep is redundant; a prune with did_work=true is the deletes/re-keys the stream can't deliver. rate(did_work=true) vs rate(did_work=false) is the redundancy signal.")
+    .help("Read-model orphan-prune sweeps since boot (kind=prune, the cheap id-only prune that removes deleted/re-keyed rows), by did_work (true=pruned >=1 doc, false=no-op). A prune with did_work=true is the deletes/re-keys the change stream can't deliver. (The full re-projection sweep was retired, so kind is always prune now.)")
     .labelNames("kind", "did_work")
     .register(registry)
 

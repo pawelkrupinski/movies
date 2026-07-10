@@ -318,11 +318,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
   // ── Split sweep: cheap prune vs expensive full re-projection ─────────────────
-  // The 30-min full re-projection (project EVERY row) was the ~1-core corpus burst
-  // that filled the heap → GC thrash → credit starvation. Its only unique job over
-  // the change-stream path is catching missed upserts, so it now runs rarely; the
-  // FREQUENT backstop is a cheap id-only prune that removes deleted/re-keyed rows
-  // WITHOUT re-projecting anything.
+  // The full re-projection (project EVERY row) was the ~1-core corpus burst that filled
+  // the heap → GC thrash → credit starvation; it has been retired (the change stream
+  // covers missed upserts). The remaining scheduled backstop is a cheap id-only prune
+  // that removes deleted/re-keyed rows WITHOUT re-projecting anything.
   "pruneOrphans" should "prune a vanished film WITHOUT re-projecting live rows" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
@@ -339,13 +338,15 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.movieDeletes should contain(fid)
   }
 
-  "the reconcile-sweep metric" should "record kind + whether the sweep did any work" in {
+  // Only the PRUNE sweep is metered now — the reproject's did_work gate was retired, so
+  // reconcile() (the seed/backfill path) records nothing; every sweep row is kind=prune.
+  "the reconcile-sweep metric" should "meter only the prune sweep, never the reproject seed" in {
     val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
     val m = new RecordingMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()                                    // full reproject that writes Foo
-    m.sweeps.last shouldBe (ReconcileKind.Reproject -> true)
+    projector.reconcile()                                    // seed Foo — NOT metered
+    m.sweeps shouldBe empty
     projector.pruneOrphans()                                 // nothing to prune (Foo live) → no-op
     m.sweeps.last shouldBe (ReconcileKind.Prune -> false)
     repository.delete("Foo", Some(2024))
