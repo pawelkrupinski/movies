@@ -3,6 +3,7 @@ package views
 import models.{Poznan, Wroclaw}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import testsupport.TestMessages.given
 
 // The `/{city}/` index is the URL people share for a city. Its preview card is
 // a per-city, server-generated `og-{slug}.png` ("Repertuar kin w {locative}",
@@ -11,11 +12,13 @@ import org.scalatest.matchers.should.Matchers
 // slug's card.
 class RepertoirePreviewMetaSpec extends AnyFlatSpec with Matchers {
 
-  private def render(city: models.City): String =
+  private def render(city: models.City): String = {
+    implicit val c: models.City = city
     views.html.repertoire(
       films = Nil, allCinemas = Nil, cinemaPills = Map.empty,
       devMode = false, currentUser = None, oauthProviders = Set.empty,
-    )(city).body
+    ).body
+  }
 
   "the city index preview" should "point og:image + twitter:image at the city's own card" in {
     val html = render(Poznan)

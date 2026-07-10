@@ -631,11 +631,22 @@
   const _PILLS_PER_ROW     = 6;
   const _MIN_HIDDEN         = 3;
 
+  // Locale-aware plural category. Polish has three showtime forms
+  // (seans / seanse / seansów); English two (showing / showings). The rule +
+  // the forms both come from KINOWO_LOCALE (server-injected per deployment).
+  function _pluralCategory(n) {
+    if (KINOWO_LOCALE.plural === 'pl') {
+      if (n === 1) return 'one';
+      const mod10 = n % 10, mod100 = n % 100;
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'few';
+      return 'many';
+    }
+    return n === 1 ? 'one' : 'other';
+  }
+
   function _showtimeNoun(n) {
-    if (n === 1) return 'seans';
-    const mod10 = n % 10, mod100 = n % 100;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'seanse';
-    return 'seansów';
+    const forms = KINOWO_LOCALE.showtime;
+    return forms[_pluralCategory(n)] || forms.other || forms.many;
   }
 
   function undoTruncation() {
@@ -1103,7 +1114,7 @@
   function updateEmptyState(visibleCount) {
     const noFilms = document.getElementById('no-films');
     if (visibleCount === 0) {
-      noFilms.textContent = 'Brak repertuaru.';
+      noFilms.textContent = KINOWO_LOCALE.emptyRepertoire;
       noFilms.style.display = '';
     } else {
       noFilms.style.display = 'none';
@@ -1117,9 +1128,10 @@
     return new Date(y, m - 1, d + n).toLocaleDateString('sv');
   }
 
-  const DAY2   = ['Nie', 'Pon', 'Wto', 'Śro', 'Czw', 'Pią', 'Sob'];
-  const MONTHS = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca',
-                  'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+  // Weekday (Sun-first, matching Date.getDay()) + month labels, injected per
+  // deployment via KINOWO_LOCALE (Polish keeps the genitive month forms).
+  const DAY2   = KINOWO_LOCALE.day2;
+  const MONTHS = KINOWO_LOCALE.months;
 
   let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
 

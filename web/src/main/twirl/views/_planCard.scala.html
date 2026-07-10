@@ -1,5 +1,5 @@
 @import models.{Movie, ResolvedMovie}
-@(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie, director: Seq[String], cast: Seq[String])(implicit city: models.City)
+@(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie, director: Seq[String], cast: Seq[String])(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Picker card on /plan. Same visual top as `_movieCard` (poster +
    title link + runtime/year pills + rating badges) but:
@@ -19,7 +19,7 @@
 <div class="col plan-card-col" data-title="@movie.title" data-countries="@movie.countries.mkString("|")"@if(director.nonEmpty){ data-director="@director.mkString(", ")"}@if(cast.nonEmpty){ data-cast="@cast.mkString(", ")"}>
   <div class="plan-card" data-title="@movie.title">
     <div class="poster-wrap">
-      <button type="button" class="hide-btn" title="Ukryj film">✕</button>
+      <button type="button" class="hide-btn" title="@messages("card.hide")">✕</button>
       @_moviePoster(movie, posterUrl, resolved.fallbackPosterUrls)
       <span class="plan-check" aria-hidden="true">✓</span>
     </div>

@@ -1,0 +1,91 @@
+# English message bundle. Selected when the deployment's country language is
+# English (KINOWO_COUNTRY != pl). Poland renders from the default `messages`.
+
+# ── Navbar / filters ────────────────────────────────────────────────────────
+nav.filters=Filters
+nav.hiddenFilms=Hidden films
+nav.sort=Sort
+sort.earliest=Next showtime
+sort.rating=Rating
+nav.cinemas=Cinemas
+nav.allCinemas=All cinemas
+nav.country=Country
+nav.genre=Genre
+nav.director=Director
+nav.cast=Cast
+nav.rooms=Screens
+nav.dimension=Format
+nav.all=All
+nav.version=Version
+nav.subtitles=Subtitles
+nav.dubbing=Dubbing
+nav.imaxOnly=IMAX only
+nav.fromHour=From
+nav.any=Any
+nav.city=City
+nav.clear=Clear
+nav.copyLink=Copy link
+nav.search=Search…
+nav.filterByDate=Filter by date
+brand.title=Cinema listings {0}
+
+# ── Day pills ───────────────────────────────────────────────────────────────
+day.today=Today
+day.tomorrow=Tomorrow
+day.week=7 days
+day.all=All
+
+# ── Auth ────────────────────────────────────────────────────────────────────
+auth.login=Log in
+auth.loginLong=Log in
+auth.logout=Log out
+auth.account=Account
+auth.close=Close
+login.title=Sign in
+login.sub=Your favourite and hidden films will sync across your devices.
+login.google=Continue with Google
+login.facebook=Continue with Facebook
+login.nag=These <strong>favourites and hidden films</strong> stay on this device only. <strong>Log in</strong> to sync them.
+
+# ── Hidden-films modal ──────────────────────────────────────────────────────
+hidden.title=Hidden films
+
+# ── Empty states ────────────────────────────────────────────────────────────
+empty.repertoire=No listings.
+empty.films=No films.
+
+# ── Browse (filtered film list) ─────────────────────────────────────────────
+browse.htmlTitle={0} – Cinema listings {1}
+browse.ogTitle={0} — Cinema listings {1}
+browse.ogDescription=Films from {0} cinemas: {1}. With current showtimes, ratings and descriptions.
+
+# ── Landing (city picker) ───────────────────────────────────────────────────
+landing.title=Kinowo — cinema listings in your city
+landing.ogDescription=Every cinema''s listings in one place — with IMDb, RT and Filmweb ratings. Check today''s showtimes in your city.
+landing.chooseCity=Choose your city
+landing.searchCity=Search for a city…
+landing.searchCityAria=Search for a city
+landing.noCity=No city by that name.
+landing.locating=Finding your location…
+landing.noNearby=No supported city nearby — pick one from the list.
+
+# ── Poster / detail labels ──────────────────────────────────────────────────
+poster.missing=No poster
+detail.synopsis=Synopsis
+detail.director=Director
+detail.cast=Cast
+detail.countries=Countries
+detail.trailers=Trailers
+detail.trailer=Trailer {0}
+detail.trailerTitle=Trailer: {0}
+detail.showings=Showings
+card.hide=Hide film
+
+# ── Film page back-nav ──────────────────────────────────────────────────────
+back.films=Films
+back.plan=Plan
+back.back=Back
+back.repertoire=Listings
+
+# ── First-run swipe hint ────────────────────────────────────────────────────
+hint.swipe=Swipe to change day

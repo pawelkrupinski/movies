@@ -295,7 +295,7 @@ class MovieController( cc: ControllerComponents,
                        // worker-written `rating_cadence` collection (per-source adaptive
                        // refresh state). Empty no-op when cadence isn't wired.
                        ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
-                     ) extends AbstractController(cc) with Logging {
+                     )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
   // resolve it to a User if the row is still there. Returns None for

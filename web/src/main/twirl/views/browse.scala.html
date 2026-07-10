@@ -1,14 +1,14 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)(implicit city: models.City)
+@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="@messages.lang.code">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@heading – Repertuar kinowy @city.labels.nominative</title>
+  <title>@messages("browse.htmlTitle", heading, city.labels.nominative)</title>
   @_ogTagsApp(
-    pageTitle       = s"$heading — Repertuar kinowy ${city.labels.nominative}",
-    pageDescription = s"Filmy z ${city.labels.genitivePlural} kin: $heading. Z aktualnymi seansami, ocenami i opisami.",
+    pageTitle       = messages("browse.ogTitle", heading, city.labels.nominative),
+    pageDescription = messages("browse.ogDescription", city.genitivePluralLabel, heading),
     pageUrl         = pageUrl,
     fbAppId         = fbAppId,
   )
@@ -33,7 +33,7 @@
 
 <nav class="navbar px-4 py-3 d-flex align-items-center" style="flex-wrap:wrap">
   <div class="d-flex align-items-center gap-3" style="flex-shrink:0">
-    <a href="/@city.slug/" class="back-link" style="font-size:.9rem; color:#aad4ff; text-decoration:none; display:inline-flex; align-items:center; gap:.3em;"><svg style="width:.7em; height:.7em; flex-shrink:0;" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>Repertuar</a>
+    <a href="/@city.slug/" class="back-link" style="font-size:.9rem; color:#aad4ff; text-decoration:none; display:inline-flex; align-items:center; gap:.3em;"><svg style="width:.7em; height:.7em; flex-shrink:0;" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>@messages("back.repertoire")</a>
   </div>
   <div class="navbar-auth">
     @currentUser match {
@@ -43,16 +43,16 @@
             case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
             case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
           }
-          <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse("Konto")).split("[ @@]").head</span>
+          <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
           <div class="auth-dropdown" id="auth-dropdown">
             <form method="post" action="/auth/logout" class="auth-logout-form">
-              <button type="submit" class="auth-logout-btn">Wyloguj się</button>
+              <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
             </form>
           </div>
         </div>
       }
       case None if oauthProviders.nonEmpty => {
-        <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">Zaloguj się</button>
+        <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">@messages("auth.loginLong")</button>
       }
       case None => {}
     }
@@ -66,7 +66,7 @@
 
 <div class="container-fluid py-4 px-4">
   <h1 style="font-size:1.3rem; font-weight:600; margin-bottom:1.2rem; color:#eee;">@heading</h1>
-  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak filmów.</div>
+  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">@messages("empty.films")</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
     @_filmCards(films)
   </div>

@@ -1,5 +1,5 @@
 @import models.Movie
-@(movie: Movie, posterUrl: Option[String], fallbackPosterUrls: Seq[String])
+@(movie: Movie, posterUrl: Option[String], fallbackPosterUrls: Seq[String])(implicit messages: play.api.i18n.Messages)
 @* Poster `<img>` + onerror fallback chain, factored out so both
    `_movieCard` (wraps it in an `<a>` → /film) and `_planCard` (no
    wrapper — clicks toggle selection) can share the same markup and
@@ -9,7 +9,7 @@
     @defining(fallbackPosterUrls.map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
       <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy" decoding="async" data-original-src="@tools.PosterProxy.proxy(url)"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks" data-original-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     }
-    <div class="no-poster" style="display:none">Brak plakatu</div>
+    <div class="no-poster" style="display:none">@messages("poster.missing")</div>
   }
-  case None      => { <div class="no-poster">Brak plakatu</div> }
+  case None      => { <div class="no-poster">@messages("poster.missing")</div> }
 }

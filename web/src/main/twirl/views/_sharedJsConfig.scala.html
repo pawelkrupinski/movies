@@ -1,4 +1,4 @@
-@(allCinemas: Seq[String], cinemaPills: Map[String, String], currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City)
+@(allCinemas: Seq[String], cinemaPills: Map[String, String], currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Inline-`<script>` block that emits the page-bound JS constants
    the externalized `shared.js` reads at top level: IS_LOGGED_IN,
@@ -20,4 +20,8 @@
   const CINEMA_PILLS        = @Html(play.api.libs.json.Json.toJson(cinemaPills).toString);
   const CURRENT_CITY        = "@city.slug";
   const ALL_CITIES          = @Html(models.City.allJson);
+  @* Per-deployment locale for shared.js: weekday/month arrays, empty-state /
+     swipe-hint / clear strings, and the showtime plural rule + forms. Replaces
+     the Polish literals shared.js used to hardcode (DAY2/MONTHS/_showtimeNoun). *@
+  const KINOWO_LOCALE       = @Html(controllers.JsLocale.json(messages));
 </script>

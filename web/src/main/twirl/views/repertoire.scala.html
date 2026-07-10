@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="@messages.lang.code">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -45,6 +45,6 @@
 @* First-run swipe hint (phones only). shared.js reveals it once per calendar
    day until the first swipe retires it for good — same rule as the iOS/Android
    apps. Hidden by default; never shown on a fine-pointer (desktop) device. *@
-<div id="swipe-hint" aria-hidden="true"><span class="swipe-hint-arrows">‹ ›</span> Przesuń, aby zmienić dzień</div>
+<div id="swipe-hint" aria-hidden="true"><span class="swipe-hint-arrows">‹ ›</span> @messages("hint.swipe")</div>
 </body>
 </html>

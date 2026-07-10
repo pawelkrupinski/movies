@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule])(implicit city: models.City)
+@(films: Seq[FilmSchedule])(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
   Dev-only visual-tuning page for the listing CARD. Renders the REAL
   `_movieCard` partials (via `_filmCards`) inside `.tune-scope` and drives the

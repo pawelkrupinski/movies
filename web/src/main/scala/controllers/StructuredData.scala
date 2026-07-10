@@ -42,7 +42,7 @@ object StructuredData {
     Json.obj(
       "@context" -> Ctx, "@type" -> "WebSite",
       "name" -> "Kinowo", "url" -> s"$ProdOrigin/",
-      "inLanguage" -> "pl",
+      "inLanguage" -> models.Country.fromEnv.language.getLanguage,
       "description" -> "Repertuar kin w polskich miastach — godziny seansów, oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes.",
     ),
     Json.obj(
@@ -108,7 +108,8 @@ object StructuredData {
               "@type" -> "MovieTheater", "name" -> cs.cinema.displayName,
               "address" -> Json.obj(
                 "@type" -> "PostalAddress",
-                "addressLocality" -> city.labels.nominative, "addressCountry" -> "PL",
+                "addressLocality" -> city.labels.nominative,
+                "addressCountry" -> city.country.language.getCountry,
               ),
             ),
             "workPresented" -> Json.obj("@type" -> "Movie", "name" -> m.title),
