@@ -1,12 +1,13 @@
 package clients.msi
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import models._
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 import services.cinemas.MsiClient
+import tools.HttpStatusException
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -74,6 +75,20 @@ class MsiClientSpec
       val film = movies.find(_.movie.title.toLowerCase.contains(titleSub)).value
       film.showtimes.map(_.dateTime) should contain(when)
     }
+  }
+
+  // A TOTAL portal outage — every month fetch fails — must PROPAGATE the failure
+  // (so the scrape surfaces red on /uptime), not swallow it into an empty list
+  // (white, indistinguishable from a genuinely film-dormant venue). Kino Centrum
+  // Skarżysko-Kamienna went white on 2026-07-11 when bilet-mck.skarzysko.pl
+  // returned HTTP 503 to every month fetch and the old swallow painted it as a
+  // dormant "0 showtimes". The existing per-venue rows above prove the flip side:
+  // a PARTIAL failure (June fixture present, July missing → FileNotFoundException)
+  // still yields the reachable month, so this guard doesn't over-propagate.
+  it should "propagate a fetch failure when EVERY month fetch fails (red not white)" in {
+    val client = new MsiClient(new FailingHttpFetch(503), "https://bilet-mck.skarzysko.pl",
+      KinoCentrumSkarzyskoKamienna, today = LocalDate.of(2026, 7, 11))
+    intercept[HttpStatusException](client.fetch()).code shouldBe 503
   }
 
   it should "strip MSI format suffixes and sentence-case titles" in {

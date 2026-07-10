@@ -81,13 +81,20 @@ class MsiClient(
     val thisMonth = YearMonth.from(today)
     val nextMonth = thisMonth.plusMonths(1)
 
-    val slots = Seq(thisMonth, nextMonth).flatMap { ym =>
-      val url  = monthUrl(baseUrl, mvcPath, ym)
-      val html = Try(http.get(url)).getOrElse("")
-      if (html.isEmpty) Seq.empty
-      else MsiScraper.parseMonthWithYear(html, ym, baseUrl, titleCleaner)
-    }
+    // Fetch both months, tolerating a per-month failure so one reachable month
+    // still contributes its screenings. But if EVERY month fetch fails, the
+    // portal itself is down — propagate the error so the scrape surfaces as a
+    // failure (red on /uptime) instead of being swallowed into an empty list
+    // (white, indistinguishable from a genuinely film-dormant venue). Same guard
+    // as KinoAwangarda2Client / KinoPatriaClient.
+    val fetched = Seq(thisMonth, nextMonth)
+      .map(ym => ym -> Try(http.get(monthUrl(baseUrl, mvcPath, ym))))
+    if (fetched.forall(_._2.isFailure)) throw fetched.head._2.failed.get
 
+    val slots = fetched.flatMap { case (ym, html) =>
+      html.toOption.filter(_.nonEmpty).toSeq
+        .flatMap(MsiScraper.parseMonthWithYear(_, ym, baseUrl, titleCleaner))
+    }
     MsiScraper.toMovies(slots, cinema)
   }
 }
