@@ -32,6 +32,107 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-11
+
+**18 cinemas were 3-scrape-white** (real buckets ~21:15–23:45 local, all within
+~15 min–2h45 of the newest bucket — actively scraping, not stale). **Fourteen
+are carried-over venues already diagnosed** (all still within their known
+dormancy / needs-human windows); **FOUR are new this run** and were probed live —
+**two fixed, one dormant, one needs-human.**
+
+Discovery: `/uptime` is auth-gated, so a mongosh query against prod
+`uptimeBuckets` (via the running `flyctl proxy` on `127.0.0.1:27017`) replicated
+`UptimeController`'s predicate (last 3 recorded buckets all `status==zero`,
+excluding `|enrichment` / the 6 enrichment sources / `img:*`). Newest bucket =
+2026-07-11 00:00 Warsaw.
+
+**New white this run (probed live):**
+- **Kino Bajka (Lublin)** — `fixed` @010be6a82.
+- **Kino Sfinks (Kraków, Nowa Huta)** — `needs-human` (film-dormant + markup drift).
+- **Kozienicki Dom Kultury (Kozienice)** — `intentionally-dormant`.
+- **Kino Centrum Skarżysko-Kamienna** — `fixed` @c8f656417 (swallowed 503).
+
+**Fell off the white set since 2026-07-07** (recovered / no longer 3-white):
+Kino Awangarda 2, Kino Paradox.
+
+**Carried-over (14, unchanged — still white, within known windows, not
+re-probed this run):** Kino CK Lublin, Kino Malta Charlie Monroe (hiatus →16 Jul
++ redesign needs-human), Kino Wisła Brzeszcze, Kino Świt, Patria, DKF Politechnika
+(= "Dyskusyjny Klub Filmowy Politechnika"), Kino Krapkowice (break →31 Jul), Kino
+Zamek (needs-human festival gap), Studio (break →3 Sept), ADA Kino Studyjne, Kino
+Chatka Żaka, Kino Warszawa (Przeworsk), Kino nad Wartą, Teatr Ziemi Rybnickiej.
+Each display name was confirmed unique against `Cinema.scala` and maps to its
+prior diagnosis; the three with dated windows are all still inside them.
+
+### Kino Bajka (Lublin) — `fixed` @010be6a82
+- Client: `KinoBajkaClient` @ `kinobajka.pl/repertuar/`. Root cause: the WordPress
+  page **stopped server-rendering** the schedule as HTML. The old parser keyed on
+  `div.screening-day[id]` / `div.screening-item` — both now 0 in the server HTML.
+  The whole advance window (35 days, 2026-07-11 → 09-27, real films: Vaiana,
+  Minionki i straszydła, Zaproszenie, Toy Story 5, …) instead ships as an
+  HTML-entity-encoded JSON blob in the `data-dane` attribute of `<div id="rep2">`,
+  which the site's `rep2` widget `JSON.parse`s client-side. Blob shape:
+  `{buy:<booking-host>, dni:{"YYYY-MM-DD":[{t,u,p,m,w,tag,s:[{g,h,x}]}]}}`
+  (`m` = "genres · format · NNN min").
+- Fix: rewrote the parser to read the `data-dane` attribute (jsoup entity-decodes
+  it) and parse the JSON — title (via `kino-bajka` title rules), showtimes
+  (time `g` + past flag `x`, paired with the day key), runtime off the `· NNN min`
+  caption, poster, film URL, and the shared `buy` booking host. Fail-before /
+  pass-after `KinoBajkaClientSpec` re-recorded against an 11-07-2026 capture (pins
+  "Minionki i straszydła" 2026-07-11 13:30, runtime 90, the `buy` URL). Corpus
+  fixture re-recorded and read-model + expected-schedules + all four rendered HTML
+  snapshots regenerated (Bajka's real films — Vaiana/Minionki/Zaproszenie — are
+  shared with the snapshot cities, so their poster/source fallbacks shifted). All
+  layers green: `KinoBajkaClientSpec`, `FilmScheduleEndToEndSpec` (both e2e
+  snapshots stable), `PageSnapshotSpec` (all 4). `ev:1` festival blocks do not
+  leak as junk movie rows.
+
+### Kino Centrum Skarżysko-Kamienna — `fixed` @c8f656417
+- Client: `MsiClient` @ `https://bilet-mck.skarzysko.pl`. Root cause: the MSI
+  portal returned **HTTP 503** (bare IIS/Microsoft-HTTPAPI error page, a real
+  backend outage — no Cloudflare challenge) to BOTH month fetches. `MsiClient`
+  wrapped each month in `Try(http.get(url)).getOrElse("")`, so the 503 was
+  swallowed into an empty month and recorded as a successful "0 showtimes" —
+  white, indistinguishable from a dormant venue. This is the same
+  swallow-misclassification pattern fixed for `KinoAwangarda2Client` /
+  `KinoPatriaClient` on 2026-07-07, but in the shared `MsiClient`.
+- Fix: fetch both months, tolerate a *partial* failure (one month reachable still
+  yields its screenings — the existing per-venue spec rows prove this), but if
+  **every** month fetch fails, propagate the error so a dead portal surfaces red,
+  not white. Fail-before / pass-after test in `MsiClientSpec` (`FailingHttpFetch`
+  503 → `intercept[HttpStatusException].code shouldBe 503`); all 27 MSI spec rows
+  + the e2e read-model guard stay green. Re-check the underlying repertoire once
+  the host is reachable (couldn't judge dormant-vs-live while it's 503ing).
+  NOTE: this hardens ALL MSI venues (Cinema1, GOK Tychowo, Nowa Ruda, Przeworsk,
+  Sztum, Kozienice, …) against total-outage misclassification.
+
+### Kozienicki Dom Kultury (Kozienice) — `intentionally-dormant`
+- Client: `MsiClient` @ `https://bilety.dkkozienice.pl`. Both month pages
+  (2026-07, 2026-08) return HTTP **200** with **0** `div.movies-movie__single`.
+  Verified past the render layer: the portal's own data endpoint
+  `/MSI/mvc/pl/Repertoire/GetShortEventsWithFilters?date=2026-07` returns
+  `{"repertoireEvents":[],"dates":[]}` — genuinely empty at the data layer, not a
+  fetch failure (so the new total-outage guard correctly leaves it white). No
+  test-backable fix; re-check next run.
+
+### Kino Sfinks (Kraków, Nowa Huta) — `needs-human` (film-dormant + markup drift, both true)
+- Client: `KinoSfinksClient` @ `kinosfinks.okn.edu.pl/wydarzenia-harmonogram.html`.
+  The parser targets `table.widok_listy tbody tr[onclick]` with a `Seanse`
+  category label — that table is **gone site-wide** (the site moved to per-day
+  URLs + `table_1/2/3.sekcja-paneli` CMS panels + a `table.icalendar` date-strip;
+  `kategoria-189.html` → 404, now `wydarzenia-kategoria-189.html`). AND the venue
+  is currently **film-dormant**: every per-day page 2026-07-11 → 27 (plus spot
+  checks into Aug/Sep/Oct) and the Seanse category page all server-render
+  `<div class="empty-results"><span>Brak wydarzeń</span></div>` — nothing
+  scheduled in any category through October.
+- Why no fix: with zero screening rows rendered anywhere, there is no film-row
+  markup to sample, so a new parser can't be written or test-backed blind. A
+  future parser must also treat `.empty-results` as zero screenings (not a parse
+  failure). **needs-human — re-check once the venue repopulates its calendar**;
+  then rebuild the parser against the new (populated) row shape.
+
+---
+
 ## 2026-07-07
 
 **16 cinemas were 3-scrape-white** (real overnight buckets ~00:30–03:30 local, not
