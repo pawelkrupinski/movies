@@ -11,8 +11,9 @@ import tools.GetOnlyHttpFetch
  * A row can carry a known `imdbId` while still missing its `tmdbId`: OMDb
  * backfill ([[services.enrichment.OmdbBackfill]]) recovers the IMDb id by
  * title+year search for exactly the films TMDB's fuzzy title search couldn't
- * resolve, and writes it onto a `tmdbId`-less row. The daily
- * [[services.tasks.UnresolvedTmdbReaper]] then re-runs resolution on that row.
+ * resolve, and writes it onto a `tmdbId`-less row. The
+ * [[services.tasks.PremiereResolveReaper]] then re-runs resolution on that row
+ * in the week before its first screening.
  *
  * When that imdbId is present, TMDB's `/find/{imdbId}?external_source=imdb_id`
  * returns the EXACT tmdbId — no title/year/director guessing. This is strictly

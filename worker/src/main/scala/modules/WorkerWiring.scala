@@ -14,7 +14,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, RatingDeadbandPolicy, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, RatingDeadbandPolicy, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, PremiereResolveReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
@@ -812,15 +812,18 @@ class WorkerWiring extends play.api.Logging {
     throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer))
 
-  // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
-  // the queue-era replacement for MovieService's old daily, all-at-once
-  // `retryUnresolvedTmdb` scheduler (it re-dispatched the whole unresolved
-  // backlog 10s after boot, the boot ResolveTmdb burst that pinned the
-  // shared-CPU credit). `retryResolve` clears each due row's negative + dispatches
-  // its ResolveTmdb. Cap bounds a clock-jump/cold burst the same way the rating
-  // reaper does — the leftover stays due and re-tries next period.
+  // Re-tries an unresolved row ONLY in the week leading up to its first screening
+  // (see PremiereResolveReaper) — not the old blanket "every id-less row, every
+  // 24h, forever" sweep. Resolution otherwise fires once at ingest and on field
+  // change; the premiere window catches films that reach TMDB/IMDb/Filmweb only as
+  // they open. `retryResolve` clears each due row's negative + dispatches its
+  // ResolveTmdb. Cap bounds a clock-jump/cold burst the same way the rating reaper
+  // does — the leftover stays due and re-tries next period.
   def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
-  lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
+  def premiereResolveLeadDays:  Long = Env.positiveLong("KINOWO_PREMIERE_RESOLVE_LEAD_DAYS", 7L)
+  def premiereResolveGraceDays: Long = Env.positiveLong("KINOWO_PREMIERE_RESOLVE_GRACE_DAYS", 1L)
+  lazy val premiereResolveReaper = new PremiereResolveReaper(movieCache, movieService.retryResolve,
+    leadDays = premiereResolveLeadDays, graceDays = premiereResolveGraceDays,
     maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
     throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
@@ -996,7 +999,7 @@ class WorkerWiring extends play.api.Logging {
     // wedged-but-alive JVM the throttle watchdog can't see.
     livenessWatchdog.start()
     enrichmentReaper.start()
-    unresolvedTmdbReaper.start()
+    premiereResolveReaper.start()
     detailReaper.start()
     settleReaper.start()
     omdbBackfillReaper.foreach(_.start())
@@ -1037,7 +1040,7 @@ class WorkerWiring extends play.api.Logging {
     scrapeReaper.stop()
     chunkScrapeReaper.stop()
     enrichmentReaper.stop()
-    unresolvedTmdbReaper.stop()
+    premiereResolveReaper.stop()
     detailReaper.stop()
     settleReaper.stop()
     omdbBackfillReaper.foreach(_.stop())
