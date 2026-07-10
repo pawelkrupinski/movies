@@ -514,7 +514,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m])*100",
+          "expr": "sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m])*100)",
           "legendFormat": "projection (cc)"
         },
         {
@@ -524,7 +524,7 @@
         },
         {
           "refId": "C",
-          "expr": "clamp_min( (rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100) - (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100), 0 )",
+          "expr": "clamp_min( (rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100) - sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100), 0 )",
           "legendFormat": "other: scrape + Mongo I/O + GC (cc)"
         },
         {
