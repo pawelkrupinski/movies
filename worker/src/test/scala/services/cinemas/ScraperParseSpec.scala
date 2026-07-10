@@ -145,9 +145,16 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.extractFormatTags("Toy Story 5 ukraiński napisy")    shouldBe (("Toy Story 5 ukraiński", List("NAP")))
   }
 
-  it should "strip non-version words (dolby, atmos) without emitting a token for them" in {
+  // "dolby" is the bare carrier word and yields no token; "atmos" carries the
+  // ATMOS badge, so "Dolby Atmos", a bare trailing "Atmos", and a standalone
+  // "(Atmos)" paren all surface exactly one ATMOS token (deduplicated).
+  it should "emit an ATMOS token for atmos but not for the bare 'dolby' carrier" in {
     ScraperParse.extractFormatTags("Dzień objawienia (2D NAPISY DOLBY ATMOS)") shouldBe
-      (("Dzień objawienia", List("2D", "NAP")))
+      (("Dzień objawienia", List("2D", "NAP", "ATMOS")))
+    ScraperParse.extractFormatTags("Spider-Man - 2D NAP ATMOS") shouldBe
+      (("Spider-Man", List("2D", "NAP", "ATMOS")))
+    ScraperParse.extractFormatTags("Vaiana (Dolby Atmos)") shouldBe (("Vaiana", List("ATMOS")))
+    ScraperParse.extractFormatTags("Vaiana (Atmos)")       shouldBe (("Vaiana", List("ATMOS")))
   }
 
   it should "return (title, Nil) for a title with no format tag" in {

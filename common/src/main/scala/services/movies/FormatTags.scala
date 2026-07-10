@@ -6,7 +6,7 @@ import java.util.Locale
  * The single source of truth for peeling a screen-format / language tag off a
  * film title — `(Napisy PL)`, `[2D DUBBING]`, `- 2D dubbing`, `/napisy`,
  * `…_3D`, a bare trailing `NAPISY 2D` — into display tokens (2D / 3D / IMAX /
- * 4DX / DUB / NAP / LEK) while rewriting the title to its clean base (the format
+ * 4DX / ATMOS / DUB / NAP / LEK) while rewriting the title to its clean base (the format
  * words AND their adjacent brackets / slashes / dashes removed).
  *
  * Lives in `common` so BOTH the ingest choke point
@@ -24,11 +24,14 @@ object FormatTags {
 
   /** Lower-case format/version word → the display token it maps to. The token
    *  vocabulary is fixed across the app so all sources agree. Words droppable
-   *  from a title but with no version meaning (premiera, dolby, atmos, …) are
-   *  NOT here; they're stripped without yielding a token. */
+   *  from a title but with no version meaning (premiera, dolby, …) are NOT here;
+   *  they're stripped without yielding a token. ("dolby" is the bare carrier for
+   *  "Dolby Atmos" — it yields no token of its own; the "atmos" word carries the
+   *  ATMOS badge, so "Dolby Atmos" and a bare "Atmos" both surface one ATMOS.) */
   val FormatToken: Map[String, String] = Map(
     "napisy" -> "NAP", "nap" -> "NAP", "dubbing" -> "DUB", "dub" -> "DUB", "dubb" -> "DUB",
-    "lektor" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX"
+    "lektor" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX",
+    "atmos" -> "ATMOS"
   )
 
   // FORMAT/version words only — screen format (2D/3D/IMAX/4DX/Dolby/Atmos) and
@@ -44,7 +47,7 @@ object FormatTags {
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|4DX|dubbing|napisy|lektor)\b[^)]*)\)\s*$""".r
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor)\b[^)]*)\)\s*$""".r
   // Underscore-glued format/version tag — some bilety24 portals (Forum Bolesławiec)
   // join the version word straight to the title with an underscore:
   // "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D". Un-glue ONLY before a
