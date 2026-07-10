@@ -1,5 +1,6 @@
 package models
 
+import java.time.LocalDateTime
 import java.util.Locale
 
 /**
@@ -78,7 +79,16 @@ case class MovieRecord(
   // (`MovieRecordMerge`). Dropped only when the WHOLE row is deleted
   // (`UnscreenedCleanup`, when no cinema screens the film at all). See
   // `synopsis`.
-  retainedSynopses:  Map[Source, String] = Map.empty
+  retainedSynopses:  Map[Source, String] = Map.empty,
+
+  // The earliest screening datetime this film has ever been seen to have — its
+  // premiere. Persisted and MONOTONICALLY non-increasing (it only ever moves
+  // EARLIER, never later), so the true premiere is remembered even after that
+  // showtime ages out of `data`. Worker-internal: it drives the premiere-window
+  // resolution re-activation (`PremiereResolveReaper`) and is NOT projected to the
+  // read model. Maintained at the single persist boundary (`MovieCache.persist`)
+  // via `MovieRecord.firstScreeningDateOf`. `None` until the film has a showtime.
+  firstScreeningDate: Option[LocalDateTime] = None
 ) {
   def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
   def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")
@@ -493,6 +503,11 @@ case class MovieRecord(
   def showtimesFor(cinema: Cinema): Seq[Showtime] =
     cinemaData.get(cinema).map(_.showtimes).getOrElse(Seq.empty)
 
+  /** Every showtime datetime across every source slot, unordered — the raw
+   *  material for [[MovieRecord.firstScreeningDateOf]]. */
+  def showtimeDateTimes: Iterator[LocalDateTime] =
+    data.valuesIterator.flatMap(_.showtimes.iterator.map(_.dateTime))
+
   /** Cinema-reported original/international title — first non-empty with
    *  Multikino preferred. Separate from `originalTitle` (the TMDB-resolved
    *  production-language title): this is what the cinema's own API exposed,
@@ -549,4 +564,17 @@ case class MovieRecord(
     val encodedQuery = java.net.URLEncoder.encode(originalTitle.getOrElse(fallbackTitle), "UTF-8")
     s"https://www.filmweb.pl/search?query=$encodedQuery"
   }
+}
+
+object MovieRecord {
+  /** The earliest screening this film has ever been seen to have: the minimum of
+   *  the previously-remembered `firstScreeningDate` (carried on `prior` and/or on
+   *  `record` itself) and every current showtime. MONOTONICALLY non-increasing —
+   *  it only ever moves EARLIER, so the true premiere survives even after the
+   *  premiere showtime ages out of `record.data`. Applied at the single persist
+   *  boundary (`MovieCache.persist`) so every write refreshes it from the row's
+   *  live showtimes without ever losing the historical minimum. */
+  def firstScreeningDateOf(prior: Option[LocalDateTime], record: MovieRecord): Option[LocalDateTime] =
+    (prior.iterator ++ record.firstScreeningDate.iterator ++ record.showtimeDateTimes)
+      .reduceOption((a, b) => if (a.isBefore(b)) a else b)
 }

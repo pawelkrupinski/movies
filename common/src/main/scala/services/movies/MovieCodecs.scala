@@ -8,7 +8,7 @@ import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros
 
-import java.time.Instant
+import java.time.{Instant, LocalDateTime}
 
 /**
  * Storage-side mirror of a `movies` document — what mongo-scala-driver's
@@ -43,6 +43,9 @@ case class StoredMovieDto(
   // `Source.displayName` like `sourceData`. Optional so legacy documents decode
   // to None → empty map; omitted when empty to keep documents lean.
   retainedSynopses:  Option[Map[String, String]],
+  // The film's remembered premiere (earliest-ever screening). Optional on the
+  // wire so legacy documents decode to None; drives premiere-window re-resolution.
+  firstScreeningDate: Option[LocalDateTime],
   updatedAt:         Instant
 )
 
@@ -72,6 +75,7 @@ object StoredMovieDto {
       sourceData        = r.data.map { case (s, sd) => s.displayName -> sd },
       retainedSynopses  = Option.when(r.retainedSynopses.nonEmpty)(
                             r.retainedSynopses.map { case (s, v) => s.displayName -> v }),
+      firstScreeningDate = r.firstScreeningDate,
       updatedAt         = updatedAt
     )
 
@@ -98,7 +102,8 @@ object StoredMovieDto {
       data              = Source.dropSupersededCinemaSlots(
                             dto.sourceData.flatMap { case (k, sd) => Source.byWireKey(k).map(_ -> sd) }),
       retainedSynopses  = dto.retainedSynopses.getOrElse(Map.empty)
-                            .flatMap { case (k, v) => Source.byWireKey(k).map(_ -> v) }
+                            .flatMap { case (k, v) => Source.byWireKey(k).map(_ -> v) },
+      firstScreeningDate = dto.firstScreeningDate
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
     // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).

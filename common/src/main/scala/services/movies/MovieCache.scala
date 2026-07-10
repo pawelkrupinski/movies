@@ -302,7 +302,13 @@ class CaffeineMovieCache(
   }
 
   private def persist(key: CacheKey, e: MovieRecord): Unit = {
-    val clean = withoutZeroRatings(e)
+    // Refresh the remembered premiere from the row's live showtimes, mining the
+    // PRIOR persisted value so the min-ever only moves earlier (never loses the
+    // premiere once its showtime ages out of `data`). This is the single persist
+    // path, so every showtime-bearing write (scrape, settle, fold) maintains it.
+    val priorDate = Option(positive.getIfPresent(key)).flatMap(_.firstScreeningDate)
+    val dated     = e.copy(firstScreeningDate = MovieRecord.firstScreeningDateOf(priorDate, e))
+    val clean     = withoutZeroRatings(dated)
     positive.put(key, clean)
     repository.upsert(key.cleanTitle, key.year, clean)
     touch()
