@@ -60,10 +60,17 @@ class WorkerWiring(
     // The process-wide worker metrics bundle (ONE registry + one set of metric
     // objects, shared across every country's wiring — see WorkerMetrics). WorkerMain
     // builds it once over ALL countries and injects the SAME instance so every
-    // country's series lands on the single `/metrics` registry. Defaulted to a
-    // single-country bundle so a lone boot / test constructs its own.
-    workerMetrics: services.metrics.WorkerMetrics =
-      services.metrics.WorkerMetrics.singleCountry(country, Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4))) extends play.api.Logging {
+    // country's series lands on the single `/metrics` registry. `None` → a lone
+    // boot / test builds its own single-country bundle (resolved in `workerMetrics`
+    // below). Kept an Option — mirroring `sharedMongoClient` — because a default
+    // referencing `country` can't live in the same parameter clause as `country`.
+    injectedWorkerMetrics: Option[services.metrics.WorkerMetrics] = None) extends play.api.Logging {
+
+  /** The metrics bundle this wiring records into: the shared injected one, or a
+   *  self-owned single-country bundle when none was injected (lone boot / test). */
+  val workerMetrics: services.metrics.WorkerMetrics =
+    injectedWorkerMetrics.getOrElse(
+      services.metrics.WorkerMetrics.singleCountry(country, Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)))
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
   // `cinemaScraperCatalog.scrapeHosts` is passed BY-NAME (the catalog fetches
   // through this very `httoFetch`, so eager evaluation would cycle). It's forced

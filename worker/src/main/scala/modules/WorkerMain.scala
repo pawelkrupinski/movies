@@ -65,7 +65,7 @@ object WorkerMain extends Logging {
 
     val wirings =
       try {
-        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, workerMetrics))
+        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics)))
         ws.foreach(_.start())
         workerMetrics.start() // process-level JVM/native samplers, once
         ws
