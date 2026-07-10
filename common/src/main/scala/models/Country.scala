@@ -77,12 +77,18 @@ object Country {
    *  A web deployment resolves it once at boot; the worker uses [[all]] instead. */
   def fromEnv: Country = Env.get("KINOWO_COUNTRY").flatMap(byCode).getOrElse(default)
 
-  /** The Mongo database name this process should use: an explicit `MONGODB_DB`
-   *  wins (local dev / overrides), otherwise it is DERIVED from the country
-   *  (`KINOWO_COUNTRY=uk` → `kinowo_uk`, unset → Poland → `kinowo`). Single
-   *  source of truth so no call site re-spells the `"kinowo"` fallback and a
+  /** The Mongo database name for a GIVEN country: an explicit `MONGODB_DB` wins
+   *  (local dev / overrides), otherwise it is DERIVED from the country's own
+   *  database. The pure per-country core the WORKER resolves each of its N
+   *  countries through, so no call site re-spells the `"kinowo"` fallback and a
    *  country can never silently land in the wrong database. */
-  def resolvedDbName: String = Env.get("MONGODB_DB").getOrElse(fromEnv.mongoDb)
+  def dbNameFor(country: Country): String = Env.get("MONGODB_DB").getOrElse(country.mongoDb)
+
+  /** The Mongo database name THIS process should use, for the country resolved
+   *  from `KINOWO_COUNTRY` ([[fromEnv]]) — the single-country (web) entry point.
+   *  Same rule as [[dbNameFor]]: explicit `MONGODB_DB` wins, else the country's
+   *  database (`KINOWO_COUNTRY=uk` → `kinowo_uk`, unset → Poland → `kinowo`). */
+  def resolvedDbName: String = dbNameFor(fromEnv)
 }
 
 /** Shared city-list rendering used by both the global [[City]] view and each

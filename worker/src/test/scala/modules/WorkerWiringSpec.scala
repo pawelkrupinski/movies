@@ -3,9 +3,11 @@ package modules
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import models.Country
+import services.MongoConnection
 import services.events.ImdbIdMissing
-import services.tasks.{ScrapeReaper, UnresolvedTmdbReaper}
-import tools.{SharedExecutionBudget, TestWiring}
+import services.tasks.{ScrapeReaper, TaskType, UnresolvedTmdbReaper}
+import tools.{ExecutionBudget, SharedExecutionBudget, TestWiring}
 
 import scala.concurrent.duration._
 
@@ -39,6 +41,23 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       new UnresolvedTmdbReaper(movieCache, movieService.retryResolve) {
         override def start(): Unit = tmdbRetryStarted = true
       }
+  }
+
+  // A Filmweb-disabled country: same test seams as SpyWiring, but the per-country
+  // Filmweb gate pinned off (Country is sealed with only Poland — filmwebEnabled
+  // is the wiring's gate, so overriding it is how we simulate a non-Filmweb country).
+  class NoFilmwebWiring extends SpyWiring {
+    override protected def filmwebEnabled: Boolean = false
+  }
+
+  // A minimal wiring that varies the WorkerWiring CONSTRUCTOR (country + injected
+  // budget) — which `TestWiring` can't, since it fixes the no-arg super-constructor.
+  // Mongo is pinned disabled so nothing connects; we only read the derivation seams.
+  class Probe(c: Country, b: ExecutionBudget) extends WorkerWiring(c, b) {
+    override lazy val mongoConnection: MongoConnection =
+      new MongoConnection(uri = None, dbName = "unused", required = false)
+    def dbNameForTest: String              = mongoDbName
+    def defaultScrapeCitiesForTest: Set[String] = scrapeCitiesDefault
   }
 
   "WorkerWiring.start()" should "boot both the scrape and the enrichment cascade" in {
@@ -103,5 +122,40 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.onThrottleWedged("projection downslope")
     wiring.restartRequests shouldBe empty
     wiring.stop()
+  }
+
+  // Per-country Filmweb gate: a Filmweb-enabled country (Poland) wires the Filmweb
+  // rating handler + bulk-refresh handler; a disabled country wires neither, so its
+  // TaskWorker can't run any Filmweb task and no Filmweb source is constructed.
+  "The Filmweb path" should "be wired for a Filmweb-enabled country and dropped for a disabled one" in {
+    val enabled  = new SpyWiring
+    enabled.ratingHandlers.map(_.taskType)   should contain (TaskType.FilmwebRating: TaskType)
+    enabled.operatorHandlers.map(_.taskType) should contain (TaskType.RefreshAllFilmweb: TaskType)
+    enabled.stop()
+
+    val disabled = new NoFilmwebWiring
+    disabled.ratingHandlers.map(_.taskType)   should not contain (TaskType.FilmwebRating: TaskType)
+    disabled.operatorHandlers.map(_.taskType) should not contain (TaskType.RefreshAllFilmweb: TaskType)
+    // The other three rating sources are untouched by the gate.
+    disabled.ratingHandlers.map(_.taskType) should contain allOf
+      (TaskType.ImdbRating: TaskType, TaskType.RtRating: TaskType, TaskType.McRating: TaskType)
+    disabled.stop()
+  }
+
+  // The whole point of hoisting the budget into WorkerMain: N country wirings draw
+  // permits from ONE shared SharedExecutionBudget (one Semaphore/cap), and each
+  // wiring scopes to its own country's cities + database.
+  "Two country wirings" should "share one injected background budget and scope to their own country" in {
+    val budget = new SharedExecutionBudget(4)
+    val w1 = new Probe(Country.Poland, budget)
+    val w2 = new Probe(Country.Poland, budget)
+
+    (w1.backgroundBudget eq budget)              shouldBe true
+    (w2.backgroundBudget eq budget)              shouldBe true
+    (w1.backgroundBudget eq w2.backgroundBudget) shouldBe true
+
+    w1.country shouldBe Country.Poland
+    w1.defaultScrapeCitiesForTest shouldBe Country.Poland.cities.map(_.slug).toSet
+    w1.dbNameForTest              shouldBe Country.dbNameFor(Country.Poland)
   }
 }

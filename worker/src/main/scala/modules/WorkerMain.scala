@@ -1,7 +1,11 @@
 package modules
 
 import com.sun.net.httpserver.HttpServer
+import models.Country
+import org.mongodb.scala.MongoClient
 import play.api.Logging
+import services.MongoConnection
+import tools.{Env, ExecutionBudget, SharedExecutionBudget}
 
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -40,17 +44,35 @@ object WorkerMain extends Logging {
     val health = startHealthServer(port)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
 
-    val wiring =
+    // The countries this worker runs (KINOWO_COUNTRIES, default just the default
+    // country). One shared background concurrency budget + one shared MongoClient
+    // are built ONCE here and injected into every country's wiring, so all
+    // countries draw run permits from one cap and reuse one connection pool /
+    // monitor-thread set — each country still keeps its OWN event bus and its OWN
+    // per-country database view on that shared client.
+    val countries    = resolveCountries()
+    val sharedBudget: ExecutionBudget =
+      new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
+    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientFromEnv()
+    logger.info(s"Worker running countries: ${countries.map(_.code).mkString(", ")}")
+
+    val wirings =
       try {
-        val w = new WorkerWiring()
-        w.start()
-        w
+        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient))
+        ws.foreach(_.start())
+        ws
       } catch {
         case e: Throwable =>
           logger.error(s"Worker failed to start — shutting down: ${e.getMessage}", e)
+          sharedClient.foreach(_.close())
           health.stop(0)
           sys.exit(1)
       }
+    // Endpoints below target the FIRST country's wiring (the default-country one
+    // on a single-country deploy — the common case, byte-identical to before).
+    // TODO(multi-country): aggregate /metrics + liveness across every wiring; for
+    // now the primary's registry/watchdog is exposed and the others run headless.
+    val wiring = wirings.head
     logger.info("Worker up — scraping/enriching")
 
     // Register /metrics now that the queue + metrics are live (it reads both).
@@ -75,14 +97,39 @@ object WorkerMain extends Logging {
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       logger.info("Worker received shutdown signal — draining the enrichment cascade…")
-      try wiring.stop()
-      catch { case e: Throwable => logger.warn(s"Drain error on shutdown: ${e.getMessage}") }
+      wirings.foreach { w =>
+        try w.stop()
+        catch { case e: Throwable => logger.warn(s"Drain error on shutdown: ${e.getMessage}") }
+      }
+      // Close the shared client last — each wiring's `stop()` closed only its own
+      // (per-country) resources; the borrowed client is owned here.
+      try sharedClient.foreach(_.close())
+      catch { case e: Throwable => logger.warn(s"Mongo client close error on shutdown: ${e.getMessage}") }
       finally {
         health.stop(0)
         done.countDown()
       }
     }))
     done.await()
+  }
+
+  /** The countries this worker instance runs, from `KINOWO_COUNTRIES` (comma-
+   *  separated codes), defaulting to just [[Country.default]] so a single-country
+   *  deploy needs no new env var. Unknown codes are logged and skipped; an empty
+   *  or all-unknown list falls back to the default so the worker never boots with
+   *  zero countries. */
+  private def resolveCountries(): Seq[Country] = {
+    val codes = Env.get("KINOWO_COUNTRIES")
+      .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).toList)
+      .filter(_.nonEmpty)
+      .getOrElse(List(Country.default.code))
+    val resolved = codes.flatMap { code =>
+      Country.byCode(code).orElse {
+        logger.warn(s"Unknown country code '$code' in KINOWO_COUNTRIES — skipping.")
+        None
+      }
+    }.distinct
+    if (resolved.isEmpty) Seq(Country.default) else resolved
   }
 
   private def startHealthServer(port: Int): HttpServer = {

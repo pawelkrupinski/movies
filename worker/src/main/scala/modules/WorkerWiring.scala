@@ -1,7 +1,8 @@
 package modules
 
 import clients.TmdbClient
-import models.{Cinema, City}
+import models.{Cinema, Country}
+import org.mongodb.scala.MongoClient
 import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
 import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
 import services.cinemas._
@@ -33,8 +34,29 @@ import scala.concurrent.duration.DurationLong
  *
  * This is the scrape/enrich half of what used to be the monolith's single
  * `Wiring`; the serving half now lives in the web app's `modules.Wiring`.
+ *
+ * Parametrized by [[Country]]: the worker instantiates ONE of these per country
+ * it runs (from `KINOWO_COUNTRIES`, see `WorkerMain`), each scraping only its
+ * own [[Country.cities]] and writing to its own [[Country.mongoDb]] database.
+ * The two cross-country shared resources — the background concurrency budget and
+ * the underlying `MongoClient` — are injected so every country draws from ONE
+ * cap and ONE connection pool; both default to a self-owned instance so a
+ * single-country boot / test constructs unchanged.
  */
-class WorkerWiring extends play.api.Logging {
+class WorkerWiring(
+    val country: Country = Country.default,
+    // ONE shared background concurrency budget across countries: `WorkerMain`
+    // builds it once and injects the SAME instance into every country's wiring,
+    // so all countries draw run permits from one Semaphore/cap rather than each
+    // spinning its own (see `backgroundBudget`). Defaulted so a single-country
+    // boot / test constructs its own.
+    injectedBackgroundBudget: ExecutionBudget =
+      new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4)),
+    // ONE shared `MongoClient` across countries: each country binds its OWN
+    // database view (`country.mongoDb`) on this single client. `None` → this
+    // wiring builds (and closes) its own client from `MONGODB_URI`, the
+    // single-connection default.
+    sharedMongoClient: Option[MongoClient] = None) extends play.api.Logging {
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
   // `cinemaScraperCatalog.scrapeHosts` is passed BY-NAME (the catalog fetches
   // through this very `httoFetch`, so eager evaluation would cycle). It's forced
@@ -154,14 +176,23 @@ class WorkerWiring extends play.api.Logging {
     // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
     zyteFetch = zyteFetch)
 
-  // Scrape every modelled city by default; KINOWO_SCRAPE_CITIES (comma-separated
-  // slugs) only NARROWS the set, e.g. to shed load if the worker throttles/OOMs.
+  // This country's own cities — the default scrape set. A country wiring only
+  // ever scrapes its own cities (never another country's), so the default is
+  // `country.cities`, not the global `City.all` union. KINOWO_SCRAPE_CITIES only
+  // NARROWS within that set (e.g. to shed load if the worker throttles/OOMs).
+  protected def scrapeCitiesDefault: Set[String] = country.cities.map(_.slug).toSet
   // `protected def` so test wirings can pin the set independently.
   protected def scrapeCities: Set[String] =
-    ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = ScrapeCities.allCities)
+    ScrapeCities.enabled(Env.get("KINOWO_SCRAPE_CITIES"), default = scrapeCitiesDefault)
 
   // The date Helios bakes into its REST URLs. Production uses the real Warsaw
   // date; fixture-replay test wirings override with the fixture's capture date.
+  // TODO(multi-country): Helios is a Poland-only chain, so its REST date is
+  // inherently Europe/Warsaw. There's no single country-level zone to key this
+  // off (a country can span cities in different zones — `City.zoneId` carries the
+  // per-city zone), and no non-PL date-baked chain exists yet, so this stays
+  // Warsaw rather than being widened here. When a second country grows a
+  // date-baked chain, lift a primary zone onto `Country` and read it here.
   protected def heliosToday: java.time.LocalDate =
     java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw"))
 
@@ -175,6 +206,15 @@ class WorkerWiring extends play.api.Logging {
   // port-file ceiling).
   protected def scrapeAttemptCeiling: Int = 6
 
+  // ── Filmweb (per-country) ───────────────────────────────────────────────────
+  // Whether the Filmweb rating + fallback path is wired at all — a per-country
+  // decision ([[Country.filmwebEnabled]]). A non-Filmweb country runs the whole
+  // pipeline with NO Filmweb rating source, fallback scraper, drop-alerter, or
+  // rating/bulk handler. `protected def` so a test can pin it independently of
+  // the (sealed, single-country-today) Country set. When true, everything below
+  // is unchanged from before this dimension existed.
+  protected def filmwebEnabled: Boolean = country.filmwebEnabled
+
   // ── Filmweb fallback ────────────────────────────────────────────────────────
   // Each non-chain venue whose own scraper throws or comes back empty is served
   // from Filmweb instead (FilmwebFallbackScraper), and the swap is recorded for
@@ -182,9 +222,12 @@ class WorkerWiring extends play.api.Logging {
   // per Filmweb-listed city), guarded so a network/resolver failure yields no
   // fallback rather than a boot failure; cinemas Filmweb doesn't list simply have
   // no fallback available. Test wirings pin this empty so fixture replay never
-  // resolves or fetches Filmweb live (see TestWiring).
+  // resolves or fetches Filmweb live (see TestWiring). Also empty for a country
+  // whose Filmweb path is off — an empty id map makes every FilmwebFallbackScraper
+  // short-circuit to the primary's real outcome (identical to no fallback).
   protected lazy val filmwebFallbackIds: Map[Cinema, Int] =
-    scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())
+    if (!filmwebEnabled) Map.empty
+    else scala.util.Try(new FilmwebCinemaIdResolver(httoFetch).resolveAll())
       .toOption.getOrElse(Nil)
       .collect { case r if r.resolved => r.cinema -> r.filmwebId.get }
       .toMap
@@ -251,6 +294,7 @@ class WorkerWiring extends play.api.Logging {
   // the dedicated "Filmweb Drops Cinemas" channel; off unless its chat id is set,
   // so CI / local without secrets raise no alerts. See reference_fallback_telegram_channel.
   protected lazy val filmwebDropAlerter: Option[FilmwebDropAlerter] = for {
+    _      <- Option.when(filmwebEnabled)(())
     token  <- Env.get("TELEGRAM_BOT_TOKEN")
     chatId <- Env.get("KINOWO_FILMWEB_DROP_TG_CHAT_ID").flatMap(s => scala.util.Try(s.toLong).toOption)
   } yield {
@@ -266,7 +310,7 @@ class WorkerWiring extends play.api.Logging {
     filmwebDropAlerter.getOrElse(ScrapeOutcomeListener.NoOp)
 
   lazy val cinemaScrapers: Seq[CinemaScraper] =
-    City.all
+    country.cities
       .filter(c => scrapeCities(c.slug))
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
       .map { raw =>
@@ -314,17 +358,30 @@ class WorkerWiring extends play.api.Logging {
   // scrape throughput, which is what drives the shared-cpu credit downslope — the
   // burst is the CPU of decoding/parsing scrape payloads that land together, not
   // network wait. Override with KINOWO_BG_CONCURRENCY if a bigger machine lands.
-  lazy val backgroundBudget: ExecutionBudget = new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
+  // Injected (`injectedBackgroundBudget`) so EVERY country's wiring shares ONE
+  // budget — one Semaphore, one cap across all of them — not one per country.
+  lazy val backgroundBudget: ExecutionBudget = injectedBackgroundBudget
 
   // ── Events ────────────────────────────────────────────────────────────────
+  // Per-country by construction (a fresh `InProcessEventBus` per wiring instance),
+  // so one country's scrape/enrichment events never reach another's handlers.
   lazy val eventBus: EventBus = new InProcessEventBus()
 
   // ── Mongo ─────────────────────────────────────────────────────────────────
+  // This country's Mongo database — explicit MONGODB_DB still wins for local dev,
+  // else the country's own database. `protected def` so a test can read the
+  // derivation without opening a connection.
+  protected def mongoDbName: String = Country.dbNameFor(country)
+
   // The worker is the writer — Mongo is mandatory (opt out only for local dev
-  // with MONGODB_OPTIONAL=true).
+  // with MONGODB_OPTIONAL=true). Bound to THIS country's database, on the shared
+  // `MongoClient` when WorkerMain injected one.
   lazy val mongoConnection: MongoConnection = {
     val optedOut = Env.get("MONGODB_OPTIONAL").exists(v => v == "true" || v == "1")
-    MongoConnection.fromEnv(required = MongoConnection.isRequired(testMode = false, optedOut = optedOut))
+    MongoConnection.fromEnvForDb(
+      mongoDbName,
+      required = MongoConnection.isRequired(testMode = false, optedOut = optedOut),
+      sharedClient = sharedMongoClient)
   }
 
   // ── MovieRecord cache (write-through) ───────────────────────────────────────
@@ -633,7 +690,7 @@ class WorkerWiring extends play.api.Logging {
   /** Raw chunked clients keyed by displayName — the plan/fetchChunk/reduce
    *  functions the chunk tasks call. Empty until a client opts in. */
   lazy val chunkScrapers: Map[String, ChunkedCinemaScraper] =
-    City.all
+    country.cities
       .filter(c => scrapeCities(c.slug))
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
       .collect { case cs: ChunkedCinemaScraper => ScrapeCinemaHandler.scraperKey(cs.cinema) -> cs }
@@ -784,12 +841,15 @@ class WorkerWiring extends play.api.Logging {
     key => services.cadence.RatingCadence.intervalFor(ratingCadenceStore.statsFor(key)),
     services.cadence.RatingCadence.BaseInterval
   )
+  // The Filmweb rating handler is wired only for a Filmweb-enabled country (its
+  // TaskType is otherwise never enqueued — the EnrichmentReaper is the sole
+  // enqueue path and there's no Filmweb source to move a value).
   lazy val ratingHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, ratingCadenceStore, imdbRatings.refreshOneSync,         metrics = taskMetrics),
-    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, ratingCadenceStore, filmwebRatings.refreshOneSync,      metrics = taskMetrics),
     new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, rottenTomatoesRatings.refreshOneSync, metrics = taskMetrics),
     new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, metascoreRatings.refreshOneSync,    metrics = taskMetrics)
-  )
+  ) ++ Option.when(filmwebEnabled)(
+    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, ratingCadenceStore, filmwebRatings.refreshOneSync,      metrics = taskMetrics))
   // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
   // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a
   // handful across all four at the 1min cadence), so this only bites a cold/long-down
@@ -834,7 +894,6 @@ class WorkerWiring extends play.api.Logging {
   lazy val operatorHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new BulkRefreshHandler(TaskType.RefreshAllTmdb,       "TMDB",       () => movieService.retryUnresolvedTmdb()),
     new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => imdbRatings.refreshAllNow()),
-    new BulkRefreshHandler(TaskType.RefreshAllFilmweb,    "Filmweb",    () => filmwebRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow()),
     new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => movieService.settle()),
@@ -844,6 +903,9 @@ class WorkerWiring extends play.api.Logging {
     // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.
     new ResolveImdbIdHandler(imdbIdResolver)
   ) ++
+    // The Filmweb bulk-refresh button only when this country's Filmweb path is on.
+    Option.when(filmwebEnabled)(
+      new BulkRefreshHandler(TaskType.RefreshAllFilmweb, "Filmweb", () => filmwebRatings.refreshAllNow())) ++
     // OMDb identifier sweep as a coarse task — only when the feature is on
     // (`omdbBackfill` is `Some`). Enqueued daily by `omdbBackfillReaper`, run here
     // off a background EC like the other corpus-wide refreshes.
