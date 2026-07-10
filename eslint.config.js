@@ -38,6 +38,7 @@ module.exports = [
         CINEMA_PILLS: 'readonly',
         CURRENT_CITY: 'readonly',
         ALL_CITIES: 'readonly',
+        KINOWO_LOCALE: 'readonly',
 
         // From the per-page inline `<script>` block.
         IS_FAVOURITES_PAGE: 'readonly',
