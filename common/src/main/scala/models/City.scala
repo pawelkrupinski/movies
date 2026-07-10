@@ -1,6 +1,5 @@
 package models
 
-import java.text.Collator
 import java.time.ZoneId
 import java.util.Locale
 
@@ -38,6 +37,8 @@ sealed abstract class City(
                  !vowels.contains(loc(1).toLower)
     s"${if (we) "we" else "w"} $loc"
   }
+  /** The country this city belongs to (reverse lookup over [[Country.all]]). */
+  def country: Country                         = Country.of(this)
   lazy val cinemaSet: Set[Cinema]              = cinemas.toSet
   def cinemaDisplayNames: Seq[String]          = cinemas.map(_.displayName)
   /** Display-name → pill-name for this city's cinemas — the per-city
@@ -461,13 +462,29 @@ case object Konin extends City(
 }
 
 object City {
-  val all: Seq[City] = Seq(
+  /** Poland's cities — the authoritative list for [[Country.Poland]]. [[all]] is
+   *  the union across every [[Country]], so a new country contributes its own
+   *  list (e.g. `ukCities`) here and [[all]] picks it up automatically. */
+  private[models] val polishCities: Seq[City] = Seq(
     Poznan, Wroclaw, Warszawa, Krakow, Lodz, Katowice, Szczecin, Bialystok, Trojmiasto, Bydgoszcz, Lublin,
     Czestochowa, Radom, Sosnowiec, Torun, Kielce, Rzeszow, Gliwice, Zabrze,
     Olsztyn, BielskoBiala, Opole, Rybnik, GorzowWielkopolski, Elblag, Koszalin, Kalisz, ZielonaGora, Tychy,
     Walbrzych, Tarnow, Wloclawek, Legnica, Plock, Bytom, DabrowaGornicza, NowySacz, Slupsk, JeleniaGora,
     Przemysl, Konin,
   )
+
+  /** Every modelled city, across all countries — the global view used by the
+   *  worker (which scrapes every country) and by country-agnostic reverse
+   *  lookups. A single-country web deployment scopes to `country.cities`.
+   *
+   *  Built directly from the per-country lists that live HERE (`polishCities`,
+   *  and future `ukCities`, …), NOT via `Country.all` — `Country` depends on
+   *  `City` (its `cities` read `City.polishCities`), so a back-reference would
+   *  make the two objects' static initialisers wait on each other and deadlock
+   *  when loaded on parallel threads. Keep the dependency one-directional:
+   *  `Country → City`. A new country adds its list to this concatenation. */
+  val all: Seq[City] = polishCities
+
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 
   /** Reverse lookup: which city a cinema belongs to. Each cinema appears in
@@ -484,16 +501,11 @@ object City {
    *  rather than dumping the diacritic letters at the end (code-point order).
    *  This is the list every *UI* picker iterates; [[all]] keeps its hand-tuned
    *  order for `default`/`allJson`/nearest-city use, where order is semantic. */
-  val allSorted: Seq[City] = {
-    val collator = Collator.getInstance(Locale.forLanguageTag("pl-PL"))
-    all.sortWith((a, b) => collator.compare(a.labels.nominative, b.labels.nominative) < 0)
-  }
+  val allSorted: Seq[City] = CityListing.sorted(all, Locale.forLanguageTag("pl-PL"))
 
   /** Compact JSON array of every city for the client (web `ALL_CITIES`,
    *  consumed by the geolocation/nearest-city picker + the filter switch).
    *  Hand-built (no play-json dependency in models); city names carry no
    *  characters needing JSON escaping. */
-  def allJson: String =
-    all.map(c => s"""{"slug":"${c.slug}","name":"${c.labels.nominative}","lat":${c.lat},"lon":${c.lon}}""")
-       .mkString("[", ",", "]")
+  def allJson: String = CityListing.json(all)
 }

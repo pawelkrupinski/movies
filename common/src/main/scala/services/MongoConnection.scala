@@ -151,13 +151,14 @@ object MongoConnection extends Logging {
     raw.flatMap(_.toIntOption).filter(_ > 0).map(_.seconds).getOrElse(DefaultProbeTimeout)
 
   /** Build from the ambient environment (`MONGODB_URI` / `MONGODB_DB`,
-   *  defaulting the db name to `kinowo`) — the wiring's entry point.
+   *  defaulting the db name to the country's database via
+   *  `Country.resolvedDbName` — `kinowo` for Poland) — the wiring's entry point.
    *  `required = true` turns a missing or unreachable Mongo into a hard boot
    *  failure instead of silent degradation. */
   def fromEnv(required: Boolean): MongoConnection =
     new MongoConnection(
       Env.get("MONGODB_URI"),
-      Env.get("MONGODB_DB").getOrElse("kinowo"),
+      models.Country.resolvedDbName,
       required,
       parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
 
@@ -186,13 +187,14 @@ object MongoConnection extends Logging {
   /** Database name for an explicit-URI connection: the URI's own path (e.g.
    *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
    *  database than the app's working db (`MONGODB_DB`, used by the prod
-   *  connection). Falls back to `MONGODB_DB` (then `kinowo`) when the URI names
-   *  no database. The parse is guarded so a malformed URI flows through to
+   *  connection). Falls back to `Country.resolvedDbName` (explicit `MONGODB_DB`,
+   *  else the country's database) when the URI names no database. The parse is
+   *  guarded so a malformed URI flows through to
    *  `MongoConnection`'s own required/optional handling instead of throwing here. */
   private[services] def databaseFromUri(uri: String): String =
     Try(Option(new ConnectionString(uri).getDatabase)).toOption.flatten
       .filter(_.nonEmpty)
-      .getOrElse(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getOrElse(models.Country.resolvedDbName)
 
   /** Driver settings for a connection string. Wire compression (zlib — built into
    *  the JDK, no dependency) is forced ONLY when the host is loopback: the slow
