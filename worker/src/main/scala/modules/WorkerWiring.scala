@@ -68,6 +68,16 @@ class WorkerWiring extends play.api.Logging {
   // is unset; `omdbBackfill` in the ratings block builds the refresher only when
   // the key is present.
   lazy val omdbClient = new OMDbClient(httoFetch)
+  // Trakt + Letterboxd — id-crosswalk resolution SOURCES (not rating sources):
+  // they turn a known imdbId into the exact tmdbId (and vice versa) for the
+  // arthouse/festival long tail TMDB's own indexes leave unmapped. Trakt is
+  // feature-gated on TRAKT_API_CLIENT_ID (no key → no HTTP, resolver no-ops);
+  // Letterboxd scrapes its film pages. Wired into `resolveTmdbId` (after TMDB
+  // /find) and `ImdbIdResolver` (after Wikidata) as last-resort fallbacks.
+  lazy val traktClient          = new TraktClient(httoFetch)
+  lazy val letterboxdClient     = new LetterboxdClient(httoFetch)
+  lazy val traktIdResolver      = new TraktIdResolver(traktClient)
+  lazy val letterboxdIdResolver = new LetterboxdIdResolver(letterboxdClient)
 
   // ── Cinema scrapers ───────────────────────────────────────────────────────
   // The per-city scraper graph lives in CinemaScraperCatalog (Mongo-free, so a
@@ -376,7 +386,8 @@ class WorkerWiring extends play.api.Logging {
   lazy val wikidataClient = new WikidataClient(httoFetch)
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
-    wikidata = Some(wikidataClient))
+    wikidata = Some(wikidataClient),
+    traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"),
     cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating),
     deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.RtRating))
@@ -427,7 +438,8 @@ class WorkerWiring extends play.api.Logging {
     // enqueuer the EnrichmentReaper walks the corpus with, so a newcomer and a
     // reaper sweep share the eligibility + due gate. A fold is a trickle, so this
     // doesn't recreate the old TmdbResolved corpus-wide burst.
-    enqueueNewcomerRatings = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now()); () })
+    enqueueNewcomerRatings = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now()); () },
+    traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver))
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
