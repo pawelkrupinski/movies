@@ -4,6 +4,7 @@ import clients.TmdbClient
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
+import services.enrichment.{LetterboxdIdResolver, TraktIdResolver}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, ResolutionKeys}
@@ -71,7 +72,16 @@ class MovieService(
   // reintroduce the corpus-wide enqueue burst the old `TmdbResolved` fan-out was.
   // Default no-op for tests/scripts without a task queue; production passes
   // `RatingEnqueuer.enqueueDueFor` (the SAME enqueuer the reaper walks the corpus with).
-  enqueueNewcomerRatings: (CacheKey, MovieRecord) => Unit = (_, _) => ()
+  enqueueNewcomerRatings: (CacheKey, MovieRecord) => Unit = (_, _) => (),
+  // Fallback id-crosswalk resolvers, tried in `resolveTmdbId` ONLY after TMDB
+  // title/director search AND `/find`-by-imdbId all miss on a tmdbId-less row.
+  // Both turn the row's known imdbId into the EXACT tmdbId (Trakt's id-keyed
+  // `/search/imdb`, then Letterboxd's page scrape) — coverage of the arthouse /
+  // festival long tail TMDB's own indexes miss. Abstain without an imdbId, so
+  // they never guess. Default None so unit specs/scripts resolve as before;
+  // `Wiring` injects them (Trakt itself no-ops without `TRAKT_API_CLIENT_ID`).
+  traktIdResolver:      Option[TraktIdResolver]      = None,
+  letterboxdIdResolver: Option[LetterboxdIdResolver] = None
 ) extends Stoppable with Logging {
 
   // How a needed single-movie TMDB resolution is dispatched (see the `dispatcher`
@@ -827,10 +837,30 @@ class MovieService(
       // absent tmdbId so a row that's already TMDB-resolved never resurrects a
       // drifted resolution from its TMDB-DERIVED imdbId — a re-enrich whose search
       // now misses must leave that row untouched, not re-confirm the stale id.
+      // After TMDB's own `/find` misses, cross to the other id-keyed sources in
+      // turn — Trakt's `/search/imdb` (exact), then Letterboxd's page scrape —
+      // each of which can hold the imdbId→tmdbId mapping TMDB itself lacks for
+      // an obscure title. Same `tmdbId.isEmpty` gate: never resurrect a drifted
+      // resolution from a TMDB-derived imdbId. `None` SearchResult — the tmdbId
+      // alone drives the by-id details fetch downstream (as on a cache hit).
       .orElse {
-        if (row.tmdbId.isEmpty)
+        if (row.tmdbId.isEmpty) {
+          def viaTrakt: Option[Int] =
+            for {
+              id       <- row.imdbId
+              resolver <- traktIdResolver
+              tmdbId   <- resolver.resolve(Some(id), candidates, effectiveYear).tmdbId
+            } yield tmdbId
+          def viaLetterboxd: Option[Int] =
+            for {
+              id       <- row.imdbId
+              resolver <- letterboxdIdResolver
+              tmdbId   <- resolver.resolveTmdbId(id)
+            } yield tmdbId
           row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit)))
-        else None
+            .orElse(viaTrakt.map((_, Option.empty[TmdbClient.SearchResult])))
+            .orElse(viaLetterboxd.map((_, Option.empty[TmdbClient.SearchResult])))
+        } else None
       }
   }
 
