@@ -13,12 +13,25 @@ import org.scalatest.matchers.should.Matchers
  */
 class CountrySpec extends AnyFlatSpec with Matchers {
 
-  "Country.byCode" should "resolve pl case-insensitively and reject unknown codes" in {
+  "Country.byCode" should "resolve pl/uk case-insensitively and reject unknown codes" in {
     Country.byCode("pl") shouldBe Some(Country.Poland)
     Country.byCode("PL") shouldBe Some(Country.Poland)
     Country.byCode("  pl ") shouldBe Some(Country.Poland)
+    Country.byCode("uk") shouldBe Some(Country.UnitedKingdom)
+    Country.byCode("UK") shouldBe Some(Country.UnitedKingdom)
     Country.byCode("xx") shouldBe None
     Country.byCode("") shouldBe None
+  }
+
+  "Country.UnitedKingdom" should "be an English, Filmweb-free, cinema-less placeholder on its own database" in {
+    Country.UnitedKingdom.code shouldBe "uk"
+    Country.UnitedKingdom.mongoDb shouldBe "kinowo_uk"
+    Country.UnitedKingdom.filmwebEnabled shouldBe false
+    Country.UnitedKingdom.language.toLanguageTag shouldBe "en-GB"
+    // No cinemas yet (the remaining §6 work) — an empty but valid deployment.
+    Country.UnitedKingdom.cities shouldBe empty
+    Country.UnitedKingdom.allJson shouldBe "[]"
+    Country.UnitedKingdom.allSorted shouldBe empty
   }
 
   "Country.Poland" should "keep the original kinowo database and Filmweb enabled" in {
@@ -34,19 +47,20 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     dbs.distinct.size shouldBe dbs.size
   }
 
-  "Country.Poland.cities" should "be exactly today's Polish city list, and equal City.all while PL is the only country" in {
+  "Country.Poland.cities" should "be exactly today's Polish city list; City.all is the union across countries (UK adds none yet)" in {
     Country.Poland.cities shouldBe City.polishCities
+    // UK contributes no cities yet, so the global City.all still equals Poland's.
     City.all should contain theSameElementsAs Country.Poland.cities
     Country.all.flatMap(_.cities) should contain theSameElementsAs City.all
   }
 
-  "Country.of and City.country" should "reverse-map a city back to its country" in {
+  "Country.of and City.country" should "reverse-map a city back to its country (every city is Polish today)" in {
     Country.of(Poznan) shouldBe Country.Poland
     Warszawa.country shouldBe Country.Poland
     City.all.foreach(c => c.country shouldBe Country.Poland)
   }
 
-  "A country's scoped views" should "match the global City views while PL is the only country" in {
+  "A country's scoped views" should "match the global City views for the only country that has cities (Poland)" in {
     Country.Poland.bySlug.get("poznan") shouldBe Some(Poznan)
     Country.Poland.bySlug.get("sopot") shouldBe None
     Country.Poland.allSorted shouldBe City.allSorted

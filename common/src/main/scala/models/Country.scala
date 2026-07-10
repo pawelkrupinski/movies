@@ -57,9 +57,24 @@ object Country {
     val cities: Seq[City] = City.polishCities
   }
 
+  /** The United Kingdom — the second country, wired end-to-end but with NO
+   *  cinemas yet (`cities = Nil`): an English-language deployment on its own
+   *  `kinowo_uk` database that does not use Filmweb. Its cinema scrapers + city
+   *  list are the remaining `§6` work; until then a `KINOWO_COUNTRY=uk` web
+   *  renders in English with an empty city list, and the worker only runs it
+   *  when `KINOWO_COUNTRIES` names `uk`. */
+  case object UnitedKingdom extends Country(
+    code           = "uk",
+    language       = Locale.forLanguageTag("en-GB"),
+    mongoDb        = "kinowo_uk",
+    filmwebEnabled = false,
+  ) {
+    val cities: Seq[City] = Nil
+  }
+
   /** Every country the codebase knows about. A worker iterates this; a web
    *  deployment picks one via [[fromEnv]]. */
-  val all: Seq[Country] = Seq(Poland)
+  val all: Seq[Country] = Seq(Poland, UnitedKingdom)
 
   /** The fallback country when `KINOWO_COUNTRY` is unset — keeps single-country
    *  (Poland-only) deployments and tests working with no new env var. */
