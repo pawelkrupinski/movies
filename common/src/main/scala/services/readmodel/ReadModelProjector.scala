@@ -13,16 +13,23 @@ import scala.util.Try
  * Maintains the denormalised read model (`web_movies` + `web_screenings`) from
  * the source `movies` collection.
  *
- * Two mechanisms, mirroring `MovieCache`'s sync design:
+ * Two live mechanisms keep it current, mirroring `MovieCache`'s sync design:
  *
  *  1. INCREMENTAL — subscribes to the `movies` change stream
  *     (`MovieRepository.watchUpserts`); each changed row is re-projected and the
  *     resulting documents are diffed against the last projection so only the documents
- *     that actually changed are written.
- *  2. RECONCILE (backstop) — a periodic full re-projection that also prunes
- *     derived documents whose source film has vanished (the change stream delivers
- *     no deletes; a fold-victim / `UnscreenedCleanup` removal is reconciled
- *     here).
+ *     that actually changed are written. With the persisted resume token this also
+ *     replays every upsert missed while the worker was down.
+ *  2. ORPHAN PRUNE (backstop) — a cheap, frequent id-only sweep (`pruneOrphans`)
+ *     that removes derived documents whose source film has vanished or was re-keyed
+ *     (the change stream delivers no deletes; a fold-victim / `UnscreenedCleanup`
+ *     removal is reconciled here). It re-projects nothing, so it can't spike CPU.
+ *
+ * The full re-projection (`reconcile`) is NOT scheduled — it was the periodic
+ * ~1-core whole-corpus burst that drained the worker's CPU-credit balance, and the
+ * resume-token change stream made it redundant (proven by a sustained did_work=false
+ * on the reconcile-sweep metric across restarts). It survives only as an explicit
+ * one-shot seed/backfill primitive (fixture/e2e read-model seeding, `BackfillReadModel`).
  *
  * Minimal writes: the last-projected document per film is kept in memory (hydrated
  * from the read model at boot, so a restart rewrites only what changed since
@@ -33,14 +40,15 @@ import scala.util.Try
  * sees the metadata first; the web join also tolerates the reverse order, so
  * neither side depends on it.
  *
- * The change-stream callback and the reconcile tick are serialised by one lock,
+ * The change-stream callback and the prune sweep are serialised by one lock,
  * so the in-memory last-projection state needs no further synchronisation.
  */
 class ReadModelProjector(
   movieRepository: MovieRepository,
   writer:    ReadModelWriter,
   reader:    ReadModelReader,
-  metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop
+  metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
+  scheduler: java.util.concurrent.ScheduledExecutorService = DaemonExecutors.scheduler("read-model-projector")
 ) extends Stoppable with Logging {
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
@@ -67,19 +75,14 @@ class ReadModelProjector(
   private val lastMetadata   = scala.collection.mutable.Map.empty[String, (Int, Seq[ResolvedMovie])]
   private val lock           = new AnyRef
 
-  private val scheduler = DaemonExecutors.scheduler("read-model-projector")
   // The cheap id-only orphan prune runs FREQUENTLY (deletes/re-keys the change stream
-  // drops must clear within a tick); the expensive full re-projection runs RARELY
-  // (its only unique job is catching upserts missed during a stream outage — a ~1-core
-  // whole-corpus burst, formerly every 30 min, was the reprojection credit-drain).
-  private val PruneSeconds     = Env.positiveLong("KINOWO_READMODEL_PRUNE_SECONDS", 1800L)      // 30 min
-  private val ReconcileSeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_SECONDS", 21600L) // 6 h (was 30 min)
-  // Both are deferred off the boot path — running a full scan synchronously at `start()`
-  // stacked a second scan onto the cache hydrate + first scrape on a cold JVM (the boot
-  // CPU-credit drain). The boot catch-up reproject runs ONLY when the change stream is
-  // UNAVAILABLE (see `reconcileInitialDelaySeconds`); the prune staggers a little later.
-  private val ReconcileBootDelaySeconds = Env.positiveLong("KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS", 60L)
-  private val PruneBootDelaySeconds     = Env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
+  // drops must clear within a tick). The expensive full re-projection is no longer
+  // scheduled at all (the resume-token change stream made it redundant — see the class
+  // doc); it survives only as the explicit `reconcile()` seed/backfill primitive.
+  private val PruneSeconds = Env.positiveLong("KINOWO_READMODEL_PRUNE_SECONDS", 1800L)      // 30 min
+  // Deferred off the boot path — running a full scan synchronously at `start()` stacked a
+  // second scan onto the cache hydrate + first scrape on a cold JVM (the boot CPU drain).
+  private val PruneBootDelaySeconds = Env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   def enabled: Boolean = writer.enabled && movieRepository.enabled
@@ -188,9 +191,10 @@ class ReadModelProjector(
    *  `reproject = true` — the FULL sweep: re-project every ready row (the diff keeps
    *  writes minimal — only genuinely changed documents are written) AND prune. This
    *  is the expensive path (projecting ~1400 rows is a ~1-core burst that, on the old
-   *  30-min cadence, filled the 320m heap → GC thrash → CPU-credit starvation). Its
-   *  only unique job over the change-stream path is catching upserts MISSED while the
-   *  stream was down or terminally errored, so it now runs rarely (boot + `ReconcileSeconds`).
+   *  30-min cadence, filled the 320m heap → GC thrash → CPU-credit starvation). It is
+   *  NO LONGER SCHEDULED — the resume-token change stream now catches the upserts it
+   *  used to (its only unique job); it runs only via the explicit `reconcile()`
+   *  seed/backfill primitive (test/fixture seeding).
    *
    *  `reproject = false` — the CHEAP sweep (`pruneOrphans`): build the live-id set from
    *  `ReadModelProjection.filmIds` (no projection) and prune only. This is the frequent
@@ -252,22 +256,15 @@ class ReadModelProjector(
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }
 
-  /** Full re-projection + prune — the boot/periodic gap backstop (expensive). */
+  /** Full re-projection + prune. NOT scheduled — the resume-token change stream made the
+   *  periodic reproject redundant. Kept as an explicit one-shot seed/backfill primitive:
+   *  fixture/e2e read-model seeding calls it to project a settled corpus synchronously
+   *  (it stitches split films via `foreachRecord`, which a per-row `onMovieUpsert` seed
+   *  would not). Mirrors `scripts.BackfillReadModel`. */
   def reconcile(): Unit = sweep(reproject = true)
 
   /** Cheap id-only orphan prune — the frequent backstop for deleted/re-keyed rows. */
   def pruneOrphans(): Unit = sweep(reproject = false)
-
-  /** Initial delay for the periodic full reproject. When the change stream is ACTIVE it
-   *  replays events missed while the worker was down from the persisted resume token, so a
-   *  boot catch-up reproject would only re-project what the stream is already delivering — a
-   *  ~13-doc write burst counted as a false-positive `did_work` on every restart. So gate it:
-   *  with an active stream the FIRST reproject is the periodic one (`ReconcileSeconds`), i.e.
-   *  no boot reproject; only when the stream is UNAVAILABLE (no replica set / failed to open,
-   *  nothing to replay) does the boot catch-up run at `ReconcileBootDelaySeconds`. The +300s
-   *  prune and the eventual periodic reproject remain the backstops either way. */
-  private[readmodel] def reconcileInitialDelaySeconds(streamActive: Boolean): Long =
-    if (streamActive) ReconcileSeconds else ReconcileBootDelaySeconds
 
   def start(): Unit = if (enabled) {
     // Seed the last-projection state from the derived collections, so a restart
@@ -278,23 +275,19 @@ class ReadModelProjector(
         lastScreenings.update(fid, ss.map(s => s._id -> s.##).toMap)
       }
     }
-    // The change-stream watch covers live changes from now on; the seeded state above
-    // means incremental writes are no-ops for already-correct documents. Both sweeps are
-    // deferred off the boot path so they don't compete with boot hydrate + the first scrape.
+    // The change-stream watch covers live changes from now on (and, via the persisted
+    // resume token, replays every upsert missed while the worker was down); the seeded
+    // state above means incremental writes are no-ops for already-correct documents. Only
+    // the cheap orphan prune is scheduled — the full reproject was retired (see class doc).
     watchHandle = movieRepository.watchUpserts(onMovieUpsert)
-    // Full re-projection: periodic, plus a boot catch-up ONLY when the stream can't replay.
-    val reconcileInitialDelay = reconcileInitialDelaySeconds(watchHandle.isDefined)
-    scheduler.scheduleAtFixedRate(
-      () => Try(reconcile()).recover { case exception => logger.warn(s"read-model reconcile tick failed: ${exception.getMessage}") },
-      reconcileInitialDelay, ReconcileSeconds, TimeUnit.SECONDS)
-    // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU).
+    // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
+    // off the boot path so it doesn't compete with boot hydrate + the first scrape.
     scheduler.scheduleAtFixedRate(
       () => Try(pruneOrphans()).recover { case exception => logger.warn(s"read-model prune tick failed: ${exception.getMessage}") },
       PruneBootDelaySeconds, PruneSeconds, TimeUnit.SECONDS)
-    logger.info(s"ReadModelProjector started; orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s), " +
-      s"full reproject every ${ReconcileSeconds}s (first in ${reconcileInitialDelay}s — " +
-      s"${if (watchHandle.isDefined) "no boot reproject, stream replays the gap" else "boot catch-up, stream unavailable"}); " +
-      s"change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — reconcile only"}.")
+    logger.info(s"ReadModelProjector started; orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s); " +
+      s"no periodic reproject (retired); change-stream watch " +
+      s"${if (watchHandle.isDefined) "active" else "unavailable — orphan-prune only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
 
   def stop(): Unit = {

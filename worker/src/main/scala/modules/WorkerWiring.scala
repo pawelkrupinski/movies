@@ -963,13 +963,13 @@ class WorkerWiring extends play.api.Logging {
     // Boot ordering, tuned to not drain the shared-CPU credit balance on a cold
     // JVM: the cache hydrate (synchronous findAll — the first scrape tick needs a
     // populated cache for sibling/redirect checks) and the projector's state seed
-    // run at boot, but the two heaviest jobs are deferred off the boot window —
-    // the first scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the
-    // projector's full reconcile (KINOWO_READMODEL_RECONCILE_BOOT_DELAY_SECONDS).
+    // run at boot, but the heavy jobs are deferred off the boot window — the first
+    // scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the projector's orphan
+    // prune (KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS).
     movieCache.start()
-    // Start the read-model projector after the cache so its state seed (and the
-    // first deferred reconcile) read a hydrated `movies` collection; it watches the
-    // change stream independently of the cache's own watch.
+    // Start the read-model projector after the cache so its state seed reads a
+    // hydrated `movies` collection; it watches the change stream (with a persisted
+    // resume token) independently of the cache's own watch.
     readModelProjector.start()
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().

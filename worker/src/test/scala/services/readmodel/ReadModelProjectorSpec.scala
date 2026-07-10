@@ -51,6 +51,19 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
   }
 
+  /** Fake scheduler that CAPTURES the fixed-rate tasks `start()` submits instead of
+   *  running them on a timer, so a test can assert exactly what was scheduled and run
+   *  the tasks deterministically. */
+  private class CapturingScheduler extends java.util.concurrent.ScheduledThreadPoolExecutor(1) {
+    val scheduled = scala.collection.mutable.Buffer.empty[Runnable]
+    override def scheduleAtFixedRate(command: Runnable, initialDelay: Long, period: Long,
+                                     unit: java.util.concurrent.TimeUnit): java.util.concurrent.ScheduledFuture[?] = {
+      scheduled += command
+      null
+    }
+    def runAll(): Unit = scheduled.foreach(_.run())
+  }
+
   "the first projection of a row" should "write the movie document before its screenings" in {
     val (projector, _, rm) = fixture()
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
@@ -416,16 +429,24 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     p2.stop()
   }
 
-  // The boot catch-up reproject is GATED on change-stream availability. With an active stream
-  // the resume token replays the missed-while-down gap, so a boot reproject would only re-catch
-  // what the stream is already delivering — a false-positive did_work on every restart. So when
-  // the stream is active the first reproject is deferred to the periodic one (hours out); only a
-  // DOWN stream (nothing to replay) runs the boot catch-up soon.
-  "the boot reproject" should "be gated on stream availability — deferred to the periodic reproject when the stream is active, run soon only when it's down" in {
-    val (projector, _, _) = fixture()
-    val active   = projector.reconcileInitialDelaySeconds(streamActive = true)
-    val inactive = projector.reconcileInitialDelaySeconds(streamActive = false)
-    inactive should be < active     // stream down → boot catch-up runs soon (no replay to wait for)
-    active   should be >= 3600L      // stream up → NO boot reproject; deferred to the periodic (hours), not a boot delay
+  // The periodic full reproject was retired: the resume-token change stream now catches
+  // the upserts it used to, and its ~1-core whole-corpus burst was the CPU-credit drain.
+  // `start()` must schedule ONLY the cheap orphan prune — never the reproject. Captured
+  // via a fake scheduler: a live source row absent from the read model would be PROJECTED
+  // by a scheduled reproject (movieUpserts size 1), but the prune re-projects nothing, so
+  // running every scheduled task leaves the read model untouched.
+  "start" should "schedule the orphan prune but NOT a periodic reproject" in {
+    val fakeScheduler = new CapturingScheduler
+    val repository = new InMemoryMovieRepository()
+    val rm = new InMemoryReadModelRepository()
+    val projector = new ReadModelProjector(repository, rm, rm, scheduler = fakeScheduler)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.start()
+
+    fakeScheduler.scheduled should have size 1   // only the prune, never the reproject
+    fakeScheduler.runAll()                        // a scheduled reproject WOULD project Foo here
+    rm.movieUpserts     shouldBe empty            // prune re-projects nothing
+    rm.screeningUpserts shouldBe empty
+    projector.stop()
   }
 }
