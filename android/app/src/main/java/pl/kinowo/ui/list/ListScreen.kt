@@ -69,6 +69,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
@@ -78,6 +79,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.content.res.Configuration
 import java.time.LocalDate
+import pl.kinowo.R
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
@@ -244,7 +246,7 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 val gridBottomInset = if (wide) 12.dp else SearchBarBottomInset
                 Box(Modifier.fillMaxSize().haze(hazeState)) {
                     when {
-                        isLoading && films.isEmpty() -> CenteredMessage("Ładowanie repertuaru…")
+                        isLoading && films.isEmpty() -> CenteredMessage(stringResource(R.string.loading_repertoire))
                         error != null && films.isEmpty() -> ErrorState(error!!) { viewModel.reload() }
                         else -> PullToRefreshBox(
                             isRefreshing = refreshing,
@@ -843,10 +845,10 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Nie udało się pobrać repertuaru.", fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.error_repertoire), fontWeight = FontWeight.SemiBold)
         Text(message, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         androidx.compose.material3.Button(onClick = onRetry, modifier = Modifier.padding(top = 12.dp)) {
-            Text("Spróbuj ponownie")
+            Text(stringResource(R.string.retry))
         }
     }
 }

@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Kinowo</string>
+
+    <!-- Country picker -->
+    <string name="country_label">Country</string>
+
+    <!-- City gate -->
+    <string name="choose_city_title">Choose a city</string>
+    <string name="choose_city_subtitle">We show showtimes for the city you pick.</string>
+    <string name="search_city_hint">Search for a city</string>
+    <string name="clear">Clear</string>
+    <string name="no_city_matching">No city named “%1$s”.</string>
+    <string name="near_city_label">You’re near</string>
+    <string name="show_repertoire">Show showtimes — %1$s</string>
+    <string name="choose_other_city">Choose another city</string>
+
+    <!-- "You're nearer another city" prompt -->
+    <string name="nearer_city_title">You’re closer to %1$s</string>
+    <string name="switch_repertoire_question">Switch showtimes to %1$s?</string>
+    <string name="switch_action">Switch</string>
+    <string name="not_now">Not now</string>
+
+    <!-- Repertoire list states -->
+    <string name="loading_repertoire">Loading showtimes…</string>
+    <string name="error_repertoire">Couldn’t load showtimes.</string>
+    <string name="retry">Try again</string>
+</resources>

@@ -92,6 +92,17 @@ class KinowoViewModel(
     val selectedCity: StateFlow<String?> =
         prefs.selectedCity.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** ISO code of the selected country (see [pl.kinowo.model.Country]), or null
+     *  until the user picks one — [pl.kinowo.model.Country.byCode] then treats
+     *  null as the default (Poland). Persisting a new code re-points the API base
+     *  URL and forces the country's UI language (MainActivity recreates on change). */
+    val selectedCountryCode: StateFlow<String?> =
+        prefs.selectedCountryCode.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Persist the chosen country. The activity observes [selectedCountryCode] and
+     *  recreates itself so the new base URL + locale take effect. */
+    fun setCountry(code: String) = viewModelScope.launch { prefs.setCountryCode(code) }
+
     val hiddenFilms: StateFlow<Set<String>> =
         prefs.hiddenFilms.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
     val disabledCinemas: StateFlow<Set<String>> =
