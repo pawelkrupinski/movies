@@ -1,5 +1,6 @@
 package models
 
+import java.time.LocalDateTime
 import java.util.Locale
 
 /**
@@ -492,6 +493,17 @@ case class MovieRecord(
   /** Cinema → showtimes (empty when that cinema isn't screening). */
   def showtimesFor(cinema: Cinema): Seq[Showtime] =
     cinemaData.get(cinema).map(_.showtimes).getOrElse(Seq.empty)
+
+  /** The earliest showtime currently listed for this film across every source —
+   *  the film's premiere as far as the corpus can see it. A PURE function of the
+   *  live `data`, so it converges regardless of the order cinemas/merges arrived
+   *  in; `PremiereResolveReaper` keys its re-resolution window off it. Deliberately
+   *  NOT persisted: a stored value recomputed only at one write path drifted with
+   *  arrival order (see `StagingOrderDeterminismSpec`), and the reaper reads the
+   *  live record anyway. `None` until the film has any showtime. */
+  def firstScreeningDate: Option[LocalDateTime] =
+    data.valuesIterator.flatMap(_.showtimes.iterator.map(_.dateTime))
+      .reduceOption((a, b) => if (a.isBefore(b)) a else b)
 
   /** Cinema-reported original/international title — first non-empty with
    *  Multikino preferred. Separate from `originalTitle` (the TMDB-resolved

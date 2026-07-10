@@ -109,7 +109,7 @@ class MovieService(
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   // The scheduled, phase-spread TMDB re-try is owned by
-  // `services.tasks.UnresolvedTmdbReaper` (it drives `retryResolve`); the hourly
+  // `services.tasks.PremiereResolveReaper` (it drives `retryResolve`); the hourly
   // IMDb refresh lives in `ImdbRatings`. This service only owns the
   // `ResolveDispatcher`'s drain — see `stop()`.
 
@@ -612,7 +612,7 @@ class MovieService(
   // `retryUnresolvedTmdb` sweep re-dispatches.
 
   // ── Bulk TMDB re-try (operator sweep) ───────────────────────────────────────
-  // The scheduled, phase-spread re-try is owned by `UnresolvedTmdbReaper`; this
+  // The scheduled, phase-spread re-try is owned by `PremiereResolveReaper`; this
   // is the corpus-wide form behind the `RefreshAllTmdb` button. The hourly IMDb
   // refresh lives in `ImdbRatings.refreshAll`.
 
@@ -628,7 +628,7 @@ class MovieService(
    *  event fired from the TMDB stage at first resolution. Clears the negative
    *  cache so previously-failed `(title, year)` lookups get one fresh shot. This
    *  bulk form backs the operator `RefreshAllTmdb` button; the scheduled,
-   *  phase-spread re-try is owned by [[services.tasks.UnresolvedTmdbReaper]]
+   *  phase-spread re-try is owned by [[services.tasks.PremiereResolveReaper]]
    *  (via [[retryResolve]]) so the backlog drains as a trickle, not a burst. */
   def retryUnresolvedTmdb(): Unit = {
     cache.clearNegatives()
@@ -650,7 +650,7 @@ class MovieService(
   /** Re-attempt ONE still-unresolved row's TMDB resolution, clearing just that
    *  row's negative marker first (the scoped form of [[retryUnresolvedTmdb]]'s
    *  global `clearNegatives`). Driven by
-   *  [[services.tasks.UnresolvedTmdbReaper]]'s phase-spread tick so the
+   *  [[services.tasks.PremiereResolveReaper]]'s phase-spread tick so the
    *  unresolved backlog re-tries as a flat trickle instead of a boot/period
    *  burst. No-op once the row has resolved or is awaiting detail (its detail
    *  completing re-triggers TMDB via `MovieDetailsComplete`). */
