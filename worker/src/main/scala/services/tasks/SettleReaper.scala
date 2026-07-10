@@ -75,13 +75,11 @@ object SettleReaper {
    *  1800s): the settle ran once per 30 min via the reload; it now runs once per
    *  30 min on its own tick. */
   val DefaultInterval: FiniteDuration = 30.minutes
-  /** First settle ~mid-window after boot. Two reasons for 16 min rather than 1:
-   *  the synchronous hydrate has long populated the cache, AND — the load-bearing
-   *  one — it staggers the whole-corpus settle OFF the read-model reconcile's tick.
-   *  Both run a full-corpus pass every 30 min; the reconcile fires at boot+~1 min
-   *  then every 30 (1/31/61/91…), so a 1-min settle delay put the two heaviest
-   *  memory passes on the SAME minute, and their combined transient is what tipped
-   *  the worker's 320m heap into OOM. At 16 min the settle ticks at 16/46/76… —
-   *  ~15 min clear of every reconcile tick, so the peaks never overlap. */
+  /** First settle ~mid-window after boot, so the synchronous hydrate has long
+   *  populated the cache before the first whole-corpus settle pass. (This delay used
+   *  to also stagger the settle off the read-model *reproject's* heavy tick — the two
+   *  full-corpus passes co-ticking is what tipped the 320m heap into OOM — but that
+   *  periodic reproject has been retired, so the only remaining scheduled read-model
+   *  sweep is the cheap id-only orphan prune, which the settle need not dodge.) */
   val DefaultInitialDelay: FiniteDuration = 16.minutes
 }

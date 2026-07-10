@@ -568,6 +568,54 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The '– Premiera' release-announcement suffix is CANONICAL: unlike the
+  // query-only przedpremiera strip (which keeps the earlier screening its own
+  // row), a premiere IS the film, so it rewrites the DISPLAY title and folds onto
+  // the base film's key. Covers every separator/case/qualifier shape.
+  it should "strip the '– Premiera' suffix from the display title and fold onto the base film" in {
+    val cases = Seq(
+      "Zbrodnie przyszłości – Premiera"        -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości - Premiera"        -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości — PREMIERA"        -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości | Premiera"        -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości: premiera"         -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości – Wielka Premiera" -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości | Polska premiera" -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości - śląska premiera" -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości – premiera filmu"  -> "Zbrodnie przyszłości"
+    )
+    cases.foreach { case (variant, base) =>
+      // The display title (canonical) drops the suffix …
+      withClue(s"canonical('$variant') → '$base': ")(
+        withExtras.canonical(variant) shouldBe base)
+      // … and the row folds onto the bare film's merge key.
+      withClue(s"foldKey('$variant') vs '$base': ")(
+        foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave the '– Premiera' suffix on the display title" in {
+    Seq(
+      "Zbrodnie przyszłości – Premiera",
+      "Zbrodnie przyszłości – Wielka Premiera"
+    ).foreach { v =>
+      withClue(s"seedOnly.canonical('$v') should still carry the suffix: ")(
+        seedOnly.canonical(v) shouldBe v)
+    }
+  }
+
+  it should "not strip a bare 'Premiera' / 'przedpremiera' — no separator, or the przed- prefix" in {
+    val unharmed = Seq(
+      "Premiera",                          // the bare word IS the title — no separator
+      "Ostatnia Premiera",                 // space-joined, not a banner separator
+      "Takie jest życie - przedpremiera",  // an EARLIER screening — kept its own row (query-only strip)
+      "Ojczyzna | przedpremierowo"
+    )
+    unharmed.foreach { t =>
+      withClue(s"canonical('$t') unchanged: ")(withExtras.canonical(t) shouldBe t)
+    }
+  }
+
   // "Niesamowite przygody skarpetek 3. Ale kosmos!" is TMDB-no-match, so nothing
   // folds its fragments — Helios's Roman "III", Cinema City's source-truncated
   // "Ale ko", the subtitle-less "…skarpetek 3", and the format-tagged variants

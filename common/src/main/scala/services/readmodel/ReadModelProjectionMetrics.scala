@@ -42,11 +42,10 @@ trait ReadModelProjectionMetrics {
    *  showtime-churn the reproject/enrich pipeline generates is the whole point. */
   def recordMetadataProjection(reused: Boolean): Unit
 
-  /** One reconciliation sweep finished. `kind` distinguishes the cheap frequent
-   *  orphan prune from the expensive periodic full re-projection; `didWork` is
-   *  whether it pruned or reprojected at least one document. The point of the
-   *  signal: a `reproject` sweep that is almost always `didWork=false` proves the
-   *  change stream is reliable and the full sweep is redundant. */
+  /** One orphan-prune sweep finished. `didWork` is whether it pruned at least one
+   *  document — the deletes/re-keys the change stream can't deliver. (Only the prune
+   *  is metered now; the full re-projection was retired, and with it its did_work
+   *  gate.) `kind` is always `prune`; the label is kept for metric-shape stability. */
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit
 }
 
@@ -55,14 +54,15 @@ object ReadModelProjectionMetrics {
   object Target { val Movie = "movie"; val Screening = "screening" }
   /** Prometheus `op` label values for the writes counter. */
   object Op { val Upsert = "upsert"; val Delete = "delete" }
-  /** `kind` label values for the reconcile-sweep counter. */
-  object ReconcileKind { val Prune = "prune"; val Reproject = "reproject" }
+  /** `kind` label values for the reconcile-sweep counter. Only the prune is metered
+   *  now (the full reproject was retired). */
+  object ReconcileKind { val Prune = "prune" }
   /** `outcome` label values for the metadata-projection counter. */
   object MetadataOutcome { val Reused = "reused"; val Recomputed = "recomputed" }
 
   val Targets: Seq[String]        = Seq(Target.Movie, Target.Screening)
   val Ops:     Seq[String]        = Seq(Op.Upsert, Op.Delete)
-  val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune, ReconcileKind.Reproject)
+  val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune)
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
 
   val noop: ReadModelProjectionMetrics = new ReadModelProjectionMetrics {

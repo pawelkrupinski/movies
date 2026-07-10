@@ -303,7 +303,7 @@ showings:
 
 === Backrooms. Bez wyjścia ===
 displayTitle:      Backrooms. Bez wyjścia
-cinemaTitles:      BACKROOMS. BEZ WYJŚCIA | Backrooms bez wyjścia | Backrooms. Bez wyjścia | Backrooms. Bez wyjśćia | „Backrooms. Bez wyjścia” - UROCZYSTA POLSKA PREMIERA
+cinemaTitles:      BACKROOMS. BEZ WYJŚCIA | Backrooms bez wyjścia | Backrooms. Bez wyjścia | Backrooms. Bez wyjśćia
 runtimeMinutes:    111
 releaseYear:       2026
 countries:         USA, Kanada
@@ -368,7 +368,7 @@ cinemaScrapes:
   Helios Alfa / Backrooms. Bez wyjścia / —
   Helios Biała / Backrooms. Bez wyjścia / —
   Helios Bielsko-Biała / Backrooms. Bez wyjścia / —
-  Helios Blue City / „Backrooms. Bez wyjścia” - UROCZYSTA POLSKA PREMIERA / —
+  Helios Blue City / Backrooms. Bez wyjścia / —
   Helios Bydgoszcz / Backrooms. Bez wyjścia / —
   Helios Dąbrowa Górnicza / Backrooms. Bez wyjścia / —
   Helios Forum / Backrooms. Bez wyjścia / —
