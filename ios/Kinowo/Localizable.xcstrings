@@ -1,0 +1,102 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "citygate.choose_other" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose another city" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wybierz inne miasto" } }
+      }
+    },
+    "citygate.choose_title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a city" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wybierz miasto" } }
+      }
+    },
+    "citygate.nav_title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "City" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Miasto" } }
+      }
+    },
+    "citygate.near_label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Looks like you’re near" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Wygląda na to, że jesteś w pobliżu miasta" } }
+      }
+    },
+    "citygate.no_match" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No city named “%@”." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Brak miasta o nazwie „%@”." } }
+      }
+    },
+    "citygate.resolving" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Finding your nearest city…" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Ustalamy najbliższe miasto…" } }
+      }
+    },
+    "citygate.search_hint" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search for a city" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Szukaj miasta" } }
+      }
+    },
+    "citygate.show_repertoire" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show showtimes — %@" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Pokaż repertuar — %@" } }
+      }
+    },
+    "content.error" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn’t load showtimes." } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Nie udało się pobrać repertuaru." } }
+      }
+    },
+    "content.loading" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading showtimes…" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Ładowanie repertuaru…" } }
+      }
+    },
+    "content.retry" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try again" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Spróbuj ponownie" } }
+      }
+    },
+    "country.label" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Country" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Kraj" } }
+      }
+    },
+    "switch.confirm" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Switch" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Przełącz" } }
+      }
+    },
+    "switch.nearer_title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You’re closer to %@" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Jesteś bliżej miasta %@" } }
+      }
+    },
+    "switch.not_now" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not now" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Nie teraz" } }
+      }
+    },
+    "switch.question" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Switch showtimes to %@?" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Przełączyć repertuar na %@?" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

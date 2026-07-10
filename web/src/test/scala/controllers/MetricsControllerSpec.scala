@@ -30,15 +30,15 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
       )
     )
 
-    val out = MetricsController.render(snapshots, now)
+    val out = MetricsController.render(snapshots, now, "pl")
 
-    out should include ("kinowo_uptime_recent_failures{service=\"Residential proxy\"} 15")
-    out should include ("kinowo_uptime_recent_successes{service=\"Residential proxy\"} 1")
+    out should include ("kinowo_uptime_recent_failures{country=\"pl\",service=\"Residential proxy\"} 15")
+    out should include ("kinowo_uptime_recent_successes{country=\"pl\",service=\"Residential proxy\"} 1")
     out should not include "99" // the stale bucket is excluded entirely
   }
 
   it should "emit one HELP and TYPE header per metric family" in {
-    val out = MetricsController.render(Map("X" -> Seq(BucketSnapshot(now, 1, 0, 0, Nil))), now)
+    val out = MetricsController.render(Map("X" -> Seq(BucketSnapshot(now, 1, 0, 0, Nil))), now, "pl")
 
     out should include ("# TYPE kinowo_uptime_recent_successes gauge")
     out should include ("# TYPE kinowo_uptime_recent_failures gauge")
@@ -47,7 +47,7 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "escape quotes in a service-name label value" in {
-    val out = MetricsController.render(Map("weird\"name" -> Seq(BucketSnapshot(now, 1, 0, 0, Nil))), now)
+    val out = MetricsController.render(Map("weird\"name" -> Seq(BucketSnapshot(now, 1, 0, 0, Nil))), now, "pl")
 
     out should include ("service=\"weird\\\"name\"")
   }
@@ -64,7 +64,7 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe OK
     contentType(result) shouldBe Some("text/plain")
     val body = contentAsString(result)
-    body should include ("kinowo_uptime_recent_failures{service=\"Residential proxy\"} 4")
-    body should include ("kinowo_uptime_recent_successes{service=\"Residential proxy\"} 1")
+    body should include ("kinowo_uptime_recent_failures{country=\"pl\",service=\"Residential proxy\"} 4")
+    body should include ("kinowo_uptime_recent_successes{country=\"pl\",service=\"Residential proxy\"} 1")
   }
 }

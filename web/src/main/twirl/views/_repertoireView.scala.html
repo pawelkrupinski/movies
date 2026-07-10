@@ -1,10 +1,10 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], devMode: Boolean)(implicit city: models.City)
+@(films: Seq[FilmSchedule], devMode: Boolean)(implicit city: models.City, messages: play.api.i18n.Messages)
 @* The Filmy view-root. Rendered inside `#view-pager` (the day carousel
    viewport) on the full repertoire page. *@
 <main id="view-root" data-view="films">
 <div class="container-fluid py-4 px-4">
-  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
+  <div id="no-films" class="text-center py-5 text-secondary" style="display:none">@messages("empty.repertoire")</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
     @_filmCards(films)
   </div>

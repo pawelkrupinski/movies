@@ -14,7 +14,7 @@ import play.api.mvc._
  * Hard cut: the old unprefixed repertoire URLs no longer exist; this is the
  * only thing served at `/`.
  */
-class LandingController(cc: ControllerComponents) extends AbstractController(cc) {
+class LandingController(cc: ControllerComponents)(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) {
   def index(): Action[AnyContent] = Action { request =>
     request.cookies.get("city").map(_.value).flatMap(City.bySlug) match {
       case Some(c) => Redirect(s"/${c.slug}/")

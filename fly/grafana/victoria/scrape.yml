@@ -31,3 +31,20 @@ scrape_configs:
       - targets: ['kinowo-worker.internal:9000']
         labels:
           app: kinowo-worker
+
+  # Multi-country: the ONE worker process serves every country and tags each
+  # kinowo_worker_* series with a `country` label, so the single kinowo-worker
+  # target above already carries all countries — no per-country worker target is
+  # needed. A WEB deployment, by contrast, serves exactly ONE country per Fly app
+  # (KINOWO_COUNTRY), so a second country means a second web app + a second scrape
+  # target here. Its /metrics already self-labels `country=…` (see
+  # controllers.MetricsController / WebMovieMetrics), and the app label
+  # distinguishes the Fly app. Uncomment + rename when the second web app exists:
+  #
+  # - job_name: kinowo-uk-web
+  #   metrics_path: /metrics
+  #   scheme: http
+  #   static_configs:
+  #     - targets: ['kinowo-uk.internal:9000']
+  #       labels:
+  #         app: kinowo-uk

@@ -15,7 +15,7 @@ final class DetailsStore: ObservableObject {
     /// a synopsis or a trailer, so a missing key is the common case.
     @Published private(set) var byTitle: [String: FilmDetails] = [:]
 
-    private let base: URL
+    private var base: URL
     private var url: URL
     private var citySlug: String
     private let session: URLSession
@@ -30,6 +30,17 @@ final class DetailsStore: ObservableObject {
         self.citySlug = citySlug
         self.url = City.apiURL(base: base, slug: citySlug, endpoint: "details")
         self.session = session
+    }
+
+    /// Re-point at a different country's deployment: rebuild the base + URL and
+    /// force the next fetch (see `RepertoireStore.use(country:)`).
+    func use(country: Country) {
+        let next = City.apiURL(base: country.baseURL, slug: citySlug, endpoint: "details")
+        guard next != url else { return }
+        base = country.baseURL
+        url = next
+        lastReloadedAt = nil
+        Task { await reload() }
     }
 
     /// Re-point at a different city (see `RepertoireStore.use`).

@@ -1,5 +1,7 @@
 package views
 
+import testsupport.TestMessages.given
+
 import models.Poznan
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -57,7 +59,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     val html = views.html.repertoire(
       service.toSchedules(models.Wroclaw, now), models.Wroclaw.cinemaDisplayNames, models.Wroclaw.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
-    )(models.Wroclaw).body
+    )(models.Wroclaw, summon[play.api.i18n.Messages]).body
     assertSnapshot(snapshotDirectory.resolve("expected-wroclaw-index.html"), html)
   }
 
@@ -65,7 +67,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     val html = views.html.repertoire(
       service.toSchedules(models.Warszawa, now), models.Warszawa.cinemaDisplayNames, models.Warszawa.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
-    )(models.Warszawa).body
+    )(models.Warszawa, summon[play.api.i18n.Messages]).body
     assertSnapshot(snapshotDirectory.resolve("expected-warszawa-index.html"), html)
   }
 

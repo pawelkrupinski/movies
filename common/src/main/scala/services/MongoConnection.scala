@@ -55,7 +55,15 @@ class MongoConnection(
     // driver default (30s) — what the prod cluster wants, to ride out a slow /
     // recovering node. The loopback `/debug` mirror passes a short cap so a dead
     // mirror fails fast instead of wedging every read on the 30s default.
-    serverSelectionTimeout: Option[FiniteDuration] = None) extends Logging {
+    serverSelectionTimeout: Option[FiniteDuration] = None,
+    // An externally-owned `MongoClient` to bind this database view to, SHARED
+    // across several per-country connections on one cluster. When set we do NOT
+    // build or `close()` a client — the owner (WorkerMain) does — so N countries
+    // reuse ONE connection pool / Netty event loop / replica-set monitor thread
+    // set instead of each spinning a full client (the RSS blow-up this class was
+    // created to avoid). When `None` we build (and close) our own from `uri`, the
+    // single-connection default every existing call site keeps.
+    sharedClient: Option[MongoClient] = None) extends Logging {
 
   // Eager — connecting now (at construction) surfaces wiring / network
   // problems at boot rather than at the first request. `Wiring` touches
@@ -69,7 +77,9 @@ class MongoConnection(
    *  Mongo was absent/unreachable (when `required`, init threw instead). */
   def database: Option[MongoDatabase] = initResult._2
 
-  def close(): Unit = initResult._1.foreach(_.close())
+  // Only close a client WE built. A `sharedClient` is owned by the caller
+  // (WorkerMain closes it once, after every borrowing connection is stopped).
+  def close(): Unit = if (sharedClient.isEmpty) initResult._1.foreach(_.close())
 
   /** Start a fresh `ClientSession` for a multi-document transaction (the staging
    *  fold). `None` when Mongo is disabled. Requires a replica set — a standalone
@@ -88,7 +98,8 @@ class MongoConnection(
         (None, None)
       case Some(connectionString) =>
         Try {
-          val client = MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout))
+          val client = sharedClient.getOrElse(
+            MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout)))
           val db     = client.getDatabase(dbName)
           // Touch the database to surface connectivity errors at boot
           // (same `countDocuments`-against-a-known-collection probe the
@@ -151,15 +162,39 @@ object MongoConnection extends Logging {
     raw.flatMap(_.toIntOption).filter(_ > 0).map(_.seconds).getOrElse(DefaultProbeTimeout)
 
   /** Build from the ambient environment (`MONGODB_URI` / `MONGODB_DB`,
-   *  defaulting the db name to `kinowo`) — the wiring's entry point.
+   *  defaulting the db name to the country's database via
+   *  `Country.resolvedDbName` — `kinowo` for Poland) — the wiring's entry point.
    *  `required = true` turns a missing or unreachable Mongo into a hard boot
    *  failure instead of silent degradation. */
   def fromEnv(required: Boolean): MongoConnection =
     new MongoConnection(
       Env.get("MONGODB_URI"),
-      Env.get("MONGODB_DB").getOrElse("kinowo"),
+      models.Country.resolvedDbName,
       required,
       parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")))
+
+  /** Like [[fromEnv]] but against an EXPLICIT database name (the caller's
+   *  country, via `Country.dbNameFor`) and optionally bound to a `sharedClient`
+   *  so several per-country connections reuse ONE pool. The worker builds one of
+   *  these per country it runs; `fromEnv` stays the single-db (web) entry point.
+   *  `MONGODB_DB` is already folded into `dbName` by the caller, so it isn't
+   *  re-read here. */
+  def fromEnvForDb(dbName: String, required: Boolean,
+      sharedClient: Option[MongoClient] = None): MongoConnection =
+    new MongoConnection(
+      Env.get("MONGODB_URI"),
+      dbName,
+      required,
+      parseProbeTimeout(Env.get("MONGODB_PROBE_TIMEOUT_SECONDS")),
+      sharedClient = sharedClient)
+
+  /** One shared `MongoClient` for the whole process, built from `MONGODB_URI`,
+   *  to be bound to per-country database views via [[fromEnvForDb]]'s
+   *  `sharedClient`. `None` when `MONGODB_URI` is unset (local opt-out) — each
+   *  connection then degrades on its own. The caller OWNS `close()`-ing the
+   *  returned client, after every connection that borrowed it is closed. */
+  def sharedClientFromEnv(serverSelectionTimeout: Option[FiniteDuration] = None): Option[MongoClient] =
+    Env.get("MONGODB_URI").map(cs => MongoClient(clientSettings(cs, serverSelectionTimeout)))
 
   /** Build from an explicit URI rather than `MONGODB_URI` — for a second
    *  connection alongside the primary one. The web wiring uses it for the
@@ -186,13 +221,14 @@ object MongoConnection extends Logging {
   /** Database name for an explicit-URI connection: the URI's own path (e.g.
    *  `…/kinowo_prod_mirror`), so the `/debug` mirror lives in a different
    *  database than the app's working db (`MONGODB_DB`, used by the prod
-   *  connection). Falls back to `MONGODB_DB` (then `kinowo`) when the URI names
-   *  no database. The parse is guarded so a malformed URI flows through to
+   *  connection). Falls back to `Country.resolvedDbName` (explicit `MONGODB_DB`,
+   *  else the country's database) when the URI names no database. The parse is
+   *  guarded so a malformed URI flows through to
    *  `MongoConnection`'s own required/optional handling instead of throwing here. */
   private[services] def databaseFromUri(uri: String): String =
     Try(Option(new ConnectionString(uri).getDatabase)).toOption.flatten
       .filter(_.nonEmpty)
-      .getOrElse(Env.get("MONGODB_DB").getOrElse("kinowo"))
+      .getOrElse(models.Country.resolvedDbName)
 
   /** Driver settings for a connection string. Wire compression (zlib — built into
    *  the JDK, no dependency) is forced ONLY when the host is loopback: the slow

@@ -10,6 +10,13 @@ struct KinowoApp: App {
     @StateObject private var deepLink = DeepLinkCoordinator()
 
     init() {
+        // Force the selected country's language at process start so the bundle's
+        // preferred localization (what `Text`/`String(localized:)` resolve
+        // against) matches the choice from the first frame — Poland's Polish by
+        // default. iOS reads `AppleLanguages` only at launch, so an in-session
+        // country switch persists the new tag here and fully lands on relaunch;
+        // the root `.environment(\.locale)` below flips SwiftUI `Text` in-session.
+        UserDefaults.standard.set([CountrySelection.current().languageCode], forKey: "AppleLanguages")
         let preferences = UserPreferences()
         let authService = AuthService()
         _prefs = StateObject(wrappedValue: preferences)
@@ -30,6 +37,11 @@ struct KinowoApp: App {
                 .environmentObject(authService)
                 .environmentObject(sync)
                 .environmentObject(deepLink)
+                // Follow the selected country's language for in-session SwiftUI
+                // `Text(LocalizedStringKey)` resolution (keyed to the choice so a
+                // switch re-localizes the view tree).
+                .environment(\.locale, Locale(identifier: prefs.selectedCountry.languageCode))
+                .id(prefs.selectedCountry.code)
                 .preferredColorScheme(.dark)
                 .tint(Color(red: 0.42, green: 0.67, blue: 0.87))
                 .task { await authService.checkSession() }

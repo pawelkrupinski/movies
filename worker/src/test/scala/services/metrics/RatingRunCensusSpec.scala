@@ -70,8 +70,9 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   "RatingRunCensus.sample" should "publish per-site backlog gauges onto the registry, seeded at 0" in {
-    val registry = new PrometheusRegistry()
-    val census   = new RatingRunCensus(cacheOf(entries), freshness(), registry, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
+    val registry           = new PrometheusRegistry()
+    val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
+    val census   = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, "pl", java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
 
     // Before sampling, every site series exists at 0 (no Grafana gaps).
     val seeded = PrometheusExposition.render(registry)
@@ -100,5 +101,5 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   private def gauge(text: String, name: String, site: String): Option[Double] =
-    PrometheusExposition.sample(text, name, s"""site="$site"""")
+    PrometheusExposition.sample(text, name, s"""country="pl",site="$site"""")
 }

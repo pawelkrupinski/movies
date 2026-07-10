@@ -145,7 +145,7 @@ class MongoUserRepository(
         (None, None)
       case Some(uri) =>
         Try {
-          val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+          val dbName = models.Country.resolvedDbName
           val client = MongoClient(uri)
           val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
           val coll   = db.getCollection[User]("users")

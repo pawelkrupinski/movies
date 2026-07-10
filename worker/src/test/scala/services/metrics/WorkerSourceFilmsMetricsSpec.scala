@@ -87,7 +87,7 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
 
   "sample" should "publish the per-city counts onto the shared registry" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerSourceFilmsMetrics(corpus, registry, clock = clock)
+    val metrics  = new WorkerSourceFilmsMetrics(corpus, WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock)
 
     metrics.sample()
     val text = PrometheusExposition.render(registry)
@@ -100,7 +100,7 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "seed every city at 0 before the first sample (a drop-to-zero is a sample, not an absence)" in {
     val registry = new PrometheusRegistry()
-    new WorkerSourceFilmsMetrics(repositoryOf(), registry, clock = clock) // constructed, not yet sampled
+    new WorkerSourceFilmsMetrics(repositoryOf(), WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock) // constructed, not yet sampled
 
     val text = PrometheusExposition.render(registry)
     gauge(text, "krakow", Scope.All)      shouldBe Some(0.0)

@@ -53,7 +53,7 @@ class PlanController(
   userRepository:               services.users.UserRepository,
   oauthProviders:         Set[String],
   environment:            Mode
-) extends AbstractController(cc) with Logging {
+)(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
 
   private def currentUser(request: RequestHeader): Option[models.User] =
     request.session.get("userId").flatMap(userRepository.findById)

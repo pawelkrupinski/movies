@@ -1,4 +1,4 @@
-@(oauthProviders: Set[String])
+@(oauthProviders: Set[String])(implicit messages: play.api.i18n.Messages)
 @*
    Login modal — rendered once per page. Hidden by default; the "Zaloguj się"
    pill in `_navbar` flips its display:none. Two large buttons (Google,
@@ -11,26 +11,26 @@
    favourite/hide of the day. Clicking the body opens the login modal;
    the × dismisses without opening it. *@
 <div class="anon-nag-toast" id="anon-nag-toast" onclick="closeAnonymousNag(); openLoginModal();">
-  <button type="button" class="anon-nag-close" onclick="event.stopPropagation(); closeAnonymousNag();" aria-label="Zamknij">&times;</button>
-  Te <strong>ulubione i ukrycia</strong> będą dostępne tylko na tym urządzeniu. <strong>Zaloguj się</strong>, by synchronizować.
+  <button type="button" class="anon-nag-close" onclick="event.stopPropagation(); closeAnonymousNag();" aria-label="@messages("auth.close")">&times;</button>
+  @Html(messages("login.nag"))
 </div>
 
 <div class="login-modal-backdrop" id="login-modal-backdrop" onclick="closeLoginModal()">
   <div class="login-modal" onclick="event.stopPropagation()">
-    <button type="button" class="login-modal-close" onclick="closeLoginModal()" aria-label="Zamknij">&times;</button>
-    <div class="login-modal-title">Zaloguj się</div>
-    <div class="login-modal-sub">Twoje ulubione i ukryte filmy będą synchronizowane między urządzeniami.</div>
+    <button type="button" class="login-modal-close" onclick="closeLoginModal()" aria-label="@messages("auth.close")">&times;</button>
+    <div class="login-modal-title">@messages("login.title")</div>
+    <div class="login-modal-sub">@messages("login.sub")</div>
     <div class="login-modal-buttons">
       @if(oauthProviders.contains("google")) {
         <a href="/auth/google/start" class="login-btn login-btn-google">
           <span class="login-btn-icon">G</span>
-          <span class="login-btn-label">Kontynuuj z Google</span>
+          <span class="login-btn-label">@messages("login.google")</span>
         </a>
       }
       @if(oauthProviders.contains("facebook")) {
         <a href="/auth/facebook/start" class="login-btn login-btn-facebook">
           <span class="login-btn-icon">f</span>
-          <span class="login-btn-label">Kontynuuj z Facebookiem</span>
+          <span class="login-btn-label">@messages("login.facebook")</span>
         </a>
       }
     </div>

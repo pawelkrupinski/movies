@@ -49,11 +49,11 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
 
     // Poznań: 2 films with a future showing (the past-only one drops out); 1 of
     // them shows tomorrow.
-    out should include ("kinowo_web_movies_served{city=\"poznan\",scope=\"all\"} 2")
-    out should include ("kinowo_web_movies_served{city=\"poznan\",scope=\"tomorrow\"} 1")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"poznan\",scope=\"all\"} 2")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"poznan\",scope=\"tomorrow\"} 1")
     // Wrocław: 1 film, showing tomorrow.
-    out should include ("kinowo_web_movies_served{city=\"wroclaw\",scope=\"all\"} 1")
-    out should include ("kinowo_web_movies_served{city=\"wroclaw\",scope=\"tomorrow\"} 1")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"wroclaw\",scope=\"all\"} 1")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"wroclaw\",scope=\"tomorrow\"} 1")
   }
 
   it should "emit an explicit 0 for a city with no films (so a drop-to-zero is a sample, not an absence)" in {
@@ -61,18 +61,19 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
     m.sample()
     val out = m.render()
 
-    out should include ("kinowo_web_movies_served{city=\"krakow\",scope=\"all\"} 0")
-    out should include ("kinowo_web_movies_served{city=\"krakow\",scope=\"tomorrow\"} 0")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"krakow\",scope=\"all\"} 0")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"krakow\",scope=\"tomorrow\"} 0")
   }
 
   "render" should "emit one HELP and TYPE header and be sorted by city slug" in {
     val out = WebMovieMetrics.render(Seq(
       WebMovieMetrics.CityCounts("wroclaw", all = 5, tomorrow = 2),
       WebMovieMetrics.CityCounts("krakow",  all = 3, tomorrow = 1),
-    ))
+    ), "pl")
 
     out should include ("# TYPE kinowo_web_movies_served gauge")
     out should include ("# HELP kinowo_web_movies_served")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"krakow\",scope=\"all\"} 3")
     out.indexOf("city=\"krakow\"") should be < out.indexOf("city=\"wroclaw\"")
   }
 
@@ -81,6 +82,6 @@ class WebMovieMetricsSpec extends AnyFlatSpec with Matchers {
     // an empty body, so a scrape during boot reads zeros not missing series.
     val out = metrics.render()
 
-    out should include ("kinowo_web_movies_served{city=\"poznan\",scope=\"all\"} 0")
+    out should include ("kinowo_web_movies_served{country=\"pl\",city=\"poznan\",scope=\"all\"} 0")
   }
 }

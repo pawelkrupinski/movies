@@ -72,6 +72,7 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
 
     val controllerComponents = stubControllerComponents()
     def environmentMode       = play.api.Mode.Test
+    def messagesApi           = testsupport.TestMessages.messagesApi
     implicit def materializer: org.apache.pekko.stream.Materializer = null
 
     /** Expose the protected data-layer start so the test can drive it. */

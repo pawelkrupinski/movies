@@ -1,6 +1,6 @@
 package controllers
 
-import models.City
+import models.{City, Country}
 import play.api.Logging
 import tools.DaemonExecutors
 
@@ -30,7 +30,11 @@ import scala.util.Try
 class WebMovieMetrics(
   service: MovieControllerService,
   cities:  Seq[City]  = City.all,
-  clock:   Clock      = Clock.systemDefaultZone()
+  clock:   Clock      = Clock.systemDefaultZone(),
+  // A web deployment serves exactly one country; its metrics carry a constant
+  // `country` label so they line up with the worker's per-country series on the
+  // shared Grafana dashboards. Defaults to the default country for tests.
+  country: String     = Country.default.code
 ) extends Logging {
 
   private val latest = new AtomicReference[Seq[WebMovieMetrics.CityCounts]](
@@ -55,7 +59,7 @@ class WebMovieMetrics(
   }
 
   /** Prometheus text exposition of the latest sample, appended to `/metrics`. */
-  def render(): String = WebMovieMetrics.render(latest.get())
+  def render(): String = WebMovieMetrics.render(latest.get(), country)
 
   def start(): Unit = {
     Try(sample()).recover { case e => logger.warn(s"web-movie-metrics initial sample failed: ${e.getMessage}") }
@@ -77,21 +81,22 @@ object WebMovieMetrics {
   case class CityCounts(citySlug: String, all: Int, tomorrow: Int)
 
   /** Pure exposition of the per-city counts (city slugs are lowercase ascii
-   *  kebab — no label escaping needed). Cities are emitted in slug order so the
-   *  output and its tests are deterministic. */
-  def render(counts: Seq[CityCounts]): String = {
+   *  kebab — no label escaping needed), tagged with the deployment's `country`.
+   *  Cities are emitted in slug order so the output and its tests are
+   *  deterministic. */
+  def render(counts: Seq[CityCounts], country: String): String = {
     val sb = new StringBuilder
     sb.append("# HELP ").append(Name)
-      .append(" Films the web is currently serving per city, by scope: all future showings, or showing tomorrow.\n")
+      .append(" Films the web is currently serving per country and city, by scope: all future showings, or showing tomorrow.\n")
     sb.append("# TYPE ").append(Name).append(" gauge\n")
     counts.sortBy(_.citySlug).foreach { c =>
-      appendLine(sb, c.citySlug, "all", c.all)
-      appendLine(sb, c.citySlug, "tomorrow", c.tomorrow)
+      appendLine(sb, country, c.citySlug, "all", c.all)
+      appendLine(sb, country, c.citySlug, "tomorrow", c.tomorrow)
     }
     sb.toString
   }
 
-  private def appendLine(sb: StringBuilder, citySlug: String, scope: String, value: Int): Unit =
-    sb.append(Name).append("{city=\"").append(citySlug).append("\",scope=\"").append(scope).append("\"} ")
-      .append(value).append('\n')
+  private def appendLine(sb: StringBuilder, country: String, citySlug: String, scope: String, value: Int): Unit =
+    sb.append(Name).append("{country=\"").append(country).append("\",city=\"").append(citySlug)
+      .append("\",scope=\"").append(scope).append("\"} ").append(value).append('\n')
 }

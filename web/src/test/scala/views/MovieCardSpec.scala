@@ -1,5 +1,7 @@
 package views
 
+import testsupport.TestMessages.given
+
 import models.{CinemaCityKinepolis, Imdb, Movie, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

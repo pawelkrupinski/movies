@@ -12,7 +12,7 @@ final class RepertoireStore: ObservableObject {
     /// for `films` to merely be non-empty.
     @Published private(set) var loadedCitySlug: String?
 
-    private let base: URL
+    private var base: URL
     private var url: URL
     private var citySlug: String
     private let session: URLSession
@@ -30,6 +30,20 @@ final class RepertoireStore: ObservableObject {
         self.citySlug = citySlug
         self.url = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
         self.session = session
+    }
+
+    /// Re-point at a different country's deployment: rebuild the base + URL,
+    /// drop the freshness stamp, and reload so the grid swaps to the new
+    /// country's repertoire. The city slug is preserved; when it isn't served by
+    /// the new deployment the fetch simply comes back empty until the user picks
+    /// a city the new country serves.
+    func use(country: Country) {
+        let next = City.apiURL(base: country.baseURL, slug: citySlug, endpoint: "repertoire")
+        guard next != url else { return }
+        base = country.baseURL
+        url = next
+        lastReloadedAt = nil
+        Task { await reload() }
     }
 
     /// Re-point at a different city: rebuild the URL, drop the freshness

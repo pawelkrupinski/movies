@@ -31,7 +31,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
   private def render(registry: PrometheusRegistry): String = PrometheusExposition.render(registry)
 
   private def gauge(text: String, subset: String): Option[Double] =
-    PrometheusExposition.sample(text, WorkerCorpusMetrics.Name, s"""subset="$subset"""")
+    PrometheusExposition.sample(text, WorkerCorpusMetrics.Name, s"""country="pl",subset="$subset"""")
 
   // A mix exercising every subset: each record opts into a distinct combination.
   private val corpus = Seq(
@@ -60,7 +60,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
 
   "WorkerCorpusMetrics.sample" should "publish every subset onto the shared registry" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerCorpusMetrics(repositoryOf(corpus*), registry)
+    val metrics  = new WorkerCorpusMetrics(repositoryOf(corpus*), WorkerCorpusMetrics.gauge(registry), "pl")
 
     metrics.sample()
     val text = render(registry)
@@ -77,7 +77,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "materialize every subset series at 0 before the first sample" in {
     val registry = new PrometheusRegistry()
-    new WorkerCorpusMetrics(repositoryOf(), registry) // constructed, not yet sampled
+    new WorkerCorpusMetrics(repositoryOf(), WorkerCorpusMetrics.gauge(registry), "pl") // constructed, not yet sampled
     val text = render(registry)
 
     Subset.all.foreach(s => gauge(text, s) shouldBe Some(0.0))

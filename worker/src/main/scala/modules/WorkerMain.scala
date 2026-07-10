@@ -1,7 +1,11 @@
 package modules
 
 import com.sun.net.httpserver.HttpServer
+import models.Country
+import org.mongodb.scala.MongoClient
 import play.api.Logging
+import services.MongoConnection
+import tools.{Env, ExecutionBudget, SharedExecutionBudget}
 
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -40,21 +44,48 @@ object WorkerMain extends Logging {
     val health = startHealthServer(port)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
 
-    val wiring =
+    // The countries this worker runs (KINOWO_COUNTRIES, default just the default
+    // country). One shared background concurrency budget + one shared MongoClient
+    // are built ONCE here and injected into every country's wiring, so all
+    // countries draw run permits from one cap and reuse one connection pool /
+    // monitor-thread set — each country still keeps its OWN event bus and its OWN
+    // per-country database view on that shared client.
+    val countries    = resolveCountries()
+    val sharedBudget: ExecutionBudget =
+      new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
+    val sharedClient: Option[MongoClient] = MongoConnection.sharedClientFromEnv()
+    // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
+    // of metric objects (each tagged with a `country` label), shared by every
+    // country's wiring. This is what fixes the earlier "primary country's registry
+    // only, others headless" gap — every country writes its own `country="…"` slice
+    // and ALL of them surface on the single /metrics endpoint below.
+    val workerMetrics = new services.metrics.WorkerMetrics(
+      countries.map(_.code), Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4))
+    logger.info(s"Worker running countries: ${countries.map(_.code).mkString(", ")}")
+
+    val wirings =
       try {
-        val w = new WorkerWiring()
-        w.start()
-        w
+        val ws = countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics)))
+        ws.foreach(_.start())
+        workerMetrics.start() // process-level JVM/native samplers, once
+        ws
       } catch {
         case e: Throwable =>
           logger.error(s"Worker failed to start — shutting down: ${e.getMessage}", e)
+          sharedClient.foreach(_.close())
           health.stop(0)
           sys.exit(1)
       }
+    // Liveness/throttle below target the FIRST country's wiring (the default-country
+    // one on a single-country deploy). Metrics now cover ALL countries (shared
+    // registry, country label). TODO(multi-country): per-country liveness/watchdog +
+    // per-country /throttle routing; for now the primary's watchdog is exposed.
+    val wiring = wirings.head
     logger.info("Worker up — scraping/enriching")
 
-    // Register /metrics now that the queue + metrics are live (it reads both).
-    addMetricsEndpoint(health, wiring)
+    // Register /metrics now that every country's queue + metrics are live: one
+    // scrape renders the shared registry with all countries' series.
+    addMetricsEndpoint(health, workerMetrics, wirings)
     logger.info(s"Worker metrics up on :$port/metrics")
 
     // /throttle — an external pusher (a Grafana alert on fly_instance_cpu_balance)
@@ -75,14 +106,41 @@ object WorkerMain extends Logging {
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       logger.info("Worker received shutdown signal — draining the enrichment cascade…")
-      try wiring.stop()
-      catch { case e: Throwable => logger.warn(s"Drain error on shutdown: ${e.getMessage}") }
+      try workerMetrics.stop() // process-level samplers, once
+      catch { case e: Throwable => logger.warn(s"Metrics stop error on shutdown: ${e.getMessage}") }
+      wirings.foreach { w =>
+        try w.stop()
+        catch { case e: Throwable => logger.warn(s"Drain error on shutdown: ${e.getMessage}") }
+      }
+      // Close the shared client last — each wiring's `stop()` closed only its own
+      // (per-country) resources; the borrowed client is owned here.
+      try sharedClient.foreach(_.close())
+      catch { case e: Throwable => logger.warn(s"Mongo client close error on shutdown: ${e.getMessage}") }
       finally {
         health.stop(0)
         done.countDown()
       }
     }))
     done.await()
+  }
+
+  /** The countries this worker instance runs, from `KINOWO_COUNTRIES` (comma-
+   *  separated codes), defaulting to just [[Country.default]] so a single-country
+   *  deploy needs no new env var. Unknown codes are logged and skipped; an empty
+   *  or all-unknown list falls back to the default so the worker never boots with
+   *  zero countries. */
+  private def resolveCountries(): Seq[Country] = {
+    val codes = Env.get("KINOWO_COUNTRIES")
+      .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).toList)
+      .filter(_.nonEmpty)
+      .getOrElse(List(Country.default.code))
+    val resolved = codes.flatMap { code =>
+      Country.byCode(code).orElse {
+        logger.warn(s"Unknown country code '$code' in KINOWO_COUNTRIES — skipping.")
+        None
+      }
+    }.distinct
+    if (resolved.isEmpty) Seq(Country.default) else resolved
   }
 
   private def startHealthServer(port: Int): HttpServer = {
@@ -135,17 +193,22 @@ object WorkerMain extends Logging {
    *  WorkerWiring is up since it reads the live queue + metrics. Served from a
    *  [[services.metrics.MetricsSnapshotCache]] so the scrape never blocks on the
    *  Mongo reads taskMetrics.scrape performs — see that class for why. */
-  private def addMetricsEndpoint(server: HttpServer, wiring: WorkerWiring): Unit = {
-    // Render the exposition OFF the scrape request path. taskMetrics.scrape reads
-    // the queue depth + staging counts from Mongo (a find + three countDocuments +
-    // a full staging scan, each a 10s Await); doing that inside the handler made a
-    // momentarily-slow Mongo blow VictoriaMetrics' 10s scrape_timeout → up=0 →
-    // every kinowo_worker_* panel blank for that window. The cache refreshes on a
-    // daemon thread and the handler just returns the last rendered bytes.
+  private def addMetricsEndpoint(server: HttpServer, workerMetrics: services.metrics.WorkerMetrics, wirings: Seq[WorkerWiring]): Unit = {
+    // Render the exposition OFF the scrape request path. The per-country scrape
+    // reads each country's queue depth + staging counts from Mongo (a find + three
+    // countDocuments + a full staging scan, each a 10s Await); doing that inside the
+    // handler made a momentarily-slow Mongo blow VictoriaMetrics' 10s scrape_timeout
+    // → up=0 → every kinowo_worker_* panel blank for that window. The cache refreshes
+    // on a daemon thread and the handler just returns the last rendered bytes.
+    //
+    // One render over the SHARED registry covers every country (each wiring supplies
+    // its own country-tagged queue sample) plus the process-level JVM/native series.
     val snapshot = new services.metrics.MetricsSnapshotCache(render = () =>
-      wiring.taskMetrics.scrape(
-        wiring.taskQueue.monitor(MetricsActiveLimit), wiring.stagingReaper.stepCounts(),
-        Instant.now(), wiring.throttleSignal.isThrottled))
+      workerMetrics.taskSeries.scrape(
+        wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample(
+          w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
+          w.stagingReaper.stepCounts(), w.throttleSignal.isThrottled)),
+        Instant.now()))
     snapshot.start()
     server.createContext("/metrics", exchange => {
       val body = snapshot.current()

@@ -26,12 +26,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pl.kinowo.R
 import pl.kinowo.model.Cities
 import pl.kinowo.model.City
+import pl.kinowo.ui.CountryPicker
 import pl.kinowo.ui.theme.TextSecondary
 
 /** Height floor for the city-gate controls — a comfortable native touch target,
@@ -48,7 +51,11 @@ private val ControlMinHeight = 56.dp
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CityChoiceScreen(onPick: (City) -> Unit) {
+fun CityChoiceScreen(
+    onPick: (City) -> Unit,
+    selectedCountryCode: String? = null,
+    onCountry: (String) -> Unit = {},
+) {
     var query by remember { mutableStateOf("") }
     val cities = Cities.matching(query)
 
@@ -56,14 +63,19 @@ fun CityChoiceScreen(onPick: (City) -> Unit) {
         Modifier.fillMaxSize().padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        CountryPicker(
+            selectedCode = selectedCountryCode,
+            onSelect = onCountry,
+            modifier = Modifier.padding(top = 24.dp),
+        )
         Text(
-            "Wybierz miasto",
+            stringResource(R.string.choose_city_title),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 24.dp),
         )
         Text(
-            "Repertuar pokazujemy dla wybranego miasta.",
+            stringResource(R.string.choose_city_subtitle),
             fontSize = 14.sp,
             color = TextSecondary,
             modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
@@ -72,13 +84,13 @@ fun CityChoiceScreen(onPick: (City) -> Unit) {
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            placeholder = { Text("Szukaj miasta") },
+            placeholder = { Text(stringResource(R.string.search_city_hint)) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
                     Icon(
                         Icons.Filled.Close,
-                        contentDescription = "Wyczyść",
+                        contentDescription = stringResource(R.string.clear),
                         modifier = Modifier.clickable { query = "" },
                     )
                 }
@@ -88,7 +100,7 @@ fun CityChoiceScreen(onPick: (City) -> Unit) {
         )
         if (cities.isEmpty()) {
             Text(
-                "Brak miasta o nazwie „$query”.",
+                stringResource(R.string.no_city_matching, query),
                 fontSize = 14.sp,
                 color = TextSecondary,
                 modifier = Modifier.padding(top = 20.dp),
@@ -116,15 +128,15 @@ fun CityConfirmScreen(city: City, onConfirm: () -> Unit, onChooseOther: () -> Un
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Jesteś w pobliżu miasta", fontSize = 14.sp, color = TextSecondary)
+        Text(stringResource(R.string.near_city_label), fontSize = 14.sp, color = TextSecondary)
         Text(
             city.name,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
         )
-        TallFilledButton("Pokaż repertuar — ${city.name}", onClick = onConfirm)
-        TallOutlinedButton("Wybierz inne miasto", onClick = onChooseOther)
+        TallFilledButton(stringResource(R.string.show_repertoire, city.name), onClick = onConfirm)
+        TallOutlinedButton(stringResource(R.string.choose_other_city), onClick = onChooseOther)
     }
 }
 

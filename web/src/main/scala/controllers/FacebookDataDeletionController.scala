@@ -67,6 +67,7 @@ class FacebookDataDeletionController(
   }
 
   def status(code: String): Action[AnyContent] = Action {
-    Ok(views.html.facebookDataDeletion(code))
+    if (models.Country.fromEnv.language.getLanguage == "pl") Ok(views.html.facebookDataDeletion(code))
+    else Ok(views.html.facebookDataDeletionEn(code))
   }
 }

@@ -1,5 +1,7 @@
 package views
 
+import testsupport.TestMessages.given
+
 import models.City
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

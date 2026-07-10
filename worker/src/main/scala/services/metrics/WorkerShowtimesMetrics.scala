@@ -36,22 +36,17 @@ import scala.util.{Failure, Success, Try}
  */
 class WorkerShowtimesMetrics(
   repository:     MovieRepository,
-  registry:       PrometheusRegistry,
+  showtimes:      Gauge,
+  countryCode:    String,
   clock:          Clock          = Clock.systemDefaultZone(),
   cities:         Seq[City]      = City.all,
   sampleInterval: FiniteDuration = WorkerShowtimesMetrics.DefaultSampleInterval
 ) extends Logging {
   import WorkerShowtimesMetrics._
 
-  private val showtimes = Gauge.builder()
-    .name(Name)
-    .help("Upcoming individual showtimes (single dated slots) the source `movies` collection would serve per city, sampled every 5 min through the REAL projection path and gated on readyToProject. sum() across cities is the general total. The volume complement to kinowo_worker_movies_served (which counts distinct films).")
-    .labelNames("city")
-    .register(registry)
-
   // Seed every city at 0 so a city that empties reads as an explicit 0, not a
   // vanished series — a drop-to-zero must be a sample, not an absence.
-  for (c <- cities) showtimes.labelValues(c.slug).set(0.0)
+  for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(0.0)
 
   private val scheduler = DaemonExecutors.scheduler("worker-showtimes-metrics")
 
@@ -59,7 +54,7 @@ class WorkerShowtimesMetrics(
    *  Read-only, paged; bounded to once per `sampleInterval` regardless of scrape rate. */
   def sample(): Unit = {
     val counts = countAll(repository, cities, clock)
-    for (c <- cities) showtimes.labelValues(c.slug).set(counts.getOrElse(c.slug, 0).toDouble)
+    for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(counts.getOrElse(c.slug, 0).toDouble)
   }
 
   def start(): Unit = {
@@ -74,9 +69,19 @@ class WorkerShowtimesMetrics(
 }
 
 object WorkerShowtimesMetrics {
-  /** Sibling of `kinowo_worker_movies_served` — same worker prefix, same `city` label;
-   *  a gauge (not a counter), so no `_total` suffix. */
+  /** Sibling of `kinowo_worker_movies_served` — same worker prefix, same
+   *  `country`+`city` labels; a gauge (not a counter), so no `_total` suffix. */
   val Name = "kinowo_worker_showtimes"
+
+  /** Build and register the ONE shared gauge every country's sampler writes into
+   *  (leading `country` label, then `city`). Called once when the shared worker
+   *  registry is built. */
+  def gauge(registry: PrometheusRegistry): Gauge =
+    Gauge.builder()
+      .name(Name)
+      .help("Upcoming individual showtimes (single dated slots) the source `movies` collection would serve per country and city, sampled every 5 min through the REAL projection path and gated on readyToProject. sum() across cities is the country total. The volume complement to kinowo_worker_movies_served (which counts distinct films).")
+      .labelNames("country", "city")
+      .register(registry)
 
   /** Once every 5 minutes, mirroring [[WorkerSourceFilmsMetrics.DefaultSampleInterval]]. */
   val DefaultSampleInterval: FiniteDuration = 5.minutes
