@@ -9,16 +9,18 @@ import services.cinemas.KinoBajkaClient
 
 import java.time.LocalDateTime
 
-/** Replays the recorded Kino Bajka repertoire (06-06-2026 capture of
- *  `kinobajka.pl/repertuar/`) through the client. The WordPress page renders
- *  the whole advance window inline — one `div.screening-day[id=screening-YYYYMMDD]`
- *  per date, each holding `div.screening-item` blocks — so a single fetch carries
- *  every screening. The day id supplies the date that each `span.time` pairs with. */
+/** Replays the recorded Kino Bajka repertoire (11-07-2026 capture of
+ *  `kinobajka.pl/repertuar/`) through the client. The WordPress page no longer
+ *  server-renders the schedule as HTML — it ships the whole advance window as an
+ *  HTML-entity-encoded JSON blob in `<div id="rep2" data-dane='{…}'>`, which the
+ *  site's `rep2` widget parses client-side. The client reads that attribute
+ *  (jsoup entity-decodes it) and parses the `{buy, dni:{date:[film…]}}` JSON, so
+ *  a single fetch still carries every screening. */
 class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http = new FakeHttpFetch("kino-bajka")
 
-  "KinoBajkaClient" should "parse film screenings off the repertoire page" in {
+  "KinoBajkaClient" should "parse film screenings off the data-dane JSON blob" in {
     val movies = new KinoBajkaClient(http, KinoBajka).fetch()
 
     movies should not be empty
@@ -29,32 +31,29 @@ class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     movies.flatMap(_.showtimes).map(_.dateTime.getYear).toSet shouldBe Set(2026)
   }
 
-  it should "pair each span.time with the enclosing day's date" in {
+  it should "pair each showtime with its enclosing day's date and read the runtime" in {
     val movies = new KinoBajkaClient(http, KinoBajka).fetch()
 
-    // Pinned screening seen in the captured fixture: "Drzewo magii" plays
-    // 07-06-2026 at 13:30. The 13:30 lives in the screening-20260607 day block,
-    // so this verifies the day-id → date pairing.
-    val drzewo = movies.find(_.movie.title == "Drzewo magii").value
-    drzewo.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 13, 30))
+    // Pinned screening seen in the captured fixture: "Minionki i straszydła"
+    // plays 11-07-2026 at 13:30 — the 13:30 lives under the 2026-07-11 `dni` key,
+    // so this verifies the day-key → date pairing.
+    val minionki = movies.find(_.movie.title.toLowerCase.contains("minionki")).value
+    minionki.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 7, 11, 13, 30))
 
-    // Booking host, runtime and de-slugged production country come off the item.
-    val slot = drzewo.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 7, 13, 30)).value
-    slot.bookingUrl.value shouldBe "https://bajka-lublin.biletpro24.pl"
-    drzewo.movie.runtimeMinutes.value shouldBe 110
-    drzewo.movie.countries shouldBe Seq("wielka brytania")
+    // Runtime is read off the "… · 90 min" caption; the booking URL is the blob's
+    // top-level `buy` host, shared by every showtime.
+    minionki.movie.runtimeMinutes.value shouldBe 90
+    val slot = minionki.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 11, 13, 30)).value
+    slot.bookingUrl.value shouldBe "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings"
   }
 
   it should "merge a film's screenings across days into one CinemaMovie" in {
     val movies = new KinoBajkaClient(http, KinoBajka).fetch()
 
-    // "Drzewo magii" plays on several days; it collapses to a single row whose
-    // showtimes span both 07-06 and 08-06 (11:00).
-    val drzewo = movies.filter(_.movie.title == "Drzewo magii")
-    drzewo should have size 1
-    drzewo.head.showtimes.map(_.dateTime) should contain allOf (
-      LocalDateTime.of(2026, 6, 7, 13, 30),
-      LocalDateTime.of(2026, 6, 8, 11, 0)
-    )
+    // "Minionki i straszydła" plays on several days; it collapses to a single row
+    // whose showtimes span more than one date.
+    val minionki = movies.filter(_.movie.title.toLowerCase.contains("minionki"))
+    minionki should have size 1
+    minionki.head.showtimes.map(_.dateTime.toLocalDate).distinct.size should be > 1
   }
 }

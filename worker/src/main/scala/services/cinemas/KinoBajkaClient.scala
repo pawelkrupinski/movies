@@ -2,35 +2,34 @@ package services.cinemas
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
+import play.api.libs.json.{JsObject, Json}
 import services.movies.TitleNormalizer
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
  * Kino Bajka (Lublin) — the art-house cinema run by Centrum Kultury, at
- * ul. Radziszewskiego 8. Its WordPress (Astra) repertoire page at `/repertuar/`
- * server-renders the WHOLE advance window inline: one
- * `div.screening-day[id=screening-YYYYMMDD]` per date, each holding a
- * `div.screening-item` per film. The date picker above only toggles which
- * day-block is visible client-side, so a single page fetch carries every
- * screening — no per-date AJAX round-trip needed.
+ * ul. Radziszewskiego 8. Its WordPress repertoire page at `/repertuar/` no
+ * longer server-renders the schedule as HTML; the whole advance window now
+ * ships as an HTML-entity-encoded JSON blob in the `data-dane` attribute of the
+ * page's `<div id="rep2">`, which the site's `rep2` widget `JSON.parse`s
+ * client-side to build the day blocks. No AJAX round-trip — a single page fetch
+ * still carries every screening, so the scraper just reads the attribute
+ * (jsoup entity-decodes it) and parses the JSON.
  *
- * Each `div.screening-item` carries:
- *   - `h4 a` → film title and the film's detail-page URL (`filmUrl`).
- *   - `img.screening-poster[src]` → poster.
- *   - `span.duration` (`"110 min"`) → runtime; `span.country` → production
- *     country, a slug like `wielka_brytania` de-slugged to spaces.
- *   - one `div.screening-link` per showtime: `span.time` (`HH:MM`) read under
- *     the enclosing day's date, and `data-url` → the ticketing host
- *     (`bajka-lublin.biletpro24.pl`), kept as the booking URL when present.
- *     Past screenings carry `class="screening-link is-past"` with an empty
- *     `data-url`; they're still real screenings of the day, and the day id
- *     carries the year, so they resolve to the right `LocalDateTime`.
+ * The blob is `{ "buy": <booking-base-url>, "dni": { "YYYY-MM-DD": [film, …] } }`
+ * where each film carries:
+ *   - `t` → title (cleaned via the `kino-bajka` title rules).
+ *   - `u` → the film's detail-page URL (`filmUrl`).
+ *   - `p` → poster URL.
+ *   - `m` → a "genres · format · NNN min" caption; the trailing `NNN min` is the
+ *     runtime (country isn't published here — TMDB enriches it downstream).
+ *   - `s` → one entry per showtime: `g` (`HH:MM`, paired with the day's date),
+ *     `h` (hall code) and `x` (1 for a past screening). Past screenings are kept
+ *     — the day carries the year so they resolve to the right `LocalDateTime`.
+ * The top-level `buy` is the ticketing host used as every showtime's booking URL.
  *
  * The listing has everything we display; there's no per-film detail page to
  * fetch (TMDB enriches the rest downstream). One `CinemaMovie` per title, with
@@ -46,12 +45,26 @@ class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema) extends Cine
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(PageUrl))
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
-    val slots = Jsoup.parse(html).select("div.screening-day[id]").asScala.toSeq.flatMap(parseDay)
+    // jsoup decodes the `data-dane` HTML entities, handing back the raw JSON.
+    val dane = Option(Jsoup.parse(html).selectFirst("#rep2"))
+      .map(_.attr("data-dane")).filter(_.nonEmpty)
+      .flatMap(s => Try(Json.parse(s)).toOption)
+
+    val slots = dane.toSeq.flatMap { root =>
+      val booking = (root \ "buy").asOpt[String].filter(_.nonEmpty)
+      (root \ "dni").asOpt[JsObject].toSeq.flatMap { dni =>
+        dni.fields.flatMap { case (dateStr, films) =>
+          dayDate(dateStr).toSeq.flatMap { date =>
+            films.asOpt[Seq[JsObject]].getOrElse(Seq.empty).flatMap(parseFilm(_, date, booking))
+          }
+        }
+      }
+    }
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
       val head = group.head
       CinemaMovie(
-        movie     = Movie(title, runtimeMinutes = head.runtime, countries = head.countries),
+        movie     = Movie(title, runtimeMinutes = head.runtime),
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = group.flatMap(_.filmUrl).headOption,
@@ -69,62 +82,36 @@ object KinoBajkaClient {
   val BaseUrl = "https://kinobajka.pl"
   val PageUrl = s"$BaseUrl/repertuar/"
 
-  // `id="screening-YYYYMMDD"` on each day block.
-  private val DayIdPat = """screening-(\d{8})""".r
-  private val DayIdFmt = DateTimeFormatter.ofPattern("yyyyMMdd")
-
-  private case class RawSlot(
-    title:     String,
-    dateTime:  LocalDateTime,
-    booking:   Option[String],
-    poster:    Option[String],
-    filmUrl:   Option[String],
-    runtime:   Option[Int],
-    countries: Seq[String]
-  )
-
-  /** Parse one `div.screening-day` — its id gives the date that every
-    * `span.time` inside it pairs with. */
-  private def parseDay(day: Element): Seq[RawSlot] =
-    dayDate(day.id).toSeq.flatMap { date =>
-      day.select("div.screening-item").asScala.toSeq.flatMap(item => parseItem(item, date))
-    }
-
-  private def dayDate(id: String): Option[LocalDate] =
-    DayIdPat.findFirstMatchIn(id).flatMap(m => Try(LocalDate.parse(m.group(1), DayIdFmt)).toOption)
-
-  private def parseItem(item: Element, date: LocalDate): Seq[RawSlot] = {
-    val link    = Option(item.selectFirst("div.title-age-group h4 a[href]"))
-                    .orElse(Option(item.selectFirst("h4 a[href]")))
-    val title   = link.map(l => TitleNormalizer.cinemaClean("kino-bajka", l.text.trim)).filter(_.nonEmpty)
-    val filmUrl = link.map(_.attr("href")).filter(_.nonEmpty)
-    val poster  = Option(item.selectFirst("img.screening-poster[src]"))
-                    .map(_.attr("src")).filter(_.nonEmpty)
-    val runtime = Option(item.selectFirst("span.duration")).map(_.text)
-                    .flatMap(DurationPat.findFirstMatchIn).map(_.group(1).toInt)
-    val countries = Option(item.selectFirst("span.country")).map(_.text.trim)
-                      .filter(_.nonEmpty).map(parseCountries).getOrElse(Seq.empty)
-
-    title match {
-      case None => Seq.empty
-      case Some(t) =>
-        item.select("div.screening-link").asScala.toSeq.flatMap { slot =>
-          val time = Option(slot.selectFirst("span.time")).map(_.text)
-                       .flatMap(ScraperParse.parseHHmm)
-          time.map { lt =>
-            val booking = Option(slot.attr("data-url")).map(_.trim).filter(_.nonEmpty)
-            RawSlot(t, LocalDateTime.of(date, lt), booking, poster, filmUrl, runtime, countries)
-          }
-        }
-    }
-  }
-
+  // The `m` caption folds "genres · format · NNN min"; the trailing run is runtime.
   private val DurationPat = """(\d+)\s*min""".r
 
-  /** The `span.country` text is a comma-separated list of country slugs
-    * (`wielka_brytania`, `francja, niemcy`). De-slug underscores to spaces and
-    * keep the names verbatim — cross-cinema spelling is unified by the
-    * `MovieRecord` merge, not here. */
-  private def parseCountries(s: String): Seq[String] =
-    s.split(",").map(_.trim.replace('_', ' ')).filter(_.nonEmpty).toSeq
+  private case class RawSlot(
+    title:    String,
+    dateTime: LocalDateTime,
+    booking:  Option[String],
+    poster:   Option[String],
+    filmUrl:  Option[String],
+    runtime:  Option[Int]
+  )
+
+  private def dayDate(id: String): Option[LocalDate] =
+    Try(LocalDate.parse(id)).toOption  // the `dni` keys are ISO `YYYY-MM-DD`
+
+  /** Parse one film object under a day into its screenings. */
+  private def parseFilm(film: JsObject, date: LocalDate, booking: Option[String]): Seq[RawSlot] = {
+    val title   = (film \ "t").asOpt[String]
+                    .map(t => TitleNormalizer.cinemaClean("kino-bajka", t.trim)).filter(_.nonEmpty)
+    val filmUrl = (film \ "u").asOpt[String].filter(_.nonEmpty)
+    val poster  = (film \ "p").asOpt[String].filter(_.nonEmpty)
+    val runtime = (film \ "m").asOpt[String]
+                    .flatMap(DurationPat.findFirstMatchIn).map(_.group(1).toInt)
+
+    title.toSeq.flatMap { t =>
+      (film \ "s").asOpt[Seq[JsObject]].getOrElse(Seq.empty).flatMap { slot =>
+        (slot \ "g").asOpt[String].flatMap(ScraperParse.parseHHmm).map { lt =>
+          RawSlot(t, LocalDateTime.of(date, lt), booking, poster, filmUrl, runtime)
+        }
+      }
+    }
+  }
 }

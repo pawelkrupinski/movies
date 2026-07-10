@@ -1801,7 +1801,6 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
@@ -1944,7 +1943,6 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
@@ -2103,7 +2101,6 @@ cinemaScrapes:
   Janosik / Drzewo magii / —
   Jutrzenka / Drzewo magii / —
   Kino Atlantic / Drzewo magii / 2026
-  Kino Bajka / Drzewo magii / —
   Kino Bułgarska 19 / DRZEWO MAGII / 2026
   Kino Centrum CSW Toruń / Drzewo magii / —
   Kino Charlie / Drzewo Magii / —
@@ -2309,7 +2306,6 @@ cinemaScrapes:
   Kino Astra / Dzień objawienia / —
   Kino Atlantic / Dzień objawienia / 2026
   Kino Awangarda 2 / Dzień objawienia / —
-  Kino Bajka / Dzień Objawienia / —
   Kino Bajka Kluczbork / Dzień Objawienia / —
   Kino Iluzjon / Dzień objawienia / 2026
   Kino KDK / DZIEŃ OBJAWIENIA / —
@@ -2488,7 +2484,6 @@ cinemaScrapes:
   Kino Astra / Dzień objawienia / —
   Kino Atlantic / Dzień objawienia / 2026
   Kino Awangarda 2 / Dzień objawienia / —
-  Kino Bajka / Dzień Objawienia / —
   Kino Bajka Kluczbork / Dzień Objawienia / —
   Kino Iluzjon / Dzień objawienia / 2026
   Kino KDK / DZIEŃ OBJAWIENIA / —
@@ -2864,7 +2859,6 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
@@ -2958,7 +2952,6 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
   Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
   Kino Awangarda 2 / Ojczyzna / —
-  Kino Bajka / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
   Kino Kijów / Ojczyzna / —
@@ -3776,7 +3769,6 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
@@ -3911,7 +3903,6 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Drugie życie / —
   Kino Atlantic / Pora dla Seniora: Drugie życie - pokaz przedpremierowy / 2025
   Kino Awangarda 2 / Drugie życie / —
-  Kino Bajka / Drugie życie / —
   Kino CK Lublin / Filmoterapia z Inspirą: Drugie życie / —
   Kino Echo / DRUGIE ŻYCIE / —
   Kino Fenomen (WDK) / Drugie życie / —
@@ -4423,6 +4414,7 @@ cinemaScrapes:
   Helios Rzeszów / Kurozając i Świątynia Świstaka / —
   Helios Tczew / Kurozając i Świątynia Świstaka / —
   Helios Żory / Kurozając i Świątynia Świstaka / —
+  Kino Bajka / KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA / —
   Kino Bajka Kluczbork / Kurozając i świątynia Świstaka / —
   Kino Kijów / Kurozając i świątynia świstaka / —
   Kino MCK / Kurozając i świątynia świstaka / —
@@ -4982,7 +4974,6 @@ cinemaScrapes:
   Kino Agrafka / MILCZĄCA PRZYJACIÓŁKA / 2026
   Kino Amok / Milcząca przyjaciółka / —
   Kino Atlantic / Milcząca przyjaciółka / 2025
-  Kino Bajka / Milcząca przyjaciółka / —
   Kino Bułgarska 19 / MILCZĄCA PRZYJACIÓŁKA / 2025
   Kino CK Lublin / Filmoterapia z Inspirą: Milcząca przyjaciółka / —
   Kino Charlie / Milcząca przyjaciółka / —
@@ -5188,6 +5179,7 @@ cinemaScrapes:
   Helios Tczew / Minionki i straszydła / —
   Helios Łódź / Minionki i straszydła / —
   Helios Żory / Minionki i straszydła / —
+  Kino Bajka / Minionki i straszydła / —
   Kino Goplana / Minionki i straszydła / —
   Kino Kawiarnia / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
@@ -5320,6 +5312,7 @@ cinemaScrapes:
   Helios Tczew / Minionki i straszydła / —
   Helios Łódź / Minionki i straszydła / —
   Helios Żory / Minionki i straszydła / —
+  Kino Bajka / Minionki i straszydła / —
   Kino Goplana / Minionki i straszydła / —
   Kino Kawiarnia / Minionki i straszydła / —
   Kino MOK Centrum / MINIONKI I STRASZYDŁA / —
@@ -6206,7 +6199,6 @@ cinemaScrapes:
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
   Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
   Kino Awangarda 2 / Ojczyzna / —
-  Kino Bajka / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
   Kino Kijów / Ojczyzna / —
@@ -7909,7 +7901,6 @@ cinemaScrapes:
   Helios Kędzierzyn-Koźle / Posłani / 2026
   Helios Outlet Park / Posłani / 2026
   Helios Tczew / Posłani / —
-  Kino Bajka / Posłani / —
   Kino Bułgarska 19 / POSŁANI / 2026
   Kino Kijów / Posłani / —
   Kino MOKiS / Posłani / —
@@ -8333,7 +8324,6 @@ cinemaScrapes:
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
   KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Bajka / Tom i Jerry: Przygoda w muzeum / —
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
   Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
@@ -9177,6 +9167,7 @@ cinemaScrapes:
   Helios Tczew / Super Mario Galaxy Film / 2026
   Helios Łódź / Super Mario Galaxy Film / 2026
   Helios Żory / Super Mario Galaxy Film / 2026
+  Kino Bajka / SUPER MARIO GALAXY FILM / —
   Kino Na Biegunach / Super mario galaxy film / —
   Kino ODEON / Super mario galaxy film / —
   Kino Sokół / SUPER MARIO GALAXY FILM / —
@@ -9636,7 +9627,6 @@ cinemaScrapes:
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
   KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
-  Kino Bajka / Tom i Jerry: Przygoda w muzeum / —
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
   Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
@@ -9804,6 +9794,7 @@ cinemaScrapes:
   Helios Łódź / Toy Story 5 / —
   Helios Żory / Toy Story 5 / —
   Janosik / Toy Story 5 / —
+  Kino Bajka / Toy Story 5 / —
   Kino Bajka Kluczbork / Toy Story 5 / —
   Kino Centrum / Toy Story 5 / —
   Kino DK / Toy Story 5 / —
@@ -9968,6 +9959,7 @@ cinemaScrapes:
   Helios Łódź / Toy Story 5 / —
   Helios Żory / Toy Story 5 / —
   Janosik / Toy Story 5 / —
+  Kino Bajka / Toy Story 5 / —
   Kino Bajka Kluczbork / Toy Story 5 / —
   Kino Centrum / Toy Story 5 / —
   Kino DK / Toy Story 5 / —
@@ -10582,6 +10574,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14519-zaproszenie-przedpremiera/
 cinemaScrapes:
   Dolnośląskie Centrum Filmowe / Zaproszenie / 2026
+  Kino Bajka / Zaproszenie / —
   Kino Pałacowe / Zaproszenie / 2026
   Kino Pionier 1907 / ZAPROSZENIE / 2026
   Kinoteka / Zaproszenie | Zobacz przedpremierowo / 2026
