@@ -1,5 +1,6 @@
 package pl.kinowo
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -11,6 +12,10 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import okhttp3.OkHttpClient
 import pl.kinowo.auth.AuthRepository
 import pl.kinowo.auth.HttpUserStateClient
@@ -18,12 +23,14 @@ import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.model.Country
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoApp
 import pl.kinowo.ui.KinowoViewModel
+import pl.kinowo.ui.LocaleWrapper
 import pl.kinowo.ui.dev.ShowtimeTuningScreen
 import pl.kinowo.ui.theme.Background
 import pl.kinowo.ui.theme.KinowoTheme
@@ -39,6 +46,12 @@ import java.util.concurrent.TimeUnit
  */
 class MainActivity : ComponentActivity() {
 
+    // The country selected at the moment this activity was created — used to
+    // pick the API base URL AND the forced locale (both applied before the first
+    // frame). A later switch persists a new code and calls recreate(), so the
+    // whole graph re-wires against the new deployment + language.
+    private val country: Country by lazy { Country.byCode(UserPreferences(applicationContext).blockingCountryCode()) }
+
     private val viewModel: KinowoViewModel by viewModels {
         // One client shared by every caller so the auth session cookie set at
         // /auth/exchange is carried on /api/me, /api/me/state, etc.
@@ -48,13 +61,22 @@ class MainActivity : ComponentActivity() {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .build()
-        val api = KinowoApi(client = httpClient)
+        // Route every repertoire/details request at the SELECTED country's
+        // deployment (Poland's prod URL by default).
+        val api = KinowoApi(baseUrl = country.baseUrl, client = httpClient)
         val repository = RepertoireRepository(api, JsonListCache(cacheDir, "repertoire", Film.serializer()))
         val detailsRepository = DetailsRepository(api, JsonListCache(cacheDir, "details", FilmDetails.serializer()))
         val prefs = UserPreferences(applicationContext)
         val authRepository = AuthRepository(httpClient, cookieJar)
         val userStateClient = HttpUserStateClient(client = httpClient)
         KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient)
+    }
+
+    // Force the selected country's language regardless of the device locale, so
+    // `values-en` is used for the UK country on a Polish phone (and vice versa).
+    override fun attachBaseContext(newBase: Context) {
+        val code = UserPreferences(newBase).blockingCountryCode()
+        super.attachBaseContext(LocaleWrapper.wrap(newBase, Country.byCode(code).languageTag))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,6 +91,15 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        // Re-create the activity when the selected country changes: attachBaseContext
+        // re-runs with the new locale, and the ViewModel factory re-wires KinowoApi
+        // at the new base URL. `drop(1)` skips the current value (the initial emission).
+        UserPreferences(applicationContext).selectedCountryCode
+            .drop(1)
+            .onEach { code ->
+                if (Country.byCode(code).code != country.code) recreate()
+            }
+            .launchIn(lifecycleScope)
         handleAuthDeepLink(intent)
         handleNavDeepLink(intent)
         // Non-prod tweak screen, gated behind a launch extra so it never shows in

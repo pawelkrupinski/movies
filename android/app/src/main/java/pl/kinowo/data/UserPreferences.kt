@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 
 private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
 
@@ -64,6 +65,23 @@ class UserPreferences(private val context: Context) : SyncPrefs {
     suspend fun setCity(slug: String) = context.dataStore.edit { prefs ->
         prefs[KEY_CITY] = slug
     }
+
+    /** ISO country code the user picked (see [pl.kinowo.model.Country]), or null
+     *  until they choose one — then [pl.kinowo.model.Country.byCode] resolves the
+     *  default (Poland). Drives BOTH the API base URL and the forced UI language,
+     *  so switching it re-points the network layer and re-localizes the app. */
+    val selectedCountryCode: Flow<String?> =
+        context.dataStore.data.map { it[KEY_COUNTRY] }
+
+    suspend fun setCountryCode(code: String) = context.dataStore.edit { prefs ->
+        prefs[KEY_COUNTRY] = code
+    }
+
+    /** The persisted country code read synchronously, or null if none. Used at
+     *  activity attach/wiring time, before any coroutine scope exists, to pick
+     *  the API base URL and forced locale. Everywhere else observe the
+     *  [selectedCountryCode] flow instead. */
+    fun blockingCountryCode(): String? = runBlocking { selectedCountryCode.first() }
 
     /** The `chosen→nearest` pair the "switch to a nearer city" prompt was last
      *  shown for, or null if never. Remembering only the single most-recent pair
@@ -141,6 +159,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_DISABLED = stringSetPreferencesKey("disabledCinemas")
         val KEY_SELECTED_CINEMA = stringPreferencesKey("selectedCinema")
         val KEY_CITY = stringPreferencesKey("selectedCity")
+        val KEY_COUNTRY = stringPreferencesKey("selectedCountryCode")
         val KEY_CITY_SWITCH_PROMPT = stringPreferencesKey("citySwitchPromptKey")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")

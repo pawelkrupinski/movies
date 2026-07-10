@@ -56,7 +56,7 @@ struct CityResolverView: View {
             } else {
                 VStack(spacing: 16) {
                     ProgressView()
-                    Text("Ustalamy najbliższe miasto…")
+                    Text("citygate.resolving")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -99,21 +99,21 @@ struct CityConfirmView: View {
             Image(systemName: "location.fill")
                 .font(.largeTitle)
                 .foregroundStyle(.tint)
-            Text("Wygląda na to, że jesteś w pobliżu miasta")
+            Text("citygate.near_label")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Text(city.name)
                 .font(.title).bold()
             Spacer()
             Button(action: onConfirm) {
-                Text("Pokaż repertuar — \(city.name)")
+                Text(String(format: String(localized: "citygate.show_repertoire"), city.name))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .accessibilityIdentifier(A11y.CityGate.confirmButton)
             Button(action: onChooseOther) {
-                Text("Wybierz inne miasto")
+                Text("citygate.choose_other")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
@@ -130,6 +130,8 @@ struct CityConfirmView: View {
 /// `City.all`, so it grows automatically as cities are added.
 struct CityChoiceView: View {
     @EnvironmentObject var prefs: UserPreferences
+    @EnvironmentObject var store: RepertoireStore
+    @EnvironmentObject var details: DetailsStore
     /// The location-detected nearest city, when one was found — used only to
     /// pre-suppress the switch prompt for a deliberate pick of another city.
     /// `nil` when location was unavailable (then there's nothing to suppress).
@@ -144,6 +146,15 @@ struct CityChoiceView: View {
     var body: some View {
         NavigationStack {
             List {
+                // In-app country switch: picking a country swaps the API base URL
+                // and forces the UI language. Sits above the city list so the
+                // user chooses country → city top-to-bottom on first launch.
+                Section {
+                    countryPicker
+                } header: {
+                    Text("country.label")
+                }
+
                 Section {
                     ForEach(visibleCities, id: \.slug) { city in
                         Button {
@@ -160,24 +171,43 @@ struct CityChoiceView: View {
                         .foregroundStyle(.primary)
                     }
                 } header: {
-                    Text("Wybierz miasto")
+                    Text("citygate.choose_title")
                 }
 
                 if visibleCities.isEmpty {
                     // Keeps the search field anchored (an empty List would let it
                     // collapse) and tells the user nothing matched.
-                    Text("Brak miasta o nazwie „\(query)”.")
+                    Text(String(format: String(localized: "citygate.no_match"), query))
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Miasto")
+            .navigationTitle("citygate.nav_title")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query,
                         placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "Szukaj miasta")
+                        prompt: Text("citygate.search_hint"))
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
         }
+    }
+
+    /// One selectable segment per `Country.all`. Selecting persists the choice
+    /// (forcing its language) and re-points the stores at the new deployment so
+    /// the city list below immediately reflects the chosen country's server.
+    private var countryPicker: some View {
+        Picker("country.label", selection: Binding(
+            get: { prefs.selectedCountry },
+            set: { country in
+                prefs.setCountry(country)
+                store.use(country: country)
+                details.use(country: country)
+            }
+        )) {
+            ForEach(Country.all, id: \.code) { country in
+                Text(country.displayName).tag(country)
+            }
+        }
+        .pickerStyle(.segmented)
     }
 
     /// Adopt the picked city. When it differs from the location-detected

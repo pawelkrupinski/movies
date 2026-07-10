@@ -11,6 +11,9 @@
 		DD00000000000000000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000003 /* ContentView.swift */; };
 		DD00000000000000000220 /* DisplayInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000220 /* DisplayInfo.swift */; };
 		DD00000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000004 /* Assets.xcassets */; };
+		DD00000000000000000E01 /* Country.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E01 /* Country.swift */; };
+		DD00000000000000000E02 /* CountrySelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E02 /* CountrySelection.swift */; };
+		DD00000000000000000E03 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E03 /* Localizable.xcstrings */; };
 		DD00000000000000000005 /* Film.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000005 /* Film.swift */; };
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
 		DD00000000000000000401 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000401 /* DeepLink.swift */; };
@@ -103,6 +106,9 @@
 		CC00000000000000000003 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		CC00000000000000000220 /* DisplayInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayInfo.swift; sourceTree = "<group>"; };
 		CC00000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CC00000000000000000E01 /* Country.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Country.swift; sourceTree = "<group>"; };
+		CC00000000000000000E02 /* CountrySelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySelection.swift; sourceTree = "<group>"; };
+		CC00000000000000000E03 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000005 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
 		CC00000000000000000401 /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
@@ -221,6 +227,7 @@
 				BB0000000000000000000A /* Location */,
 				BB00000000000000000007 /* Views */,
 				CC00000000000000000004 /* Assets.xcassets */,
+				CC00000000000000000E03 /* Localizable.xcstrings */,
 			);
 			path = Kinowo;
 			sourceTree = "<group>";
@@ -252,6 +259,7 @@
 				CC00000000000000000040 /* FilmDetails.swift */,
 				CC00000000000000000041 /* CinemaLink.swift */,
 				CC00000000000000000300 /* City.swift */,
+				CC00000000000000000E01 /* Country.swift */,
 				CC00000000000000000304 /* HiddenFilmsFilter.swift */,
 				CC00000000000000000303 /* CitySwitchSuppressor.swift */,
 				CC00000000000000000006 /* Filters.swift */,
@@ -285,6 +293,7 @@
 			isa = PBXGroup;
 			children = (
 				CC0000000000000000000A /* UserPreferences.swift */,
+				CC00000000000000000E02 /* CountrySelection.swift */,
 			);
 			path = Storage;
 			sourceTree = "<group>";
@@ -416,6 +425,7 @@
 			knownRegions = (
 				en,
 				Base,
+				pl,
 			);
 			mainGroup = BB00000000000000000001;
 			productRefGroup = BB00000000000000000003 /* Products */;
@@ -434,6 +444,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DD00000000000000000004 /* Assets.xcassets in Resources */,
+				DD00000000000000000E03 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -495,6 +506,8 @@
 				DD00000000000000000050 /* PosterStore.swift in Sources */,
 				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,
 				DD00000000000000000300 /* City.swift in Sources */,
+				DD00000000000000000E01 /* Country.swift in Sources */,
+				DD00000000000000000E02 /* CountrySelection.swift in Sources */,
 				DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */,
 				DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */,
 				DD00000000000000000301 /* CityGate.swift in Sources */,

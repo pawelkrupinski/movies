@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -27,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kotlinx.coroutines.launch
+import pl.kinowo.R
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.City
 import pl.kinowo.ui.city.CityChoiceScreen
@@ -77,13 +79,13 @@ private fun NearerCityPrompt(viewModel: KinowoViewModel) {
     val target = suggestion.target
     AlertDialog(
         onDismissRequest = { viewModel.dismissCitySwitch() },
-        title = { Text("Jesteś bliżej miasta ${target.name}") },
-        text = { Text("Przełączyć repertuar na ${target.name}?") },
+        title = { Text(stringResource(R.string.nearer_city_title, target.name)) },
+        text = { Text(stringResource(R.string.switch_repertoire_question, target.name)) },
         confirmButton = {
-            TextButton(onClick = { viewModel.setCity(target.slug) }) { Text("Przełącz") }
+            TextButton(onClick = { viewModel.setCity(target.slug) }) { Text(stringResource(R.string.switch_action)) }
         },
         dismissButton = {
-            TextButton(onClick = { viewModel.dismissCitySwitch() }) { Text("Nie teraz") }
+            TextButton(onClick = { viewModel.dismissCitySwitch() }) { Text(stringResource(R.string.not_now)) }
         },
     )
 }
@@ -127,8 +129,13 @@ private fun CityGate(viewModel: KinowoViewModel) {
     }
 
     val city = detected
+    val selectedCountry = viewModel.selectedCountryCode.collectAsState().value
     when {
-        showChooser     -> CityChoiceScreen(onPick = { viewModel.chooseCityAtGate(it.slug, nearest?.slug) })
+        showChooser     -> CityChoiceScreen(
+            onPick = { viewModel.chooseCityAtGate(it.slug, nearest?.slug) },
+            selectedCountryCode = selectedCountry,
+            onCountry = { viewModel.setCountry(it) },
+        )
         city != null    -> CityConfirmScreen(
             city = city,
             onConfirm = { viewModel.setCity(city.slug) },

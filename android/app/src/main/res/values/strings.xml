@@ -1,3 +1,27 @@
 <resources>
     <string name="app_name">Kinowo</string>
+
+    <!-- Country picker -->
+    <string name="country_label">Kraj</string>
+
+    <!-- City gate -->
+    <string name="choose_city_title">Wybierz miasto</string>
+    <string name="choose_city_subtitle">Repertuar pokazujemy dla wybranego miasta.</string>
+    <string name="search_city_hint">Szukaj miasta</string>
+    <string name="clear">Wyczyść</string>
+    <string name="no_city_matching">Brak miasta o nazwie „%1$s”.</string>
+    <string name="near_city_label">Jesteś w pobliżu miasta</string>
+    <string name="show_repertoire">Pokaż repertuar — %1$s</string>
+    <string name="choose_other_city">Wybierz inne miasto</string>
+
+    <!-- "You're nearer another city" prompt -->
+    <string name="nearer_city_title">Jesteś bliżej miasta %1$s</string>
+    <string name="switch_repertoire_question">Przełączyć repertuar na %1$s?</string>
+    <string name="switch_action">Przełącz</string>
+    <string name="not_now">Nie teraz</string>
+
+    <!-- Repertoire list states -->
+    <string name="loading_repertoire">Ładowanie repertuaru…</string>
+    <string name="error_repertoire">Nie udało się pobrać repertuaru.</string>
+    <string name="retry">Spróbuj ponownie</string>
 </resources>

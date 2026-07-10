@@ -33,6 +33,11 @@ final class UserPreferences: ObservableObject {
     /// source of truth on every launch (so removals stick); cleared on logout
     /// so the next sign-in migrates afresh.
     @Published private(set) var serverStateSynced: Bool = false
+    /// The selected country (see `Country`) — which deployment the app talks to
+    /// and which language it forces. Defaults to Poland until the user picks
+    /// otherwise. Persisted via `CountrySelection` (same `store`) so it's
+    /// readable at launch by `kinowoBaseURL`.
+    @Published private(set) var selectedCountry: Country
 
     private let store: UserDefaults
     private let kHidden        = "hiddenFilms"
@@ -54,6 +59,7 @@ final class UserPreferences: ObservableObject {
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
         serverStateSynced   = store.bool(forKey: kServerSynced)
+        selectedCountry     = CountrySelection.current(store)
 
         #if DEBUG
         // UI tests force the first-launch city gate by ignoring any persisted
@@ -132,5 +138,16 @@ final class UserPreferences: ObservableObject {
         guard citySwitchPromptKey != key else { return }
         citySwitchPromptKey = key
         store.set(key, forKey: kSwitchPrompt)
+    }
+
+    /// Persist the chosen country and force its language. The caller re-points
+    /// the repertoire/details stores (`use(country:)`) so new fetches hit the
+    /// new deployment; the language flip fully lands on the next launch (iOS
+    /// reads `AppleLanguages` at process start), with the in-session locale
+    /// injected at the root via `CountrySelection.localeForCurrentSelection`.
+    func setCountry(_ country: Country) {
+        guard selectedCountry != country else { return }
+        selectedCountry = country
+        CountrySelection.select(country, in: store)
     }
 }

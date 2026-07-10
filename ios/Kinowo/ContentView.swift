@@ -199,21 +199,21 @@ struct ContentView: View {
         // prompt-key remembered) only by the authorized-only location check,
         // so it never fires without an existing location grant.
         .alert(
-            citySwitchSuggestion.map { "Jesteś bliżej miasta \($0.target.name)" } ?? "",
+            citySwitchSuggestion.map { String(format: String(localized: "switch.nearer_title"), $0.target.name) } ?? "",
             isPresented: Binding(
                 get: { citySwitchSuggestion != nil },
                 set: { if !$0 { citySwitchSuggestion = nil } }
             ),
             presenting: citySwitchSuggestion
         ) { suggestion in
-            Button("Przełącz") {
+            Button("switch.confirm") {
                 prefs.setCity(suggestion.target.slug)
                 store.use(citySlug: suggestion.target.slug)
                 details.use(citySlug: suggestion.target.slug)
             }
-            Button("Nie teraz", role: .cancel) {}
+            Button("switch.not_now", role: .cancel) {}
         } message: { suggestion in
-            Text("Przełączyć repertuar na \(suggestion.target.name)?")
+            Text(String(format: String(localized: "switch.question"), suggestion.target.name))
         }
         .task {
             store.loadCachedData()
@@ -434,7 +434,7 @@ struct ContentView: View {
     private var loadingState: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text("Ładowanie repertuaru…").font(.callout).foregroundStyle(.secondary)
+            Text("content.loading").font(.callout).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -442,12 +442,12 @@ struct ContentView: View {
     private func errorState(_ error: Error) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.orange)
-            Text("Nie udało się pobrać repertuaru.")
+            Text("content.error")
             Text(error.localizedDescription)
                 .font(.caption).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            Button("Spróbuj ponownie") {
+            Button("content.retry") {
                 Task { await store.reload() }
             }
             .buttonStyle(.borderedProminent)
