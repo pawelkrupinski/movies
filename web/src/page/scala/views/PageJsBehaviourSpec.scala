@@ -1,5 +1,7 @@
 package views
 
+import testsupport.TestMessages.given
+
 import models.{CinemaCityWroclavia, CinemaShowing, Helios, MovieRecord, Poznan, SourceData}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec

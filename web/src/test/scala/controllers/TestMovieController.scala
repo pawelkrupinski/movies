@@ -2,6 +2,7 @@ package controllers
 
 import play.api.Mode
 import play.api.test.Helpers
+import testsupport.TestMessages.given
 import services.movies.InMemoryMovieRepository
 import services.readmodel.{TestReadModel, WebReadModel}
 import services.tasks.{InMemoryTaskQueue, TaskQueue}

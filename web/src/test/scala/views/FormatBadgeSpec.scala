@@ -1,5 +1,7 @@
 package views
 
+import testsupport.TestMessages.given
+
 import controllers.{CinemaShowtimes, FilmSchedule}
 import models.{Helios, Movie, MovieRecord, Showtime}
 import services.readmodel.TestReadModel

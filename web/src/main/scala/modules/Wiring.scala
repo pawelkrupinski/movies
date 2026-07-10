@@ -103,6 +103,18 @@ trait Wiring {
   def environmentMode: Mode
   implicit def materializer: org.apache.pekko.stream.Materializer
 
+  // Play's i18n API, provided by `BuiltInComponentsFromContext` (I18nComponents)
+  // in `AppComponents`. Loads `conf/messages` (Polish default) + `messages.en`.
+  def messagesApi: play.api.i18n.MessagesApi
+
+  // The single `Messages` this deployment renders with — fixed at boot from the
+  // country's language (Poland → pl → default `messages`; other countries → en).
+  // A web deployment serves ONE country, so the locale never varies per request;
+  // controllers inject this into their Twirl views instead of deriving a Lang
+  // from `Accept-Language`.
+  implicit lazy val deploymentMessages: play.api.i18n.Messages =
+    messagesApi.preferred(Seq(play.api.i18n.Lang(models.Country.fromEnv.language)))
+
   // ── OAuth providers ──────────────────────────────────────────────────────
   // Each provider is wired only when its env vars are present. Missing keys →
   // provider absent → start route 404s and the navbar hides the login button.
@@ -132,6 +144,9 @@ trait Wiring {
       .map(bundleId => new AppleTokenValidator(httoFetch, bundleId))
 
   // ── Controllers ───────────────────────────────────────────────────────────
+  // View-rendering controllers take the deployment's fixed `Messages`
+  // (`deploymentMessages`, implicit above) so their Twirl views resolve
+  // `@messages("…")` in the country's language.
   lazy val landingController = new LandingController(controllerComponents)
   lazy val gzippedResponseCache = new GzippedResponseCache
   // Fetches + composites the per-film Open Graph share card. Its own poster

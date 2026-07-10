@@ -1,4 +1,4 @@
-@(cities: Seq[models.City])
+@(cities: Seq[models.City])(implicit messages: play.api.i18n.Messages)
 @*
    City-selection landing shown at `/` when no `city` cookie is present.
    Lists every supported city, and on load tries browser geolocation: a fix
@@ -7,18 +7,18 @@
    Self-contained (no city-scoped partials) since there's no city yet.
 *@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="@messages.lang.code">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
-  <title>Kinowo — repertuar kin w Twoim mieście</title>
+  <title>@messages("landing.title")</title>
   @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
      card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
      product (posters + ratings), which the city-selection screen itself can't. *@
   @_ogTagsApp(
-    pageTitle       = "Kinowo — repertuar kin w Twoim mieście",
-    pageDescription = "Repertuar wszystkich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb. Sprawdź dzisiejszy repertuar w swoim mieście.",
+    pageTitle       = messages("landing.title"),
+    pageDescription = messages("landing.ogDescription"),
     pageUrl         = "https://kinowo.fly.dev/",
     imageUrl        = "https://kinowo.fly.dev/assets/img/og-home.png",
   )
@@ -56,11 +56,11 @@
 <body>
   <main>
     <h1>🎬 Kinowo</h1>
-    <p class="sub">Wybierz miasto</p>
+    <p class="sub">@messages("landing.chooseCity")</p>
     <input class="city-search" id="city-search" type="search" inputmode="search"
            autocomplete="off" autocapitalize="off" spellcheck="false"
-           placeholder="Szukaj miasta…" aria-label="Szukaj miasta" aria-controls="city-list">
-    <p class="city-empty" id="city-empty">Brak miasta o tej nazwie.</p>
+           placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" aria-controls="city-list">
+    <p class="city-empty" id="city-empty">@messages("landing.noCity")</p>
     <ul class="city-list" id="city-list">
       @for(c <- cities) {
         <li><a href="/@c.slug/">@c.labels.nominative</a></li>
@@ -125,7 +125,7 @@
     (function () {
       if (!navigator.geolocation) return;
       var note = document.getElementById('locating');
-      note.textContent = 'Ustalanie lokalizacji…';
+      note.textContent = '@messages("landing.locating")';
       var done = false;
       var finish = function (msg) { if (!done) { done = true; note.textContent = msg || ''; } };
       navigator.geolocation.getCurrentPosition(
@@ -138,7 +138,7 @@
             document.cookie = 'city=' + c.slug + ';path=/;max-age=' + (60 * 60 * 24 * 365);
             window.location.replace('/' + c.slug + '/');
           } else {
-            finish('Brak obsługiwanego miasta w pobliżu — wybierz z listy.');
+            finish('@messages("landing.noNearby")');
           }
         },
         function () { finish(''); },

@@ -1,0 +1,97 @@
+# Default message bundle — Polish (Poland is the default country, so the
+# untagged `messages` file carries the original Polish copy verbatim and the
+# `pl` Lang falls through to it). English lives in `messages.en`.
+#
+# Keep these byte-identical to the strings the templates used to hardcode:
+# the PL page snapshots diff the rendered HTML.
+
+# ── Navbar / filters ────────────────────────────────────────────────────────
+nav.filters=Filtry
+nav.hiddenFilms=Ukryte filmy
+nav.sort=Sortuj
+sort.earliest=Najbliższy seans
+sort.rating=Ocena
+nav.cinemas=Kina
+nav.allCinemas=Wszystkie kina
+nav.country=Kraj produkcji
+nav.genre=Gatunek
+nav.director=Reżyseria
+nav.cast=Obsada
+nav.rooms=Sale
+nav.dimension=Wymiar
+nav.all=Wszystkie
+nav.version=Wersja
+nav.subtitles=Napisy
+nav.dubbing=Dubbing
+nav.imaxOnly=Tylko IMAX
+nav.fromHour=Od godziny
+nav.any=Dowolna
+nav.city=Miasto
+nav.clear=Wyczyść
+nav.copyLink=Skopiuj link do schowka
+nav.search=Szukaj…
+nav.filterByDate=Filtruj według daty
+brand.title=Repertuar kinowy {0}
+
+# ── Day pills ───────────────────────────────────────────────────────────────
+day.today=Dziś
+day.tomorrow=Jutro
+day.week=7 dni
+day.all=Wszystkie
+
+# ── Auth ────────────────────────────────────────────────────────────────────
+auth.login=Zaloguj
+auth.loginLong=Zaloguj się
+auth.logout=Wyloguj się
+auth.account=Konto
+auth.close=Zamknij
+login.title=Zaloguj się
+login.sub=Twoje ulubione i ukryte filmy będą synchronizowane między urządzeniami.
+login.google=Kontynuuj z Google
+login.facebook=Kontynuuj z Facebookiem
+login.nag=Te <strong>ulubione i ukrycia</strong> będą dostępne tylko na tym urządzeniu. <strong>Zaloguj się</strong>, by synchronizować.
+
+# ── Hidden-films modal ──────────────────────────────────────────────────────
+hidden.title=Ukryte filmy
+
+# ── Empty states ────────────────────────────────────────────────────────────
+empty.repertoire=Brak repertuaru.
+empty.films=Brak filmów.
+
+# ── Browse (filtered film list) ─────────────────────────────────────────────
+# {0} = heading (genre / director / …), {1} = city nominative.
+browse.htmlTitle={0} – Repertuar kinowy {1}
+browse.ogTitle={0} — Repertuar kinowy {1}
+# {0} = city genitive-plural label ("poznańskich"), {1} = heading.
+browse.ogDescription=Filmy z {0} kin: {1}. Z aktualnymi seansami, ocenami i opisami.
+
+# ── Landing (city picker) ───────────────────────────────────────────────────
+landing.title=Kinowo — repertuar kin w Twoim mieście
+landing.ogDescription=Repertuar wszystkich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb. Sprawdź dzisiejszy repertuar w swoim mieście.
+landing.chooseCity=Wybierz miasto
+landing.searchCity=Szukaj miasta…
+landing.searchCityAria=Szukaj miasta
+landing.noCity=Brak miasta o tej nazwie.
+landing.locating=Ustalanie lokalizacji…
+landing.noNearby=Brak obsługiwanego miasta w pobliżu — wybierz z listy.
+
+# ── Poster / detail labels ──────────────────────────────────────────────────
+poster.missing=Brak plakatu
+detail.synopsis=Opis
+detail.director=Reżyseria
+detail.cast=Obsada
+detail.countries=Kraj(e) produkcji
+detail.trailers=Zwiastuny
+detail.trailer=Zwiastun {0}
+detail.trailerTitle=Zwiastun: {0}
+detail.showings=Seanse
+card.hide=Ukryj film
+
+# ── Film page back-nav ──────────────────────────────────────────────────────
+back.films=Filmy
+back.plan=Plan
+back.back=Wstecz
+back.repertoire=Repertuar
+
+# ── First-run swipe hint ────────────────────────────────────────────────────
+hint.swipe=Przesuń, aby zmienić dzień

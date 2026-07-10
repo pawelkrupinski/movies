@@ -9,6 +9,44 @@ import java.util.Locale
  *  a city name. */
 final case class CityLabels(nominative: String, genitivePlural: String, locative: String)
 
+/** Per-language rendering of a city's [[CityLabels]] into the grammatical
+ *  phrases the UI needs. Polish declines the name (locative "w Poznaniu" /
+ *  "we Wrocławiu", genitive-plural adjective "poznańskich"); languages that
+ *  don't decline (English, and the default fallback) read off the plain
+ *  nominative ("in London", "London"). Selected by the city's country language
+ *  so a per-country deployment renders naturally without any name hardcoded. */
+private[models] sealed trait CityGrammar {
+  def locativePhrase(labels: CityLabels): String
+  def genitivePluralLabel(labels: CityLabels): String
+}
+
+private[models] object CityGrammar {
+
+  /** Polish: the declined forms from [[CityLabels]], byte-identical to what the
+   *  templates/OG-card generator emitted before i18n. "we" replaces "w" before a
+   *  word starting with W/F + consonant (the awkward "w w-" / "w f-" cluster). */
+  private object Polish extends CityGrammar {
+    def locativePhrase(labels: CityLabels): String = {
+      val loc    = labels.locative
+      val vowels = "aeiouyąęó"
+      val we     = loc.length >= 2 && (loc(0) == 'W' || loc(0) == 'F') &&
+                   !vowels.contains(loc(1).toLower)
+      s"${if (we) "we" else "w"} $loc"
+    }
+    def genitivePluralLabel(labels: CityLabels): String = labels.genitivePlural
+  }
+
+  /** Non-declining languages (English, default): the nominative, with the
+   *  English preposition for the locative slot ("in London"). */
+  private object Nominative extends CityGrammar {
+    def locativePhrase(labels: CityLabels): String    = s"in ${labels.nominative}"
+    def genitivePluralLabel(labels: CityLabels): String = labels.nominative
+  }
+
+  def of(locale: Locale): CityGrammar =
+    if (locale.getLanguage == "pl") Polish else Nominative
+}
+
 /**
  * A city of cinema repertoire. A city is simply a **named subset of
  * globally-unique [[Cinema]] objects** plus its label inflections and
@@ -25,18 +63,16 @@ sealed abstract class City(
   val zoneId: ZoneId,
 ) {
   def cinemas: Seq[Cinema]
-  /** The locative with the right Polish preposition for "Repertuar kin …":
-   *  "w Poznaniu", "w Warszawie", but "we Wrocławiu" / "we Włocławku" — "we"
-   *  replaces "w" before a word starting with W/F + consonant (the awkward
-   *  "w w-" / "w f-" cluster). Used by the per-city share-card generator
-   *  (`tools.OgCardGenerator`). */
-  def locativePhrase: String = {
-    val loc    = labels.locative
-    val vowels = "aeiouyąęó"
-    val we     = loc.length >= 2 && (loc(0) == 'W' || loc(0) == 'F') &&
-                 !vowels.contains(loc(1).toLower)
-    s"${if (we) "we" else "w"} $loc"
-  }
+  /** "Repertuar kin …" locative phrase, in this city's country language.
+   *  Polish declines ("w Poznaniu", "we Wrocławiu"); English (and any other
+   *  non-declining language) reads "in London". Delegated to [[CityGrammar]] so
+   *  the grammar lives in one place and PL output stays byte-identical. Used by
+   *  the per-city share-card generator (`tools.OgCardGenerator`) + `StructuredData`. */
+  def locativePhrase: String = CityGrammar.of(country.language).locativePhrase(labels)
+  /** The city label used in the "…skich kin" ("<city>'s cinemas") genitive-plural
+   *  slot: the declined Polish adjective ("poznańskich"), or — for a language
+   *  that doesn't decline — the plain nominative ("London"). */
+  def genitivePluralLabel: String = CityGrammar.of(country.language).genitivePluralLabel(labels)
   /** The country this city belongs to (reverse lookup over [[Country.all]]). */
   def country: Country                         = Country.of(this)
   lazy val cinemaSet: Set[Cinema]              = cinemas.toSet

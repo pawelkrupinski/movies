@@ -1,8 +1,13 @@
 @import controllers.PlanViewData
 @import controllers.FilmSchedule
-@(data: PlanViewData, allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)(implicit city: models.City)
+@(data: PlanViewData, allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
+@* TODO(i18n): the /plan page's static headings and its JS scheduler prose
+   (date-range grammar "od nd 25 do śr 28 maja", "N wybranych filmów"
+   pluralisation, "+ N więcej", the summary sentences, PL_DAYS/PL_MONTHS) are
+   still Polish. Deferred from the §4 web-i18n pass — the scheduler copy is
+   grammar-heavy and warrants its own phase. `<html lang>` is already dynamic. *@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="@messages.lang.code">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">

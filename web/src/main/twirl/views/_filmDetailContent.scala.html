@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
-@(film: FilmSchedule)(implicit city: models.City)
+@(film: FilmSchedule)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
   Per-film detail content — poster + title + meta blocks + trailers + the
   full showings tree. Extracted from `film.scala.html` so the dev-only
@@ -54,28 +54,28 @@
 
       @film.synopsis match {
         case Some(text) => {
-          <div class="meta-label">Opis</div>
+          <div class="meta-label">@messages("detail.synopsis")</div>
           <div class="meta-value synopsis">@Html(tools.SynopsisMarkdown.toInlineHtml(text))</div>
         }
         case None => {}
       }
 
       @if(film.director.nonEmpty) {
-          <div class="meta-label">Reżyseria</div>
+          <div class="meta-label">@messages("detail.director")</div>
           <div class="meta-value">@for((name, i) <- film.director.zipWithIndex) {<!--
             -->@if(i > 0){, }<a href="@BrowseHref.director(name)" class="meta-link">@name</a><!--
           -->}</div>
       }
 
       @if(film.cast.nonEmpty) {
-          <div class="meta-label">Obsada</div>
+          <div class="meta-label">@messages("detail.cast")</div>
           <div class="meta-value">@for((name, i) <- film.cast.zipWithIndex) {<!--
             -->@if(i > 0){, }<a href="@BrowseHref.actor(name)" class="meta-link">@name</a><!--
           -->}</div>
       }
 
       @if(film.movie.countries.nonEmpty) {
-        <div class="meta-label">Kraj(e) produkcji</div>
+        <div class="meta-label">@messages("detail.countries")</div>
         <div class="meta-value">@for((country, i) <- film.movie.countries.zipWithIndex) {<!--
           -->@if(i > 0){, }<a href="@BrowseHref.country(country)" class="meta-link">@country</a><!--
         -->}</div>
@@ -91,10 +91,10 @@
          others. *@
       @defining(film.resolved.trailerUrls) { embedUrls =>
         @if(embedUrls.nonEmpty) {
-          <div class="meta-label">Zwiastuny</div>
+          <div class="meta-label">@messages("detail.trailers")</div>
           <div>
             @for((url, idx) <- embedUrls.zipWithIndex) {
-              <button type="button" class="trailer-link" onclick="playTrailer(this, '@url')">Zwiastun @{idx + 1}</button>
+              <button type="button" class="trailer-link" onclick="playTrailer(this, '@url')">@messages("detail.trailer", idx + 1)</button>
             }
           </div>
           @* Single iframe slot — every link sets src on this one element so
@@ -102,7 +102,7 @@
              until the first click. *@
           <div class="trailer-frame" id="trailer-frame" style="display:none">
             <iframe id="trailer-iframe"
-                    title="Zwiastun: @film.movie.title"
+                    title="@messages("detail.trailerTitle", film.movie.title)"
                     referrerpolicy="strict-origin-when-cross-origin"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowfullscreen></iframe>
@@ -138,7 +138,7 @@
   </script>
 
   <div class="showtimes-section">
-    <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">Seanse</h2>
+    <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">@messages("detail.showings")</h2>
     @_filmShowings(film)
   </div>
 </div>

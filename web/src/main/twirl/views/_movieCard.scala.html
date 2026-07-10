@@ -1,9 +1,9 @@
 @import models.{ResolvedMovie, Movie}
 @import controllers.FilmHref
-@(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie)(showingsContent: Html)(implicit city: models.City)
+@(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie)(showingsContent: Html)(implicit city: models.City, messages: play.api.i18n.Messages)
 <div class="card">
   <div class="poster-wrap">
-    <button type="button" class="hide-btn" title="Ukryj film">✕</button>
+    <button type="button" class="hide-btn" title="@messages("card.hide")">✕</button>
     <a href="@FilmHref(movie.title)" style="display:block;height:100%">
       @* `data-fallbacks` is a pipe-separated chain of poster URLs the
          inline onerror tries when the primary 404/403s — every
