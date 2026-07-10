@@ -51,275 +51,341 @@ object TaskObserver {
  * scrapes it via the `[[metrics]]` block in fly.worker.toml, and the self-hosted
  * Grafana charts the `rate(...)` of each family per `task_type`.
  *
+ * Multi-country: ONE JVM runs a [[modules.WorkerWiring]] per country against a
+ * single shared [[WorkerTaskMetrics.Series]] (registered once on the shared
+ * registry). Every series carries a `country` label so the two countries' rows
+ * never collide on the single `/metrics` endpoint. This class is the cheap
+ * PER-COUNTRY facade a wiring holds: it binds one `countryCode` and forwards every
+ * record to the shared `Series`, so all existing call sites (which see the narrow
+ * `TaskObserver` / `MergeMetrics` / … traits) stay unchanged.
+ *
  * Counters are monotonic since-boot totals — `rate()` handles the reset on each
- * worker reboot. Every `TaskType` (× every label value) is materialized to 0 at
- * construction so its series exists from boot and Grafana draws a continuous
- * line rather than a gap for a type/outcome that hasn't happened yet.
+ * worker reboot. Every `TaskType` (× every label value × every country) is
+ * materialized to 0 at construction so its series exists from boot and Grafana
+ * draws a continuous line rather than a gap for a type/outcome that hasn't
+ * happened yet.
  *
  * Wiring: [[MeteredTaskQueue]] feeds `recordEnqueue`; [[services.tasks.TaskWorker]]
  * feeds `onStarted`/`onFinished` (this class is its `TaskObserver`); the queue
- * gauges are refreshed from a `QueueSnapshot` each `scrape()`.
+ * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
-class WorkerTaskMetrics(poolSize: Int, registry: PrometheusRegistry = new PrometheusRegistry())
+class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ChangeStreamMetrics with CacheSyncMetrics {
-  import WorkerTaskMetrics._
-
-  // The client auto-appends `_total` to counter names, so they're declared without it.
-  private val enqueued = Counter.builder()
-    .name("kinowo_worker_tasks_enqueued")
-    .help("Tasks added to the queue (result=added) or collapsed onto an active duplicate (result=deduped) since boot, by type.")
-    .labelNames("task_type", "result")
-    .register(registry)
-
-  private val started = Counter.builder()
-    .name("kinowo_worker_tasks_started")
-    .help("Tasks claimed and kicked off since boot, by type.")
-    .labelNames("task_type")
-    .register(registry)
-
-  private val finished = Counter.builder()
-    .name("kinowo_worker_tasks_finished")
-    .help("Tasks that finished a handler run since boot, by type and outcome (done=fully worked, skipped=data already fresh, rescheduled=transient retry, failed=handler threw, no_handler=no wired handler).")
-    .labelNames("task_type", "outcome")
-    .register(registry)
-
-  private val duration = Histogram.builder()
-    .name("kinowo_worker_task_duration_seconds")
-    .help("Handler wall-clock of fully-worked (done) tasks, by type.")
-    .labelNames("task_type")
-    .classicUpperBounds(DurationBucketsSeconds*)
-    .classicOnly()
-    .register(registry)
-
-  private val ratingFirstAttemptDelay = Histogram.builder()
-    .name("kinowo_worker_rating_first_attempt_delay_seconds")
-    .help("Delay between a film's TMDB resolution and the FIRST attempt to fetch its rating, by site (imdb/fw/rt/mc). Measures the EnrichmentReaper's first-pass latency now that ratings aren't enqueued the instant a film resolves.")
-    .labelNames("site")
-    .classicUpperBounds(RatingDelayBucketsSeconds*)
-    .classicOnly()
-    .register(registry)
-
-  private val queueDepth = Gauge.builder()
-    .name("kinowo_worker_queue_depth")
-    .help("Tasks currently in the queue, by state.")
-    .labelNames("state")
-    .register(registry)
-
-  private val waitingByType = Gauge.builder()
-    .name("kinowo_worker_queue_waiting_by_type")
-    .help("Waiting (claimable) tasks currently in the queue, by type. Sampled from the bounded active snapshot.")
-    .labelNames("task_type")
-    .register(registry)
-
-  private val oldestWaitingAge = Gauge.builder()
-    .name("kinowo_worker_queue_oldest_waiting_age_seconds")
-    .help("Age of the oldest waiting task per type — head-of-line latency / starvation signal.")
-    .labelNames("task_type")
-    .register(registry)
-
-  private val poolSizeGauge = Gauge.builder()
-    .name("kinowo_worker_pool_size")
-    .help("Configured worker pool size — pair with queue_depth{state=\"worked_on\"} for utilization.")
-    .register(registry)
-
-  // 1 while the reapers are backing off (CPU-credit throttled — by the external
-  // Grafana credit gate OR the in-process scrape-duration backstop), 0 otherwise.
-  // A Grafana alert on this drives the Telegram start/end notification, and it's a
-  // clean on/off panel for the dashboard. Set at scrape time from the live signal.
-  private val throttledGauge = Gauge.builder()
-    .name("kinowo_worker_throttled")
-    .help("1 = reapers are backing off (CPU-credit throttled), 0 = full enqueue.")
-    .register(registry)
-
-  private val stagingMovies = Gauge.builder()
-    .name("kinowo_worker_staging_movies")
-    .help("Incubating films currently in pending_movies, by the step each needs next (detail → resolve_tmdb → resolve_imdb → fold). Distinct films (a film's cinema rows count once); sum = total movies in staging.")
-    .labelNames("step")
-    .register(registry)
-
-  private val merges = Counter.builder()
-    .name("kinowo_worker_merges")
-    .help("Movie rows folded into another row since boot (one per victim absorbed; a cluster of N counts N−1), by reason — canonicalize=periodic same-film settle/rehydrate fold, resolved-settle=TMDB-resolve year fold, tmdb-identity=runtime same-tmdbId put-gate, normalize-rebuild=title-rule change re-merges rows that now share a key. Each fold orphans the victim's title|year freshness, so rate() is the re-key re-enrichment load.")
-    .labelNames("reason")
-    .register(registry)
-
-  private val splits = Counter.builder()
-    .name("kinowo_worker_splits")
-    .help("New movie rows spawned by un-merging since boot (a 1→N split counts N−1) — the inverse of a merge. Only a title-rule change (NormalizeRebuild) re-keys a row's slots onto distinct keys; each split-off is born fresh (no tmdbId) and re-resolves, so rate() is the un-merge re-enrichment load. Pairs with kinowo_worker_merges_total{reason=\"normalize-rebuild\"}.")
-    .register(registry)
-
-  private val readModelWrites = Counter.builder()
-    .name("kinowo_worker_readmodel_writes")
-    .help("Denormalised read-model documents (re)written since boot, by target (movie|screening) and op (upsert|delete). rate() is the reprojection churn the worker pushes through the web's web_movies/web_screenings change streams.")
-    .labelNames("target", "op")
-    .register(registry)
-
-  private val readModelFilmsPruned = Counter.builder()
-    .name("kinowo_worker_readmodel_films_pruned")
-    .help("Films whose derived documents were removed from the read model during reconcile since boot — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
-    .register(registry)
-
-  private val readModelProjectDuration = Histogram.builder()
-    .name("kinowo_worker_readmodel_project_duration_seconds")
-    .help("Wall-clock of one pure ReadModelProjection.projectAll (CPU-bound, no I/O) per source row since boot. rate(_sum)*100 is projection's share of worker CPU in centi-cores — the credit-floor driver the CPU-drivers dashboard stacks against JIT + everything else.")
-    .classicUpperBounds(ProjectBucketsSeconds*)
-    .classicOnly()
-    .register(registry)
-
-  private val readModelProjectCalls = Counter.builder()
-    .name("kinowo_worker_readmodel_project_calls")
-    .help("Source rows projected (projectAll invoked) since boot — the throughput denominator for readmodel_project_duration_seconds. Spikes during the periodic full reproject sweep (~800 rows) and on the boot catch-up.")
-    .register(registry)
-
-  private val readModelMetadataProjections = Counter.builder()
-    .name("kinowo_worker_readmodel_metadata_projections")
-    .help("Projections by whether the metadata half (resolve/synopsisByCity/ratingsFor) was REUSED from the per-film cache (outcome=reused — a showtime-only change at an already-present cinema, only the cheap screenings half re-ran) or RECOMPUTED (outcome=recomputed — a rating/synopsis/new-cinema change, or a first projection). rate(reused) / rate(reused+recomputed) is opt-1's hit ratio — high reuse under reproject/enrich showtime churn is the CPU win.")
-    .labelNames("outcome")
-    .register(registry)
-
-  private val cacheRehydrateChanges = Counter.builder()
-    .name("kinowo_worker_cache_rehydrate_changes")
-    .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
-    .labelNames("kind")
-    .register(registry)
-
-  private val readModelReconcileSweeps = Counter.builder()
-    .name("kinowo_worker_readmodel_reconcile_sweeps")
-    .help("Read-model reconciliation sweeps since boot, by kind (prune=cheap id-only orphan prune, frequent; reproject=full re-projection catching change-stream gaps, rare) and did_work (true=pruned or reprojected >=1 doc, false=no-op). A reproject that is almost always did_work=false proves the change stream is reliable and the full sweep is redundant; a prune with did_work=true is the deletes/re-keys the stream can't deliver. rate(did_work=true) vs rate(did_work=false) is the redundancy signal.")
-    .labelNames("kind", "did_work")
-    .register(registry)
-
-  private val changeEvents = Counter.builder()
-    .name("kinowo_worker_movie_change_events")
-    .help("Movie change-stream events the shared cursor consumed since boot, by op (insert|update|replace|delete). rate() is the change-stream volume the cache + read-model projector reproject from.")
-    .labelNames("op")
-    .register(registry)
-
-  private val changeUpdateKinds = Counter.builder()
-    .name("kinowo_worker_movie_change_update_kinds")
-    .help("For UPDATE events, which field kind changed since boot: source_data=a cinema slot (scrape write), rating=a rating value/url, identity=tmdb/imdb id + resolution lifecycle, updated_at_only=a no-op that touched only updatedAt (a redundant-write canary — should stay ~0). A multi-field update counts under each kind it touched.")
-    .labelNames("kind")
-    .register(registry)
-
-  private val writer = PrometheusTextFormatWriter.create()
-
-  seed()
-
-  /** Materialize every series at 0 so it exists from boot (no Grafana gaps). */
-  private def seed(): Unit = {
-    TaskType.all.foreach { t =>
-      EnqueueResults.foreach(r => enqueued.labelValues(t.name, r))
-      started.labelValues(t.name)
-      Outcomes.foreach(o => finished.labelValues(t.name, o))
-      duration.labelValues(t.name)
-      waitingByType.labelValues(t.name).set(0.0)
-      oldestWaitingAge.labelValues(t.name).set(0.0)
-    }
-    RatingSites.foreach(s => ratingFirstAttemptDelay.labelValues(s))
-    QueueStates.foreach(s => queueDepth.labelValues(s).set(0.0))
-    StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(0.0))
-    MergeReason.all.foreach(r => merges.labelValues(r.label))
-    splits.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
-    ReadModelProjectionMetrics.Targets.foreach(t =>
-      ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(t, o)))
-    readModelFilmsPruned.inc(0.0) // materialize the single series at 0 so Grafana draws a continuous line
-    readModelProjectCalls.inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
-    readModelProjectDuration.observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
-    ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(o))
-    ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
-      Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(k, w)))
-    Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(k))
-    ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(o))
-    ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(k))
-    poolSizeGauge.set(poolSize.toDouble)
-    throttledGauge.set(0.0) // materialize at 0 so Grafana draws a continuous on/off line
-  }
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
-  def recordFirstRatingDelay(site: String, seconds: Double): Unit =
-    ratingFirstAttemptDelay.labelValues(site).observe(math.max(0.0, seconds))
+  def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
 
-  /** Each absorbed victim row is one increment under its fold's reason. */
-  def recordMerge(reason: MergeReason, victims: Int): Unit =
-    if (victims > 0) merges.labelValues(reason.label).inc(victims.toDouble)
-
-  /** Each new row spawned by an un-merge is one increment (a 1→N split = N−1). */
-  def recordSplit(fragments: Int): Unit =
-    if (fragments > 0) splits.inc(fragments.toDouble)
+  // ── MergeMetrics / SplitMetrics ─────────────────────────────────────────────
+  def recordMerge(reason: MergeReason, victims: Int): Unit = series.recordMerge(countryCode, reason, victims)
+  def recordSplit(fragments: Int): Unit                    = series.recordSplit(countryCode, fragments)
 
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
-  def recordWrite(target: String, op: String, count: Int): Unit =
-    if (count > 0) readModelWrites.labelValues(target, op).inc(count.toDouble)
-
-  def recordFilmPruned(count: Int): Unit =
-    if (count > 0) readModelFilmsPruned.inc(count.toDouble)
-
-  def recordProject(seconds: Double): Unit = {
-    readModelProjectDuration.observe(math.max(0.0, seconds))
-    readModelProjectCalls.inc()
-  }
-
-  def recordMetadataProjection(reused: Boolean): Unit =
-    readModelMetadataProjections.labelValues(
-      if (reused) ReadModelProjectionMetrics.MetadataOutcome.Reused
-      else ReadModelProjectionMetrics.MetadataOutcome.Recomputed).inc()
-
-  def recordReconcileSweep(kind: String, didWork: Boolean): Unit =
-    readModelReconcileSweeps.labelValues(kind, didWork.toString).inc()
+  def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
+  def recordFilmPruned(count: Int): Unit                        = series.recordFilmPruned(countryCode, count)
+  def recordProject(seconds: Double): Unit                      = series.recordProject(countryCode, seconds)
+  def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
+  def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
 
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
-  def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = {
-    if (changedUpserts > 0) cacheRehydrateChanges.labelValues("changed").inc(changedUpserts.toDouble)
-    if (deletes > 0)        cacheRehydrateChanges.labelValues("deleted").inc(deletes.toDouble)
-  }
+  def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
 
   // ── ChangeStreamMetrics ─────────────────────────────────────────────────────
-  def recordEvent(op: String): Unit           = changeEvents.labelValues(op).inc()
-  def recordUpdateKind(kind: String): Unit     = changeUpdateKinds.labelValues(kind).inc()
+  def recordEvent(op: String): Unit        = series.recordEvent(countryCode, op)
+  def recordUpdateKind(kind: String): Unit = series.recordUpdateKind(countryCode, kind)
 
-  def recordEnqueue(taskType: TaskType, result: String): Unit =
-    enqueued.labelValues(taskType.name, result).inc()
-
-  def onStarted(task: Task): Unit =
-    started.labelValues(task.taskType.name).inc()
-
-  def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = {
-    finished.labelValues(task.taskType.name, outcome).inc()
-    // Only fully-worked tasks contribute to the duration histogram — a Skipped
-    // task only paid a freshness check, and a Reschedule/failure didn't finish.
-    if (outcome == Outcome.Done) duration.labelValues(task.taskType.name).observe(handleMillis / 1000.0)
-  }
-
-  /** Refresh the queue + staging gauges from live samples and render the full
-   *  exposition. Called from the worker's `/metrics` handler on each Fly scrape;
-   *  `stagingByStep` comes from `StagingReaper.stepCounts()`, `throttled` from the
-   *  live `ScrapeThrottleSignal` the reapers consult. */
-  def scrape(snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int], now: Instant, throttled: Boolean = false): String = {
-    refreshQueueGauges(snapshot, now)
-    StagingStep.all.foreach(s => stagingMovies.labelValues(s.label).set(stagingByStep.getOrElse(s, 0).toDouble))
-    throttledGauge.set(if (throttled) 1.0 else 0.0)
-    val out = new ByteArrayOutputStream()
-    writer.write(out, registry.scrape())
-    out.toString("UTF-8")
-  }
-
-  private def refreshQueueGauges(snapshot: QueueSnapshot, now: Instant): Unit = {
-    queueDepth.labelValues(TaskState.Waiting).set(snapshot.counts.getOrElse(TaskState.Waiting, 0L).toDouble)
-    queueDepth.labelValues(TaskState.WorkedOn).set(snapshot.counts.getOrElse(TaskState.WorkedOn, 0L).toDouble)
-
-    val waiting = snapshot.active.filter(_.state == TaskState.Waiting).groupBy(_.taskType)
-    TaskType.all.foreach { t =>
-      val rows = waiting.getOrElse(t.name, Nil)
-      waitingByType.labelValues(t.name).set(rows.size.toDouble)
-      val age = rows.map(_.submittedAt).minOption
-        .map(oldest => math.max(0L, now.getEpochSecond - oldest.getEpochSecond).toDouble)
-        .getOrElse(0.0)
-      oldestWaitingAge.labelValues(t.name).set(age)
-    }
-  }
+  // ── Task lifecycle ──────────────────────────────────────────────────────────
+  def recordEnqueue(taskType: TaskType, result: String): Unit = series.recordEnqueue(countryCode, taskType, result)
+  def onStarted(task: Task): Unit                             = series.onStarted(countryCode, task)
+  def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = series.onFinished(countryCode, task, outcome, handleMillis)
 }
 
 object WorkerTaskMetrics {
+
+  /** The per-country queue/staging/throttle sample [[Series.scrape]] folds into
+   *  the gauges for one country on each Fly scrape. `snapshot` is that country's
+   *  live queue monitor, `stagingByStep` its `StagingReaper.stepCounts()`,
+   *  `throttled` its `ScrapeThrottleSignal`. */
+  case class CountryQueueSample(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int], throttled: Boolean)
+
+  /**
+   * The registered-once metric objects, SHARED across every country's
+   * [[WorkerTaskMetrics]] facade. Registered on the single worker registry so
+   * ONE `/metrics` scrape exposes every country's task pipeline; each series
+   * carries a leading `country` label so the countries never collide. Seeded to 0
+   * for the full cartesian of (country × every other label value) so no Grafana
+   * gap opens before a given (country, type, outcome) first fires.
+   */
+  class Series(poolSize: Int, countryCodes: Seq[String], registry: PrometheusRegistry = new PrometheusRegistry()) {
+
+    // The client auto-appends `_total` to counter names, so they're declared without it.
+    private val enqueued = Counter.builder()
+      .name("kinowo_worker_tasks_enqueued")
+      .help("Tasks added to the queue (result=added) or collapsed onto an active duplicate (result=deduped) since boot, by country and type.")
+      .labelNames("country", "task_type", "result")
+      .register(registry)
+
+    private val started = Counter.builder()
+      .name("kinowo_worker_tasks_started")
+      .help("Tasks claimed and kicked off since boot, by country and type.")
+      .labelNames("country", "task_type")
+      .register(registry)
+
+    private val finished = Counter.builder()
+      .name("kinowo_worker_tasks_finished")
+      .help("Tasks that finished a handler run since boot, by country, type and outcome (done=fully worked, skipped=data already fresh, rescheduled=transient retry, failed=handler threw, no_handler=no wired handler).")
+      .labelNames("country", "task_type", "outcome")
+      .register(registry)
+
+    private val duration = Histogram.builder()
+      .name("kinowo_worker_task_duration_seconds")
+      .help("Handler wall-clock of fully-worked (done) tasks, by country and type.")
+      .labelNames("country", "task_type")
+      .classicUpperBounds(DurationBucketsSeconds*)
+      .classicOnly()
+      .register(registry)
+
+    private val ratingFirstAttemptDelay = Histogram.builder()
+      .name("kinowo_worker_rating_first_attempt_delay_seconds")
+      .help("Delay between a film's TMDB resolution and the FIRST attempt to fetch its rating, by country and site (imdb/fw/rt/mc). Measures the EnrichmentReaper's first-pass latency now that ratings aren't enqueued the instant a film resolves.")
+      .labelNames("country", "site")
+      .classicUpperBounds(RatingDelayBucketsSeconds*)
+      .classicOnly()
+      .register(registry)
+
+    private val queueDepth = Gauge.builder()
+      .name("kinowo_worker_queue_depth")
+      .help("Tasks currently in the queue, by country and state.")
+      .labelNames("country", "state")
+      .register(registry)
+
+    private val waitingByType = Gauge.builder()
+      .name("kinowo_worker_queue_waiting_by_type")
+      .help("Waiting (claimable) tasks currently in the queue, by country and type. Sampled from the bounded active snapshot.")
+      .labelNames("country", "task_type")
+      .register(registry)
+
+    private val oldestWaitingAge = Gauge.builder()
+      .name("kinowo_worker_queue_oldest_waiting_age_seconds")
+      .help("Age of the oldest waiting task per country and type — head-of-line latency / starvation signal.")
+      .labelNames("country", "task_type")
+      .register(registry)
+
+    // The worker pool is a single SharedExecutionBudget across all countries, so
+    // this is a process-level gauge with no country label (pairing it per-country
+    // would misleadingly imply a per-country pool).
+    private val poolSizeGauge = Gauge.builder()
+      .name("kinowo_worker_pool_size")
+      .help("Configured worker pool size (shared across countries) — pair with queue_depth{state=\"worked_on\"} for utilization.")
+      .register(registry)
+
+    // 1 while a country's reapers are backing off (CPU-credit throttled — by the
+    // external Grafana credit gate OR the in-process scrape-duration backstop), 0
+    // otherwise. A Grafana alert on this drives the Telegram start/end
+    // notification, and it's a clean on/off panel. Set at scrape time from each
+    // country's live signal.
+    private val throttledGauge = Gauge.builder()
+      .name("kinowo_worker_throttled")
+      .help("1 = a country's reapers are backing off (CPU-credit throttled), 0 = full enqueue.")
+      .labelNames("country")
+      .register(registry)
+
+    private val stagingMovies = Gauge.builder()
+      .name("kinowo_worker_staging_movies")
+      .help("Incubating films currently in pending_movies, by country and the step each needs next (detail → resolve_tmdb → resolve_imdb → fold). Distinct films (a film's cinema rows count once); sum = total movies in staging.")
+      .labelNames("country", "step")
+      .register(registry)
+
+    private val merges = Counter.builder()
+      .name("kinowo_worker_merges")
+      .help("Movie rows folded into another row since boot (one per victim absorbed; a cluster of N counts N−1), by country and reason — canonicalize=periodic same-film settle/rehydrate fold, resolved-settle=TMDB-resolve year fold, tmdb-identity=runtime same-tmdbId put-gate, normalize-rebuild=title-rule change re-merges rows that now share a key. Each fold orphans the victim's title|year freshness, so rate() is the re-key re-enrichment load.")
+      .labelNames("country", "reason")
+      .register(registry)
+
+    private val splits = Counter.builder()
+      .name("kinowo_worker_splits")
+      .help("New movie rows spawned by un-merging since boot (a 1→N split counts N−1), by country — the inverse of a merge. Only a title-rule change (NormalizeRebuild) re-keys a row's slots onto distinct keys; each split-off is born fresh (no tmdbId) and re-resolves, so rate() is the un-merge re-enrichment load. Pairs with kinowo_worker_merges_total{reason=\"normalize-rebuild\"}.")
+      .labelNames("country")
+      .register(registry)
+
+    private val readModelWrites = Counter.builder()
+      .name("kinowo_worker_readmodel_writes")
+      .help("Denormalised read-model documents (re)written since boot, by country, target (movie|screening) and op (upsert|delete). rate() is the reprojection churn the worker pushes through the web's web_movies/web_screenings change streams.")
+      .labelNames("country", "target", "op")
+      .register(registry)
+
+    private val readModelFilmsPruned = Counter.builder()
+      .name("kinowo_worker_readmodel_films_pruned")
+      .help("Films whose derived documents were removed from the read model during reconcile since boot, by country — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
+      .labelNames("country")
+      .register(registry)
+
+    private val readModelProjectDuration = Histogram.builder()
+      .name("kinowo_worker_readmodel_project_duration_seconds")
+      .help("Wall-clock of one pure ReadModelProjection.projectAll (CPU-bound, no I/O) per source row since boot, by country. rate(_sum)*100 is projection's share of worker CPU in centi-cores — the credit-floor driver the CPU-drivers dashboard stacks against JIT + everything else.")
+      .labelNames("country")
+      .classicUpperBounds(ProjectBucketsSeconds*)
+      .classicOnly()
+      .register(registry)
+
+    private val readModelProjectCalls = Counter.builder()
+      .name("kinowo_worker_readmodel_project_calls")
+      .help("Source rows projected (projectAll invoked) since boot, by country — the throughput denominator for readmodel_project_duration_seconds. Spikes during the periodic full reproject sweep (~800 rows) and on the boot catch-up.")
+      .labelNames("country")
+      .register(registry)
+
+    private val readModelMetadataProjections = Counter.builder()
+      .name("kinowo_worker_readmodel_metadata_projections")
+      .help("Projections by country and whether the metadata half (resolve/synopsisByCity/ratingsFor) was REUSED from the per-film cache (outcome=reused — a showtime-only change at an already-present cinema, only the cheap screenings half re-ran) or RECOMPUTED (outcome=recomputed — a rating/synopsis/new-cinema change, or a first projection). rate(reused) / rate(reused+recomputed) is opt-1's hit ratio — high reuse under reproject/enrich showtime churn is the CPU win.")
+      .labelNames("country", "outcome")
+      .register(registry)
+
+    private val cacheRehydrateChanges = Counter.builder()
+      .name("kinowo_worker_cache_rehydrate_changes")
+      .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by country and kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
+      .labelNames("country", "kind")
+      .register(registry)
+
+    private val readModelReconcileSweeps = Counter.builder()
+      .name("kinowo_worker_readmodel_reconcile_sweeps")
+      .help("Read-model reconciliation sweeps since boot, by country, kind (prune=cheap id-only orphan prune, frequent; reproject=full re-projection catching change-stream gaps, rare) and did_work (true=pruned or reprojected >=1 doc, false=no-op). A reproject that is almost always did_work=false proves the change stream is reliable and the full sweep is redundant; a prune with did_work=true is the deletes/re-keys the stream can't deliver. rate(did_work=true) vs rate(did_work=false) is the redundancy signal.")
+      .labelNames("country", "kind", "did_work")
+      .register(registry)
+
+    private val changeEvents = Counter.builder()
+      .name("kinowo_worker_movie_change_events")
+      .help("Movie change-stream events the shared cursor consumed since boot, by country and op (insert|update|replace|delete). rate() is the change-stream volume the cache + read-model projector reproject from.")
+      .labelNames("country", "op")
+      .register(registry)
+
+    private val changeUpdateKinds = Counter.builder()
+      .name("kinowo_worker_movie_change_update_kinds")
+      .help("For UPDATE events, which field kind changed since boot, by country: source_data=a cinema slot (scrape write), rating=a rating value/url, identity=tmdb/imdb id + resolution lifecycle, updated_at_only=a no-op that touched only updatedAt (a redundant-write canary — should stay ~0). A multi-field update counts under each kind it touched.")
+      .labelNames("country", "kind")
+      .register(registry)
+
+    private val writer = PrometheusTextFormatWriter.create()
+
+    seed()
+
+    /** Materialize every series at 0 for every country so it exists from boot (no
+     *  Grafana gaps). */
+    private def seed(): Unit = {
+      countryCodes.foreach { c =>
+        TaskType.all.foreach { t =>
+          EnqueueResults.foreach(r => enqueued.labelValues(c, t.name, r))
+          started.labelValues(c, t.name)
+          Outcomes.foreach(o => finished.labelValues(c, t.name, o))
+          duration.labelValues(c, t.name)
+          waitingByType.labelValues(c, t.name).set(0.0)
+          oldestWaitingAge.labelValues(c, t.name).set(0.0)
+        }
+        RatingSites.foreach(s => ratingFirstAttemptDelay.labelValues(c, s))
+        QueueStates.foreach(s => queueDepth.labelValues(c, s).set(0.0))
+        StagingStep.all.foreach(s => stagingMovies.labelValues(c, s.label).set(0.0))
+        MergeReason.all.foreach(r => merges.labelValues(c, r.label))
+        splits.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
+        ReadModelProjectionMetrics.Targets.foreach(t =>
+          ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
+        readModelFilmsPruned.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
+        readModelProjectCalls.labelValues(c).inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
+        readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
+        ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, o))
+        ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
+          Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
+        Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
+        ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
+        ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
+        throttledGauge.labelValues(c).set(0.0) // materialize at 0 so Grafana draws a continuous on/off line
+      }
+      poolSizeGauge.set(poolSize.toDouble)
+    }
+
+    // ── RatingLatencyMetrics ──────────────────────────────────────────────────
+    def recordFirstRatingDelay(country: String, site: String, seconds: Double): Unit =
+      ratingFirstAttemptDelay.labelValues(country, site).observe(math.max(0.0, seconds))
+
+    /** Each absorbed victim row is one increment under its fold's reason. */
+    def recordMerge(country: String, reason: MergeReason, victims: Int): Unit =
+      if (victims > 0) merges.labelValues(country, reason.label).inc(victims.toDouble)
+
+    /** Each new row spawned by an un-merge is one increment (a 1→N split = N−1). */
+    def recordSplit(country: String, fragments: Int): Unit =
+      if (fragments > 0) splits.labelValues(country).inc(fragments.toDouble)
+
+    // ── ReadModelProjectionMetrics ────────────────────────────────────────────
+    def recordWrite(country: String, target: String, op: String, count: Int): Unit =
+      if (count > 0) readModelWrites.labelValues(country, target, op).inc(count.toDouble)
+
+    def recordFilmPruned(country: String, count: Int): Unit =
+      if (count > 0) readModelFilmsPruned.labelValues(country).inc(count.toDouble)
+
+    def recordProject(country: String, seconds: Double): Unit = {
+      readModelProjectDuration.labelValues(country).observe(math.max(0.0, seconds))
+      readModelProjectCalls.labelValues(country).inc()
+    }
+
+    def recordMetadataProjection(country: String, reused: Boolean): Unit =
+      readModelMetadataProjections.labelValues(country,
+        if (reused) ReadModelProjectionMetrics.MetadataOutcome.Reused
+        else ReadModelProjectionMetrics.MetadataOutcome.Recomputed).inc()
+
+    def recordReconcileSweep(country: String, kind: String, didWork: Boolean): Unit =
+      readModelReconcileSweeps.labelValues(country, kind, didWork.toString).inc()
+
+    // ── CacheSyncMetrics ──────────────────────────────────────────────────────
+    def recordRehydrate(country: String, changedUpserts: Int, deletes: Int): Unit = {
+      if (changedUpserts > 0) cacheRehydrateChanges.labelValues(country, "changed").inc(changedUpserts.toDouble)
+      if (deletes > 0)        cacheRehydrateChanges.labelValues(country, "deleted").inc(deletes.toDouble)
+    }
+
+    // ── ChangeStreamMetrics ────────────────────────────────────────────────────
+    def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()
+    def recordUpdateKind(country: String, kind: String): Unit = changeUpdateKinds.labelValues(country, kind).inc()
+
+    def recordEnqueue(country: String, taskType: TaskType, result: String): Unit =
+      enqueued.labelValues(country, taskType.name, result).inc()
+
+    def onStarted(country: String, task: Task): Unit =
+      started.labelValues(country, task.taskType.name).inc()
+
+    def onFinished(country: String, task: Task, outcome: String, handleMillis: Long): Unit = {
+      finished.labelValues(country, task.taskType.name, outcome).inc()
+      // Only fully-worked tasks contribute to the duration histogram — a Skipped
+      // task only paid a freshness check, and a Reschedule/failure didn't finish.
+      if (outcome == Outcome.Done) duration.labelValues(country, task.taskType.name).observe(handleMillis / 1000.0)
+    }
+
+    /** Refresh each country's queue + staging gauges from its live sample and
+     *  render the full exposition (task pipeline + census + JVM, all on the shared
+     *  registry). Called from the worker's `/metrics` handler on each Fly scrape
+     *  with one [[CountryQueueSample]] per running country. */
+    def scrape(samples: Seq[CountryQueueSample], now: Instant): String = {
+      samples.foreach { s =>
+        refreshQueueGauges(s.countryCode, s.snapshot, now)
+        StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(s.stagingByStep.getOrElse(step, 0).toDouble))
+        throttledGauge.labelValues(s.countryCode).set(if (s.throttled) 1.0 else 0.0)
+      }
+      val out = new ByteArrayOutputStream()
+      writer.write(out, registry.scrape())
+      out.toString("UTF-8")
+    }
+
+    private def refreshQueueGauges(country: String, snapshot: QueueSnapshot, now: Instant): Unit = {
+      queueDepth.labelValues(country, TaskState.Waiting).set(snapshot.counts.getOrElse(TaskState.Waiting, 0L).toDouble)
+      queueDepth.labelValues(country, TaskState.WorkedOn).set(snapshot.counts.getOrElse(TaskState.WorkedOn, 0L).toDouble)
+
+      val waiting = snapshot.active.filter(_.state == TaskState.Waiting).groupBy(_.taskType)
+      TaskType.all.foreach { t =>
+        val rows = waiting.getOrElse(t.name, Nil)
+        waitingByType.labelValues(country, t.name).set(rows.size.toDouble)
+        val age = rows.map(_.submittedAt).minOption
+          .map(oldest => math.max(0L, now.getEpochSecond - oldest.getEpochSecond).toDouble)
+          .getOrElse(0.0)
+        oldestWaitingAge.labelValues(country, t.name).set(age)
+      }
+    }
+  }
+
   object Outcome {
     val Done        = "done"
     val Skipped     = "skipped"

@@ -34,19 +34,14 @@ import scala.util.Try
  */
 class WorkerCorpusMetrics(
   repository:     MovieRepository,
-  registry:       PrometheusRegistry,
+  corpus:         Gauge,
+  countryCode:    String,
   sampleInterval: FiniteDuration = WorkerCorpusMetrics.DefaultSampleInterval
 ) extends Logging {
   import WorkerCorpusMetrics._
 
-  private val corpus = Gauge.builder()
-    .name(Name)
-    .help("Distinct movie records in the live movies collection, by subset: total population, those with any rating, with a resolved tmdb/imdb id, and the per-source rating populations (imdb/rt/mc/fw).")
-    .labelNames("subset")
-    .register(registry)
-
-  // Materialize every series at 0 so it exists from boot — no Grafana gaps.
-  Subset.all.foreach(s => corpus.labelValues(s).set(0.0))
+  // Materialize this country's every series at 0 so it exists from boot — no Grafana gaps.
+  Subset.all.foreach(s => corpus.labelValues(countryCode, s).set(0.0))
 
   private val scheduler = DaemonExecutors.scheduler("worker-corpus-metrics")
 
@@ -58,7 +53,7 @@ class WorkerCorpusMetrics(
     // Counts ratings/ids only — no showtimes — so use the cheaper scan that skips the
     // per-scan `screenings` load (this runs on a 5-min timer).
     repository.foreachRecordWithoutShowtimes(row => counts = counts.add(row.record))
-    counts.bySubset.foreach { case (subset, value) => corpus.labelValues(subset).set(value.toDouble) }
+    counts.bySubset.foreach { case (subset, value) => corpus.labelValues(countryCode, subset).set(value.toDouble) }
   }
 
   def start(): Unit = {
@@ -74,6 +69,17 @@ class WorkerCorpusMetrics(
 
 object WorkerCorpusMetrics {
   val Name = "kinowo_worker_corpus_movies"
+
+  /** Build and register the ONE shared gauge every country's sampler writes into
+   *  (leading `country` label, then `subset`). Called once when the shared worker
+   *  registry is built; each per-country [[WorkerCorpusMetrics]] then samples its
+   *  own slice of it. */
+  def gauge(registry: PrometheusRegistry): Gauge =
+    Gauge.builder()
+      .name(Name)
+      .help("Distinct movie records in the live movies collection, by country and subset: total population, those with any rating, with a resolved tmdb/imdb id, and the per-source rating populations (imdb/rt/mc/fw).")
+      .labelNames("country", "subset")
+      .register(registry)
 
   /** Once every 5 minutes — the corpus changes on the order of a scrape cadence,
    *  far slower than the seconds-apart Fly scrape, so a frequent re-scan would be

@@ -165,8 +165,11 @@ trait Wiring {
   // failing silently behind a fallback (the residential proxy → Zyte case).
   // Samples per-city served-film counts every minute (all future / showing
   // tomorrow), appended to /metrics for Grafana to graph + alert on swings.
-  lazy val webMovieMetrics = new WebMovieMetrics(movieControllerService)
-  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics)
+  // A web deployment serves exactly one country; tag its /metrics with that
+  // country so its series line up with the worker's per-country series in Grafana.
+  private val metricsCountry = models.Country.fromEnv
+  lazy val webMovieMetrics = new WebMovieMetrics(movieControllerService, cities = metricsCountry.cities, country = metricsCountry.code)
+  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics, metricsCountry.code)
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)

@@ -38,22 +38,17 @@ import scala.util.{Failure, Success, Try}
  */
 class WorkerSourceFilmsMetrics(
   repository:     MovieRepository,
-  registry:       PrometheusRegistry,
+  served:         Gauge,
+  countryCode:    String,
   clock:          Clock          = Clock.systemDefaultZone(),
   cities:         Seq[City]      = City.all,
   sampleInterval: FiniteDuration = WorkerSourceFilmsMetrics.DefaultSampleInterval
 ) extends Logging {
   import WorkerSourceFilmsMetrics._
 
-  private val served = Gauge.builder()
-    .name(Name)
-    .help("Films the source `movies` collection would serve per city, by scope (all = any future showing, tomorrow = showing tomorrow) — the projection-side mirror of the web's kinowo_web_movies_served, for spotting read-model drift.")
-    .labelNames("city", "scope")
-    .register(registry)
-
   // Seed every (city, scope) at 0 so a city that empties reads as an explicit 0,
   // not a vanished series — the swing/floor alerts need the zero present.
-  for (c <- cities; scope <- Scope.all) served.labelValues(c.slug, scope).set(0.0)
+  for (c <- cities; scope <- Scope.all) served.labelValues(countryCode, c.slug, scope).set(0.0)
 
   private val scheduler = DaemonExecutors.scheduler("worker-source-films-metrics")
 
@@ -62,7 +57,7 @@ class WorkerSourceFilmsMetrics(
   def sample(): Unit = {
     val counts = countAll(repository, cities, clock)
     for (c <- cities; scope <- Scope.all)
-      served.labelValues(c.slug, scope).set(counts.getOrElse((c.slug, scope), 0).toDouble)
+      served.labelValues(countryCode, c.slug, scope).set(counts.getOrElse((c.slug, scope), 0).toDouble)
   }
 
   def start(): Unit = {
@@ -77,9 +72,20 @@ class WorkerSourceFilmsMetrics(
 }
 
 object WorkerSourceFilmsMetrics {
-  /** Paired with the web's `kinowo_web_movies_served`: same suffix, same labels,
-   *  worker-vs-web prefix — so Grafana overlays the two as source-vs-read-model. */
+  /** Paired with the web's `kinowo_web_movies_served`: same suffix, same city/scope
+   *  labels (plus the worker's leading `country`), worker-vs-web prefix — so Grafana
+   *  overlays the two as source-vs-read-model. */
   val Name = "kinowo_worker_movies_served"
+
+  /** Build and register the ONE shared gauge every country's sampler writes into
+   *  (leading `country` label, then `city`, `scope`). Called once when the shared
+   *  worker registry is built. */
+  def gauge(registry: PrometheusRegistry): Gauge =
+    Gauge.builder()
+      .name(Name)
+      .help("Films the source `movies` collection would serve per country and city, by scope (all = any future showing, tomorrow = showing tomorrow) — the projection-side mirror of the web's kinowo_web_movies_served, for spotting read-model drift.")
+      .labelNames("country", "city", "scope")
+      .register(registry)
 
   /** Once every 5 minutes — the corpus changes on the order of a scrape cadence,
    *  far slower than the seconds-apart Fly scrape; mirrors [[WorkerCorpusMetrics]]. */

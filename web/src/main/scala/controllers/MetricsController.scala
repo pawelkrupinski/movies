@@ -1,5 +1,6 @@
 package controllers
 
+import models.Country
 import play.api.mvc._
 import services.UptimeMonitor
 import services.UptimeMonitor.BucketSnapshot
@@ -22,10 +23,11 @@ import services.UptimeMonitor.BucketSnapshot
  * a city's repertoire suddenly swings (the read-model-outage signal: a city
  * silently dropping to zero).
  */
-class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, movieMetrics: WebMovieMetrics) extends AbstractController(cc) {
+class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, movieMetrics: WebMovieMetrics,
+  country: String = Country.default.code) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
     val snapshots = monitor.services.iterator.map(service => service -> monitor.history(service)).toMap
-    val body = MetricsController.render(snapshots, System.currentTimeMillis()) + movieMetrics.render()
+    val body = MetricsController.render(snapshots, System.currentTimeMillis(), country) + movieMetrics.render()
     Ok(body).as("text/plain; version=0.0.4; charset=utf-8")
   }
 }
@@ -50,7 +52,7 @@ object MetricsController {
    *  snapshots and the clock — so it's unit-tested without an HTTP round-trip.
    *  Services are emitted in name order so the output (and its tests) are
    *  deterministic. */
-  def render(snapshotsByService: Map[String, Seq[BucketSnapshot]], nowMs: Long): String = {
+  def render(snapshotsByService: Map[String, Seq[BucketSnapshot]], nowMs: Long, country: String): String = {
     val cutoff = nowMs - RecentWindowMs
     val recent = snapshotsByService.view
       .mapValues(_.filter(_.timestamp >= cutoff))
@@ -62,7 +64,8 @@ object MetricsController {
       sb.append("# TYPE ").append(family.name).append(" gauge\n")
       recent.foreach { case (service, buckets) =>
         val total = buckets.foldLeft(0)((acc, bucket) => acc + family.value(bucket))
-        sb.append(family.name).append("{service=\"").append(escapeLabel(service)).append("\"} ").append(total).append('\n')
+        sb.append(family.name).append("{country=\"").append(country).append("\",service=\"")
+          .append(escapeLabel(service)).append("\"} ").append(total).append('\n')
       }
     }
     sb.toString

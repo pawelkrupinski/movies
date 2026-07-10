@@ -39,28 +39,18 @@ import scala.util.Try
 class RatingRunCensus(
   cache:          MovieCacheReader,
   freshness:      FreshnessStore,
-  registry:       PrometheusRegistry,
+  notRun:         Gauge,
+  oldestAge:      Gauge,
+  countryCode:    String,
   clock:          Clock = Clock.systemUTC(),
   sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval
 ) extends Logging {
   import RatingRunCensus._
 
-  private val notRun = Gauge.builder()
-    .name(NotRunName)
-    .help("TMDB-resolved films eligible for this rating site whose first run hasn't happened yet (no freshness stamp), by site. A site that never runs keeps a non-zero backlog here.")
-    .labelNames("site")
-    .register(registry)
-
-  private val oldestAge = Gauge.builder()
-    .name(OldestAgeName)
-    .help("Seconds the OLDEST resolved-but-never-run film has waited since its TMDB resolution, by rating site — the never-run latency the first-attempt histogram can't show (it only times runs that happened). Climbs without bound for a site that never runs.")
-    .labelNames("site")
-    .register(registry)
-
-  // Materialize each site at 0 so every series exists from boot — no Grafana gaps.
+  // Materialize each site at 0 so this country's series exist from boot — no Grafana gaps.
   RatingSources.all.foreach { s =>
-    notRun.labelValues(s.kind.label).set(0.0)
-    oldestAge.labelValues(s.kind.label).set(0.0)
+    notRun.labelValues(countryCode, s.kind.label).set(0.0)
+    oldestAge.labelValues(countryCode, s.kind.label).set(0.0)
   }
 
   private val scheduler = DaemonExecutors.scheduler("rating-run-census")
@@ -71,8 +61,8 @@ class RatingRunCensus(
     val stats = census(cache.entries, freshness.lastFetchedAt, clock.instant())
     RatingSources.all.foreach { s =>
       val st = stats.getOrElse(s.kind.label, SiteBacklog.empty)
-      notRun.labelValues(s.kind.label).set(st.count.toDouble)
-      oldestAge.labelValues(s.kind.label).set(st.oldestAgeSeconds)
+      notRun.labelValues(countryCode, s.kind.label).set(st.count.toDouble)
+      oldestAge.labelValues(countryCode, s.kind.label).set(st.oldestAgeSeconds)
     }
   }
 
@@ -90,6 +80,23 @@ class RatingRunCensus(
 object RatingRunCensus {
   val NotRunName    = "kinowo_worker_rating_resolved_not_run"
   val OldestAgeName = "kinowo_worker_rating_resolved_not_run_oldest_age_seconds"
+
+  /** Build and register the TWO shared gauges every country's census writes into
+   *  (leading `country` label, then `site`) — the never-run backlog count and the
+   *  oldest-waiting age. Called once when the shared worker registry is built. */
+  def gauges(registry: PrometheusRegistry): (Gauge, Gauge) = {
+    val notRun = Gauge.builder()
+      .name(NotRunName)
+      .help("TMDB-resolved films eligible for this rating site whose first run hasn't happened yet (no freshness stamp), by country and site. A site that never runs keeps a non-zero backlog here.")
+      .labelNames("country", "site")
+      .register(registry)
+    val oldestAge = Gauge.builder()
+      .name(OldestAgeName)
+      .help("Seconds the OLDEST resolved-but-never-run film has waited since its TMDB resolution, by country and rating site — the never-run latency the first-attempt histogram can't show (it only times runs that happened). Climbs without bound for a site that never runs.")
+      .labelNames("country", "site")
+      .register(registry)
+    (notRun, oldestAge)
+  }
 
   /** Once every 5 minutes — the backlog drains on the order of the enrichment
    *  reaper's minute-cadence trickle, far slower than the seconds-apart scrape. */

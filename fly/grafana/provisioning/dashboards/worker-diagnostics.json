@@ -43,7 +43,14 @@
     ]
   },
   "templating": {
-    "list": []
+    "list": [
+      { "name": "country", "label": "Country", "type": "query",
+        "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+        "definition": "label_values(kinowo_worker_throttled, country)",
+        "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
+        "current": { "text": "pl", "value": "pl", "selected": true },
+        "includeAll": false, "multi": false, "refresh": 2, "sort": 1, "hide": 0 }
+    ]
   },
   "panels": [
     {
@@ -485,7 +492,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{app=\"kinowo-worker\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{app=\"kinowo-worker\"}[5m]))",
+          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\",app=\"kinowo-worker\"}[5m]))",
           "legendFormat": "avg project ms",
           "datasource": {
             "type": "prometheus",

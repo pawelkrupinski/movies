@@ -56,7 +56,14 @@ class WorkerWiring(
     // database view (`country.mongoDb`) on this single client. `None` → this
     // wiring builds (and closes) its own client from `MONGODB_URI`, the
     // single-connection default.
-    sharedMongoClient: Option[MongoClient] = None) extends play.api.Logging {
+    sharedMongoClient: Option[MongoClient] = None,
+    // The process-wide worker metrics bundle (ONE registry + one set of metric
+    // objects, shared across every country's wiring — see WorkerMetrics). WorkerMain
+    // builds it once over ALL countries and injects the SAME instance so every
+    // country's series lands on the single `/metrics` registry. Defaulted to a
+    // single-country bundle so a lone boot / test constructs its own.
+    workerMetrics: services.metrics.WorkerMetrics =
+      services.metrics.WorkerMetrics.singleCountry(country, Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4))) extends play.api.Logging {
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database)
   // `cinemaScraperCatalog.scrapeHosts` is passed BY-NAME (the catalog fetches
   // through this very `httoFetch`, so eager evaluation would cycle). It's forced
@@ -533,40 +540,33 @@ class WorkerWiring(
   // Prometheus. The queue is wrapped so every enqueue is metered centrally; the
   // TaskWorker reports claims/outcomes/durations via the same object as its
   // `TaskObserver`; the /metrics handler refreshes the queue gauges per scrape.
-  // One registry shared by every worker metric so a single /metrics scrape (and
-  // the existing `taskMetrics.scrape()` render) exposes the task pipeline AND the
-  // corpus census together.
-  lazy val metricsRegistry: io.prometheus.metrics.model.registry.PrometheusRegistry = {
-    val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
-    // Process/JVM resource metrics (process CPU, RSS, GC, threads) on the same
-    // registry, so one /metrics scrape carries them alongside the task pipeline.
-    services.metrics.JvmProcessMetrics.register(registry)
-    registry
-  }
-  lazy val taskMetrics: WorkerTaskMetrics = new WorkerTaskMetrics(workerPoolSize, metricsRegistry)
-  // Periodic census of the movies corpus (counts of resolved/rated rows), sampled
-  // off-band and exposed on the same registry — see WorkerCorpusMetrics.
+  // Worker metrics live in the process-wide `workerMetrics` bundle (ONE registry +
+  // one set of metric objects, shared across every country's wiring), injected at
+  // construction. This wiring holds only the PER-COUNTRY views/samplers that write
+  // its own `country="…"` slice; the shared registry is served once by WorkerMain.
+  //
+  // Per-country task-pipeline facade (enqueue/claim/finish/merge/… all tagged with
+  // this country) over the shared, registered-once Series.
+  lazy val taskMetrics: WorkerTaskMetrics = workerMetrics.taskMetricsFor(country)
+  // Periodic census of THIS country's movies corpus (counts of resolved/rated
+  // rows), sampled off-band into the shared corpus gauge — see WorkerCorpusMetrics.
   lazy val corpusMetrics: services.metrics.WorkerCorpusMetrics =
-    new services.metrics.WorkerCorpusMetrics(movieRepository, metricsRegistry)
+    new services.metrics.WorkerCorpusMetrics(movieRepository, workerMetrics.corpusGauge, country.code)
 
-  // Native-memory + vitals sampler — surfaces the native growth behind the
-  // worker's non-heap OOM restarts (invisible to jvm_memory_*). See JvmVitalsSampler.
-  lazy val jvmVitals: services.metrics.JvmVitalsSampler =
-    new services.metrics.JvmVitalsSampler(metricsRegistry)
-  // Per-city count of films the SOURCE `movies` collection would serve — the
-  // worker-side mirror of the web's kinowo_web_movies_served (read model), so a
-  // Grafana panel overlays the two and a divergence flags read-model drift.
+  // Per-city count of films the SOURCE `movies` collection would serve in this
+  // country — the worker-side mirror of the web's kinowo_web_movies_served (read
+  // model), so a Grafana panel overlays the two and a divergence flags drift.
   lazy val sourceFilmsMetrics: services.metrics.WorkerSourceFilmsMetrics =
-    new services.metrics.WorkerSourceFilmsMetrics(movieRepository, metricsRegistry)
-  // Per-city (and, summed, total) count of individual upcoming SHOWTIMES the source
-  // `movies` collection would serve — the slot-volume complement to sourceFilmsMetrics
-  // (which counts distinct films), exposed as kinowo_worker_showtimes{city}.
+    new services.metrics.WorkerSourceFilmsMetrics(movieRepository, workerMetrics.servedGauge, country.code, cities = country.cities)
+  // Per-city (and, summed, country total) count of individual upcoming SHOWTIMES
+  // the source `movies` collection would serve — the slot-volume complement to
+  // sourceFilmsMetrics, exposed as kinowo_worker_showtimes{country,city}.
   lazy val showtimesMetrics: services.metrics.WorkerShowtimesMetrics =
-    new services.metrics.WorkerShowtimesMetrics(movieRepository, metricsRegistry)
+    new services.metrics.WorkerShowtimesMetrics(movieRepository, workerMetrics.showtimesGauge, country.code, cities = country.cities)
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: services.metrics.RatingRunCensus =
-    new services.metrics.RatingRunCensus(movieCache, freshnessStore, metricsRegistry)
+    new services.metrics.RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country.code)
   // Metered (counts every enqueue attempt, incl. cache-served duplicates) wraps the
   // local dedup cache (skips the redundant enqueue round-trip) wraps Mongo.
   lazy val taskQueue: TaskQueue =
@@ -1071,8 +1071,9 @@ class WorkerWiring(
     stagingReaper.start()
     stagingStuckAlerter.foreach(_.start())
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan).
+    // (The process-level jvmVitals sampler is started once by WorkerMain via the
+    // shared WorkerMetrics bundle, not per-country here.)
     corpusMetrics.start()
-    jvmVitals.start()
     // Per-city would-serve count off the source collection, to overlay against the
     // web's read-model gauge (off-band, read-only paged scan).
     sourceFilmsMetrics.start()
@@ -1093,7 +1094,7 @@ class WorkerWiring(
     showtimesMetrics.stop()
     sourceFilmsMetrics.stop()
     corpusMetrics.stop()
-    jvmVitals.stop()
+    // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()
     scrapeReaper.stop()
