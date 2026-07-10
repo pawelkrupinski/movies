@@ -58,21 +58,6 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     slot.showtimes.map(_.dateTime) should contain (LocalDateTime.of(2026, 6, 9, 20, 0)) // listing still applied
   }
 
-  it should "remember the earliest-ever screening as firstScreeningDate across re-scrapes (min-ever)" in {
-    // `persist` maintains firstScreeningDate — the premiere — mining the prior
-    // persisted value so it only ever moves earlier, surviving even after the
-    // premiere showtime ages out of the listing. Drives PremiereResolveReaper.
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
-    val premiere = cm(KinoMuranow, "Atlantis", Some(1991)) // showtime 2026-06-08T18:00
-    val key = cache.recordCinemaScrape(KinoMuranow, Seq(premiere)).head._2
-    cache.get(key).flatMap(_.firstScreeningDate) shouldBe Some(LocalDateTime.of(2026, 6, 8, 18, 0))
-
-    // A later re-scrape lists ONLY a later showtime (the premiere has aged out).
-    val later = premiere.copy(showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 20, 20, 0), None)))
-    cache.recordCinemaScrape(KinoMuranow, Seq(later))
-    cache.get(key).flatMap(_.firstScreeningDate) shouldBe Some(LocalDateTime.of(2026, 6, 8, 18, 0)) // not moved forward
-  }
-
   it should "backfillEmbeddedYears: re-key an existing yearless row onto its delimited title year" in {
     // A row that predates the scrape-boundary persist: stored yearless, its slot
     // title carries the delimited "(1989)".

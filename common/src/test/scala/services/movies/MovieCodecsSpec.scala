@@ -41,8 +41,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       rottenTomatoes    = Some(91),
       tmdbId            = Some(424242),
       metacriticUrl     = Some("https://www.metacritic.com/movie/test"),
-      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/test"),
-      firstScreeningDate = Some(LocalDateTime.of(2026, 5, 10, 18, 0))
+      rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/test")
     )
     val dto = StoredMovieDto.fromDomain("test|1900", record, Instant.parse("2026-05-17T10:00:00Z"))
 
@@ -222,15 +221,6 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     raw.getDocument("retainedSynopses").put("DeprecatedCinema", new org.bson.BsonString("orphan"))
     val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
     back.record.retainedSynopses shouldBe Map[Source, String](Multikino -> "kept")
-  }
-
-  it should "decode a legacy document with no firstScreeningDate field to None" in {
-    val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Legacy"))))
-    val raw = new BsonDocument()
-    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legfsd|2025", record, Instant.now()), EncoderContext.builder().build())
-    raw.remove("firstScreeningDate")  // a document written before the field existed
-    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
-    back.record.firstScreeningDate shouldBe None
   }
 
   // ── Derived title/year (no longer stored) ─────────────────────────────────
