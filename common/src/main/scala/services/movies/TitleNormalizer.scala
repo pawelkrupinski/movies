@@ -112,7 +112,15 @@ object TitleNormalizer {
    *  programme prefix / accessibility tag / "+ <event>" suffix, so
    *  "Kino bez barier: Freak Show (AD + CC + PJM)" queries upstream as just
    *  "Freak Show". Identity (`sanitize`) does NOT apply these, so the decorated
-   *  row stays its own card; this just finds the base film upstream. */
+   *  row stays its own card; this just finds the base film upstream.
+   *
+   *  NOTE: this is the literal query sent to TMDB / Filmweb / etc., and it stays
+   *  in the ORIGINAL script — TMDB resolves Cyrillic titles fine via its
+   *  alternative-title index, so romanizing here would replace an exact
+   *  Ukrainian alt-title match with a transliteration upstream doesn't know.
+   *  Cross-script folding of an UNresolved orphan onto its Latin sibling is done
+   *  separately, on the canonicalizer's union key — see
+   *  `FilmCanonicalizer.groupByFilm`'s search-title edge. */
   def apiQuery(display: String): String = effective.search(display)
 
   /** Display-side casing applied to EVERY scraper's title at the scrape choke

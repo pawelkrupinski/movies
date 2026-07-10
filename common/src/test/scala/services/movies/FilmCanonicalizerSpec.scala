@@ -251,6 +251,22 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     FilmCanonicalizer.groupByFilm(rows) should have size 1
   }
 
+  it should "fold an UNRESOLVED Cyrillic-titled row onto its Latin base by ROMANIZED search title" in {
+    // A Ukrainian-dubbed screening lists under the Cyrillic title "Ваяна"; the
+    // Polish listing under Latin "Vaiana" resolved to TMDB. The bare Cyrillic
+    // string neither resolves on TMDB nor sanitizes to the Latin key, so it would
+    // sit as its own orphan film (the live kinowo.fly.dev duplicate). `apiQuery`
+    // romanizes the SEARCH title (Ваяна → Vaiana), so both rows now share
+    // sanitize(apiQuery) and the search-title edge folds them into one component —
+    // WITHOUT the Cyrillic row having to resolve its own tmdbId.
+    val rows = Seq(
+      aliased("Vaiana", tmdbId = 1108427, tmdbYear = 2026, tmdbTitle = "Vaiana",
+        originalTitle = "Moana", cinema = Helios, cinemaTitle = "Vaiana"),
+      unresolved("Ваяна", Some(2026), cinema = Multikino)
+    )
+    FilmCanonicalizer.groupByFilm(rows) should have size 1
+  }
+
   it should "fold a programme/decorated edition sharing the base tmdbId into one record" in {
     // "Zaproszenie | Kinoteka dla rodziców" resolves to the base film's tmdbId, so
     // it is the SAME film and folds onto one storage record — even though its key

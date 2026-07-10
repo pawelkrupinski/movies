@@ -7,6 +7,24 @@ import java.util.Locale
 
 class TextNormalizationSpec extends AnyFlatSpec with Matchers {
 
+  "romanizeCyrillic" should "transliterate a Ukrainian-dubbed title to its Latin search form" in {
+    // The live bug: "Ваяна" (Vaiana, Ukrainian dub) must romanize to "Vaiana" so
+    // it shares a search title / TMDB query with the Latin listing.
+    TextNormalization.romanizeCyrillic("Ваяна") shouldBe "Vaiana"
+    TextNormalization.romanizeCyrillic("ваяна") shouldBe "vaiana"
+  }
+
+  it should "leave pure-Latin strings byte-identical" in {
+    TextNormalization.romanizeCyrillic("Vaiana") shouldBe "Vaiana"
+    TextNormalization.romanizeCyrillic("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
+  }
+
+  it should "transliterate multi-char letters and drop soft/hard signs" in {
+    TextNormalization.romanizeCyrillic("Щастя") shouldBe "Shchastia"   // щ→shch, я→ia
+    TextNormalization.romanizeCyrillic("Хижак") shouldBe "Khyzhak"      // х→kh, и→y, ж→zh
+    TextNormalization.romanizeCyrillic("день") shouldBe "den"           // ь dropped
+  }
+
   "titleCaseIfAllCaps" should "leave properly-cased strings alone" in {
     TextNormalization.titleCaseIfAllCaps("Karl Urban")  shouldBe "Karl Urban"
     TextNormalization.titleCaseIfAllCaps("Anne Hathaway, Meryl Streep") shouldBe "Anne Hathaway, Meryl Streep"

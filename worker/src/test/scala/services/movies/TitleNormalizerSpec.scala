@@ -273,6 +273,13 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     apiQuery("Kino bez barier: Freak Show") shouldBe "Freak Show"
   }
 
+  it should "leave a Cyrillic title in its original script (TMDB resolves Cyrillic; the merge fold romanizes elsewhere)" in {
+    // apiQuery IS the literal TMDB query, which stays Cyrillic — TMDB matches its
+    // Ukrainian alt-title index. Cross-script folding lives on the canonicalizer
+    // union key, not here (see FilmCanonicalizerSpec's romanized-search-title case).
+    apiQuery("Ваяна") shouldBe "Ваяна"
+  }
+
   it should "strip the trailing accessibility tag '(AD + CC + PJM)'" in {
     apiQuery("Freak Show (AD + CC + PJM)") shouldBe "Freak Show"
   }

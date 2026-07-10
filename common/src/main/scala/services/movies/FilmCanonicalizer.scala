@@ -269,7 +269,17 @@ object FilmCanonicalizer {
     // `apiQuery` strips only the decorations its rules recognise, so an edition under
     // an UNrecognised banner keeps its own search title and stays separate —
     // deterministically, not by an order-dependent resolution race.
-    rows.indices.groupBy(i => TitleNormalizer.sanitize(TitleNormalizer.apiQuery(rows(i)._1.cleanTitle)))
+    // The union key is ROMANIZED (Cyrillic → Latin) so an unresolved Cyrillic
+    // orphan folds onto its resolved Latin sibling: "Ваяна" (a Ukrainian-dubbed
+    // listing TMDB never matched → no tmdbId) romanizes to the same "vaiana" as
+    // the Polish/Latin "Vaiana" row, so this edge unites them even though neither
+    // the tmdbId edge (the orphan has none) nor the alias edge (TMDB doesn't list
+    // the Ukrainian title as an alias) could. Romanization is confined to THIS
+    // grouping key — never the stored key, the display title, or the real TMDB
+    // query (`apiQuery`), which stays in the original script. Exact-match gated,
+    // so a lossy transliteration can only fail to fold, never mis-fold.
+    rows.indices.groupBy(i => TitleNormalizer.sanitize(
+        tools.TextNormalization.romanizeCyrillic(TitleNormalizer.apiQuery(rows(i)._1.cleanTitle))))
       .valuesIterator.foreach(unionAllIndices)
     // title-CONTAINMENT edges — the complement of the search-title edge, for banners
     // `apiQuery` does NOT recognise ("WAJDA: re-wizje: Człowiek z marmuru",

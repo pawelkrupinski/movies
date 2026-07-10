@@ -37,6 +37,56 @@ object TextNormalization {
     CombiningMarks.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("")
       .replace('ł', 'l').replace('Ł', 'l')
 
+  // Cyrillic → Latin transliteration for the EXTERNAL-SEARCH title tier only
+  // (`TitleNormalizer.apiQuery`). Ukrainian-dubbed releases list under their
+  // Cyrillic title ("Ваяна"): TMDB's title search doesn't resolve the Cyrillic
+  // string, and `sanitize` keeps it in its own (Cyrillic) key — so the row never
+  // gets a tmdbId and never folds onto the Latin "Vaiana" record. Romanizing the
+  // SEARCH title (never the stored/display title, never the merge key's own
+  // input) lets BOTH the TMDB lookup AND `FilmCanonicalizer`'s
+  // `sanitize(apiQuery)` search-title union edge treat "Ваяна" and "Vaiana" as
+  // one film.
+  //
+  // The table leans Ukrainian-national (я→ia so "Ваяна"→"Vaiana"; і→i, и→y,
+  // х→kh, г→h …) since Ukrainian dubs are the Cyrillic titles we actually see in
+  // Polish listings; the common Russian-only letters are covered too. The scheme
+  // is deliberately lossy, and that is SAFE here: the canonicalizer union edge is
+  // EXACT-match gated, so an imperfect transliteration can only fail to merge two
+  // rows — it can never merge two genuinely different films.
+  private val CyrillicToLatin: Map[Char, String] = Map(
+    'а' -> "a", 'б' -> "b", 'в' -> "v", 'г' -> "h", 'ґ' -> "g", 'д' -> "d",
+    'е' -> "e", 'є' -> "ie", 'ж' -> "zh", 'з' -> "z", 'и' -> "y", 'і' -> "i",
+    'ї' -> "i", 'й' -> "i", 'к' -> "k", 'л' -> "l", 'м' -> "m", 'н' -> "n",
+    'о' -> "o", 'п' -> "p", 'р' -> "r", 'с' -> "s", 'т' -> "t", 'у' -> "u",
+    'ф' -> "f", 'х' -> "kh", 'ц' -> "ts", 'ч' -> "ch", 'ш' -> "sh",
+    'щ' -> "shch", 'ю' -> "iu", 'я' -> "ia",
+    // Russian-only letters that also surface in imported titles.
+    'ё' -> "e", 'ы' -> "y", 'э' -> "e", 'ъ' -> "", 'ь' -> ""
+  )
+
+  /** Transliterate Cyrillic letters in `s` to Latin, leaving every other
+   *  character (Latin, digits, punctuation) byte-identical. Pure-Latin strings
+   *  are returned unchanged via the leading fast-path, so the entire existing
+   *  Latin corpus is untouched. Case of the first Latin char follows the source
+   *  letter's case (so "Ваяна" → "Vaiana", "ваяна" → "vaiana"); downstream
+   *  callers lowercase for search/keys anyway. See `CyrillicToLatin`. */
+  def romanizeCyrillic(s: String): String = {
+    if (!s.exists(isCyrillic)) return s
+    val sb = new StringBuilder(s.length + 4)
+    s.foreach { ch =>
+      CyrillicToLatin.get(ch.toLower) match {
+        case Some(latin) if ch.isUpper && latin.nonEmpty =>
+          sb.append(latin.head.toUpper).append(latin.tail)
+        case Some(latin) => sb.append(latin)
+        case None        => sb.append(ch)
+      }
+    }
+    sb.toString
+  }
+
+  private def isCyrillic(c: Char): Boolean =
+    Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.CYRILLIC
+
   /**
    * Convert an ALL-CAPS string to Title Case (each word's first letter
    * uppercase, rest lowercase). Returns the input unchanged when any
