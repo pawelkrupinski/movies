@@ -25,6 +25,13 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.byCode("") shouldBe None
   }
 
+  "A KINOWO_COUNTRIES-style code list" should "resolve 'pl,uk,de' to all three countries, in order" in {
+    // The exact contract fly.worker.toml's KINOWO_COUNTRIES='pl,uk,de' depends on
+    // (WorkerMain.resolveCountries splits on comma and maps each via byCode).
+    "pl,uk,de".split(",").toList.flatMap(c => Country.byCode(c.trim)) shouldBe
+      List(Country.Poland, Country.UnitedKingdom, Country.Germany)
+  }
+
   "Country.UnitedKingdom" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
     Country.UnitedKingdom.code shouldBe "uk"
     Country.UnitedKingdom.mongoDb shouldBe "kinowo_uk"
