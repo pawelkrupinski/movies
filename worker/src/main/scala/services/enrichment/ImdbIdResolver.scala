@@ -170,6 +170,14 @@ class ImdbIdResolver(
           omdb.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year, record.director.toSet))
         }
         .orElse {
+          // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a
+          // TMDB-less film with no Filmweb entity page, search Wikidata's film items
+          // by title and bind the first whose label + P577 year corroborate. Catches
+          // films with a Wikidata entry (hence RT/MC/Letterboxd slugs too) that the
+          // English-DB resolvers miss.
+          wikidata.flatMap(_.findImdbIdByTitle(searchTitle, year))
+        }
+        .orElse {
           // Cinemeta (Stremio) — final rung. IMDb-keyed catalogue covering a broad
           // foreign/regional long tail; corroborated by title+year so a fuzzy hit
           // can't bind a wrong film. Free, no API key.
