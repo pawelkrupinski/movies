@@ -63,6 +63,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
@@ -77,8 +78,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import pl.kinowo.R
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.model.Cities
+import pl.kinowo.model.Country
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
@@ -240,6 +243,11 @@ private fun FiltersList(
                 FromHourRow(viewModel.formatFilter) { viewModel.formatFilter = it }
             }
 
+            // Kraj — the deployment country switch, directly above Miasto
+            // (Country over City), mirroring iOS FiltersBar's "Kraj" picker
+            // above "Miasto". Renders nothing when only one country is deployed.
+            item(key = "sec_country") { CountrySection(viewModel) }
+
             // Miasto — the city the repertoire is served for. Last filter,
             // right above the account section, mirroring iOS FiltersBar.
             // Usable before login (it's just a city switch); switching
@@ -358,6 +366,53 @@ private fun CollapsibleSection(
             Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
         }
         if (expanded) content()
+    }
+}
+
+/**
+ * Kraj — the deployment country, as a Material3 ExposedDropdownMenu mirroring
+ * [CitySection] and sitting directly above it (Country over City). Each country
+ * is its own web deployment serving a disjoint set of cities, so picking one
+ * routes through [KinowoViewModel.setCountry], which clears the selected city
+ * (re-arming the city gate) and recreates the activity onto the new deployment +
+ * locale. Rendered only when more than one country is deployed ([Country.all]) —
+ * a single-country build shows nothing. The first-launch gate's parallel control
+ * is the pill-based [pl.kinowo.ui.CountryPicker]; both funnel through the same
+ * ViewModel call. Exercised by FiltersSheetOrderTest.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CountrySection(viewModel: KinowoViewModel) {
+    if (Country.all.size <= 1) return
+    val selectedCode by viewModel.selectedCountryCode.collectAsState()
+    val current = Country.byCode(selectedCode)
+    var expanded by remember { mutableStateOf(false) }
+    FilterSectionLabel(stringResource(R.string.country_label))
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = current.displayName,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Country.all.forEach { country ->
+                DropdownMenuItem(
+                    text = { Text(country.displayName) },
+                    onClick = {
+                        viewModel.setCountry(country.code)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                )
+            }
+        }
     }
 }
 
