@@ -13,25 +13,34 @@ import org.scalatest.matchers.should.Matchers
  */
 class CountrySpec extends AnyFlatSpec with Matchers {
 
-  "Country.byCode" should "resolve pl/uk case-insensitively and reject unknown codes" in {
+  "Country.byCode" should "resolve pl/uk/de case-insensitively and reject unknown codes" in {
     Country.byCode("pl") shouldBe Some(Country.Poland)
     Country.byCode("PL") shouldBe Some(Country.Poland)
     Country.byCode("  pl ") shouldBe Some(Country.Poland)
     Country.byCode("uk") shouldBe Some(Country.UnitedKingdom)
     Country.byCode("UK") shouldBe Some(Country.UnitedKingdom)
+    Country.byCode("de") shouldBe Some(Country.Germany)
+    Country.byCode("DE") shouldBe Some(Country.Germany)
     Country.byCode("xx") shouldBe None
     Country.byCode("") shouldBe None
   }
 
-  "Country.UnitedKingdom" should "be an English, Filmweb-free, cinema-less placeholder on its own database" in {
+  "Country.UnitedKingdom" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
     Country.UnitedKingdom.code shouldBe "uk"
     Country.UnitedKingdom.mongoDb shouldBe "kinowo_uk"
     Country.UnitedKingdom.filmwebEnabled shouldBe false
     Country.UnitedKingdom.language.toLanguageTag shouldBe "en-GB"
-    // No cinemas yet (the remaining §6 work) — an empty but valid deployment.
-    Country.UnitedKingdom.cities shouldBe empty
-    Country.UnitedKingdom.allJson shouldBe "[]"
-    Country.UnitedKingdom.allSorted shouldBe empty
+    Country.UnitedKingdom.cities shouldBe City.ukCities
+    Country.UnitedKingdom.cities.map(_.slug) should contain allOf ("london", "manchester", "norwich")
+  }
+
+  "Country.Germany" should "be a German, Filmweb-free deployment (Filmstarts-sourced) on its own database" in {
+    Country.Germany.code shouldBe "de"
+    Country.Germany.mongoDb shouldBe "kinowo_de"
+    Country.Germany.filmwebEnabled shouldBe false
+    Country.Germany.language.toLanguageTag shouldBe "de-DE"
+    Country.Germany.cities shouldBe City.germanCities
+    Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "munich", "wurzburg")
   }
 
   "Country.Poland" should "keep the original kinowo database and Filmweb enabled" in {
@@ -47,24 +56,31 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     dbs.distinct.size shouldBe dbs.size
   }
 
-  "Country.Poland.cities" should "be exactly today's Polish city list; City.all is the union across countries (UK adds none yet)" in {
+  "Country.Poland.cities" should "be exactly today's Polish city list; City.all is the union across countries" in {
     Country.Poland.cities shouldBe City.polishCities
-    // UK contributes no cities yet, so the global City.all still equals Poland's.
-    City.all should contain theSameElementsAs Country.Poland.cities
+    // City.all is the concatenation of every country's list (PL + UK + DE).
+    City.all should contain theSameElementsAs (City.polishCities ++ City.ukCities ++ City.germanCities)
     Country.all.flatMap(_.cities) should contain theSameElementsAs City.all
   }
 
-  "Country.of and City.country" should "reverse-map a city back to its country (every city is Polish today)" in {
+  "Country.of and City.country" should "reverse-map each city back to its own country" in {
     Country.of(Poznan) shouldBe Country.Poland
     Warszawa.country shouldBe Country.Poland
-    City.all.foreach(c => c.country shouldBe Country.Poland)
+    London.country shouldBe Country.UnitedKingdom
+    Berlin.country shouldBe Country.Germany
+    // Every city belongs to exactly the country whose list contains it.
+    City.all.foreach(c => Country.of(c).cities should contain(c))
   }
 
-  "A country's scoped views" should "match the global City views for the only country that has cities (Poland)" in {
+  "A country's scoped views" should "scope to that country's own cities, a strict subset of the global views" in {
     Country.Poland.bySlug.get("poznan") shouldBe Some(Poznan)
     Country.Poland.bySlug.get("sopot") shouldBe None
-    Country.Poland.allSorted shouldBe City.allSorted
-    Country.Poland.allJson shouldBe City.allJson
+    Country.Poland.bySlug.get("london") shouldBe None            // London is a UK city
+    Country.UnitedKingdom.bySlug.get("london") shouldBe Some(London)
+    Country.Poland.allSorted.toSet shouldBe City.polishCities.toSet
+    Country.UnitedKingdom.allSorted shouldBe Seq(London, Manchester, Norwich)  // English collation
+    Country.Poland.allJson should include("poznan")
+    Country.Poland.allJson should not include "london"
   }
 
   "Country.resolvedDbName" should "prefer an explicit MONGODB_DB over the country default" in {

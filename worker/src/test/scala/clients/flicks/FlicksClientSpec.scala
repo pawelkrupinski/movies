@@ -1,5 +1,7 @@
 package clients.flicks
 
+import clients.tools.FakeHttpFetch
+import models.OdeonNorwich
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -46,5 +48,17 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "surface premium/format labels on variant screenings" in {
     slots.flatMap(_.format).toSet should contain("IMAX")
+  }
+
+  // ── fetch() through the real sessions AJAX URL (fixture-replayed) ─────────
+  "fetch" should "assemble films for the venue via the sessions endpoint" in {
+    val client = new FlicksClient(
+      new FakeHttpFetch("flicks"), "odeon-cinema-norwich", OdeonNorwich,
+      daysAhead = 0, today = LocalDate.of(2026, 7, 11))
+    val movies = client.fetch()
+
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)
+    movies.map(_.movie.title) should contain("Minions & Monsters")
   }
 }

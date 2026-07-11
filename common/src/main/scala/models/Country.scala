@@ -69,12 +69,25 @@ object Country {
     mongoDb        = "kinowo_uk",
     filmwebEnabled = false,
   ) {
-    val cities: Seq[City] = Nil
+    val cities: Seq[City] = City.ukCities
+  }
+
+  /** Germany — the third country: a German-language deployment on its own
+   *  `kinowo_de` database, sourced from the AlloCiné/Filmstarts website-JSON
+   *  ([[services.cinemas.WebediaShowtimesClient]], via `www.filmstarts.de`).
+   *  No Filmweb (Polish-only). */
+  case object Germany extends Country(
+    code           = "de",
+    language       = Locale.forLanguageTag("de-DE"),
+    mongoDb        = "kinowo_de",
+    filmwebEnabled = false,
+  ) {
+    val cities: Seq[City] = City.germanCities
   }
 
   /** Every country the codebase knows about. A worker iterates this; a web
    *  deployment picks one via [[fromEnv]]. */
-  val all: Seq[Country] = Seq(Poland, UnitedKingdom)
+  val all: Seq[Country] = Seq(Poland, UnitedKingdom, Germany)
 
   /** The fallback country when `KINOWO_COUNTRY` is unset — keeps single-country
    *  (Poland-only) deployments and tests working with no new env var. */

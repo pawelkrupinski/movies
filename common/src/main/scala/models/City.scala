@@ -497,6 +497,37 @@ case object Konin extends City(
   val cinemas: Seq[Cinema] = Cinema.konin
 }
 
+// ── United Kingdom (English — non-declining, so the three label slots all carry
+//    the plain nominative; `CityGrammar.Nominative` reads only that). ──────────
+
+case object London extends City("london",
+  CityLabels("London", "London", "London"), 51.5074, -0.1278, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.london
+}
+case object Manchester extends City("manchester",
+  CityLabels("Manchester", "Manchester", "Manchester"), 53.4808, -2.2426, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.manchester
+}
+case object Norwich extends City("norwich",
+  CityLabels("Norwich", "Norwich", "Norwich"), 52.6309, 1.2974, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.norwich
+}
+
+// ── Germany (also non-declining for our purposes). ───────────────────────────
+
+case object Berlin extends City("berlin",
+  CityLabels("Berlin", "Berlin", "Berlin"), 52.5200, 13.4050, ZoneId.of("Europe/Berlin")) {
+  val cinemas: Seq[Cinema] = Cinema.berlin
+}
+case object Munich extends City("munich",
+  CityLabels("München", "München", "München"), 48.1351, 11.5820, ZoneId.of("Europe/Berlin")) {
+  val cinemas: Seq[Cinema] = Cinema.munich
+}
+case object Wurzburg extends City("wurzburg",
+  CityLabels("Würzburg", "Würzburg", "Würzburg"), 49.7913, 9.9534, ZoneId.of("Europe/Berlin")) {
+  val cinemas: Seq[Cinema] = Cinema.wurzburg
+}
+
 object City {
   /** Poland's cities — the authoritative list for [[Country.Poland]]. [[all]] is
    *  the union across every [[Country]], so a new country contributes its own
@@ -509,6 +540,13 @@ object City {
     Przemysl, Konin,
   )
 
+  /** The United Kingdom's cities — the authoritative list for
+   *  [[Country.UnitedKingdom]]. */
+  private[models] val ukCities: Seq[City] = Seq(London, Manchester, Norwich)
+
+  /** Germany's cities — the authoritative list for [[Country.Germany]]. */
+  private[models] val germanCities: Seq[City] = Seq(Berlin, Munich, Wurzburg)
+
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse
    *  lookups. A single-country web deployment scopes to `country.cities`.
@@ -519,7 +557,7 @@ object City {
    *  make the two objects' static initialisers wait on each other and deadlock
    *  when loaded on parallel threads. Keep the dependency one-directional:
    *  `Country → City`. A new country adds its list to this concatenation. */
-  val all: Seq[City] = polishCities
+  val all: Seq[City] = polishCities ++ ukCities ++ germanCities
 
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 

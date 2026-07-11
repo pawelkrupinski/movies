@@ -1,6 +1,6 @@
 package controllers
 
-import models.City
+import models.{City, Country}
 import play.api.mvc._
 
 /**
@@ -18,7 +18,7 @@ class LandingController(cc: ControllerComponents)(implicit messages: play.api.i1
   def index(): Action[AnyContent] = Action { request =>
     request.cookies.get("city").map(_.value).flatMap(City.bySlug) match {
       case Some(c) => Redirect(s"/${c.slug}/")
-      case None    => Ok(views.html.landing(City.allSorted))
+      case None    => Ok(views.html.landing(Country.fromEnv.allSorted))
     }
   }
 }

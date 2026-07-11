@@ -50,7 +50,9 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // Same cities as `all`, just reordered — nothing dropped or duplicated.
     City.allSorted should contain theSameElementsAs City.all
 
-    City.allSorted.map(_.slug) shouldBe Seq(
+    // The Polish cities keep their exact Polish-collation order regardless of the
+    // foreign (UK/DE) cities now interleaved among them by their own names.
+    City.allSorted.filter(City.polishCities.contains).map(_.slug) shouldBe Seq(
       "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "czestochowa",
       "dabrowa-gornicza", "elblag", "gliwice", "gorzow-wielkopolski", "jelenia-gora",
       "kalisz", "katowice", "kielce", "konin", "koszalin", "krakow",
@@ -60,6 +62,9 @@ class CitySpec extends AnyFlatSpec with Matchers {
       "tychy", "walbrzych", "warszawa", "wloclawek", "wroclaw", "zabrze",
       "zielona-gora",
     )
+
+    // The foreign cities are present in the global sort too.
+    City.allSorted.map(_.slug) should contain allOf ("london", "manchester", "norwich", "berlin", "munich", "wurzburg")
   }
 
   it should "collate Ł after L (Łódź follows Lublin), not dump it at the end" in {
