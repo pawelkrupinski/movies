@@ -55,6 +55,40 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(Country.byCode("GB").languageCode, "en")
     }
 
+    /// The in-app "Kraj" section renders only when there's more than one
+    /// country to switch between — the visibility rule the Filtry sheet gates on.
+    func testMoreThanOneDeployedCountryIsSwitchable() {
+        XCTAssertGreaterThan(Country.all.count, 1)
+        XCTAssertTrue(Country.isSwitchable)
+    }
+
+    // MARK: - In-app country switch (Filtry "Kraj" section)
+
+    /// The in-app switch at the model level: picking a country persists its
+    /// code, repoints the base URL to that country's deployment, AND clears the
+    /// selected city so the gate re-asks (the old city may not exist under the
+    /// new host). Exactly what the Filtry "Kraj" picker's `set` closure runs.
+    func testInAppCountrySwitchPersistsCodeRepointsBaseAndResetsCity() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.setCity("poznan")
+        XCTAssertEqual(prefs.selectedCity, "poznan")
+
+        prefs.setCountry(Country.byCode("GB"))
+        prefs.clearCity()
+
+        XCTAssertEqual(prefs.selectedCountry.code, "GB")
+        XCTAssertEqual(
+            CountrySelection.current(defaults).baseURL.absoluteString,
+            "https://showtimes-uk.fly.dev"
+        )
+        XCTAssertNil(prefs.selectedCity)
+
+        // A fresh instance sees the same post-switch state at the next launch.
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertEqual(reloaded.selectedCountry.code, "GB")
+        XCTAssertNil(reloaded.selectedCity)
+    }
+
     // MARK: - Persistence round-trip (via UserPreferences' store)
 
     func testSelectedCountryDefaultsToPolandUntilChosen() {

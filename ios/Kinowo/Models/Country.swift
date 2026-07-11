@@ -46,4 +46,9 @@ struct Country: Codable, Hashable {
     static func byCode(_ code: String?) -> Country {
         all.first { $0.code == code } ?? .default
     }
+
+    /// True when more than one country is deployed, i.e. an in-app country
+    /// switcher is worth showing. With a single country there's nothing to
+    /// switch to, so the Filtry "Kraj" section stays hidden entirely.
+    static var isSwitchable: Bool { all.count > 1 }
 }

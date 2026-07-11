@@ -501,6 +501,34 @@ struct FiltersSheet: View {
                     }
                 }
 
+                // ── Kraj ─────────────────────────────────────────
+                // In-app country switch, shown only when more than one country
+                // is deployed (`Country.isSwitchable`). Mirrors the first-launch
+                // gate's country picker: persisting the code forces the new
+                // country's language and re-points both stores at its deployment
+                // (`use(country:)`). Then `clearCity()` re-gates to the city
+                // chooser — the current city may not exist under the new host, so
+                // we never leave the app pointed at a stale city on a new base URL.
+                if Country.isSwitchable {
+                    Section("country.label") {
+                        Picker("country.label", selection: Binding(
+                            get: { prefs.selectedCountry },
+                            set: { country in
+                                guard country != prefs.selectedCountry else { return }
+                                prefs.setCountry(country)
+                                store.use(country: country)
+                                details.use(country: country)
+                                prefs.clearCity()
+                                dismiss()
+                            }
+                        )) {
+                            ForEach(Country.all, id: \.code) { country in
+                                Text(country.displayName).tag(country)
+                            }
+                        }
+                    }
+                }
+
                 // ── Miasto ───────────────────────────────────────
                 // Always available (signed in or out): picks which city's
                 // repertoire the app shows. Changing it re-points both

@@ -134,6 +134,20 @@ final class UserPreferences: ObservableObject {
         setSelectedCinema(nil)
     }
 
+    /// Clear the selected city, re-gating the app to the city chooser. Used by
+    /// the in-app country switch: the old city may not exist under the new
+    /// country's deployment, so drop it (and its now-stale cinema pill) and let
+    /// the gate re-ask — the same state the app starts in before a city is
+    /// chosen. No-op when no city is set.
+    func clearCity() {
+        guard selectedCity != nil else { return }
+        selectedCity = nil
+        store.removeObject(forKey: kCity)
+        // A cinema pill belongs to the old city's list; drop it so a re-picked
+        // city can't open on a stale (guarded-away, empty) selection.
+        setSelectedCinema(nil)
+    }
+
     func setCitySwitchPromptKey(_ key: String) {
         guard citySwitchPromptKey != key else { return }
         citySwitchPromptKey = key
