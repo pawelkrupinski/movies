@@ -22,7 +22,7 @@ class CountryTest {
     fun ukEntryForcesEnglishOnItsOwnDeployment() {
         val gb = Country.byCode("GB")
         assertEquals("United Kingdom", gb.displayName)
-        assertEquals("https://kinowo-uk.fly.dev", gb.baseUrl)
+        assertEquals("https://showtimes-uk.fly.dev", gb.baseUrl)
         assertEquals("en", gb.languageTag)
     }
 

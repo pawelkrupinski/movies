@@ -34,7 +34,7 @@ struct Country: Codable, Hashable {
         Country(
             code: "GB",
             displayName: "United Kingdom",
-            baseURL: URL(string: "https://kinowo-uk.fly.dev")!,
+            baseURL: URL(string: "https://showtimes-uk.fly.dev")!,
             languageCode: "en"
         ),
     ]

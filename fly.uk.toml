@@ -1,4 +1,4 @@
-app = 'kinowo-uk'
+app = 'showtimes-uk'
 # London — the UK deployment runs close to its users. Mongo (fly/mongo) lives in
 # `arn` (Stockholm), so cache rehydrate + the change-stream cross a region
 # (~30-40 ms London↔Stockholm); the UK corpus is small (3 cities), so that hop

@@ -34,7 +34,7 @@ data class Country(
             Country(
                 code = "GB",
                 displayName = "United Kingdom",
-                baseUrl = "https://kinowo-uk.fly.dev",
+                baseUrl = "https://showtimes-uk.fly.dev",
                 languageTag = "en",
             ),
         )
