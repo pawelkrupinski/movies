@@ -66,6 +66,13 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         prefs[KEY_CITY] = slug
     }
 
+    /** Forget the selected city, re-arming the first-launch city gate. Used when
+     *  the country switches: each country serves a disjoint set of cities, so the
+     *  old country's slug must not linger against the new country's host. */
+    suspend fun clearCity() = context.dataStore.edit { prefs ->
+        prefs.remove(KEY_CITY)
+    }
+
     /** ISO country code the user picked (see [pl.kinowo.model.Country]), or null
      *  until they choose one — then [pl.kinowo.model.Country.byCode] resolves the
      *  default (Poland). Drives BOTH the API base URL and the forced UI language,

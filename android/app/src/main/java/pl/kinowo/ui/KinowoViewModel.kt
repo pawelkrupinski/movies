@@ -100,8 +100,20 @@ class KinowoViewModel(
         prefs.selectedCountryCode.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Persist the chosen country. The activity observes [selectedCountryCode] and
-     *  recreates itself so the new base URL + locale take effect. */
-    fun setCountry(code: String) = viewModelScope.launch { prefs.setCountryCode(code) }
+     *  recreates itself so the new base URL + locale take effect.
+     *
+     *  Each country is its own deployment serving a DISJOINT set of cities, so the
+     *  switch also drops the current city (and its cinema pick): keeping the old
+     *  country's slug would request it against the new country's host, and re-arming
+     *  the city gate lets the user pick a city that actually exists there. Clearing
+     *  the city before persisting the code means the gate is already re-armed by the
+     *  time MainActivity recreates. Harmless at the first-launch gate, where the
+     *  city is null anyway. */
+    fun setCountry(code: String) = viewModelScope.launch {
+        prefs.setSelectedCinema(null)
+        prefs.clearCity()
+        prefs.setCountryCode(code)
+    }
 
     val hiddenFilms: StateFlow<Set<String>> =
         prefs.hiddenFilms.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
