@@ -23,10 +23,12 @@ import tools.Env
  * country" — the resolved `Country` is passed down from the composition root.
  */
 sealed abstract class Country(
-  val code:           String,   // ISO-ish short code, also the URL-free identifier: "pl", "uk"
-  val language:       Locale,   // UI language + collation locale
-  val mongoDb:        String,   // database name on the shared cluster
-  val filmwebEnabled: Boolean,  // is the Filmweb rating/fallback path wired for this country?
+  val code:           String,          // ISO-ish short code, also the URL-free identifier: "pl", "uk"
+  val displayName:    String,          // human label for the country switcher (native/English name)
+  val language:       Locale,          // UI language + collation locale
+  val mongoDb:        String,          // database name on the shared cluster
+  val filmwebEnabled: Boolean,         // is the Filmweb rating/fallback path wired for this country?
+  val webUrl:         Option[String],  // public web host of this country's deployment (scheme+host, no trailing slash); None = not deployed yet
 ) {
   /** The cities this country serves. Authoritative per-country list; [[City.all]]
    *  is the union across every country. */
@@ -48,11 +50,13 @@ object Country {
 
   case object Poland extends Country(
     code           = "pl",
+    displayName    = "Polska",
     language       = Locale.forLanguageTag("pl-PL"),
     // Poland keeps the original database name so the existing prod deployment is
     // byte-identical — do NOT rename this to `kinowo_pl`.
     mongoDb        = "kinowo",
     filmwebEnabled = true,
+    webUrl         = Some("https://kinowo.fly.dev"),
   ) {
     val cities: Seq[City] = City.polishCities
   }
@@ -65,9 +69,11 @@ object Country {
    *  when `KINOWO_COUNTRIES` names `uk`. */
   case object UnitedKingdom extends Country(
     code           = "uk",
+    displayName    = "United Kingdom",
     language       = Locale.forLanguageTag("en-GB"),
     mongoDb        = "kinowo_uk",
     filmwebEnabled = false,
+    webUrl         = Some("https://showtimes-uk.fly.dev"),
   ) {
     val cities: Seq[City] = City.ukCities
   }
@@ -78,9 +84,11 @@ object Country {
    *  No Filmweb (Polish-only). */
   case object Germany extends Country(
     code           = "de",
+    displayName    = "Deutschland",
     language       = Locale.forLanguageTag("de-DE"),
     mongoDb        = "kinowo_de",
     filmwebEnabled = false,
+    webUrl         = None,
   ) {
     val cities: Seq[City] = City.germanCities
   }
@@ -92,6 +100,12 @@ object Country {
   /** The fallback country when `KINOWO_COUNTRY` is unset — keeps single-country
    *  (Poland-only) deployments and tests working with no new env var. */
   val default: Country = Poland
+
+  /** The countries a user can SWITCH to from the web navbar: those with a real
+   *  deployment host ([[Country.webUrl]] defined), in [[all]] order (Poland
+   *  first). Germany is modelled but not deployed, so it is excluded. The
+   *  country `<select>` renders only when this holds more than one entry. */
+  val switchable: Seq[Country] = all.filter(_.webUrl.isDefined)
 
   def byCode(code: String): Option[Country] =
     all.find(_.code.equalsIgnoreCase(code.trim))

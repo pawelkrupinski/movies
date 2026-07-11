@@ -80,6 +80,16 @@
   }
   window.onCityChange = onCityChange;
 
+  // Country switcher (Filtry → Kraj) changed — each country is its own web
+  // deployment on a distinct host, so switch by NAVIGATING to that host's root
+  // (its city-chooser lands the visitor, since cities differ per country). Full
+  // navigation, not a view-swap. `url` is the chosen deployment's scheme+host.
+  function onCountryChange(url) {
+    if (!url) return;
+    window.location.href = url + '/';
+  }
+  window.onCountryChange = onCountryChange;
+
   // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
   // attached to each indexed badge (so we don't re-parse `dataset.format` on
   // every filter pass).

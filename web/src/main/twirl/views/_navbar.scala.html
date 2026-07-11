@@ -165,6 +165,21 @@
         <div class="panel-divider"></div>
       }
 
+      @* Country switcher — each country is a SEPARATE web deployment on its own
+         host, so switching NAVIGATES to that host's root (its city-chooser),
+         it does not view-swap. Only rendered when more than one country has a
+         real deployment (`Country.switchable`), so a single-country build shows
+         no dead control. The current country is `Country.fromEnv`. *@
+      @if(models.Country.switchable.sizeIs > 1) {
+        <div class="panel-section-label">@messages("nav.countrySwitch")</div>
+        <select id="country-select" class="filter-select w-100" onchange="onCountryChange(this.value)" aria-label="@messages("nav.countrySwitch")" style="margin-bottom:.4rem">
+          @for(c <- models.Country.switchable) {
+            <option value="@c.webUrl.get"@if(c == models.Country.fromEnv){ selected}>@c.displayName</option>
+          }
+        </select>
+        <div class="panel-divider"></div>
+      }
+
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">@messages("nav.clear")</button>
       <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">@messages("nav.copyLink")</button>
     </div>

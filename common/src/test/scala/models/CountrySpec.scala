@@ -90,6 +90,21 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.allJson should not include "london"
   }
 
+  "Country.switchable" should "list only deployed countries (webUrl defined), Poland first, excluding Germany" in {
+    // The navbar country <select> iterates this, in this order.
+    Country.switchable shouldBe Seq(Country.Poland, Country.UnitedKingdom)
+    Country.Poland.webUrl shouldBe Some("https://kinowo.fly.dev")
+    Country.UnitedKingdom.webUrl shouldBe Some("https://showtimes-uk.fly.dev")
+    // Germany is modelled but has no deployment, so it must be excluded.
+    Country.Germany.webUrl shouldBe None
+    Country.switchable should not contain Country.Germany
+    // Every switchable country carries a host (no trailing slash) and a label.
+    Country.switchable.foreach { c =>
+      c.webUrl.get should (startWith("https://") and not endWith "/")
+      c.displayName should not be empty
+    }
+  }
+
   "Country.resolvedDbName" should "prefer an explicit MONGODB_DB over the country default" in {
     // Only meaningful when nothing already supplies MONGODB_DB from the ambient
     // environment (env var / .env.local); skip otherwise to stay deterministic.
