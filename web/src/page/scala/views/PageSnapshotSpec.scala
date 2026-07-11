@@ -80,6 +80,28 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     assertSnapshot(snapshotDirectory.resolve("expected-plan.html"), html)
   }
 
+  // Focused assertion for the navbar country switcher (independent of the whole
+  // -page byte diff above): the PL deployment (Country.fromEnv default = Poland)
+  // renders a #country-select listing every DEPLOYED country's host, with the
+  // current country pre-selected. Germany (no webUrl) must NOT appear.
+  "the navbar country switcher" should "render #country-select with each deployed country's host, current one selected" in {
+    val html = views.html.repertoire(
+      service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+    ).body
+
+    html should include ("""id="country-select"""")
+    html should include ("""onchange="onCountryChange(this.value)"""")
+    // Both deployed hosts appear as option values...
+    html should include ("""value="https://kinowo.fly.dev"""")
+    html should include ("""value="https://showtimes-uk.fly.dev"""")
+    // ...with the current country (Poland, fromEnv default) pre-selected.
+    html should include ("""value="https://kinowo.fly.dev" selected""")
+    // Germany has no deployment host, so it is absent from the switcher.
+    html should not include "https://kinowo-de"
+    html should not include ">Deutschland<"
+  }
+
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {
     if (!Files.exists(expectedPath)) {
       Files.write(expectedPath, actual.getBytes(StandardCharsets.UTF_8))
