@@ -1,9 +1,10 @@
 app = 'kinowo-uk'
-# Stockholm — same region as the self-hosted Mongo (fly/mongo) and the Polish
-# `kinowo` web app, so this UK deployment's cache rehydrate runs over Fly's
-# private network with ~1 ms RTT to Mongo. (UK users are a cross-region hop
-# away, but the Mongo colocation for rehydrate matters more at hobby scale.)
-primary_region = 'arn'
+# London — the UK deployment runs close to its users. Mongo (fly/mongo) lives in
+# `arn` (Stockholm), so cache rehydrate + the change-stream cross a region
+# (~30-40 ms London↔Stockholm); the UK corpus is small (3 cities), so that hop
+# is cheap and user-facing latency wins over the Mongo colocation the Polish app
+# keeps in `arn`.
+primary_region = 'lhr'
 
 [build]
   dockerfile = 'Dockerfile'
