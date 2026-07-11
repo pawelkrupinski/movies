@@ -1,0 +1,14 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Home-screen app name. English (source, and any non-Polish locale) is the neutral brand \"Showtimes\"; Polish keeps the coinage \"Kinowo\".",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Showtimes" } },
+        "pl" : { "stringUnit" : { "state" : "translated", "value" : "Kinowo" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

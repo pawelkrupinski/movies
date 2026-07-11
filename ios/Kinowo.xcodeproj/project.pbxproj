@@ -14,6 +14,7 @@
 		DD00000000000000000E01 /* Country.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E01 /* Country.swift */; };
 		DD00000000000000000E02 /* CountrySelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E02 /* CountrySelection.swift */; };
 		DD00000000000000000E03 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E03 /* Localizable.xcstrings */; };
+		DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E04 /* InfoPlist.xcstrings */; };
 		DD00000000000000000005 /* Film.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000005 /* Film.swift */; };
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
 		DD00000000000000000401 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000401 /* DeepLink.swift */; };
@@ -109,6 +110,7 @@
 		CC00000000000000000E01 /* Country.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Country.swift; sourceTree = "<group>"; };
 		CC00000000000000000E02 /* CountrySelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySelection.swift; sourceTree = "<group>"; };
 		CC00000000000000000E03 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		CC00000000000000000E04 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000005 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
 		CC00000000000000000401 /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
@@ -228,6 +230,7 @@
 				BB00000000000000000007 /* Views */,
 				CC00000000000000000004 /* Assets.xcassets */,
 				CC00000000000000000E03 /* Localizable.xcstrings */,
+				CC00000000000000000E04 /* InfoPlist.xcstrings */,
 			);
 			path = Kinowo;
 			sourceTree = "<group>";
@@ -445,6 +448,7 @@
 			files = (
 				DD00000000000000000004 /* Assets.xcassets in Resources */,
 				DD00000000000000000E03 /* Localizable.xcstrings in Resources */,
+				DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
