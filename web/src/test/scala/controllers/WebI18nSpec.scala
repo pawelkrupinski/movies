@@ -28,6 +28,7 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     pl("empty.repertoire")  shouldBe "Brak repertuaru."
     pl("poster.missing")    shouldBe "Brak plakatu"
     pl("brand.title", "Poznań") shouldBe "Repertuar kinowy Poznań"
+    pl("film.titleSuffix", "Poznań") shouldBe "– godziny seansów Poznań | Kinowo"
   }
 
   it should "resolve to English under Lang(en)" in {
@@ -36,6 +37,7 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     en("empty.repertoire")  shouldBe "No listings."
     en("poster.missing")    shouldBe "No poster"
     en("brand.title", "London") shouldBe "Cinema listings London"
+    en("film.titleSuffix", "London") shouldBe "– showtimes London | Kinowo"
   }
 
   "JsLocale" should "carry the Polish 3-form showtime plural rule" in {

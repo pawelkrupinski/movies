@@ -7,7 +7,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@film.movie.title@film.movie.releaseYear.map(y => s" ($y)") – godziny seansów @city.labels.nominative | Kinowo</title>
+  <title>@film.movie.title@film.movie.releaseYear.map(y => s" ($y)") @messages("film.titleSuffix", city.labels.nominative)</title>
   <link rel="canonical" href="@canonicalUrl">
   @_resourceHints()
   @_favicon()
@@ -21,7 +21,7 @@
   <meta property="og:title"       content="@film.movie.title">
   <meta property="og:type"        content="video.movie">
   <meta property="og:url"         content="@canonicalUrl">
-  <meta property="og:site_name"   content="Repertuar kinowy @city.labels.nominative">
+  <meta property="og:site_name"   content="@messages("brand.title", city.labels.nominative)">
   @* og:image is a server-composited 1200×630 card (MovieController.ogImage /
      tools.OgCardRenderer): the full poster + title + rating badges baked into
      one landscape image. Handing the raw 2:3 poster to og:image instead let

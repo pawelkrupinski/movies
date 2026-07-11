@@ -3,8 +3,9 @@ package views
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
-import models.{Helios, Movie, MovieRecord, Poznan, Showtime}
+import models.{Helios, London, Movie, MovieRecord, Poznan, Showtime}
 import services.readmodel.TestReadModel
+import testsupport.TestMessages
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -62,6 +63,24 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
     val html = render(sample)
     html should include ("""<meta property="og:title"       content="Incepcja">""")
     html should include ("""<meta name="twitter:title" content="Incepcja">""")
+  }
+
+  // The browser `<title>` + `og:site_name` are the text a link preview shows
+  // alongside the card. They render in the deployment's language: Polish for a
+  // Polish city, English (via the `messages.en` bundle) for a UK city.
+  "the <title> and og:site_name" should "render in Polish for a Polish deployment" in {
+    val html = render(sample)
+    html should include ("<title>Incepcja (2010) – godziny seansów Poznań | Kinowo</title>")
+    html should include ("""<meta property="og:site_name"   content="Repertuar kinowy Poznań">""")
+  }
+
+  it should "render in English for an English (UK) deployment" in {
+    val html = views.html.film(
+      sample, "https://kinowo.fly.dev/london/film?title=Incepcja",
+      ogDescription = "IMDb 8.8 · RT 87% — synopsis", ogImageUrl = ogImageUrl,
+    )(London, TestMessages.forLang("en")).body
+    html should include ("<title>Incepcja (2010) – showtimes London | Kinowo</title>")
+    html should include ("""<meta property="og:site_name"   content="Cinema listings London">""")
   }
 
   it should "omit the image tags entirely when no card URL is supplied" in {

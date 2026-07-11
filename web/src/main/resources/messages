@@ -88,6 +88,10 @@ detail.trailerTitle=Zwiastun: {0}
 detail.showings=Seanse
 card.hide=Ukryj film
 
+# ── Film page (meta) ────────────────────────────────────────────────────────
+# `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative.
+film.titleSuffix=– godziny seansów {0} | Kinowo
+
 # ── Film page back-nav ──────────────────────────────────────────────────────
 back.films=Filmy
 back.plan=Plan

@@ -710,7 +710,8 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** The 1200×630 per-city Open Graph card (PNG): a montage of the city's
-   *  current posters under the "Kinowo / Repertuar kin w {locative}" overlay,
+   *  current posters under the [[FilterDescription.cityHeading]] overlay
+   *  ("Repertuar kin w {locative}" / "Cinema listings in {city}"),
    *  composited server-side ([[tools.CityOgCardService]]) — fully dynamic, no
    *  committed image. NOT yet wired into the page's `og:image`; reachable
    *  directly at `/:city/og-image` for review. */
@@ -721,7 +722,7 @@ class MovieController( cc: ControllerComponents,
       val day   = java.time.LocalDate.now(c.zoneId)
       val films = OgCardAssembly.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5)
         .map(OgCardAssembly.toCityCardFilm)
-      val bytes = cityOgCardService.card(s"${c.slug}|$day", s"Repertuar kin ${c.locativePhrase}", films)
+      val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), films)
       // 1h, not a day: the card tracks the live repertoire (which shifts through
       // the day), and a shorter TTL means a regenerated card surfaces promptly.
       Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=3600")

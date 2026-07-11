@@ -207,4 +207,73 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     meta.title should endWith ("…")
     meta.title should startWith ("Kinowo — filmy")
   }
+
+  // ── English deployment (UK city → en-GB language) ──────────────────────────
+  // `London.country` is `UnitedKingdom` (en-GB), so every phrase renders in
+  // English while `Poznan` (above) stays byte-identical Polish.
+
+  "cityHeading" should "read the declined Polish locative / the English 'in {city}'" in {
+    FilterDescription.cityHeading(Poznan) shouldBe "Repertuar kin w Poznaniu"
+    FilterDescription.cityHeading(London) shouldBe "Cinema listings in London"
+  }
+
+  "FilterDescription for a UK city" should "produce the English default title + description" in {
+    FilterDescription.defaultTitle(London) shouldBe "Cinema listings in London – today's showtimes | Kinowo"
+    val d = FilterDescription.defaultDescription(London)
+    d should include ("All London cinema listings – today's showtimes")
+    d should include ("IMDb, Filmweb, Metacritic and Rotten Tomatoes ratings")
+    d should include ("See what's on today in London")
+  }
+
+  it should "use 'films' (not 'filmy') as the filtered-title noun" in {
+    FilterDescription.forIndex(London, Map("date" -> Seq("tomorrow")), schedules).title shouldBe "Kinowo — films tomorrow"
+  }
+
+  it should "phrase date / dim / lang / imax / from filters in English" in {
+    FilterDescription.forIndex(London, Map("date" -> Seq("week")), schedules).title shouldBe "Kinowo — films this week"
+    FilterDescription.forIndex(London, Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules).title shouldBe "Kinowo — films 3D, with subtitles"
+    FilterDescription.forIndex(London, Map("lang" -> Seq("DUB")), schedules).title shouldBe "Kinowo — films with dubbing"
+    FilterDescription.forIndex(London, Map("imax" -> Seq("1")), schedules).title shouldBe "Kinowo — films IMAX"
+    FilterDescription.forIndex(London, Map("from" -> Seq("18:30")), schedules).title shouldBe "Kinowo — films from 18:30"
+  }
+
+  it should "wrap the search query in English double quotes" in {
+    FilterDescription.forIndex(London, Map("q" -> Seq("Dune")), schedules).title shouldBe "Kinowo — films “Dune”"
+  }
+
+  it should "phrase room include / exclude / summary in English" in {
+    FilterDescription.forIndex(London,
+      Map("room" -> Seq("Multikino Stary Browar|Sala 5")), schedules,
+    ).title shouldBe "Kinowo — films in screen Sala 5"
+
+    val allButOne = Seq(
+      "Multikino Stary Browar|Sala 5", "Multikino Stary Browar|Sala 9",
+      "Multikino Stary Browar|Sala 10", "Helios Posnania|Sala 3",
+    )
+    FilterDescription.forIndex(London, Map("room" -> allButOne), schedules)
+      .title shouldBe "Kinowo — films without screens Sala 7"
+
+    val schedulesBig = Seq(
+      film("A", Multikino, Seq("Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Sala 6", "Sala 7", "Sala 8"))
+    )
+    val four = (1 to 4).map(i => s"Multikino Stary Browar|Sala $i")
+    FilterDescription.forIndex(London, Map("room" -> four), schedulesBig).title shouldBe "Kinowo — films 4 screens"
+  }
+
+  it should "phrase genre / country / director filters in English" in {
+    FilterDescription.forIndex(London, Map("genre" -> Seq("Komedia")), schedules).title shouldBe "Kinowo — films genre Komedia"
+    FilterDescription.forIndex(London, Map("genre" -> Seq("Animacja", "Komedia")), schedules).title shouldBe "Kinowo — films without genres Dramat"
+    FilterDescription.forIndex(London, Map("country" -> Seq("Japonia")), schedules).title shouldBe "Kinowo — films from Japonia"
+    FilterDescription.forIndex(London, Map("director" -> Seq("David Frankel")), schedules).title shouldBe "Kinowo — films dir. David Frankel"
+  }
+
+  it should "phrase cinema filters with the English 'at' / 'without' prepositions" in {
+    val cinemas = London.cinemaDisplayNames
+    // Include just the first cinema → smaller included side → "at <pill>".
+    FilterDescription.forIndex(London, Map("cinema" -> Seq(cinemas.head)), schedules)
+      .title should startWith ("Kinowo — films at ")
+    // Include all but one → smaller excluded side → "without <pill>".
+    FilterDescription.forIndex(London, Map("cinema" -> cinemas.tail), schedules)
+      .title should startWith ("Kinowo — films without ")
+  }
 }

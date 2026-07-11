@@ -82,6 +82,10 @@ detail.trailerTitle=Trailer: {0}
 detail.showings=Showings
 card.hide=Hide film
 
+# ── Film page (meta) ────────────────────────────────────────────────────────
+# `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative.
+film.titleSuffix=– showtimes {0} | Kinowo
+
 # ── Film page back-nav ──────────────────────────────────────────────────────
 back.films=Films
 back.plan=Plan

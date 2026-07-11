@@ -69,7 +69,10 @@ object StructuredData {
       breadcrumb(origin, Seq("Kinowo" -> s"$origin/", city.labels.nominative -> cityUrl)),
       Json.obj(
         "@context" -> Ctx, "@type" -> "ItemList",
-        "name" -> s"Repertuar kin ${city.locativePhrase}",
+        // Same city heading as the OG tags / card overlay, so the JSON-LD is
+        // in the deployment's language ("Repertuar kin w Poznaniu" /
+        // "Cinema listings in London") rather than a half-Polish mix.
+        "name" -> FilterDescription.cityHeading(city),
         "numberOfItems" -> items.size,
         "itemListElement" -> items,
       ),

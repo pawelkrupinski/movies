@@ -90,6 +90,13 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     items.map(i => (i \ "name").as[String]) shouldBe Seq("Amelia", "Zorro") // sorted
     (items.head \ "url").as[String]         shouldBe "https://kinowo.fly.dev/poznan/film?title=Amelia"
     (list \ "numberOfItems").as[Int]        shouldBe 2
+    (list \ "name").as[String]              shouldBe "Repertuar kin w Poznaniu"
+  }
+
+  it should "name the ItemList in the deployment's language (English for a UK city)" in {
+    val films = Seq(film("Dune", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))
+    val list  = byType(parseArray(StructuredData.cityPage("https://kinowo.fly.dev/london/", London, films)), "ItemList").head
+    (list \ "name").as[String] shouldBe "Cinema listings in London"
   }
 
   // ── film page ────────────────────────────────────────────────────────────────
