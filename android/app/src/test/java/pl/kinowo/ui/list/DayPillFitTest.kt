@@ -64,6 +64,8 @@ class DayPillFitTest {
                     highlighted = DateFilter.Today,
                     filtersActive = false,
                     search = "",
+                    selectedCountryCode = "PL",
+                    onSelectCountry = {},
                     onSearch = {},
                     onSelect = {},
                     onOpenFilters = {},

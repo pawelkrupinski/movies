@@ -30,6 +30,16 @@ class UserPreferencesCityTest {
     }
 
     @Test
+    fun clearCityForgetsTheSelectedCity() = runBlocking {
+        // A country switch clears the city so the gate re-arms under the new
+        // deployment (each country serves a disjoint set of cities).
+        prefs.setCity("wroclaw")
+        assertEquals("wroclaw", prefs.selectedCity.first())
+        prefs.clearCity()
+        assertNull("clearCity re-arms the gate", prefs.selectedCity.first())
+    }
+
+    @Test
     fun citySwitchPromptKeyIsNullUntilSetThenReadsBack() = runBlocking {
         assertNull("no prompt key before any switch is offered", prefs.citySwitchPromptKey.first())
         prefs.setCitySwitchPromptKey("poznan→wroclaw")

@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Swipe
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -82,6 +84,7 @@ import java.time.LocalDate
 import pl.kinowo.R
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
+import pl.kinowo.model.Country
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.TopBarLayout
@@ -109,6 +112,10 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // or picking a cinema recomposes the grid — see filmsFor's comment.
     val hidden by viewModel.hiddenFilms.collectAsState()
     val selectedCinema by viewModel.selectedCinema.collectAsState()
+    // Drives the top-bar country switcher's current-selection label. Observed
+    // here so a switch (which persists a new code) reflects in the trigger before
+    // MainActivity recreates the activity onto the new deployment.
+    val selectedCountry by viewModel.selectedCountryCode.collectAsState()
     // The cinema pill row's universe is the current city's cinemas; a persisted
     // pick absent from them (a leftover from another city) reads as null
     // ("Wszystkie") so the grid never blanks on a stale cross-city name.
@@ -220,6 +227,8 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 highlighted = previewDay,
                 filtersActive = viewModel.filtersActive(),
                 search = viewModel.search,
+                selectedCountryCode = selectedCountry,
+                onSelectCountry = { viewModel.setCountry(it) },
                 onSearch = { viewModel.search = it },
                 onSelect = { day -> selectDayKeepingTopFlat(sharedScroll) { viewModel.dateFilter = day } },
                 onOpenFilters = { showFilters = true },
@@ -485,6 +494,8 @@ internal fun DateBar(
     highlighted: DateFilter,
     filtersActive: Boolean,
     search: String,
+    selectedCountryCode: String?,
+    onSelectCountry: (String) -> Unit,
     onSearch: (String) -> Unit,
     onSelect: (DateFilter) -> Unit,
     onOpenFilters: () -> Unit,
@@ -496,7 +507,16 @@ internal fun DateBar(
         horizontalArrangement = Arrangement.spacedBy(if (wide) 6.dp else 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("🎬", fontSize = 22.sp)
+        // The leading mark. With more than one deployed country it becomes the
+        // in-app country switcher (a compact tap-to-open dropdown); otherwise it's
+        // the decorative 🎬. Sharing the leading slot keeps the date pills' tight
+        // narrow-phone fit intact — the switcher doesn't steal their fill width,
+        // and "Wszystkie" stays flush before Filtry (see DayPillFitTest).
+        if (Country.all.size > 1) {
+            CountryMenu(selectedCode = selectedCountryCode, onSelect = onSelectCountry)
+        } else {
+            Text("🎬", fontSize = 22.sp)
+        }
         // The date pills always spread to fill the row; on wide screens
         // the inline search field sits between them and Filtry, capped
         // at a fixed width rather than eating the leftover space.
@@ -510,6 +530,55 @@ internal fun DateBar(
                 contentDescription = "Filtry",
                 tint = if (filtersActive) Brand else TextSecondary,
             )
+        }
+    }
+}
+
+// The in-app country switcher: a compact faint pill showing the current
+// country's 2-letter code (e.g. "PL"), tapping which drops a menu of every
+// deployed [Country.all]. Picking one calls [onSelect] → [KinowoViewModel.setCountry],
+// which persists the code, re-arms the city gate, and recreates the activity onto
+// the new deployment + locale. Renders NOTHING when there's only one country to
+// choose from — the switch would be a no-op. Sized to the 🎬 mark it replaces so
+// it doesn't eat into the date pills' tight narrow-phone fit (DayPillFitTest); the
+// faint capsule (mirroring the cinema pills) signals it's a tappable control
+// without a width-costly chevron. The gate's parallel control is the pill-based
+// [pl.kinowo.ui.CountryPicker]; both funnel through the same ViewModel call, so
+// the switch behaves identically wherever it's triggered. Exercised by
+// TopBarCountryMenuTest.
+@Composable
+internal fun CountryMenu(selectedCode: String?, onSelect: (String) -> Unit) {
+    if (Country.all.size <= 1) return
+    val current = Country.byCode(selectedCode)
+    var expanded by remember { mutableStateOf(false) }
+    val label = stringResource(R.string.country_label)
+    Box {
+        Text(
+            text = current.code,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            color = Color.White,
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClickLabel = label,
+                ) { expanded = true }
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Country.all.forEach { country ->
+                DropdownMenuItem(
+                    text = { Text(country.displayName) },
+                    onClick = {
+                        expanded = false
+                        onSelect(country.code)
+                    },
+                )
+            }
         }
     }
 }
