@@ -1,0 +1,126 @@
+{
+  "uid": "filmowo-overview",
+  "title": "filmowo — Fly health",
+  "tags": ["fly", "filmowo"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-6h", "to": "now" },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": false,
+        "iconColor": "purple",
+        "name": "Deploys",
+        "tags": ["deploy"],
+        "type": "tags"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU load — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
+      "description": "filmowo is shared-cpu-1x, so 100 = one full core. 'busy' is the work it does (user+system+io); 'steal' is CPU the host withheld once demand crossed the shared-CPU credit — near-zero at rest, it appears when a recommendation build saturates the core. A step-up lining up with a purple Deploy marker means that release added load. Fly platform metric, so only the filmowo app is included.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 15 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "steal" }, "properties": [ { "id": "custom.fillOpacity", "value": 0 }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [8, 4] } } ] }
+        ]
+      },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(fly_instance_cpu{app=\"filmowo\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "busy" },
+        { "refId": "B", "expr": "sum(rate(fly_instance_cpu{app=\"filmowo\",mode=\"steal\"}[5m]))", "legendFormat": "steal" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "CPU credit balance (alarm < 500)",
+      "description": "shared-cpu-1x credit bucket. Sustained CPU above the earn rate (a long recommendation build) drains it; when it hits zero Fly throttles filmowo hard (see the throttle + steal panels). A steady decline is the early warning.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "min(fly_instance_cpu_balance{app=\"filmowo\"})", "legendFormat": "filmowo" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "CPU throttled (rate, fraction of wall-clock)",
+      "description": "Fraction of wall-clock the Fly host throttled filmowo's CPU because the shared-CPU credit ran out. Non-zero here is the direct cause of request-latency spikes during a recommendation build.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "max(rate(fly_instance_cpu_throttle{app=\"filmowo\"}[5m]))", "legendFormat": "throttled" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "CPU steal %",
+      "description": "Share of filmowo's CPU time the host withheld (steal ÷ total). Rises when the shared core is contended — the build competing with request serving on one core.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(fly_instance_cpu{app=\"filmowo\",mode=\"steal\"}[5m])) / sum(rate(fly_instance_cpu{app=\"filmowo\"}[5m]))", "legendFormat": "steal" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Memory available % (alarm < 8%)",
+      "description": "Free RAM as a fraction of total on the filmowo machine (512MB). node + node:sqlite + Litestream + the build worker share it; a dip toward the floor risks OOM.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "min(fly_instance_memory_mem_available{app=\"filmowo\"} / fly_instance_memory_mem_total{app=\"filmowo\"})", "legendFormat": "mem available" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "HTTP latency (s)",
+      "description": "Request latency percentiles from the Fly proxy's response-time histogram for filmowo. p99 spikes here are the user-visible symptom of a CPU-throttled build window.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 25 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"filmowo\"}[5m])))", "legendFormat": "p99" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"filmowo\"}[5m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"filmowo\"}[5m])))", "legendFormat": "p75" },
+        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"filmowo\"}[5m])))", "legendFormat": "p50" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Instance up",
+      "description": "1 = the filmowo machine is up. A drop to 0 (or a gap) is a restart — correlate with a Deploy marker, an OOM, or a health-check kill during a build.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
+      "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "max(fly_instance_up{app=\"filmowo\"})", "legendFormat": "up" }
+      ]
+    }
+  ]
+}

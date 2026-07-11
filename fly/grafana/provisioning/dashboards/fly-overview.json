@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 9,
+  "version": 10,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -42,7 +42,7 @@
     {
       "id": 9,
       "title": "CPU load by app — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
-      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. (schowek excluded — it's a separate app.)",
+      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. (Scoped to the kinowo apps via app=~\"kinowo.*\" — filmowo has its own dashboard, schowek is separate.)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
@@ -53,8 +53,8 @@
         ]
       },
       "targets": [
-        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{app!=\"schowek\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "{{app}} busy" },
-        { "refId": "B", "expr": "sum by (app) (rate(fly_instance_cpu{app!=\"schowek\",mode=\"steal\"}[5m]))", "legendFormat": "{{app}} steal" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "{{app}} busy" },
+        { "refId": "B", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*\",mode=\"steal\"}[5m]))", "legendFormat": "{{app}} steal" }
       ]
     },
     {
@@ -65,7 +65,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
       "fieldConfig": { "defaults": { "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance{app!=\"schowek\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance{app=~\"kinowo.*\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -76,7 +76,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle{app!=\"schowek\"}[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle{app=~\"kinowo.*\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -87,7 +87,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app!=\"schowek\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app!=\"schowek\"}[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app=~\"kinowo.*\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -98,7 +98,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available{app!=\"schowek\"} / fly_instance_memory_mem_total{app!=\"schowek\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available{app=~\"kinowo.*\"} / fly_instance_memory_mem_total{app=~\"kinowo.*\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -134,7 +134,7 @@
       "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
       "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (fly_instance_up{app!=\"schowek\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (fly_instance_up{app=~\"kinowo.*\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
