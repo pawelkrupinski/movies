@@ -407,6 +407,19 @@ class MovieService(
     if (record.tmdbId.isDefined) {
       publishTmdbOutcome(key, record)
       enqueueNewcomerRatings(key, record)
+    } else if (record.tmdbNoMatch && record.imdbId.isEmpty) {
+      // TMDB found nothing, so the match path above never published `ImdbIdMissing`
+      // and the film would only ever get an id from the once-daily OMDb sweep. Kick
+      // the same id-recovery chain HERE too: `ImdbIdResolver` runs its full ladder
+      // (IMDb suggestion → director → Filmweb/Wikidata → Trakt → OMDb → Wikidata-title
+      // → Cinemeta) against the freshly-folded cached row. This is what lets the
+      // TMDB-less long tail (niche/foreign titles — the Flicks catalogue in
+      // particular) land an imdbId → rating AND a resolved year that stabilises its
+      // read-model key, instead of waiting hours for the sweep. The id is the only
+      // effect; ratings follow once the reaper sees the now-eligible row.
+      val searchTitle = record.searchTitle.orElse(record.originalTitle).getOrElse(MovieService.searchQuery(key.cleanTitle))
+      logger.info(s"TMDB: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match; publishing ImdbIdMissing(search='$searchTitle') to attempt id recovery")
+      bus.publish(ImdbIdMissing(key.cleanTitle, key.year, searchTitle))
     }
 
   // Publish the post-resolution event so the rating refreshers re-run for the
