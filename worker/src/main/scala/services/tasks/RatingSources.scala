@@ -38,4 +38,13 @@ object RatingSources {
     RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      _.tmdbId.isDefined),
     RatingSource(TaskType.McRating,      FreshnessKind.McRating,      _.tmdbId.isDefined)
   )
+
+  /** The rating sources a country actually enriches. A Filmweb-DISABLED country
+   *  (`filmwebEnabled=false` — every country but Poland) has no `FilmwebRating`
+   *  handler wired (see `WorkerWiring.ratingHandlers`), so enqueuing that TaskType
+   *  there produces a task nothing can execute — it retries forever with
+   *  "no handler for FilmwebRating", starving the shared queue and stalling scrapes.
+   *  Drop it from the enqueue side so the two stay in lockstep. */
+  def forCountry(filmwebEnabled: Boolean): Seq[RatingSource] =
+    if (filmwebEnabled) all else all.filterNot(_.taskType == TaskType.FilmwebRating)
 }

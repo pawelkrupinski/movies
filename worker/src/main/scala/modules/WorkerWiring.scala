@@ -872,7 +872,11 @@ class WorkerWiring(
   // The per-row rating-enqueue decision, shared by the reaper's corpus walk and the
   // newcomer-fold kick (`MovieService.announceResolvedNewMovie`) so the two agree on
   // eligibility + the tmdbId-keyed due gate. ONE instance, handed to both.
-  lazy val ratingEnqueuer = new services.tasks.RatingEnqueuer(taskQueue, freshnessStore, ratingDueWindow)
+  lazy val ratingEnqueuer = new services.tasks.RatingEnqueuer(taskQueue, freshnessStore, ratingDueWindow,
+    // Mirror the handler gate at [[ratingHandlers]]: a filmweb-disabled country must
+    // not ENQUEUE FilmwebRating either, or the handler-less task retries forever and
+    // starves the scrape queue (the UK/DE scrape-stall bug).
+    sources = services.tasks.RatingSources.forCountry(filmwebEnabled))
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
     maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,

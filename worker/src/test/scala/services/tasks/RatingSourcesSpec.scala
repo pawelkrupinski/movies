@@ -29,4 +29,16 @@ class RatingSourcesSpec extends AnyFlatSpec with Matchers {
   it should "NOT be eligible for a tmdbId-less row with no Filmweb URL" in {
     filmwebEligible(MovieRecord()) shouldBe false
   }
+
+  "forCountry" should "keep all four sources for a filmweb-enabled country (Poland)" in {
+    RatingSources.forCountry(filmwebEnabled = true).map(_.taskType) should contain(TaskType.FilmwebRating)
+    RatingSources.forCountry(filmwebEnabled = true) shouldBe RatingSources.all
+  }
+
+  it should "drop FilmwebRating for a filmweb-disabled country (UK/Germany)" in {
+    val sources = RatingSources.forCountry(filmwebEnabled = false)
+    sources.map(_.taskType) should not contain TaskType.FilmwebRating
+    sources.map(_.taskType) should contain allOf (TaskType.ImdbRating, TaskType.RtRating, TaskType.McRating)
+    sources should have size 3
+  }
 }

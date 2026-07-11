@@ -27,11 +27,14 @@ class RatingEnqueuer(
   // The shared due schedule. The SAME instance must back the [[RatingHandler]] so
   // this enqueue gate and that execution gate agree on what counts as due — see
   // [[DueWindow]].
-  dueWindow: DueWindow
+  dueWindow: DueWindow,
+  // The sources this deployment may enqueue. Defaults to all four; the wiring
+  // passes a filmweb-filtered list for a `filmwebEnabled=false` country so a
+  // `FilmwebRating` task — which has NO handler there — is never created (it would
+  // otherwise retry forever, starving the queue). Kept in lockstep with the
+  // handler gate via [[RatingSources.forCountry]].
+  sources:   Seq[RatingSources.RatingSource] = RatingSources.all
 ) {
-  // The eligibility rule lives in RatingSources so the metrics census can't drift
-  // from what this actually enqueues (see RatingSources).
-  private val sources = RatingSources.all
 
   /** How many rating sources exist (for the reaper's start-up log). */
   val sourceCount: Int = sources.size

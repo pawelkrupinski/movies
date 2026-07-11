@@ -39,4 +39,22 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     Seq(TaskType.ImdbRating, TaskType.FilmwebRating, TaskType.RtRating, TaskType.McRating)
       .foreach(queue.waitingCount(_) shouldBe 1)
   }
+
+  it should "never enqueue FilmwebRating for a filmweb-disabled country (no handler exists there)" in {
+    // The regression: a UK/DE (filmwebEnabled=false) wiring has no FilmwebRating
+    // handler, so enqueuing that TaskType produces a task that retries forever
+    // ("no handler for FilmwebRating") and starves the scrape queue. The wiring
+    // hands this enqueuer the filmweb-filtered source list; a fully-resolved row
+    // (eligible for all four) must then enqueue only THREE — never Filmweb.
+    val queue = new InMemoryTaskQueue
+    val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
+    val filmwebDisabled = new RatingEnqueuer(
+      queue, new InMemoryFreshnessStore, new DueWindow(4.hours),
+      sources = RatingSources.forCountry(filmwebEnabled = false))
+
+    filmwebDisabled.enqueueDueFor(CacheKey("Film", None), row, now) shouldBe 3
+    queue.waitingCount(TaskType.FilmwebRating) shouldBe 0
+    Seq(TaskType.ImdbRating, TaskType.RtRating, TaskType.McRating)
+      .foreach(queue.waitingCount(_) shouldBe 1)
+  }
 }
