@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.MovieRecord
+import models.{Country, MovieRecord}
 import services.freshness.FreshnessKind
 
 /**
@@ -17,9 +17,26 @@ import services.freshness.FreshnessKind
  * If the two disagreed, the census would flag a backlog the enqueuer never acts
  * on (or miss one it does) — so the eligibility rule lives here, not copied into
  * each.
+ *
+ * A source also carries WHICH COUNTRIES it applies in ([[RatingSource.appliesIn]]).
+ * Filmweb is a Poland-only source: its handler is wired only when
+ * `country.filmwebEnabled` (see `WorkerWiring`), so a non-Filmweb country that
+ * enqueued a `FilmwebRating` task would have no handler to work it — the task
+ * re-releases to `waiting` forever (never `Done`), piling up a handler-less backlog
+ * whose "oldest waiting age" climbs without bound. So both the enqueuer and the
+ * census consult [[forCountry]], which drops Filmweb outside Filmweb-enabled
+ * countries — keeping the enqueue side symmetric with the handler side.
  */
 object RatingSources {
-  case class RatingSource(taskType: TaskType, kind: FreshnessKind, eligible: MovieRecord => Boolean)
+  case class RatingSource(
+    taskType: TaskType,
+    kind:     FreshnessKind,
+    eligible: MovieRecord => Boolean,
+    // Which countries this source applies in at all — an axis ABOVE per-row
+    // `eligible`. Global sources (IMDb/RT/MC) apply everywhere; Filmweb only where
+    // `country.filmwebEnabled` (its handler is wired only there).
+    appliesIn: Country => Boolean = _ => true
+  )
 
   // Order IS the enqueue priority: [[RatingEnqueuer]] walks this sequence and, under
   // the reaper's per-tick cap, the earlier sources win the slots. Filmweb sits
@@ -34,8 +51,15 @@ object RatingSources {
   // resolve through), so the event/opera/NT-Live long tail isn't enqueued.
   val all: Seq[RatingSource] = Seq(
     RatingSource(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    _.imdbId.isDefined),
-    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined),
+    RatingSource(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, r => r.tmdbId.isDefined || r.filmwebUrl.isDefined, _.filmwebEnabled),
     RatingSource(TaskType.RtRating,      FreshnessKind.RtRating,      _.tmdbId.isDefined),
     RatingSource(TaskType.McRating,      FreshnessKind.McRating,      _.tmdbId.isDefined)
   )
+
+  /** The rating sources that apply in `country` — the global ones plus the
+   *  country-gated ones this country enables (Filmweb only where
+   *  `filmwebEnabled`). Both [[RatingEnqueuer]] and the census walk THIS, never
+   *  [[all]], so neither queues nor counts a source whose handler this country
+   *  never wires. */
+  def forCountry(country: Country): Seq[RatingSource] = all.filter(_.appliesIn(country))
 }

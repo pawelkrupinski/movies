@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.MovieRecord
+import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -28,5 +28,22 @@ class RatingSourcesSpec extends AnyFlatSpec with Matchers {
 
   it should "NOT be eligible for a tmdbId-less row with no Filmweb URL" in {
     filmwebEligible(MovieRecord()) shouldBe false
+  }
+
+  private def taskTypes(country: Country): Set[TaskType] =
+    RatingSources.forCountry(country).map(_.taskType).toSet
+
+  "RatingSources.forCountry" should "include Filmweb for a Filmweb-enabled country (Poland)" in {
+    taskTypes(Country.Poland) should contain(TaskType.FilmwebRating)
+  }
+
+  it should "DROP Filmweb for a country that does not enable it (UK) — its handler is unwired there, so an enqueued task would pile up handler-less forever" in {
+    taskTypes(Country.UnitedKingdom) should not contain TaskType.FilmwebRating
+  }
+
+  it should "keep the global rating sources for every country" in {
+    val global = Set[TaskType](TaskType.ImdbRating, TaskType.RtRating, TaskType.McRating)
+    taskTypes(Country.Poland) should contain allElementsOf global
+    taskTypes(Country.UnitedKingdom) should contain allElementsOf global
   }
 }

@@ -2,10 +2,11 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.MovieRecord
+import models.{Country, MovieRecord}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, MovieCacheReader}
+import services.tasks.RatingSources.RatingSource
 import services.tasks.{RatingSources, RatingTasks}
 import tools.DaemonExecutors
 
@@ -41,14 +42,20 @@ class RatingRunCensus(
   freshness:      FreshnessStore,
   notRun:         Gauge,
   oldestAge:      Gauge,
-  countryCode:    String,
+  country:        Country,
   clock:          Clock = Clock.systemUTC(),
   sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval
 ) extends Logging {
   import RatingRunCensus._
 
+  private val countryCode = country.code
+  // Only the sources this country actually wires a handler for (Filmweb is dropped
+  // outside Poland) — so the census never seeds/reports a backlog for a rating that
+  // can never run here (see RatingSources.forCountry).
+  private val sources = RatingSources.forCountry(country)
+
   // Materialize each site at 0 so this country's series exist from boot — no Grafana gaps.
-  RatingSources.all.foreach { s =>
+  sources.foreach { s =>
     notRun.labelValues(countryCode, s.kind.label).set(0.0)
     oldestAge.labelValues(countryCode, s.kind.label).set(0.0)
   }
@@ -58,8 +65,8 @@ class RatingRunCensus(
   /** Walk the corpus once and publish each site's never-run backlog onto the
    *  gauges. Read-only, in-memory; bounded to once per `sampleInterval`. */
   def sample(): Unit = {
-    val stats = census(cache.entries, freshness.lastFetchedAt, clock.instant())
-    RatingSources.all.foreach { s =>
+    val stats = census(cache.entries, freshness.lastFetchedAt, clock.instant(), sources)
+    sources.foreach { s =>
       val st = stats.getOrElse(s.kind.label, SiteBacklog.empty)
       notRun.labelValues(countryCode, s.kind.label).set(st.count.toDouble)
       oldestAge.labelValues(countryCode, s.kind.label).set(st.oldestAgeSeconds)
@@ -108,15 +115,18 @@ object RatingRunCensus {
   /** Pure census: per site label, how many eligible rows have no rating stamp
    *  (the run never happened), and the oldest `now − tmdbResolvedAt` among those
    *  whose resolve time is known. `lastFetchedAt` is the freshness lookup (the
-   *  cache mirror in prod); `now` is the sample instant. */
+   *  cache mirror in prod); `now` is the sample instant. `sources` are the rating
+   *  sources to census — the caller passes only those its country wires a handler
+   *  for (defaults to all). */
   private[services] def census(
     entries:       Iterable[(CacheKey, MovieRecord)],
     lastFetchedAt: String => Option[Instant],
-    now:           Instant
+    now:           Instant,
+    sources:       Seq[RatingSource] = RatingSources.all
   ): Map[String, SiteBacklog] = {
     val acc = scala.collection.mutable.Map.empty[String, SiteBacklog]
     entries.foreach { case (key, record) =>
-      RatingSources.all.foreach { s =>
+      sources.foreach { s =>
         if (s.eligible(record) && !hasRun(lastFetchedAt, s.kind, key, record.tmdbId)) {
           val ageSeconds = record.tmdbId
             .flatMap(id => lastFetchedAt(RatingTasks.tmdbResolvedAtKey(id)))

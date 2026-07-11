@@ -573,7 +573,7 @@ class WorkerWiring(
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: services.metrics.RatingRunCensus =
-    new services.metrics.RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country.code)
+    new services.metrics.RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country)
   // Metered (counts every enqueue attempt, incl. cache-served duplicates) wraps the
   // local dedup cache (skips the redundant enqueue round-trip) wraps Mongo.
   lazy val taskQueue: TaskQueue =
@@ -872,7 +872,7 @@ class WorkerWiring(
   // The per-row rating-enqueue decision, shared by the reaper's corpus walk and the
   // newcomer-fold kick (`MovieService.announceResolvedNewMovie`) so the two agree on
   // eligibility + the tmdbId-keyed due gate. ONE instance, handed to both.
-  lazy val ratingEnqueuer = new services.tasks.RatingEnqueuer(taskQueue, freshnessStore, ratingDueWindow)
+  lazy val ratingEnqueuer = new services.tasks.RatingEnqueuer(taskQueue, freshnessStore, ratingDueWindow, country)
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
     maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,

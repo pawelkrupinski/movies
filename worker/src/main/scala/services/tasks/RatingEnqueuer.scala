@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.MovieRecord
+import models.{Country, MovieRecord}
 import services.freshness.FreshnessStore
 import services.movies.CacheKey
 
@@ -27,11 +27,17 @@ class RatingEnqueuer(
   // The shared due schedule. The SAME instance must back the [[RatingHandler]] so
   // this enqueue gate and that execution gate agree on what counts as due — see
   // [[DueWindow]].
-  dueWindow: DueWindow
+  dueWindow: DueWindow,
+  // The country this enqueuer serves — selects which rating sources apply. Defaults
+  // to Poland so tests and single-country paths keep the historical (Filmweb-on)
+  // behaviour; the worker wiring passes the actual per-country value so a non-Filmweb
+  // country (UK) never enqueues a handler-less FilmwebRating task (see RatingSources).
+  country: Country = Country.default
 ) {
   // The eligibility rule lives in RatingSources so the metrics census can't drift
-  // from what this actually enqueues (see RatingSources).
-  private val sources = RatingSources.all
+  // from what this actually enqueues (see RatingSources). `forCountry` also drops
+  // sources this country doesn't wire a handler for (Filmweb outside Poland).
+  private val sources = RatingSources.forCountry(country)
 
   /** How many rating sources exist (for the reaper's start-up log). */
   val sourceCount: Int = sources.size

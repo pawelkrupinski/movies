@@ -1,7 +1,7 @@
 package services.metrics
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.MovieRecord
+import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
@@ -72,7 +72,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   "RatingRunCensus.sample" should "publish per-site backlog gauges onto the registry, seeded at 0" in {
     val registry           = new PrometheusRegistry()
     val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
-    val census   = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, "pl", java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
+    val census   = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, Country.Poland, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
 
     // Before sampling, every site series exists at 0 (no Grafana gaps).
     val seeded = PrometheusExposition.render(registry)
@@ -86,6 +86,21 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     gauge(text, RatingRunCensus.NotRunName, "imdb") shouldBe Some(0.0)
     gauge(text, RatingRunCensus.OldestAgeName, "rt") shouldBe Some(3600.0)
     gauge(text, RatingRunCensus.OldestAgeName, "fw") shouldBe Some(100.0)
+  }
+
+  it should "NOT publish a Filmweb series at all for a non-Filmweb country (UK)" in {
+    val registry            = new PrometheusRegistry()
+    val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
+    val census = new RatingRunCensus(cacheOf(entries), freshness(), notRun, oldestAge, Country.UnitedKingdom, java.time.Clock.fixed(now, java.time.ZoneOffset.UTC))
+
+    census.sample()
+    val text = PrometheusExposition.render(registry)
+    // Global sites still reported for the UK deployment...
+    ukGauge(text, RatingRunCensus.NotRunName, "rt") shouldBe Some(2.0)
+    ukGauge(text, RatingRunCensus.NotRunName, "imdb") shouldBe Some(0.0)
+    // ...but Filmweb never runs in the UK, so its series is absent (not a stuck 0/backlog).
+    ukGauge(text, RatingRunCensus.NotRunName, "fw") shouldBe None
+    ukGauge(text, RatingRunCensus.OldestAgeName, "fw") shouldBe None
   }
 
   // ── helpers ────────────────────────────────────────────────────────────────
@@ -102,4 +117,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
 
   private def gauge(text: String, name: String, site: String): Option[Double] =
     PrometheusExposition.sample(text, name, s"""country="pl",site="$site"""")
+
+  private def ukGauge(text: String, name: String, site: String): Option[Double] =
+    PrometheusExposition.sample(text, name, s"""country="uk",site="$site"""")
 }
