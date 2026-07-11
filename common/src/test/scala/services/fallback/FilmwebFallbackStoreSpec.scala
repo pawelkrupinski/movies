@@ -11,6 +11,7 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
 
   private def state(cinema: String, active: Boolean) = FilmwebFallbackState(
     cinema = cinema, active = active, filmwebCinemaId = Some(7),
+    failingSince = Some(Instant.ofEpochMilli(500)),
     since = Some(Instant.ofEpochMilli(1000)), lastReason = Some("down"),
     consecutiveFailures = 1, lastPrimaryProbeAt = Some(Instant.ofEpochMilli(1200)),
     nextPrimaryProbeAt = Some(Instant.ofEpochMilli(2000)), updatedAt = Instant.ofEpochMilli(3000),
@@ -39,6 +40,7 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
       "_id"                 -> "Kino Praha",
       "active"              -> true,
       "filmwebCinemaId"     -> 2180,
+      "failingSince"        -> BsonDateTime(500L),
       "since"               -> BsonDateTime(1000L),
       "lastReason"          -> "RuntimeException: down",
       "consecutiveFailures" -> 2,
@@ -54,6 +56,7 @@ class FilmwebFallbackStoreSpec extends AnyFlatSpec with Matchers {
 
     MongoFilmwebFallbackStore.fromDocument(document) shouldBe Some(FilmwebFallbackState(
       cinema = "Kino Praha", active = true, filmwebCinemaId = Some(2180),
+      failingSince = Some(Instant.ofEpochMilli(500)),
       since = Some(Instant.ofEpochMilli(1000)), lastReason = Some("RuntimeException: down"),
       consecutiveFailures = 2, lastPrimaryProbeAt = Some(Instant.ofEpochMilli(1500)),
       nextPrimaryProbeAt = Some(Instant.ofEpochMilli(2000)), updatedAt = Instant.ofEpochMilli(3000),

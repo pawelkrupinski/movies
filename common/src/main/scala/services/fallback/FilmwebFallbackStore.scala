@@ -99,6 +99,7 @@ object MongoFilmwebFallbackStore {
   private[fallback] def toUpdate(s: FilmwebFallbackState): Bson = Updates.combine(
     Updates.set("active", s.active),
     Updates.set("filmwebCinemaId", s.filmwebCinemaId.map(Int.box).orNull),
+    Updates.set("failingSince", s.failingSince.map(date).orNull),
     Updates.set("since", s.since.map(date).orNull),
     Updates.set("lastReason", s.lastReason.orNull),
     Updates.set("consecutiveFailures", s.consecutiveFailures),
@@ -116,6 +117,7 @@ object MongoFilmwebFallbackStore {
         cinema              = id,
         active              = Try(document.getBoolean("active", false)).getOrElse(false),
         filmwebCinemaId     = document.get("filmwebCinemaId").filter(_.isNumber).map(_.asNumber().intValue()),
+        failingSince        = instant("failingSince"),
         since               = instant("since"),
         lastReason          = Option(document.getString("lastReason")),
         consecutiveFailures = Try(document.getInteger("consecutiveFailures", 0)).getOrElse(0),

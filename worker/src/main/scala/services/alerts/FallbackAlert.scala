@@ -8,11 +8,11 @@ import services.fallback.{FallbackEvent, FilmwebFallbackState}
  * RECOVERED (its own scraper came back). PROBE_FAILED is routine backoff noise
  * while a cinema stays down, so it yields no alert.
  *
- * Both pages are gated on `state.alerted`, which the scraper only sets once a
- * cinema has been on fallback for its alert threshold (default 3h): a brief blip
- * never pages its ENTER, and a quick recovery never pages a RECOVERED for an entry
- * we stayed silent about. So RECOVERED only fires when it recovered more than the
- * threshold after falling back.
+ * Both pages are gated on `state.alerted`, which the scraper sets the moment a
+ * cinema enters fallback — i.e. only after its own scraper has failed continuously
+ * for the grace window (default 6h). A cinema that recovers while still in that
+ * grace window never entered fallback, so it never set `alerted` and stays silent;
+ * RECOVERED therefore only fires for an entry we actually paged.
  */
 object FallbackAlert {
   def messageFor(state: FilmwebFallbackState, event: FallbackEvent): Option[String] = event.event match {

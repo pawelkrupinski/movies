@@ -32,14 +32,15 @@ case class FilmwebFallbackState(
   cinema:              String,
   active:              Boolean,
   filmwebCinemaId:     Option[Int],
-  since:               Option[Instant],   // when the CURRENT active spell began
+  failingSince:        Option[Instant] = None, // when the CURRENT run of continuous primary failures began — the grace clock; we only enter fallback once it has lasted `fallbackAfter`. Persisted so a worker restart doesn't reset it. Cleared on any primary success.
+  since:               Option[Instant],   // when the CURRENT active (serving-via-Filmweb) spell began
   lastReason:          Option[String],
   consecutiveFailures: Int,               // primary failures since entering; drives backoff
   lastPrimaryProbeAt:  Option[Instant],
   nextPrimaryProbeAt:  Option[Instant],   // before this, serve Filmweb without re-probing the primary
   updatedAt:           Instant,
   history:             List[FallbackEvent],
-  alerted:             Boolean = false    // ENTER page sent for the CURRENT spell — gates the (delayed) page and its recovery page
+  alerted:             Boolean = false    // ENTER page sent for the CURRENT spell — gates the recovery page so a grace-window recovery (never entered fallback) stays silent
 )
 
 object FilmwebFallbackState {

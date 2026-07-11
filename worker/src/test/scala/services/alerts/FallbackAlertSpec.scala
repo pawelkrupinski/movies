@@ -13,7 +13,7 @@ class FallbackAlertSpec extends AnyFlatSpec with Matchers with OptionValues {
     cinema = "Kino Praha", active = true, filmwebCinemaId = Some(2180), since = Some(Instant.EPOCH),
     lastReason = Some("RuntimeException: down"), consecutiveFailures = 1,
     lastPrimaryProbeAt = None, nextPrimaryProbeAt = None, updatedAt = Instant.EPOCH, history = Nil,
-    alerted = true   // the scraper has decided this spell is worth paging (≥ alert window)
+    alerted = true   // the scraper set this on entering fallback (i.e. after the grace window)
   )
 
   private def event(kind: String, reason: String = "down") = FallbackEvent(Instant.EPOCH, kind, reason)
@@ -32,7 +32,7 @@ class FallbackAlertSpec extends AnyFlatSpec with Matchers with OptionValues {
     FallbackAlert.messageFor(state, event(FallbackEvent.ProbeFailed)) shouldBe None
   }
 
-  it should "stay quiet on ENTER and RECOVERED until the spell is alerted (delayed paging)" in {
+  it should "stay quiet on ENTER and RECOVERED for a grace-window spell that never entered fallback (alerted=false)" in {
     val unalerted = state.copy(alerted = false)
     FallbackAlert.messageFor(unalerted, event(FallbackEvent.Enter)) shouldBe None
     FallbackAlert.messageFor(unalerted, event(FallbackEvent.Recovered)) shouldBe None
