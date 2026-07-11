@@ -37,6 +37,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedKingdom.mongoDb shouldBe "kinowo_uk"
     Country.UnitedKingdom.filmwebEnabled shouldBe false
     Country.UnitedKingdom.language.toLanguageTag shouldBe "en-GB"
+    Country.UnitedKingdom.brandName shouldBe "Showtimes"   // "Kinowo" is Polish-only
     Country.UnitedKingdom.cities shouldBe City.ukCities
     Country.UnitedKingdom.cities.map(_.slug) should contain allOf ("london", "manchester", "norwich")
   }
@@ -46,6 +47,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Germany.mongoDb shouldBe "kinowo_de"
     Country.Germany.filmwebEnabled shouldBe false
     Country.Germany.language.toLanguageTag shouldBe "de-DE"
+    Country.Germany.brandName shouldBe "Showtimes"   // any non-Polish deployment
     Country.Germany.cities shouldBe City.germanCities
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "munich", "wurzburg")
   }
@@ -56,6 +58,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.mongoDb shouldBe "kinowo"
     Country.Poland.filmwebEnabled shouldBe true
     Country.Poland.language.toLanguageTag shouldBe "pl-PL"
+    Country.Poland.brandName shouldBe "Kinowo"   // the brand keeps its Polish name at home
   }
 
   "Every country" should "map to a distinct database (no two share one db)" in {

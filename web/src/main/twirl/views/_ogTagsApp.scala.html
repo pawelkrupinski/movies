@@ -38,7 +38,7 @@
 @_favicon()@Html(if(canonicalUrl.nonEmpty || pageUrl.nonEmpty) s"""<link rel="canonical" href="${if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}">""" else "")
 <meta property="og:title"       content="@pageTitle">
 <meta property="og:type"        content="website">
-<meta property="og:site_name"   content="Kinowo">
+<meta property="og:site_name"   content="@models.Country.fromEnv.brandName">
 @if(pageUrl.nonEmpty) {
 <meta property="og:url"         content="@pageUrl">
 }

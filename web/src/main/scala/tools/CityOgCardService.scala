@@ -36,11 +36,11 @@ class CityOgCardService(posters: PosterFetch) {
    *  card from the city's first distinct films. A render where no poster decoded
    *  isn't cached, so the next share retries instead of freezing a poster-less
    *  card. */
-  def card(cacheKey: String, cityLine: String, films: Seq[CityCardFilm]): Array[Byte] =
+  def card(cacheKey: String, cityLine: String, brand: String, films: Seq[CityCardFilm]): Array[Byte] =
     cache.getOrRender(cacheKey) {
       val columns = films.take(CityOgCardService.Columns)
         .map(f => f -> loader.loadFirst(f.posterUrls.take(OgCard.MaxPosterCandidates)))
-      val bytes = OgCardRenderer.renderCityPageCard(cityLine, columns)
+      val bytes = OgCardRenderer.renderCityPageCard(cityLine, brand, columns)
       (bytes, columns.exists(_._2.isDefined))
     }
 }

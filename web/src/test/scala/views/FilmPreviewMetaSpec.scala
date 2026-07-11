@@ -79,7 +79,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
       sample, "https://kinowo.fly.dev/london/film?title=Incepcja",
       ogDescription = "IMDb 8.8 · RT 87% — synopsis", ogImageUrl = ogImageUrl,
     )(London, TestMessages.forLang("en")).body
-    html should include ("<title>Incepcja (2010) – showtimes London | Kinowo</title>")
+    html should include ("<title>Incepcja (2010) – showtimes London | Showtimes</title>")
     html should include ("""<meta property="og:site_name"   content="Cinema listings London">""")
   }
 

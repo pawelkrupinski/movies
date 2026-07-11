@@ -7,7 +7,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@film.movie.title@film.movie.releaseYear.map(y => s" ($y)") @messages("film.titleSuffix", city.labels.nominative)</title>
+  <title>@film.movie.title@film.movie.releaseYear.map(y => s" ($y)") @messages("film.titleSuffix", city.labels.nominative, city.country.brandName)</title>
   <link rel="canonical" href="@canonicalUrl">
   @_resourceHints()
   @_favicon()

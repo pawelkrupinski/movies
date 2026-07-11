@@ -14,7 +14,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   @_favicon()
-  <title>Privacy policy — Kinowo</title>
+  <title>Privacy policy — @models.Country.fromEnv.brandName</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -38,12 +38,12 @@
 <body>
   <main>
     <header>
-      <div class="brand">🎬 Kinowo</div>
+      <div class="brand">🎬 @models.Country.fromEnv.brandName</div>
       <h1>Privacy policy</h1>
     </header>
 
     <p>
-      <strong>Kinowo</strong> processes only the personal data needed to sign you
+      <strong>@models.Country.fromEnv.brandName</strong> processes only the personal data needed to sign you
       in and remember your preferences (hidden films and disabled cinemas). We do
       not sell your data or use it for advertising.
     </p>
@@ -56,7 +56,7 @@
     </p>
 
     <footer>
-      Kinowo · Contact:
+      @models.Country.fromEnv.brandName · Contact:
       <a href="mailto:pawel.krupinski@@gmail.com">pawel.krupinski@@gmail.com</a>
     </footer>
   </main>

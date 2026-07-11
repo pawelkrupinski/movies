@@ -10,9 +10,10 @@ import models.City
  *  link-preview crawlers (Facebook in particular) see the filtered phrasing in
  *  the OG tags without running JS.
  *
- *  Default (no filters in the URL) → `"Kinowo"` + a short generic
- *  description. With filters → `"Kinowo — filmy <body>"` (`… — films <body>` in
- *  English) where `body` is a comma-separated list of per-filter phrases. The
+ *  Default (no filters in the URL) → the brand (`"Kinowo"` in PL, `"Showtimes"`
+ *  elsewhere) + a short generic description. With filters → `"Kinowo — filmy
+ *  <body>"` (`"Showtimes — films <body>"` in English) where `body` is a
+ *  comma-separated list of per-filter phrases. The
  *  title is truncated to `MaxTitle` (FB/Google sweet spot), the description to
  *  `MaxDescription`.
  *
@@ -37,9 +38,11 @@ object FilterDescription {
 
   case class Meta(title: String, description: String)
 
-  /** Brand token, used as the prefix of the FILTERED title ("Kinowo — filmy …")
-   *  and the suffix of the default city title. */
-  val DefaultTitle       = "Kinowo"
+  /** The customer-facing brand for this city's deployment — "Kinowo" in Poland,
+   *  "Showtimes" elsewhere ([[models.Country.brandName]]). Used as the prefix of
+   *  the FILTERED title ("Kinowo — filmy …" / "Showtimes — films …") and the
+   *  suffix of the default city title. */
+  private def brand(city: City): String = city.country.brandName
 
   /** Whether this city's deployment renders in Polish (Poland) vs. another
    *  language (English UK, …). All the copy below branches on it. */
@@ -59,7 +62,7 @@ object FilterDescription {
    *  rather than the bare brand. */
   def defaultTitle(city: City): String = {
     val tail = if (isPolish(city)) "godziny seansów na dziś" else "today's showtimes"
-    truncate(s"${cityHeading(city)} – $tail | $DefaultTitle", MaxTitle)
+    truncate(s"${cityHeading(city)} – $tail | ${brand(city)}", MaxTitle)
   }
 
   /** Default OG/meta description, parameterized by the city's genitive-plural
@@ -90,7 +93,7 @@ object FilterDescription {
     else {
       val body     = phrases.mkString(", ")
       val filmWord = if (isPolish(city)) "filmy" else "films"
-      val joined   = s"$DefaultTitle — $filmWord $body"
+      val joined   = s"${brand(city)} — $filmWord $body"
       Meta(truncate(joined, MaxTitle), truncate(joined, MaxDescription))
     }
   }

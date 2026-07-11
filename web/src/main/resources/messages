@@ -67,7 +67,7 @@ browse.ogTitle={0} — Repertuar kinowy {1}
 browse.ogDescription=Filmy z {0} kin: {1}. Z aktualnymi seansami, ocenami i opisami.
 
 # ── Landing (city picker) ───────────────────────────────────────────────────
-landing.title=Kinowo — repertuar kin w Twoim mieście
+landing.title={0} — repertuar kin w Twoim mieście
 landing.ogDescription=Repertuar wszystkich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb. Sprawdź dzisiejszy repertuar w swoim mieście.
 landing.chooseCity=Wybierz miasto
 landing.searchCity=Szukaj miasta…
@@ -89,8 +89,9 @@ detail.showings=Seanse
 card.hide=Ukryj film
 
 # ── Film page (meta) ────────────────────────────────────────────────────────
-# `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative.
-film.titleSuffix=– godziny seansów {0} | Kinowo
+# `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative,
+# {1} = brand ("Kinowo" in PL, "Showtimes" elsewhere).
+film.titleSuffix=– godziny seansów {0} | {1}
 
 # ── Film page back-nav ──────────────────────────────────────────────────────
 back.films=Filmy

@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   @_favicon()
-  <title>Data deletion — Kinowo</title>
+  <title>Data deletion — @models.Country.fromEnv.brandName</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -38,13 +38,13 @@
 <body>
   <main>
     <header>
-      <div class="brand">🎬 Kinowo</div>
+      <div class="brand">🎬 @models.Country.fromEnv.brandName</div>
       <h1>Data deletion</h1>
     </header>
 
     <p>
       Your data deletion request has been completed.
-      <strong>All data associated with your Kinowo account</strong> — your profile
+      <strong>All data associated with your @models.Country.fromEnv.brandName account</strong> — your profile
       and saved settings (hidden films and disabled cinemas) — has been permanently
       removed from our database.
     </p>
@@ -62,7 +62,7 @@
     </p>
 
     <footer>
-      Kinowo · Contact:
+      @models.Country.fromEnv.brandName · Contact:
       <a href="mailto:pawel.krupinski@@gmail.com">pawel.krupinski@@gmail.com</a>
     </footer>
   </main>

@@ -58,7 +58,7 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
 
   "CityOgCardService.card" should "build a 1200×630 page-like PNG from the films' posters" in {
     val fetch = new CountingFetch(jpeg)
-    val bytes = new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
+    val bytes = new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", "Kinowo",fiveFilms)
     dimensions(bytes) shouldBe (1200, 630)
     posterRed(bytes) should be > 150
   }
@@ -66,15 +66,15 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
   it should "memoise per city — second call neither re-fetches nor re-renders" in {
     val fetch   = new CountingFetch(jpeg)
     val service = new CityOgCardService(fetch)
-    val a = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
-    val b = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
+    val a = service.card("poznan", "Repertuar kin w Poznaniu", "Kinowo",fiveFilms)
+    val b = service.card("poznan", "Repertuar kin w Poznaniu", "Kinowo",fiveFilms)
     b should be theSameInstanceAs a
     fetch.calls.get shouldBe 5 // one fetch per film poster, then served from cache
   }
 
   it should "degrade to a poster-less card (still 1200×630) when no poster decodes" in {
     val fetch: PosterFetch = (_: String) => None
-    dimensions(new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", fiveFilms)) shouldBe (1200, 630)
+    dimensions(new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", "Kinowo",fiveFilms)) shouldBe (1200, 630)
   }
 
   it should "not cache a poster-less card, so the next share retries the fetch" in {
@@ -82,15 +82,15 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
     // the next card's fetches succeed. A cached failure would stop the re-fetch.
     val fetch   = new FlakyFetch(jpeg, failFirst = 10)
     val service = new CityOgCardService(fetch)
-    val first  = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
-    val second = service.card("poznan", "Repertuar kin w Poznaniu", fiveFilms)
+    val first  = service.card("poznan", "Repertuar kin w Poznaniu", "Kinowo",fiveFilms)
+    val second = service.card("poznan", "Repertuar kin w Poznaniu", "Kinowo",fiveFilms)
     posterRed(first)  should be < 80  // no poster loaded → dark slot
     posterRed(second) should be > 150 // retry loaded the posters
   }
 
   it should "not touch the network when the city has no films" in {
     val fetch = new CountingFetch(jpeg)
-    new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", Seq.empty)
+    new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", "Kinowo",Seq.empty)
     fetch.calls.get shouldBe 0
   }
 
@@ -102,6 +102,6 @@ class CityOgCardServiceSpec extends AnyFlatSpec with Matchers {
       OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
       Seq("https://www.multikino.pl/x.jpg", "https://www.cinema-city.pl/p.jpg"),
       "Sobota 20 czerwca", Seq("Multikino" -> Seq("18:30"))))
-    posterRed(new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", films)) should be > 150
+    posterRed(new CityOgCardService(fetch).card("poznan", "Repertuar kin w Poznaniu", "Kinowo",films)) should be > 150
   }
 }

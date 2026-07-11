@@ -29,6 +29,7 @@ sealed abstract class Country(
   val mongoDb:        String,          // database name on the shared cluster
   val filmwebEnabled: Boolean,         // is the Filmweb rating/fallback path wired for this country?
   val webUrl:         Option[String],  // public web host of this country's deployment (scheme+host, no trailing slash); None = not deployed yet
+  val brandName:      String,          // customer-facing app name: "Kinowo" in PL, "Showtimes" elsewhere (the Polish coinage means nothing abroad)
 ) {
   /** The cities this country serves. Authoritative per-country list; [[City.all]]
    *  is the union across every country. */
@@ -57,6 +58,7 @@ object Country {
     mongoDb        = "kinowo",
     filmwebEnabled = true,
     webUrl         = Some("https://kinowo.fly.dev"),
+    brandName      = "Kinowo",
   ) {
     val cities: Seq[City] = City.polishCities
   }
@@ -74,6 +76,7 @@ object Country {
     mongoDb        = "kinowo_uk",
     filmwebEnabled = false,
     webUrl         = Some("https://showtimes-uk.fly.dev"),
+    brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
   }
@@ -89,6 +92,7 @@ object Country {
     mongoDb        = "kinowo_de",
     filmwebEnabled = false,
     webUrl         = None,
+    brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
   }

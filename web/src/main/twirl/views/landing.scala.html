@@ -12,12 +12,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
-  <title>@messages("landing.title")</title>
+  <title>@messages("landing.title", models.Country.fromEnv.brandName)</title>
   @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
      card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
      product (posters + ratings), which the city-selection screen itself can't. *@
   @_ogTagsApp(
-    pageTitle       = messages("landing.title"),
+    pageTitle       = messages("landing.title", models.Country.fromEnv.brandName),
     pageDescription = messages("landing.ogDescription"),
     pageUrl         = "https://kinowo.fly.dev/",
     imageUrl        = "https://kinowo.fly.dev/assets/img/og-home.png",
@@ -55,7 +55,7 @@
 </head>
 <body>
   <main>
-    <h1>🎬 Kinowo</h1>
+    <h1>🎬 @models.Country.fromEnv.brandName</h1>
     <p class="sub">@messages("landing.chooseCity")</p>
     <input class="city-search" id="city-search" type="search" inputmode="search"
            autocomplete="off" autocapitalize="off" spellcheck="false"

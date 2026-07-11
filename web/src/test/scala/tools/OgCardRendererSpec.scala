@@ -111,7 +111,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   private def fiveCols(c: Color) = Seq.fill(5)(col(c))
 
   "OgCardRenderer.renderCityPageCard" should "render the page-like grid and keep the left brand panel dark" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", fiveCols(Color.RED)))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo",fiveCols(Color.RED)))
     img.getWidth shouldBe 1200
     img.getHeight shouldBe 630
     // A right-hand poster shows through where the gradient has faded.
@@ -123,7 +123,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "draw the white 'Kinowo' wordmark and the city line on the left" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", Seq(col(Color.RED))))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo",Seq(col(Color.RED))))
     var bright = 0
     for (x <- 80 until 560; y <- 200 until 430)
       if (new Color(img.getRGB(x, y)).getRed > 200) bright += 1
@@ -131,13 +131,13 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "paint the per-film rating pills and showtime chips into the cards" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", fiveCols(Color.BLUE)))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo",fiveCols(Color.BLUE)))
     hasColourNear(img, ImdbGold) shouldBe true                              // an in-card rating pill
     hasColourNear(img, new Color(0xaa, 0xd4, 0xff), tol = 30) shouldBe true // a showtime chip's text
   }
 
   it should "render a clean brand-only card (correct size) when there are no films" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin we Wrocławiu", Nil))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin we Wrocławiu", "Kinowo", Nil))
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
   }

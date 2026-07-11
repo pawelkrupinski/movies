@@ -220,11 +220,12 @@ object OgCardRenderer {
   /** Compose the per-city share card so its background reads as the real
    *  repertoire page: a 5-column grid of film cards (poster on top, then title,
    *  meta + rating pills, the day + per-cinema showtime chips) on the page's
-   *  dark navy, with the left→right dark gradient + "Kinowo / {cityLine}" brand
-   *  overlay on the left. `columns` are the city's first few DISTINCT films
-   *  (no movie/poster repeats), each paired with its decoded poster (or None).
+   *  dark navy, with the left→right dark gradient + "{brand} / {cityLine}" brand
+   *  overlay on the left (`brand` = "Kinowo" in PL, "Showtimes" elsewhere).
+   *  `columns` are the city's first few DISTINCT films (no movie/poster repeats),
+   *  each paired with its decoded poster (or None).
    *  No films → a clean brand-only card rather than an empty frame. */
-  def renderCityPageCard(cityLine: String, columns: Seq[(CityCardFilm, Option[BufferedImage])]): Array[Byte] = {
+  def renderCityPageCard(cityLine: String, brand: String, columns: Seq[(CityCardFilm, Option[BufferedImage])]): Array[Byte] = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -243,15 +244,15 @@ object OgCardRenderer {
       g.setPaint(new LinearGradientPaint(0f, 0f, Width.toFloat, 0f, stops, shades))
       g.fillRect(0, 0, Width, Height)
 
-      drawBrandOverlay(g, cityLine)
+      drawBrandOverlay(g, cityLine, brand)
     } finally g.dispose()
 
     toPng(img)
   }
 
-  /** The left brand block: "Kinowo" wordmark + the city line + decorative rating
-   *  pills + the URL, vertically centred. */
-  private def drawBrandOverlay(g: Graphics2D, cityLine: String): Unit = {
+  /** The left brand block: the `brand` wordmark ("Kinowo" / "Showtimes") + the
+   *  city line + decorative rating pills + the URL, vertically centred. */
+  private def drawBrandOverlay(g: Graphics2D, cityLine: String, brand: String): Unit = {
     val leftX   = 80
     val brandFm = g.getFontMetrics(bold.deriveFont(86f))
     val tagFm   = g.getFontMetrics(regular.deriveFont(33f))
@@ -265,7 +266,7 @@ object OgCardRenderer {
     var y = (Height - blockH) / 2
 
     g.setFont(bold.deriveFont(86f)); g.setColor(TitleCol)
-    y += brandFm.getAscent; g.drawString("Kinowo", leftX, y); y += brandFm.getDescent
+    y += brandFm.getAscent; g.drawString(brand, leftX, y); y += brandFm.getDescent
 
     y += gapBrandTag
     g.setFont(regular.deriveFont(33f)); g.setColor(TitleCol)

@@ -61,7 +61,7 @@ browse.ogTitle={0} — Cinema listings {1}
 browse.ogDescription=Films from {0} cinemas: {1}. With current showtimes, ratings and descriptions.
 
 # ── Landing (city picker) ───────────────────────────────────────────────────
-landing.title=Kinowo — cinema listings in your city
+landing.title={0} — cinema listings in your city
 landing.ogDescription=Every cinema''s listings in one place — with IMDb, RT and Filmweb ratings. Check today''s showtimes in your city.
 landing.chooseCity=Choose your city
 landing.searchCity=Search for a city…
@@ -83,8 +83,9 @@ detail.showings=Showings
 card.hide=Hide film
 
 # ── Film page (meta) ────────────────────────────────────────────────────────
-# `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative.
-film.titleSuffix=– showtimes {0} | Kinowo
+# `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative,
+# {1} = brand ("Kinowo" in PL, "Showtimes" elsewhere).
+film.titleSuffix=– showtimes {0} | {1}
 
 # ── Film page back-nav ──────────────────────────────────────────────────────
 back.films=Films

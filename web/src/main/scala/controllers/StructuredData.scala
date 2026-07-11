@@ -38,19 +38,22 @@ object StructuredData {
 
   /** Landing page: identify the site + publisher so Google can attach a
    *  knowledge-panel / sitelinks to the brand. */
-  def landing(): String = render(Json.arr(
-    Json.obj(
-      "@context" -> Ctx, "@type" -> "WebSite",
-      "name" -> "Kinowo", "url" -> s"$ProdOrigin/",
-      "inLanguage" -> models.Country.fromEnv.language.getLanguage,
-      "description" -> "Repertuar kin w polskich miastach — godziny seansów, oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes.",
-    ),
-    Json.obj(
-      "@context" -> Ctx, "@type" -> "Organization",
-      "name" -> "Kinowo", "url" -> s"$ProdOrigin/",
-      "logo" -> s"$ProdOrigin/assets/img/og-home.png",
-    ),
-  ))
+  def landing(): String = {
+    val brand = models.Country.fromEnv.brandName
+    render(Json.arr(
+      Json.obj(
+        "@context" -> Ctx, "@type" -> "WebSite",
+        "name" -> brand, "url" -> s"$ProdOrigin/",
+        "inLanguage" -> models.Country.fromEnv.language.getLanguage,
+        "description" -> "Repertuar kin w polskich miastach — godziny seansów, oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes.",
+      ),
+      Json.obj(
+        "@context" -> Ctx, "@type" -> "Organization",
+        "name" -> brand, "url" -> s"$ProdOrigin/",
+        "logo" -> s"$ProdOrigin/assets/img/og-home.png",
+      ),
+    ))
+  }
 
   /** A city listing (`/{slug}/` or `/{slug}/filmy`): breadcrumb back to the
    *  landing plus an ItemList of the films currently on show, each linking to
@@ -66,7 +69,7 @@ object StructuredData {
       )
     }
     render(Json.arr(
-      breadcrumb(origin, Seq("Kinowo" -> s"$origin/", city.labels.nominative -> cityUrl)),
+      breadcrumb(origin, Seq(city.country.brandName -> s"$origin/", city.labels.nominative -> cityUrl)),
       Json.obj(
         "@context" -> Ctx, "@type" -> "ItemList",
         // Same city heading as the OG tags / card overlay, so the JSON-LD is
@@ -122,7 +125,7 @@ object StructuredData {
     }
 
     val crumb = breadcrumb(origin, Seq(
-      "Kinowo" -> s"$origin/", city.labels.nominative -> cityUrl, m.title -> canonicalUrl,
+      city.country.brandName -> s"$origin/", city.labels.nominative -> cityUrl, m.title -> canonicalUrl,
     ))
 
     render(JsArray(movie +: crumb +: events))

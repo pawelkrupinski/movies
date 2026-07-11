@@ -722,7 +722,7 @@ class MovieController( cc: ControllerComponents,
       val day   = java.time.LocalDate.now(c.zoneId)
       val films = OgCardAssembly.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5)
         .map(OgCardAssembly.toCityCardFilm)
-      val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), films)
+      val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), c.country.brandName, films)
       // 1h, not a day: the card tracks the live repertoire (which shifts through
       // the day), and a shorter TTL means a regenerated card surfaces promptly.
       Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=3600")
