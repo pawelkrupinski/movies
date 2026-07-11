@@ -61,6 +61,12 @@ jobs:
                       toml: fly.toml
                       bin: web
                       artifact: stage-web
+                    # UK frontend — same `web` binary + build artifact as kinowo,
+                    # its own fly config (KINOWO_COUNTRY=uk → the kinowo_uk db).
+                    - app: showtimes-uk
+                      toml: fly.uk.toml
+                      bin: web
+                      artifact: stage-web
                     - app: kinowo-worker
                       toml: fly.worker.toml
                       bin: worker

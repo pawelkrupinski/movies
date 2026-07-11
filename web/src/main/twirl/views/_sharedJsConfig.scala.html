@@ -19,7 +19,7 @@
   const ALL_CINEMAS         = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
   const CINEMA_PILLS        = @Html(play.api.libs.json.Json.toJson(cinemaPills).toString);
   const CURRENT_CITY        = "@city.slug";
-  const ALL_CITIES          = @Html(models.City.allJson);
+  const ALL_CITIES          = @Html(city.country.allJson);
   @* Per-deployment locale for shared.js: weekday/month arrays, empty-state /
      swipe-hint / clear strings, and the showtime plural rule + forms. Replaces
      the Polish literals shared.js used to hardcode (DAY2/MONTHS/_showtimeNoun). *@

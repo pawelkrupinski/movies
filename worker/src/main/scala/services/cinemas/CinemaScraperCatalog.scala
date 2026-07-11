@@ -367,6 +367,44 @@ class CinemaScraperCatalog(
     "przemysl" -> Seq(new FilmwebShowtimesClient(http, 1786, KinoCentrum3DPrzemysl, today = today), new MsiClient(http, "https://kinoikar.mok-jar.pl", KinoIkar, today), new MsiClient(http, "https://jaroslaw.kinonabiegunach.pl", KinoNaBiegunach, today), new KinoSDKSanokClient(http, KinoSDK, today)),
   )
 
+  // ── United Kingdom (Flicks) ──────────────────────────────────────────────
+  private def flicks(slug: String, cinema: Cinema): FlicksClient =
+    new FlicksClient(http, slug, cinema, today = today)
+  private val londonScrapers: Seq[CinemaScraper] = Seq(
+    flicks("odeon-cinema-luxe-leicester-square", OdeonLuxeLeicesterSquare),
+    flicks("vue-cinemas-west-end", VueWestEnd),
+    flicks("cineworld-leicester-square", CineworldLeicesterSquare),
+    flicks("curzon-soho", CurzonSoho),
+    flicks("bfi-london-southbank", BfiSouthbank),
+    flicks("the-garden-cinema", TheGardenCinema),
+  )
+  private val manchesterScrapers: Seq[CinemaScraper] = Seq(
+    flicks("home-manchester", HomeManchester),
+    flicks("odeon-cinema-manchester-great-northern", OdeonManchesterGreatNorthern),
+    flicks("vue-cinemas-manchester-printworks", VueManchesterPrintworks),
+    flicks("cineworld-manchester", CineworldManchesterDidsbury),
+    flicks("everyman-manchester-st-johns", EverymanManchesterStJohns),
+  )
+  private val norwichScrapers: Seq[CinemaScraper] = Seq(flicks("odeon-cinema-norwich", OdeonNorwich))
+
+  // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
+  private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
+    new WebediaShowtimesClient(http, "www.filmstarts.de", theaterId, cinema, today = today)
+  private val berlinScrapers: Seq[CinemaScraper] = Seq(
+    filmstarts("A0275", CinemaxxPotsdamerPlatz),
+    filmstarts("A0332", CineStarCubixAlexanderplatz),
+    filmstarts("A0597", HackescheHoefeKino),
+    filmstarts("A0625", KinoInternationalBerlin),
+    filmstarts("A0185", KinoCentralBerlin),
+  )
+  private val munichScrapers: Seq[CinemaScraper] = Seq(
+    filmstarts("A0025", MathaeserFilmpalast),
+    filmstarts("A0943", CinemaxxMuenchen),
+    filmstarts("A1610", RoyalFilmpalast),
+    filmstarts("A1570", MuseumLichtspiele),
+  )
+  private val wurzburgScrapers: Seq[CinemaScraper] = Seq(filmstarts("A0263", CinemaxxWuerzburg))
+
   private val baseByCity: Map[String, Seq[CinemaScraper]] = Map(
     "poznan"     -> poznanScrapers,
     "wroclaw"    -> wroclawScrapers,
@@ -409,6 +447,14 @@ class CinemaScraperCatalog(
     "jelenia-gora" -> jeleniaGoraScrapers,
     "przemysl"   -> przemyslScrapers,
     "konin"      -> koninScrapers,
+    // United Kingdom (Flicks)
+    "london"     -> londonScrapers,
+    "manchester" -> manchesterScrapers,
+    "norwich"    -> norwichScrapers,
+    // Germany (Filmstarts)
+    "berlin"     -> berlinScrapers,
+    "munich"     -> munichScrapers,
+    "wurzburg"   -> wurzburgScrapers,
   )
 
   /** Per-city scrapers plus any Filmweb-catchment venues for that city. */

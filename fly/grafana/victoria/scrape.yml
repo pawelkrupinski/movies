@@ -41,10 +41,10 @@ scrape_configs:
   # controllers.MetricsController / WebMovieMetrics), and the app label
   # distinguishes the Fly app. Uncomment + rename when the second web app exists:
   #
-  # - job_name: kinowo-uk-web
+  # - job_name: showtimes-uk-web
   #   metrics_path: /metrics
   #   scheme: http
   #   static_configs:
-  #     - targets: ['kinowo-uk.internal:9000']
+  #     - targets: ['showtimes-uk.internal:9000']
   #       labels:
-  #         app: kinowo-uk
+  #         app: showtimes-uk

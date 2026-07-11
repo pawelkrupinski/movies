@@ -31,12 +31,10 @@ data class Country(
                 baseUrl = "https://kinowo.fly.dev",
                 languageTag = "pl",
             ),
-            // TODO(§6): swap this placeholder host for the real UK deployment URL
-            // once §6 stands the English deployment up.
             Country(
                 code = "GB",
                 displayName = "United Kingdom",
-                baseUrl = "https://kinowo.co.uk",
+                baseUrl = "https://showtimes-uk.fly.dev",
                 languageTag = "en",
             ),
         )

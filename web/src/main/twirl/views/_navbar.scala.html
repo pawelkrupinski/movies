@@ -155,10 +155,10 @@
          Available signed-out; `onCityChange` remembers the pick (cookie) and
          navigates to the chosen city's root. Only rendered when more than one
          city is supported, so a single-city deployment shows no dead control. *@
-      @if(models.City.all.sizeIs > 1) {
+      @if(city.country.cities.sizeIs > 1) {
         <div class="panel-section-label">@messages("nav.city")</div>
         <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          @for(c <- models.City.allSorted) {
+          @for(c <- city.country.allSorted) {
             <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
           }
         </select>

@@ -31,12 +31,10 @@ struct Country: Codable, Hashable {
             baseURL: URL(string: "https://kinowo.fly.dev")!,
             languageCode: "pl"
         ),
-        // TODO(§6): swap this placeholder host for the real UK deployment URL
-        // once §6 stands the English deployment up.
         Country(
             code: "GB",
             displayName: "United Kingdom",
-            baseURL: URL(string: "https://kinowo.co.uk")!,
+            baseURL: URL(string: "https://showtimes-uk.fly.dev")!,
             languageCode: "en"
         ),
     ]

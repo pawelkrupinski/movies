@@ -35,7 +35,8 @@ object ScrapeCadence {
    *  (not just per-tick additions): while throttled it tops the waiting set up to
    *  this many, so the credit-starved pool drains it to near-empty and idles
    *  between ticks, rebuilding credit. Set to the SMALLEST cap the sustainability
-   *  guard allows (`cap × ticksPerWindow ≥ corpus`, ~5 at the 60-min window), so a
+   *  guard allows (`cap × ticksPerWindow ≥ corpus`, ~6 at the 60-min window — rose
+   *  from 5 when the corpus passed 300 with the UK + Germany cinemas), so a
    *  credit-starved pool — which Fly caps to baseline, clearing only a scrape or two
    *  per minute — reaches idle as fast as the freshness guard permits. The old cap
    *  of 15 let a standing backlog of 15 keep the throttled pool pinned busy, so
@@ -44,7 +45,7 @@ object ScrapeCadence {
    *  load). Freshness during a sustained throttle is deliberately sacrificed for
    *  recovery; it catches up once the throttle clears and the full
    *  [[MaxEnqueuePerTick]] resumes. */
-  val ThrottledMaxEnqueuePerTick: Int = 5
+  val ThrottledMaxEnqueuePerTick: Int = 6
 
   /** How many staggered sub-slices each (non-throttled) ScrapeReaper tick enqueues
    *  the due batch in (`KINOWO_SCRAPE_ENQUEUE_SPREAD_SLICES`). The tick's clump of

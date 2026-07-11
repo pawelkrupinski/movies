@@ -51,6 +51,10 @@ primary_region = 'arn'
   # WorkerMain's JDK health server binds this port; the [checks] block below
   # probes it. No public router fronts it (no [http_service]).
   PORT = '9000'
+  # Countries this single worker scrapes + enriches — one WorkerWiring per code
+  # (WorkerMain.resolveCountries), sharing this machine's pool + Mongo client.
+  # Poland (kinowo) + the UK (kinowo_uk, Flicks) + Germany (kinowo_de, Filmstarts).
+  KINOWO_COUNTRIES = 'pl,uk,de'
   # Retry the boot cache hydrate while Mongo comes up alongside the worker. An
   # empty findAll at boot is "Mongo not ready", not "empty corpus"; without
   # retry the cache starts empty and quiescent rows never load (only re-scraped

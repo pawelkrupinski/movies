@@ -558,6 +558,35 @@ case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — bilety.sdks
 case object CinemaCityChain extends Cinema("Cinema City", "Cinema City")
 
 
+// ── United Kingdom (Flicks-sourced) ──────────────────────────────────────────
+
+case object OdeonLuxeLeicesterSquare extends Cinema("Odeon Luxe Leicester Square", "Odeon Leicester Sq")
+case object VueWestEnd extends Cinema("Vue West End", "Vue West End")
+case object CineworldLeicesterSquare extends Cinema("Cineworld Leicester Square", "Cineworld Leicester Sq")
+case object CurzonSoho extends Cinema("Curzon Soho", "Curzon Soho")
+case object BfiSouthbank extends Cinema("BFI Southbank", "BFI Southbank")
+case object TheGardenCinema extends Cinema("The Garden Cinema", "Garden Cinema")
+case object HomeManchester extends Cinema("HOME Manchester", "HOME")
+case object OdeonManchesterGreatNorthern extends Cinema("Odeon Manchester Great Northern", "Odeon Manchester")
+case object VueManchesterPrintworks extends Cinema("Vue Manchester Printworks", "Vue Printworks")
+case object CineworldManchesterDidsbury extends Cinema("Cineworld Didsbury", "Cineworld Didsbury")
+case object EverymanManchesterStJohns extends Cinema("Everyman Manchester St John's", "Everyman")
+case object OdeonNorwich extends Cinema("Odeon Cinema Norwich", "Odeon Norwich")
+
+// ── Germany (AlloCiné/Filmstarts-sourced) ────────────────────────────────────
+
+case object CinemaxxPotsdamerPlatz extends Cinema("CinemaxX Potsdamer Platz", "CinemaxX Potsdamer Platz")
+case object CineStarCubixAlexanderplatz extends Cinema("CineStar Cubix am Alexanderplatz", "Cubix Alexanderplatz")
+case object HackescheHoefeKino extends Cinema("Hackesche Höfe Kino", "Hackesche Höfe")
+case object KinoInternationalBerlin extends Cinema("Kino International", "Kino International")
+case object KinoCentralBerlin extends Cinema("Kino Central", "Kino Central")
+case object MathaeserFilmpalast extends Cinema("Mathäser Filmpalast", "Mathäser")
+case object CinemaxxMuenchen extends Cinema("CinemaxX München", "CinemaxX München")
+case object RoyalFilmpalast extends Cinema("Royal Filmpalast", "Royal Filmpalast")
+case object MuseumLichtspiele extends Cinema("Museum-Lichtspiele", "Museum-Lichtspiele")
+case object CinemaxxWuerzburg extends Cinema("CinemaxX Würzburg", "CinemaxX Würzburg")
+
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -680,6 +709,16 @@ object Cinema {
   val przemysl: Seq[Cinema]     = Seq(HeliosPrzemysl, KinoCentrum3DPrzemysl, KinoIkar, KinoNaBiegunach, KinoSDK)
   val konin: Seq[Cinema]        = Seq(HeliosKonin, KinoOskard, KinoZacheta, KinoNadWarta, KinoHel, KinoSokolnia, KinoTur, KinoMok)
 
+  // ── United Kingdom (Flicks) ──
+  val london: Seq[Cinema]     = Seq(OdeonLuxeLeicesterSquare, VueWestEnd, CineworldLeicesterSquare, CurzonSoho, BfiSouthbank, TheGardenCinema)
+  val manchester: Seq[Cinema] = Seq(HomeManchester, OdeonManchesterGreatNorthern, VueManchesterPrintworks, CineworldManchesterDidsbury, EverymanManchesterStJohns)
+  val norwich: Seq[Cinema]    = Seq(OdeonNorwich)
+
+  // ── Germany (Filmstarts) ──
+  val berlin: Seq[Cinema]     = Seq(CinemaxxPotsdamerPlatz, CineStarCubixAlexanderplatz, HackescheHoefeKino, KinoInternationalBerlin, KinoCentralBerlin)
+  val munich: Seq[Cinema]     = Seq(MathaeserFilmpalast, CinemaxxMuenchen, RoyalFilmpalast, MuseumLichtspiele)
+  val wurzburg: Seq[Cinema]   = Seq(CinemaxxWuerzburg)
+
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city
    *  grouping — add a city here and both pick it up. */
@@ -725,6 +764,14 @@ object Cinema {
     "Jelenia Góra" -> jeleniaGora,
     "Przemyśl"    -> przemysl,
     "Konin"       -> konin,
+    // United Kingdom
+    "London"      -> london,
+    "Manchester"  -> manchester,
+    "Norwich"     -> norwich,
+    // Germany
+    "Berlin"      -> berlin,
+    "München"     -> munich,
+    "Würzburg"    -> wurzburg,
   )
 
   val all: Seq[Cinema] = byCity.flatMap(_._2)

@@ -69,7 +69,7 @@
     <p class="locating" id="locating"></p>
   </main>
   <script>
-    var CITIES = @Html(models.City.allJson);
+    var CITIES = @Html(models.Country.fromEnv.allJson);
 
     // Fold a Polish string to its diacritic-free, lower-case form so the city
     // search matches what people actually type ("lodz" → "Łódź", "krakow" →
