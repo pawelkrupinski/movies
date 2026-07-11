@@ -1,5 +1,7 @@
 package services.cinemas
 
+import java.util.Locale
+
 /**
  * Polish-language production-country names recognised across cinema
  * scrapers, plus an alias map that folds every spelling variant a source
@@ -20,6 +22,11 @@ package services.cinemas
  *     `Producent:` line is a list of countries or a studio name.
  */
 object CountryNames {
+  /** The canonicalisation language when a caller doesn't specify one — Polish,
+   *  the historical default that keeps every existing single-country call site
+   *  and its expected strings unchanged. */
+  val DefaultLanguage: Locale = Locale.forLanguageTag("pl-PL")
+
   /** Canonical Polish names — one entry per country. Whatever a source
    *  returns gets folded into one of these (or passes through verbatim
    *  if `canonical` doesn't know an alias). */
@@ -151,6 +158,18 @@ object CountryNames {
     val trimmed = raw.trim
     Aliases.getOrElse(trimmed.toLowerCase, trimmed)
   }
+
+  /** Canonicalise a raw country name for a deployment serving `language`.
+   *
+   *  Poland folds every spelling variant into the curated Polish short-name set
+   *  above (the form Polish cinema scrapers and the Polish corpus already use).
+   *  Any OTHER language trusts the source's already-localised name and only
+   *  trims: TMDB/IMDb return the country in the requested language, so an
+   *  English deployment gets "United Kingdom" and folding it through the Polish
+   *  map would mislabel it "Wielka Brytania". The Polish alias map is
+   *  Polish-only by construction, so it must not run outside Poland. */
+  def canonical(raw: String, language: Locale): String =
+    if (language.getLanguage == "pl") canonical(raw) else raw.trim
 
   def isPolish(name: String): Boolean = Polish.contains(canonical(name))
 }

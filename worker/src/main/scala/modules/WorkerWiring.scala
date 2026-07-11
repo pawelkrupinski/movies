@@ -94,7 +94,7 @@ class WorkerWiring(
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
   // ── External API clients ──────────────────────────────────────────────────
-  lazy val tmdbClient = new TmdbClient(httoFetch)
+  lazy val tmdbClient = new TmdbClient(httoFetch, language = country.language)
   lazy val filmwebClient = new FilmwebClient(httoFetch)
   lazy val imdbClient = new ImdbClient(httoFetch)
   lazy val metacriticClient = new MetacriticClient(httoFetch)
@@ -452,7 +452,8 @@ class WorkerWiring(
   // operator's corpus refresh can't move a rating without the cadence seeing it —
   // which a later per-row refresh would otherwise mis-read as a fresh change.
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating),
-    deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.ImdbRating))
+    deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.ImdbRating),
+    enrichmentLanguage = country.language)
   lazy val imdbIdCache: ResolutionCache = resolutionCache("resolve_imdb")
   lazy val wikidataClient = new WikidataClient(httoFetch)
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,

@@ -359,6 +359,38 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     client.fullDetails(872585).get.genres shouldBe Seq("Dramat", "Historyczny")
   }
 
+  // ── fullDetails: the deployment language threads into the request ──────────
+  //
+  // A non-Polish deployment (UK, `language=en-GB`) must fetch TMDB in its own
+  // language — the overview, genres and production-country names come back in
+  // English, not Poland's. Regression for the UK site showing a Polish synopsis
+  // ("Para, która traci dom…") and "Wielka Brytania" for an English film.
+
+  it should "request the deployment's language and read back its overview, country and genres" in {
+    val english =
+      """{
+        |  "id":42,"title":"Les Liaisons Dangereuses","original_title":"Les Liaisons Dangereuses",
+        |  "overview":"Seduction and revenge among the French aristocracy.",
+        |  "release_date":"2016-01-28","runtime":120,
+        |  "production_countries":[{"iso_3166_1":"GB","name":"United Kingdom"}],
+        |  "genres":[{"id":18,"name":"Drama"}],
+        |  "credits":{"crew":[],"cast":[]}
+        |}""".stripMargin
+    // Serve the body ONLY for an en-GB detail request; anything Polish (or a
+    // hardcoded `pl-PL`) throws, so the assertion fails if the language leaks.
+    val fake = new tools.GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/42?language=en-GB")) english
+        else throw new RuntimeException(s"expected an en-GB request, got: $url")
+    }
+    val ukClient = new TmdbClient(http = fake, apiKey = Some("fake"),
+      language = java.util.Locale.forLanguageTag("en-GB"))
+    val d = ukClient.fullDetails(42).get
+    d.synopsis  shouldBe Some("Seduction and revenge among the French aristocracy.")
+    d.countries shouldBe Seq("United Kingdom")
+    d.genres    shouldBe Seq("Drama")
+  }
+
   it should "return an empty genre list when /movie omits the field" in {
     val body =
       """{"id":1,"title":"X","original_title":"X","release_date":"2020-01-01",

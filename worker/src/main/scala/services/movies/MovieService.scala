@@ -574,10 +574,12 @@ class MovieService(
         director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
         runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
         releaseYear    = d.releaseYear.orElse(hit.flatMap(_.releaseYear)).orElse(existingTmdbSlot.releaseYear),
-        // Canonicalise TMDB's English country names ("United States of America" →
-        // "USA") so the merged-record dedup operates on the same strings cinemas
-        // already write.
-        countries      = if (d.countries.nonEmpty) d.countries.map(CountryNames.canonical).distinct
+        // Canonicalise TMDB's country names in the SAME language TMDB returned
+        // them (the client's deployment language): Poland folds "United States
+        // of America" → "USA" to match the strings cinemas write; a non-Polish
+        // deployment keeps TMDB's already-localised name ("United Kingdom") so
+        // it isn't mislabelled with a Polish one.
+        countries      = if (d.countries.nonEmpty) d.countries.map(c => CountryNames.canonical(c, tmdb.language)).distinct
                          else existingTmdbSlot.countries,
         genres         = if (d.genres.nonEmpty) d.genres else existingTmdbSlot.genres,
         posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)

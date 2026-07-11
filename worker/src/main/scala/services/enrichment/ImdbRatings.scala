@@ -5,6 +5,7 @@ import services.cinemas.CountryNames
 import services.movies.{CacheKey, MovieCache}
 import tools.BoundedParallel
 
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicInteger
 import scala.util.{Failure, Try}
 
@@ -23,7 +24,12 @@ class ImdbRatings(
   cache: MovieCache,
   imdb:  ImdbClient,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => (),
-  deadbandConfirmationsFor: (CacheKey, Option[Int]) => Int = (_, _) => RatingDeadband.Off
+  deadbandConfirmationsFor: (CacheKey, Option[Int]) => Int = (_, _) => RatingDeadband.Off,
+  // The deployment's language, used to canonicalise IMDb's always-English
+  // country names into the deployment's own (Polish "Wielka Brytania" on
+  // `kinowo`, English "United Kingdom" on the UK site). Defaults to Polish so
+  // every existing single-country construction is unchanged.
+  enrichmentLanguage: Locale = CountryNames.DefaultLanguage
 ) extends CacheRefresher(cache, cadenceRecorder, deadbandConfirmationsFor) {
 
   override protected def sourceName: String = "IMDb"
@@ -84,10 +90,11 @@ class ImdbRatings(
       director       = d.director,
       runtimeMinutes = d.runtimeMinutes,
       releaseYear    = d.releaseYear,
-      // IMDb's `countriesOfOrigin.text` is English ("United States",
-      // "United Kingdom"); canonicalise via CountryNames so the merged
-      // dedup operates on the same strings cinemas write.
-      countries      = d.countries.map(CountryNames.canonical).distinct,
+      // IMDb's `countriesOfOrigin.text` is always English ("United States",
+      // "United Kingdom"); canonicalise into the deployment's language so the
+      // merged dedup operates on the same strings the other sources write
+      // (Polish "USA"/"Wielka Brytania" on `kinowo`, English as-is elsewhere).
+      countries      = d.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct,
       posterUrl      = d.posterUrl
     )
     val hasContent = slot.title.isDefined || slot.originalTitle.isDefined ||

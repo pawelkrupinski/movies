@@ -5,16 +5,25 @@ import tools.{Env, HttpFetch, HttpStatusException, RetryWithBackoff, SynopsisSim
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * Bridges Polish film titles to IMDB ids via The Movie DB.
+ * Bridges exhibitor film titles to IMDB ids via The Movie DB.
  *
  * TMDB has multilingual title indexing — `/search/movie?query=…&language=pl-PL`
- * returns the same movies you'd see on imdb.com but matched by their Polish
+ * returns the same movies you'd see on imdb.com but matched by their local
  * release title. From a hit we follow `/movie/{id}/external_ids` to read off
  * the IMDB id (e.g. `tt15239678`), which is the stable cross-system key.
+ *
+ * The request `language` is the DEPLOYMENT's language ([[language]], from the
+ * country's `Locale`), so overview/genres/localized-title come back in that
+ * language — Polish for `kinowo`, English for the UK deployment, German for
+ * Germany — instead of a hardcoded `pl-PL`. Defaults to Polish so every
+ * existing single-country construction (and test fixture keyed on `pl-PL`
+ * URLs) is unchanged. The `en-US` calls that fetch the ENGLISH release title
+ * (MC/RT URL probes) stay pinned to English regardless of deployment.
  *
  * `TMDB_API_KEY` can be either:
  *   - legacy v3 API key (32-char hex), passed as `?api_key=…` query parameter, or
@@ -27,9 +36,23 @@ import scala.util.Try
  * is purely additive — a v3 key sent in `Authorization: Bearer` is ignored
  * by TMDB, and vice-versa.
  */
-class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey) {
+class TmdbClient(
+  http: HttpFetch,
+  apiKey: => Option[String] = TmdbClient.ApiKey,
+  // The deployment's language, threaded into every localized TMDB request so a
+  // non-Polish deployment gets non-Polish overview/genres/titles. Exposed as a
+  // `val` so the enrichment (`MovieService`) can canonicalise the country names
+  // TMDB returns in the SAME language it fetched them in.
+  val language: Locale = TmdbClient.DefaultLanguage,
+) {
 
   import TmdbClient.{ApiBase, urlEncode}
+
+  // TMDB's `language=` wants a BCP-47 tag ("pl-PL", "en-GB", "de-DE"); the
+  // `/images` endpoint's `include_image_language` wants the bare language
+  // subtag ("pl", "en", "de") plus `null` for language-neutral artwork.
+  private val languageTag: String   = language.toLanguageTag
+  private val imageLanguages: String = s"${language.getLanguage},null"
 
   /** Auth header for every request. Built lazily off `apiKey` so a missing
    *  key returns None and the calling method short-circuits via flatMap
@@ -68,7 +91,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    */
   private def searchOnce(title: String, yearParameter: Option[Int], auth: Map[String, String]): Seq[TmdbClient.SearchResult] = {
     val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
-    val url = s"$ApiBase/search/movie?language=pl-PL&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
+    val url = s"$ApiBase/search/movie?language=$languageTag&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
     parseSearchResults(httpGet(url, auth))
   }
 
@@ -263,7 +286,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  the rest of the enrichment row.
    */
   def findByImdbId(imdbId: String): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
-    val body = httpGet(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=pl-PL${apiKeyParameter("&")}", auth)
+    val body = httpGet(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=$languageTag${apiKeyParameter("&")}", auth)
     parseFindMovieResults(body).headOption
   }
 
@@ -339,15 +362,15 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
     }.getOrElse(Set.empty)
   }.getOrElse(Set.empty)
 
-  /** One TMDB `/movie/{id}?language=pl-PL&append_to_response=credits` call
+  /** One TMDB `/movie/{id}?language=<deployment>&append_to_response=credits` call
    *  returning everything the TMDB enrichment stage needs to fill a
    *  `SourceData(Tmdb)` slot:
-   *    - Polish title + production-language original title
-   *    - Polish-language synopsis (`overview`)
+   *    - Deployment-language title + production-language original title
+   *    - Deployment-language synopsis (`overview`)
    *    - Director(s) + top-billed cast
    *    - Year (`release_date`) + runtime
    *    - Production countries (raw names — caller canonicalises)
-   *    - Poster URL — the best Polish portrait poster from `/movie/{id}/images`
+   *    - Poster URL — the best deployment-language portrait poster from `/movie/{id}/images`
    *      (see `posters`), falling back to the default `poster_path` when that
    *      endpoint has no usable portrait variant.
    *
@@ -356,7 +379,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  poster lookup adds a single failure-tolerant `/images` call, so a poster
    *  hiccup never breaks the resolve. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
-    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=pl-PL&append_to_response=credits${apiKeyParameter("&")}", auth))
+    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=$languageTag&append_to_response=credits${apiKeyParameter("&")}", auth))
       .toOption.map { body =>
         val js   = Json.parse(body)
         val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
@@ -370,8 +393,8 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
           .take(TmdbClient.MaxCastNames)
         val countries = (js \ "production_countries").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
           .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
-        // Polish-language genre names. TMDB returns the `genres` field
-        // pre-localised in the requested language ("Dramat", "Sci-Fi") —
+        // Deployment-language genre names. TMDB returns the `genres` field
+        // pre-localised in the requested language ("Dramat"/"Drama") —
         // no separate id→name lookup needed.
         val genres = (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
           .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
@@ -385,7 +408,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
           releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
           countries     = countries,
           genres        = genres,
-          // Prefer the best Polish portrait poster from `/images` over the
+          // Prefer the best deployment-language portrait poster from `/images` over the
           // default `poster_path` (which is whatever TMDB flags primary,
           // regardless of language or shape). This poster only ever surfaces
           // as a backup — the Tmdb slot ranks below every cinema in
@@ -397,19 +420,19 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
       }
   }
 
-  /** Polish-localised + language-neutral poster variants for a movie, from
+  /** Deployment-language + language-neutral poster variants for a movie, from
    *  TMDB's `/movie/{id}/images` endpoint. Each carries its language tag,
    *  aspect ratio and community vote, so `bestPortraitPosterUrl` can choose
-   *  the best *portrait* Polish poster — a better backup than the default
+   *  the best *portrait* localised poster — a better backup than the default
    *  `poster_path`, which is whatever TMDB flags primary regardless of shape.
    *
-   *  `include_image_language=pl,null` restricts the response to Polish-tagged
-   *  and language-neutral artwork. Wrapped so any failure — network, or a
+   *  `include_image_language=<lang>,null` restricts the response to the
+   *  deployment language's artwork plus language-neutral. Wrapped so any failure — network, or a
    *  missing fixture on test replay — yields an empty list; callers then fall
    *  back to `poster_path` exactly as before. */
   def posters(tmdbId: Int): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
     Try {
-      val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=pl,null${apiKeyParameter("&")}", auth)
+      val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=$imageLanguages${apiKeyParameter("&")}", auth)
       TmdbClient.parsePosters(body)
     }.getOrElse(Seq.empty)
   }.getOrElse(Seq.empty)
@@ -433,7 +456,7 @@ class TmdbClient(http: HttpFetch, apiKey: => Option[String] = TmdbClient.ApiKey)
    *  caller can reuse picking / sorting logic. */
   def personDirectorCredits(personId: Int): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
     Try {
-      val body = httpGet(s"$ApiBase/person/$personId/movie_credits?language=pl-PL${apiKeyParameter("&")}", auth)
+      val body = httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth)
       (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
         .filter(c => (c \ "department").asOpt[String].contains("Directing"))
         .flatMap { js =>
@@ -491,6 +514,11 @@ object TmdbClient {
 
   val ApiKey: Option[String] = Env.get("TMDB_API_KEY")
 
+  /** The request language when a construction doesn't specify one. Polish keeps
+   *  every existing single-country (Poland-only) call site — and every test
+   *  fixture keyed on `language=pl-PL` URLs — byte-identical. */
+  val DefaultLanguage: Locale = Locale.forLanguageTag("pl-PL")
+
   /** A TMDB HTTP failure worth retrying: a 5xx server error or a 429 rate-limit
    *  (transient), or any network-level IOException — `HttpTimeoutException`,
    *  `ConnectException`, a reset socket. A 4xx other than 429 (a 404 for an id
@@ -517,10 +545,10 @@ object TmdbClient {
     originalTitle: Option[String],
     releaseYear:   Option[Int],
     popularity:    Double,
-    // Polish `overview` from the search row — carried so `pickBest` can break a
-    // same-year same-title tie on synopsis closeness without an extra HTTP call
-    // (`/search/movie?language=pl-PL` already returns it). Empty for the
-    // person-credits decoder, which never feeds the synopsis tie-break.
+    // Deployment-language `overview` from the search row — carried so `pickBest`
+    // can break a same-year same-title tie on synopsis closeness without an extra
+    // HTTP call (`/search/movie?language=<deployment>` already returns it). Empty
+    // for the person-credits decoder, which never feeds the synopsis tie-break.
     overview:      Option[String] = None
   )
 
