@@ -84,6 +84,27 @@ final class UserPreferencesCityTests: XCTestCase {
         XCTAssertNil(reloaded.selectedCinema)
     }
 
+    func testClearCityRegatesAndDropsTheSelectedCinema() {
+        // The in-app country switch clears the city so the gate re-asks; the
+        // stale cinema pill must go with it (same reason `setCity` drops it).
+        let prefs = UserPreferences(store: defaults)
+        prefs.setCity("poznan")
+        prefs.setSelectedCinema("Kino Muza")
+        prefs.clearCity()
+        XCTAssertNil(prefs.selectedCity)
+        XCTAssertNil(prefs.selectedCinema)
+
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertNil(reloaded.selectedCity)
+        XCTAssertNil(reloaded.selectedCinema)
+    }
+
+    func testClearCityIsANoOpWhenNoCityIsSet() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.clearCity()
+        XCTAssertNil(prefs.selectedCity)
+    }
+
     func testSettingTheSameCityKeepsTheSelectedCinema() {
         // `setCity` early-returns when the slug is unchanged, so a redundant
         // set must not wipe the current pick.
