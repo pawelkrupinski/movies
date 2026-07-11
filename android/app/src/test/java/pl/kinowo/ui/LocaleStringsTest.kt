@@ -29,6 +29,8 @@ class LocaleStringsTest {
         assertEquals("Loading showtimes…", en.getString(R.string.loading_repertoire))
         assertEquals("Country", en.getString(R.string.country_label))
         assertEquals("Try again", en.getString(R.string.retry))
+        // Outside Poland the app is branded "Showtimes", not "Kinowo".
+        assertEquals("Showtimes", en.getString(R.string.app_name))
     }
 
     @Test
@@ -36,5 +38,7 @@ class LocaleStringsTest {
         val pl = LocaleWrapper.wrap(base, Country.default.languageTag)
         assertEquals("Ładowanie repertuaru…", pl.getString(R.string.loading_repertoire))
         assertEquals("Kraj", pl.getString(R.string.country_label))
+        // At home the brand keeps its Polish name.
+        assertEquals("Kinowo", pl.getString(R.string.app_name))
     }
 }
