@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 10,
+  "version": 11,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -35,14 +35,14 @@
         "definition": "label_values(kinowo_worker_throttled, country)",
         "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
         "current": { "text": "pl", "value": "pl", "selected": true },
-        "includeAll": false, "multi": false, "refresh": 2, "sort": 1, "hide": 0 }
+        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 0 }
     ]
   },
   "panels": [
     {
       "id": 9,
       "title": "CPU load by app — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
-      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. (Scoped to the kinowo apps via app=~\"kinowo.*\" — filmowo has its own dashboard, schowek is separate.)",
+      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. (Scoped to the kinowo apps + the UK showtimes-uk web app via app=~\"kinowo.*|showtimes-uk\" — filmowo has its own dashboard, schowek is separate.)",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
@@ -53,8 +53,8 @@
         ]
       },
       "targets": [
-        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "{{app}} busy" },
-        { "refId": "B", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*\",mode=\"steal\"}[5m]))", "legendFormat": "{{app}} steal" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-uk\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "{{app}} busy" },
+        { "refId": "B", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-uk\",mode=\"steal\"}[5m]))", "legendFormat": "{{app}} steal" }
       ]
     },
     {
@@ -65,7 +65,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
       "fieldConfig": { "defaults": { "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance{app=~\"kinowo.*\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance{app=~\"kinowo.*|showtimes-uk\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -76,7 +76,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle{app=~\"kinowo.*\"}[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle{app=~\"kinowo.*|showtimes-uk\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -87,7 +87,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app=~\"kinowo.*\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*\"}[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app=~\"kinowo.*|showtimes-uk\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-uk\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -98,7 +98,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available{app=~\"kinowo.*\"} / fly_instance_memory_mem_total{app=~\"kinowo.*\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available{app=~\"kinowo.*|showtimes-uk\"} / fly_instance_memory_mem_total{app=~\"kinowo.*|showtimes-uk\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
@@ -109,10 +109,10 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
       "fieldConfig": { "defaults": { "unit": "s", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p99" },
-        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p95" },
-        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p75" },
-        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le) (rate(fly_app_http_response_time_seconds_bucket{app=\"kinowo\"}[5m])))", "legendFormat": "p50" }
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p99 {{app}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p95 {{app}}" },
+        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p75 {{app}}" },
+        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p50 {{app}}" }
       ]
     },
     {
@@ -134,7 +134,7 @@
       "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
       "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (fly_instance_up{app=~\"kinowo.*\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (fly_instance_up{app=~\"kinowo.*|showtimes-uk\"})", "legendFormat": "{{app}}" }
       ]
     },
     {

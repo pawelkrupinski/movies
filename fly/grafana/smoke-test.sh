@@ -16,7 +16,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMG="$(grep '^FROM ' "$DIR/Dockerfile" | tail -1 | awk '{print $2}')"
 NAME="kinowo-grafana-smoke"
 PORT="${SMOKE_PORT:-3999}"
-EXPECTED_RULES=19
+EXPECTED_RULES=21
 
 # Mount a FRESH copy, not the source tree directly: Docker Desktop's macOS
 # bind-mount cache can keep serving a file's pre-edit bytes after you edit it,
@@ -149,13 +149,13 @@ assert "overview dashboard provisioned" \
 # enqueued counter scoped to result="added" (dedup collapses excluded), and
 # started by type splits the started counter. Guards the panels and their exprs
 # against being dropped or pointed at the wrong metric/label.
-assert "enqueued-by-type panel queries enqueued_total{result=added} by task_type" \
+assert "enqueued-by-type panel queries enqueued_total{result=added} by task_type, scoped to \$country" \
   "api/dashboards/uid/fly-overview" \
-  "any(t.get('expr')=='sum by (task_type) (rate(kinowo_worker_tasks_enqueued_total{result=\"added\"}[\$__rate_interval])) * 60' for p in d['dashboard']['panels'] for t in p.get('targets',[]))"
+  "any(t.get('expr')=='sum by (task_type) (rate(kinowo_worker_tasks_enqueued_total{country=~\"\$country\",result=\"added\"}[\$__rate_interval])) * 60' for p in d['dashboard']['panels'] for t in p.get('targets',[]))"
 
-assert "started-by-type panel queries started_total by task_type" \
+assert "started-by-type panel queries started_total by task_type, scoped to \$country" \
   "api/dashboards/uid/fly-overview" \
-  "any(t.get('expr')=='sum by (task_type) (rate(kinowo_worker_tasks_started_total[\$__rate_interval])) * 60' for p in d['dashboard']['panels'] for t in p.get('targets',[]))"
+  "any(t.get('expr')=='sum by (task_type) (rate(kinowo_worker_tasks_started_total{country=~\"\$country\"}[\$__rate_interval])) * 60' for p in d['dashboard']['panels'] for t in p.get('targets',[]))"
 
 # The three by-type task-flow panels (enqueued → started → fully-worked) must sit
 # next to each other in one row — same gridPos.y, three distinct x's — so a type's

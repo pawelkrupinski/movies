@@ -44,7 +44,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'min by (app, instance) (fly_instance_cpu_balance{app=~"kinowo|kinowo-mongo"})'
+              expr: 'min by (app, instance) (fly_instance_cpu_balance{app=~"kinowo|kinowo-mongo|showtimes-uk"})'
               instant: true
               range: false
               intervalMs: 1000
@@ -84,7 +84,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo|kinowo-mongo"}[5m]))'
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo|kinowo-mongo|showtimes-uk"}[5m]))'
               instant: true
               range: false
               intervalMs: 1000
@@ -407,7 +407,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'max by (app, instance) (fly_instance_memory_pressure_some{app=~"kinowo|kinowo-mongo", pressure_duration="avg60"})'
+              expr: 'max by (app, instance) (fly_instance_memory_pressure_some{app=~"kinowo|kinowo-mongo|showtimes-uk", pressure_duration="avg60"})'
               instant: true
               range: false
               intervalMs: 1000
@@ -581,6 +581,52 @@ groups:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
               expr: 'max (fly_instance_up{app="kinowo"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- UK serving app down ---------------------------------------------
+      # The showtimes-uk web app (KINOWO_COUNTRY=uk, London) is the UK-facing
+      # sibling of `kinowo`. It runs min_machines_running=1 with auto_stop off, so
+      # like the Polish app it should ALWAYS report — missing fly_instance_up IS
+      # the alarm. A separate rule (not a broadened app=~ matcher on the rule
+      # above) so each app gets its own clean NoData→Alerting attribution and its
+      # own Telegram thread (the policy groups by alertname+app).
+      - uid: showtimes-uk-serving-down
+        title: UK serving app down
+        condition: C
+        for: 3m
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: 'showtimes-uk (UK web) is down or not reporting'
+          description: 'fly_instance_up{app="showtimes-uk"} is 0 or absent for 3m — the UK user-facing app is unreachable. Check `fly status -a showtimes-uk` and Mongo (a Mongo hiccup blocks web boot; UK reads the same cluster, db kinowo_uk).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max (fly_instance_up{app="showtimes-uk"})'
               instant: true
               range: false
               intervalMs: 1000

@@ -36,15 +36,16 @@ scrape_configs:
   # kinowo_worker_* series with a `country` label, so the single kinowo-worker
   # target above already carries all countries — no per-country worker target is
   # needed. A WEB deployment, by contrast, serves exactly ONE country per Fly app
-  # (KINOWO_COUNTRY), so a second country means a second web app + a second scrape
+  # (KINOWO_COUNTRY), so each country is a separate web app + a separate scrape
   # target here. Its /metrics already self-labels `country=…` (see
   # controllers.MetricsController / WebMovieMetrics), and the app label
-  # distinguishes the Fly app. Uncomment + rename when the second web app exists:
-  #
-  # - job_name: showtimes-uk-web
-  #   metrics_path: /metrics
-  #   scheme: http
-  #   static_configs:
-  #     - targets: ['showtimes-uk.internal:9000']
-  #       labels:
-  #         app: showtimes-uk
+  # distinguishes the Fly app. showtimes-uk is the UK web app (KINOWO_COUNTRY=uk,
+  # London) — it self-labels country="uk", so its kinowo_web_* / kinowo_uptime_*
+  # series land alongside the Polish ones under the shared `$country` dashboard var.
+  - job_name: showtimes-uk-web
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['showtimes-uk.internal:9000']
+        labels:
+          app: showtimes-uk
