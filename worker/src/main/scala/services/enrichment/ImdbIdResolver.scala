@@ -49,7 +49,14 @@ class ImdbIdResolver(
   // page, which echoes the imdbId. Both default None so specs resolve as before;
   // `Wiring` injects them (Trakt no-ops without `TRAKT_API_CLIENT_ID`).
   traktIdResolver:      Option[TraktIdResolver]      = None,
-  letterboxdIdResolver: Option[LetterboxdIdResolver] = None
+  letterboxdIdResolver: Option[LetterboxdIdResolver] = None,
+  // OMDb id backstop — its English DB carries much of the niche/foreign long tail
+  // (Indian, Malayalam, festival titles) that IMDb's suggestion endpoint and Trakt
+  // miss. Previously only the once-daily `OmdbBackfill` sweep hit it; wiring it as a
+  // ladder rung lets a TMDB-less newcomer's id land promptly. `findImdbId` is
+  // title+year+director corroborated, so a fuzzy hit can't bind an unrelated film.
+  // None (default / `OMDB_API_KEY` unset) skips it.
+  omdb: Option[OMDbClient] = None
 ) extends Stoppable with Logging {
 
   /** Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match
@@ -149,6 +156,14 @@ class ImdbIdResolver(
             tmdbId   <- record.tmdbId
             imdbId   <- resolver.resolveImdbId(tmdbId)
           } yield imdbId
+        }
+        .orElse {
+          // OMDb backstop — the English DB that covers most of the TMDB-less
+          // long tail (Indian/Malayalam/festival titles). title+year+director
+          // corroborated (see OMDbClient) so a fuzzy hit can't bind a wrong film.
+          // This is the id the once-daily OmdbBackfill sweep would have supplied
+          // hours later; running it inline lands it now.
+          omdb.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year, record.director.toSet))
         }
       found match {
         case Some(id) =>
