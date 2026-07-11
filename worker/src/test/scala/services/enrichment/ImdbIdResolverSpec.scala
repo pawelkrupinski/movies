@@ -162,6 +162,18 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Varavu", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt37963237")
   }
 
+  "the Cinemeta backstop" should "recover the imdbId via Cinemeta when every earlier rung (incl. OMDb) abstains" in {
+    val noTmdb = MovieRecord(tmdbNoMatch = true)
+    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Cactus Pears", Some(2026), noTmdb))))
+    val cinemeta = new CinemetaClient(new StubGet(Seq("search=" ->
+      """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
+      cinemeta = Some(cinemeta))
+
+    resolver.resolveSync("Cactus Pears", Some(2026), "Cactus Pears")
+    cache.get(cache.keyOf("Cactus Pears", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt31000001")
+  }
+
   // ── hint-keyed cache ─────────────────────────────────────────────────────────
 
   private def countingImdb(calls: java.util.concurrent.atomic.AtomicInteger): ImdbClient =

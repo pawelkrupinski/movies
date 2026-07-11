@@ -460,7 +460,9 @@ class WorkerWiring(
     wikidata = Some(wikidataClient),
     traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same OMDB_API_KEY gate as `omdbBackfill` below — the OMDb rung is inert when unset.
-    omdb = Env.get("OMDB_API_KEY").map(_ => omdbClient))
+    omdb = Env.get("OMDB_API_KEY").map(_ => omdbClient),
+    // Cinemeta needs no key — always wired as the final free rung.
+    cinemeta = Some(new CinemetaClient(httoFetch)))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"),
     cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating),
     deadbandConfirmationsFor = RatingDeadbandPolicy(ratingCadenceStore, FreshnessKind.RtRating))

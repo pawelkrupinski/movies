@@ -56,7 +56,11 @@ class ImdbIdResolver(
   // ladder rung lets a TMDB-less newcomer's id land promptly. `findImdbId` is
   // title+year+director corroborated, so a fuzzy hit can't bind an unrelated film.
   // None (default / `OMDB_API_KEY` unset) skips it.
-  omdb: Option[OMDbClient] = None
+  omdb: Option[OMDbClient] = None,
+  // Cinemeta (Stremio catalogue) — the final rung. IMDb-keyed, indexes a broad
+  // foreign/regional long tail; corroborated by title+year. Free, no key. None
+  // disables it (default for specs that don't wire it).
+  cinemeta: Option[CinemetaClient] = None
 ) extends Stoppable with Logging {
 
   /** Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match
@@ -164,6 +168,12 @@ class ImdbIdResolver(
           // This is the id the once-daily OmdbBackfill sweep would have supplied
           // hours later; running it inline lands it now.
           omdb.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year, record.director.toSet))
+        }
+        .orElse {
+          // Cinemeta (Stremio) — final rung. IMDb-keyed catalogue covering a broad
+          // foreign/regional long tail; corroborated by title+year so a fuzzy hit
+          // can't bind a wrong film. Free, no API key.
+          cinemeta.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year))
         }
       found match {
         case Some(id) =>
