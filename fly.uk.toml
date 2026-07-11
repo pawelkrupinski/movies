@@ -1,0 +1,56 @@
+app = 'kinowo-uk'
+# Stockholm — same region as the self-hosted Mongo (fly/mongo) and the Polish
+# `kinowo` web app, so this UK deployment's cache rehydrate runs over Fly's
+# private network with ~1 ms RTT to Mongo. (UK users are a cross-region hop
+# away, but the Mongo colocation for rehydrate matters more at hobby scale.)
+primary_region = 'arn'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  PORT = '9000'
+  # Serve the UK repertoire: KINOWO_COUNTRY=uk makes this process resolve
+  # `Country.UnitedKingdom` at boot (English UI, the kinowo_uk database, the
+  # UK city list), rendering the same `web` binary as the Polish app. The
+  # shared MONGODB_URI secret points at the same cluster; the db name derives
+  # to `kinowo_uk` from the country.
+  KINOWO_COUNTRY = 'uk'
+  # Same JVM sizing as the Polish web app. The UK MovieCache is far smaller
+  # (3 cities vs 41), so this is comfortably over-provisioned — kept identical
+  # to avoid re-discovering the 512 MB OOM the Polish app hit (see fly.toml).
+  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=64m'
+
+[http_service]
+  internal_port = 9000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.tls_options]
+    alpn = ['h2', 'http/1.1']
+
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 50
+    soft_limit = 25
+
+[[vm]]
+  memory = '1024mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[checks]
+  [checks.health]
+    grace_period = '30s'
+    interval = '15s'
+    method = 'GET'
+    path = '/health'
+    port = 9000
+    timeout = '10s'
+    type = 'http'
+
+[[metrics]]
+  port = 9000
+  path = '/metrics'
