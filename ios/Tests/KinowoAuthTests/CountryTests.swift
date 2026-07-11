@@ -35,8 +35,7 @@ final class CountryTests: XCTestCase {
     func testUkEntryForcesEnglishOnItsOwnDeployment() {
         let gb = Country.byCode("GB")
         XCTAssertEqual(gb.displayName, "United Kingdom")
-        // TODO(§6): placeholder until the real UK deployment URL is set.
-        XCTAssertEqual(gb.baseURL.absoluteString, "https://kinowo.co.uk")
+        XCTAssertEqual(gb.baseURL.absoluteString, "https://kinowo-uk.fly.dev")
         XCTAssertEqual(gb.languageCode, "en")
     }
 
@@ -73,7 +72,7 @@ final class CountryTests: XCTestCase {
         // exactly what `kinowoBaseURL` sees at the next launch.
         let reloaded = UserPreferences(store: defaults)
         XCTAssertEqual(reloaded.selectedCountry.code, "GB")
-        XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://kinowo.co.uk")
+        XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://kinowo-uk.fly.dev")
     }
 
     func testSelectingCountryForcesItsLanguageTag() {
