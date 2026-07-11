@@ -1,9 +1,34 @@
 @(active: String = "")(implicit city: models.City)
+@* The debug page this navbar sits on, as a path — used to keep the country
+   switcher on the SAME page when hopping deployments. *@
+@debugPath = @{
+  active match {
+    case "readmodel" => "/debug/readmodel"
+    case "cadence"   => "/debug/cadence"
+    case _           => "/debug"
+  }
+}
 <nav class="debug-nav">
   <a href="/debug"           class="@if(active == "corpus"){is-active}">Korpus</a>
   <a href="/debug/readmodel" class="@if(active == "readmodel"){is-active}">Read cache</a>
   <a href="/debug/cadence"   class="@if(active == "cadence"){is-active}">Cadence</a>
   <a href="/@city.slug/"     class="debug-nav-out">Filmy ↗</a>
+
+  @* Country dimension. Every debug view is implicitly scoped to the ONE country
+     this deployment serves (`Country.fromEnv` → its own Mongo db), so the corpus
+     / read-cache / cadence numbers are that country's. Surface which country
+     that is, and — when more than one country is actually deployed
+     (`Country.switchable`) — let you jump to the SAME debug page on the other
+     country's host, mirroring the main navbar's country switcher. *@
+  @if(models.Country.switchable.sizeIs > 1) {
+    <select class="debug-nav-country" aria-label="Country" onchange="location.href=this.value">
+      @for(c <- models.Country.switchable) {
+        <option value="@c.webUrl.get@debugPath"@if(c == models.Country.fromEnv){ selected}>@c.displayName</option>
+      }
+    </select>
+  } else {
+    <span class="debug-nav-country-label">@models.Country.fromEnv.displayName</span>
+  }
 </nav>
 <style>
   .debug-nav { display: flex; gap: .3rem; margin-bottom: .6rem; font: 12px monospace; align-items: center; }
@@ -15,4 +40,11 @@
   .debug-nav a.is-active { color: #aad4ff; background: #252540; border-color: #3a3a6e; }
   .debug-nav a.debug-nav-out { color: #66aadd; }
   .debug-nav a.debug-nav-out:hover { color: #aad4ff; }
+  .debug-nav-country, .debug-nav-country-label {
+    margin-left: auto;
+    color: #ffd479; background: #1a1a2e; border: 1px solid #2a2a3e;
+    padding: .25rem .7rem; border-radius: 3px; font: 12px monospace;
+  }
+  .debug-nav-country { cursor: pointer; }
+  .debug-nav-country:hover { background: #252540; }
 </style>
