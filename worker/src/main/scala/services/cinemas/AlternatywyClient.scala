@@ -138,7 +138,7 @@ object AlternatywyClient {
   /** Titles arrive in the image alt as `Okładka „Title"`, `Okładka Title`, or
    *  with a trailing event subtitle (`„Flying Lion"  Adam Święs Trio`). The
    *  `Okładka` / quotes / whitespace cleanup now lives in the editable
-   *  "kino-alternatywy" rules (see TitleRuleDefaults); this delegates so it stays
+   *  "kino-alternatywy" rules (see TitleRules); this delegates so it stays
    *  unit-testable here. */
   def cleanTitle(alt: String): String =
     services.movies.TitleNormalizer.cinemaClean("kino-alternatywy", alt)

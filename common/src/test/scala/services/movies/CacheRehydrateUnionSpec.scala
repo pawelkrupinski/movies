@@ -3,7 +3,7 @@ package services.movies
 import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.titlerules.{RuleScope, TitleRule, TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{RuleScope, TitleRule, TitleRules, TitleRuleSet}
 
 /** Pins the fix for the late-added-merge-rule data-loss bug: when a merge-key
  *  rule (a Canonical-tier unification — NOT a GlobalStructural decoration strip,
@@ -48,7 +48,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     """(?i)\s*/\s*Kino\s+Cafe\s*$""", "", applyAll = false, order = 100)
 
   "rehydrate" should "union two documents a late merge-key rule collides, not drop one" in {
-    withInstalledRules(TitleRuleSet(TitleRuleDefaults.all :+ kinoCafeRule)) {
+    withInstalledRules(TitleRuleSet(TitleRules.all :+ kinoCafeRule)) {
       val cache = new CaffeineMovieCache(repositoryOf(decorated, base))   // rehydrates at construction
       cache.entries should have size 1
       // The union keeps BOTH cinemas; the old last-write-wins kept only the
@@ -59,7 +59,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   it should "leave non-colliding rows as separate entries (no spurious union)" in {
     // Same two rows, but WITHOUT the /Kino Cafe rule they don't collide.
-    withInstalledRules(TitleRuleDefaults.ruleSet) {
+    withInstalledRules(TitleRules.ruleSet) {
       val cache = new CaffeineMovieCache(repositoryOf(decorated, base))
       cache.entries should have size 2
     }

@@ -160,7 +160,7 @@ object BokClient {
   //    onto the bare banner.
   // Drop only the trailing promo tag; rewrite the remaining `|` separators to
   // a readable "Banner: Film" so the programme banner survives as a prefix.
-  // This cleanup now lives in the editable "bok" rules (TitleRuleDefaults); both
+  // This cleanup now lives in the editable "bok" rules (TitleRules); both
   // BoK venues share the "bok" key (see TitleRuleKey).
   /** Clean a BoK card/h2 title: drop the trailing ALL-CAPS promo tag, keep any
    *  recurring-programme banner, and normalise whitespace. */

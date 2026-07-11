@@ -20,7 +20,7 @@ import scala.jdk.CollectionConverters._
  */
 class ProdTitlesNormalizationSpec extends AnyFlatSpec with Matchers {
 
-  private val rs       = TitleRuleDefaults.ruleSet
+  private val rs       = TitleRules.ruleSet
   private val fixture  = Paths.get("common/src/test/resources/fixtures/prod-movies/titles.txt")
 
   // Romanise AFTER the canonical strip (lockstep with TitleNormalizer.sanitize):

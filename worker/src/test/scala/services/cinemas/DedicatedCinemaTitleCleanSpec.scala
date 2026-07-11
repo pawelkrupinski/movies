@@ -4,7 +4,7 @@ import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.TitleNormalizer
-import services.titlerules.{ExtraTitleRules, TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
 import tools.HttpFetch
 
 import java.time.YearMonth
@@ -27,9 +27,9 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
   // Thread-scoped (see TitleNormalizer.withRules) so these custom rule sets can't
   // leak into a suite running in parallel.
   private def withExtras[A](body: => A): A =
-    TitleNormalizer.withRules(TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all))(body)
+    TitleNormalizer.withRules(TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all))(body)
   private def seedOnly[A](body: => A): A =
-    TitleNormalizer.withRules(TitleRuleDefaults.ruleSet)(body)
+    TitleNormalizer.withRules(TitleRules.ruleSet)(body)
 
   // The repertoire ships as a `data-dane` JSON blob on `<div id="rep2">`; the SPS
   // screening-code lives in the film's `t` title, which cinemaClean must strip.

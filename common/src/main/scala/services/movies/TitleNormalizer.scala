@@ -1,17 +1,17 @@
 package services.movies
 
-import services.titlerules.{TitleRuleSet, TitleRuleDefaults, ExtraTitleRules}
+import services.titlerules.{TitleRuleSet, TitleRules, ExtraTitleRules}
 
 import java.util.Locale
 import java.util.regex.Pattern
 
 object TitleNormalizer {
   // The active rule set drives every prefix/suffix/canonical strip below.
-  // Rules live in code (TitleRuleDefaults + ExtraTitleRules) and are loaded once
+  // Rules live in code (TitleRules + ExtraTitleRules) and are loaded once
   // at class-load. `@volatile` makes the reference visible to scrape/enrich
   // threads; tests can swap it thread-locally via `withRules`.
   @volatile private var active: TitleRuleSet =
-    TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all)
+    TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all)
 
   // A THREAD-SCOPED override that, when set, shadows `active` for the current
   // thread only. Tests that need a custom rule set install it here via
@@ -49,7 +49,7 @@ object TitleNormalizer {
   def currentRules: TitleRuleSet = active
 
   /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
-  def resetToDefaults(): Unit = active = TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all)
+  def resetToDefaults(): Unit = active = TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all)
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
   def cinemaClean(cinemaId: String, raw: String): String = effective.perCinema(cinemaId, raw)
@@ -94,7 +94,7 @@ object TitleNormalizer {
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
   // The patterns formerly hardcoded here now live in the active `TitleRuleSet`
-  // (seeded from `TitleRuleDefaults`, editable in Mongo via the admin page). The
+  // (seeded from `TitleRules`, editable in Mongo via the admin page). The
   // tiers:
   //   - `apiQuery` (GlobalStructural) — decoration strips (anniversary, restored,
   //     Cykl prefix, slash, language-version) PLUS programme prefixes /

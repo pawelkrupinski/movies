@@ -28,7 +28,7 @@ object MultikinoParser {
    *  cinemas list bare; leaving the prefix on produces a Multikino-only
    *  variant TMDB / Filmweb queries can't find. Public for direct unit tests. */
   // Cycle-decoration stripping now lives in the editable "multikino" rules (see
-  // TitleRuleDefaults); this delegates so it stays unit-testable here.
+  // TitleRules); this delegates so it stays unit-testable here.
   def cleanTitle(filmTitle: String): String =
     services.movies.TitleNormalizer.cinemaClean("multikino", filmTitle)
 

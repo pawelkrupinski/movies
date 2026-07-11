@@ -7,7 +7,7 @@ package services.titlerules
  * deliberate tier changes: `canonical` here drops `searchTitle` because the
  * structural decoration strip no longer feeds identity (it's external-lookup
  * only — see `TitleRuleSet`). To change normalisation BEHAVIOUR, edit the seed
- * rules in `TitleRuleDefaults`; to change the tier COMPOSITION, edit both the
+ * rules in `TitleRules`; to change the tier COMPOSITION, edit both the
  * engine (`TitleRuleSet`) and this reference in lockstep.
  */
 object FrozenLegacyNormalizer {
@@ -17,7 +17,7 @@ object FrozenLegacyNormalizer {
   private val RestoredSuffix    = """(?i)\s*[-–—|.]?\s*\d+\s*k\s+(?:restored|remaster(?:ed)?)\s*$""".r
   private val WersjaSuffix      = """(?i)\s*[-–—.]\s+wersja\s+\p{L}+\s*$""".r
   private val PlusSuffix        = """\s+\+\s+\p{L}[^)]*$""".r
-  // Mirror `TitleRuleDefaults`' meeting rules (kept in lockstep so this
+  // Mirror `TitleRules`' meeting rules (kept in lockstep so this
   // reference reproduces the engine on the prod corpus):
   //   `search-spotkanie-banner-prefix` (order 11) — a 'Spotkania …:' banner the
   //      film follows ("SPOTKANIA FILOZOFICZNE: Wędrówka na północ").

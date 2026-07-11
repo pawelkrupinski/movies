@@ -7,7 +7,7 @@ import scala.util.matching.Regex
  *  The full set of these (stored in the `titleRules` Mongo collection, edited
  *  via the admin page, broadcast to web + worker over a change stream) describes
  *  every prefix/suffix/canonicalisation the app strips. The seed set in
- *  [[TitleRuleDefaults]] is transcribed verbatim from the formerly-hardcoded
+ *  [[TitleRules]] is transcribed verbatim from the formerly-hardcoded
  *  regexes, so behaviour is unchanged until someone edits a rule.
  *
  *  `replacement` follows `scala.util.matching.Regex` replacement semantics: `""`

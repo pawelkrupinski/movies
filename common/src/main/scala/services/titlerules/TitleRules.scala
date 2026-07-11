@@ -4,14 +4,14 @@ import RuleScope._
 
 /** The baseline rule set — every formerly-hardcoded `TitleNormalizer` regex,
  *  transcribed verbatim and tagged with the tier it ran in. Loaded at class-load
- *  as part of the combined `TitleRuleDefaults.all ++ ExtraTitleRules.all` set.
+ *  as part of the combined `TitleRules.all ++ ExtraTitleRules.all` set.
  *
  *  `ProdTitlesNormalizationSpec` pins this set byte-for-byte against the pre-rules
  *  code on a prod-title snapshot. New normalisation behaviour goes in `ExtraTitleRules`.
  *
  *  Per-cinema rules (the old per-client `cleanTitle`) are added in a later step;
  *  at this baseline the per-cinema tier is empty and clients still clean inline. */
-object TitleRuleDefaults {
+object TitleRules {
 
   // ── apiQuery tier (merged GlobalStructural) — programme/access/event strips
   //    fold FIRST (orders 10–14), then the decoration strips (orders 20–60),

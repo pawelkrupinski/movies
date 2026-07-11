@@ -139,7 +139,7 @@ object CinemaCityClient {
    *  "Kolekcja Mamoru Hosody: X" (anime retrospective).
    *
    *  The strip now lives in the editable rule set under the "cinema-city" key
-   *  (see TitleRuleDefaults); this delegates so the behaviour stays unit-testable
+   *  (see TitleRules); this delegates so the behaviour stays unit-testable
    *  here and documents the chain's rule key. Production cleaning happens
    *  centrally in `MovieCache.recordCinemaScrape`.
    *

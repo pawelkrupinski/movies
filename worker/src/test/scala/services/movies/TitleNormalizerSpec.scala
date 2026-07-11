@@ -2,7 +2,7 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.titlerules.{TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{TitleRules, TitleRuleSet}
 
 class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
@@ -463,7 +463,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // key — so recasing this exact title is then safe and recase rightly down-cases it.
     // The invariant under test is the guard MECHANISM (refuse a recase that re-keys),
     // so we exercise it with a rule set where the drift still exists.
-    TitleNormalizer.withRules(TitleRuleSet(TitleRuleDefaults.all)) {
+    TitleNormalizer.withRules(TitleRuleSet(TitleRules.all)) {
       val shout = "GWIEZDNE WOJNY: MANDALORIAN i GROGU"
       recase(shout) shouldBe shout
       TitleNormalizer.sanitize(recase(shout)) shouldBe TitleNormalizer.sanitize(shout)

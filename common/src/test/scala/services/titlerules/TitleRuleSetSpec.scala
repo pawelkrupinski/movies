@@ -31,7 +31,7 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
   // key than "Dzień objawienia"). The seeded `wybrzeze-venue-suffix` rule strips
   // it. Runs against the REAL default rule set so the seed itself is covered.
   "the default Kino Wybrzeże rule" should "strip the trailing venue name so the film keys to its canonical row" in {
-    val rs = TitleRuleDefaults.ruleSet
+    val rs = TitleRules.ruleSet
     rs.perCinema("wybrzeze", "Dzień objawienia-kino wybrzeże") shouldBe "Dzień objawienia"
     // The all-caps raw form: suffix stripped, casing left to canonicalizeBySanitize.
     rs.perCinema("wybrzeze", "DZIEŃ OBJAWIENIA-KINO WYBRZEŻE") shouldBe "DZIEŃ OBJAWIENIA"

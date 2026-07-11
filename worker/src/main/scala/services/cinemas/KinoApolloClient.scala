@@ -311,7 +311,7 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
   // this, those decorated rows can't be enriched — TMDB's title search returns
   // nothing for the decorated string and the row stays at tmdbId=None.
   // The decoration strip now lives in the editable "kino-apollo" rules
-  // (TitleRuleDefaults); this delegates so the day-page dedup grouping still
+  // (TitleRules); this delegates so the day-page dedup grouping still
   // collapses decorated variants onto the bare film.
   def cleanTitle(title: String): String =
     services.movies.TitleNormalizer.cinemaClean("kino-apollo", title)

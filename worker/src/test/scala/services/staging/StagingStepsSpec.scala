@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.{DetailEnricher, FilmDetail, FilmwebShowtimesClient}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{MovieService, TitleNormalizer}
-import services.titlerules.{TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{TitleRules, TitleRuleSet}
 
 /** Unit specs for the staging enrichment steps factored out of the old
  *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the
@@ -119,7 +119,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // the case-INSENSITIVE `xtra-canonical-gwiezdne-wojny-ci`, which collapses both
     // spellings to one key — so this exact title no longer drifts in prod; the stamp-by-`id`
     // invariant is what we exercise, with a rule set where the drift still exists.
-    TitleNormalizer.withRules(TitleRuleSet(TitleRuleDefaults.all)) {
+    TitleNormalizer.withRules(TitleRuleSet(TitleRules.all)) {
       val repository = new InMemoryStagingRepository
       val slotTitle  = "Gwiezdne Wojny: Mandalorian i Grogu"            // recase output (capital W → sanitize strips)
       // Persist under the NON-stripping all-caps spelling so the `_id` prefix and

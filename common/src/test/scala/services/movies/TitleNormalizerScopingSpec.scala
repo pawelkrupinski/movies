@@ -2,7 +2,7 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.titlerules.{RuleScope, TitleRule, TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{RuleScope, TitleRule, TitleRules, TitleRuleSet}
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
@@ -20,7 +20,7 @@ class TitleNormalizerScopingSpec extends AnyFlatSpec with Matchers {
   // sanitises to a DIFFERENT key under it than under the defaults.
   private val dropRule = TitleRule("test-zzdrop", RuleScope.Canonical, None,
     """(?i)\s*Zzdropzz\s*$""", "", applyAll = false, order = 100)
-  private val customSet = TitleRuleSet(TitleRuleDefaults.all :+ dropRule)
+  private val customSet = TitleRuleSet(TitleRules.all :+ dropRule)
 
   "withRules" should "scope a custom rule set to the installing thread, invisible to a concurrent thread" in {
     val defaultKey = TitleNormalizer.sanitize(title)                  // no scope → defaults

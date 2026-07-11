@@ -136,7 +136,7 @@ object ExtraTitleRules {
     prog("xtra-pp-seans-sensoryczny",  """(?iu)^Seans\s+Przyjazny\s+Sensorycznie:\s+""",     "'Seans Przyjazny Sensorycznie: <film>' sensory-friendly screening (Willow i tajemniczy las, Chłopiec na krańcach świata)"),
     prog("xtra-pp-fiesta-hiszpanskiego", """(?iu)^FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+""",      "'FIESTA KINA HISZPAŃSKIEGO: <film>' Spanish-cinema fiesta prefix (Prawo pożądania); the '| / – fiesta …' suffix forms are handled by xtra-fiesta-hiszpanskiego-suffix"),
     // Chain recurring-programme banners that were per-cinema (client `cleanTitle`)
-    // seeds in TitleRuleDefaults — promoted here so the strip is GLOBAL (any cinema
+    // seeds in TitleRules — promoted here so the strip is GLOBAL (any cinema
     // that ships the same banner resolves the base film), query-only so the
     // decorated screening keeps its own row rather than merging. `(?iu)` for the
     // Multikino ALL-CAPS raw + Polish letters; `{{SEP}}` for the ':'/'-' the chains

@@ -90,7 +90,7 @@ object HeliosNuxt {
   // stripping it from the title loses nothing while letting the row enrich off
   // the clean film name and the dubbing/napisy variants collapse into one row.
   // The event/format suffix peeling now lives in the editable "helios" rules
-  // (TitleRuleDefaults, same order); this delegates so the Nuxt+REST dedup
+  // (TitleRules, same order); this delegates so the Nuxt+REST dedup
   // grouping/matching still collapses decorated variants onto the bare film.
   // On top of those rules we peel any trailing screen-format/version tag the
   // rules don't cover ("Babystar - 2D NAP"); the 2D/NAP it carries is already in

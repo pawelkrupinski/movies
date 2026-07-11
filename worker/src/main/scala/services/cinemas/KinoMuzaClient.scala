@@ -117,7 +117,7 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
 
   // The "| najlepsze z najgorszych" series-tag strip now lives in the editable
-  // "kino-muza" rules (see TitleRuleDefaults).
+  // "kino-muza" rules (see TitleRules).
   private def cleanTitle(raw: String): String =
     services.movies.TitleNormalizer.cinemaClean("kino-muza", raw)
 

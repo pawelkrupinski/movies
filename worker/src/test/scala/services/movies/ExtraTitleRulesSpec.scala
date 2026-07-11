@@ -3,7 +3,7 @@ package services.movies
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.TitleNormalizer.normalize
-import services.titlerules.{ExtraTitleRules, TitleRuleDefaults, TitleRuleSet}
+import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
 
 import java.util.Locale
 
@@ -13,8 +13,8 @@ import java.util.Locale
  *  caught here, not in prod. */
 class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
-  private val withExtras = TitleRuleSet(TitleRuleDefaults.all ++ ExtraTitleRules.all)
-  private val seedOnly   = TitleRuleDefaults.ruleSet
+  private val withExtras = TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all)
+  private val seedOnly   = TitleRules.ruleSet
 
   // ── programme prefixes: extracted as own row (display), stripped for query ──
 
@@ -69,7 +69,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Klasyk w kinie: Milczenie owiec"                 -> ("Klasyk w kinie: ",                  "Milczenie owiec"),
     "Seans Przyjazny Sensorycznie: Willow i tajemniczy las" -> ("Seans Przyjazny Sensorycznie: ", "Willow i tajemniczy las"),
     "FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania"      -> ("FIESTA KINA HISZPAŃSKIEGO: ",       "Prawo pożądania"),
-    // Chain decoration banners promoted from per-cinema seeds (were TitleRuleDefaults
+    // Chain decoration banners promoted from per-cinema seeds (were TitleRules
     // cleanTitle strips): now GLOBAL query-only, so any cinema's copy resolves the
     // base film while the decorated screening keeps its own display row.
     "Kino na obcasach: Zaproszenie"                   -> ("Kino na obcasach: ",                "Zaproszenie"),
