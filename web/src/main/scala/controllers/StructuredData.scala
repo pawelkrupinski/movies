@@ -37,20 +37,25 @@ object StructuredData {
     }
 
   /** Landing page: identify the site + publisher so Google can attach a
-   *  knowledge-panel / sitelinks to the brand. */
-  def landing(): String = {
-    val brand = models.Country.fromEnv.brandName
+   *  knowledge-panel / sitelinks to the brand. Everything is the DEPLOYMENT's:
+   *  its brand, its own host (so the UK site self-identifies as
+   *  showtimes-uk.fly.dev, not kinowo.fly.dev), its home montage, and its
+   *  language's landing copy (reusing the `landing.ogDescription` message rather
+   *  than a second, drift-prone Polish literal). */
+  def landing()(implicit messages: play.api.i18n.Messages): String = {
+    val country = models.Country.fromEnv
+    val origin  = country.ogOrigin
     render(Json.arr(
       Json.obj(
         "@context" -> Ctx, "@type" -> "WebSite",
-        "name" -> brand, "url" -> s"$ProdOrigin/",
-        "inLanguage" -> models.Country.fromEnv.language.getLanguage,
-        "description" -> "Repertuar kin w polskich miastach — godziny seansów, oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes.",
+        "name" -> country.brandName, "url" -> s"$origin/",
+        "inLanguage" -> country.language.getLanguage,
+        "description" -> messages("landing.ogDescription"),
       ),
       Json.obj(
         "@context" -> Ctx, "@type" -> "Organization",
-        "name" -> brand, "url" -> s"$ProdOrigin/",
-        "logo" -> s"$ProdOrigin/assets/img/og-home.png",
+        "name" -> country.brandName, "url" -> s"$origin/",
+        "logo" -> s"$origin/assets/img/${country.homeOgImage}",
       ),
     ))
   }

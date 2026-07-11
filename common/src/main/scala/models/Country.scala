@@ -45,6 +45,20 @@ sealed abstract class Country(
   /** Compact JSON array of this country's cities for the client (`ALL_CITIES`,
    *  the geolocation/nearest-city picker). */
   def allJson: String = CityListing.json(cities)
+
+  /** Public origin (scheme + host, no trailing slash) for this country's share /
+   *  Open Graph links — the host Facebook scrapes and caches a preview against.
+   *  A deployed country carries its own [[webUrl]]; one modelled but not yet
+   *  deployed ([[Germany]]) falls back to the default country's host so a link
+   *  still resolves rather than dangling. */
+  def ogOrigin: String = webUrl.getOrElse(Country.default.webUrl.get)
+
+  /** Filename (under `assets/img/`) of the `/` landing's share-preview montage
+   *  for this country. The default country keeps the original, unsuffixed
+   *  `og-home.png`; every other country gets a per-code card so a UK deployment's
+   *  preview shows English posters, a German one German — the same asset path is
+   *  served by every deployment (one build), so all these files are checked in. */
+  def homeOgImage: String = if (this == Country.default) "og-home.png" else s"og-home-$code.png"
 }
 
 object Country {

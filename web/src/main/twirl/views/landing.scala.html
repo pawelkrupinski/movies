@@ -16,12 +16,14 @@
   @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
      card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
      product (posters + ratings), which the city-selection screen itself can't. *@
+  @defining(models.Country.fromEnv) { country =>
   @_ogTagsApp(
-    pageTitle       = messages("landing.title", models.Country.fromEnv.brandName),
+    pageTitle       = messages("landing.title", country.brandName),
     pageDescription = messages("landing.ogDescription"),
-    pageUrl         = "https://kinowo.fly.dev/",
-    imageUrl        = "https://kinowo.fly.dev/assets/img/og-home.png",
+    pageUrl         = country.ogOrigin + "/",
+    imageUrl        = country.ogOrigin + "/assets/img/" + country.homeOgImage,
   )
+  }
   @_jsonLd(controllers.StructuredData.landing())
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }

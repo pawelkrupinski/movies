@@ -1,6 +1,6 @@
 package tools
 
-import models.City
+import models.Country
 import play.api.libs.json.Json
 
 import java.awt.RenderingHints
@@ -15,13 +15,15 @@ import javax.imageio.ImageIO
  * `web/src/main/assets/img/og-{slug}.png` — the 1200×630 previews
  * Facebook / Messenger / X / Slack render when a `/{slug}/` link is shared.
  *
- * Each card is the city's REAL repertoire page (a live desktop screenshot,
- * with all dates shown so the poster grid is full even at night) under a
- * left-side dark gradient carrying the "Kinowo / Repertuar kin w {locative}"
- * wordmark and the IMDb·Metacritic·RT·Filmweb pills — the same look as the
- * `/` landing card (`og-home.png`).
+ * Each card is the REAL repertoire page (a live desktop screenshot, with all
+ * dates shown so the poster grid is full even at night) under a left-side dark
+ * gradient carrying the deployment's wordmark (Kinowo / Showtimes) and the
+ * IMDb·Metacritic·RT(·Filmweb) pills — the same look as the `/` landing card.
+ * Everything language- and brand-specific is read from [[Country.fromEnv]]
+ * (`KINOWO_COUNTRY`): the brand, the display host, the tagline language, and
+ * whether the Filmweb pill shows (Poland only).
  *
- * Pipeline per city (one headless Chrome over CDP, a fresh tab each step):
+ * Pipeline per card (one headless Chrome over CDP, a fresh tab each step):
  *   1. open the live `/{slug}/`, run `pickDay('anytime')`, screenshot the
  *      desktop viewport at 2× → the background.
  *   2. open a card HTML (the screenshot embedded as a data: URI + the
@@ -29,13 +31,21 @@ import javax.imageio.ImageIO
  *   3. downscale 3×→1× with bicubic supersampling (smooth text) → write PNG.
  *
  * Run (from the repo root):
- *   sbt 'web/PageTest/runMain tools.OgCardGenerator'            # all cities
- *   sbt 'web/PageTest/runMain tools.OgCardGenerator poznan wroclaw'   # a subset
+ *   sbt 'web/PageTest/runMain tools.OgCardGenerator'                  # every city card
+ *   sbt 'web/PageTest/runMain tools.OgCardGenerator poznan wroclaw'   # a subset of cities
+ *   sbt 'web/PageTest/runMain tools.OgCardGenerator home'             # the `/` landing card
  *
- * Env: `KINOWO_OG_BASE` (default `https://kinowo.fly.dev`) — the site to
- * screenshot; `KINOWO_OG_OUT` (default `web/src/main/assets/img`) — output dir.
+ * The `home` target renders this country's landing montage — `og-home.png` for
+ * Poland, `og-home-{code}.png` elsewhere (e.g. an English `og-home-uk.png`
+ * screenshot off showtimes-uk.fly.dev). It screenshots the country's primary
+ * city (its first [[Country.cities]], or `KINOWO_OG_HOME_CITY`).
+ *
+ * Env: `KINOWO_COUNTRY` (default `pl`) — which country's brand/language/host to
+ * render; `KINOWO_OG_BASE` (default: that country's own host) — the site to
+ * screenshot; `KINOWO_OG_OUT` (default `web/src/main/assets/img`) — output dir;
+ * `KINOWO_OG_HOME_CITY` — override the city screenshotted for the `home` card.
  * Chrome is located via `Chrome.findExecutable()` (same `CDP_BROWSER_BIN`
- * override the page tests use). Each city takes well under a minute.
+ * override the page tests use). Each card takes well under a minute.
  */
 object OgCardGenerator {
 
@@ -44,13 +54,16 @@ object OgCardGenerator {
   private val Scale  = 3 // render the card at 3× then supersample down for smooth text
 
   def main(args: Array[String]): Unit = {
-    val baseUrl = sys.env.getOrElse("KINOWO_OG_BASE", "https://kinowo.fly.dev").stripSuffix("/")
+    val country = Country.fromEnv
+    val baseUrl = sys.env.getOrElse("KINOWO_OG_BASE", country.ogOrigin).stripSuffix("/")
     val outDir  = Paths.get(sys.env.getOrElse("KINOWO_OG_OUT", "web/src/main/assets/img"))
     Files.createDirectories(outDir)
 
-    val only   = args.toSet
-    val cities = City.all.filter(c => only.isEmpty || only(c.slug))
-    if (cities.isEmpty) { System.err.println(s"No cities matched ${only.mkString(", ")}"); sys.exit(1) }
+    // `home` renders the `/` landing montage; any other args are city slugs.
+    val homeMode = args.sameElements(Array("home"))
+    val only     = args.toSet
+    val cities   = if (homeMode) Nil else country.cities.filter(c => only.isEmpty || only(c.slug))
+    if (!homeMode && cities.isEmpty) { System.err.println(s"No ${country.code} cities matched ${only.mkString(", ")}"); sys.exit(1) }
 
     val chrome = Chrome.tryStart().getOrElse {
       System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
@@ -60,38 +73,59 @@ object OgCardGenerator {
     val startedAt = System.currentTimeMillis()
     var ok = 0
     try {
-      cities.foreach { city =>
-        val t0 = System.currentTimeMillis()
-        // Retry transient load failures (the offline dino page, a momentary
-        // 5xx / rate-limit near the end of a long run) before giving up. A
-        // genuine failure after `Attempts` tries leaves the prior card on disk
-        // untouched — never overwritten with a broken render.
-        val Attempts = 3
-        var attempt  = 0
-        var written  = false
-        while (!written && attempt < Attempts) {
-          attempt += 1
-          try {
-            val bg   = screenshotCity(chrome, s"$baseUrl/${city.slug}/")
-            val card = renderCard(chrome, bg, s"Repertuar kin ${city.locativePhrase}")
-            val out  = outDir.resolve(s"og-${city.slug}.png")
-            Files.write(out, downscale(card))
-            ok += 1
-            written = true
-            println(f"✓ ${city.slug}%-20s ${(System.currentTimeMillis() - t0) / 1000.0}%4.1fs  $out")
-          } catch {
-            case e: Throwable =>
-              if (attempt < Attempts) {
-                System.err.println(s"… ${city.slug}: ${e.getMessage} (attempt $attempt/$Attempts, retrying)")
-                Thread.sleep(1500)
-              } else System.err.println(s"✗ ${city.slug}: ${e.getMessage} (gave up after $Attempts attempts)")
-          }
+      if (homeMode) {
+        val city = sys.env.get("KINOWO_OG_HOME_CITY").flatMap(s => country.bySlug.get(s))
+          .orElse(country.cities.headOption)
+          .getOrElse { System.err.println(s"Country ${country.code} has no cities to screenshot for the home card."); sys.exit(1) }
+        if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")) ok += 1
+      } else {
+        cities.foreach { city =>
+          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", s"Repertuar kin ${city.locativePhrase}", outDir.resolve(s"og-${city.slug}.png"), city.slug)) ok += 1
         }
       }
     } finally chrome.close()
 
-    val secs = (System.currentTimeMillis() - startedAt) / 1000.0
-    println(f"done: $ok/${cities.size} cards in $secs%.1fs (~${secs / cities.size}%.1fs/city)")
+    val total = if (homeMode) 1 else cities.size
+    val secs  = (System.currentTimeMillis() - startedAt) / 1000.0
+    println(f"done: $ok/$total cards in $secs%.1fs")
+  }
+
+  /** Screenshot `screenshotUrl`, compose the card for `country` with `tagline`,
+   *  and write it to `out`. Retries transient load failures (the offline dino
+   *  page, a momentary 5xx / rate-limit) before giving up; a genuine failure
+   *  after `Attempts` tries leaves any prior card on disk untouched — never
+   *  overwritten with a broken render. Returns whether a card was written. */
+  private def writeCard(chrome: Chrome, country: Country, screenshotUrl: String, tagline: String, out: java.nio.file.Path, label: String): Boolean = {
+    val t0 = System.currentTimeMillis()
+    val Attempts = 3
+    var attempt  = 0
+    while (attempt < Attempts) {
+      attempt += 1
+      try {
+        val bg   = screenshotCity(chrome, screenshotUrl)
+        val card = renderCard(chrome, bg, tagline, country)
+        Files.write(out, downscale(card))
+        println(f"✓ $label%-20s ${(System.currentTimeMillis() - t0) / 1000.0}%4.1fs  $out")
+        return true
+      } catch {
+        case e: Throwable =>
+          if (attempt < Attempts) {
+            System.err.println(s"… $label: ${e.getMessage} (attempt $attempt/$Attempts, retrying)")
+            Thread.sleep(1500)
+          } else System.err.println(s"✗ $label: ${e.getMessage} (gave up after $Attempts attempts)")
+      }
+    }
+    false
+  }
+
+  /** The `/` home-card tagline for a deployment's language — the line under the
+   *  wordmark on `og-home{-code}.png`. Mirrors each `messages` bundle's
+   *  `landing.title` suffix; kept here because this dev tool has no Play i18n
+   *  wired. */
+  private def homeTagline(country: Country): String = country.language.getLanguage match {
+    case "pl" => "Repertuar kin w Twoim mieście"
+    case "de" => "Kinoprogramm in deiner Stadt"
+    case _    => "Cinema listings in your city"
   }
 
   /** JS predicate: the repertoire page's inline JS ran. `pickDay` is defined
@@ -147,8 +181,8 @@ object OgCardGenerator {
   /** Compose the card HTML (the screenshot as a full-bleed background + the
    *  left gradient, wordmark, city line and rating pills) and screenshot it at
    *  `Scale`×. Returns Base64 PNG bytes. */
-  private def renderCard(chrome: Chrome, backgroundPng: String, cityLine: String): String = {
-    val html = cardHtml(backgroundPng, cityLine)
+  private def renderCard(chrome: Chrome, backgroundPng: String, cityLine: String, country: Country): String = {
+    val html = cardHtml(backgroundPng, cityLine, country)
     val tmp  = Files.createTempFile("og-card-", ".html")
     Files.writeString(tmp, html)
     try chrome.openPage(tmp.toUri.toString) { page =>
@@ -178,11 +212,14 @@ object OgCardGenerator {
     page.send("Emulation.setDeviceMetricsOverride",
       Json.obj("width" -> w, "height" -> h, "deviceScaleFactor" -> dpr, "mobile" -> false))
 
-  /** The card layout — kept byte-for-byte in sync with the `/` landing card
-   *  (`og-home.png`): same gradient, wordmark, single white line and the
-   *  page-accurate IMDb (yellow) · Metacritic (green) · RT (red) · Filmweb
-   *  (orange) pills. Only the city line and background screenshot vary. */
-  private def cardHtml(backgroundPng: String, cityLine: String): String =
+  /** The card layout — kept byte-for-byte in sync with the `/` landing card:
+   *  same gradient, wordmark, single white line and the page-accurate IMDb
+   *  (yellow) · Metacritic (green) · RT (red) · Filmweb (orange) pills. The
+   *  brand wordmark, display host and whether the Filmweb pill shows come from
+   *  `country`; only the city line and background screenshot vary otherwise. */
+  private def cardHtml(backgroundPng: String, cityLine: String, country: Country): String = {
+    val urlText     = country.ogOrigin.stripPrefix("https://").stripPrefix("http://")
+    val filmwebPill = if (country.filmwebEnabled) """<span class="r fw"><span class="lab">FW</span><span class="val">7.4</span></span>""" else ""
     s"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>
        |*{margin:0;padding:0;box-sizing:border-box}
        |html,body{width:1200px;height:630px}
@@ -210,15 +247,16 @@ object OgCardGenerator {
        |<div class="hero"></div><div class="shade"></div>
        |<div class="left">
        |  <div class="clap">🎬</div>
-       |  <div class="brand">Kinowo</div>
+       |  <div class="brand">${country.brandName}</div>
        |  <div class="tag">$cityLine</div>
        |  <div class="ratings">
        |    <span class="r imdb"><span class="lab">IMDb</span><span class="val">7.8</span></span>
        |    <span class="mc">81</span>
        |    <span class="r rt"><span class="lab">RT</span><span class="val">91%</span></span>
-       |    <span class="r fw"><span class="lab">FW</span><span class="val">7.4</span></span>
+       |    $filmwebPill
        |  </div>
-       |  <div class="url">kinowo.fly.dev</div>
+       |  <div class="url">$urlText</div>
        |</div>
        |</body></html>""".stripMargin
+  }
 }

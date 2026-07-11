@@ -108,6 +108,20 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "A country's share-preview (Open Graph) identity" should "carry its own host origin and home-montage filename" in {
+    // The `/` landing card and the default og:image are built from these, so a
+    // UK deployment previews off showtimes-uk.fly.dev with an English montage
+    // (og-home-uk.png) instead of Poland's kinowo.fly.dev / og-home.png.
+    Country.Poland.ogOrigin shouldBe "https://kinowo.fly.dev"
+    Country.Poland.homeOgImage shouldBe "og-home.png"                    // the default keeps the unsuffixed asset
+    Country.UnitedKingdom.ogOrigin shouldBe "https://showtimes-uk.fly.dev"
+    Country.UnitedKingdom.homeOgImage shouldBe "og-home-uk.png"
+    // Germany is modelled but undeployed: its share links fall back to the
+    // default country's host, yet it still gets a per-code montage name.
+    Country.Germany.ogOrigin shouldBe Country.Poland.ogOrigin
+    Country.Germany.homeOgImage shouldBe "og-home-de.png"
+  }
+
   "Country.resolvedDbName" should "prefer an explicit MONGODB_DB over the country default" in {
     // Only meaningful when nothing already supplies MONGODB_DB from the ambient
     // environment (env var / .env.local); skip otherwise to stay deterministic.

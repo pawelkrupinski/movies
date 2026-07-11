@@ -59,11 +59,17 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
 
   // ── landing ────────────────────────────────────────────────────────────────
 
-  "landing JSON-LD" should "describe the WebSite and the Organization" in {
+  "landing JSON-LD" should "describe the WebSite and the Organization in the deployment's language" in {
+    import testsupport.TestMessages
+    import TestMessages.given   // the deployment's Polish Messages (default Poland)
     val arr = parseArray(StructuredData.landing())
     val site = byType(arr, "WebSite").head
     (site \ "name").as[String]  shouldBe "Kinowo"
     (site \ "url").as[String]   shouldBe "https://kinowo.fly.dev/"
+    // The description is the localized landing copy (single source of truth with
+    // og:description), NOT the old hardcoded "…w polskich miastach…" literal.
+    (site \ "description").as[String] shouldBe TestMessages.forLang("pl")("landing.ogDescription")
+    (site \ "description").as[String] should not include "polskich miastach"
     val org = byType(arr, "Organization").head
     (org \ "logo").as[String] should include("og-home.png")
   }

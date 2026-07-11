@@ -62,7 +62,7 @@ browse.ogDescription=Films from {0} cinemas: {1}. With current showtimes, rating
 
 # ── Landing (city picker) ───────────────────────────────────────────────────
 landing.title={0} — cinema listings in your city
-landing.ogDescription=Every cinema''s listings in one place — with IMDb, RT and Filmweb ratings. Check today''s showtimes in your city.
+landing.ogDescription=Every cinema''s listings in one place — with IMDb, Rotten Tomatoes and Metacritic ratings. Check today''s showtimes in your city.
 landing.chooseCity=Choose your city
 landing.searchCity=Search for a city…
 landing.searchCityAria=Search for a city
