@@ -8,8 +8,10 @@ import { waitForCards } from './helpers';
 test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   test('lists every supported city and a pick navigates into that city', async ({ page }) => {
     await page.goto('/');
+    // 41 Polish + 3 UK + 3 German cities — the fixture `/` renders `City.all`,
+    // the union across every country (see FixtureServerMain), not one country.
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(41);
+    await expect(links).toHaveCount(47);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
