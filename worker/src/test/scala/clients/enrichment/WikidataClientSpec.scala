@@ -127,4 +127,32 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
     WikidataClient.rottenTomatoesUrl("m/the_matrix") shouldBe "https://www.rottentomatoes.com/m/the_matrix"
     WikidataClient.metacriticUrl("movie/the-matrix") shouldBe "https://www.metacritic.com/movie/the-matrix"
   }
+
+  // ── direct-title lookup (the TMDB-less / no-Filmweb-page rung) ────────────────
+
+  private val titleSearchHit =
+    """{"query":{"search":[{"ns":0,"title":"Q100"}]}}"""
+  private def entitiesBody(label: String, imdbId: String, year: Int) =
+    s"""{"entities":{"Q100":{"labels":{"en":{"value":"$label"}},"claims":{
+       |"P345":[{"mainsnak":{"datavalue":{"value":"$imdbId"}}}],
+       |"P577":[{"mainsnak":{"datavalue":{"value":{"time":"+$year-01-01T00:00:00Z"}}}}]}}}}""".stripMargin
+
+  "findImdbIdByTitle" should "bind the imdbId when the label + year corroborate" in {
+    val client = wikidataStub(Map(
+      "list=search"    -> titleSearchHit,
+      "wbgetentities"  -> entitiesBody("Cactus Pears", "tt31000001", 2026)))
+    client.findImdbIdByTitle("Cactus Pears", Some(2026)) shouldBe Some("tt31000001")
+  }
+
+  it should "refuse a year-contradicting hit (a different same-named film)" in {
+    val client = wikidataStub(Map(
+      "list=search"    -> titleSearchHit,
+      "wbgetentities"  -> entitiesBody("Alpha", "tt999", 2015)))
+    client.findImdbIdByTitle("Alpha", Some(2026)) shouldBe None
+  }
+
+  it should "return None when the title search finds nothing" in {
+    wikidataStub(Map("list=search" -> """{"query":{"search":[]}}"""))
+      .findImdbIdByTitle("Nothing Here", Some(2026)) shouldBe None
+  }
 }

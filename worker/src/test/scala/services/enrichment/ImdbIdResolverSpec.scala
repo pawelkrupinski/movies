@@ -146,6 +146,34 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Another Obscure Film", Some(2017))).flatMap(_.imdbId) shouldBe Some("tt7002002")
   }
 
+  "the OMDb backstop" should "recover the imdbId via OMDb for a TMDB-less film when the whole IMDb ladder abstains" in {
+    // A tmdbNoMatch film (no tmdbId → Letterboxd skipped) that IMDb's suggestion
+    // endpoint doesn't index — the Malayalam/Indian long tail OMDb's English DB
+    // covers. This is the rung that would previously only fire on the daily sweep.
+    val noTmdb = MovieRecord(tmdbNoMatch = true)
+    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Varavu", Some(2026), noTmdb))))
+    val omdb   = new OMDbClient(new StubGet(Seq("?t=" ->
+      """{"Title":"Varavu","Year":"2026","imdbID":"tt37963237","Director":"Shaji Kailas","Response":"True"}""")),
+      apiKey = Some("stub"))
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
+      omdb = Some(omdb))
+
+    resolver.resolveSync("Varavu", Some(2026), "Varavu")
+    cache.get(cache.keyOf("Varavu", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt37963237")
+  }
+
+  "the Cinemeta backstop" should "recover the imdbId via Cinemeta when every earlier rung (incl. OMDb) abstains" in {
+    val noTmdb = MovieRecord(tmdbNoMatch = true)
+    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Cactus Pears", Some(2026), noTmdb))))
+    val cinemeta = new CinemetaClient(new StubGet(Seq("search=" ->
+      """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
+      cinemeta = Some(cinemeta))
+
+    resolver.resolveSync("Cactus Pears", Some(2026), "Cactus Pears")
+    cache.get(cache.keyOf("Cactus Pears", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt31000001")
+  }
+
   // ── hint-keyed cache ─────────────────────────────────────────────────────────
 
   private def countingImdb(calls: java.util.concurrent.atomic.AtomicInteger): ImdbClient =

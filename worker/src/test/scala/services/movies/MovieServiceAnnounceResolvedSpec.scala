@@ -64,13 +64,25 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
     waiting(queue) shouldBe 3L // rt + mc + fw now; IMDb waits for ImdbIdResolver to land the id
   }
 
-  it should "do nothing — no event, no rating tasks — for a tmdbNoMatch promotion" in {
+  it should "publish ImdbIdMissing (→ id recovery) for a tmdbNoMatch promotion, but enqueue no rating tasks (no ids yet)" in {
+    // TMDB found nothing, so the film has no id to query ratings against — but we
+    // STILL kick the id-recovery chain (IMDb suggestion → director → Wikidata →
+    // Trakt → OMDb → Wikidata-title → Cinemeta) so the TMDB-less long tail can land
+    // an imdbId → rating + a resolved year, instead of waiting for the daily OMDb sweep.
     val (service, seen, freshness, queue) = fixture()
     service.announceResolvedNewMovie(
       CacheKey("Obscure Local Premiere", Some(2026)), MovieRecord(tmdbNoMatch = true))
 
+    seen.toSeq should matchPattern { case Seq(ImdbIdMissing("Obscure Local Premiere", Some(2026), _)) => }
+    waiting(queue) shouldBe 0L // no tmdbId/imdbId yet → nothing eligible; ratings follow once the id lands
+  }
+
+  it should "stay silent for a tmdbNoMatch promotion that ALREADY carries an imdbId (nothing to recover)" in {
+    val (service, seen, _, queue) = fixture()
+    service.announceResolvedNewMovie(
+      CacheKey("Obscure Local Premiere", Some(2026)), MovieRecord(tmdbNoMatch = true, imdbId = Some("tt9999999")))
+
     seen shouldBe empty
-    freshness.lastFetchedAt(RatingTasks.tmdbResolvedAtKey(1454157)) shouldBe empty
     waiting(queue) shouldBe 0L
   }
 }

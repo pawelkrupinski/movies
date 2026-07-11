@@ -49,7 +49,18 @@ class ImdbIdResolver(
   // page, which echoes the imdbId. Both default None so specs resolve as before;
   // `Wiring` injects them (Trakt no-ops without `TRAKT_API_CLIENT_ID`).
   traktIdResolver:      Option[TraktIdResolver]      = None,
-  letterboxdIdResolver: Option[LetterboxdIdResolver] = None
+  letterboxdIdResolver: Option[LetterboxdIdResolver] = None,
+  // OMDb id backstop — its English DB carries much of the niche/foreign long tail
+  // (Indian, Malayalam, festival titles) that IMDb's suggestion endpoint and Trakt
+  // miss. Previously only the once-daily `OmdbBackfill` sweep hit it; wiring it as a
+  // ladder rung lets a TMDB-less newcomer's id land promptly. `findImdbId` is
+  // title+year+director corroborated, so a fuzzy hit can't bind an unrelated film.
+  // None (default / `OMDB_API_KEY` unset) skips it.
+  omdb: Option[OMDbClient] = None,
+  // Cinemeta (Stremio catalogue) — the final rung. IMDb-keyed, indexes a broad
+  // foreign/regional long tail; corroborated by title+year. Free, no key. None
+  // disables it (default for specs that don't wire it).
+  cinemeta: Option[CinemetaClient] = None
 ) extends Stoppable with Logging {
 
   /** Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match
@@ -149,6 +160,28 @@ class ImdbIdResolver(
             tmdbId   <- record.tmdbId
             imdbId   <- resolver.resolveImdbId(tmdbId)
           } yield imdbId
+        }
+        .orElse {
+          // OMDb backstop — the English DB that covers most of the TMDB-less
+          // long tail (Indian/Malayalam/festival titles). title+year+director
+          // corroborated (see OMDbClient) so a fuzzy hit can't bind a wrong film.
+          // This is the id the once-daily OmdbBackfill sweep would have supplied
+          // hours later; running it inline lands it now.
+          omdb.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year, record.director.toSet))
+        }
+        .orElse {
+          // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a
+          // TMDB-less film with no Filmweb entity page, search Wikidata's film items
+          // by title and bind the first whose label + P577 year corroborate. Catches
+          // films with a Wikidata entry (hence RT/MC/Letterboxd slugs too) that the
+          // English-DB resolvers miss.
+          wikidata.flatMap(_.findImdbIdByTitle(searchTitle, year))
+        }
+        .orElse {
+          // Cinemeta (Stremio) — final rung. IMDb-keyed catalogue covering a broad
+          // foreign/regional long tail; corroborated by title+year so a fuzzy hit
+          // can't bind a wrong film. Free, no API key.
+          cinemeta.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year))
         }
       found match {
         case Some(id) =>
