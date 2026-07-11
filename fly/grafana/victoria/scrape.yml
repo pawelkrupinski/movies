@@ -32,6 +32,18 @@ scrape_configs:
         labels:
           app: kinowo-worker
 
+  # filmowo (the recommend app) is a separate Fly app in the SAME org, so its
+  # 6PN hostname resolves from here too. Its Node server binds 9002 (not 9000
+  # like the kinowo apps) and serves /metrics there. Unlike the kinowo targets,
+  # filmowo's /metrics already self-labels app="filmowo" (prom-client default
+  # label), so we DON'T add an app label here — doing so would collide and force
+  # the metric's own into exported_app. Feeds the "filmowo — Fly health" dashboard.
+  - job_name: filmowo
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['filmowo.internal:9002']
+
   # Multi-country: the ONE worker process serves every country and tags each
   # kinowo_worker_* series with a `country` label, so the single kinowo-worker
   # target above already carries all countries — no per-country worker target is
