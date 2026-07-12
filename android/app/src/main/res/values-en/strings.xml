@@ -24,4 +24,13 @@
     <string name="loading_repertoire">Loading showtimes…</string>
     <string name="error_repertoire">Couldn’t load showtimes.</string>
     <string name="retry">Try again</string>
+
+    <!-- Split-city cinema area picker (e.g. London) -->
+    <string name="areabar_all_cinemas">All cinemas</string>
+    <string name="areabar_count">%1$d of %2$d cinemas</string>
+    <string name="areabar_expand">Expand cinemas</string>
+    <string name="areabar_collapse">Collapse cinemas</string>
+    <string name="areapicker_title">Choose your areas</string>
+    <string name="areapicker_subtitle">Show cinemas only in the areas you pick. You can change this anytime.</string>
+    <string name="areapicker_confirm">Show listings</string>
 </resources>

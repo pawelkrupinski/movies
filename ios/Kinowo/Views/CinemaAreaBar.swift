@@ -56,8 +56,8 @@ struct CinemaAreaBar: View {
 
     private var handleLabel: String {
         enabledCount == cityCinemas.count
-            ? "All cinemas"
-            : "\(enabledCount) of \(cityCinemas.count) cinemas"
+            ? String(localized: "areabar.all_cinemas")
+            : String(format: String(localized: "areabar.count"), enabledCount, cityCinemas.count)
     }
 
     private var handleRow: some View {
@@ -72,6 +72,7 @@ struct CinemaAreaBar: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11 * scale, weight: .semibold))
                     .rotationEffect(.degrees(expanded ? 180 : 0))
+                    .accessibilityLabel(Text(expanded ? "areabar.collapse" : "areabar.expand"))
             }
             .foregroundStyle(.secondary)
             .padding(.horizontal, 14 * scale)
@@ -80,14 +81,14 @@ struct CinemaAreaBar: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(A11y.CinemaBar.areaHandle)
-        .accessibilityLabel("Cinemas: \(handleLabel)")
+        .accessibilityLabel(Text(String(format: String(localized: "areabar.a11y"), handleLabel)))
     }
 
     private var panel: some View {
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 0) {
                 let all = check(of: cityCinemas)
-                checkboxRow(check: all, label: "All cinemas", bold: true,
+                checkboxRow(check: all, label: String(localized: "areabar.all_cinemas"), bold: true,
                             identifier: A11y.CinemaBar.areaAll) {
                     onSetAll(cityCinemas, all != .on)
                 }
