@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.{Multikino, MovieRecord, Source, SourceData, Tmdb}
+import models.{Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{DomainEvent, InProcessEventBus, MovieDetailsComplete}
@@ -219,6 +219,42 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     val e = service.reEnrichSync("Mortal Kombat II", Some(2026))
 
     e.flatMap(_.imdbRating) shouldBe Some(7.2)   // unchanged
+  }
+
+  // Cache-MISS sibling of the test above — the clobber this change fixes. A
+  // re-resolve rebuilds the row from the cache, but `MovieCache.get` is
+  // Caffeine-only: a COLD / evicted / re-keyed entry reads EMPTY, so the rebuild
+  // nulled every score the *Ratings refreshers own (and the cinema slots).
+  // Hourly scrapes re-added the slots, but ratings (refreshed on CHANGE, then
+  // backed off for days) stayed blank — the prod signature where `rating_cadence`
+  // held imdb 7.2 / rt for a `kinowo_uk` row showing only `metascore`, UK far
+  // more than PL (its cache colder). The carry-forward now reads `stored` (cache,
+  // else a direct `movies` read), so a miss can't drop a persisted score.
+  it should "preserve stored ratings + cinema slots when the row was evicted from the cache before a re-resolve" in {
+    val seed = MovieRecord(
+      imdbId = Some("tt17490712"), imdbRating = Some(7.2),
+      metascore = Some(66), rottenTomatoes = Some(83),
+      tmdbId = Some(931285),                       // the SAME film TMDB re-resolves to
+      data   = Map[Source, SourceData](
+        Tmdb                -> SourceData(originalTitle = Some("Mortal Kombat II")),
+        (Multikino: Source) -> SourceData(title = Some("Mortal Kombat II"),
+          showtimes = Seq(Showtime(java.time.LocalDateTime.parse("2026-07-12T20:00"), None, None, Nil)))))
+    val repo  = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repo)         // hydrates from an EMPTY repo → cache stays cold
+    // Land the enriched row in `movies` ONLY — the cache never saw it, exactly the
+    // cold / evicted state the resolve rebuild reads as empty.
+    repo.upsert("Mortal Kombat II", Some(2026), seed)
+    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))) shouldBe None   // the miss the bug needs
+
+    val service = new MovieService(cache, new InProcessEventBus(), tmdbStub())
+    val e = service.reEnrichSync("Mortal Kombat II", Some(2026)).getOrElse(fail("no resolution"))
+
+    e.imdbRating     shouldBe Some(7.2)              // all three null before the fix
+    e.metascore      shouldBe Some(66)
+    e.rottenTomatoes shouldBe Some(83)
+    e.imdbId         shouldBe Some("tt17490712")
+    e.tmdbId         shouldBe Some(931285)           // the resolve's own contribution applied
+    e.data.keySet    should contain (Multikino: Source)   // cinema slot not wiped either
   }
 
   // ── Director-match verification + director-page filmography walk ──────────

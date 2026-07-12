@@ -490,7 +490,14 @@ class MovieService(
         // `canonicalKeyFor` shares this row's sanitize (so the same title lock),
         // and falls back to `key` only when no live row exists yet (first resolve).
         val writeKey = cache.canonicalKeyFor(rawKey).getOrElse(key)
-        val enr      = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, cache.get(writeKey).getOrElse(MovieRecord()))
+        // Carry-forward reads `stored` (cache, else a direct `movies` read), not
+        // the Caffeine-only `get`: a cold / evicted / re-keyed entry would read
+        // EMPTY here, and `buildResolvedRecord` would then null every score the
+        // `*Ratings` refreshers own + drop the cinema slots — the re-resolve
+        // clobber that left already-fetched ratings blank (UK far more than PL,
+        // its cache colder). With the real stored record, `buildResolvedRecord`'s
+        // own same-tmdbId gate still discards a corrected film's stale ids.
+        val enr      = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, cache.stored(writeKey).getOrElse(MovieRecord()))
         // Settle this film at conclusion: write the resolved record AND fold any
         // yearless+idless sibling a concurrent scrape stranded (the "Dzień
         // objawienia" Multikino row) onto it in ONE merged write — so the row's

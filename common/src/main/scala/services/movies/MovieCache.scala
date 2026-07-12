@@ -113,6 +113,11 @@ trait MovieCache extends MovieCacheReader {
    *  `canonicalizeBySanitize` (order-independent); this stays on the resolved
    *  row's own key for the same reason. Returns that key. */
   private[services] def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey
+  /** Like [[get]], but falls back to a direct `movies` read when the cache doesn't
+   *  hold `key`. The TMDB resolve's carry-forward reads this rather than the
+   *  Caffeine-only `get`, so a cold / evicted / re-keyed entry can't make the
+   *  rebuild read EMPTY and null a persisted rating (or cinema slot). */
+  private[services] def stored(key: CacheKey): Option[MovieRecord]
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
@@ -493,6 +498,16 @@ class CaffeineMovieCache(
   // share the key, so the merge decision reduces to the input-field deltas.
   private[services] def retriggerAfterEnrichment(key: CacheKey, before: MovieRecord, after: MovieRecord): Unit =
     retriggerChangedEnrichments(before, key, after, key)
+
+  /** The film's currently-stored record for `key`: the live cache entry when
+   *  resident, else a direct `movies` read. The TMDB resolve's carry-forward
+   *  (`MovieService.runTmdbStageSync`) reads this rather than the Caffeine-only
+   *  `get`, so a cold / evicted / re-keyed entry doesn't make the rebuild read
+   *  EMPTY and null the scores the `*Ratings` refreshers own (and the cinema
+   *  slots) — the "ratings keep disappearing" clobber. On a warm cache it's just
+   *  `get`; the `movies` read only happens on a miss. */
+  private[services] def stored(key: CacheKey): Option[MovieRecord] =
+    get(key).orElse(repository.findById(StoredMovieRecord.idFor(key.cleanTitle, key.year)).map(_.record))
 
   def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey =
     withTitleLock(oldKey.cleanTitle) {
