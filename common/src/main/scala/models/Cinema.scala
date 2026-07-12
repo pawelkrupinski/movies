@@ -853,6 +853,81 @@ object Cinema {
 
   // ── United Kingdom (Flicks) ──
   val london: Seq[Cinema] = Seq(ActOneActon, ArchlightCinemas, ArthouseCrouchEnd, BarbicanLondonCinema1, BfiLondonImax, BfiLondonSouthbank, CastleCinemaHackney, ChiswickCinema, CineLumiereLondon, CineworldBexleyheath, CineworldEnfield, CineworldFeltham, CineworldGreenwich, CineworldIlford, CineworldLeicesterSquare, CineworldLondonHounslow, CineworldSouthRuislip, CineworldWandsworth, CineworldWembley, CineworldWestIndiaQuay, CineworldWoodGreen, CloseUpFilmCentreShoreditch, CrouchEndPicturehouse, CurzonCinemaAldgate, CurzonCinemaBloomsbury, CurzonCinemaCamden, CurzonCinemaHoxton, CurzonCinemaKingston, CurzonCinemaMayfair, CurzonCinemaRichmond, CurzonCinemaSeaContainersMondrian, CurzonCinemaVictoria, CurzonSoho, CurzonWimbledon, DavidLeanCinemaCroydon, ElectricCinemaLondon, ElectricCinemaWhiteCity, EmpireCinemaSutton, EverymanAtTheWhiteleyLondon, EverymanBrentford, EverymanCinemaBakerStreet, EverymanCinemaBarnet, EverymanCinemaBelsizeParkHampstead, EverymanCinemaBoroughYards, EverymanCinemaBroadgate, EverymanCinemaCanaryWharf, EverymanCinemaChelsea, EverymanCinemaCrystalPalace, EverymanCinemaEgham, EverymanCinemaEsher, EverymanCinemaHampstead, EverymanCinemaIslington, EverymanCinemaKingSCross, EverymanCinemaMaidaVale, EverymanCinemaMuswellHill, EverymanCinemaStratfordInternational, EverymanCinemaWaltonOnThames, FinsburyParkPicturehouse, ForestCinemasWalthamstow, GenesisTowerHamlets, Jw3Hampstead, KilnKilburn, LeatherheadTheatreCinemaLeatherhead, LexiKensalRise, LumiereRomford, OdeonCinemaActon, OdeonCinemaBeckenham, OdeonCinemaEpsom, OdeonCinemaGreenwich, OdeonCinemaHolloway, OdeonCinemaKingston, OdeonCinemaLuxeHaymarket, OdeonCinemaLuxeLeicesterSquare, OdeonCinemaLuxePutney, OdeonCinemaOrpington, OdeonCinemaRichmond, OdeonCinemaSouthWoodford, OdeonCinemaStreatham, OdeonCinemaTottenhamCourtRoad, OdeonCinemaUxbridge, OdeonCinemaWimbledon, OdeonLuxeIslington, OdeonLuxeLeeValley, OdeonLuxeSwissCottage, OdeonLuxeWestEnd, OlympicCinemaBarnes, Peckhamplex, PicturehouseCentralLondon, PicturehouseClapham, PicturehouseEalingFilmworks, PicturehouseEastDulwich, PicturehouseEpsomSquare, PicturehouseGreenwich, PicturehouseHackney, PicturehouseWestNorwood, PrinceCharlesLondon, RegentStreetCinemaLondon, RichMixBethnalGreen, RioDalston, RiversideStudiosHammersmith, RooftopFilmClubPeckhamBusseyBuilding, RooftopFilmClubStratfordRoofEast, ScienceMuseumLondonImax, SidcupStoryteller, TheArzner, TheCinemaAtSelfridges, TheCinemaInThePowerStation, TheGardenCinema, TheGatePicturehouseLondon, TheLightCinemasAddlestone, TheNickelLondon, TheRitzyPicturehouseBrixton, VueCinemasBromley, VueCinemasDagenham, VueCinemasEltham, VueCinemasFinchley, VueCinemasFinchleyRoadSwissCottage, VueCinemasFulham, VueCinemasHarrow, VueCinemasIslington, VueCinemasPiccadillyCircus, VueCinemasPurleyWayCroydon, VueCinemasRomford, VueCinemasStainesUponThames, VueCinemasStratford, VueCinemasWestEnd, VueCinemasWestfieldShepherdSBush, VueCinemasWoodGreen, WyllyottsTheatrePottersBar)
+  /** Compass area for each London venue — the data behind `londonAreas` and
+   *  thus `London.areas`. Greater London split N/E/S/W of the centre, with
+   *  Central for the zone-1 core (West End, City, South Bank cultural strip).
+   *  Outer-London / home-county towns are bucketed by their nearest compass
+   *  side. Every member of `london` must appear here exactly once — the union is
+   *  asserted to equal `london` in `CinemaAreaSpec`, so a missing entry fails the
+   *  build rather than silently dropping a cinema from the filter. Order within
+   *  an area follows `london` (see `londonAreas`). */
+  private val londonAreaOf: Map[Cinema, CinemaArea] = {
+    import CinemaArea.*
+    Map(
+      // ── Central (zone-1 core: West End, City, South Bank) ──
+      BarbicanLondonCinema1 -> Central, BfiLondonImax -> Central, BfiLondonSouthbank -> Central,
+      CineworldLeicesterSquare -> Central, CurzonCinemaAldgate -> Central, CurzonCinemaBloomsbury -> Central,
+      CurzonCinemaMayfair -> Central, CurzonCinemaSeaContainersMondrian -> Central, CurzonCinemaVictoria -> Central,
+      CurzonSoho -> Central, EverymanCinemaBakerStreet -> Central, EverymanCinemaKingSCross -> Central,
+      OdeonCinemaLuxeHaymarket -> Central, OdeonCinemaLuxeLeicesterSquare -> Central,
+      OdeonCinemaTottenhamCourtRoad -> Central, OdeonLuxeWestEnd -> Central, PicturehouseCentralLondon -> Central,
+      PrinceCharlesLondon -> Central, RegentStreetCinemaLondon -> Central, TheCinemaAtSelfridges -> Central,
+      TheGardenCinema -> Central, TheNickelLondon -> Central, VueCinemasPiccadillyCircus -> Central,
+      VueCinemasWestEnd -> Central,
+      // ── North ──
+      ArthouseCrouchEnd -> North, CineworldEnfield -> North, CineworldWoodGreen -> North,
+      CrouchEndPicturehouse -> North, CurzonCinemaCamden -> North, EverymanCinemaBarnet -> North,
+      EverymanCinemaBelsizeParkHampstead -> North, EverymanCinemaHampstead -> North,
+      EverymanCinemaIslington -> North, EverymanCinemaMaidaVale -> North, EverymanCinemaMuswellHill -> North,
+      FinsburyParkPicturehouse -> North, Jw3Hampstead -> North, KilnKilburn -> North, LexiKensalRise -> North,
+      OdeonCinemaHolloway -> North, OdeonLuxeIslington -> North, OdeonLuxeLeeValley -> North,
+      OdeonLuxeSwissCottage -> North, TheArzner -> North, VueCinemasFinchley -> North,
+      VueCinemasFinchleyRoadSwissCottage -> North, VueCinemasIslington -> North, VueCinemasWoodGreen -> North,
+      WyllyottsTheatrePottersBar -> North,
+      // ── East ──
+      CastleCinemaHackney -> East, CineworldIlford -> East, CineworldWestIndiaQuay -> East,
+      CloseUpFilmCentreShoreditch -> East, CurzonCinemaHoxton -> East, EverymanCinemaBroadgate -> East,
+      EverymanCinemaCanaryWharf -> East, EverymanCinemaStratfordInternational -> East,
+      ForestCinemasWalthamstow -> East, GenesisTowerHamlets -> East, LumiereRomford -> East,
+      OdeonCinemaSouthWoodford -> East, PicturehouseHackney -> East, RichMixBethnalGreen -> East,
+      RioDalston -> East, RooftopFilmClubStratfordRoofEast -> East, VueCinemasDagenham -> East,
+      VueCinemasRomford -> East, VueCinemasStratford -> East,
+      // ── South (south of the Thames) ──
+      ArchlightCinemas -> South, CineworldBexleyheath -> South, CineworldGreenwich -> South,
+      CineworldWandsworth -> South, CurzonCinemaKingston -> South, CurzonCinemaRichmond -> South,
+      CurzonWimbledon -> South, DavidLeanCinemaCroydon -> South, EmpireCinemaSutton -> South,
+      EverymanCinemaBoroughYards -> South, EverymanCinemaCrystalPalace -> South, OdeonCinemaBeckenham -> South,
+      OdeonCinemaEpsom -> South, OdeonCinemaGreenwich -> South, OdeonCinemaKingston -> South,
+      OdeonCinemaLuxePutney -> South, OdeonCinemaOrpington -> South, OdeonCinemaRichmond -> South,
+      OdeonCinemaStreatham -> South, OdeonCinemaWimbledon -> South, OlympicCinemaBarnes -> South,
+      Peckhamplex -> South, PicturehouseClapham -> South, PicturehouseEastDulwich -> South,
+      PicturehouseEpsomSquare -> South, PicturehouseGreenwich -> South, PicturehouseWestNorwood -> South,
+      RooftopFilmClubPeckhamBusseyBuilding -> South, SidcupStoryteller -> South,
+      TheCinemaInThePowerStation -> South, TheRitzyPicturehouseBrixton -> South, VueCinemasBromley -> South,
+      VueCinemasEltham -> South, VueCinemasPurleyWayCroydon -> South,
+      // ── West ──
+      ActOneActon -> West, ChiswickCinema -> West, CineLumiereLondon -> West, CineworldFeltham -> West,
+      CineworldLondonHounslow -> West, CineworldSouthRuislip -> West, CineworldWembley -> West,
+      ElectricCinemaLondon -> West, ElectricCinemaWhiteCity -> West, EverymanAtTheWhiteleyLondon -> West,
+      EverymanBrentford -> West, EverymanCinemaChelsea -> West, EverymanCinemaEgham -> West,
+      EverymanCinemaEsher -> West, EverymanCinemaWaltonOnThames -> West,
+      LeatherheadTheatreCinemaLeatherhead -> West, OdeonCinemaActon -> West, OdeonCinemaUxbridge -> West,
+      PicturehouseEalingFilmworks -> West, RiversideStudiosHammersmith -> West, ScienceMuseumLondonImax -> West,
+      TheGatePicturehouseLondon -> West, TheLightCinemasAddlestone -> West, VueCinemasFulham -> West,
+      VueCinemasHarrow -> West, VueCinemasStainesUponThames -> West, VueCinemasWestfieldShepherdSBush -> West,
+    )
+  }
+
+  /** London's venues grouped into the five compass [[CinemaArea]]s, in enum
+   *  (Central→North→East→South→West) order. Built by filtering `london` so each
+   *  group keeps `london`'s order and the union is `london` by construction; the
+   *  assignment lives in `londonAreaOf`. Empty groups are dropped so the enum can
+   *  grow with other cities' areas without adding blank London sections. */
+  val londonAreas: Seq[CinemaAreaGroup] =
+    CinemaArea.values.toSeq
+      .map(area => CinemaAreaGroup(area, london.filter(londonAreaOf.get(_).contains(area))))
+      .filter(_.cinemas.nonEmpty)
+
   val manchester: Seq[Cinema] = Seq(CineworldAshtonUnderLyne, CineworldManchester, CultplexManchester, EverymanManchesterStJohns, FlixTreehouseManchester, HomeManchester, NorthernLightSale, OdeonCinemaManchesterGreatNorthern, OdeonCinemaManchesterTraffordCentre, OdeonCinemaOldham, EmpireCinemaWigan, PlazaStockport, ReelCinemaRochdale, RegentMarple, SavoyHeatonMoor, TheLightCinemasStockport, VueCinemasManchesterPrintworks, VueCinemasManchesterQuayside)
   val norwich: Seq[Cinema] = Seq(OdeonNorwich, CinemaCityPicturehouseNorwich, VueCinemasNorwich)
 

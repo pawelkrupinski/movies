@@ -63,6 +63,14 @@ sealed abstract class City(
   val zoneId: ZoneId,
 ) {
   def cinemas: Seq[Cinema]
+  /** This city's cinema sub-regions, or empty when the city is **flat** (the
+   *  default — most cities). When non-empty the areas PARTITION `cinemas`: their
+   *  union is exactly `cinemas`, with no overlap and nothing left out (enforced
+   *  by `CinemaAreaSpec`). A city opts into splitting by overriding this; clients
+   *  then render one collapsible, individually-(de)selectable group per area. */
+  def areas: Seq[CinemaAreaGroup] = Nil
+  /** Whether this city is split into [[areas]] (vs. a flat cinema list). */
+  def isSplit: Boolean = areas.nonEmpty
   /** "Repertuar kin …" locative phrase, in this city's country language.
    *  Polish declines ("w Poznaniu", "we Wrocławiu"); English (and any other
    *  non-declining language) reads "in London". Delegated to [[CityGrammar]] so
@@ -503,6 +511,9 @@ case object Konin extends City(
 case object London extends City("london",
   CityLabels("London", "London", "London"), 51.5074, -0.1278, ZoneId.of("Europe/London")) {
   val cinemas: Seq[Cinema] = Cinema.london
+  // London is the first split city: ~130 venues across Greater London, grouped
+  // by compass area so the filter is navigable. See `Cinema.londonAreas`.
+  override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
 }
 case object Manchester extends City("manchester",
   CityLabels("Manchester", "Manchester", "Manchester"), 53.4808, -2.2426, ZoneId.of("Europe/London")) {

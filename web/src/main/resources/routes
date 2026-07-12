@@ -25,6 +25,9 @@ GET     /:city/api/repertoire       controllers.MovieController.apiRepertoire(ci
 # listing and merged client-side by title. Kept off the listing so the latency-
 # sensitive /:city/api/repertoire stays lean.
 GET     /:city/api/details          controllers.MovieController.apiDetails(city: String)
+# The city's cinema universe + area grouping (static). Mobile reads this to
+# render the collapsible, per-area cinema filter (empty `areas` for a flat city).
+GET     /:city/api/cinemas          controllers.MovieController.apiCinemas(city: String)
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 # Top-level, not city-scoped: the debug table is the *global* corpus (every
