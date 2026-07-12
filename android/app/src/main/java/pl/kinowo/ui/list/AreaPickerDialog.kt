@@ -20,9 +20,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pl.kinowo.R
 import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -46,14 +48,14 @@ internal fun AreaPickerDialog(
         // Back / outside tap accepts the current (default-all) selection so the
         // dialog doesn't get stuck; the choice is then remembered.
         onDismissRequest = { onConfirm(kept) },
-        title = { Text("Choose your areas") },
+        title = { Text(stringResource(R.string.areapicker_title)) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    "Show cinemas only in the areas you pick. You can change this anytime.",
+                    stringResource(R.string.areapicker_subtitle),
                     color = TextSecondary, fontSize = 13.sp,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
@@ -74,7 +76,7 @@ internal fun AreaPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(kept) }, modifier = Modifier.testTag("areapicker.confirm")) {
-                Text("Show listings")
+                Text(stringResource(R.string.areapicker_confirm))
             }
         },
     )

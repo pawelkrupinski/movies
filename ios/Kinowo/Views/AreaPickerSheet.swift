@@ -33,16 +33,16 @@ struct AreaPickerSheet: View {
                         .accessibilityIdentifier("areapicker.area.\(area.slug)")
                     }
                 } header: {
-                    Text("Choose your areas")
+                    Text("areapicker.title")
                 } footer: {
-                    Text("Show cinemas only in the areas you pick. You can change this anytime.")
+                    Text("areapicker.subtitle")
                 }
             }
-            .navigationTitle("London")
+            .navigationTitle(Text("areapicker.title"))
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
                 Button(action: confirm) {
-                    Text("Show listings").frame(maxWidth: .infinity)
+                    Text("areapicker.confirm").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .padding()

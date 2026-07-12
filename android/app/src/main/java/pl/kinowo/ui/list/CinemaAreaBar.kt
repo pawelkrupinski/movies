@@ -29,10 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pl.kinowo.R
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.ui.theme.TextSecondary
@@ -63,8 +65,8 @@ internal fun CinemaAreaBar(
 
     val enabledCount = catalog.cinemas.count { it !in disabled }
     val handleLabel =
-        if (enabledCount == catalog.cinemas.size) "All cinemas"
-        else "$enabledCount of ${catalog.cinemas.size} cinemas"
+        if (enabledCount == catalog.cinemas.size) stringResource(R.string.areabar_all_cinemas)
+        else stringResource(R.string.areabar_count, enabledCount, catalog.cinemas.size)
 
     fun state(of: List<String>): ToggleableState {
         val off = of.count { it in disabled }
@@ -97,7 +99,7 @@ internal fun CinemaAreaBar(
             )
             Icon(
                 Icons.Filled.ExpandMore,
-                contentDescription = if (expanded) "Collapse cinemas" else "Expand cinemas",
+                contentDescription = stringResource(if (expanded) R.string.areabar_collapse else R.string.areabar_expand),
                 tint = TextSecondary,
                 modifier = Modifier.size(20.dp).rotate(chevronRotation),
             )
@@ -119,7 +121,7 @@ internal fun CinemaAreaBar(
                         onClick = { onSetAll(catalog.cinemas, allState != ToggleableState.On) },
                         modifier = Modifier.testTag("areabar.all"),
                     )
-                    Text("All cinemas", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.areabar_all_cinemas), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 catalog.areas.forEach { area ->
