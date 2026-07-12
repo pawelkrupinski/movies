@@ -1,7 +1,7 @@
 package services.enrichment
 
 import org.jsoup.Jsoup
-import services.enrichment.scraping.JsonLdAggregateRating
+import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
 import tools.{HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -28,11 +28,12 @@ import scala.util.Try
  *      best `/m/{slug}` link by exact-title match (year as tie-breaker).
  *      Same conservative bar as MC — partial matches lose to None.
  *
- * `scoreFor(url)` GETimestamp the canonical movie page and parses the schema.org
- * `aggregateRating.ratingValue` out of the embedded
- * `<script type="application/ld+json">` block. That JSON is RT's published
- * structured-data signal for the Tomatometer percentage and is more stable
- * than scraping the visual scoreboard markup.
+ * `scoreFor(url)` GETs the canonical movie page and parses the Tomatometer
+ * percentage out of the embedded `media-scorecard-json` data island
+ * (`criticsScore.score`), falling back to the schema.org
+ * `aggregateRating.ratingValue` in the `<script type="application/ld+json">`
+ * block for pages that still publish it — RT removed the JSON-LD rating from
+ * most pages, leaving the scorecard island as the reliable signal.
  */
 class RottenTomatoesClient(http: HttpFetch) {
   import RottenTomatoesClient._
@@ -164,12 +165,18 @@ class RottenTomatoesClient(http: HttpFetch) {
     else Try(http.get(url)).toOption.flatMap(parseScore)
   }
 
-  /** Extract the Tomatometer percentage from RT's `<script type="application/
-   *  ld+json">` block. The block is a `Movie` schema.org object with an
-   *  `aggregateRating.ratingValue` string ("94" for The Dark Knight). Out-of-
-   *  range or non-numeric values return None so we never persist garbage. */
+  /** Extract the Tomatometer percentage off an RT movie page.
+   *
+   *  RT dropped `aggregateRating.ratingValue` from the JSON-LD on most pages,
+   *  so the primary signal is now the `media-scorecard-json` data island's
+   *  `criticsScore.score` ("94" for The Dark Knight); the schema.org
+   *  `aggregateRating.ratingValue` is the fallback for pages that still carry
+   *  it. Out-of-range or non-numeric values return None so we never persist
+   *  garbage. */
   def parseScore(html: String): Option[Int] =
-    JsonLdAggregateRating.parseInt(html).filter(score => score >= 0 && score <= 100)
+    RottenTomatoesScorecard.criticsScore(html)
+      .orElse(JsonLdAggregateRating.parseInt(html))
+      .filter(score => score >= 0 && score <= 100)
 }
 
 object RottenTomatoesClient {

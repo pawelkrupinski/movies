@@ -1,7 +1,7 @@
 package services.enrichment.scraping
 
 import org.jsoup.Jsoup
-import play.api.libs.json.{JsNumber, JsString, JsValue, Json}
+import play.api.libs.json.{JsValue, Json}
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -30,15 +30,9 @@ object JsonLdAggregateRating {
       .map(_.data())
       .flatMap { raw =>
         Try(Json.parse(raw)).toOption.toSeq.flatMap { js =>
-          (js \ "aggregateRating" \ "ratingValue").asOpt[JsValue].flatMap(parseAsInt)
+          (js \ "aggregateRating" \ "ratingValue").asOpt[JsValue].flatMap(JsonScalars.intValue)
         }
       }
       .toSeq.headOption
-  }
-
-  private def parseAsInt(v: JsValue): Option[Int] = v match {
-    case JsString(s) => Try(s.toInt).toOption
-    case JsNumber(n) => Try(n.toInt).toOption
-    case _           => None
   }
 }

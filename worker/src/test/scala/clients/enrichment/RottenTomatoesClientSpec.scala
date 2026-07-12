@@ -118,6 +118,11 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   private val SearchTopGunFixture        = "/fixtures/rottentomatoes/search_top_gun.html"
   private val MovieTheDarkKnightFixture = "/fixtures/rottentomatoes/movie_the_dark_knight.html"
+  // Real `media-scorecard-json` block trimmed off RT's current The Dark Knight
+  // page (https://www.rottentomatoes.com/m/the_dark_knight). Carries the new
+  // `criticsScore.score` ("94") and — like most current RT pages — has NO
+  // JSON-LD `aggregateRating`, so it exercises the scorecard path in isolation.
+  private val MovieScorecardFixture     = "/fixtures/rottentomatoes/movie_scorecard_criticsscore.html"
 
   "parseSearchResults" should "extract (slug, title, year) for every search-page-media-row in RT's HTML" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
@@ -220,9 +225,27 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // a real RT movie page trimmed to the JSON-LD <script type="application/ld+json">
   // block carrying the schema.org `aggregateRating.ratingValue` we parse.
 
-  "parseScore" should "extract the Tomatometer percentage from the JSON-LD aggregateRating block" in {
+  // Regression: RT removed `aggregateRating.ratingValue` from the JSON-LD on
+  // most movie pages (~120 films left with a null Tomatometer). The percentage
+  // now lives in the `media-scorecard-json` data island's `criticsScore.score`.
+  // Before the scorecard parser this returned None (no JSON-LD); now it's 94.
+  "parseScore" should "extract the Tomatometer percentage from the media-scorecard-json criticsScore (no JSON-LD)" in {
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    c.parseScore(loadFixture(MovieScorecardFixture)) shouldBe Some(94)
+  }
+
+  it should "extract the Tomatometer percentage from the JSON-LD aggregateRating block (fallback for pages that still carry it)" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
     c.parseScore(loadFixture(MovieTheDarkKnightFixture)) shouldBe Some(94)
+  }
+
+  // The zeroed-scorecard shape RT serves for films with no rated critics:
+  // `criticsScore` is present but has no `score` field. Must not persist 0.
+  it should "return None when the scorecard criticsScore has no score and there is no JSON-LD" in {
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val noScore =
+      """<script id="media-scorecard-json" type="application/json">{"criticsScore":{"likedCount":0,"ratingCount":0,"title":"Tomatometer"}}</script>"""
+    c.parseScore(noScore) shouldBe None
   }
 
   it should "return None when the page has no aggregateRating ld+json" in {
