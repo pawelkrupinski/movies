@@ -136,6 +136,43 @@
   window.lockSearchZoom   = lockSearchZoom;
   window.unlockSearchZoom = unlockSearchZoom;
 
+  // On mobile portrait the search field is a floating pill pinned to the bottom
+  // of the viewport (`position: fixed; bottom: …` in `_sharedStyles`). iOS
+  // Safari's on-screen keyboard shrinks only the *visual* viewport, not the
+  // *layout* viewport the pill is pinned to — so without help the pill, and the
+  // text being typed into it, hides BEHIND the keyboard as results filter and
+  // the page settles. `window.visualViewport` reports the keyboard's height as
+  // the gap between the layout-viewport bottom (`innerHeight`) and the visible
+  // region (`height + offsetTop`); we feed that into the `--keyboard-inset`
+  // custom property the pill's `bottom` adds, lifting it above the keyboard.
+  //
+  // Gated on the search field being focused: an unrelated pinch-zoom also
+  // shrinks the visual viewport, and we don't want that to nudge the pill.
+  // Reset to 0 on blur / keyboard close so the pill drops back down.
+  function searchKeyboardInset() {
+    const viewport = window.visualViewport;
+    const search = document.getElementById('search-input');
+    if (!viewport || !search || document.activeElement !== search) return 0;
+    return Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+  }
+  function applySearchKeyboardInset() {
+    document.documentElement.style.setProperty('--keyboard-inset', searchKeyboardInset() + 'px');
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', applySearchKeyboardInset);
+    window.visualViewport.addEventListener('scroll', applySearchKeyboardInset);
+  }
+  // Re-evaluate on the field's own focus/blur too: `resize` alone can lag the
+  // first focus, and on blur it snaps the inset back to 0 immediately rather
+  // than waiting for the keyboard's close animation to fire its own resize.
+  // Delegated (focusin/focusout bubble) so it works regardless of when the
+  // #search-input element mounts relative to this script.
+  document.addEventListener('focusin',  applySearchKeyboardInset);
+  document.addEventListener('focusout', applySearchKeyboardInset);
+  // Exposed so the page-behaviour spec can drive it directly with a stubbed
+  // visual viewport (headless Chrome has no on-screen keyboard to shrink one).
+  window.applySearchKeyboardInset = applySearchKeyboardInset;
+
   // On mobile portrait the search field lives in a floating pill pinned to the
   // bottom of the viewport, so when its keyboard is up the rest of the screen —
   // film cards, poster/title links — sits right behind it. A tap "away" to

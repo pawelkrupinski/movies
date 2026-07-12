@@ -36,4 +36,46 @@ test.describe('floating search pill bottom offset on mobile portrait', () => {
     expect(gap).toBeGreaterThan(6.5);
     expect(gap).toBeLessThan(9.5);
   });
+
+  // iOS Safari's on-screen keyboard shrinks only the VISUAL viewport, not the
+  // LAYOUT viewport the fixed pill is pinned to — so without help the pill (and
+  // the text being typed) hides behind the keyboard once results filter. The
+  // fix feeds the keyboard height (off `window.visualViewport`) into the
+  // `--keyboard-inset` custom property the pill's `bottom` adds. No headless
+  // engine spawns a real keyboard, so we stub a shrunk `visualViewport` and
+  // exercise the DOM mechanism; WebKit is the closest engine to real Safari.
+  test('lifts by the visual-viewport inset when the keyboard shrinks it', async ({ page }) => {
+    const pill = page.locator('.navbar-search');
+    const gapNow = async () => {
+      const box = (await pill.boundingBox())!;
+      return page.evaluate(([bottom]) => window.innerHeight - bottom, [box.y + box.height]);
+    };
+
+    const base = await gapNow();
+
+    await page.evaluate(() => {
+      Object.defineProperty(window, 'visualViewport', {
+        configurable: true,
+        value: {
+          height: window.innerHeight - 300,
+          offsetTop: 0,
+          addEventListener() {},
+          removeEventListener() {},
+        },
+      });
+      (document.getElementById('search-input') as HTMLInputElement).focus();
+      (window as unknown as { applySearchKeyboardInset(): void }).applySearchKeyboardInset();
+    });
+
+    expect(
+      await page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--keyboard-inset').trim(),
+      ),
+    ).toBe('300px');
+
+    // Pill rides ~300px higher than at rest (bottom offset grew by the inset).
+    const lifted = await gapNow();
+    expect(lifted - base).toBeGreaterThan(297);
+    expect(lifted - base).toBeLessThan(303);
+  });
 });

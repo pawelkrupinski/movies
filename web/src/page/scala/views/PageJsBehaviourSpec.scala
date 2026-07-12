@@ -586,6 +586,66 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  /**
+   * On mobile portrait the search field is a floating pill pinned to the
+   * viewport bottom (`position: fixed; bottom: …`). iOS Safari's on-screen
+   * keyboard shrinks only the VISUAL viewport, not the LAYOUT viewport the pill
+   * is pinned to — so without help the pill (and the text you're typing) hides
+   * BEHIND the keyboard once results filter and the page settles. The fix feeds
+   * the keyboard's height (measured off `window.visualViewport`) into the
+   * `--keyboard-inset` custom property that the pill's `bottom` adds, lifting it
+   * above the keyboard.
+   *
+   * Headless Chrome has no on-screen keyboard, so — as with the focus-zoom test
+   * above — we exercise the DOM MECHANISM, not the real keyboard: stub a shrunk
+   * `visualViewport`, drive the tracker, and assert the pill's resolved `bottom`
+   * grows by exactly the stubbed inset. Fails before the fix (the `bottom` calc
+   * ignores `--keyboard-inset`, so the pill never moves).
+   */
+  it should "lift the floating search pill above the on-screen keyboard by the visual-viewport inset" in {
+    onPath("/") { page =>
+      // 500 × 896 portrait → the ≤575px floating-pill CSS is active.
+      page.send("Emulation.setDeviceMetricsOverride", play.api.libs.json.Json.obj(
+        "width" -> 500, "height" -> 896, "deviceScaleFactor" -> 1.0, "mobile" -> false
+      ))
+
+      def pillBottomPx: Double =
+        page.evalString(
+          "String(parseFloat(getComputedStyle(document.querySelector('.navbar-search')).bottom))"
+        ).toDouble
+
+      val base = pillBottomPx   // keyboard closed → inset 0 → just the 8px offset
+
+      // Simulate the keyboard stealing 300px off the bottom of the visual
+      // viewport, focus the field, and run the tracker.
+      page.eval(
+        "Object.defineProperty(window, 'visualViewport', { configurable: true, value: {" +
+        "  height: window.innerHeight - 300, offsetTop: 0," +
+        "  addEventListener() {}, removeEventListener() {} } });" +
+        "document.getElementById('search-input').focus();" +
+        "applySearchKeyboardInset();"
+      )
+
+      val insetVar = page.evalString(
+        "getComputedStyle(document.documentElement).getPropertyValue('--keyboard-inset').trim()"
+      )
+      val lifted = pillBottomPx
+
+      withClue(s"--keyboard-inset=[$insetVar] base=$base lifted=$lifted ") {
+        insetVar shouldBe "300px"
+        (lifted - base) shouldBe 300.0 +- 1.0
+      }
+
+      // Restore the real visual viewport, clear the inset, blur, reset metrics.
+      page.eval(
+        "delete window.visualViewport;" +
+        "document.documentElement.style.removeProperty('--keyboard-inset');" +
+        "document.getElementById('search-input').blur();"
+      )
+      page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
+    }
+  }
+
   /** Switch the date filter to "Kiedykolwiek" (anytime) and re-run
    *  `applyFilters()` so the visible-card set no longer depends on the
    *  browser's wall-clock relative to the fixture's recorded dates. */
