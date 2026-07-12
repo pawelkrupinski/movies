@@ -3,8 +3,6 @@ package services.enrichment
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
 
-import java.util.concurrent.ConcurrentHashMap
-
 /**
  * Common skeleton for the four `*Ratings` services (`ImdbRatings`,
  * `FilmwebRatings`, `MetascoreRatings`, `RottenTomatoesRatings`). Each one
@@ -33,47 +31,8 @@ abstract class CacheRefresher(
   // row's `CacheKey` + tmdbId. Without it an operator's corpus refresh would move
   // a rating without telling the cadence, leaving a gap a later per-row refresh
   // mis-reads as a fresh change. No-op by default (scripts/tests).
-  recordBulkChange: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => (),
-  // Effective confirmation deadband for a film's rating RIGHT NOW: how many
-  // consecutive refreshes a NEW displayed value must be reported by before it's
-  // committed to the row — the mechanism that absorbs the A→B→A rounding-boundary
-  // flap (see [[RatingDeadband]]). Returns 1 ([[RatingDeadband.Off]]) to commit on
-  // first sight. The worker wiring returns 2 ONLY while the film is on the base
-  // (~2h) cadence — where the flap concentrates — and 1 once it has backed off, so
-  // a genuine change on a slow-cadence film isn't held for days. Default off
-  // (scripts/tests).
-  deadbandConfirmationsFor: (CacheKey, Option[Int]) => Int = (_, _) => RatingDeadband.Off
+  recordBulkChange: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends Logging {
-
-  // Per-film pending rating candidate awaiting confirmation. In-memory: a lost
-  // entry (worker restart, or a key whose refreshes hop machines) just means the
-  // next new value re-starts its confirmation count — never a wrong or extra
-  // write, only a possibly-missed suppression. Scoped to this refresher, so
-  // `sourceName` needn't be part of the key.
-  private val pendingRatings = new ConcurrentHashMap[String, RatingDeadband.Pending]()
-
-  private def deadbandKey(key: CacheKey): String = s"${key.cleanTitle}|${key.year.getOrElse("")}"
-
-  /** Deadband gate for a freshly-fetched DISPLAYED rating. Returns true iff the
-   *  fresh value should be written to the row now; false when it's unchanged or
-   *  held pending confirmation. Updates the per-film pending state as a side
-   *  effect, so call it for EVERY fetched value (an unchanged one clears any
-   *  outstanding candidate). `stored`/`fresh` are badge strings, so the
-   *  comparison is exactly what the user sees; `tmdbId` locates the film's
-   *  cadence so the deadband can engage only at the base interval. */
-  protected def ratingSettled(key: CacheKey, tmdbId: Option[Int], stored: Option[String], fresh: Option[String]): Boolean = {
-    val k        = deadbandKey(key)
-    val confirmations = deadbandConfirmationsFor(key, tmdbId)
-    val decision = RatingDeadband.decide(stored, fresh, Option(pendingRatings.get(k)), confirmations)
-    decision.pending match {
-      case Some(p) =>
-        pendingRatings.put(k, p)
-        logger.info(s"$sourceName: '${key.cleanTitle}' (${key.year.getOrElse("?")}) rating ${p.value} " +
-                    s"held pending confirmation (${p.seen}/$confirmations)")
-      case None => pendingRatings.remove(k)
-    }
-    decision.commit
-  }
 
   /** Record a displayed-value change the full-corpus walk just made, so the
    *  adaptive cadence's change history stays complete across an operator bulk

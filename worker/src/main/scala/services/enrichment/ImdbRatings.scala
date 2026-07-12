@@ -24,13 +24,12 @@ class ImdbRatings(
   cache: MovieCache,
   imdb:  ImdbClient,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => (),
-  deadbandConfirmationsFor: (CacheKey, Option[Int]) => Int = (_, _) => RatingDeadband.Off,
   // The deployment's language, used to canonicalise IMDb's always-English
   // country names into the deployment's own (Polish "Wielka Brytania" on
   // `kinowo`, English "United Kingdom" on the UK site). Defaults to Polish so
   // every existing single-country construction is unchanged.
   enrichmentLanguage: Locale = CountryNames.DefaultLanguage
-) extends CacheRefresher(cache, cadenceRecorder, deadbandConfirmationsFor) {
+) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "IMDb"
 
@@ -54,11 +53,9 @@ class ImdbRatings(
           // vote drift the user can't see isn't a "change" — see RatingDisplay.
           val freshRating  = Try(imdb.lookup(id)).toOption.flatten.map(RatingDisplay.oneDecimal)
           val freshDetails = Try(imdb.details(id)).toOption.flatten
-          // Gate the rating through the confirmation deadband (a single-fetch blip
-          // that reverts next tick is held); the details slot is content, not a
-          // flappy scalar, so it writes as soon as it changes.
-          val ratingUpdate = freshRating.filter(r =>
-            ratingSettled(key, e.tmdbId, e.imdbRating.map(RatingDisplay.label), Some(RatingDisplay.label(r))))
+          // Write the rating whenever the displayed badge value changed; the
+          // details slot writes as soon as its content changes.
+          val ratingUpdate = freshRating.filter(r => !e.imdbRating.contains(r))
           val slotUpdate   = freshDetails.flatMap(d => makeSlot(d).filter(s => !e.data.get(Imdb).contains(s)))
           logger.info(s"IMDb: $label $id → rating ${freshRating.getOrElse("none")}" +
             ratingUpdate.fold("")(_ => s" (changed from ${e.imdbRating.getOrElse("—")})") +

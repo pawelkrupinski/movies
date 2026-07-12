@@ -29,9 +29,8 @@ class MetascoreRatings(
   // Caches the MC url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
   mcLinkCache: ResolutionCache = ResolutionCache.passthrough,
-  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => (),
-  deadbandConfirmationsFor: (CacheKey, Option[Int]) => Int = (_, _) => RatingDeadband.Off
-) extends CacheRefresher(cache, cadenceRecorder, deadbandConfirmationsFor) {
+  cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
+) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "Metacritic"
 
@@ -128,11 +127,9 @@ class MetascoreRatings(
   // written and any other listener's concurrent updates.
   private def applyScore(key: CacheKey, e: models.MovieRecord, url: String, score: Int): Option[String] = {
     val label  = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    // A change that clears the deadband (a rounding-boundary blip that reverts
-    // next tick is held) — see ratingSettled.
-    val commit = ratingSettled(key, e.tmdbId, e.metascore.map(_.toString), Some(score.toString))
+    val commit = !e.metascore.contains(score)
     logger.info(s"Metacritic: $label $url → metascore $score" +
-      (if (commit) s" (was ${e.metascore.getOrElse("—")})" else " (unchanged or held)"))
+      (if (commit) s" (was ${e.metascore.getOrElse("—")})" else " (unchanged)"))
     if (commit) { cache.putIfPresent(key, _.copy(metascore = Some(score))); Some(score.toString) }
     else None
   }
