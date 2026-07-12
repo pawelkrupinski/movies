@@ -975,36 +975,135 @@
 
   // ── Cinema-filter panel ───────────────────────────────────────────────────
 
+  // The per-cinema checkbox row (`data-cinema` carries the display-name so
+  // `refreshCinemaCheckboxes` can re-derive its checked state in place). Shared
+  // by the flat list and the per-area groups below.
+  function buildCinemaRow(cinema) {
+    const label = document.createElement('label');
+    label.className = 'panel-label';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.cinema = cinema;
+    checkbox.checked = !getDisabledCinemas().includes(cinema);
+    checkbox.onchange = () => {
+      const disabled = getDisabledCinemas();
+      if (checkbox.checked) {
+        setDisabledCinemas(disabled.filter(c => c !== cinema));
+      } else {
+        if (!disabled.includes(cinema)) disabled.push(cinema);
+        setDisabledCinemas(disabled);
+      }
+      syncAreaCheckboxes();
+      syncAllCheckbox();
+      updateFormatBtn();   // cinema count is part of the Filtry label now
+      applyFilters();
+    };
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(' ' + (CINEMA_PILLS[cinema] || cinema)));
+    return label;
+  }
+
+  // A collapsible area group: a header row (area checkbox + name + chevron) over
+  // a `submenu-list` body of the area's cinema rows, collapsed by default. Reuses
+  // the country/genre submenu classes so the fold looks native. The area checkbox
+  // (de)selects the whole area; clicking anywhere else on the header folds it.
+  function buildAreaGroup(area) {
+    const group = document.createElement('div');
+    group.className = 'cinema-area-group';
+    group.dataset.areaSlug = area.slug;
+
+    const header = document.createElement('div');
+    header.className = 'panel-label submenu-row cinema-area-header';
+
+    const areaCb = document.createElement('input');
+    areaCb.type = 'checkbox';
+    areaCb.className = 'cinema-area-toggle';
+    areaCb.onclick = e => e.stopPropagation();          // toggle the area, don't fold
+    areaCb.onchange = () => toggleArea(area, areaCb.checked);
+
+    const name = document.createElement('span');
+    name.textContent = area.name;
+
+    const chevron = document.createElement('span');
+    chevron.className = 'submenu-chevron';
+    chevron.innerHTML = '&#8250;';
+    const right = document.createElement('span');
+    right.className = 'submenu-right';
+    right.appendChild(chevron);
+
+    header.appendChild(areaCb);
+    header.appendChild(name);
+    header.appendChild(right);
+
+    const body = document.createElement('div');
+    body.className = 'submenu-list cinema-area-cinemas';
+    body.style.display = 'none';                          // collapsed by default
+    area.cinemas.forEach(c => body.appendChild(buildCinemaRow(c)));
+
+    header.onclick = () => {
+      const opening = body.style.display === 'none';
+      body.style.display = opening ? '' : 'none';
+      chevron.classList.toggle('open', opening);
+    };
+
+    group.appendChild(header);
+    group.appendChild(body);
+    return group;
+  }
+
+  // Split cities (`window.CINEMA_AREAS` non-empty — e.g. London) render one
+  // collapsible group per area; flat cities render the plain cinema list.
   function buildCinemaPanel() {
     const list = document.getElementById('cinema-list');
     // Pages without the picker have no `#cinema-list` — bail instead of
     // throwing on the null `list`.
     if (!list) return;
-    const disabled = getDisabledCinemas();
     list.innerHTML = '';
-    ALL_CINEMAS.forEach(cinema => {
-      const label = document.createElement('label');
-      label.className = 'panel-label';
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = !disabled.includes(cinema);
-      checkbox.onchange = () => {
-        const disabled = getDisabledCinemas();
-        if (checkbox.checked) {
-          setDisabledCinemas(disabled.filter(c => c !== cinema));
-        } else {
-          if (!disabled.includes(cinema)) disabled.push(cinema);
-          setDisabledCinemas(disabled);
-        }
-        syncAllCheckbox();
-        updateFormatBtn();   // cinema count is part of the Filtry label now
-        applyFilters();
-      };
-      label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(' ' + (CINEMA_PILLS[cinema] || cinema)));
-      list.appendChild(label);
-    });
+    const areas = window.CINEMA_AREAS || [];
+    if (areas.length) {
+      areas.forEach(area => list.appendChild(buildAreaGroup(area)));
+    } else {
+      ALL_CINEMAS.forEach(cinema => list.appendChild(buildCinemaRow(cinema)));
+    }
+    syncAreaCheckboxes();
     syncAllCheckbox();
+  }
+
+  // Re-derive every rendered cinema checkbox's checked state from the current
+  // `disabledCinemas`, in place — so an area/master toggle updates the rows
+  // without rebuilding (which would collapse any expanded area folds).
+  function refreshCinemaCheckboxes() {
+    const disabled = getDisabledCinemas();
+    document.querySelectorAll('#cinema-list input[data-cinema]').forEach(cb => {
+      cb.checked = !disabled.includes(cb.dataset.cinema);
+    });
+  }
+
+  // Each area checkbox is checked when none of its cinemas are disabled,
+  // indeterminate when only some are — the area-level mirror of syncAllCheckbox.
+  function syncAreaCheckboxes() {
+    const disabled = getDisabledCinemas();
+    const areas = window.CINEMA_AREAS || [];
+    document.querySelectorAll('.cinema-area-group').forEach(group => {
+      const area = areas.find(a => a.slug === group.dataset.areaSlug);
+      const cb = group.querySelector('.cinema-area-toggle');
+      if (!area || !cb) return;
+      const disabledCount = area.cinemas.filter(c => disabled.includes(c)).length;
+      cb.checked = disabledCount === 0;
+      cb.indeterminate = disabledCount > 0 && disabledCount < area.cinemas.length;
+    });
+  }
+
+  // (De)select every cinema in one area, leaving other areas / other cities
+  // untouched. Updates the rows in place so the fold state survives.
+  function toggleArea(area, checked) {
+    const rest = getDisabledCinemas().filter(c => !area.cinemas.includes(c));
+    setDisabledCinemas(checked ? rest : rest.concat(area.cinemas));
+    refreshCinemaCheckboxes();
+    syncAreaCheckboxes();
+    syncAllCheckbox();
+    updateFormatBtn();
+    applyFilters();
   }
 
   function syncAllCheckbox() {
@@ -1024,10 +1123,14 @@
     // Only flip THIS city's cinemas; leave deselections made in other cities
     // untouched (the list is global — see `disabledCinemasInCity`). "Select
     // all" drops just this city's entries; "deselect all" adds every cinema of
-    // this city on top of whatever other cities already disabled.
+    // this city on top of whatever other cities already disabled. Update the
+    // rows in place (not a rebuild) so expanded area folds stay open.
     const others = disabledCinemasElsewhere();
     setDisabledCinemas(checked ? others : others.concat(ALL_CINEMAS));
-    buildCinemaPanel();
+    refreshCinemaCheckboxes();
+    syncAreaCheckboxes();
+    syncAllCheckbox();
+    updateFormatBtn();
     applyFilters();
   }
 

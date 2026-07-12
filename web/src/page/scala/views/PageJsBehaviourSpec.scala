@@ -2162,6 +2162,56 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Area-grouped cinema filter (split cities like London) ────────────────────
+  //
+  // When `window.CINEMA_AREAS` is non-empty, buildCinemaPanel renders one
+  // collapsible group per area: a header (area (de)select checkbox + chevron)
+  // over the area's cinema rows, collapsed by default. The fixture city is flat,
+  // so we inject a two-area grouping over its real cinemas and drive the same JS
+  // London ships — no London fixture corpus needed.
+  "the area-grouped cinema filter" should "render collapsible groups; area (de)select drives disabledCinemas + indeterminate state" in {
+    onPath("/") { page =>
+      page.eval(
+        "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
+        "window.CINEMA_AREAS = [" +
+        "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
+        "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
+        "localStorage.setItem('disabledCinemas','[]'); buildCinemaPanel();"
+      )
+
+      // One group per area; every cinema rendered as a row; bodies collapsed.
+      page.evalInt("document.querySelectorAll('.cinema-area-group').length") shouldBe 2
+      page.evalInt("document.querySelectorAll('#cinema-list input[data-cinema]').length") shouldBe
+        page.evalInt("ALL_CINEMAS.length")
+      page.evalBool("[...document.querySelectorAll('.cinema-area-cinemas')].every(b => b.style.display === 'none')") shouldBe true
+
+      // Clicking a header expands that group (chevron opens, body shows).
+      page.eval("document.querySelector('.cinema-area-group .cinema-area-header').click()")
+      page.evalBool("document.querySelector('.cinema-area-group .cinema-area-cinemas').style.display !== 'none'") shouldBe true
+      page.evalBool("document.querySelector('.cinema-area-group .submenu-chevron').classList.contains('open')") shouldBe true
+
+      // Deselecting an area disables exactly that area's cinemas; the area
+      // checkbox clears and the master (Wszystkie kina) goes indeterminate.
+      page.eval("(() => { const cb = document.querySelector('.cinema-area-toggle'); cb.checked = false; cb.dispatchEvent(new Event('change')); })()")
+      page.evalInt("JSON.parse(localStorage.getItem('disabledCinemas')).length") shouldBe
+        page.evalInt("window.CINEMA_AREAS[0].cinemas.length")
+      page.evalBool("document.querySelector('.cinema-area-toggle').checked") shouldBe false
+      page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe true
+
+      // Re-selecting the area re-enables all its cinemas; master returns to all-checked.
+      page.eval("(() => { const cb = document.querySelector('.cinema-area-toggle'); cb.checked = true; cb.dispatchEvent(new Event('change')); })()")
+      page.evalInt("JSON.parse(localStorage.getItem('disabledCinemas')).length") shouldBe 0
+      page.evalBool("document.getElementById('cinema-all').checked") shouldBe true
+
+      // Disabling ONE cinema inside an area makes that area checkbox indeterminate.
+      page.eval("(() => { const one = window.CINEMA_AREAS[0].cinemas[0];" +
+        " const row = document.querySelector('#cinema-list input[data-cinema=\"' + CSS.escape(one) + '\"]');" +
+        " row.checked = false; row.dispatchEvent(new Event('change')); })()")
+      page.evalBool("document.querySelector('.cinema-area-toggle').indeterminate") shouldBe true
+      page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe true
+    }
+  }
+
   // ── Date filter ↔ URL round-trip ───────────────────────────────────────────
   //
   // `?date=` is the pasteable representation of the navbar's #date-filter:
