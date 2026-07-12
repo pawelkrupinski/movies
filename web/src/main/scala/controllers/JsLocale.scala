@@ -66,6 +66,12 @@ object JsLocale {
       "emptyRepertoire" -> messages("empty.repertoire"),
       "swipeHint"       -> messages("hint.swipe"),
       "clear"           -> messages("nav.clear"),
+      // Strings for the first-visit area picker on a split city (built in JS).
+      "areaPicker"      -> Json.obj(
+        "title"    -> messages("areaPicker.title"),
+        "subtitle" -> messages("areaPicker.subtitle"),
+        "confirm"  -> messages("areaPicker.confirm"),
+      ),
       "plural"          -> pluralRule,
       "showtime"        -> forms,
     ))

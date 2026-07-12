@@ -1134,6 +1134,85 @@
     applyFilters();
   }
 
+  // ── First-visit area picker (split cities) ─────────────────────────────────
+  //
+  // When a split city (e.g. London) is opened for the first time, ask which
+  // areas to show — all pre-selected (default: everything), matching the flat
+  // city's "all cinemas enabled" default. Unchecking an area disables its
+  // cinemas. Shown once per city (a localStorage flag), and never on a flat
+  // city. Built entirely in JS so it adds nothing to the server-rendered HTML
+  // and only exists when actually shown.
+  function areaPickerKey() { return 'areasChosen:' + CURRENT_CITY; }
+
+  function maybeShowAreaPicker() {
+    if (!(window.CINEMA_AREAS || []).length) return;          // flat city
+    try { if (localStorage.getItem(areaPickerKey())) return; } catch (e) {}
+    showAreaPicker();
+  }
+
+  function showAreaPicker() {
+    const areas = window.CINEMA_AREAS || [];
+    if (!areas.length || document.getElementById('area-picker-overlay')) return;
+    const loc = (typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.areaPicker) || {};
+
+    const overlay = document.createElement('div');
+    overlay.id = 'area-picker-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(5,5,20,.72);' +
+      'display:flex;align-items:center;justify-content:center;padding:20px;';
+    const modal = document.createElement('div');
+    modal.style.cssText = 'width:100%;max-width:420px;max-height:85vh;overflow:auto;background:#14142e;' +
+      'border:1px solid #2a2a5e;border-radius:14px;padding:20px;';
+    const title = document.createElement('h2');
+    title.style.cssText = 'font-size:1.25rem;margin:0 0 .25rem;';
+    title.textContent = loc.title || 'Choose areas';
+    const sub = document.createElement('p');
+    sub.style.cssText = 'color:#9a9ac0;font-size:.9rem;margin:0 0 1rem;';
+    sub.textContent = loc.subtitle || '';
+    modal.appendChild(title);
+    modal.appendChild(sub);
+
+    const boxes = [];
+    areas.forEach(area => {
+      const label = document.createElement('label');
+      label.style.cssText = 'display:flex;align-items:center;gap:.6rem;padding:.6rem .2rem;' +
+        'font-size:1.05rem;border-bottom:1px solid #23234d;cursor:pointer;';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;                                       // all pre-selected
+      cb.dataset.areaSlug = area.slug;
+      const name = document.createElement('span');
+      name.textContent = area.name;
+      const count = document.createElement('span');
+      count.style.cssText = 'margin-left:auto;color:#6f6f9c;font-size:.85rem;';
+      count.textContent = area.cinemas.length;
+      label.appendChild(cb);
+      label.appendChild(name);
+      label.appendChild(count);
+      modal.appendChild(label);
+      boxes.push({ cb, area });
+    });
+
+    const btn = document.createElement('button');
+    btn.style.cssText = 'margin-top:1.1rem;width:100%;padding:.8rem;font:inherit;font-size:1rem;' +
+      'font-weight:600;color:#0d0d22;background:#e7b93a;border:none;border-radius:10px;cursor:pointer;';
+    btn.textContent = loc.confirm || 'Show';
+    btn.onclick = () => {
+      // Disable the cinemas of every UNCHECKED area, leaving other cities'
+      // entries untouched. Default (all checked) → nothing disabled.
+      const disable = [];
+      boxes.forEach(({ cb, area }) => { if (!cb.checked) disable.push(...area.cinemas); });
+      setDisabledCinemas(disabledCinemasElsewhere().concat(disable));
+      try { localStorage.setItem(areaPickerKey(), '1'); } catch (e) {}
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      buildCinemaPanel();
+      updateFormatBtn();
+      applyFilters();
+    };
+    modal.appendChild(btn);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  }
+
   // ── Room tooltip ──────────────────────────────────────────────────────────
 
   const _roomTooltip = document.createElement('div');
@@ -1856,6 +1935,9 @@
     // drops the anti-FOUC cloak the head script added (repertoire.scala.html /
     // the `grid-cloak` rule in _sharedStyles). No-op on views without the class.
     document.documentElement.classList.remove('grid-cloak');
+    // First visit to a split city (London): ask which areas to show. No-op on a
+    // flat city or once the visitor has already chosen.
+    maybeShowAreaPicker();
   }
   window.bootView = bootView;
 

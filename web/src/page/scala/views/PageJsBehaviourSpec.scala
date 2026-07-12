@@ -2212,6 +2212,44 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── City-entry area picker (split cities) ────────────────────────────────────
+  //
+  // First visit to a split city surfaces a modal to choose which areas to show —
+  // all pre-checked. Unchecking an area disables its cinemas on confirm; the
+  // choice is remembered so it shows once. Driven with an injected grouping over
+  // the flat fixture city's cinemas.
+  "the city-entry area picker" should "show once, pre-check all areas, and disable unchecked areas on confirm" in {
+    onPath("/") { page =>
+      page.eval(
+        "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
+        "window.CINEMA_AREAS = [" +
+        "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
+        "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
+        "localStorage.removeItem('areasChosen:' + CURRENT_CITY);" +
+        "localStorage.setItem('disabledCinemas','[]'); maybeShowAreaPicker();"
+      )
+
+      // Modal up, one checkbox per area, all pre-checked.
+      page.evalBool("!!document.getElementById('area-picker-overlay')") shouldBe true
+      page.evalInt("document.querySelectorAll('#area-picker-overlay input[type=checkbox]').length") shouldBe 2
+      page.evalBool("[...document.querySelectorAll('#area-picker-overlay input[type=checkbox]')].every(c => c.checked)") shouldBe true
+
+      // Uncheck the second area and confirm.
+      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[type=checkbox]');" +
+        " cbs[1].checked = false; document.querySelector('#area-picker-overlay button').click(); })()")
+
+      // Dismissed; that area's cinemas disabled; choice remembered.
+      page.evalBool("!document.getElementById('area-picker-overlay')") shouldBe true
+      page.evalInt("JSON.parse(localStorage.getItem('disabledCinemas')).length") shouldBe
+        page.evalInt("window.CINEMA_AREAS[1].cinemas.length")
+      page.evalString("localStorage.getItem('areasChosen:' + CURRENT_CITY)") shouldBe "1"
+
+      // Re-invoking is a no-op now (already chosen).
+      page.eval("maybeShowAreaPicker()")
+      page.evalBool("!document.getElementById('area-picker-overlay')") shouldBe true
+    }
+  }
+
   // ── Date filter ↔ URL round-trip ───────────────────────────────────────────
   //
   // `?date=` is the pasteable representation of the navbar's #date-filter:
