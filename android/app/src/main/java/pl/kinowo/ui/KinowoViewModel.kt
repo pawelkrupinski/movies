@@ -9,8 +9,10 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -33,6 +35,8 @@ import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.deeplink.DeepLink
 import pl.kinowo.deeplink.DeepLinkFilters
+import pl.kinowo.model.CinemaCatalog
+import pl.kinowo.net.CinemaCatalogApi
 import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
@@ -62,6 +66,9 @@ class KinowoViewModel(
     private val prefs: UserPreferences,
     private val authRepository: AuthRepository,
     userStateClient: UserStateClient,
+    // Last, with a flat-catalog default, so the existing test constructors (which
+    // don't exercise split cities) keep compiling without threading a stub.
+    private val catalogApi: CinemaCatalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },
 ) : ViewModel() {
 
     val films: StateFlow<List<Film>> = repository.films
@@ -120,6 +127,16 @@ class KinowoViewModel(
     val disabledCinemas: StateFlow<Set<String>> =
         prefs.disabledCinemas.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
+    /** The current city's cinema universe + area grouping (`/api/cinemas`).
+     *  `EMPTY` (flat) until fetched; a split city (London) drives the
+     *  multi-select area picker off `catalog.areas`, a flat city keeps the
+     *  single-select pill bar and ignores it. */
+    private val _catalog = MutableStateFlow(CinemaCatalog.EMPTY)
+    val catalog: StateFlow<CinemaCatalog> = _catalog.asStateFlow()
+    /** The city `_catalog` was fetched for — so the static catalog isn't
+     *  re-fetched on every reload, only on an actual city switch. */
+    private var catalogCitySlug: String? = null
+
     /** The cinema the top-bar pill row narrows the listing to, or null
      *  ("Wszystkie"). Persisted device-locally; the pill bar / [filmsFor] treat
      *  a value absent from the current city as null so a cross-city leftover
@@ -169,13 +186,20 @@ class KinowoViewModel(
     // day-swipe carousel needs the listing for an ARBITRARY day preset (the
     // revealed previous/next neighbour), not just the selected one — so the date is
     // an explicit parameter here.
-    fun filmsFor(date: DateFilter, all: List<Film>, hidden: Set<String>, selectedCinema: String?): List<Film> =
+    fun filmsFor(
+        date: DateFilter,
+        all: List<Film>,
+        hidden: Set<String>,
+        selectedCinema: String?,
+        disabledCinemas: Set<String> = emptySet(),
+    ): List<Film> =
         all.filteredFor(
             date = date,
             format = formatFilter,
             query = search,
             hidden = hidden,
             selectedCinema = selectedCinema,
+            disabledCinemas = disabledCinemas,
             excludedCountries = excludedCountries,
             excludedGenres = excludedGenres,
             excludedDirectors = excludedDirectors,
@@ -231,6 +255,17 @@ class KinowoViewModel(
     /** Listing + details fetched concurrently for [citySlug] — the grid paints
      *  as soon as the listing lands; details merge in when ready. */
     private suspend fun fetchAll(citySlug: String) = coroutineScope {
+        // Static per-city catalog (cinema universe + areas): fetch once per city,
+        // best-effort (a failure leaves EMPTY = flat, so the pill-bar path works).
+        if (catalogCitySlug != citySlug) {
+            _catalog.value = CinemaCatalog.EMPTY   // don't show the old city's areas mid-switch
+            launch {
+                runCatching { catalogApi.fetchCinemas(citySlug) }.getOrNull()?.let {
+                    _catalog.value = it
+                    catalogCitySlug = citySlug
+                }
+            }
+        }
         val listing = async { repository.reload(citySlug) }
         val det = async { detailsRepository.reload(citySlug) }
         listing.await(); det.await()
@@ -418,6 +453,28 @@ class KinowoViewModel(
     fun selectCinema(cinema: String?) =
         viewModelScope.launch { prefs.setSelectedCinema(cinema) }
 
+    // ── Split-city area picker mutators (over the excluded `disabledCinemas` set) ──
+    /** Enable/disable one cinema (a per-cinema checkbox). */
+    fun setCinemaEnabled(cinema: String, enabled: Boolean) = viewModelScope.launch {
+        val cur = disabledCinemas.value
+        prefs.setDisabledCinemas(if (enabled) cur - cinema else cur + cinema)
+    }
+
+    /** Enable/disable every cinema in an area (the area checkbox). */
+    fun setAreaEnabled(cinemas: List<String>, enabled: Boolean) = viewModelScope.launch {
+        val cur = disabledCinemas.value
+        val set = cinemas.toSet()
+        prefs.setDisabledCinemas(if (enabled) cur - set else cur + set)
+    }
+
+    /** Enable/disable every cinema in the city (the "all cinemas" master).
+     *  Other cities' entries in the global set are preserved. */
+    fun setAllCinemasEnabled(cityCinemas: List<String>, enabled: Boolean) = viewModelScope.launch {
+        val cur = disabledCinemas.value
+        val set = cityCinemas.toSet()
+        prefs.setDisabledCinemas(if (enabled) cur - set else cur + set)
+    }
+
     fun filmByTitle(title: String): Film? = films.value.firstOrNull { it.title == title }
     fun detailsByTitle(title: String): FilmDetails? = details.value[title]
 
@@ -454,9 +511,10 @@ class KinowoViewModel(
         private val prefs: UserPreferences,
         private val authRepository: AuthRepository,
         private val userStateClient: UserStateClient,
+        private val catalogApi: CinemaCatalogApi,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repository, detailsRepository, prefs, authRepository, userStateClient) as T
+            KinowoViewModel(repository, detailsRepository, prefs, authRepository, userStateClient, catalogApi) as T
     }
 }

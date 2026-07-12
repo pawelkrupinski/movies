@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
         val prefs = UserPreferences(applicationContext)
         val authRepository = AuthRepository(httpClient, cookieJar)
         val userStateClient = HttpUserStateClient(client = httpClient)
-        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient)
+        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient, api)
     }
 
     // Force the selected country's language regardless of the device locale, so

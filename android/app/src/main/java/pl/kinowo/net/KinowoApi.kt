@@ -22,8 +22,9 @@ interface DetailsApi {
     suspend fun fetchDetails(citySlug: String, ifModifiedSince: String?): KinowoApi.Fetched<FilmDetails>
 }
 
-/** The cinema catalog (universe + area grouping) for a city. */
-interface CinemaCatalogApi {
+/** The cinema catalog (universe + area grouping) for a city. `fun interface` so
+ *  tests can supply a one-liner stub (e.g. `CinemaCatalogApi { CinemaCatalog.EMPTY }`). */
+fun interface CinemaCatalogApi {
     suspend fun fetchCinemas(citySlug: String): CinemaCatalog
 }
 

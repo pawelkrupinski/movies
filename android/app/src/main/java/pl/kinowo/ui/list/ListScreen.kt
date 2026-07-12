@@ -109,6 +109,10 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // or picking a cinema recomposes the grid — see filmsFor's comment.
     val hidden by viewModel.hiddenFilms.collectAsState()
     val selectedCinema by viewModel.selectedCinema.collectAsState()
+    // Split cities (e.g. London) drive a multi-select area picker off `catalog`
+    // and the `disabledCinemas` exclusion set; flat cities use the pill bar.
+    val catalog by viewModel.catalog.collectAsState()
+    val disabledCinemas by viewModel.disabledCinemas.collectAsState()
     // The cinema pill row's universe is the current city's cinemas; a persisted
     // pick absent from them (a leftover from another city) reads as null
     // ("Wszystkie") so the grid never blanks on a stale cross-city name.
@@ -225,14 +229,24 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 onOpenFilters = { showFilters = true },
             )
 
-            // A slim, low-emphasis handle directly under the date bar that
-            // unfolds a horizontally-scrolling row of cinema pills — the
-            // single-select cinema filter. Mirrors iOS's parallel CinemaPillBar.
-            CinemaPillBar(
-                cinemas = cityCinemas,
-                selected = effectiveCinema,
-                onSelect = { viewModel.selectCinema(it) },
-            )
+            // A slim, low-emphasis handle directly under the date bar. Split
+            // cities unfold a multi-select area picker (collapsible area groups +
+            // checkboxes); flat cities unfold the single-select cinema pill row.
+            if (catalog.isSplit) {
+                CinemaAreaBar(
+                    catalog = catalog,
+                    disabled = disabledCinemas,
+                    onSetCinema = { cinema, enabled -> viewModel.setCinemaEnabled(cinema, enabled) },
+                    onSetArea = { cinemas, enabled -> viewModel.setAreaEnabled(cinemas, enabled) },
+                    onSetAll = { all, enabled -> viewModel.setAllCinemasEnabled(all, enabled) },
+                )
+            } else {
+                CinemaPillBar(
+                    cinemas = cityCinemas,
+                    selected = effectiveCinema,
+                    onSelect = { viewModel.selectCinema(it) },
+                )
+            }
 
             // ── content ───────────────────────────────────────────────────────
             // The search field floats over the grid as a bottom capsule
@@ -269,7 +283,10 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 onCommitDay = onCommitDay,
                                 onPreviewDay = { previewDay = it },
                             ) { day, state, columnModifier ->
-                                val visible = viewModel.filmsFor(day, films, hidden, effectiveCinema)
+                                val visible = if (catalog.isSplit)
+                                    viewModel.filmsFor(day, films, hidden, null, disabledCinemas)
+                                else
+                                    viewModel.filmsFor(day, films, hidden, effectiveCinema)
                                 // Suppress the per-card cinema label when the
                                 // repertoire on show narrows to a single cinema —
                                 // it's the same name on every card.
