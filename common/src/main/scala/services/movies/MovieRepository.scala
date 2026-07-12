@@ -559,9 +559,22 @@ class MongoMovieRepository(
           if (patch.isEmpty) None
           else Some(
             if (patch.data.keysIterator.exists(_.displayName.contains('.'))) {
-              val dto = StoredMovieDto.fromDomain(id, strippedAfter, Instant.now())
-              Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(false)).toFuture(), 10.seconds)
-                .getMatchedCount
+              // Can't drive the field-level diff (the dotted `$set` path is rejected), so
+              // replace the whole document. Writing `strippedAfter` (built from the
+              // in-memory cache row) BLINDLY would NULL any Mongo-owned field the cache
+              // lacks — a rating not yet rehydrated after a restart, or an out-of-band edit
+              // (FilmwebUrlAudit). Read the current doc and apply the SAME patch to it, so
+              // the replace carries exactly the diff the `$set` path would, every other
+              // field preserved. Absent row → nothing to replace → report not-present.
+              val current = Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
+                .map(dto => StoredMovieDto.toDomain(dto).record)
+              dottedReplaceRecord(current, patch) match {
+                case Some(merged) =>
+                  Await.result(c.replaceOne(Filters.eq("_id", id),
+                    StoredMovieDto.fromDomain(id, merged, Instant.now()),
+                    new ReplaceOptions().upsert(false)).toFuture(), 10.seconds).getMatchedCount
+                case None => 0L
+              }
             } else {
               Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
                 .getMatchedCount
@@ -584,6 +597,17 @@ class MongoMovieRepository(
           false
       }.getOrElse(false)
   }
+
+  /** The full-document replacement to write in the dotted-displayName fallback of
+   *  [[updateIfPresent]] (a per-source `$set sourceData.<name>` is rejected when the
+   *  name holds a '.'). Apply the SAME field-level patch to the CURRENT persisted
+   *  record so the replace carries exactly the diff the `$set` path would — every
+   *  Mongo-owned field the in-memory cache row lacks (a rating not yet rehydrated
+   *  after a restart, an out-of-band audit edit) is preserved rather than nulled by
+   *  blindly writing the cache row. `None` when the row is absent (nothing to
+   *  replace → report not-present, don't upsert). Pure — no Mongo I/O. */
+  private[movies] def dottedReplaceRecord(persisted: Option[MovieRecord], patch: MovieRecordPatch): Option[MovieRecord] =
+    persisted.map(patch.applyTo)
 
   // Translate a `MovieRecordPatch` into a `$set`/`$unset` Mongo update. Each
   // scalar field gets its own atom; the `data` map gets per-source

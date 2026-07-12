@@ -32,7 +32,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // `dotted|1902` off its sourceData title), so an `_id`-only purge can miss a
   // re-keyed sentinel — but `imdbId` never changes.
   private val sentinelImdbIds = Seq(
-    "tt0000001", "tt0000002", "tt0000003", "tt0000004",
+    "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099"
   )
 
@@ -474,6 +474,35 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val found = repository.findAll().find(r => r.record.imdbId.contains("tt0000004"))
     found should not be empty
     found.get.record.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
+  }
+
+  // Regression: the dotted-name fallback above does a WHOLE-document replace. Writing the
+  // in-memory cache row verbatim NULLS any Mongo-owned field the cache lacks — a rating not
+  // yet rehydrated after a restart, or an out-of-band FilmwebUrlAudit edit — on EVERY scrape
+  // tick for EVERY dotted-name cinema (common in Poland: "Helios Ostrów Wlkp."). The fallback
+  // must apply the field-level diff to the PERSISTED doc, so an unrelated slot change leaves
+  // the rating intact. Fails before the fix (the replace nulls imdbRating); passes after.
+  it should "preserve a Mongo-owned rating when a dotted-name slot changes (no full-replace null)" in {
+    val title  = "__integration-test-dotted-rating__"
+    val year   = Some(1904)
+    val stored = MovieRecord(
+      imdbId = Some("tt0000006"), imdbRating = Some(7.5), metascore = Some(80),
+      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Dotted"))))
+    repository.upsert(title, year, stored) // Mongo holds the rating
+
+    // The scrape tick's cache row lost the rating (evicted, not yet rehydrated) and adds a
+    // dotted-name slot — the exact case that drives the full-replace fallback.
+    val before = stored.copy(imdbRating = None, metascore = None)
+    val after  = before.copy(data = before.data +
+      (HeliosOstrowWlkp -> SourceData(title = Some("Dotted"), synopsis = Some("from Ostrów"))))
+    repository.updateIfPresent(title, year, before, after) shouldBe true
+
+    val found = repository.findAll().find(r => r.record.imdbId.contains("tt0000006"))
+    found should not be empty
+    val e = found.get.record
+    e.imdbRating shouldBe Some(7.5) // survived the dotted-name full replace…
+    e.metascore  shouldBe Some(80)
+    e.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów") // …and the slot change landed
   }
 
   // The split is on whenever a screenings repo is wired: `movies` is written WITHOUT
