@@ -9,9 +9,10 @@ import scala.concurrent.duration._
  *
  * The reaper ticks once a minute and enqueues the cinemas due under the shared
  * [[DueWindow]] (period = `Freshness.defaultScrapeTtl`, the scrape freshness
- * window). The ~290-cinema corpus is phase-spread across that window, so the
- * steady-state due rate is `corpus / ticksPerWindow` (~5/tick at the 60-min
- * window). The caps only bite under a backlog (cold boot, or a throttle episode
+ * window). The ~1150-cinema corpus (PL + the nationwide UK Flicks roster + DE) is
+ * phase-spread across that window, so the steady-state due rate is
+ * `corpus / ticksPerWindow` (~19/tick at the 60-min window). The caps only bite
+ * under a backlog (cold boot, or a throttle episode
  * that parked work); in steady state far fewer than either cap is due.
  *
  * The THROTTLED cap is the lever this object exists to size correctly. While the
@@ -27,17 +28,21 @@ object ScrapeCadence {
   /** ScrapeReaper tick cadence (also the phase-spread granularity). */
   val ReaperTickInterval: FiniteDuration = 1.minute
 
-  /** Healthy per-tick enqueue cap (`KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK`). */
-  val MaxEnqueuePerTick: Int = 25
+  /** Healthy per-tick enqueue cap (`KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK`). Sized so
+   *  the whole catalogue clears within one freshness window with ≥1.5× headroom
+   *  (`cap × ticksPerWindow ≥ corpus × 1.5`); rose 25→30 when the full nationwide
+   *  UK Flicks roster took the corpus past ~1150 (60 ticks × 30 = 1800 ≥ 1159×1.5). */
+  val MaxEnqueuePerTick: Int = 30
 
   /** Throttled cap for [[ScrapeReaper]] (`KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK`).
    *  ScrapeReaper treats this as a bound on the OUTSTANDING waiting-scrape backlog
    *  (not just per-tick additions): while throttled it tops the waiting set up to
    *  this many, so the credit-starved pool drains it to near-empty and idles
    *  between ticks, rebuilding credit. Set to the SMALLEST cap the sustainability
-   *  guard allows (`cap × ticksPerWindow ≥ corpus`, ~8 at the 60-min window — rose
-   *  5→6 when the corpus passed 300 with the first UK + Germany cinemas, then 6→8
-   *  when the full Greater-London + Manchester Flicks roster took it past 450), so a
+   *  guard allows (`cap × ticksPerWindow ≥ corpus`, ~20 at the 60-min window — rose
+   *  5→6 when the corpus passed 300 with the first UK + Germany cinemas, 6→8 when the
+   *  Greater-London + Manchester Flicks roster took it past 450, then 8→20 when the
+   *  full nationwide UK Flicks roster (~850 venues) took the corpus past 1150), so a
    *  credit-starved pool — which Fly caps to baseline, clearing only a scrape or two
    *  per minute — reaches idle as fast as the freshness guard permits. The old cap
    *  of 15 let a standing backlog of 15 keep the throttled pool pinned busy, so
@@ -46,7 +51,7 @@ object ScrapeCadence {
    *  load). Freshness during a sustained throttle is deliberately sacrificed for
    *  recovery; it catches up once the throttle clears and the full
    *  [[MaxEnqueuePerTick]] resumes. */
-  val ThrottledMaxEnqueuePerTick: Int = 8
+  val ThrottledMaxEnqueuePerTick: Int = 20
 
   /** How many staggered sub-slices each (non-throttled) ScrapeReaper tick enqueues
    *  the due batch in (`KINOWO_SCRAPE_ENQUEUE_SPREAD_SLICES`). The tick's clump of

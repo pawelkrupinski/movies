@@ -511,8 +511,6 @@ case object Konin extends City(
 case object London extends City("london",
   CityLabels("London", "London", "London"), 51.5074, -0.1278, ZoneId.of("Europe/London")) {
   val cinemas: Seq[Cinema] = Cinema.london
-  // London is the first split city: ~130 venues across Greater London, grouped
-  // by compass area so the filter is navigable. See `Cinema.londonAreas`.
   override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
 }
 case object Manchester extends City("manchester",
@@ -522,6 +520,310 @@ case object Manchester extends City("manchester",
 case object Norwich extends City("norwich",
   CityLabels("Norwich", "Norwich", "Norwich"), 52.6309, 1.2974, ZoneId.of("Europe/London")) {
   val cinemas: Seq[Cinema] = Cinema.norwich
+}
+case object Aberdeenshire extends City("aberdeenshire",
+  CityLabels("Aberdeenshire", "Aberdeenshire", "Aberdeenshire"), 57.308, -2.3393, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.aberdeenshire
+}
+case object Antrim extends City("antrim",
+  CityLabels("Antrim", "Antrim", "Antrim"), 54.762, -6.0127, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.antrim
+}
+case object Armagh extends City("armagh",
+  CityLabels("Armagh", "Armagh", "Armagh"), 54.4492, -6.398, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.armagh
+}
+case object AyrshireAndArran extends City("ayrshire-and-arran",
+  CityLabels("Ayrshire and Arran", "Ayrshire and Arran", "Ayrshire and Arran"), 55.5093, -4.581, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.ayrshireAndArran
+}
+case object Bedfordshire extends City("bedfordshire",
+  CityLabels("Bedfordshire", "Bedfordshire", "Bedfordshire"), 52.0082, -0.4435, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.bedfordshire
+}
+case object Belfast extends City("belfast",
+  CityLabels("Belfast", "Belfast", "Belfast"), 54.5857, -5.9428, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.belfast
+}
+case object Berkshire extends City("berkshire",
+  CityLabels("Berkshire", "Berkshire", "Berkshire"), 51.4268, -0.9169, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.berkshire
+}
+case object Birmingham extends City("birmingham",
+  CityLabels("Birmingham", "Birmingham", "Birmingham"), 52.4581, -1.9041, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.birmingham
+}
+case object Bristol extends City("bristol",
+  CityLabels("Bristol", "Bristol", "Bristol"), 51.4659, -2.5805, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.bristol
+}
+case object Buckinghamshire extends City("buckinghamshire",
+  CityLabels("Buckinghamshire", "Buckinghamshire", "Buckinghamshire"), 51.7582, -0.7609, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.buckinghamshire
+}
+case object Cambridgeshire extends City("cambridgeshire",
+  CityLabels("Cambridgeshire", "Cambridgeshire", "Cambridgeshire"), 52.4301, -0.0137, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.cambridgeshire
+}
+case object Cardiff extends City("cardiff",
+  CityLabels("Cardiff", "Cardiff", "Cardiff"), 51.4892, -3.1939, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.cardiff
+}
+case object CentralScotland extends City("central-scotland",
+  CityLabels("Central Scotland", "Central Scotland", "Central Scotland"), 56.08, -3.8066, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.centralScotland
+}
+case object Cheshire extends City("cheshire",
+  CityLabels("Cheshire", "Cheshire", "Cheshire"), 53.2917, -2.4966, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.cheshire
+}
+case object Clwyd extends City("clwyd",
+  CityLabels("Clwyd", "Clwyd", "Clwyd"), 53.3083, -3.6072, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.clwyd
+}
+case object Cornwall extends City("cornwall",
+  CityLabels("Cornwall", "Cornwall", "Cornwall"), 50.317, -4.9211, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.cornwall
+}
+case object CountyDurham extends City("county-durham",
+  CityLabels("County Durham", "County Durham", "County Durham"), 54.7289, -1.5139, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.countyDurham
+}
+case object Cumbria extends City("cumbria",
+  CityLabels("Cumbria", "Cumbria", "Cumbria"), 54.4593, -3.1119, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.cumbria
+}
+case object Derbyshire extends City("derbyshire",
+  CityLabels("Derbyshire", "Derbyshire", "Derbyshire"), 52.9886, -1.5219, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.derbyshire
+}
+case object Devon extends City("devon",
+  CityLabels("Devon", "Devon", "Devon"), 50.6651, -3.687, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.devon
+}
+case object Dorset extends City("dorset",
+  CityLabels("Dorset", "Dorset", "Dorset"), 50.7664, -2.1122, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.dorset
+}
+case object Down extends City("down",
+  CityLabels("Down", "Down", "Down"), 54.4293, -5.9704, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.down
+}
+case object Dudley extends City("dudley",
+  CityLabels("Dudley", "Dudley", "Dudley"), 52.497, -2.0918, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.dudley
+}
+case object DumfriesAndGalloway extends City("dumfries-and-galloway",
+  CityLabels("Dumfries and Galloway", "Dumfries and Galloway", "Dumfries and Galloway"), 54.9881, -3.8232, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.dumfriesAndGalloway
+}
+case object DunbartonshireArgyllBute extends City("dunbartonshire-argyll-bute",
+  CityLabels("Dunbartonshire and Argyll & Bute", "Dunbartonshire and Argyll & Bute", "Dunbartonshire and Argyll & Bute"), 55.7795, -4.9973, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.dunbartonshireArgyllBute
+}
+case object Dyfed extends City("dyfed",
+  CityLabels("Dyfed", "Dyfed", "Dyfed"), 51.9892, -4.3329, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.dyfed
+}
+case object EastSussex extends City("east-sussex",
+  CityLabels("East Sussex", "East Sussex", "East Sussex"), 50.8499, 0.2215, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.eastSussex
+}
+case object EastYorkshire extends City("east-yorkshire",
+  CityLabels("East Yorkshire", "East Yorkshire", "East Yorkshire"), 53.8685, -0.3985, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.eastYorkshire
+}
+case object EdinburghAndLothians extends City("edinburgh-and-lothians",
+  CityLabels("Edinburgh & Lothians", "Edinburgh & Lothians", "Edinburgh & Lothians"), 55.9404, -3.2039, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.edinburghAndLothians
+}
+case object Essex extends City("essex",
+  CityLabels("Essex", "Essex", "Essex"), 51.7621, 0.5901, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.essex
+}
+case object Fermanagh extends City("fermanagh",
+  CityLabels("Fermanagh", "Fermanagh", "Fermanagh"), 54.3499, -7.6316, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.fermanagh
+}
+case object Fife extends City("fife",
+  CityLabels("Fife", "Fife", "Fife"), 56.1287, -3.2424, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.fife
+}
+case object Glamorgan extends City("glamorgan",
+  CityLabels("Glamorgan", "Glamorgan", "Glamorgan"), 51.6388, -3.7535, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.glamorgan
+}
+case object Glasgow extends City("glasgow",
+  CityLabels("Glasgow", "Glasgow", "Glasgow"), 55.8682, -4.2316, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.glasgow
+}
+case object Gloucestershire extends City("gloucestershire",
+  CityLabels("Gloucestershire", "Gloucestershire", "Gloucestershire"), 51.8387, -2.2712, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.gloucestershire
+}
+case object Guernsey extends City("guernsey",
+  CityLabels("Guernsey", "Guernsey", "Guernsey"), 49.4446, -2.5695, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.guernsey
+}
+case object Gwent extends City("gwent",
+  CityLabels("Gwent", "Gwent", "Gwent"), 51.6882, -3.0066, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.gwent
+}
+case object Gwynedd extends City("gwynedd",
+  CityLabels("Gwynedd", "Gwynedd", "Gwynedd"), 53.0098, -4.153, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.gwynedd
+}
+case object Hampshire extends City("hampshire",
+  CityLabels("Hampshire", "Hampshire", "Hampshire"), 50.9234, -1.165, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.hampshire
+}
+case object Herefordshire extends City("herefordshire",
+  CityLabels("Herefordshire", "Herefordshire", "Herefordshire"), 52.031, -2.7825, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.herefordshire
+}
+case object Hertfordshire extends City("hertfordshire",
+  CityLabels("Hertfordshire", "Hertfordshire", "Hertfordshire"), 51.7791, -0.3102, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.hertfordshire
+}
+case object HighlandsAndIslands extends City("highlands-and-islands",
+  CityLabels("Highlands and Islands", "Highlands and Islands", "Highlands and Islands"), 58.086, -4.0855, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.highlandsAndIslands
+}
+case object IsleOfMan extends City("isle-of-man",
+  CityLabels("Isle of Man", "Isle of Man", "Isle of Man"), 54.1578, -4.4775, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.isleOfMan
+}
+case object IsleOfWight extends City("isle-of-wight",
+  CityLabels("Isle of Wight", "Isle of Wight", "Isle of Wight"), 50.7118, -1.2248, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.isleOfWight
+}
+case object Jersey extends City("jersey",
+  CityLabels("Jersey", "Jersey", "Jersey"), 49.1839, -2.1144, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.jersey
+}
+case object Kent extends City("kent",
+  CityLabels("Kent", "Kent", "Kent"), 51.2682, 0.8631, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.kent
+}
+case object Lanarkshire extends City("lanarkshire",
+  CityLabels("Lanarkshire", "Lanarkshire", "Lanarkshire"), 55.7953, -4.0904, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.lanarkshire
+}
+case object Lancashire extends City("lancashire",
+  CityLabels("Lancashire", "Lancashire", "Lancashire"), 53.7367, -2.6625, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.lancashire
+}
+case object Leicestershire extends City("leicestershire",
+  CityLabels("Leicestershire", "Leicestershire", "Leicestershire"), 52.6656, -1.1514, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.leicestershire
+}
+case object Lincolnshire extends City("lincolnshire",
+  CityLabels("Lincolnshire", "Lincolnshire", "Lincolnshire"), 53.2194, -0.2916, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.lincolnshire
+}
+case object Londonderry extends City("londonderry",
+  CityLabels("Londonderry", "Londonderry", "Londonderry"), 54.9949, -7.0636, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.londonderry
+}
+case object Merseyside extends City("merseyside",
+  CityLabels("Merseyside", "Merseyside", "Merseyside"), 53.4479, -2.958, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.merseyside
+}
+case object NorthYorkshire extends City("north-yorkshire",
+  CityLabels("North Yorkshire", "North Yorkshire", "North Yorkshire"), 54.2402, -1.156, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.northYorkshire
+}
+case object Northamptonshire extends City("northamptonshire",
+  CityLabels("Northamptonshire", "Northamptonshire", "Northamptonshire"), 52.288, -0.8653, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.northamptonshire
+}
+case object Northumberland extends City("northumberland",
+  CityLabels("Northumberland", "Northumberland", "Northumberland"), 55.2158, -1.7422, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.northumberland
+}
+case object Nottinghamshire extends City("nottinghamshire",
+  CityLabels("Nottinghamshire", "Nottinghamshire", "Nottinghamshire"), 53.0236, -1.15, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.nottinghamshire
+}
+case object Oxfordshire extends City("oxfordshire",
+  CityLabels("Oxfordshire", "Oxfordshire", "Oxfordshire"), 51.7572, -1.2545, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.oxfordshire
+}
+case object Powys extends City("powys",
+  CityLabels("Powys", "Powys", "Powys"), 52.3806, -3.26, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.powys
+}
+case object Renfrewshire extends City("renfrewshire",
+  CityLabels("Renfrewshire", "Renfrewshire", "Renfrewshire"), 55.9204, -4.5838, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.renfrewshire
+}
+case object RoxburghEttrickAndLauderdale extends City("roxburgh-ettrick-and-lauderdale",
+  CityLabels("Roxburgh, Ettrick and Lauderdale", "Roxburgh, Ettrick and Lauderdale", "Roxburgh, Ettrick and Lauderdale"), 55.5183, -2.7969, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.roxburghEttrickAndLauderdale
+}
+case object Sandwell extends City("sandwell",
+  CityLabels("Sandwell", "Sandwell", "Sandwell"), 52.5175, -1.9932, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.sandwell
+}
+case object Shropshire extends City("shropshire",
+  CityLabels("Shropshire", "Shropshire", "Shropshire"), 52.6813, -2.6215, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.shropshire
+}
+case object Somerset extends City("somerset",
+  CityLabels("Somerset", "Somerset", "Somerset"), 51.2159, -2.824, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.somerset
+}
+case object SouthYorkshire extends City("south-yorkshire",
+  CityLabels("South Yorkshire", "South Yorkshire", "South Yorkshire"), 53.5141, -1.3109, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.southYorkshire
+}
+case object Staffordshire extends City("staffordshire",
+  CityLabels("Staffordshire", "Staffordshire", "Staffordshire"), 52.7942, -1.9887, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.staffordshire
+}
+case object Suffolk extends City("suffolk",
+  CityLabels("Suffolk", "Suffolk", "Suffolk"), 52.1492, 1.0262, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.suffolk
+}
+case object Surrey extends City("surrey",
+  CityLabels("Surrey", "Surrey", "Surrey"), 51.2269, -0.5354, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.surrey
+}
+case object Tayside extends City("tayside",
+  CityLabels("Tayside", "Tayside", "Tayside"), 56.5061, -3.0128, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.tayside
+}
+case object TyneAndWear extends City("tyne-and-wear",
+  CityLabels("Tyne and Wear", "Tyne and Wear", "Tyne and Wear"), 54.9749, -1.5397, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.tyneAndWear
+}
+case object Tyrone extends City("tyrone",
+  CityLabels("Tyrone", "Tyrone", "Tyrone"), 54.5255, -6.8664, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.tyrone
+}
+case object Warwickshire extends City("warwickshire",
+  CityLabels("Warwickshire", "Warwickshire", "Warwickshire"), 52.3602, -1.5034, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.warwickshire
+}
+case object WestSussex extends City("west-sussex",
+  CityLabels("West Sussex", "West Sussex", "West Sussex"), 50.9492, -0.3262, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.westSussex
+}
+case object WestYorkshire extends City("west-yorkshire",
+  CityLabels("West Yorkshire", "West Yorkshire", "West Yorkshire"), 53.7878, -1.665, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.westYorkshire
+}
+case object Wiltshire extends City("wiltshire",
+  CityLabels("Wiltshire", "Wiltshire", "Wiltshire"), 51.2955, -1.8505, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.wiltshire
+}
+case object Worcestershire extends City("worcestershire",
+  CityLabels("Worcestershire", "Worcestershire", "Worcestershire"), 52.1923, -2.2079, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.worcestershire
+}
+case object Yorkshire extends City("yorkshire",
+  CityLabels("Yorkshire", "Yorkshire", "Yorkshire"), 53.4082, -1.4756, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.yorkshire
 }
 
 // ── Germany (also non-declining for our purposes). ───────────────────────────
@@ -553,7 +855,9 @@ object City {
 
   /** The United Kingdom's cities — the authoritative list for
    *  [[Country.UnitedKingdom]]. */
-  private[models] val ukCities: Seq[City] = Seq(London, Manchester, Norwich)
+  private[models] val ukCities: Seq[City] = Seq(
+    London, Manchester, Norwich, Aberdeenshire, Antrim, Armagh, AyrshireAndArran, Bedfordshire, Belfast, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cardiff, CentralScotland, Cheshire, Clwyd, Cornwall, CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Down, Dudley, DumfriesAndGalloway, DunbartonshireArgyllBute, Dyfed, EastSussex, EastYorkshire, EdinburghAndLothians, Essex, Fermanagh, Fife, Glamorgan, Glasgow, Gloucestershire, Guernsey, Gwent, Gwynedd, Hampshire, Herefordshire, Hertfordshire, HighlandsAndIslands, IsleOfMan, IsleOfWight, Jersey, Kent, Lanarkshire, Lancashire, Leicestershire, Lincolnshire, Londonderry, Merseyside, NorthYorkshire, Northamptonshire, Northumberland, Nottinghamshire, Oxfordshire, Powys, Renfrewshire, RoxburghEttrickAndLauderdale, Sandwell, Shropshire, Somerset, SouthYorkshire, Staffordshire, Suffolk, Surrey, Tayside, TyneAndWear, Tyrone, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire, Yorkshire,
+  )
 
   /** Germany's cities — the authoritative list for [[Country.Germany]]. */
   private[models] val germanCities: Seq[City] = Seq(Berlin, Munich, Wurzburg)
