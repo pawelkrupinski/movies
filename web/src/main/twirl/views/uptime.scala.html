@@ -276,6 +276,19 @@
       (rowsByService[s] = rowsByService[s] || []).push(row);
     });
 
+    // Slot width (ms) — mirrors UptimeMonitor.BucketDurationMs so the live
+    // append can tell a one-slot step from a multi-slot idle gap.
+    var BUCKET_MS = @UptimeMonitor.BucketDurationMs;
+
+    function makeBar(ts, cls, info) {
+      var b = document.createElement('div');
+      b.className = cls;
+      b.dataset.ts = String(ts);
+      if (info) b.dataset.info = info;
+      attachBarHover(b);
+      return b;
+    }
+
     function applyUpdate(d) {
       var rows = rowsByService[d.service];
       if (!rows) return;   // a service with no rendered row appears only on reload
@@ -287,13 +300,26 @@
           bar.className = 'bar ' + d.status + (d.fallback ? ' fallback' : '');
           bar.dataset.info = JSON.stringify(d);
         } else {
-          var nb = document.createElement('div');
-          nb.className = 'bar ' + d.status + (d.fallback ? ' fallback' : '');
-          nb.dataset.ts = timestamp;
-          nb.dataset.info = JSON.stringify(d);
-          attachBarHover(nb);
-          barsDiv.appendChild(nb);
-          if (barsDiv.children.length > @UptimeMonitor.MaxBuckets) barsDiv.removeChild(barsDiv.firstElementChild);
+          // A live frame only arrives for a bucket that HAD activity, so a
+          // service idle for a few slots (a cinema on ~hourly cadence, a quiet
+          // enrichment window) would otherwise append its next active bar straight
+          // after the last one — dropping the empty in-between slots and
+          // collapsing the live tail to one bar per hour (self-healing only on a
+          // full-render reload). Backfill the skipped slots as "no data" bars so
+          // the appended timeline keeps the same 15-min grid the server render
+          // emits. Bounded to one window so a long-backgrounded tab reconnecting
+          // on a far-future bucket can't spin. A later out-of-order frame for a
+          // backfilled slot matches the querySelector above and upgrades it.
+          var last = barsDiv.lastElementChild;
+          var newTs = Number(d.bucketTs);
+          if (last && last.dataset.ts) {
+            var t = Number(last.dataset.ts) + BUCKET_MS;
+            var floor = newTs - @UptimeMonitor.MaxBuckets * BUCKET_MS;
+            if (t < floor) t = floor;
+            for (; t < newTs; t += BUCKET_MS) barsDiv.appendChild(makeBar(t, 'bar empty', ''));
+          }
+          barsDiv.appendChild(makeBar(newTs, 'bar ' + d.status + (d.fallback ? ' fallback' : ''), JSON.stringify(d)));
+          while (barsDiv.children.length > @UptimeMonitor.MaxBuckets) barsDiv.removeChild(barsDiv.firstElementChild);
         }
       });
     }
