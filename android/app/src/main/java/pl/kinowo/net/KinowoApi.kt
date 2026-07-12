@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import java.io.IOException
@@ -21,6 +22,11 @@ interface DetailsApi {
     suspend fun fetchDetails(citySlug: String, ifModifiedSince: String?): KinowoApi.Fetched<FilmDetails>
 }
 
+/** The cinema catalog (universe + area grouping) for a city. */
+interface CinemaCatalogApi {
+    suspend fun fetchCinemas(citySlug: String): CinemaCatalog
+}
+
 /**
  * Talks to the kinowo backend via two endpoints: `GET /{city}/api/repertoire`
  * (grid listing) and `GET /{city}/api/details` (synopsis, trailers, cast).
@@ -31,7 +37,7 @@ interface DetailsApi {
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.fly.dev",
     private val client: OkHttpClient = defaultClient,
-) : RepertoireApi, DetailsApi {
+) : RepertoireApi, DetailsApi, CinemaCatalogApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Result of a conditional GET: [items] is null on a 304 (use the cache). */
@@ -46,6 +52,21 @@ class KinowoApi(
 
     override suspend fun fetchDetails(citySlug: String, ifModifiedSince: String?): Fetched<FilmDetails> =
         fetchList("$baseUrl/$citySlug/api/details", ifModifiedSince)
+
+    /** Fetch the static cinema catalog for a city. Unconditional GET (the data
+     *  is compile-time on the server); the caller fetches it once per city. */
+    override suspend fun fetchCinemas(citySlug: String): CinemaCatalog = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("$baseUrl/$citySlug/api/cinemas")
+            .header("User-Agent", UA)
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val body = response.body?.string() ?: throw IOException("empty body")
+            json.decodeFromString<CinemaCatalog>(body)
+        }
+    }
 
     private suspend inline fun <reified T> fetchList(
         url: String,
