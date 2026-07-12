@@ -56,6 +56,42 @@ class FilteredForTest {
         }
     }
 
+    // ── disabledCinemas axis (multi-select exclusion, split cities) ──
+
+    @Test
+    fun disabledCinemasDropsThoseCinemasKeepsOthers() {
+        val result = fixture().filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), selectedCinema = null, disabledCinemas = setOf("Helonki"), now = now,
+        )
+        // Helonki excluded everywhere; Title3 (only Helonki) disappears.
+        assertEquals(listOf("Mandalorian and Grogu", "Title2"), result.map { it.title }.sorted())
+        for (f in result) {
+            for (d in f.showings) {
+                assertFalse(d.cinemas.map { it.cinema }.contains("Helonki"))
+            }
+        }
+    }
+
+    @Test
+    fun disablingEveryCinemaOfAFilmDropsIt() {
+        val result = fixture().filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), selectedCinema = null,
+            disabledCinemas = setOf("Apollo", "Helonki", "Muza"), now = now,
+        )
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun emptyDisabledCinemasKeepsEveryCinema() {
+        val result = fixture().filteredFor(
+            date = DateFilter.Anytime, format = FormatFilter.EMPTY, query = "",
+            hidden = emptySet(), selectedCinema = null, disabledCinemas = emptySet(), now = now,
+        )
+        assertEquals(3, result.size)
+    }
+
     @Test
     fun dateTomorrowKeepsTomorrowShowings() {
         // Bug 2 probe: "Jutro" wrongly showed "Brak repertuaru." while tomorrow
