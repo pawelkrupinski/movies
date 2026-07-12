@@ -137,6 +137,11 @@ class KinowoViewModel(
      *  re-fetched on every reload, only on an actual city switch. */
     private var catalogCitySlug: String? = null
 
+    /** Split cities whose first-visit area picker the user has completed — the
+     *  entry dialog shows once per city (never on a flat city). */
+    val areaPickerSeenCities: StateFlow<Set<String>> =
+        prefs.areaPickerSeenCities.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
     /** The cinema the top-bar pill row narrows the listing to, or null
      *  ("Wszystkie"). Persisted device-locally; the pill bar / [filmsFor] treat
      *  a value absent from the current city as null so a cross-city leftover
@@ -473,6 +478,17 @@ class KinowoViewModel(
         val cur = disabledCinemas.value
         val set = cityCinemas.toSet()
         prefs.setDisabledCinemas(if (enabled) cur - set else cur + set)
+    }
+
+    /** Complete the first-visit area picker for [citySlug]: keep only the areas
+     *  in [keptAreaSlugs] (disable the rest's cinemas), then mark the city seen
+     *  so the dialog doesn't reappear. Resets this city's slice first so a repeat
+     *  reflects exactly the picked areas. */
+    fun completeAreaPicker(citySlug: String, keptAreaSlugs: Set<String>) = viewModelScope.launch {
+        val cat = catalog.value
+        val rest = disabledCinemas.value - cat.cinemas.toSet()
+        prefs.setDisabledCinemas(rest + cat.cinemasToDisable(keptAreaSlugs).toSet())
+        prefs.markAreaPickerSeen(citySlug)
     }
 
     fun filmByTitle(title: String): Film? = films.value.firstOrNull { it.title == title }

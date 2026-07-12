@@ -20,6 +20,13 @@ data class CinemaCatalog(
 ) {
     val isSplit: Boolean get() = areas.isNotEmpty()
 
+    /** The cinemas to EXCLUDE when only the areas in [keepingAreas] (slugs) are
+     *  kept — every cinema in an unchecked area. Drives the first-visit area
+     *  picker: checked areas stay shown, the rest go into `disabledCinemas`.
+     *  Areas are a partition, so this is unambiguous. */
+    fun cinemasToDisable(keepingAreas: Set<String>): List<String> =
+        areas.filterNot { it.slug in keepingAreas }.flatMap { it.cinemas }
+
     companion object {
         val EMPTY = CinemaCatalog()
     }
