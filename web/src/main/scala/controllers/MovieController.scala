@@ -479,7 +479,12 @@ class MovieController( cc: ControllerComponents,
    *  what's actually live. Cached for an hour at the edge/browser; the corpus
    *  changes on the order of scrape cadence, not per request. */
   def sitemap: Action[AnyContent] = Action { request =>
-    val entries = City.all.map(c => c -> movieControllerService.toSchedules(c))
+    // Scope to THIS deployment's country — a `KINOWO_COUNTRY=pl` (Poland) host must
+    // not advertise the UK/Germany cities that also live in the global `City.all`
+    // (those pages render empty on this host, so crawling them is pure waste). Each
+    // country's own deployment sitemaps its own cities. Same scope the landing +
+    // navbar use (`Country.fromEnv`).
+    val entries = models.Country.fromEnv.cities.map(c => c -> movieControllerService.toSchedules(c))
     val lastmod = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
       .format(readModel.lastModified.atOffset(java.time.ZoneOffset.UTC))
     val body = SitemapBuilder.build(PageMeta.origin(request), entries, lastmod = Some(lastmod))

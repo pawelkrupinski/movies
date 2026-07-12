@@ -60,4 +60,14 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("<loc>https://kinowo.fly.dev/poznan/plan</loc>")
     body should include("<loc>https://kinowo.fly.dev/poznan/film?title=Testowy%20Film</loc>")
   }
+
+  it should "scope to this deployment's country, not the global City.all" in {
+    // KINOWO_COUNTRY is unset in tests → Poland. A Poland host must NOT advertise
+    // the UK/Germany cities that also live in City.all (they render empty here).
+    val body = contentAsString(controller().sitemap(req("/sitemap.xml")))
+    body should include("/warszawa/")          // a Polish city stays
+    body should not include "/london/"          // UK city — different deployment
+    body should not include "/kent/"            // UK region added in the Flicks roster
+    body should not include "/berlin/"          // German city
+  }
 }
