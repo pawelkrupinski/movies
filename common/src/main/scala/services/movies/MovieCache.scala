@@ -522,7 +522,10 @@ class CaffeineMovieCache(
         else oldKey
       // Fold any prior occupant of `target` into the resolved record up front so
       // re-keying onto an occupied year can't drop its cinema slots.
-      val priorTarget = if (target != oldKey) Option(positive.getIfPresent(target)) else None
+      // `stored` (cache-or-Mongo), not a Caffeine-only read: a cold/evicted prior
+      // occupant of `target` must still be folded in, else the union below drops it
+      // and the replaced record nulls its ratings + slots.
+      val priorTarget = if (target != oldKey) stored(target) else None
       val base        = priorTarget.fold(resolved)(t => MovieRecordMerge.union(resolved, t))
       val norm        = TitleNormalizer.sanitize(oldKey.cleanTitle)
       // Fold ONLY the YEARLESS + IDLESS same-title strays onto the resolved row.
@@ -622,7 +625,10 @@ class CaffeineMovieCache(
    *  used to flip the canonical here, drifting the whole-corpus snapshot
    *  between arm64 dev boxes and amd64 CI) no longer matters. */
   private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, siblingKey: CacheKey): Unit = {
-    val siblingRecord = Option(positive.getIfPresent(siblingKey)).getOrElse(newRecord)
+    // `stored` (cache-or-Mongo): a cold/evicted sibling read EMPTY would be merged
+    // as absent, then full-replaced and its Mongo doc deleted — losing the ratings
+    // the `*Ratings` refreshers wrote onto it.
+    val siblingRecord = stored(siblingKey).getOrElse(newRecord)
     // Key the surviving row exactly as the settle's `canonicalizeBySanitize`
     // does — `FilmCanonicalizer.canonical` derives the key from the merged
     // record's `displayTitle` (the dominant cinema spelling) and unions onto the
@@ -757,7 +763,9 @@ class CaffeineMovieCache(
     require(TitleNormalizer.sanitize(oldKey.cleanTitle) == TitleNormalizer.sanitize(newKey.cleanTitle),
       s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
     withTitleLock(oldKey.cleanTitle) {
-      val current = Option(positive.getIfPresent(oldKey)).getOrElse(MovieRecord())
+      // `stored` (cache-or-Mongo): a cold `oldKey` read EMPTY would be re-`put` at
+      // `newKey` rating-less, nulling the scores the `*Ratings` refreshers own.
+      val current = stored(oldKey).getOrElse(MovieRecord())
       val updated = update(current)
       if (oldKey != newKey) invalidate(oldKey)
       put(newKey, updated)
@@ -1058,11 +1066,20 @@ class CaffeineMovieCache(
             case Some(_) =>
               putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
             case None =>
-              // `searchTitle` is a STAGING-only field (set on the newcomer that
-              // diverts to `pending_movies`); a row landing straight in `movies`
+              // A cache MISS is not proof of first-time: a restart/eviction/re-key
+              // can leave a fully-rated Mongo row unseen by Caffeine. Build the
+              // full-record `put` on the STORED record (`stored` = cache-or-Mongo),
+              // NOT the bare `existing` (empty on a miss) — else the `replaceOne`
+              // nulls the ratings the `*Ratings` refreshers own. We `put` here (not
+              // `putIfPresent`) deliberately: `putIfPresent` is a `computeIfPresent`
+              // no-op on a cold key, so it would drop the slot write; and `put`
+              // keeps the tmdbId identity gate live for a genuine first-time scrape
+              // (where `stored` is empty and this collapses to the old behaviour).
+              // `searchTitle` stays absent — a row landing straight in `movies`
               // carries none, so movies ingestion stays a pure function of the
-              // canonical title — no scrape-order dependence.
-              put(key, existing.copy(data = existing.data + (slotKey -> slot)))
+              // canonical title, no scrape-order dependence.
+              val base = stored(key).getOrElse(MovieRecord())
+              put(key, base.copy(data = base.data + (slotKey -> slot)))
           }
           // A brand-new cinema observation grows what the TMDB stage can work
           // with; drop any stale "missing" verdict so the imminent publish

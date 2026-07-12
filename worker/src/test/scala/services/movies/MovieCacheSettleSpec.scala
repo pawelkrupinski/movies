@@ -339,4 +339,88 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     c.canonicalizeBySanitize()
     assertRestartIsAFixpoint(c)
   }
+
+  // ── rating-loss guards: a full-record write (`put`→`persist`→`upsert`) built
+  //    from a Caffeine read that MISSES must rebuild from `stored` (cache-or-Mongo),
+  //    NOT a bare MovieRecord(), so a cold / restarted / re-keyed but already-rated
+  //    row keeps the scores the `*Ratings` refreshers own. A cache constructed on an
+  //    empty repo is cold; a `repo.upsert` AFTER construction lands the row in Mongo
+  //    only (the cache has no change-stream watcher), reproducing the restart window.
+  //    See `MovieCache.stored`. ───────────────────────────────────────────────────
+
+  // A minimal listing-only scrape of one film (cinemas never carry ratings).
+  private def cinemaMovie(title: String, year: Int, cinema: Cinema): CinemaMovie =
+    CinemaMovie(Movie(title = title, releaseYear = Some(year)), cinema, None, None, None, Seq.empty, Seq.empty, Seq.empty)
+
+  // A fully-rated, TMDB-resolved record: a Tmdb slot + one cinema slot, every rating filled.
+  private def ratedRecord(title: String, year: Int, tmdbId: Int, cinema: Cinema): MovieRecord =
+    MovieRecord(
+      tmdbId = Some(tmdbId), imdbId = Some(s"tt$tmdbId"),
+      imdbRating = Some(7.1), metascore = Some(66), rottenTomatoes = Some(88), filmwebRating = Some(6.4),
+      data = Map[Source, SourceData](
+        (Tmdb: Source)   -> SourceData(title = Some(title), releaseYear = Some(year)),
+        (cinema: Source) -> SourceData(title = Some(title), releaseYear = Some(year))))
+
+  "recordCinemaScrape" should
+    "preserve a cold-cache row's ratings when a scrape lands on it via a Mongo-backed miss" in {
+    val repo = new InMemoryMovieRepository
+    val c    = new CaffeineMovieCache(repo)                    // boots on an EMPTY repo → cache cold
+    // Rated row appears in Mongo AFTER construction, so Caffeine never saw it.
+    // Before the fix the next scrape MISSED the cache and full-replaced from a bare
+    // MovieRecord(), nulling every rating; now the None branch rebuilds from `stored`.
+    repo.upsert("Zimno", Some(2026), ratedRecord("Zimno", 2026, 4242, Helios))
+    c.recordCinemaScrape(KinoMuza, Seq(cinemaMovie("Zimno", 2026, KinoMuza)))
+    val row = c.snapshot().find(r => TitleNormalizer.sanitize(r.title) == "zimno").map(_.record)
+    withClue(s"cold-cache scrape dropped the ratings: $row\n") {
+      row.flatMap(_.imdbRating)     shouldBe Some(7.1)
+      row.flatMap(_.metascore)      shouldBe Some(66)
+      row.flatMap(_.rottenTomatoes) shouldBe Some(88)
+      row.flatMap(_.filmwebRating)  shouldBe Some(6.4)
+      row.flatMap(_.imdbId)         shouldBe Some("tt4242")
+    }
+    // The freshly-scraped cinema slot still lands (KinoMuza added beside Helios).
+    row.map(_.cinemaData.keySet) shouldBe Some(Set(Helios, KinoMuza))
+  }
+
+  "settleResolved" should
+    "fold a COLD prior occupant of the resolved year instead of nulling its ratings" in {
+    val repo = new InMemoryMovieRepository
+    val c    = new CaffeineMovieCache(repo)
+    // A rated row already occupies (Kumotry, 2026) in Mongo but is cold in the cache
+    // (post-restart). A yearless scrape of the same film resolves to 2026; the settle
+    // re-keys onto the occupied year. Before the fix the prior occupant read EMPTY, so
+    // the resolved row full-replaced it and its ratings were lost.
+    repo.upsert("Kumotry", Some(2026), ratedRecord("Kumotry", 2026, 700, Helios))
+    val resolved = MovieRecord(tmdbId = Some(700), data = Map[Source, SourceData](
+      (Tmdb: Source)      -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)),
+      (Multikino: Source) -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
+    c.settleResolved(c.keyOf("Kumotry", None), resolved)
+    val r = c.snapshot().filter(x => TitleNormalizer.sanitize(x.title) == "kumotry")
+    withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
+    val row = r.head.record
+    withClue(s"the settle nulled the prior occupant's ratings: $row\n") {
+      row.imdbRating    shouldBe Some(7.1)
+      row.filmwebRating shouldBe Some(6.4)
+      row.imdbId        shouldBe Some("tt700")
+    }
+  }
+
+  "rekey" should
+    "carry a COLD row's ratings to the new key instead of rewriting it rating-less" in {
+    val repo = new InMemoryMovieRepository
+    val c    = new CaffeineMovieCache(repo)
+    // A rated yearless row lives in Mongo, cold in the cache. A resolved year promotes
+    // it (oldKey → newKey). Before the fix the cold read returned EMPTY, so the rekey
+    // deleted the rated oldKey doc and wrote an empty row at newKey — ratings gone.
+    repo.upsert("Mróz", None, ratedRecord("Mróz", 2026, 900, Helios))
+    c.rekey(c.keyOf("Mróz", None), c.keyOf("Mróz", Some(2026)), identity)
+    val r = c.snapshot().filter(x => TitleNormalizer.sanitize(x.title) == "mroz")
+    withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
+    r.head.year shouldBe Some(2026)
+    withClue(s"rekey lost the cold row's ratings: ${r.head.record}\n") {
+      r.head.record.imdbRating    shouldBe Some(7.1)
+      r.head.record.filmwebRating shouldBe Some(6.4)
+      r.head.record.imdbId        shouldBe Some("tt900")
+    }
+  }
 }
