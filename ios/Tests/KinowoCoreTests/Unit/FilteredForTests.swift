@@ -126,6 +126,50 @@ final class FilteredForTests: XCTestCase {
         XCTAssertEqual(todayDay.cinemas.map(\.cinema).sorted(), ["Apollo", "Helonki"])
     }
 
+    // MARK: - disabledCinemas axis (multi-select exclusion, split cities)
+
+    func testDisabledCinemasDropsThoseCinemasKeepsOthers() {
+        let result = fixture().filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: ["Helonki"]
+        )
+        // Helonki is excluded everywhere; Title3 (only Helonki) disappears,
+        // the others keep their remaining cinema-groups.
+        XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2"])
+        for f in result {
+            for d in f.showings {
+                XCTAssertFalse(d.cinemas.map(\.cinema).contains("Helonki"))
+            }
+        }
+    }
+
+    func testDisablingEveryCinemaOfAFilmDropsIt() {
+        let result = fixture().filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: ["Apollo", "Helonki", "Muza"]
+        )
+        XCTAssertTrue(result.isEmpty)
+    }
+
+    func testEmptyDisabledCinemasKeepsEveryCinema() {
+        let result = fixture().filteredFor(
+            date: .anytime, format: .empty, query: "",
+            hidden: [], disabledCinemas: []
+        )
+        XCTAssertEqual(result.count, 3)
+    }
+
+    func testDisabledCinemasAndFormatIntersect() {
+        var f = FormatFilter(); f.dimension = "3D"
+        // Only Helonki has a 3D slot — disabling Helonki plus a 3D filter
+        // leaves nothing.
+        let result = fixture().filteredFor(
+            date: .anytime, format: f, query: "",
+            hidden: [], disabledCinemas: ["Helonki"]
+        )
+        XCTAssertTrue(result.isEmpty)
+    }
+
     func testFormatNarrowsShowtimesButKeepsFilmIfAnySlotRemains() {
         var f = FormatFilter()
         f.dimension = "3D"
