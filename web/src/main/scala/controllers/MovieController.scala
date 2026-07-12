@@ -60,6 +60,27 @@ object ApiFilmDetails {
     d.synopsis.nonEmpty || d.trailerURLs.nonEmpty || d.originalTitle.nonEmpty
 }
 
+// ── Cinema universe + area grouping (static per city) ──────────────────────
+/** One collapsible cinema group in a split city: its [[CinemaArea]] label +
+ *  stable slug, and the display names of the venues it holds. */
+case class ApiCinemaArea(name: String, slug: String, cinemas: Seq[String])
+/** `GET /:city/api/cinemas` — the city's full cinema universe (every venue, in
+ *  city order, including ones with no showings today) plus its area grouping.
+ *  A flat city returns an empty `areas`; a split city (e.g. London) returns one
+ *  entry per compass area. Lets the mobile filter render the same collapsible,
+ *  per-area (de)selectable list the web filter builds server-side. */
+case class ApiCityCinemas(cinemas: Seq[String], areas: Seq[ApiCinemaArea])
+
+object ApiCityCinemas {
+  implicit val apiCinemaAreaWrites: Writes[ApiCinemaArea] = Json.writes[ApiCinemaArea]
+  implicit val writes: Writes[ApiCityCinemas] = Json.writes[ApiCityCinemas]
+
+  def from(city: City): ApiCityCinemas = ApiCityCinemas(
+    cinemas = city.cinemaDisplayNames,
+    areas   = city.areas.map(g => ApiCinemaArea(g.area.label, g.area.slug, g.cinemaDisplayNames)),
+  )
+}
+
 object ApiFilm {
   implicit val apiShowtimeWrites: Writes[ApiShowtime] = Json.writes[ApiShowtime]
   implicit val apiCinemaShowingsWrites: Writes[ApiCinemaShowings] = Json.writes[ApiCinemaShowings]
@@ -504,6 +525,13 @@ class MovieController( cc: ControllerComponents,
         Json.toJson(details)
       }
     }
+  }
+
+  /** The city's cinema universe + area grouping (static). Mobile fetches this
+   *  once per city to render the collapsible, per-area cinema filter — the
+   *  counterpart of the server-side `CINEMA_AREAS` the web page is handed. */
+  def apiCinemas(city: String): Action[AnyContent] = Action { request =>
+    withCity(city)(c => conditionalJson(request)(Json.toJson(ApiCityCinemas.from(c))))
   }
 
   def debug(): Action[AnyContent] = Action {
