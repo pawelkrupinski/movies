@@ -47,6 +47,18 @@ enum A11y {
         static let allPill = "cinemabar.pill.all"
         /// Prefix; a per-cinema pill is `"cinemabar.pill.\(cinema)"`.
         static let pillPrefix = "cinemabar.pill"
+
+        // ── Split-city area picker (multi-select) ──
+        /// The collapsed handle row of the area picker.
+        static let areaHandle = "cinemabar.area.handle"
+        /// The "all cinemas" master toggle.
+        static let areaAll = "cinemabar.area.all"
+        /// Prefix; an area's (de)select toggle is `"cinemabar.area.toggle.\(slug)"`.
+        static let areaTogglePrefix = "cinemabar.area.toggle"
+        /// Prefix; an area's fold header is `"cinemabar.area.header.\(slug)"`.
+        static let areaHeaderPrefix = "cinemabar.area.header"
+        /// Prefix; a per-cinema checkbox is `"cinemabar.area.cinema.\(cinema)"`.
+        static let areaCinemaPrefix = "cinemabar.area.cinema"
     }
 
     enum FiltersSheet {

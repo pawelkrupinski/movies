@@ -11,12 +11,20 @@ final class RepertoireStore: ObservableObject {
     /// link's film lookup waits for this to equal its target slug rather than
     /// for `films` to merely be non-empty.
     @Published private(set) var loadedCitySlug: String?
+    /// The current city's cinema universe + area grouping (`/api/cinemas`).
+    /// `.empty` (flat) until fetched; a split city (London) drives the
+    /// multi-select area picker off `catalog.areas`, a flat city ignores it and
+    /// keeps the single-select pill bar.
+    @Published private(set) var catalog: CinemaCatalog = .empty
 
     private var base: URL
     private var url: URL
     private var citySlug: String
     private let session: URLSession
     private var lastReloadedAt: Date?
+    /// The city `catalog` was fetched for, so a static catalog isn't re-fetched
+    /// on every stale-repertoire reload — only on an actual city/country switch.
+    private var catalogCitySlug: String?
 
     private let staleAfter: TimeInterval = 60
 
@@ -43,6 +51,9 @@ final class RepertoireStore: ObservableObject {
         base = country.baseURL
         url = next
         lastReloadedAt = nil
+        // The new deployment has its own cinema roster/areas — drop the stale one.
+        catalog = .empty
+        catalogCitySlug = nil
         Task { await reload() }
     }
 
@@ -55,6 +66,10 @@ final class RepertoireStore: ObservableObject {
         url = next
         self.citySlug = citySlug
         lastReloadedAt = nil
+        // A new city has its own cinemas/areas — clear so the split panel doesn't
+        // briefly show the previous city's areas mid-switch.
+        catalog = .empty
+        catalogCitySlug = nil
         Task { await reload() }
     }
 
@@ -80,6 +95,9 @@ final class RepertoireStore: ObservableObject {
             loadedCitySlug = citySlug
             return
         }
+        // The cinema catalog (universe + areas) is static per city; fetch it once
+        // per city alongside the repertoire, independent of the listing's success.
+        await fetchCatalogIfNeeded()
         do {
             var request = URLRequest(url: url)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
@@ -111,6 +129,24 @@ final class RepertoireStore: ObservableObject {
             Task.detached { RepertoireCache.save(filmsCopy, city: city, lastModified: lm) }
         } catch {
             self.error = error
+        }
+    }
+
+    /// Fetch `/api/cinemas` once per city. Best-effort: on any failure the prior
+    /// `catalog` (or `.empty` = flat) stands, so the flat pill-bar path still
+    /// works even if this call fails.
+    private func fetchCatalogIfNeeded() async {
+        guard catalogCitySlug != citySlug else { return }
+        let catalogURL = City.apiURL(base: base, slug: citySlug, endpoint: "cinemas")
+        do {
+            var request = URLRequest(url: catalogURL)
+            request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return }
+            self.catalog = try JSONDecoder().decode(CinemaCatalog.self, from: data)
+            self.catalogCitySlug = citySlug
+        } catch {
+            // Leave the current catalog; the flat pill-bar path is unaffected.
         }
     }
 

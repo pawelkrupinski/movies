@@ -109,7 +109,17 @@ struct ContentView: View {
                 // directly under the top bar. Hidden until the repertoire (hence
                 // the cinema universe) has loaded, so it never shows an empty
                 // handle over the loading / error state.
-                if !allCinemas.isEmpty {
+                if store.catalog.isSplit {
+                    // Split city (e.g. London): multi-select area picker.
+                    CinemaAreaBar(
+                        catalog: store.catalog,
+                        disabled: prefs.disabledCinemas,
+                        onSetCinema: { prefs.setCinemaEnabled($0, $1) },
+                        onSetArea:   { prefs.setAreaEnabled($0, $1) },
+                        onSetAll:    { prefs.setAllCinemasEnabled($0, $1) }
+                    )
+                    .background(Color(.systemBackground))
+                } else if !allCinemas.isEmpty {
                     CinemaPillBar(
                         cinemas: allCinemas,
                         selectedCinema: prefs.selectedCinema,
@@ -514,7 +524,10 @@ struct ContentView: View {
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
-            selectedCinema: prefs.selectedCinema,
+            // Split cities filter by the multi-select exclusion set; flat cities
+            // by the single-select pill. Only one is active per city.
+            selectedCinema: store.catalog.isSplit ? nil : prefs.selectedCinema,
+            disabledCinemas: store.catalog.isSplit ? prefs.disabledCinemas : [],
             excludedCountries: excludedCountries,
             excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
