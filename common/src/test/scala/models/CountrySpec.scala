@@ -88,7 +88,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.bySlug.get("london") shouldBe None            // London is a UK city
     Country.UnitedKingdom.bySlug.get("london") shouldBe Some(London)
     Country.Poland.allSorted.toSet shouldBe City.polishCities.toSet
-    Country.UnitedKingdom.allSorted shouldBe Seq(London, Manchester, Norwich)  // English collation
+    Country.UnitedKingdom.allSorted.toSet shouldBe City.ukCities.toSet         // same 79 UK cities
+    Country.UnitedKingdom.allSorted.head shouldBe Aberdeenshire                // English collation A→Z
+    Country.UnitedKingdom.allSorted.last shouldBe Yorkshire
     Country.Poland.allJson should include("poznan")
     Country.Poland.allJson should not include "london"
   }
