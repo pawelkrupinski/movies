@@ -583,6 +583,11 @@ class WorkerWiring(
   // local dedup cache (skips the redundant enqueue round-trip) wraps Mongo.
   lazy val taskQueue: TaskQueue =
     new MeteredTaskQueue(new CachingTaskQueue(new MongoTaskQueue(mongoConnection.database)), taskMetrics)
+  // Persists each operator-triggered bulk-refresh outcome so it survives the task
+  // doc's instant deletion and the web `/tasks` page can show it. Written here by
+  // BulkRefreshHandler; read by the web (same shared Mongo, like `tasks` itself).
+  lazy val bulkTaskResultStore: services.tasks.BulkTaskResultStore =
+    new services.tasks.MongoBulkTaskResultStore(mongoConnection.database)
   lazy val freshnessStore: FreshnessStore = new MongoFreshnessStore(mongoConnection.database)
   // Live config: install the Mongo override cache as Env's override source and
   // publish this process's (non-secret) knobs to the shared registry so the web
@@ -904,11 +909,13 @@ class WorkerWiring(
   // existing refreshAll / retryUnresolvedTmdb; ResolveTmdb forces one row and
   // lets the event chain re-run the downstream ratings.
   lazy val operatorHandlers: Seq[services.tasks.TaskHandler] = Seq(
-    new BulkRefreshHandler(TaskType.RefreshAllTmdb,       "TMDB",       () => movieService.retryUnresolvedTmdb()),
-    new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => imdbRatings.refreshAllNow()),
-    new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow()),
-    new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow()),
-    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => movieService.settle()),
+    // TMDB re-enrich + settle have no per-source count tally, so they report a
+    // generic "ran" message; the four `*Ratings` and OMDb walks return real counts.
+    new BulkRefreshHandler(TaskType.RefreshAllTmdb,       "TMDB",       () => { movieService.retryUnresolvedTmdb(); services.tasks.BulkRefreshResult.message("re-enrich dispatched for unresolved-TMDB rows") }, bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => imdbRatings.refreshAllNow(),         bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow(),    bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow(), bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { movieService.settle(); services.tasks.BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
     new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
@@ -917,11 +924,11 @@ class WorkerWiring(
   ) ++
     // The Filmweb bulk-refresh button only when this country's Filmweb path is on.
     Option.when(filmwebEnabled)(
-      new BulkRefreshHandler(TaskType.RefreshAllFilmweb, "Filmweb", () => filmwebRatings.refreshAllNow())) ++
+      new BulkRefreshHandler(TaskType.RefreshAllFilmweb, "Filmweb", () => filmwebRatings.refreshAllNow(), bulkTaskResultStore)) ++
     // OMDb identifier sweep as a coarse task — only when the feature is on
     // (`omdbBackfill` is `Some`). Enqueued daily by `omdbBackfillReaper`, run here
     // off a background EC like the other corpus-wide refreshes.
-    omdbBackfill.map(ob => new BulkRefreshHandler(TaskType.RefreshAllOmdb, "OMDb", () => ob.refreshAllNow())).toSeq
+    omdbBackfill.map(ob => new BulkRefreshHandler(TaskType.RefreshAllOmdb, "OMDb", () => ob.refreshAllNow(), bulkTaskResultStore)).toSeq
 
   // A fixed pool of workers, each fetching and running ONE task at a time — so
   // the number of scrapes/enrichments in flight at once is hard-capped at the

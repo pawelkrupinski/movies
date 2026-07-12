@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
-import services.tasks.{InMemoryTaskQueue, TaskState, TaskType}
+import services.tasks.{BulkTaskResult, BulkTaskResultStore, InMemoryBulkTaskResultStore, InMemoryTaskQueue, TaskState, TaskType}
 
 import java.time.Instant
 import scala.concurrent.duration._
@@ -22,8 +22,9 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
 
   private val t0 = Instant.parse("2026-06-07T12:00:00Z")
 
-  private def controller(queue: InMemoryTaskQueue, gate: AdminAction = TestAdminAction()) =
-    new TasksController(Helpers.stubControllerComponents(), gate, queue)
+  private def controller(queue: InMemoryTaskQueue, gate: AdminAction = TestAdminAction(),
+                         results: BulkTaskResultStore = new InMemoryBulkTaskResultStore) =
+    new TasksController(Helpers.stubControllerComponents(), gate, queue, results)
 
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
 
@@ -81,6 +82,33 @@ class TasksControllerSpec extends AnyFlatSpec with Matchers {
     val json = dataJson(new InMemoryTaskQueue)
     (json \ "active").as[JsArray].value shouldBe empty
     (json \ "shown").as[Int] shouldBe 0
+  }
+
+  // ── Last bulk-run results: the outcome that outlives the deleted task doc ─────
+  it should "surface each bulk job's last result — counts + when — keyed by taskType" in {
+    val store = new InMemoryBulkTaskResultStore
+    store.record(BulkTaskResult(TaskType.RefreshAllImdb, t0, succeeded = true,
+      "tick done — 4 changed, 0 failed.", walked = Some(578), changed = Some(4), discovered = Some(0), failed = Some(0)))
+    store.record(BulkTaskResult(TaskType.SettleNow, t0, succeeded = false, "failed: boom"))
+
+    val result = controller(new InMemoryTaskQueue, results = store).data.apply(adminSession)
+    val json   = Json.parse(contentAsString(result)).as[JsObject]
+
+    val imdb = (json \ "lastResults" \ "RefreshAllImdb").as[JsObject]
+    (imdb \ "succeeded").as[Boolean] shouldBe true
+    (imdb \ "changed").as[Int]       shouldBe 4
+    (imdb \ "ranAt").as[Long]        shouldBe t0.toEpochMilli
+    (imdb \ "message").as[String]    should include ("4 changed")
+
+    val settle = (json \ "lastResults" \ "SettleNow").as[JsObject]
+    (settle \ "succeeded").as[Boolean] shouldBe false
+    (settle \ "message").as[String]    shouldBe "failed: boom"
+    (settle \ "changed").asOpt[Int]    shouldBe None // a message-only job carries no count
+  }
+
+  it should "report an empty lastResults object when no bulk job has ever run" in {
+    val json = dataJson(new InMemoryTaskQueue)
+    (json \ "lastResults").as[JsObject].keys shouldBe empty
   }
 
   // ── Auth gate: /tasks is an operational page, closed like /uptime and the

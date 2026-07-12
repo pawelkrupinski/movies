@@ -2,6 +2,7 @@ package services.enrichment
 
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
+import services.tasks.BulkRefreshResult
 
 /**
  * Common skeleton for the four `*Ratings` services (`ImdbRatings`,
@@ -65,14 +66,16 @@ abstract class CacheRefresher(
   /** Subclass hook: the per-row work. Returns the new displayed value if it moved. */
   protected def refreshOne(key: CacheKey): Option[String]
 
-  /** Subclass hook: walk every cached row and apply per-row refresh. */
-  private[services] def refreshAll(): Unit
+  /** Subclass hook: walk every cached row and apply per-row refresh, returning a
+   *  summary of what the walk did (walked / changed / discovered / failed +
+   *  message) so the operator-triggered path can persist and display it. */
+  private[services] def refreshAll(): BulkRefreshResult
 
   /** Public entry point to run a full refresh now — the operator-triggered
    *  `/tasks` button path (the worker's `BulkRefreshHandler` calls this). Wraps
    *  the `private[services]` walk so callers outside the `services` package
    *  (the `modules` composition root) can kick one off. */
-  def refreshAllNow(): Unit = refreshAll()
+  def refreshAllNow(): BulkRefreshResult = refreshAll()
 
   /** Per-source concurrency cap for the parallel `refreshAll` walk (see
    *  [[tools.BoundedParallel]]). Default 8; override lower for an upstream that

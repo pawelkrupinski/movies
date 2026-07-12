@@ -8,7 +8,7 @@ import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenV
 import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
-import services.tasks.{MongoTaskQueue, TaskQueue}
+import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
 import services.users.{AccountDeletion, CachingUserRepository, CachingUserStateRepository, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
@@ -98,6 +98,9 @@ trait Wiring {
   // The worker owns the queue; this process only reads it for the /tasks monitor
   // page. Same shared `tasks` collection, no writes originate here.
   lazy val taskQueue: TaskQueue = new MongoTaskQueue(mongoConnection.database)
+  // Read-only here: the worker writes each bulk job's last outcome; the /tasks page
+  // reads it to show what a Run button actually did (same shared Mongo as `tasks`).
+  lazy val bulkTaskResultStore: BulkTaskResultStore = new MongoBulkTaskResultStore(mongoConnection.database)
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode
@@ -231,7 +234,7 @@ trait Wiring {
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
-  lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)
+  lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` + `pending_movies` via the same per-country stacks the /debug page
   // renders from. The live row's details cell ships empty (lazily fetched on

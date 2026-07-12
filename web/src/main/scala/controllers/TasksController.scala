@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
-import services.tasks.{EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskQueue, TaskSummary, TaskType}
+import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskQueue, TaskSummary, TaskType}
 
 /**
  * Operational view of the durable task queue at `/tasks`. The page renders a
@@ -12,7 +12,8 @@ import services.tasks.{EnqueueResult, EnrichTaskKeys, QueueSnapshot, TaskQueue, 
  * stream was rejected for the same reason `/uptime` dropped one — it would push
  * every task transition 24/7 even with nobody watching.
  */
-class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskQueue) extends AbstractController(cc) {
+class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue: TaskQueue,
+                      bulkResults: BulkTaskResultStore) extends AbstractController(cc) {
 
   /** Cap on the live rows returned per poll — enough to see the head of a
    *  backed-up queue without an unbounded scan. */
@@ -62,7 +63,22 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
     "counts"  -> Json.toJson(snap.counts),
     "shown"   -> snap.active.size,
     "limit"   -> ActiveLimit,
-    "active"  -> snap.active.map(taskJson)
+    "active"  -> snap.active.map(taskJson),
+    // Each bulk job's LAST outcome, keyed by TaskType name so the page can show it
+    // under the matching Run button long after the task doc itself was deleted.
+    "lastResults" -> JsObject(bulkResults.latest().map { case (taskType, result) =>
+      taskType.name -> resultJson(result)
+    })
+  )
+
+  private def resultJson(r: BulkTaskResult): JsObject = Json.obj(
+    "ranAt"      -> r.ranAt.toEpochMilli,
+    "succeeded"  -> r.succeeded,
+    "message"    -> r.message,
+    "walked"     -> r.walked,
+    "changed"    -> r.changed,
+    "discovered" -> r.discovered,
+    "failed"     -> r.failed
   )
 
   private def taskJson(t: TaskSummary): JsObject = Json.obj(

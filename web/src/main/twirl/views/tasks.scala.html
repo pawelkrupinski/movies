@@ -50,15 +50,23 @@
     .age-warn { color: #f0ad4e; }
     .age-bad  { color: #e07a6a; }
 
-    .runbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; }
-    .runbar-label { color: #777; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .runbar { margin-bottom: 22px; }
+    .runbar-label { color: #777; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 9px; }
+    .runjobs { display: flex; gap: 10px; flex-wrap: wrap; }
+    .runjob { display: flex; flex-direction: column; gap: 5px; min-width: 156px; }
     .runbtn {
       font: 11px monospace; color: #cfe3d6; background: #14241a; border: 1px solid #245038;
-      border-radius: 6px; padding: 6px 11px; cursor: pointer;
+      border-radius: 6px; padding: 6px 11px; cursor: pointer; text-align: left;
     }
     .runbtn:hover { background: #1c3326; border-color: #2e6649; color: #fff; }
     .runbtn:disabled { opacity: .5; cursor: default; }
-    .runstatus { color: #888; font-size: 11px; margin-left: 4px; }
+    .runresult { font-size: 10px; color: #555; line-height: 1.35; padding: 0 2px; }
+    .runresult .cnt  { color: #9bb3c9; }
+    .runresult .when { color: #777; }
+    .runresult.ok   .mark { color: #6a9b78; }
+    .runresult.fail .mark { color: #e07a6a; }
+    .runresult.fail { color: #b56a5e; }
+    .runstatus { color: #888; font-size: 11px; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -66,15 +74,35 @@
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span></div>
 
   <div class="runbar">
-    <span class="runbar-label">Run</span>
-    <button class="runbtn" data-url="@routes.TasksController.run("tmdb")">TMDB re-enrich (all)</button>
-    <button class="runbtn" data-url="@routes.TasksController.run("imdb")">IMDb refresh</button>
-    <button class="runbtn" data-url="@routes.TasksController.run("filmweb")">Filmweb refresh</button>
-    <button class="runbtn" data-url="@routes.TasksController.run("metacritic")">Metacritic refresh</button>
-    <button class="runbtn" data-url="@routes.TasksController.run("rt")">Rotten Tomatoes refresh</button>
-    <button class="runbtn settle" data-url="@routes.TasksController.run("settle")"
-            title="Folds same-film editions into one record per shown title">Consolidate now (settle)</button>
-    <span id="runstatus" class="runstatus"></span>
+    <div class="runbar-label">Run corpus-wide refresh</div>
+    <div class="runjobs">
+      <div class="runjob">
+        <button class="runbtn" data-tasktype="RefreshAllTmdb" data-url="@routes.TasksController.run("tmdb")">TMDB re-enrich (all)</button>
+        <div class="runresult" data-tasktype="RefreshAllTmdb"></div>
+      </div>
+      <div class="runjob">
+        <button class="runbtn" data-tasktype="RefreshAllImdb" data-url="@routes.TasksController.run("imdb")">IMDb refresh</button>
+        <div class="runresult" data-tasktype="RefreshAllImdb"></div>
+      </div>
+      <div class="runjob">
+        <button class="runbtn" data-tasktype="RefreshAllFilmweb" data-url="@routes.TasksController.run("filmweb")">Filmweb refresh</button>
+        <div class="runresult" data-tasktype="RefreshAllFilmweb"></div>
+      </div>
+      <div class="runjob">
+        <button class="runbtn" data-tasktype="RefreshAllMetacritic" data-url="@routes.TasksController.run("metacritic")">Metacritic refresh</button>
+        <div class="runresult" data-tasktype="RefreshAllMetacritic"></div>
+      </div>
+      <div class="runjob">
+        <button class="runbtn" data-tasktype="RefreshAllRt" data-url="@routes.TasksController.run("rt")">Rotten Tomatoes refresh</button>
+        <div class="runresult" data-tasktype="RefreshAllRt"></div>
+      </div>
+      <div class="runjob">
+        <button class="runbtn settle" data-tasktype="SettleNow" data-url="@routes.TasksController.run("settle")"
+                title="Folds same-film editions into one record per shown title">Consolidate now (settle)</button>
+        <div class="runresult" data-tasktype="SettleNow"></div>
+      </div>
+    </div>
+    <div id="runstatus" class="runstatus"></div>
   </div>
 
   <div class="counts" id="counts"></div>
@@ -167,6 +195,30 @@
         "live · " + (rows.length) + " active shown" + more + " · refreshed " +
         new Date().toLocaleTimeString();
       document.getElementById("sub").classList.remove("stale");
+
+      renderLastResults(now);
+    }
+
+    // Each Run button's last outcome, from the shared `bulk_task_results` store —
+    // it survives the task doc's instant deletion, so the operator sees what a
+    // click actually did (counts + how long ago) instead of a vanished task.
+    function renderLastResults(now) {
+      var results = (lastSnap && lastSnap.lastResults) || {};
+      document.querySelectorAll(".runresult").forEach(function (el) {
+        var r = results[el.dataset.tasktype];
+        if (!r) { el.className = "runresult"; el.textContent = "not run yet"; el.title = ""; return; }
+        el.className = "runresult " + (r.succeeded ? "ok" : "fail");
+        var counts = [];
+        if (r.changed != null)    counts.push(r.changed + " changed");
+        if (r.discovered)         counts.push(r.discovered + " found");
+        if (r.failed)             counts.push(r.failed + " failed");
+        var summary = counts.length ? counts.join(" · ")
+          : (r.succeeded ? "ran" : "failed");
+        el.innerHTML = '<span class="mark">' + (r.succeeded ? "✓" : "✗") + '</span> ' +
+          '<span class="cnt">' + esc(summary) + '</span> · ' +
+          '<span class="when">' + fmtAge(now - r.ranAt) + ' ago</span>';
+        el.title = r.message || "";
+      });
     }
 
     function poll() {

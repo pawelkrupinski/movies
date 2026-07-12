@@ -116,6 +116,25 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("C", None)).flatMap(_.imdbRating) shouldBe Some(8.1)
   }
 
+  it should "return a summary of the walk (walked / changed / failed) matching what it logs" in {
+    val repository = new InMemoryMovieRepository(Seq(
+      ("A", None, mkEnrichment("tt1", rating = Some(5.0))),  // changes → 7.4
+      ("B", None, mkEnrichment("tt2", rating = Some(6.0))),  // unchanged
+      ("C", None, mkEnrichment("tt3", rating = Some(7.0))),  // changes → 8.1
+      ("D", None, MovieRecord(tmdbId = Some(1)))             // no imdbId → skipped (not walked)
+    ))
+    val cache = new CaffeineMovieCache(repository)
+    val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0, "tt3" -> 8.1)))
+
+    val summary = ratings.refreshAll()
+
+    summary.walked  shouldBe Some(3)   // D has no imdbId, so it isn't walked
+    summary.changed shouldBe Some(2)   // A and C moved
+    summary.failed  shouldBe Some(0)
+    summary.message should include ("2 changed")
+    summary.message should include ("0 failed")
+  }
+
   it should "record each bulk-observed rating change into the adaptive cadence (and nothing for unchanged rows)" in {
     val repository = new InMemoryMovieRepository(Seq(
       ("A", None, MovieRecord(imdbId = Some("tt1"), imdbRating = Some(5.0), tmdbId = Some(101))),

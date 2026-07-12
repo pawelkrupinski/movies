@@ -4,6 +4,7 @@ import clients.TmdbClient
 import models.{Filmweb, Source, SourceData}
 import services.movies.{CacheKey, EmbeddedYear, MovieCache, MovieService}
 import services.resolution.{ResolutionCache, ResolutionKeys}
+import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -254,7 +255,7 @@ class FilmwebRatings(
    *  get the cheap rating-only refresh; rows without one get the expensive
    *  full-lookup. The latter group is small in practice — only films
    *  Filmweb didn't surface at first enrichment. */
-  private[services] def refreshAll(): Unit = {
+  private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.filmwebUrl.isDefined }
@@ -294,8 +295,10 @@ class FilmwebRatings(
     }
 
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"Filmweb refresh: tick done in ${took}ms — ${changed.get} rating(s) changed, " +
-                s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed.")
+    val message = s"tick done in ${took}ms — ${changed.get} rating(s) changed, " +
+                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
+    logger.info(s"Filmweb refresh: $message")
+    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
   }
 
 }

@@ -1,9 +1,11 @@
 package services.enrichment
 
 import services.movies.{CacheKey, MovieCache}
+import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
 
 import java.time.Clock
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 /**
@@ -105,19 +107,22 @@ class OmdbBackfill(
     attempts.record(filmKey(key), nextLevel, clock.instant())
   }
 
-  private[services] def refreshAll(): Unit = {
+  private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot = cache.entries
     // ONE batched read of the backoff stamps for the whole sweep. Previously each
     // candidate row triggered a blocking Mongo `get` inside `inBackoff`; run
     // corpus-wide every sweep, those per-row reads drained the worker's shared-CPU
     // credit to the floor (see OmdbAttemptStore.all).
     sweepBackoff = Some(attempts.all())
+    val changed = new AtomicInteger(0)
     try {
       logger.info(s"OMDb backfill: starting tick over ${snapshot.size} cached row(s).")
       BoundedParallel.foreach("OMDb-backfill", snapshot, refreshConcurrency) { case (key, e) =>
-        refreshOne(key).foreach(v => recordCadenceChange(key, e.tmdbId, Some(v)))
+        refreshOne(key).foreach { v => recordCadenceChange(key, e.tmdbId, Some(v)); changed.incrementAndGet() }
       }
     } finally sweepBackoff = None
+    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = 0, failed = 0,
+      message = s"backfill done over ${snapshot.size} row(s) — ${changed.get} identifier(s) recovered.")
   }
 }
 

@@ -3,6 +3,7 @@ package services.enrichment
 import clients.TmdbClient
 import services.movies.{CacheKey, MovieCache, MovieService}
 import services.resolution.{ResolutionCache, ResolutionKeys}
+import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -140,7 +141,7 @@ class MetascoreRatings(
    *  refresh; rows without one get the full URL-discovery probe (and then a
    *  score refresh if discovery succeeds). Per-row failures are logged at
    *  debug — one bad row can't poison the whole tick. */
-  private[services] def refreshAll(): Unit = {
+  private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.metacriticUrl.isDefined }
@@ -173,7 +174,9 @@ class MetascoreRatings(
     }
 
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"Metascore refresh: tick done in ${took}ms — ${changed.get} score(s) changed, " +
-                s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed.")
+    val message = s"tick done in ${took}ms — ${changed.get} score(s) changed, " +
+                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
+    logger.info(s"Metascore refresh: $message")
+    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
   }
 }

@@ -3,6 +3,7 @@ package services.enrichment
 import clients.TmdbClient
 import services.movies.{CacheKey, MovieCache, MovieService}
 import services.resolution.{ResolutionCache, ResolutionKeys}
+import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -106,7 +107,7 @@ class RottenTomatoesRatings(
   /** Walk every cached row. Rows with a `rottenTomatoesUrl` get a cheap
    *  Tomatometer refresh; rows without one get the full URL-discovery probe
    *  (and a score refresh if discovery succeeds). */
-  private[services] def refreshAll(): Unit = {
+  private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.rottenTomatoesUrl.isDefined }
@@ -139,7 +140,9 @@ class RottenTomatoesRatings(
     }
 
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"RT refresh: tick done in ${took}ms — ${changed.get} score(s) changed, " +
-                s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed.")
+    val message = s"tick done in ${took}ms — ${changed.get} score(s) changed, " +
+                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
+    logger.info(s"RT refresh: $message")
+    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
   }
 }

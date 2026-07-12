@@ -3,6 +3,7 @@ package services.enrichment
 import models.{Imdb, Source, SourceData}
 import services.cinemas.CountryNames
 import services.movies.{CacheKey, MovieCache}
+import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
 
 import java.util.Locale
@@ -107,7 +108,7 @@ class ImdbRatings(
    *  SourceData(Imdb) slot. Skips rows without an `imdbId` (TMDB resolved
    *  them but IMDb hasn't cross-referenced yet — the daily TMDB-retry tick
    *  re-checks those). */
-  private[services] def refreshAll(): Unit = {
+  private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
     val withImdb  = snapshot.collect { case (k, e) if e.imdbId.isDefined => (k, e, e.imdbId.get) }
@@ -140,6 +141,8 @@ class ImdbRatings(
       }
     }
     val took = System.currentTimeMillis() - startedAt
-    logger.info(s"IMDb refresh: tick done in ${took}ms — ${changed.get} changed, ${failed.get} failed, ${withImdb.size - changed.get - failed.get} unchanged.")
+    val message = s"tick done in ${took}ms — ${changed.get} changed, ${failed.get} failed, ${withImdb.size - changed.get - failed.get} unchanged."
+    logger.info(s"IMDb refresh: $message")
+    BulkRefreshResult.counts(walked = withImdb.size, changed = changed.get, discovered = 0, failed = failed.get, message = message)
   }
 }
