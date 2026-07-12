@@ -45,6 +45,7 @@
 		DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000210 /* CinemaHeaderStyle.swift */; };
 		DD00000000000000000212 /* CinemaPillBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000212 /* CinemaPillBar.swift */; };
 		DD00000000000000000260 /* CinemaAreaBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000260 /* CinemaAreaBar.swift */; };
+		DD00000000000000000262 /* AreaPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000262 /* AreaPickerSheet.swift */; };
 		DD00000000000000000211 /* FilmDetailStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000211 /* FilmDetailStyle.swift */; };
 		DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000096 /* ShowtimeTuningScreen.swift */; };
 		DD00000000000000000095 /* RatingPillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000095 /* RatingPillStyle.swift */; };
@@ -143,6 +144,7 @@
 		CC00000000000000000210 /* CinemaHeaderStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaHeaderStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000212 /* CinemaPillBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaPillBar.swift; sourceTree = "<group>"; };
 		CC00000000000000000260 /* CinemaAreaBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaAreaBar.swift; sourceTree = "<group>"; };
+		CC00000000000000000262 /* AreaPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPickerSheet.swift; sourceTree = "<group>"; };
 		CC00000000000000000211 /* FilmDetailStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000096 /* ShowtimeTuningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimeTuningScreen.swift; sourceTree = "<group>"; };
 		CC00000000000000000095 /* RatingPillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingPillStyle.swift; sourceTree = "<group>"; };
@@ -334,6 +336,7 @@
 				CC00000000000000000210 /* CinemaHeaderStyle.swift */,
 				CC00000000000000000212 /* CinemaPillBar.swift */,
 				CC00000000000000000260 /* CinemaAreaBar.swift */,
+				CC00000000000000000262 /* AreaPickerSheet.swift */,
 				CC00000000000000000211 /* FilmDetailStyle.swift */,
 				CC00000000000000000096 /* ShowtimeTuningScreen.swift */,
 				CC00000000000000000095 /* RatingPillStyle.swift */,
@@ -498,6 +501,7 @@
 				DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */,
 				DD00000000000000000212 /* CinemaPillBar.swift in Sources */,
 				DD00000000000000000260 /* CinemaAreaBar.swift in Sources */,
+				DD00000000000000000262 /* AreaPickerSheet.swift in Sources */,
 				DD00000000000000000211 /* FilmDetailStyle.swift in Sources */,
 				DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */,
 				DD00000000000000000095 /* RatingPillStyle.swift in Sources */,

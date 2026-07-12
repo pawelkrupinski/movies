@@ -76,6 +76,7 @@ let package = Package(
                 "Views/CinemaHeaderStyle.swift",
                 "Views/CinemaPillBar.swift",
                 "Views/CinemaAreaBar.swift",
+                "Views/AreaPickerSheet.swift",
                 "Views/CityGate.swift",
                 "Views/FilmCardView.swift",
                 "Views/FilmDetailStyle.swift",

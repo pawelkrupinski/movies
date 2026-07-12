@@ -35,6 +35,9 @@ final class UserPreferences: ObservableObject {
     /// source of truth on every launch (so removals stick); cleared on logout
     /// so the next sign-in migrates afresh.
     @Published private(set) var serverStateSynced: Bool = false
+    /// Slugs of split cities whose first-visit area picker the user has already
+    /// completed, so it shows once per city (never on a flat city). Device-local.
+    @Published private(set) var areaPickerSeenCities: Set<String> = []
     /// The selected country (see `Country`) — which deployment the app talks to
     /// and which language it forces. Defaults to Poland until the user picks
     /// otherwise. Persisted via `CountrySelection` (same `store`) so it's
@@ -50,6 +53,7 @@ final class UserPreferences: ObservableObject {
     private let kCity          = "selectedCity"
     private let kSwitchPrompt  = "citySwitchPromptKey"
     private let kServerSynced  = "serverStateSynced"
+    private let kAreaSeen       = "areaPickerSeenCities"
 
     init(store: UserDefaults = .standard) {
         self.store = store
@@ -61,6 +65,7 @@ final class UserPreferences: ObservableObject {
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
         serverStateSynced   = store.bool(forKey: kServerSynced)
+        areaPickerSeenCities = Set(store.stringArray(forKey: kAreaSeen) ?? [])
         selectedCountry     = CountrySelection.current(store)
 
         #if DEBUG
@@ -123,6 +128,13 @@ final class UserPreferences: ObservableObject {
         var s = disabledCinemas
         if enabled { cityCinemas.forEach { s.remove($0) } } else { cityCinemas.forEach { s.insert($0) } }
         setDisabledCinemas(s)
+    }
+
+    /// Mark a split city's first-visit area picker as completed (shows once).
+    func markAreaPickerSeen(_ slug: String) {
+        guard !areaPickerSeenCities.contains(slug) else { return }
+        areaPickerSeenCities.insert(slug)
+        store.set(Array(areaPickerSeenCities), forKey: kAreaSeen)
     }
 
     /// Replace the whole hidden-films set — used by `StateSyncService` when the

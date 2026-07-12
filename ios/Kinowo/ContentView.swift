@@ -36,6 +36,8 @@ struct ContentView: View {
     @State private var search: String = ""
     @State private var sortOption: SortOption = .earliest
     @State private var showFilters: Bool = false
+    /// First-visit area picker for a split city (presented once — see below).
+    @State private var showAreaPicker: Bool = false
     @FocusState private var searchFocused: Bool
 
     /// A deep link whose film push / multi-value filters couldn't be applied yet
@@ -181,6 +183,26 @@ struct ContentView: View {
                         allDirectors: allDirectors,
                         allCast: allCast
                     )
+                }
+                // First visit to a split city (London): ask which areas to show.
+                // Fires when the catalog resolves as split and this city hasn't
+                // been seen; shown once (markAreaPickerSeen). No-op on flat cities.
+                .onChange(of: store.catalog) { catalog in
+                    if catalog.isSplit,
+                       let city = prefs.selectedCity,
+                       !prefs.areaPickerSeenCities.contains(city) {
+                        showAreaPicker = true
+                    }
+                }
+                .sheet(isPresented: $showAreaPicker) {
+                    AreaPickerSheet(catalog: store.catalog) { disabled in
+                        // Reset this city's slice, then disable the unchecked areas'
+                        // cinemas; other cities' entries are preserved.
+                        var s = prefs.disabledCinemas.subtracting(store.catalog.cinemas)
+                        s.formUnion(disabled)
+                        prefs.setDisabledCinemas(s)
+                        if let city = prefs.selectedCity { prefs.markAreaPickerSeen(city) }
+                    }
                 }
         }
         // Force a full re-layout on every portrait⇄landscape rotation. After a
