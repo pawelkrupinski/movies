@@ -365,12 +365,19 @@ extension Sequence where Element == Film {
     /// Apply the cross-screen filter stack — date / format / search /
     /// hidden / single-cinema — to a list of films.
     ///
-    /// `selectedCinema` is the single-select cinema pill (nil = Wszystkie,
-    /// no cinema constraint). When set, every cinema-group whose name isn't
-    /// the selected one is dropped, so the listing shows only that cinema's
-    /// screenings. A `selectedCinema` that matches none of the films' cinemas
-    /// — e.g. a value persisted while browsing another city — is treated as
-    /// Wszystkie, so a stale cross-city selection can't empty the whole screen.
+    /// `selectedCinema` is the single-select cinema pill used by FLAT cities
+    /// (nil = Wszystkie, no cinema constraint). When set, every cinema-group
+    /// whose name isn't the selected one is dropped. A `selectedCinema` that
+    /// matches none of the films' cinemas — e.g. a value persisted while
+    /// browsing another city — is treated as Wszystkie, so a stale cross-city
+    /// selection can't empty the whole screen.
+    ///
+    /// `disabledCinemas` is the multi-select EXCLUSION set used by SPLIT cities
+    /// (e.g. London): any cinema-group whose name is in the set is dropped,
+    /// exactly like the web's `disabledCinemas`. Empty = every cinema shown. A
+    /// stale name from another city simply never matches, so it's harmless.
+    /// The two axes are independent — flat cities pass `selectedCinema`, split
+    /// cities pass `disabledCinemas` — and both are applied when set.
     ///
     /// Semantics otherwise mirror the web's `applyFilters()`: drop a showtime
     /// whose format/time-from doesn't pass, drop a cinema-group whose
@@ -383,6 +390,7 @@ extension Sequence where Element == Film {
         query: String,
         hidden: Set<String>,
         selectedCinema: String? = nil,
+        disabledCinemas: Set<String> = [],
         excludedCountries: Set<String> = [],
         excludedGenres: Set<String> = [],
         excludedDirectors: Set<String> = [],
@@ -409,6 +417,7 @@ extension Sequence where Element == Film {
             let days: [DayShowings] = film.showings.compactMap { day in
                 if !date.matches(date: day.date, now: now) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
+                    if disabledCinemas.contains(cg.cinema) { return nil }
                     if let sel = effectiveCinema, cg.cinema != sel { return nil }
                     let times = format.isEmpty
                         ? cg.showtimes
