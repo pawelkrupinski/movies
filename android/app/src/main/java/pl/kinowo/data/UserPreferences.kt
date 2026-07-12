@@ -57,6 +57,15 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         if (cinema == null) prefs.remove(KEY_SELECTED_CINEMA) else prefs[KEY_SELECTED_CINEMA] = cinema
     }
 
+    /** Slugs of split cities whose first-visit area picker the user has already
+     *  completed, so it shows once per city. Device-local (not synced). */
+    val areaPickerSeenCities: Flow<Set<String>> =
+        context.dataStore.data.map { it[KEY_AREA_SEEN] ?: emptySet() }
+
+    suspend fun markAreaPickerSeen(slug: String) = context.dataStore.edit { prefs ->
+        prefs[KEY_AREA_SEEN] = (prefs[KEY_AREA_SEEN] ?: emptySet()) + slug
+    }
+
     /** Slug of the city the user picked (or was located into), or null until
      *  the first-launch city gate resolves one. Gates the repertoire fetch. */
     val selectedCity: Flow<String?> =
@@ -173,5 +182,6 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_SERVER_SYNCED = booleanPreferencesKey("serverStateSynced")
         val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")
         val KEY_POSTER_PURGE_DATE = stringPreferencesKey("posterPurgeDate")
+        val KEY_AREA_SEEN = stringSetPreferencesKey("areaPickerSeenCities")
     }
 }

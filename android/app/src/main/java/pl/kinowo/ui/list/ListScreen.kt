@@ -113,6 +113,8 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // and the `disabledCinemas` exclusion set; flat cities use the pill bar.
     val catalog by viewModel.catalog.collectAsState()
     val disabledCinemas by viewModel.disabledCinemas.collectAsState()
+    val selectedCity by viewModel.selectedCity.collectAsState()
+    val areaPickerSeen by viewModel.areaPickerSeenCities.collectAsState()
     // The cinema pill row's universe is the current city's cinemas; a persisted
     // pick absent from them (a leftover from another city) reads as null
     // ("Wszystkie") so the grid never blanks on a stale cross-city name.
@@ -245,6 +247,16 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                     cinemas = cityCinemas,
                     selected = effectiveCinema,
                     onSelect = { viewModel.selectCinema(it) },
+                )
+            }
+
+            // First visit to a split city: ask which areas to show (all
+            // pre-selected). Shown once per city; no-op on flat cities.
+            val city = selectedCity
+            if (catalog.isSplit && city != null && city !in areaPickerSeen) {
+                AreaPickerDialog(
+                    catalog = catalog,
+                    onConfirm = { kept -> viewModel.completeAreaPicker(city, kept) },
                 )
             }
 

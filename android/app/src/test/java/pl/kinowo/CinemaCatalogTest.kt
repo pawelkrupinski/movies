@@ -2,6 +2,7 @@ package pl.kinowo
 
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,5 +51,20 @@ class CinemaCatalogTest {
     fun emptyCatalogIsFlat() {
         assertFalse(CinemaCatalog.EMPTY.isSplit)
         assertTrue(CinemaCatalog.EMPTY.cinemas.isEmpty())
+    }
+
+    @Test
+    fun cinemasToDisableExcludesUncheckedAreas() {
+        val catalog = json.decodeFromString<CinemaCatalog>(
+            """{"cinemas":["A Cinema","B Cinema","C Cinema"],
+                "areas":[{"name":"Central","slug":"central","cinemas":["A Cinema"]},
+                         {"name":"North","slug":"north","cinemas":["B Cinema","C Cinema"]}]}"""
+        )
+        // Keep only Central → North's cinemas are disabled.
+        assertEquals(listOf("B Cinema", "C Cinema"), catalog.cinemasToDisable(setOf("central")))
+        // Keep all → nothing disabled (the pre-selected default is a no-op).
+        assertTrue(catalog.cinemasToDisable(setOf("central", "north")).isEmpty())
+        // Keep none → everything disabled.
+        assertEquals(catalog.cinemas.toSet(), catalog.cinemasToDisable(emptySet()).toSet())
     }
 }
