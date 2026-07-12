@@ -8,10 +8,11 @@ import { waitForCards } from './helpers';
 test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   test('lists every supported city and a pick navigates into that city', async ({ page }) => {
     await page.goto('/');
-    // 41 Polish + 3 UK + 3 German cities — the fixture `/` renders `City.all`,
+    // 41 Polish + 79 UK + 3 German cities — the fixture `/` renders `City.all`,
     // the union across every country (see FixtureServerMain), not one country.
+    // (UK grew from 3 to 79 with the full nationwide Flicks roster.)
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(47);
+    await expect(links).toHaveCount(123);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
@@ -31,6 +32,10 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list')).toContainText('Rzeszów');
     await expect(page.locator('.city-list')).toContainText('Gliwice');
     await expect(page.locator('.city-list')).toContainText('Zabrze');
+    // UK regions from the nationwide Flicks roster (English labels).
+    await expect(page.locator('.city-list')).toContainText('Kent');
+    await expect(page.locator('.city-list')).toContainText('West Yorkshire');
+    await expect(page.locator('.city-list')).toContainText('Edinburgh & Lothians');
 
     await page.locator('.city-list a', { hasText: 'Poznań' }).click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
