@@ -150,31 +150,33 @@
       </div>
       <div class="panel-divider"></div>
 
-      @* City picker — switches the whole app to another city's repertoire.
-         Last filter in the panel so it sits below the per-screening axes.
-         Available signed-out; `onCityChange` remembers the pick (cookie) and
-         navigates to the chosen city's root. Only rendered when more than one
-         city is supported, so a single-city deployment shows no dead control. *@
-      @if(city.country.cities.sizeIs > 1) {
-        <div class="panel-section-label">@messages("nav.city")</div>
-        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          @for(c <- city.country.allSorted) {
-            <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
-          }
-        </select>
-        <div class="panel-divider"></div>
-      }
-
       @* Country switcher — each country is a SEPARATE web deployment on its own
          host, so switching NAVIGATES to that host's root (its city-chooser),
          it does not view-swap. Only rendered when more than one country has a
          real deployment (`Country.switchable`), so a single-country build shows
-         no dead control. The current country is `Country.fromEnv`. *@
+         no dead control. The current country is `Country.fromEnv`. Sits above
+         the city picker so the selection cascades country → city top-to-bottom. *@
       @if(models.Country.switchable.sizeIs > 1) {
         <div class="panel-section-label">@messages("nav.countrySwitch")</div>
         <select id="country-select" class="filter-select w-100" onchange="onCountryChange(this.value)" aria-label="@messages("nav.countrySwitch")" style="margin-bottom:.4rem">
           @for(c <- models.Country.switchable) {
             <option value="@c.webUrl.get"@if(c == models.Country.fromEnv){ selected}>@c.displayName</option>
+          }
+        </select>
+        <div class="panel-divider"></div>
+      }
+
+      @* City picker — switches the whole app to another city's repertoire.
+         Last filter in the panel so it sits below the per-screening axes and
+         below the country switcher. Available signed-out; `onCityChange`
+         remembers the pick (cookie) and navigates to the chosen city's root.
+         Only rendered when more than one city is supported, so a single-city
+         deployment shows no dead control. *@
+      @if(city.country.cities.sizeIs > 1) {
+        <div class="panel-section-label">@messages("nav.city")</div>
+        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
+          @for(c <- city.country.allSorted) {
+            <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
           }
         </select>
         <div class="panel-divider"></div>

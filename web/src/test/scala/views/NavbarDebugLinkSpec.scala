@@ -41,6 +41,19 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
     html should include ("nav-tab-debug")
   }
 
+  "filter panel" should "render the country switcher above the city picker" in {
+    // Both selectors render under Poznań: Poland has >1 city (city picker)
+    // and >1 country is deployed (`Country.switchable` → country switcher).
+    // The country switcher must sit above the city picker so the selection
+    // reads country → city top-to-bottom, matching iOS/Android.
+    val html = render(devMode = false)
+    val countryAt = html.indexOf("""id="country-select"""")
+    val cityAt    = html.indexOf("""id="city-select"""")
+    countryAt should be > -1
+    cityAt should be > -1
+    countryAt should be < cityAt
+  }
+
   "shared styles" should "hide `.nav-tab-debug` on the mobile media queries" in {
     // Render `_sharedStyles` directly so the stylesheet block is in
     // the rendered HTML. The CSS minifier collapses ` : ` → `:`, so
