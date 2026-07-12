@@ -11,11 +11,13 @@ final class UserPreferences: ObservableObject {
     /// Per-device (not server-synced); cleared when the user switches city so
     /// a name from the old city can't linger and blank the new city's screen.
     @Published private(set) var selectedCinema: String?
-    /// Web-compatibility mirror of the browser's `disabledCinemas` localStorage
-    /// set, kept purely so account state round-trips with the web app via
-    /// `StateSyncService` and the `?cinema=` deep-link param. iOS filtering no
-    /// longer consults it — the cinema pill (`selectedCinema`) is the only
-    /// on-device cinema control.
+    /// The excluded-cinemas set, shared with the web's `disabledCinemas`
+    /// localStorage (round-trips via `StateSyncService` + the `?cinema=` deep
+    /// link). It is the active cinema filter for SPLIT cities (London): the
+    /// multi-select area picker adds/removes names here and `filteredFor` drops
+    /// them. FLAT cities still use the single-select `selectedCinema` pill and
+    /// don't consult this set. Global across cities like the web — a stale name
+    /// from another city simply never matches.
     @Published private(set) var disabledCinemas: Set<String> = []
     /// True once the user has swiped between Filmy / Kina at least once.
     @Published private(set) var hasSwipedScreens: Bool = false
@@ -92,11 +94,35 @@ final class UserPreferences: ObservableObject {
         else          { store.removeObject(forKey: kSelectedCinema) }
     }
 
-    /// Web-sync mirror only (see `disabledCinemas`). Written by
-    /// `StateSyncService` and the `?cinema=` deep link; not an on-device filter.
+    /// Replace the whole excluded-cinemas set. Written by `StateSyncService`,
+    /// the `?cinema=` deep link, and the split-city area picker's mutators below.
     func setDisabledCinemas(_ s: Set<String>) {
         disabledCinemas = s
         store.set(Array(disabledCinemas), forKey: kDisabled)
+    }
+
+    /// Enable/disable one cinema (split-city area picker's per-cinema checkbox).
+    func setCinemaEnabled(_ cinema: String, _ enabled: Bool) {
+        var s = disabledCinemas
+        if enabled { s.remove(cinema) } else { s.insert(cinema) }
+        setDisabledCinemas(s)
+    }
+
+    /// Enable/disable every cinema in an area at once (the area checkbox). Other
+    /// areas' and other cities' entries are left untouched.
+    func setAreaEnabled(_ cinemas: [String], _ enabled: Bool) {
+        var s = disabledCinemas
+        if enabled { cinemas.forEach { s.remove($0) } } else { cinemas.forEach { s.insert($0) } }
+        setDisabledCinemas(s)
+    }
+
+    /// Enable/disable every cinema in the current (split) city — the "all
+    /// cinemas" master. `cityCinemas` is the city's full universe; entries
+    /// naming other cities' cinemas are preserved.
+    func setAllCinemasEnabled(_ cityCinemas: [String], _ enabled: Bool) {
+        var s = disabledCinemas
+        if enabled { cityCinemas.forEach { s.remove($0) } } else { cityCinemas.forEach { s.insert($0) } }
+        setDisabledCinemas(s)
     }
 
     /// Replace the whole hidden-films set — used by `StateSyncService` when the

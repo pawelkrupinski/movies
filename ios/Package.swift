@@ -75,6 +75,7 @@ let package = Package(
                 "Views/CardSpacingStyle.swift",
                 "Views/CinemaHeaderStyle.swift",
                 "Views/CinemaPillBar.swift",
+                "Views/CinemaAreaBar.swift",
                 "Views/CityGate.swift",
                 "Views/FilmCardView.swift",
                 "Views/FilmDetailStyle.swift",

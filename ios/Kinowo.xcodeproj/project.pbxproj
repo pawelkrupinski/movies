@@ -17,6 +17,7 @@
 		DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E04 /* InfoPlist.xcstrings */; };
 		DD00000000000000000005 /* Film.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000005 /* Film.swift */; };
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
+		DD00000000000000000261 /* CinemaCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000261 /* CinemaCatalog.swift */; };
 		DD00000000000000000401 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000401 /* DeepLink.swift */; };
 		DD00000000000000000402 /* DeepLinkCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000402 /* DeepLinkCoordinator.swift */; };
 		DD00000000000000000007 /* RepertoireClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000007 /* RepertoireClient.swift */; };
@@ -43,6 +44,7 @@
 		DD00000000000000000200 /* CardSpacingStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000200 /* CardSpacingStyle.swift */; };
 		DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000210 /* CinemaHeaderStyle.swift */; };
 		DD00000000000000000212 /* CinemaPillBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000212 /* CinemaPillBar.swift */; };
+		DD00000000000000000260 /* CinemaAreaBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000260 /* CinemaAreaBar.swift */; };
 		DD00000000000000000211 /* FilmDetailStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000211 /* FilmDetailStyle.swift */; };
 		DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000096 /* ShowtimeTuningScreen.swift */; };
 		DD00000000000000000095 /* RatingPillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000095 /* RatingPillStyle.swift */; };
@@ -113,6 +115,7 @@
 		CC00000000000000000E04 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000005 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
+		CC00000000000000000261 /* CinemaCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaCatalog.swift; sourceTree = "<group>"; };
 		CC00000000000000000401 /* DeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
 		CC00000000000000000402 /* DeepLinkCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkCoordinator.swift; sourceTree = "<group>"; };
 		CC00000000000000000007 /* RepertoireClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepertoireClient.swift; sourceTree = "<group>"; };
@@ -139,6 +142,7 @@
 		CC00000000000000000200 /* CardSpacingStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardSpacingStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000210 /* CinemaHeaderStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaHeaderStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000212 /* CinemaPillBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaPillBar.swift; sourceTree = "<group>"; };
+		CC00000000000000000260 /* CinemaAreaBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaAreaBar.swift; sourceTree = "<group>"; };
 		CC00000000000000000211 /* FilmDetailStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000096 /* ShowtimeTuningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimeTuningScreen.swift; sourceTree = "<group>"; };
 		CC00000000000000000095 /* RatingPillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingPillStyle.swift; sourceTree = "<group>"; };
@@ -266,6 +270,7 @@
 				CC00000000000000000304 /* HiddenFilmsFilter.swift */,
 				CC00000000000000000303 /* CitySwitchSuppressor.swift */,
 				CC00000000000000000006 /* Filters.swift */,
+				CC00000000000000000261 /* CinemaCatalog.swift */,
 				CC00000000000000000401 /* DeepLink.swift */,
 				CC00000000000000000022 /* RetryBackoff.swift */,
 				CC00000000000000000044 /* SwipeHint.swift */,
@@ -328,6 +333,7 @@
 				CC00000000000000000200 /* CardSpacingStyle.swift */,
 				CC00000000000000000210 /* CinemaHeaderStyle.swift */,
 				CC00000000000000000212 /* CinemaPillBar.swift */,
+				CC00000000000000000260 /* CinemaAreaBar.swift */,
 				CC00000000000000000211 /* FilmDetailStyle.swift */,
 				CC00000000000000000096 /* ShowtimeTuningScreen.swift */,
 				CC00000000000000000095 /* RatingPillStyle.swift */,
@@ -464,6 +470,7 @@
 				DD00000000000000000220 /* DisplayInfo.swift in Sources */,
 				DD00000000000000000005 /* Film.swift in Sources */,
 				DD00000000000000000006 /* Filters.swift in Sources */,
+				DD00000000000000000261 /* CinemaCatalog.swift in Sources */,
 				DD00000000000000000401 /* DeepLink.swift in Sources */,
 				DD00000000000000000402 /* DeepLinkCoordinator.swift in Sources */,
 				DD00000000000000000007 /* RepertoireClient.swift in Sources */,
@@ -490,6 +497,7 @@
 				DD00000000000000000200 /* CardSpacingStyle.swift in Sources */,
 				DD00000000000000000210 /* CinemaHeaderStyle.swift in Sources */,
 				DD00000000000000000212 /* CinemaPillBar.swift in Sources */,
+				DD00000000000000000260 /* CinemaAreaBar.swift in Sources */,
 				DD00000000000000000211 /* FilmDetailStyle.swift in Sources */,
 				DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */,
 				DD00000000000000000095 /* RatingPillStyle.swift in Sources */,
