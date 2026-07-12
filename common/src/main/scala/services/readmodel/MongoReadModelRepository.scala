@@ -4,6 +4,8 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument, OperationType}
 import models.{CityScreening, ResolvedMovie}
+import org.bson.BsonDocumentReader
+import org.bson.codecs.{Codec, DecoderContext}
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
@@ -72,29 +74,52 @@ class MongoReadModelRepository(
   // the whole corpus (the reproject's phantom "did_work", ~6.5k writes per restart). Paged,
   // bounded, retried reads complete quickly. Empty on an incomplete scan, matching
   // MongoScreeningsRepository.findAll (neither of these callers prunes on the result).
-  private def pagedFindAll[A: ClassTag](coll: Option[MongoCollection[A]], label: String, keyOf: A => String): Seq[A] =
+  //
+  // Each page is read as raw BsonDocuments and decoded PER-DOCUMENT (see [[decodeTolerant]]),
+  // so ONE malformed/legacy row (e.g. a `web_movies` doc missing the required `ratings`) is
+  // skipped rather than sinking the whole keyset PAGE — a single-doc decode failure inside the
+  // batch `find().toFuture()` would otherwise fail the page after its retries and drop up to
+  // `findAllBatchSize` valid films. Keyset advances on the raw `_id` (always present), so a
+  // skipped doc still moves the scan forward. Matches the change-stream apply path, which
+  // already swallows per-doc decode failures.
+  private def pagedFindAll[A: ClassTag](coll: Option[MongoCollection[A]], label: String): Seq[A] =
     coll match {
       case Some(c) =>
-        val buf = Vector.newBuilder[A]
-        val complete = KeysetScan.scan[A](
+        val codec = ReadModelCodecs.registry.get(implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]])
+        val buf   = Vector.newBuilder[A]
+        val complete = KeysetScan.scan[BsonDocument](
           label          = label,
           batchSize      = findAllBatchSize,
           maxAttempts    = findAllBatchAttempts,
           initialBackoff = findAllBatchBackoff,
-          keyOf          = keyOf,
+          keyOf          = _.getString("_id").getValue,
           fetchPage      = (afterId, limit) => {
             val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-            Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+            Await.result(c.find[BsonDocument](filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
           },
           onIncomplete   = exception =>
             logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
-        )(batch => buf ++= batch)
+        )(batch => buf ++= decodeTolerant(batch, codec, label))
         if (complete) buf.result() else Seq.empty
       case None => Seq.empty
     }
 
-  def findAllMovies():     Seq[ResolvedMovie] = pagedFindAll(movies,     "ReadModelRepository.findAllMovies",     _._id)
-  def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings", _._id)
+  /** Decode a page of raw documents into `A`, SKIPPING (and logging with the `_id`) any that
+   *  fail — one malformed/legacy document must sink only itself, never the whole keyset page.
+   *  `private[readmodel]` so the tolerance is unit-testable without a live Mongo. */
+  private[readmodel] def decodeTolerant[A](docs: Seq[BsonDocument], codec: Codec[A], label: String): Seq[A] =
+    docs.flatMap { doc =>
+      Try(codec.decode(new BsonDocumentReader(doc), DecoderContext.builder().build())) match {
+        case scala.util.Success(a) => Some(a)
+        case scala.util.Failure(exception) =>
+          val id = Try(doc.getString("_id").getValue).getOrElse("<unknown>")
+          logger.warn(s"$label: skipping undecodable document _id=$id: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          None
+      }
+    }
+
+  def findAllMovies():     Seq[ResolvedMovie] = pagedFindAll(movies,     "ReadModelRepository.findAllMovies")
+  def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings")
 
   // ── Id-only projections (the reconcile prune) ───────────────────────────────
   // The prune needs only ids/filmIds to spot orphaned documents; projecting them
