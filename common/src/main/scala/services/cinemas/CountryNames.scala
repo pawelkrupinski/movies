@@ -163,13 +163,48 @@ object CountryNames {
    *
    *  Poland folds every spelling variant into the curated Polish short-name set
    *  above (the form Polish cinema scrapers and the Polish corpus already use).
-   *  Any OTHER language trusts the source's already-localised name and only
-   *  trims: TMDB/IMDb return the country in the requested language, so an
-   *  English deployment gets "United Kingdom" and folding it through the Polish
-   *  map would mislabel it "Wielka Brytania". The Polish alias map is
-   *  Polish-only by construction, so it must not run outside Poland. */
+   *
+   *  Any OTHER language must ALSO fold variants — otherwise a film whose sources
+   *  report "USA", "United States" and "United States of America" surfaces all
+   *  three side by side. We reuse the existing alias map as the folding key: the
+   *  raw name folds to its Polish canonical, that maps to an ISO 3166-1 code
+   *  ([[IsoOf]]), and the code renders as the country's display name in the
+   *  target language ("US" → "United States" in English, "Vereinigte Staaten" in
+   *  German). Names the alias map doesn't recognise (or that have no ISO entry)
+   *  fall back to the trimmed input, so an exotic country still passes through. */
   def canonical(raw: String, language: Locale): String =
-    if (language.getLanguage == "pl") canonical(raw) else raw.trim
+    if (language.getLanguage == "pl") canonical(raw)
+    else {
+      val folded = canonical(raw) // fold spelling variants via the alias map first
+      IsoOf.get(folded.toLowerCase) match {
+        case Some(iso) =>
+          val name = Locale.of("", iso).getDisplayCountry(language)
+          // The JDK returns the bare code for a country it can't localise; keep
+          // the folded name rather than leaking "US" to the reader.
+          if (name.nonEmpty && name != iso) name else folded
+        case None => folded
+      }
+    }
+
+  /** Canonical Polish name (lowercased) → ISO 3166-1 alpha-2. One entry per
+   *  country the corpus surfaces; the pivot that lets a non-Polish deployment
+   *  fold + localise without a second per-language alias map. */
+  private val IsoOf: Map[String, String] = Map(
+    "polska" -> "PL", "usa" -> "US", "niemcy" -> "DE", "francja" -> "FR", "włochy" -> "IT",
+    "hiszpania" -> "ES", "belgia" -> "BE", "maroko" -> "MA", "łotwa" -> "LV", "węgry" -> "HU",
+    "dania" -> "DK", "norwegia" -> "NO", "czechy" -> "CZ", "irlandia" -> "IE",
+    "wielka brytania" -> "GB", "holandia" -> "NL", "szwecja" -> "SE", "finlandia" -> "FI",
+    "szwajcaria" -> "CH", "austria" -> "AT", "portugalia" -> "PT", "rosja" -> "RU",
+    "turcja" -> "TR", "ukraina" -> "UA", "białoruś" -> "BY", "litwa" -> "LT", "estonia" -> "EE",
+    "słowacja" -> "SK", "rumunia" -> "RO", "bułgaria" -> "BG", "grecja" -> "GR", "indie" -> "IN",
+    "pakistan" -> "PK", "japonia" -> "JP", "chiny" -> "CN", "korea południowa" -> "KR",
+    "korea północna" -> "KP", "iran" -> "IR", "izrael" -> "IL", "brazylia" -> "BR",
+    "argentyna" -> "AR", "australia" -> "AU", "kanada" -> "CA", "meksyk" -> "MX",
+    "nowa zelandia" -> "NZ", "egipt" -> "EG", "rpa" -> "ZA", "hongkong" -> "HK", "tajwan" -> "TW",
+    "wietnam" -> "VN", "palestyna" -> "PS", "katar" -> "QA", "islandia" -> "IS", "słowenia" -> "SI",
+    "chorwacja" -> "HR", "serbia" -> "RS", "luksemburg" -> "LU", "irak" -> "IQ",
+    "arabia saudyjska" -> "SA", "peru" -> "PE"
+  )
 
   def isPolish(name: String): Boolean = Polish.contains(canonical(name))
 }

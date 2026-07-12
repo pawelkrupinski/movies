@@ -47,16 +47,26 @@ class CountryNamesSpec extends AnyFlatSpec with Matchers {
     CountryNames.canonical("Germany", polish) shouldBe "Niemcy"
   }
 
-  it should "keep the source's already-localised name for a non-Polish deployment" in {
-    // TMDB/IMDb return the country in the requested language, so a UK/German
-    // deployment must NOT have it folded to a Polish name.
+  it should "localise the country name to a non-Polish deployment's language" in {
+    // A UK/German deployment must NOT be folded to a Polish name.
     CountryNames.canonical("United Kingdom", english) shouldBe "United Kingdom"
-    CountryNames.canonical("United States of America", english) shouldBe "United States of America"
-    CountryNames.canonical("Deutschland", german) shouldBe "Deutschland"
+    CountryNames.canonical("Germany", german) shouldBe "Deutschland"
+    CountryNames.canonical("USA", german) shouldBe "Vereinigte Staaten"
   }
 
-  it should "trim but not translate outside Poland" in {
+  it should "fold every spelling variant of a country into ONE name for a non-Polish deployment" in {
+    // Regression: the UK film page listed "USA" and "United States" side by
+    // side. All variants must collapse to a single localised name.
+    val us = CountryNames.canonical("United States", english)
+    us shouldBe "United States"
+    CountryNames.canonical("USA", english) shouldBe us
+    CountryNames.canonical("United States of America", english) shouldBe us
+    CountryNames.canonical("U.S.", english) shouldBe us
+  }
+
+  it should "trim and pass through an unknown country outside Poland" in {
     CountryNames.canonical("  United Kingdom  ", english) shouldBe "United Kingdom"
+    CountryNames.canonical("Atlantyda", english) shouldBe "Atlantyda"
   }
 
   "isPolish" should "recognise canonical names and their aliases" in {
