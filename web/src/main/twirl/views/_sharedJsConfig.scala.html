@@ -18,6 +18,10 @@
   const HAS_OAUTH_PROVIDERS = @oauthProviders.nonEmpty;
   const ALL_CINEMAS         = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
   const CINEMA_PILLS        = @Html(play.api.libs.json.Json.toJson(cinemaPills).toString);
+  @* Cinema areas for a split city (e.g. London → Central/North/…); empty for a
+     flat city, in which case the picker renders one plain list. `window.`-scoped
+     (not a lexical const) so buildCinemaPanel reads it and tests can override. *@
+  window.CINEMA_AREAS       = @Html(play.api.libs.json.Json.toJson(city.areas.map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))).toString);
   const CURRENT_CITY        = "@city.slug";
   const ALL_CITIES          = @Html(city.country.allJson);
   @* Per-deployment locale for shared.js: weekday/month arrays, empty-state /
