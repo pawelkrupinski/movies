@@ -3,7 +3,7 @@ package services.tasks
 import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.freshness.InMemoryFreshnessStore
+import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.CacheKey
 
 import java.time.Instant
@@ -36,6 +36,24 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
     enqueuer(queue).enqueueDueFor(CacheKey("Film", None), row, now) shouldBe 4
+    Seq(TaskType.ImdbRating, TaskType.FilmwebRating, TaskType.RtRating, TaskType.McRating)
+      .foreach(queue.waitingCount(_) shouldBe 1)
+  }
+
+  it should "force-re-enqueue every source even when its freshness stamp is still fresh (a re-resolve stripped the scores)" in {
+    val queue     = new InMemoryTaskQueue
+    val freshness = new InMemoryFreshnessStore
+    val enq       = new RatingEnqueuer(queue, freshness, new DueWindow(4.hours))
+    val key       = CacheKey("Film", None)
+    val row       = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
+    // Stamp all four sources fresh — the cadence now judges each "recently checked".
+    Seq(FreshnessKind.ImdbRating, FreshnessKind.FilmwebRating, FreshnessKind.RtRating, FreshnessKind.McRating)
+      .foreach(k => freshness.markFresh(RatingTasks.dedupKey(k, key, row.tmdbId), k, now))
+
+    // The normal, cadence-gated enqueue does nothing — every source reads fresh.
+    enq.enqueueDueFor(key, row, now) shouldBe 0
+    // Forcing drops the stamps and re-enqueues all four regardless.
+    enq.enqueueDueFor(key, row, now, force = true) shouldBe 4
     Seq(TaskType.ImdbRating, TaskType.FilmwebRating, TaskType.RtRating, TaskType.McRating)
       .foreach(queue.waitingCount(_) shouldBe 1)
   }

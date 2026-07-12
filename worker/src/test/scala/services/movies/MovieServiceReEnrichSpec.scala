@@ -154,4 +154,22 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
     cache.get(cache.keyOf("Powrót do przyszłości", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
+
+  // The forced re-resolve strips the row to scraped data (dropping its scores); it
+  // must kick a forced rating re-fetch so those scores come back, rather than
+  // leaving the reaper's cadence gate to (wrongly) skip the still-stamped sources.
+  it should "kick a forced rating re-fetch for the re-resolved row (carrying the resolved ids the sources key on)" in {
+    val tmdb    = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val kicked  = scala.collection.mutable.ListBuffer.empty[(CacheKey, MovieRecord)]
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb,
+      forceRatingRefresh = (k, r) => { kicked += ((k, r)); () })
+
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
+
+    kicked should have size 1
+    val (_, record) = kicked.head
+    record.tmdbId shouldBe Some(105)             // the resolved film
+    record.imdbId shouldBe Some("tt0088763")     // the ids the rating sources gate + key on
+  }
 }

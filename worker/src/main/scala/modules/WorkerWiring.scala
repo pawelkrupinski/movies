@@ -516,6 +516,9 @@ class WorkerWiring(
     // reaper sweep share the eligibility + due gate. A fold is a trickle, so this
     // doesn't recreate the old TmdbResolved corpus-wide burst.
     enqueueNewcomerRatings = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now()); () },
+    // A (re)resolve forces every rating source due again — heals the scores a forced
+    // re-resolve strips, which the cadence would otherwise keep from re-fetching.
+    forceRatingRefresh = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now(), force = true); () },
     traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same WikidataClient ImdbIdResolver uses — lets a tmdbId-less row with a
     // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.

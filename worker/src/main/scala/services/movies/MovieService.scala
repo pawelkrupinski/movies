@@ -73,6 +73,13 @@ class MovieService(
   // Default no-op for tests/scripts without a task queue; production passes
   // `RatingEnqueuer.enqueueDueFor` (the SAME enqueuer the reaper walks the corpus with).
   enqueueNewcomerRatings: (CacheKey, MovieRecord) => Unit = (_, _) => (),
+  // Re-fetch EVERY rating source for a just-(re)resolved row, ignoring the adaptive
+  // cadence. A forced re-resolve (`resetToScrapedData`) strips the row's scores, but
+  // the rating freshness stamps survive — so the reaper judges each source "recently
+  // checked" and never re-fetches, leaving the film rating-less. This forces them due
+  // so the scores come back. Default no-op; production passes the shared
+  // `RatingEnqueuer.enqueueDueFor(..., force = true)`.
+  forceRatingRefresh: (CacheKey, MovieRecord) => Unit = (_, _) => (),
   // Fallback id-crosswalk resolvers, tried in `resolveTmdbId` ONLY after TMDB
   // title/director search AND `/find`-by-imdbId all miss on a tmdbId-less row.
   // Both turn the row's known imdbId into the EXACT tmdbId (Trakt's id-keyed
@@ -341,7 +348,14 @@ class MovieService(
       logger.info(s"TMDB: resolving '${key.cleanTitle}' (${key.year.getOrElse("?")})" +
         directoryHint.fold("")(d => s" [director hint: $d]"))
       Try(runTmdbStageSync(key, origHint, directoryHint)) match {
-      case Success(Some((finalKey, movieRecord))) => publishTmdbOutcome(finalKey, movieRecord); true
+      case Success(Some((finalKey, movieRecord))) =>
+        publishTmdbOutcome(finalKey, movieRecord)
+        // A FORCED re-resolve stripped the row to scraped data, dropping its scores;
+        // force a re-fetch of every rating source now so they come back (the cadence
+        // would otherwise judge the surviving stamps fresh and never re-fetch). A
+        // normal resolve doesn't strip and lets the reaper enqueue ratings as due.
+        if (force) forceRatingRefresh(finalKey, movieRecord)
+        true
       case Success(None) =>
         logger.info(s"TMDB: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match")
         cache.markMissing(key)

@@ -45,19 +45,29 @@ class RatingEnqueuer(
   /** Enqueue up to `limit` of `record`'s eligible, now-due rating sources, returning
    *  how many were NEWLY added (a not-due or already-queued source doesn't count).
    *  `limit` lets the reaper honour its per-tick cap across rows; the newcomer path
-   *  leaves it unbounded — one row enqueues at most the four sources. */
-  def enqueueDueFor(key: CacheKey, record: MovieRecord, now: Instant, limit: Int = Int.MaxValue): Int = {
+   *  leaves it unbounded — one row enqueues at most the four sources.
+   *
+   *  `force` re-fetches EVERY eligible source regardless of the adaptive cadence:
+   *  it drops the source's freshness stamps first, so a stamp that would otherwise
+   *  read "recently checked" no longer gates the enqueue. A (re)resolve uses this —
+   *  `resetToScrapedData` strips the row's scores, but the stamps survive, so
+   *  without forcing the reaper judges each source fresh and never re-fetches,
+   *  leaving the film rating-less. */
+  def enqueueDueFor(key: CacheKey, record: MovieRecord, now: Instant, limit: Int = Int.MaxValue, force: Boolean = false): Int = {
     var enqueued = 0
     val it = sources.iterator
     while (it.hasNext && enqueued < limit) {
       val s = it.next()
       if (s.eligible(record)) {
-        val dedupKey = RatingTasks.dedupKey(s.kind, key, record.tmdbId)
+        val dedupKey  = RatingTasks.dedupKey(s.kind, key, record.tmdbId)
+        val legacyKey = RatingTasks.dedupKey(s.kind, key)
+        // A forced refresh clears both stamps so the source reads as never-fetched
+        // and re-fetches now (the re-resolve strip healer).
+        if (force) { freshness.invalidate(dedupKey); freshness.invalidate(legacyKey) }
         // Honour a stamp left under the legacy title-based key so switching to
         // tmdbId-keyed freshness doesn't re-queue a row that's fresh under its old
         // key. (Drop the fallback once no legacy stamps remain — see EnrichmentReaper.)
-        val lastFetched = freshness.lastFetchedAt(dedupKey)
-          .orElse(freshness.lastFetchedAt(RatingTasks.dedupKey(s.kind, key)))
+        val lastFetched = freshness.lastFetchedAt(dedupKey).orElse(freshness.lastFetchedAt(legacyKey))
         if (dueWindow.isDue(dedupKey, lastFetched, now) &&
             queue.enqueue(s.taskType, dedupKey, RatingTasks.payload(key)) == EnqueueResult.Added)
           enqueued += 1
