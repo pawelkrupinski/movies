@@ -41,4 +41,20 @@ final class CinemaCatalogTests: XCTestCase {
         XCTAssertFalse(CinemaCatalog.empty.isSplit)
         XCTAssertTrue(CinemaCatalog.empty.cinemas.isEmpty)
     }
+
+    func testCinemasToDisableExcludesUncheckedAreas() {
+        let catalog = CinemaCatalog(
+            cinemas: ["A Cinema", "B Cinema", "C Cinema"],
+            areas: [
+                CinemaArea(name: "Central", slug: "central", cinemas: ["A Cinema"]),
+                CinemaArea(name: "North", slug: "north", cinemas: ["B Cinema", "C Cinema"]),
+            ]
+        )
+        // Keep only Central → North's cinemas are disabled.
+        XCTAssertEqual(catalog.cinemasToDisable(keepingAreas: ["central"]), ["B Cinema", "C Cinema"])
+        // Keep all → nothing disabled (the pre-selected default is a no-op).
+        XCTAssertTrue(catalog.cinemasToDisable(keepingAreas: ["central", "north"]).isEmpty)
+        // Keep none → everything disabled.
+        XCTAssertEqual(Set(catalog.cinemasToDisable(keepingAreas: [])), Set(catalog.cinemas))
+    }
 }

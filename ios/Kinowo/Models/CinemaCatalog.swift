@@ -19,6 +19,14 @@ struct CinemaCatalog: Codable, Hashable {
 
     /// Whether the city is split into areas (vs. a flat cinema list).
     var isSplit: Bool { !areas.isEmpty }
+
+    /// The cinemas to EXCLUDE when only the areas in [keepingAreas] (slugs) are
+    /// kept — every cinema in an unchecked area. Drives the first-visit area
+    /// picker: the areas the user leaves checked stay shown, the rest are added
+    /// to `disabledCinemas`. Areas are a partition, so this is unambiguous.
+    func cinemasToDisable(keepingAreas: Set<String>) -> [String] {
+        areas.filter { !keepingAreas.contains($0.slug) }.flatMap(\.cinemas)
+    }
 }
 
 /// One area group in a split city: display name, stable slug, and the full
