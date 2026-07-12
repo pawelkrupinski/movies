@@ -183,7 +183,13 @@ class CaffeineMovieCache(
   // Clock for the "now" used to tell past from future when a scrape merges its
   // showtimes (see `buildCinemaSlot` → `MovieRecordMerge.retainPastShowtimes`).
   // Injectable so tests can fix "now" deterministically.
-  clock: java.time.Clock = java.time.Clock.systemDefaultZone()
+  clock: java.time.Clock = java.time.Clock.systemDefaultZone(),
+  // The deployment's language, used to canonicalise cinema-reported production
+  // countries into the deployment's own (Polish "USA"/"Wielka Brytania" on
+  // `kinowo`, the source's already-localised name elsewhere — see
+  // `CountryNames.canonical`). The worker wires `country.language`; defaults to
+  // Polish so every existing single-country construction is unchanged.
+  enrichmentLanguage: java.util.Locale = CountryNames.DefaultLanguage
 ) extends MovieCache with Stoppable with Logging {
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
@@ -1151,7 +1157,7 @@ class CaffeineMovieCache(
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
       runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0).orElse(priorSlot.flatMap(_.runtimeMinutes)),
       releaseYear    = effectiveYear,
-      countries      = { val cs = cm.movie.countries.map(CountryNames.canonical).distinct
+      countries      = { val cs = cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
       genres         = if (cm.movie.genres.nonEmpty) cm.movie.genres
                        else priorSlot.map(_.genres).getOrElse(Seq.empty),

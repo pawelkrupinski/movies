@@ -25,6 +25,29 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       Tmdb              -> SourceData(title = Some(tmdbTitle), originalTitle = Some(originalTitle), releaseYear = Some(year)),
       (cinema: Source)  -> SourceData(title = Some(tmdbTitle), releaseYear = Some(year))))
 
+  // ── cinema-scrape country names canonicalise in the deployment language ────
+  //
+  // A cinema that reports a production country ("United Kingdom") must have it
+  // folded to the deployment's own name: Polish "Wielka Brytania" on `kinowo`,
+  // but kept English on the UK deployment (`enrichmentLanguage = en-GB`) — the
+  // cinema-scrape counterpart of the TMDB/IMDb country fix.
+
+  private def cmWithCountries(cinema: Cinema, title: String, countries: Seq[String]): CinemaMovie =
+    cm(cinema, title, Some(2016)).copy(movie = Movie(title, releaseYear = Some(2016), countries = countries))
+
+  it should "fold a cinema-reported country to the Polish name by default" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val key   = cache.recordCinemaScrape(KinoMuranow, Seq(cmWithCountries(KinoMuranow, "Dangerous Liaisons", Seq("United Kingdom")))).head._2
+    cache.get(key).get.data.values.head.countries shouldBe Seq("Wielka Brytania")
+  }
+
+  it should "keep the cinema-reported country in its own language for a non-Polish deployment" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(),
+      enrichmentLanguage = java.util.Locale.forLanguageTag("en-GB"))
+    val key   = cache.recordCinemaScrape(KinoMuranow, Seq(cmWithCountries(KinoMuranow, "Dangerous Liaisons", Seq("United Kingdom")))).head._2
+    cache.get(key).get.data.values.head.countries shouldBe Seq("United Kingdom")
+  }
+
   it should "carry enriched detail forward when a listing-only cinema re-scrapes (no metadata-wipe flap)" in {
     // A listing-only cinema (arthouse: Muranów, Kinoteka…) scrapes title+showtimes
     // with no director/cast/etc; EnrichDetails fills those later. Pre-fix, the next
