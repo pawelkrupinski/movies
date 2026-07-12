@@ -1,4 +1,4 @@
-@(active: String = "")(implicit city: models.City)
+@(active: String = "", current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false)(implicit city: models.City)
 @* The debug page this navbar sits on, as a path — used to keep the country
    switcher on the SAME page when hopping deployments. *@
 @debugPath = @{
@@ -14,20 +14,26 @@
   <a href="/debug/cadence"   class="@if(active == "cadence"){is-active}">Cadence</a>
   <a href="/@city.slug/"     class="debug-nav-out">Filmy ↗</a>
 
-  @* Country dimension. Every debug view is implicitly scoped to the ONE country
-     this deployment serves (`Country.fromEnv` → its own Mongo db), so the corpus
-     / read-cache / cadence numbers are that country's. Surface which country
-     that is, and — when more than one country is actually deployed
+  @* Country dimension. Every debug view is scoped to ONE country's Mongo db, so
+     the corpus / read-cache / cadence numbers are that country's (`current`).
+     Surface which, and — when more than one country is deployed
      (`Country.switchable`) — let you jump to the SAME debug page on the other
-     country's host, mirroring the main navbar's country switcher. *@
+     country. `sameOrigin` (Dev only, set when the wiring built per-country debug
+     stacks) switches to that country's db in-process via a `?country=` param;
+     otherwise (prod) it hops to the other country's production host, like the
+     main navbar's switcher. *@
   @if(models.Country.switchable.sizeIs > 1) {
     <select class="debug-nav-country" aria-label="Country" onchange="location.href=this.value">
       @for(c <- models.Country.switchable) {
-        <option value="@c.webUrl.get@debugPath"@if(c == models.Country.fromEnv){ selected}>@c.displayName</option>
+        @if(sameOrigin) {
+          <option value="@{debugPath}?country=@c.code"@if(c == current){ selected}>@c.displayName</option>
+        } else {
+          <option value="@c.webUrl.get@debugPath"@if(c == current){ selected}>@c.displayName</option>
+        }
       }
     </select>
   } else {
-    <span class="debug-nav-country-label">@models.Country.fromEnv.displayName</span>
+    <span class="debug-nav-country-label">@current.displayName</span>
   }
 </nav>
 <style>

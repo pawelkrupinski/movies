@@ -1,5 +1,5 @@
 @import services.cadence.CadenceReport
-@(groups: Seq[CadenceReport.Group], now: java.time.Instant)(implicit city: models.City)
+@(groups: Seq[CadenceReport.Group], now: java.time.Instant, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false)(implicit city: models.City)
 @at(i: java.time.Instant) = @{ i.toString.take(16).replace("T", " ") }
 @change(c: Option[services.cadence.RatingChange]) = @{
   c.map { x =>
@@ -49,7 +49,7 @@
   </style>
 </head>
 <body>
-  @_debugNavbar("cadence")
+  @_debugNavbar("cadence", current, sameOrigin)
   <h1>Rating refresh cadence</h1>
   <div class="summary">
     @groups.map(_.entries.size).sum (source, film) entries across @groups.size interval group(s),

@@ -6,8 +6,8 @@ import org.apache.pekko.stream.scaladsl.Source
 import play.api.Mode
 import play.api.libs.json.Json
 import play.api.mvc._
-import services.movies.{MovieRepository, StoredMovieRecord}
-import services.staging.{StagingRecord, StagingRepository}
+import services.movies.StoredMovieRecord
+import services.staging.StagingRecord
 
 import scala.concurrent.ExecutionContext
 
@@ -29,13 +29,15 @@ import scala.concurrent.ExecutionContext
  */
 class DebugStreamController(
   cc:               ControllerComponents,
-  movieRepository:        MovieRepository,
-  stagingRepository: StagingRepository,
+  // The per-country debug stacks; the stream watches the SELECTED country's
+  // `movies` + `pending_movies` (the sticky `debugCountry` cookie the /debug page
+  // set carries the selection here, since an EventSource sends no query string).
+  debugCountries:   DebugCountries,
   environment:      Mode
 )(using mat: Materializer) extends AbstractController(cc) {
 
-  def stream: Action[AnyContent] = Action {
-    DevMode.gate(environment)(Ok.chunked(eventSource()).as("text/event-stream"))
+  def stream: Action[AnyContent] = Action { request =>
+    DevMode.gate(environment)(Ok.chunked(eventSource(request)).as("text/event-stream"))
   }
 
   /** SSE frame for an upserted row: render `_debugRow` to HTML and ship it with
@@ -65,15 +67,16 @@ class DebugStreamController(
   /** One change-stream subscription per connection per watched collection, all
    *  closed when the browser disconnects (watchTermination). A Mongo without a
    *  replica set just errors the streams — the page keeps its static tables. */
-  private[controllers] def eventSource(): Source[String, NotUsed] = {
+  private[controllers] def eventSource(request: RequestHeader): Source[String, NotUsed] = {
+    val stack = debugCountries.stackFor(debugCountries.resolve(request))
     val (queue, source) =
       Source.queue[String](DebugStreamController.BufferSize, OverflowStrategy.dropHead).preMaterialize()
     val watches: Seq[AutoCloseable] = Seq(
-      movieRepository.watchChanges(
+      stack.movieRepository.watchChanges(
         onUpsert = row => { queue.offer(upsertFrame(row)); () },
         onDelete = id  => { queue.offer(deleteFrame(id)); () }
       ),
-      stagingRepository.watchChanges(
+      stack.stagingRepository.watchChanges(
         onUpsert = row => { queue.offer(stagingUpsertFrame(row)); () },
         onDelete = id  => { queue.offer(stagingDeleteFrame(id)); () }
       )

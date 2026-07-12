@@ -1,5 +1,5 @@
 @import models.{CityScreening, ResolvedMovie}
-@(movies: Seq[ResolvedMovie], screeningsByFilm: Map[String, Seq[CityScreening]], lastModified: java.time.Instant)(implicit city: models.City)
+@(movies: Seq[ResolvedMovie], screeningsByFilm: Map[String, Seq[CityScreening]], lastModified: java.time.Instant, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false)(implicit city: models.City)
 @*
  * Dev-only dump of the warm read cache (`WebReadModel`) the web actually serves
  * from: the in-memory `web_movies` (ResolvedMovie) + `web_screenings`
@@ -106,7 +106,7 @@
 </head>
 <body>
 
-@_debugNavbar("readmodel")
+@_debugNavbar("readmodel", current, sameOrigin)
 <h1>Read cache</h1>
 <div class="summary">
   <b>@movies.size</b> movies · <b>@screeningCount</b> screenings · <b>@showtimeCount</b> showtimes ·

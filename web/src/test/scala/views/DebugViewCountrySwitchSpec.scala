@@ -32,4 +32,15 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
     val html = views.html.cadence(Seq.empty, java.time.Instant.EPOCH).body
     html should include ("""value="https://showtimes-uk.fly.dev/debug/cadence"""")
   }
+
+  // Locally in Dev the wiring builds per-country debug stacks and passes
+  // `sameOrigin = true`: the switcher then stays on THIS origin (`?country=xx`)
+  // so it switches the served db in-process instead of navigating to the other
+  // country's production host (which serves prod mode and 404s /debug).
+  "debug navbar (Dev, switch wired)" should "emit same-origin ?country= links, not production hosts" in {
+    val html = views.html.debug(Seq.empty, current = models.Country.UnitedKingdom, sameOrigin = true).body
+    html should include ("""value="/debug?country=uk" selected""") // the switched-to country, selected
+    html should include ("""value="/debug?country=pl"""")
+    html should not include ("fly.dev") // never a cross-host jump to production
+  }
 }

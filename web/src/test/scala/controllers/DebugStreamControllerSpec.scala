@@ -35,7 +35,11 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   private def controller(repository: InMemoryMovieRepository, mode: Mode = Mode.Dev,
                          staging: StagingRepository = StagingRepository.empty) =
-    new DebugStreamController(Helpers.stubControllerComponents(), repository, staging, mode)
+    new DebugStreamController(Helpers.stubControllerComponents(),
+      DebugCountries.single(new DebugStack(models.Country.default, repository, staging,
+        new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
+        () => Seq.empty, () => Seq.empty, () => java.time.Instant.now())),
+      mode)
 
   private def record(title: String) =
     MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title))))
@@ -53,7 +57,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   "the live feed" should "push an upsert frame carrying the rendered row when a film appears" in {
     val repository = new InMemoryMovieRepository()
-    val collecting = controller(repository).eventSource().takeWithin(1.second).runWith(Sink.seq)
+    val collecting = controller(repository).eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100) // let the stream materialize + subscribe before we write
     repository.upsert("Belle", Some(2021), record("Belle"))
@@ -71,7 +75,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   it should "push a delete frame with just the id when a row is removed (a merge)" in {
     val repository = new InMemoryMovieRepository(Seq(("Belle", Some(2021), record("Belle"))))
-    val collecting = controller(repository).eventSource().takeWithin(1.second).runWith(Sink.seq)
+    val collecting = controller(repository).eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100)
     repository.delete("Belle", Some(2021))
@@ -86,7 +90,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   it should "emit nothing while the collection is idle" in {
     val repository = new InMemoryMovieRepository()
     val frames = Await.result(
-      controller(repository).eventSource().takeWithin(500.millis).runWith(Sink.seq), 3.seconds)
+      controller(repository).eventSource(FakeRequest()).takeWithin(500.millis).runWith(Sink.seq), 3.seconds)
     frames shouldBe empty
   }
 
@@ -96,7 +100,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
   "the live feed" should "push a staging-upsert frame (rendered row) when a pending_movies row appears" in {
     val staging = new InMemoryStagingRepository()
     val collecting = controller(new InMemoryMovieRepository(), staging = staging)
-      .eventSource().takeWithin(1.second).runWith(Sink.seq)
+      .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100)
     staging.upsert(CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))
@@ -115,7 +119,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val staging = new InMemoryStagingRepository(Seq(
       (CinemaCityWroclavia, "Newcomer", Some(2026), record("Newcomer"))))
     val collecting = controller(new InMemoryMovieRepository(), staging = staging)
-      .eventSource().takeWithin(1.second).runWith(Sink.seq)
+      .eventSource(FakeRequest()).takeWithin(1.second).runWith(Sink.seq)
 
     Thread.sleep(100)
     staging.delete(CinemaCityWroclavia, "Newcomer", Some(2026))

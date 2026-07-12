@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AuthController, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
+import controllers.{AdminAction, AuthController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -168,10 +168,52 @@ trait Wiring {
   // dev-only /debug/cadence page (reads the primary Mongo, like the read model).
   lazy val ratingCadenceReader: services.cadence.RatingCadenceReader =
     new services.cadence.MongoRatingCadenceReader(mongoConnection.database)
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, movieRepository, taskQueue, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
-    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),
-    stagingRepository = stagingRepository,
-    ratingCadenceReader = ratingCadenceReader)
+
+  // ── Dev-only per-country /debug data ─────────────────────────────────────────
+  // The /debug pages read ONE country's Mongo db. In prod that's this
+  // deployment's country (`bootDebugStack`). Locally in Dev the navbar's country
+  // switch stays SAME-ORIGIN (`?country=xx`) and selects a per-country stack here,
+  // instead of navigating to the other country's PROD host (which serves prod
+  // mode and 404s every /debug route). Each extra country reads its OWN database
+  // (`country.mongoDb`, NOT the MONGODB_DB override — that would pin every country
+  // to one db) off ONE shared MongoClient, so N countries add N database views,
+  // not N connection pools. Its `movies` comes from the MAIN Mongo, since the
+  // /debug read-mirror only holds the boot country's db.
+  private lazy val bootDebugStack: DebugStack = new DebugStack(
+    models.Country.fromEnv, movieRepository, stagingRepository, taskQueue, ratingCadenceReader,
+    readModelMovies       = () => webReadModel.allMovies(),
+    readModelScreenings   = () => webReadModel.allScreenings(),
+    readModelLastModified = () => webReadModel.lastModified)
+  // One shared client for the extra countries: None in prod, when only one country
+  // is deployed, or when MONGODB_URI is unset — then there are no extras and the
+  // debug switch stays off.
+  private lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient] =
+    if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
+    else MongoConnection.sharedClientFromEnv()
+  private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
+    debugExtraClient.toSeq.flatMap { client =>
+      models.Country.switchable.filterNot(_ == models.Country.fromEnv).map { country =>
+        val conn       = MongoConnection.fromEnvForDb(country.mongoDb, required = false, sharedClient = Some(client))
+        val screenings = new services.movies.MongoScreeningsRepository(conn.database)
+        val reader     = new MongoReadModelRepository(conn.database)
+        val stack = new DebugStack(country,
+          new MongoMovieRepository(conn.database, fallbackToOwnInit = false, screenings = Some(screenings)),
+          new services.staging.MongoStagingRepository(conn.database),
+          new MongoTaskQueue(conn.database),
+          new services.cadence.MongoRatingCadenceReader(conn.database),
+          readModelMovies       = () => reader.findAllMovies(),
+          readModelScreenings   = () => reader.findAllScreenings(),
+          readModelLastModified = () => java.time.Instant.now())
+        (country, conn, stack)
+      }
+    }
+  lazy val debugCountries: DebugCountries =
+    DebugCountries.of(bootDebugStack,
+      debugExtraStacks.map { case (country, _, stack) => country -> stack }.toMap,
+      devMode = environmentMode != Mode.Prod)
+
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
+    cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val wellKnownController = new WellKnownController(controllerComponents)
@@ -190,10 +232,11 @@ trait Wiring {
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue)
-  // Dev-only SSE feed for the /debug live view; reuses the same on-demand
-  // movieRepository the /debug page renders from. The live row's details cell
-  // ships empty (lazily fetched on expand), so no cinema-URL snapshot is needed.
-  lazy val debugStreamController = new DebugStreamController(controllerComponents, movieRepository, stagingRepository, environmentMode)(using materializer)
+  // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
+  // `movies` + `pending_movies` via the same per-country stacks the /debug page
+  // renders from. The live row's details cell ships empty (lazily fetched on
+  // expand), so no cinema-URL snapshot is needed.
+  lazy val debugStreamController = new DebugStreamController(controllerComponents, debugCountries, environmentMode)(using materializer)
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion)
@@ -222,6 +265,10 @@ trait Wiring {
     // Sample per-city served-film counts once a minute for /metrics. Started
     // after the read model so the first sample reads a warm corpus.
     webMovieMetrics.start()
+    // Force the Dev-only per-country debug stacks so their extra database views'
+    // boot probes surface now, not on the first /debug?country= switch. A no-op
+    // in prod (no extras) and cheap in Dev (one shared client, N db views).
+    debugCountries
   }
 
   protected def stop(): Unit = {
@@ -238,6 +285,9 @@ trait Wiring {
     // The /debug read-mirror owns its own MongoClient when distinct from the
     // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set).
     if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()
+    // Dev-only per-country debug stacks share ONE client (built here); their
+    // connections' own close() is a no-op, so close the shared client once.
+    debugExtraClient.foreach(_.close())
     mongoConnection.close()
   }
 }

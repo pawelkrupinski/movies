@@ -5,7 +5,7 @@ import play.api.Logging
 import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
-import services.movies.{MovieRepository, TitleNormalizer}
+import services.movies.TitleNormalizer
 import services.readmodel.WebReadModel
 
 import java.net.URLDecoder
@@ -286,13 +286,13 @@ object MovieControllerService {
 class MovieController( cc: ControllerComponents,
                        movieControllerService: MovieControllerService,
                        readModel: WebReadModel,
-                       // Read-only, on-demand only: the /debug corpus dump. The web
-                       // never keeps this warm (no `movies` change stream) — it pulls
-                       // a fresh snapshot when the dev endpoint is hit.
-                       movieRepository: MovieRepository,
-                       // Enqueue target for the dev-only /debug row "re-enrich"
-                       // button — the same durable queue the worker drains.
-                       taskQueue: services.tasks.TaskQueue,
+                       // Every collaborator the dev-only /debug pages read (corpus,
+                       // staging, queue, cadence, read-model dump), keyed by country.
+                       // In prod a single stack — this deployment's country; locally
+                       // in Dev one per switchable country, so /debug can switch which
+                       // country's db it shows via `?country=xx` same-origin instead of
+                       // hopping to the other country's prod host (which 404s /debug).
+                       debugCountries: DebugCountries,
                        userRepository: services.users.UserRepository,
                        // Gate for the state-mutating /…/debug/rehydrate trigger
                        // (the other /debug pages are dev-only; rehydrate runs in
@@ -308,14 +308,6 @@ class MovieController( cc: ControllerComponents,
                        // snapshot. Evaluated per request so it tracks live retags;
                        // used only by the /debug table to link cinema names.
                        cinemaSourceUrls: () => Map[String, String] = () => Map.empty,
-                       // Read-only, on-demand: the /debug "pending enrichment" section
-                       // lists the per-cinema newcomer rows incubating in
-                       // `pending_movies`. Empty no-op when staging isn't wired.
-                       stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty,
-                       // Read-only, on-demand: the dev-only /debug/cadence page reads the
-                       // worker-written `rating_cadence` collection (per-source adaptive
-                       // refresh state). Empty no-op when cadence isn't wired.
-                       ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -534,12 +526,17 @@ class MovieController( cc: ControllerComponents,
     withCity(city)(c => conditionalJson(request)(Json.toJson(ApiCityCinemas.from(c))))
   }
 
-  def debug(): Action[AnyContent] = Action {
+  def debug(): Action[AnyContent] = Action { request =>
     devOnly {
       // The debug table is the global corpus; the only thing the view needs a
       // city for is the /film fallback link on a row with no live showtimes
       // anywhere — give it the default city for that edge case.
       implicit val c: City = City.all.head
+      // Which country's corpus to show (the boot country unless a Dev-only
+      // ?country= switch selected another). `stack` binds every debug read below
+      // to that country's Mongo db.
+      val country = debugCountries.resolve(request)
+      val stack   = debugCountries.stackFor(country)
       // Pulled on demand from Mongo: the web doesn't keep the `movies` model
       // warm, so the corpus dump reads the source rows the read model is
       // projected from directly. `findAllForListing` drops each row's per-cinema
@@ -555,20 +552,22 @@ class MovieController( cc: ControllerComponents,
       // latency. The 70 s outer wait sits just above each read's own 60 s
       // timeout so an inner timeout fires (and logs) first.
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val moviesFuture  = Future(movieRepository.findAllForListing())
-      val stagingFuture = Future(stagingRepository.findAll())
+      val moviesFuture  = Future(stack.movieRepository.findAllForListing())
+      val stagingFuture = Future(stack.stagingRepository.findAll())
       // The same bounded, index-backed queue snapshot `/debug/queue` serves —
       // read here too so the staging rows can be ORDERED by their place in the
       // queue (the page renders only the first `StagingRowLimit`, so the most
       // imminent rows must sort to the top server-side; the client poll then
       // repaints the live badge in place, but does not reorder).
-      val queueFuture   = Future(taskQueue.monitor(MovieController.DebugQueueActiveLimit))
+      val queueFuture   = Future(stack.taskQueue.monitor(MovieController.DebugQueueActiveLimit))
       val (movies, (staging, queue)) =
         Await.result(moviesFuture.zip(stagingFuture.zip(queueFuture)), 70.seconds)
       val staged = staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))
       Ok(views.html.debug(
         movies.sortBy(_.title.toLowerCase),
-        MovieController.orderStagingByQueue(staged, queue.active)))
+        MovieController.orderStagingByQueue(staged, queue.active),
+        current = country, sameOrigin = debugCountries.switchable))
+        .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
 
@@ -576,15 +575,19 @@ class MovieController( cc: ControllerComponents,
    *  grouped by their current refresh interval, slowest (most backed-off / stable)
    *  first, with the last two displayed-value changes shown on hover. Reads the
    *  worker-written `rating_cadence` collection + resolves titles from the corpus. */
-  def cadence(): Action[AnyContent] = Action {
+  def cadence(): Action[AnyContent] = Action { request =>
     devOnly {
+      val country = debugCountries.resolve(request)
+      val stack   = debugCountries.stackFor(country)
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
-      val recordsFuture = Future(ratingCadenceReader.all())
-      val titlesFuture  = Future(movieRepository.findAllForListing())
+      val recordsFuture = Future(stack.ratingCadenceReader.all())
+      val titlesFuture  = Future(stack.movieRepository.findAllForListing())
       val (records, rows) = Await.result(recordsFuture.zip(titlesFuture), 70.seconds)
       val titleByTmdb = rows.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap
       implicit val c: City = City.all.head   // only for the shared debug navbar's city link
-      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get), java.time.Instant.now()))
+      Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get), java.time.Instant.now(),
+        current = country, sameOrigin = debugCountries.switchable))
+        .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
 
@@ -595,9 +598,9 @@ class MovieController( cc: ControllerComponents,
    *  demand keeps the initial /debug render to the light data rows only. The `id`
    *  is the row's Mongo `_id` (`StoredMovieRecord.idOf`), the same value the table
    *  rows are keyed on. */
-  def debugDetails(id: String): Action[AnyContent] = Action {
+  def debugDetails(id: String): Action[AnyContent] = Action { request =>
     devOnly {
-      movieRepository.findById(id) match {
+      debugCountries.stackFor(debugCountries.resolve(request)).movieRepository.findById(id) match {
         case Some(row) => Ok(views.html.debugDetails(row.title, row.year, row.record, cinemaSourceUrls()))
         case None      => NotFound("no such row")
       }
@@ -611,9 +614,9 @@ class MovieController( cc: ControllerComponents,
    *  so the cost scales with viewers-while-open, not queue churn. Only the
    *  fields the page matches on are shipped — type, dedup key, state; submission
    *  order is already encoded by the oldest-first list position. */
-  def debugQueue(): Action[AnyContent] = Action {
+  def debugQueue(): Action[AnyContent] = Action { request =>
     devOnly {
-      val snap = taskQueue.monitor(MovieController.DebugQueueActiveLimit)
+      val snap = debugCountries.stackFor(debugCountries.resolve(request)).taskQueue.monitor(MovieController.DebugQueueActiveLimit)
       Ok(play.api.libs.json.Json.obj(
         "active" -> snap.active.map { t =>
           play.api.libs.json.Json.obj(
@@ -630,12 +633,16 @@ class MovieController( cc: ControllerComponents,
    *  `WebReadModel`'s in-memory `web_movies` + `web_screenings` views — so you
    *  can see exactly what a request would resolve against (vs `/debug`, which
    *  pulls the source `movies` corpus from Mongo on demand). */
-  def debugReadModel(): Action[AnyContent] = Action {
+  def debugReadModel(): Action[AnyContent] = Action { request =>
     devOnly {
       implicit val c: City = City.all.head
-      val movies     = readModel.allMovies().sortBy(_.title.toLowerCase)
-      val screenings = readModel.allScreenings().groupBy(_.filmId)
-      Ok(views.html.debugReadModel(movies, screenings, readModel.lastModified))
+      val country    = debugCountries.resolve(request)
+      val stack      = debugCountries.stackFor(country)
+      val movies     = stack.readModelMovies().sortBy(_.title.toLowerCase)
+      val screenings = stack.readModelScreenings().groupBy(_.filmId)
+      Ok(views.html.debugReadModel(movies, screenings, stack.readModelLastModified(),
+        current = country, sameOrigin = debugCountries.switchable))
+        .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
 
@@ -646,11 +653,11 @@ class MovieController( cc: ControllerComponents,
    *  next pass. Idempotent per (title, year): a repeat
    *  click while one is queued returns `duplicate`. Returns JSON for the page's
    *  fetch. */
-  def reenrich(title: String, year: Option[Int]): Action[AnyContent] = Action {
+  def reenrich(title: String, year: Option[Int]): Action[AnyContent] = Action { request =>
     devOnly {
       if (title.isEmpty) BadRequest(play.api.libs.json.Json.obj("error" -> "missing title"))
       else {
-        val result = taskQueue.enqueue(
+        val result = debugCountries.stackFor(debugCountries.resolve(request)).taskQueue.enqueue(
           services.tasks.TaskType.ResolveTmdb,
           services.tasks.EnrichTaskKeys.resolveTmdbDedup(title, year),
           // `force` so the operator's explicit re-enrich re-resolves even an

@@ -25,14 +25,23 @@ object TestMovieController {
     movieRepository: Option[services.movies.MovieRepository] = None,
     stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty,
     ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
+    // The per-country /debug stacks. Defaults to a single-country holder wrapping
+    // the collaborators above; a spec exercising the Dev country switch injects a
+    // multi-country `DebugCountries` instead.
+    debugCountries: Option[DebugCountries] = None,
   ): (MovieController, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
       cc                     = Helpers.stubControllerComponents(),
       movieControllerService = new MovieControllerService(readModel),
       readModel              = readModel,
-      movieRepository        = movieRepository.getOrElse(new InMemoryMovieRepository(records)),
-      taskQueue              = taskQueue,
+      debugCountries         = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
+        models.Country.default,
+        movieRepository.getOrElse(new InMemoryMovieRepository(records)),
+        stagingRepository, taskQueue, ratingCadenceReader,
+        readModelMovies       = () => readModel.allMovies(),
+        readModelScreenings   = () => readModel.allScreenings(),
+        readModelLastModified = () => readModel.lastModified))),
       userRepository               = new services.users.InMemoryUserRepository,
       adminAction            = adminAction,
       oauthProviders         = Set.empty,
@@ -44,8 +53,6 @@ object TestMovieController {
       ogCardService          = new tools.OgCardService((_: String) => None),
       cityOgCardService      = new tools.CityOgCardService((_: String) => None),
       cinemaSourceUrls       = () => cinemaSourceUrls,
-      stagingRepository      = stagingRepository,
-      ratingCadenceReader    = ratingCadenceReader,
     )
     (ctrl, readModel)
   }
