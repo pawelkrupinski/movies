@@ -47,11 +47,13 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
        |<img id="below"   data-original-src="d" style="position:absolute;top:5000px;width:100px;height:100px">
        |</body></html>""".stripMargin
 
-  private def withFixture(body: CdpPage => Unit): Unit = chrome match {
+  private def withFixture(body: CdpPage => Unit): Unit = withHtml(fixtureHtml)(body)
+
+  private def withHtml(html: String)(body: CdpPage => Unit): Unit = chrome match {
     case None => cancel("Chrome not installed — skipping CDP poster-ready spec")
     case Some(c) =>
       val tmp = Files.createTempFile("og-posters-ready-", ".html")
-      Files.writeString(tmp, fixtureHtml)
+      Files.writeString(tmp, html)
       try c.openPage(tmp.toUri.toString) { page =>
         page.setDesktopViewport(1180, 760)
         body(page)
@@ -84,5 +86,31 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   it should "be true once the repertoire JS has defined pickDay" in withFixture { page =>
     page.eval("window.pickDay = function(){}")
     page.evalBool(s"!!(${OgCardGenerator.RepertoireLoadedJs})") shouldBe true
+  }
+
+  // Split cities (London) open the "Choose your areas" modal over the grid on
+  // first load; DismissAreaPickerJs clicks its "Show listings" button so the
+  // card captures posters, not the modal. The button's real apply/close logic
+  // lives in shared.js; here a stand-in onclick that removes the overlay proves
+  // the generator selects and clicks the right element.
+  private val areaPickerHtml =
+    """<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+      |<body style="margin:0">
+      |<div id="area-picker-overlay" style="position:fixed;inset:0">
+      |  <button onclick="document.getElementById('area-picker-overlay').remove()">Show listings</button>
+      |</div>
+      |</body></html>""".stripMargin
+
+  "DismissAreaPickerJs" should "click the picker's button and remove the overlay" in withHtml(areaPickerHtml) { page =>
+    page.evalBool("!!document.getElementById('area-picker-overlay')") shouldBe true
+    page.eval(OgCardGenerator.DismissAreaPickerJs)
+    page.evalBool("!!document.getElementById('area-picker-overlay')") shouldBe false
+  }
+
+  it should "be a harmless no-op on a flat page with no picker" in withFixture { page =>
+    // The default poster fixture has no #area-picker-overlay — the guarded click
+    // must not throw and must leave the page's posters in place.
+    page.eval(OgCardGenerator.DismissAreaPickerJs)
+    page.evalBool("!!document.getElementById('loaded')") shouldBe true
   }
 }

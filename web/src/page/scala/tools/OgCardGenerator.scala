@@ -1,5 +1,6 @@
 package tools
 
+import controllers.FilterDescription
 import models.Country
 import play.api.libs.json.Json
 
@@ -80,7 +81,7 @@ object OgCardGenerator {
         if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")) ok += 1
       } else {
         cities.foreach { city =>
-          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", s"Repertuar kin ${city.locativePhrase}", outDir.resolve(s"og-${city.slug}.png"), city.slug)) ok += 1
+          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(s"og-${city.slug}.png"), city.slug)) ok += 1
         }
       }
     } finally chrome.close()
@@ -118,11 +119,18 @@ object OgCardGenerator {
     false
   }
 
+  /** The per-city overlay line under the wordmark — "Repertuar kin w Poznaniu" /
+   *  "Cinema listings in London", in the city's country language. Delegates to
+   *  the shared [[FilterDescription.cityHeading]] (also the page `<title>` and
+   *  the dynamic film OG card) so the static card can't drift back to a
+   *  half-Polish "Repertuar kin in London" on a non-PL deployment. */
+  private[tools] def cityTagline(city: models.City): String = FilterDescription.cityHeading(city)
+
   /** The `/` home-card tagline for a deployment's language — the line under the
    *  wordmark on `og-home{-code}.png`. Mirrors each `messages` bundle's
    *  `landing.title` suffix; kept here because this dev tool has no Play i18n
    *  wired. */
-  private def homeTagline(country: Country): String = country.language.getLanguage match {
+  private[tools] def homeTagline(country: Country): String = country.language.getLanguage match {
     case "pl" => "Repertuar kin w Twoim mieście"
     case "de" => "Kinoprogramm in deiner Stadt"
     case _    => "Cinema listings in your city"
@@ -150,6 +158,16 @@ object OgCardGenerator {
       "return r.bottom>0&&r.top<window.innerHeight&&r.right>0&&r.left<window.innerWidth;})" +
       ".every(function(i){return (i.complete&&i.naturalWidth>0)||i.offsetParent===null;})"
 
+  /** Click the area-picker's "Show listings" button if the modal is showing, so
+   *  a split city's card (London) captures the poster grid instead of the
+   *  "Choose your areas" overlay. `shared.js` builds the picker as
+   *  `#area-picker-overlay` with a single (idless) `<button>` that, on click,
+   *  applies the checked areas (all, by default) and removes the overlay. Guarded
+   *  by `if(b)`, so it's a harmless no-op on the flat cities that never render a
+   *  picker. */
+  private[tools] val DismissAreaPickerJs: String =
+    "(function(){var b=document.querySelector('#area-picker-overlay button');if(b)b.click();})()"
+
   /** Screenshot the live city page at desktop 2×, with every date shown so the
    *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
    *
@@ -165,6 +183,12 @@ object OgCardGenerator {
       setMetrics(page, 1180, 760, 2)
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
       catch { case _: Throwable => throw new RuntimeException("repertoire page did not load (no pickDay)") }
+      // A city split into cinema areas (e.g. London) opens the "Choose your
+      // areas" picker over the grid on first load; dismiss it (accepting the
+      // all-areas default) so the card shows posters, not the modal. A no-op
+      // on the flat cities that have no picker.
+      try page.eval(DismissAreaPickerJs)
+      catch { case _: Throwable => () }
       // The date tabs are JS-only (`pickDay`); "anytime" shows all upcoming
       // days so a late-night "Dziś" empty view doesn't yield an empty card.
       try page.eval("pickDay('anytime')")
