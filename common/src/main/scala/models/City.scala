@@ -864,10 +864,13 @@ object City {
 
   /** The UK cities currently live — the ones web serves and the worker scrapes.
    *  Scoped to the five largest UK cities (London, Manchester, Birmingham,
-   *  Glasgow and Liverpool). Add entries from [[allUkCities]] here to
-   *  bring more back online; the disabled cities stay fully modelled above. */
+   *  Glasgow, Liverpool, and the next five by size — West Yorkshire, Lancashire,
+   *  Edinburgh & Lothians, Hampshire, North Yorkshire). Add entries from
+   *  [[allUkCities]] here to bring more back online; the disabled cities stay
+   *  fully modelled above. */
   private[models] val activeUkCities: Set[City] =
-    Set(London, Manchester, Birmingham, Glasgow, Liverpool)
+    Set(London, Manchester, Birmingham, Glasgow, Liverpool,
+        WestYorkshire, Lancashire, EdinburghAndLothians, Hampshire, NorthYorkshire)
 
   /** The authoritative UK list for [[Country.UnitedKingdom]] — the live subset
    *  of [[allUkCities]], kept in that list's declared order. */

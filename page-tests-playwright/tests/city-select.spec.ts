@@ -13,7 +13,7 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     // country. (The UK is scoped to its five largest cities via `activeUkCities`;
     // the other 74 Flicks regions stay modelled but disabled.)
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(49);
+    await expect(links).toHaveCount(54);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
@@ -33,14 +33,19 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list')).toContainText('Rzeszów');
     await expect(page.locator('.city-list')).toContainText('Gliwice');
     await expect(page.locator('.city-list')).toContainText('Zabrze');
-    // The five live UK cities (English labels); the other Flicks regions are
+    // The ten live UK cities (English labels); the other Flicks regions are
     // modelled but disabled, so they must NOT appear.
     await expect(page.locator('.city-list')).toContainText('London');
     await expect(page.locator('.city-list')).toContainText('Manchester');
     await expect(page.locator('.city-list')).toContainText('Birmingham');
     await expect(page.locator('.city-list')).toContainText('Glasgow');
     await expect(page.locator('.city-list')).toContainText('Liverpool');
-    await expect(page.locator('.city-list')).not.toContainText('West Yorkshire');
+    await expect(page.locator('.city-list')).toContainText('West Yorkshire');
+    await expect(page.locator('.city-list')).toContainText('Lancashire');
+    await expect(page.locator('.city-list')).toContainText('Edinburgh');
+    await expect(page.locator('.city-list')).toContainText('Hampshire');
+    await expect(page.locator('.city-list')).toContainText('North Yorkshire');
+    await expect(page.locator('.city-list')).not.toContainText('Cornwall');
 
     await page.locator('.city-list a', { hasText: 'Poznań' }).click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');

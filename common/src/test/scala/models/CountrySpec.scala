@@ -42,11 +42,14 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedKingdom.cities.map(_.slug) should contain allOf ("london", "manchester", "birmingham")
   }
 
-  "Country.UnitedKingdom.cities" should "be scoped to the five largest UK cities while the full roster stays modelled" in {
-    // Only these five are live — web serves them and the worker scrapes them.
-    // The other 74 stay fully declared in code (nothing deleted or commented
+  "Country.UnitedKingdom.cities" should "be scoped to the ten largest UK cities while the full roster stays modelled" in {
+    // Only these ten are live — web serves them and the worker scrapes them.
+    // The other 69 stay fully declared in code (nothing deleted or commented
     // out) so bringing one back online is a one-line edit to `activeUkCities`.
-    City.ukCities.map(_.slug) shouldBe Seq("london", "manchester", "birmingham", "glasgow", "liverpool")
+    // Order follows the `allUkCities` declared order (filtered), not rank.
+    City.ukCities.map(_.slug) shouldBe Seq(
+      "london", "manchester", "birmingham", "edinburgh-and-lothians", "glasgow",
+      "hampshire", "lancashire", "liverpool", "north-yorkshire", "west-yorkshire")
     City.activeUkCities shouldBe City.ukCities.toSet
     City.allUkCities should have size 79
     City.ukCities.foreach(c => City.allUkCities should contain(c))
@@ -102,9 +105,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.bySlug.get("london") shouldBe None            // London is a UK city
     Country.UnitedKingdom.bySlug.get("london") shouldBe Some(London)
     Country.Poland.allSorted.toSet shouldBe City.polishCities.toSet
-    Country.UnitedKingdom.allSorted.toSet shouldBe City.ukCities.toSet         // the 5 live UK cities
+    Country.UnitedKingdom.allSorted.toSet shouldBe City.ukCities.toSet         // the 10 live UK cities
     Country.UnitedKingdom.allSorted.head shouldBe Birmingham                   // English collation A→Z
-    Country.UnitedKingdom.allSorted.last shouldBe Manchester
+    Country.UnitedKingdom.allSorted.last shouldBe WestYorkshire
     Country.Poland.allJson should include("poznan")
     Country.Poland.allJson should not include "london"
   }
