@@ -853,11 +853,25 @@ object City {
     Przemysl, Konin,
   )
 
-  /** The United Kingdom's cities — the authoritative list for
-   *  [[Country.UnitedKingdom]]. */
-  private[models] val ukCities: Seq[City] = Seq(
+  /** The United Kingdom's full modelled roster — every Flicks region we know how
+   *  to scrape (79). Retained in full even while only a subset is live so that
+   *  bringing a city back online is a one-line edit to [[activeUkCities]], never
+   *  a re-declaration. Do NOT trim this list to disable cities — narrow
+   *  [[activeUkCities]] instead. */
+  private[models] val allUkCities: Seq[City] = Seq(
     London, Manchester, Norwich, Aberdeenshire, Antrim, Armagh, AyrshireAndArran, Bedfordshire, Belfast, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cardiff, CentralScotland, Cheshire, Clwyd, Cornwall, CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Down, Dudley, DumfriesAndGalloway, DunbartonshireArgyllBute, Dyfed, EastSussex, EastYorkshire, EdinburghAndLothians, Essex, Fermanagh, Fife, Glamorgan, Glasgow, Gloucestershire, Guernsey, Gwent, Gwynedd, Hampshire, Herefordshire, Hertfordshire, HighlandsAndIslands, IsleOfMan, IsleOfWight, Jersey, Kent, Lanarkshire, Lancashire, Leicestershire, Lincolnshire, Londonderry, Merseyside, NorthYorkshire, Northamptonshire, Northumberland, Nottinghamshire, Oxfordshire, Powys, Renfrewshire, RoxburghEttrickAndLauderdale, Sandwell, Shropshire, Somerset, SouthYorkshire, Staffordshire, Suffolk, Surrey, Tayside, TyneAndWear, Tyrone, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire, Yorkshire,
   )
+
+  /** The UK cities currently live — the ones web serves and the worker scrapes.
+   *  Scoped to the five largest UK cities (London, Manchester, Birmingham,
+   *  Glasgow and Merseyside/Liverpool). Add entries from [[allUkCities]] here to
+   *  bring more back online; the disabled cities stay fully modelled above. */
+  private[models] val activeUkCities: Set[City] =
+    Set(London, Manchester, Birmingham, Glasgow, Merseyside)
+
+  /** The authoritative UK list for [[Country.UnitedKingdom]] — the live subset
+   *  of [[allUkCities]], kept in that list's declared order. */
+  private[models] val ukCities: Seq[City] = allUkCities.filter(activeUkCities)
 
   /** Germany's cities — the authoritative list for [[Country.Germany]]. */
   private[models] val germanCities: Seq[City] = Seq(Berlin, Munich, Wurzburg)
@@ -873,6 +887,13 @@ object City {
    *  when loaded on parallel threads. Keep the dependency one-directional:
    *  `Country → City`. A new country adds its list to this concatenation. */
   val all: Seq[City] = polishCities ++ ukCities ++ germanCities
+
+  /** Every modelled city across all countries — including cities that are
+   *  declared in code but currently disabled, so absent from the live [[all]]
+   *  (e.g. the UK cities filtered out by [[activeUkCities]]). [[all]] is the
+   *  LIVE roster that web serves and the worker scrapes; this is the FULL roster
+   *  used only by coverage/partition checks that must also see disabled cities. */
+  val allModelled: Seq[City] = polishCities ++ allUkCities ++ germanCities
 
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 

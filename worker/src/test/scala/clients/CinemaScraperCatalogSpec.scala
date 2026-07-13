@@ -97,7 +97,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // also catches a `City.slug` ↔ `byCity` key mismatch: `catalog.all` resolves
   // scrapers by `c.slug`, so a typo drops that city's cinemas out of `all`.
   it should "wire a scraper for every modelled cinema" in {
-    val scraped  = catalog(biletyna = "kino-kameralne").all.map(_.cinema).toSet
+    // Over the WHOLE `byCity` map (every modelled city, including UK cities that
+    // are currently disabled and so absent from the live `catalog.all`), not the
+    // live subset — otherwise a disabled city's unwired cinema would slip by.
+    val scraped  = catalog(biletyna = "kino-kameralne").byCity.values.flatten.map(_.cinema).toSet
     val modelled = Cinema.all.toSet
     withClue(s"modelled but unscraped: ${(modelled diff scraped).map(_.displayName).toSeq.sorted}") {
       (modelled diff scraped) shouldBe empty
