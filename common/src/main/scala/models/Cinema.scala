@@ -1229,7 +1229,7 @@ case object MovieHouseColeraine extends Cinema("Movie House Coleraine", "Movie H
 case object MovieHouseMaghera extends Cinema("Movie House Maghera", "Movie House Maghera")
 case object NerveCentreLondonderry extends Cinema("Nerve Centre Londonderry", "Nerve Centre Londonderry")
 case object OmniplexLondonderry extends Cinema("Omniplex Londonderry", "Omniplex Londonderry")
-// ── United Kingdom · Merseyside (Flicks) ──
+// ── United Kingdom · Liverpool (Flicks) ──
 case object CineworldSpeke extends Cinema("Cineworld Speke", "Cineworld Speke")
 case object CineworldStHelens extends Cinema("Cineworld St Helens", "Cineworld St Helens")
 case object EverymanCinemaLiverpool extends Cinema("Everyman Cinema Liverpool", "Everyman Liverpool")
@@ -1701,7 +1701,7 @@ object Cinema {
   val leicestershire: Seq[Cinema] = Seq(CineworldHinckley, FlixStudentRunCinemaLoughborough, OdeonCinemaLoughborough, OdeonLuxeLeicester, PhoenixCinemaAndArtCentreLeicester, PiccadillyCinemaLeicester, RegalMeltonMowbray, ShowcaseDeLuxLeicester, VueCinemasLeicester)
   val lincolnshire: Seq[Cinema] = Seq(ArtsCentreStamford, EverymanCinemaLincoln, JunctionGoole, KinemaInTheWoods, LoewenCinema, OdeonCinemaLincoln, ParkwayCinemaLouth, ParkwayCleethorpes, SavoyBoston, SavoyGrantham, SleafordPlayhouse, TowerCinemaSkegness, VueCinemasScunthorpe)
   val londonderry: Seq[Cinema] = Seq(BrunswickMoviebowlLondonderry, MovieHouseColeraine, MovieHouseMaghera, NerveCentreLondonderry, OmniplexLondonderry)
-  val merseyside: Seq[Cinema] = Seq(CineworldSpeke, CineworldStHelens, EverymanCinemaLiverpool, OdeonLiverpoolONE, OdeonLiverpoolSwitchIsland, OdeonLuxeBromborough, PicturehouseAtFACTLiverpool, PlazaCommunityCinemaLiverpool, ShowcaseDeLuxLiverpool, SouthportBijouCinema, TheLightNewBrighton, VueCinemasBirkenhead, VueCinemasSouthport, WooltonPictureHouse)
+  val liverpool: Seq[Cinema] = Seq(CineworldSpeke, CineworldStHelens, EverymanCinemaLiverpool, OdeonLiverpoolONE, OdeonLiverpoolSwitchIsland, OdeonLuxeBromborough, PicturehouseAtFACTLiverpool, PlazaCommunityCinemaLiverpool, ShowcaseDeLuxLiverpool, SouthportBijouCinema, TheLightNewBrighton, VueCinemasBirkenhead, VueCinemasSouthport, WooltonPictureHouse)
   val northYorkshire: Seq[Cinema] = Seq(CineworldYork, CityScreenPicturehouseYork, EverymanCinemaHarrogate, EverymanCinemaNorthallerton, EverymanCinemaYork, HollywoodPlazaScarborough, OdeonCinemaHarrogate, OdeonMiddlesbrough, PavilionCinemaWhitby, PocklingtonArtsCentre, RegentRedcar, RitzCinemaThirsk, RoxyMoviesMiddlesbrough, SavoyCinemaCatterickGarrison, StationCinemaRichmond, StephenJosephTheatreScarborough, TheForumNorthallerton, VueCinemasYork)
   val northamptonshire: Seq[Cinema] = Seq(ArcCinemaDaventry, CineworldRushdenLakes, ForumCinemaNorthampton, NorthamptonFilmhouse, OdeonNorthampton, SavoyCinemaCorby, VueCinemasNorthampton)
   val northumberland: Seq[Cinema] = Seq(ForumCinemaHexham, MarketPavilionCinemaBlyth, PhoenixCinemaBlyth, TheMaltingsBerwickUponTweed, VueCinemasCramlington)
@@ -1832,7 +1832,7 @@ object Cinema {
     "Leicestershire" -> leicestershire,
     "Lincolnshire" -> lincolnshire,
     "Londonderry" -> londonderry,
-    "Merseyside" -> merseyside,
+    "Liverpool" -> liverpool,
     "North Yorkshire" -> northYorkshire,
     "Northamptonshire" -> northamptonshire,
     "Northumberland" -> northumberland,

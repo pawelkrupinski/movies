@@ -1094,7 +1094,7 @@ class CinemaScraperCatalog(
     flicks("nerve-centre-londonderry", NerveCentreLondonderry),
     flicks("omniplex-londonderry", OmniplexLondonderry),
   )
-  private val merseysideScrapers: Seq[CinemaScraper] = Seq(
+  private val liverpoolScrapers: Seq[CinemaScraper] = Seq(
     flicks("cineworld-speke", CineworldSpeke),
     flicks("cineworld-st-helens", CineworldStHelens),
     flicks("everyman-cinema-liverpool", EverymanCinemaLiverpool),
@@ -1495,7 +1495,7 @@ class CinemaScraperCatalog(
     "leicestershire" -> leicestershireScrapers,
     "lincolnshire" -> lincolnshireScrapers,
     "londonderry" -> londonderryScrapers,
-    "merseyside" -> merseysideScrapers,
+    "liverpool" -> liverpoolScrapers,
     "north-yorkshire" -> northYorkshireScrapers,
     "northamptonshire" -> northamptonshireScrapers,
     "northumberland" -> northumberlandScrapers,

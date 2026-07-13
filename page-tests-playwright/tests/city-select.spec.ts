@@ -39,7 +39,7 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list')).toContainText('Manchester');
     await expect(page.locator('.city-list')).toContainText('Birmingham');
     await expect(page.locator('.city-list')).toContainText('Glasgow');
-    await expect(page.locator('.city-list')).toContainText('Merseyside');
+    await expect(page.locator('.city-list')).toContainText('Liverpool');
     await expect(page.locator('.city-list')).not.toContainText('West Yorkshire');
 
     await page.locator('.city-list a', { hasText: 'Poznań' }).click();

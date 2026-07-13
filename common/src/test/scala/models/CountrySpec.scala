@@ -46,7 +46,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // Only these five are live — web serves them and the worker scrapes them.
     // The other 74 stay fully declared in code (nothing deleted or commented
     // out) so bringing one back online is a one-line edit to `activeUkCities`.
-    City.ukCities.map(_.slug) shouldBe Seq("london", "manchester", "birmingham", "glasgow", "merseyside")
+    City.ukCities.map(_.slug) shouldBe Seq("london", "manchester", "birmingham", "glasgow", "liverpool")
     City.activeUkCities shouldBe City.ukCities.toSet
     City.allUkCities should have size 79
     City.ukCities.foreach(c => City.allUkCities should contain(c))
@@ -104,7 +104,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.allSorted.toSet shouldBe City.polishCities.toSet
     Country.UnitedKingdom.allSorted.toSet shouldBe City.ukCities.toSet         // the 5 live UK cities
     Country.UnitedKingdom.allSorted.head shouldBe Birmingham                   // English collation A→Z
-    Country.UnitedKingdom.allSorted.last shouldBe Merseyside
+    Country.UnitedKingdom.allSorted.last shouldBe Manchester
     Country.Poland.allJson should include("poznan")
     Country.Poland.allJson should not include "london"
   }

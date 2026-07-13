@@ -725,9 +725,9 @@ case object Londonderry extends City("londonderry",
   CityLabels("Londonderry", "Londonderry", "Londonderry"), 54.9949, -7.0636, ZoneId.of("Europe/London")) {
   val cinemas: Seq[Cinema] = Cinema.londonderry
 }
-case object Merseyside extends City("merseyside",
-  CityLabels("Merseyside", "Merseyside", "Merseyside"), 53.4479, -2.958, ZoneId.of("Europe/London")) {
-  val cinemas: Seq[Cinema] = Cinema.merseyside
+case object Liverpool extends City("liverpool",
+  CityLabels("Liverpool", "Liverpool", "Liverpool"), 53.4084, -2.9916, ZoneId.of("Europe/London")) {
+  val cinemas: Seq[Cinema] = Cinema.liverpool
 }
 case object NorthYorkshire extends City("north-yorkshire",
   CityLabels("North Yorkshire", "North Yorkshire", "North Yorkshire"), 54.2402, -1.156, ZoneId.of("Europe/London")) {
@@ -859,15 +859,15 @@ object City {
    *  a re-declaration. Do NOT trim this list to disable cities — narrow
    *  [[activeUkCities]] instead. */
   private[models] val allUkCities: Seq[City] = Seq(
-    London, Manchester, Norwich, Aberdeenshire, Antrim, Armagh, AyrshireAndArran, Bedfordshire, Belfast, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cardiff, CentralScotland, Cheshire, Clwyd, Cornwall, CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Down, Dudley, DumfriesAndGalloway, DunbartonshireArgyllBute, Dyfed, EastSussex, EastYorkshire, EdinburghAndLothians, Essex, Fermanagh, Fife, Glamorgan, Glasgow, Gloucestershire, Guernsey, Gwent, Gwynedd, Hampshire, Herefordshire, Hertfordshire, HighlandsAndIslands, IsleOfMan, IsleOfWight, Jersey, Kent, Lanarkshire, Lancashire, Leicestershire, Lincolnshire, Londonderry, Merseyside, NorthYorkshire, Northamptonshire, Northumberland, Nottinghamshire, Oxfordshire, Powys, Renfrewshire, RoxburghEttrickAndLauderdale, Sandwell, Shropshire, Somerset, SouthYorkshire, Staffordshire, Suffolk, Surrey, Tayside, TyneAndWear, Tyrone, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire, Yorkshire,
+    London, Manchester, Norwich, Aberdeenshire, Antrim, Armagh, AyrshireAndArran, Bedfordshire, Belfast, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cardiff, CentralScotland, Cheshire, Clwyd, Cornwall, CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Down, Dudley, DumfriesAndGalloway, DunbartonshireArgyllBute, Dyfed, EastSussex, EastYorkshire, EdinburghAndLothians, Essex, Fermanagh, Fife, Glamorgan, Glasgow, Gloucestershire, Guernsey, Gwent, Gwynedd, Hampshire, Herefordshire, Hertfordshire, HighlandsAndIslands, IsleOfMan, IsleOfWight, Jersey, Kent, Lanarkshire, Lancashire, Leicestershire, Lincolnshire, Londonderry, Liverpool, NorthYorkshire, Northamptonshire, Northumberland, Nottinghamshire, Oxfordshire, Powys, Renfrewshire, RoxburghEttrickAndLauderdale, Sandwell, Shropshire, Somerset, SouthYorkshire, Staffordshire, Suffolk, Surrey, Tayside, TyneAndWear, Tyrone, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire, Yorkshire,
   )
 
   /** The UK cities currently live — the ones web serves and the worker scrapes.
    *  Scoped to the five largest UK cities (London, Manchester, Birmingham,
-   *  Glasgow and Merseyside/Liverpool). Add entries from [[allUkCities]] here to
+   *  Glasgow and Liverpool). Add entries from [[allUkCities]] here to
    *  bring more back online; the disabled cities stay fully modelled above. */
   private[models] val activeUkCities: Set[City] =
-    Set(London, Manchester, Birmingham, Glasgow, Merseyside)
+    Set(London, Manchester, Birmingham, Glasgow, Liverpool)
 
   /** The authoritative UK list for [[Country.UnitedKingdom]] — the live subset
    *  of [[allUkCities]], kept in that list's declared order. */
