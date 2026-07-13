@@ -24,9 +24,17 @@ class CitySpec extends AnyFlatSpec with Matchers {
     Poznan.cinemas shouldBe Cinema.poznan
     Wroclaw.cinemas shouldBe Cinema.wroclaw
     Warszawa.cinemas shouldBe Cinema.warszawa
-    // The cities partition the global cinema universe with no overlap.
-    City.all.flatMap(_.cinemas) should contain theSameElementsAs Cinema.all
-    City.all.flatMap(_.cinemas).distinct.size shouldBe Cinema.all.size
+    // The full modelled roster — including the disabled UK cities — partitions
+    // the global cinema universe with no overlap: every cinema is owned by
+    // exactly one city, live or not.
+    City.allModelled.flatMap(_.cinemas) should contain theSameElementsAs Cinema.all
+    City.allModelled.flatMap(_.cinemas).distinct.size shouldBe Cinema.all.size
+    // The live view (`City.all`, which the worker scrapes + web serves) is a
+    // no-overlap subset of that universe — the disabled cities' cinemas stay
+    // modelled but drop out of the live set.
+    val liveCinemas = City.all.flatMap(_.cinemas)
+    liveCinemas.distinct.size shouldBe liveCinemas.size
+    liveCinemas.toSet.subsetOf(Cinema.all.toSet) shouldBe true
   }
 
   it should "carry the Polish label inflections the templates render" in {
@@ -64,7 +72,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
     )
 
     // The foreign cities are present in the global sort too.
-    City.allSorted.map(_.slug) should contain allOf ("london", "manchester", "norwich", "berlin", "munich", "wurzburg")
+    City.allSorted.map(_.slug) should contain allOf ("london", "manchester", "birmingham", "berlin", "munich", "wurzburg")
   }
 
   it should "collate Ł after L (Łódź follows Lublin), not dump it at the end" in {
