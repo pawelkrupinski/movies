@@ -32,6 +32,73 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-14
+
+**17 cinemas were 3-scrape-white** (real buckets ~17:15–18:00 Warsaw, newest
+bucket 18:15 — actively scraping, within ~15 min–1h of the newest, not a boot
+artifact). **Zero failing.** **TWO are new this run and were probed live —
+BOTH `intentionally-dormant`.** **Fifteen are carried-over** venues, each still
+within its known dormancy / needs-human window. **No code change shipped** — an
+accurate "why each white venue is white" run.
+
+**Prior fixes confirmed RECOVERED** (both gone from the white set, so the
+2026-07-11 fixes worked end-to-end): **Kino Bajka** (fixed @010be6a82 — the
+`data-dane` JSON parser) and **Kino Centrum Skarżysko-Kamienna** (fixed
+@c8f656417 — MSI total-outage guard). Also fell off: **Kino Malta Charlie
+Monroe** (its 3–16 Jul hiatus ends 16 Jul; no longer 3-white this run).
+
+Discovery method unchanged (`/uptime` is auth-gated): a mongosh replay of
+`UptimeController`'s predicate against prod `uptimeBuckets` via a fresh
+`flyctl proxy` — per service, last 3 non-empty buckets all `status==zero`
+(`successes==0 && failures==0 && zeroes>0`), excluding `|enrichment` / the 6
+enrichment sources / `img:*`. (Note: the environment had a ~1-min network egress
+outage at run start — Fly API + all HTTP down — which cleared on retry; the old
+proxy had gone half-dead and was replaced with a fresh one on `127.0.0.1:27117`.)
+
+**New white this run (probed live — both dormant):**
+- **Jaworzyna (Kino Jaworzyna, Krynica-Zdrój)** — `intentionally-dormant`.
+- **Kino Kuźnica (SOK Suchedniów)** — `intentionally-dormant`.
+
+**Carried-over (15, unchanged — still white, within known windows, not
+re-probed live this run):** ADA Kino Studyjne, Dyskusyjny Klub Filmowy
+Politechnika (= "DKF Politechnika"), Kino Chatka Żaka, Kino CK Lublin, Kino
+Krapkowice (summer break → 31 Jul), Kino nad Wartą, Kino Sfinks (needs-human —
+film-dormant + markup drift), Kino Świt, Kino Warszawa (Przeworsk), Kino Wisła
+Brzeszcze, Kino Zamek (needs-human — festival filter-gap), Kozienicki Dom
+Kultury, Patria (Kino Patria, Ruda Śląska), Studio (Opole — break → 3 Sept),
+Teatr Ziemi Rybnickiej. Each display name is unique in `Cinema.scala` and maps
+to its prior diagnosis; the dated-window ones (Krapkowice → 31 Jul, Studio →
+3 Sept) are all still inside their windows.
+
+### Jaworzyna (Kino Jaworzyna, Krynica-Zdrój) — `intentionally-dormant`
+- Client: `EkobiletClient` @ `https://ekobilet.pl/kino-jaworzyna` (slug
+  `kino-jaworzyna`; previously scraped from Filmweb 561). Live: HTTP **200** (45 KB,
+  no redirect / no Cloudflare), landing shows **"Brak wydarzeń na dzisiaj,
+  sprawdź w innym dniu…"** with **0** `div.event-card` / **0** `p.overme`.
+- The date strip has **9** `div.card-date[data-date]` days (12.07 → 20.07.2026)
+  but **0** carry `available-color` — every one is `pointer-events-none` (today
+  14.07 is `active-color` but still non-clickable). So there are **zero bookable
+  days** to sweep via `?date=`, and no detail page to read. Markup is NOT drifted:
+  the class-slot contract (`div.card-date` + `data-date` + `available-color` /
+  `pointer-events-none`) is exactly what the parser expects — the `available-color`
+  class is simply absent because nothing is programmed. Parser correct; small
+  seasonal venue, no current schedule. Re-check next run.
+
+### Kino Kuźnica (SOK Suchedniów) — `intentionally-dormant`
+- Client: `SystemBiletowyClient` @ `https://shd.systembiletowy.pl` (VisualSoft
+  ticketing; previously scraped from Filmweb 1713, which had gone silently empty).
+  Live: `GET /index.php` → HTTP **200** (21.9 KB, no redirect / no Cloudflare).
+- Skin-1 markup IS present but the repertoire table is **header-only**:
+  `table.tbl_repertoire` = 1 element, but **0** `repertoire.html` booking links,
+  **0** data `<tr>`/`<td>` rows (only the `Tytuł | Lokalizacja | Data | Kup bilet`
+  header). All other skins absent (`div.event-item`=0, `data-date`=0,
+  `h3.event-title`=0, `kup-bilet`=0). No film title/date anywhere. Not markup
+  drift — the skin-1 selector matches the table correctly and finds zero rows.
+  Parser correct; venue live but currently un-programmed (mid-July). Re-check
+  next run.
+
+---
+
 ## 2026-07-11
 
 **18 cinemas were 3-scrape-white** (real buckets ~21:15–23:45 local, all within
