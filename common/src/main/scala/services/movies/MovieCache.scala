@@ -1197,10 +1197,11 @@ class CaffeineMovieCache(
       filmUrl        = cm.filmUrl,
       trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
       // Canonical order (a reorder-only re-scrape stores an identical slot so the
-      // write-through guard skips it) AND retain already-past showings the scrape
-      // dropped — deleting a past showtime is pure churn (it no longer displays,
-      // nothing reaps it), so keeping it lets an aging-only re-scrape hit the guard.
-      // See MovieRecordMerge.sortShowtimes / retainPastShowtimes.
+      // write-through guard skips it) AND retain RECENTLY past showings the scrape
+      // dropped — deleting a just-passed showtime is pure churn (it no longer
+      // displays), so keeping it lets an aging-only re-scrape hit the guard. Past
+      // OLDER than PastRetentionWindow IS reaped so the slot can't grow without
+      // bound. See MovieRecordMerge.sortShowtimes / retainPastShowtimes.
       showtimes      = MovieRecordMerge.retainPastShowtimes(
                          priorSlot.map(_.showtimes).getOrElse(Seq.empty), cm.showtimes, java.time.LocalDateTime.now(clock))
     )

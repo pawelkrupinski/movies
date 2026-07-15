@@ -223,4 +223,34 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     MovieRecordMerge.union(a, b).retainedSynopses shouldBe expected
     MovieRecordMerge.union(b, a).retainedSynopses shouldBe expected
   }
+
+  // ── Past-showtime retention is BOUNDED (leak fix) ─────────────────────────
+  //
+  // retainPastShowtimes keeps a re-scrape's dropped past showings so an
+  // aging-only re-scrape hits MovieCache's write-through guard. But keeping
+  // EVERY past showtime forever leaked: past piled up unbounded in the
+  // (maxSize-less) `positive` cache, ~2x the served set, OOM-restarting the
+  // worker every ~4h. Retention is now capped to `PastRetentionWindow`.
+  it should "retain recent past showtimes but reap those older than the retention window" in {
+    val now        = LocalDateTime.parse("2026-06-11T12:00")
+    val recentPast = at("2026-06-11T09:00")           // 3h ago — within window, keep (churn-avoidance)
+    val oldPast    = at("2026-06-01T12:00")           // 10 days ago — beyond window, reap
+    val future     = at("2026-06-11T20:00")           // still upcoming, re-listed by the fresh scrape
+    val prior      = Seq(oldPast, recentPast, future)
+    val fresh      = Seq(future)                       // re-scrape lists only the upcoming showing
+
+    val kept = MovieRecordMerge.retainPastShowtimes(prior, fresh, now).map(_.dateTime)
+
+    kept should contain (future.dateTime)             // fresh always survives
+    kept should contain (recentPast.dateTime)         // recent past kept → aging-only re-scrape still hits the guard
+    kept should not contain oldPast.dateTime          // FAILS before the fix (kept forever → the leak)
+  }
+
+  it should "reap ALL retained past once it ages out, so a slot cannot grow without bound" in {
+    val now      = LocalDateTime.parse("2026-06-11T12:00")
+    // Every prior showing is past and older than the window; none re-listed.
+    val agedOut  = (1 to 30).map(d => at(f"2026-05-${d}%02dT12:00"))
+    val kept     = MovieRecordMerge.retainPastShowtimes(agedOut, Seq.empty, now)
+    kept shouldBe empty                                // nothing survives → bounded, not append-only
+  }
 }
