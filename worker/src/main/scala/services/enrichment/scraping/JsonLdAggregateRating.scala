@@ -20,6 +20,8 @@ import scala.util.Try
  */
 object JsonLdAggregateRating {
 
+  private val YearRegex = "(19\\d{2}|20\\d{2})".r
+
   /** First numeric `aggregateRating.ratingValue` found in any JSON-LD
    *  block, parsed as Int. The JSON-LD spec allows both numeric and string
    *  values, so we accept either. Returns None when the page has no
@@ -34,5 +36,23 @@ object JsonLdAggregateRating {
         }
       }
       .toSeq.headOption
+  }
+
+  /** The four-digit year from the first `datePublished` found in any JSON-LD
+   *  block (schema.org publishes it as an ISO date like "1994-07-22"). Used to
+   *  validate that a probed movie page is actually the film we're resolving —
+   *  a title-slug can collide with an unrelated film of the same name (e.g.
+   *  "The North" 2026 de-articles to the slug of Rob Reiner's "North" 1994).
+   *  Returns None when no JSON-LD block carries a parseable `datePublished`. */
+  def datePublishedYear(html: String): Option[Int] = {
+    val document = Jsoup.parse(html)
+    document.select("script[type=application/ld+json]").asScala.iterator
+      .map(_.data())
+      .flatMap { raw =>
+        Try(Json.parse(raw)).toOption.toSeq.flatMap(js => (js \ "datePublished").asOpt[String])
+      }
+      .flatMap(YearRegex.findFirstIn)
+      .map(_.toInt)
+      .nextOption()
   }
 }
