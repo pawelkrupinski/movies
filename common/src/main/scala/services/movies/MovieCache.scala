@@ -695,13 +695,13 @@ class CaffeineMovieCache(
     })
     if (updated == null) false
     else {
-    val prior  = before.get()
-    val fullEq = updated == prior
-    // Phase-1 shadow (index-only migration): would a showtimes-DIGEST guard skip
-    // the same write? Emits a false-skip counter; behaviour is unchanged — the
-    // real decision below still uses full `==`. See ShowtimesDigest.
-    cacheMetrics.recordGuardShadow(fullEq, ShowtimesDigest.leanEqual(updated, prior))
-    if (fullEq) {
+    val prior = before.get()
+    // Write-guard by DIGEST, not the full showtime lists: equal non-showtime
+    // fields AND equal per-slot showtime digest ⇒ no real change, skip the write.
+    // This is what lets the resident record drop its showtime lists (they live in
+    // Mongo `screenings`); the digest is the only thing the guard needs. See
+    // ShowtimesDigest.leanEqual.
+    if (ShowtimesDigest.leanEqual(updated, prior)) {
       // No real change — the common case: an unchanged cinema re-scrape tick
       // re-asserts the same slot. Skip the write entirely. Otherwise it issues
       // an `updateOne` that bumps only `updatedAt` (see `patchToUpdate`), and

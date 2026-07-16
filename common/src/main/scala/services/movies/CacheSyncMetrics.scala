@@ -16,14 +16,6 @@ package services.movies
  */
 trait CacheSyncMetrics {
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit
-
-  /** Phase-1 shadow for the index-only migration: at the `updated == before`
-   *  write-guard (`MovieCache` putIfPresent), records whether a showtimes-DIGEST
-   *  guard ([[ShowtimesDigest.leanEqual]]) would decide the same. Since `leanEqual`
-   *  is true whenever `==` is true, the only possible disagreement is a FALSE SKIP
-   *  (`leanEqual` true, `==` false) — a digest collision hiding a real showtime
-   *  change. A false-skip rate flat at 0 over days gates flipping the guard. */
-  def recordGuardShadow(fullEqual: Boolean, leanEqual: Boolean): Unit = ()
 }
 
 object CacheSyncMetrics {
