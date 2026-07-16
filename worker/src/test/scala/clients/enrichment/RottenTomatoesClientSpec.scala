@@ -88,6 +88,57 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.urlFor("Inception") shouldBe Some("https://www.rottentomatoes.com/m/inception")
   }
 
+  // A minimal RT movie page carrying the `"releaseYear"` origin field the year
+  // guard trusts (RT dropped JSON-LD datePublished).
+  private def rtMoviePage(year: Int): String =
+    s"""<html><body><script>{"mediaType":"movie","releaseYear":"$year"}</script></body></html>"""
+
+  "parseReleaseYear" should "read the origin year from RT's releaseYear field" in {
+    RottenTomatoesClient.parseReleaseYear(rtMoviePage(2025)) shouldBe Some(2025)
+  }
+
+  // Regression: RT's `releaseDate` is the theatrical/RE-release date, not the
+  // origin — "The Conversation" (1974) carries releaseDate "Oct 1, 2011". The
+  // guard reads `releaseYear` (1974) and IGNORES releaseDate, else it would
+  // reject the real film.
+  it should "read releaseYear and ignore a much-later releaseDate (re-release trap)" in {
+    val html = """<html><body><script>{"releaseDate":"Oct 1, 2011","releaseYear":"1974"}</script></body></html>"""
+    RottenTomatoesClient.parseReleaseYear(html) shouldBe Some(1974)
+  }
+
+  // Wajda's "Brzezina" (1970) has NO releaseYear on RT, only a restoration
+  // releaseDate "Aug 25, 2018". The guard must abstain (None), never guess 2018
+  // off the releaseDate — otherwise the 48-year gap would drop the real film.
+  it should "abstain (None) when the page has only a re-release releaseDate and no releaseYear" in {
+    val html = """<html><body><script>{"mediaType":"movie","releaseDate":"Aug 25, 2018"}</script></body></html>"""
+    RottenTomatoesClient.parseReleaseYear(html) shouldBe None
+  }
+
+  // Regression (RT twin of the MC "north"/"michael" collisions): a bare slug can
+  // 200 onto an unrelated same-named film from another decade. When the film's
+  // year is known and conflicts, that probe is rejected. Here the year-suffixed
+  // and de-articled probes 404; the plain /m/north 200s but is a 1994 film.
+  "canonicalUrl with a year" should "reject a probed slug whose page year conflicts" in {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/m/north")) rtMoviePage(1994)
+        else throw new RuntimeException("HTTP 404")
+    })
+    c.canonicalUrl("North", Some(2026)) shouldBe None
+  }
+
+  it should "accept a probed slug whose page year matches within tolerance" in {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/m/the_north")) rtMoviePage(2025)
+        else throw new RuntimeException("HTTP 404")
+    })
+    // slug_year (the_north_2026) 404s, plain the_north 200s with a 2025 page —
+    // one year off, inside tolerance → accepted.
+    c.canonicalUrl("The North", Some(2026)) shouldBe
+      Some("https://www.rottentomatoes.com/m/the_north")
+  }
+
   // Regression: same empty-slug class of bug as MC — slugify of a CJK-only
   // title returns "". `/m/` (RT's movie landing page) returns 200, so without
   // a guard `canonicalUrl` would silently store a bogus URL.

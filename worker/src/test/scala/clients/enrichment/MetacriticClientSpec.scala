@@ -113,11 +113,10 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       Some("https://www.metacritic.com/movie/north")
   }
 
-  it should "accept the primary full-title slug even when its page year differs (cross-region release drift)" in {
-    // The primary slug is strong evidence and is NOT year-checked: "Picnic at
-    // Hanging Rock" is 1975 on TMDB (Australian release) but 1979 on Metacritic
-    // (US release) — the same film. Year-guarding the primary would wrongly drop
-    // it, so only the de-articled variant carries the guard.
+  it should "accept the primary full-title slug when its page year drifts within tolerance (cross-region release)" in {
+    // The year guard's tolerance is wide enough to keep legitimate drift: "Picnic
+    // at Hanging Rock" is 1975 on TMDB (Australian release) but 1979 on Metacritic
+    // (US release) — the same film, 4 years apart, well inside tolerance.
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.endsWith("/movie/picnic-at-hanging-rock")) moviePage("Picnic at Hanging Rock", 1979, 81)
@@ -125,6 +124,20 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     })
     c.urlFor("Picnic at Hanging Rock", year = Some(1975)) shouldBe
       Some("https://www.metacritic.com/movie/picnic-at-hanging-rock")
+  }
+
+  // Regression: "Michael" (the 2026 biopic) slugs to /movie/michael — but that
+  // page is the 1996 John Travolta comedy. This is a PRIMARY-slug collision (no
+  // article to drop), so the guard must cover the primary slug too, not just the
+  // de-articled variant. 30 years apart → rejected → search fallback empty → None.
+  it should "reject the primary slug when its page year conflicts by decades (same-name different film)" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/michael")) moviePage("Michael", 1996, 38)
+        else if (url.contains("/search/")) "<html><body></body></html>"
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+    c.urlFor("Michael", year = Some(2026)) shouldBe None
   }
 
   it should "accept a probed page when the film year is unknown (no grounds to reject)" in {
@@ -377,11 +390,13 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     assert(MetacriticClient.yearsCompatible(None, None))
   }
 
-  it should "accept years within one (cross-region release drift) and reject a wider gap" in {
+  it should "accept cross-region drift (up to ~15y) and reject a decade-plus collision gap" in {
     assert(MetacriticClient.yearsCompatible(Some(2025), Some(2025)))
-    assert(MetacriticClient.yearsCompatible(Some(2025), Some(2026)))
-    assert(!MetacriticClient.yearsCompatible(Some(2026), Some(1994)))
-    assert(!MetacriticClient.yearsCompatible(Some(2018), Some(1977)))
+    assert(MetacriticClient.yearsCompatible(Some(2025), Some(2026)))  // late/early boundary
+    assert(MetacriticClient.yearsCompatible(Some(1975), Some(1979)))  // Picnic: AU vs US date
+    assert(!MetacriticClient.yearsCompatible(Some(2026), Some(1996)))  // Michael: biopic vs 1996 comedy
+    assert(!MetacriticClient.yearsCompatible(Some(2026), Some(1994)))  // The North: 2026 vs 1994
+    assert(!MetacriticClient.yearsCompatible(Some(2018), Some(1977)))  // Suspiria: remake vs original
   }
 
   "metascoreFor" should "fetch the URL and return the parsed score" in {
