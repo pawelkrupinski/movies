@@ -694,7 +694,14 @@ class CaffeineMovieCache(
       }
     })
     if (updated == null) false
-    else if (updated == before.get()) {
+    else {
+    val prior  = before.get()
+    val fullEq = updated == prior
+    // Phase-1 shadow (index-only migration): would a showtimes-DIGEST guard skip
+    // the same write? Emits a false-skip counter; behaviour is unchanged — the
+    // real decision below still uses full `==`. See ShowtimesDigest.
+    cacheMetrics.recordGuardShadow(fullEq, ShowtimesDigest.leanEqual(updated, prior))
+    if (fullEq) {
       // No real change — the common case: an unchanged cinema re-scrape tick
       // re-asserts the same slot. Skip the write entirely. Otherwise it issues
       // an `updateOne` that bumps only `updatedAt` (see `patchToUpdate`), and
@@ -704,9 +711,10 @@ class CaffeineMovieCache(
       // report success without touching the repository (or firing the change stream).
       true
     } else {
-      repository.updateIfPresent(key.cleanTitle, key.year, before.get(), updated)
+      repository.updateIfPresent(key.cleanTitle, key.year, prior, updated)
       touch()
       true
+    }
     }
   }
 

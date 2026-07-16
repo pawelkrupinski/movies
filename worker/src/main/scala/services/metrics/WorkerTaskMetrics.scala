@@ -88,6 +88,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
 
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
+  override def recordGuardShadow(fullEqual: Boolean, leanEqual: Boolean): Unit = series.recordGuardShadow(countryCode, fullEqual, leanEqual)
 
   // ── ChangeStreamMetrics ─────────────────────────────────────────────────────
   def recordEvent(op: String): Unit        = series.recordEvent(countryCode, op)
@@ -245,6 +246,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "kind")
       .register(registry)
 
+    private val guardShadow = Counter.builder()
+      .name("kinowo_worker_guard_shadow")
+      .help("Phase-1 index-only migration shadow: at the MovieCache write-guard (putIfPresent `updated == before`), whether a showtimes-DIGEST guard (ShowtimesDigest.leanEqual) would decide the SAME skip/write. result=match | false_skip (the digest guard would SKIP a write the full `==` makes = a 32-bit digest collision hiding a real showtime change; the ONLY possible disagreement, since leanEqual is true whenever `==` is). A false_skip rate flat at 0 over days gates flipping the guard off the resident showtime lists.")
+      .labelNames("country", "result")
+      .register(registry)
+
     private val readModelReconcileSweeps = Counter.builder()
       .name("kinowo_worker_readmodel_reconcile_sweeps")
       .help("Read-model orphan-prune sweeps since boot (kind=prune, the cheap id-only prune that removes deleted/re-keyed rows), by country and did_work (true=pruned >=1 doc, false=no-op). A prune with did_work=true is the deletes/re-keys the change stream can't deliver. (The full re-projection sweep was retired, so kind is always prune now.)")
@@ -337,6 +344,9 @@ object WorkerTaskMetrics {
       if (changedUpserts > 0) cacheRehydrateChanges.labelValues(country, "changed").inc(changedUpserts.toDouble)
       if (deletes > 0)        cacheRehydrateChanges.labelValues(country, "deleted").inc(deletes.toDouble)
     }
+
+    def recordGuardShadow(country: String, fullEqual: Boolean, leanEqual: Boolean): Unit =
+      guardShadow.labelValues(country, if (leanEqual != fullEqual) "false_skip" else "match").inc()
 
     // ── ChangeStreamMetrics ────────────────────────────────────────────────────
     def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()
