@@ -26,12 +26,15 @@ import scala.util.Try
  *      whose canonical slug deviates from MC's published convention (subtitle
  *      stripped, year suffix appended, etc.).
  *
- * A probed movie page is REJECTED when its `datePublished` year conflicts with
- * the film's release year (both known, differing by more than a year). Without
- * this guard a de-articled slug can collide with an unrelated same-named film:
- * "The North" (2026) has no `/movie/the-north` page, so the de-articled variant
- * probes `/movie/north` — Rob Reiner's 1994 "North" — and 200s. The year check
- * catches that and lets the caller store None (view synthesises a search link).
+ * The DE-ARTICLED slug variant is REJECTED when its `datePublished` year
+ * conflicts with the film's release year (both known, differing by more than a
+ * year). Without this guard a de-articled slug collides with an unrelated
+ * same-named film: "The North" (2026) has no `/movie/the-north` page, so the
+ * de-articled variant probes `/movie/north` — Rob Reiner's 1994 "North" — and
+ * 200s. The year check catches that and lets the caller store None (view
+ * synthesises a search link). The primary full-title slug is NOT year-checked:
+ * legitimate films drift several years between their origin release and MC's US
+ * date, and the full title is strong enough evidence on its own.
  */
 class MetacriticClient(http: HttpFetch) {
   import MetacriticClient._
@@ -76,22 +79,31 @@ class MetacriticClient(http: HttpFetch) {
 
   /** Like [[canonicalUrl]] but keeps the validated page's parsed Metascore so
    *  the caller need not re-fetch the same page to read it. The first candidate
-   *  slug that returns 200 AND whose page year is compatible with `year` wins;
-   *  its body is parsed for `aggregateRating` on the spot (None when the page
-   *  has no score yet). Lazy: a 200 on the primary slug short-circuits before
-   *  the de-articled variant is probed.
+   *  slug that returns 200 (and, for the de-articled variant, whose page year
+   *  is compatible with `year`) wins; its body is parsed for `aggregateRating`
+   *  on the spot (None when the page has no score yet). Lazy: a 200 on the
+   *  primary slug short-circuits before the de-articled variant is probed.
    *
-   *  `year` is the FILM's release year; a probed page is skipped when its
-   *  `datePublished` year is known and conflicts (see the class comment — this
-   *  is what stops a de-articled slug from matching an unrelated same-named
-   *  film). When either year is unknown the page is accepted, preserving the
-   *  behaviour for films we have no year for. */
+   *  The year guard applies ONLY to the de-articled variant. The primary
+   *  full-title slug is strong evidence, so it's accepted on a 200 regardless
+   *  of year — real films drift by several years between a festival/origin
+   *  release (what TMDB dates) and Metacritic's US date ("Picnic at Hanging
+   *  Rock" is 1975 on TMDB, 1979 on MC), and rejecting those would drop good
+   *  links. The de-articled slug is a WEAK guess — a bare common word ("north",
+   *  "stranger") collides with unrelated films far too easily — so we accept it
+   *  only when the page's `datePublished` year corroborates the film (or either
+   *  year is unknown). That's what stops "The North" (2026) from matching the
+   *  de-articled `/movie/north` (Rob Reiner's 1994 film). */
   def canonicalResolve(title: String, year: Option[Int] = None): Option[Resolved] =
-    candidateSlugs(title).iterator
-      .map(s => s"$Site/movie/$s")
-      .flatMap(url => Try(http.get(url)).toOption.map(body => (url, body)))
-      .filter { case (_, body) => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)) }
-      .map { case (url, body) => Resolved(url, MetacriticClient.parseMetascore(body)) }
+    candidateSlugs(title).iterator.zipWithIndex
+      .flatMap { case (slug, idx) =>
+        // idx 0 is the primary full-title slug (no year guard); later slugs are
+        // de-articled variants that must clear the year check.
+        val requireYear = if (idx == 0) None else year
+        Try(http.get(s"$Site/movie/$slug")).toOption
+          .filter(body => MetacriticClient.yearsCompatible(requireYear, MetacriticClient.parseReleaseYear(body)))
+          .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
+      }
       .nextOption()
 
   def candidateSlugs(title: String): Seq[String] = {
