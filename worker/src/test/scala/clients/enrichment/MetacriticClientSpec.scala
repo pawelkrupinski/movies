@@ -113,16 +113,18 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       Some("https://www.metacritic.com/movie/north")
   }
 
-  it should "reject the primary slug too when its page year conflicts (remake collision)" in {
-    // A same-titled older film sitting at the primary slug must not be stored
-    // for a newer remake. No de-articled variant here (no leading article).
+  it should "accept the primary full-title slug even when its page year differs (cross-region release drift)" in {
+    // The primary slug is strong evidence and is NOT year-checked: "Picnic at
+    // Hanging Rock" is 1975 on TMDB (Australian release) but 1979 on Metacritic
+    // (US release) — the same film. Year-guarding the primary would wrongly drop
+    // it, so only the de-articled variant carries the guard.
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        if (url.endsWith("/movie/suspiria")) moviePage("Suspiria", 1977, 79)
-        else if (url.contains("/search/")) "<html><body></body></html>"
+        if (url.endsWith("/movie/picnic-at-hanging-rock")) moviePage("Picnic at Hanging Rock", 1979, 81)
         else throw new RuntimeException(s"unexpected URL: $url")
     })
-    c.urlFor("Suspiria", year = Some(2018)) shouldBe None
+    c.urlFor("Picnic at Hanging Rock", year = Some(1975)) shouldBe
+      Some("https://www.metacritic.com/movie/picnic-at-hanging-rock")
   }
 
   it should "accept a probed page when the film year is unknown (no grounds to reject)" in {
