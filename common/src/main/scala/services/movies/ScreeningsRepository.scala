@@ -134,6 +134,20 @@ object ScreeningsRepository {
   def showtimesOf(data: Map[Source, SourceData]): Map[String, Seq[Showtime]] =
     data.iterator.collect { case (s, sd) if sd.showtimes.nonEmpty => s.displayName -> sd.showtimes }.toMap
 
+  /** Re-inject any slots STRIPPED for the cache (empty showtimes + a digest) from a
+   *  film's current screenings — the full-replace delete-vector defense. A whole-record
+   *  write from the (stripped) cache would otherwise `showtimesOf`-drop those slots and
+   *  `replaceFilm`-delete their screenings; re-stitching keeps them. Slots carrying real
+   *  showtimes pass through unchanged. Pure + unit-tested. */
+  def reStitch(screenings: ScreeningsRepository, id: String, data: Map[Source, SourceData]): Map[Source, SourceData] = {
+    val scr = screenings.findForFilm(id)
+    data.map {
+      case (src, sd) if sd.showtimes.isEmpty && sd.showtimesDigest.isDefined =>
+        src -> sd.copy(showtimes = scr.getOrElse(src.displayName, Seq.empty))
+      case other => other
+    }
+  }
+
   /** The per-slot screening writes needed to turn `before`'s showtimes into
    *  `after`'s: `slotKey -> Some(showtimes)` to upsert, `slotKey -> None` to
    *  delete. Only slots whose showtimes actually changed appear — so a
@@ -141,10 +155,13 @@ object ScreeningsRepository {
    *  showtimes-only change writes ONLY here. Pure + unit-tested. */
   def slotOps(before: Map[Source, SourceData], after: Map[Source, SourceData]): Map[String, Option[Seq[Showtime]]] =
     (before.keySet ++ after.keySet).iterator.flatMap { s =>
-      val b = before.get(s).map(_.showtimes).getOrElse(Seq.empty)
-      val a = after.get(s).map(_.showtimes).getOrElse(Seq.empty)
-      if (a == b) None
-      else Some(s.displayName -> (if (a.nonEmpty) Some(a) else None))
+      val bDigest = before.get(s).map(ShowtimesDigest.slotDigest).getOrElse(ShowtimesDigest.EmptyDigest)
+      val aDigest = after.get(s).map(ShowtimesDigest.slotDigest).getOrElse(ShowtimesDigest.EmptyDigest)
+      if (aDigest == bDigest) None
+      else {
+        val a = after.get(s).map(_.showtimes).getOrElse(Seq.empty)
+        Some(s.displayName -> (if (a.nonEmpty) Some(a) else None))
+      }
     }.toMap
 
   /** Movies-side view of a record's data with every slot's showtimes emptied — they

@@ -74,6 +74,11 @@ object StoredMovieRecord {
  * (`AppLoader`) and in test setup.
  */
 trait MovieRepository {
+  /** Whether the read-split is active — i.e. a `screenings` collection is wired, so
+   *  showtimes are stored there and the MovieCache can strip them from resident records.
+   *  Without it the cache MUST keep showtimes (there is nowhere else to hold them). */
+  def hasScreenings: Boolean = false
+
   /** Whether the persistence layer is wired up. When false, callers can still
    *  use the in-memory cache but writes are no-ops. */
   def enabled: Boolean
@@ -260,8 +265,12 @@ class MongoMovieRepository(
   persistResumeToken: Boolean = false
 ) extends MovieRepository with Logging {
 
+  override def hasScreenings: Boolean = screenings.isDefined
+
+
   private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =
     if (screenings.isDefined) ScreeningsRepository.stripShowtimes(data) else data
+
 
   /** Re-inject a stored row's showtimes from `screenings` (its authority under the
    *  split), given that film's `slotKey -> showtimes` map. No-op without a split. */
@@ -516,13 +525,16 @@ class MongoMovieRepository(
 
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
     val id   = documentId(title, year)
+    // A whole-record write can carry slots STRIPPED for the cache; `showtimesOf` would
+    // drop them and `replaceFilm` would DELETE their screenings. Re-stitch first.
+    val restitched = screenings.fold(e.data)(ScreeningsRepository.reStitch(_, id, e.data))
     // Under the read-split, `movies` carries no showtimes (they go to `screenings`).
-    val dto  = StoredMovieDto.fromDomain(id, e.copy(data = stripFor(e.data)), Instant.now())
+    val dto  = StoredMovieDto.fromDomain(id, e.copy(data = stripFor(restitched)), Instant.now())
     val opts = new ReplaceOptions().upsert(true)
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
       // Write this film's cinema showtimes to `screenings` (their authority).
-      screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(e.data)))
+      screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(restitched)))
       ()
     }.recover {
       case exception: Throwable if isClusterClosed(exception) =>

@@ -118,6 +118,7 @@ trait MovieCache extends MovieCacheReader {
    *  Caffeine-only `get`, so a cold / evicted / re-keyed entry can't make the
    *  rebuild read EMPTY and null a persisted rating (or cinema slot). */
   private[services] def stored(key: CacheKey): Option[MovieRecord]
+
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
@@ -312,9 +313,16 @@ class CaffeineMovieCache(
       persist(key, e)
   }
 
+  // Strip only when the read-split is active (showtimes live in `screenings`); without it
+  // the cache must keep showtimes — there's nowhere else to hold them.
+  private def forCache(r: MovieRecord): MovieRecord =
+    if (repository.hasScreenings) ShowtimesDigest.stripForCache(r) else r
+
   private def persist(key: CacheKey, e: MovieRecord): Unit = {
     val clean = withoutZeroRatings(e)
-    positive.put(key, clean)
+    positive.put(key, forCache(clean))
+    // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
+    // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
     repository.upsert(key.cleanTitle, key.year, clean)
     touch()
   }
@@ -687,21 +695,24 @@ class CaffeineMovieCache(
     // touch (e.g. `FilmwebUrlAudit` clearing `filmwebUrl` while we're
     // bumping `filmwebRating`) survive the write.
     val before  = new java.util.concurrent.atomic.AtomicReference[MovieRecord]()
+    val full    = new java.util.concurrent.atomic.AtomicReference[MovieRecord]()
+    // Cache stores the STRIPPED record; the write below uses the FULL one so the
+    // screenings-diff has real showtimes. `current` is the prior (stripped) resident row.
     val updated = positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
       override def apply(k: CacheKey, current: MovieRecord): MovieRecord = {
         before.set(current)
-        withoutZeroRatings(updater(current))
+        val f = withoutZeroRatings(updater(current))
+        full.set(f)
+        forCache(f)
       }
     })
     if (updated == null) false
     else {
-    val prior = before.get()
-    // Write-guard by DIGEST, not the full showtime lists: equal non-showtime
-    // fields AND equal per-slot showtime digest ⇒ no real change, skip the write.
-    // This is what lets the resident record drop its showtime lists (they live in
-    // Mongo `screenings`); the digest is the only thing the guard needs. See
-    // ShowtimesDigest.leanEqual.
-    if (ShowtimesDigest.leanEqual(updated, prior)) {
+    val prior     = before.get()
+    val fullAfter = full.get()
+    // Write-guard by DIGEST: equal non-showtime fields AND equal per-slot showtime digest
+    // ⇒ no real change, skip the write. See ShowtimesDigest.leanEqual.
+    if (ShowtimesDigest.leanEqual(fullAfter, prior)) {
       // No real change — the common case: an unchanged cinema re-scrape tick
       // re-asserts the same slot. Skip the write entirely. Otherwise it issues
       // an `updateOne` that bumps only `updatedAt` (see `patchToUpdate`), and
@@ -711,7 +722,7 @@ class CaffeineMovieCache(
       // report success without touching the repository (or firing the change stream).
       true
     } else {
-      repository.updateIfPresent(key.cleanTitle, key.year, prior, updated)
+      repository.updateIfPresent(key.cleanTitle, key.year, prior, fullAfter)
       touch()
       true
     }
@@ -1315,8 +1326,8 @@ class CaffeineMovieCache(
     // — the signal (kinowo_worker_cache_rehydrate_changes) that the rehydrate is redundant.
     var changed = 0
     byKey.foreach { case (k, record) =>
-      if (!Option(positive.getIfPresent(k)).contains(record)) changed += 1
-      positive.put(k, record)
+      if (!Option(positive.getIfPresent(k)).exists(ShowtimesDigest.leanEqual(_, record))) changed += 1
+      positive.put(k, forCache(record))
     }
     val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains)
     removed.foreach(positive.invalidate)
@@ -1399,7 +1410,7 @@ class CaffeineMovieCache(
    *  the identity-gate `put` (Mongo is already the source of truth here, no
    *  re-folding needed). */
   private def applyUpsert(r: StoredMovieRecord): Unit = {
-    positive.put(CacheKey(r.title, r.year), r.record)
+    positive.put(CacheKey(r.title, r.year), forCache(r.record))
     touch()
   }
 

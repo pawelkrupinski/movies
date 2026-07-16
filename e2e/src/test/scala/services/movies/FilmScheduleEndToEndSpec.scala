@@ -99,8 +99,11 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // A record can project to SEVERAL cards (one per shown title — the read-model
   // split), so map EVERY variant film id back to its (shared) source record, not
   // just the dominant one. A dub card and its base card both join to the one record.
+  // Read the corpus from the REPOSITORY (its showtimes are authoritative — stitched from
+  // `screenings` under the read-split), NOT `movieCache.snapshot()`, whose resident records
+  // are stripped of showtime lists (index-only cache).
   private lazy val recordByFilmId: Map[String, MovieRecord] =
-    wiring.movieCache.snapshot().flatMap { r =>
+    wiring.movieRepository.findAll().flatMap { r =>
       services.readmodel.ReadModelProjection.filmIds(r).map(_ -> r.record)
     }.toMap
   private def recordFor(s: FilmSchedule): Option[MovieRecord] = recordByFilmId.get(s.resolved._id)

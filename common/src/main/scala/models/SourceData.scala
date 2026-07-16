@@ -56,5 +56,29 @@ case class SourceData(
   // mp4, brightcove) are accepted verbatim; the view layer normalises to
   // an embed URL at display time via `TrailerEmbed.embedUrlFor`.
   trailerUrl:     Option[String]  = None,
-  showtimes:      Seq[Showtime]   = Seq.empty
-)
+  showtimes:      Seq[Showtime]   = Seq.empty,
+  // CACHE-ONLY, NEVER PERSISTED. The worker's MovieCache strips `showtimes` (they live
+  // in Mongo `screenings`) and keeps this digest so the write-guard + screenings-diff
+  // still detect showtime changes without the lists resident. `None` everywhere else.
+  showtimesDigest: Option[Int]    = None
+) {
+  // Record IDENTITY / metadata equality is showtime-AGNOSTIC: canonicalize / settle /
+  // divert compare records to decide film identity + row structure, which never depend
+  // on showtimes — and a cache record is stripped (Nil showtimes + a digest) while a
+  // fresh scrape is full, so a showtime-sensitive `==` would make them differ forever
+  // (endless re-divert/re-fold churn). Showtime-CHANGE detection routes through the
+  // digest (`ShowtimesDigest.leanEqual` / `slotOps`), never `==`. So `showtimes` and the
+  // transient `showtimesDigest` are excluded from equals/hashCode.
+  override def equals(that: Any): Boolean = that match {
+    case o: SourceData =>
+      title == o.title && rawTitle == o.rawTitle && originalTitle == o.originalTitle &&
+      englishTitle == o.englishTitle && synopsis == o.synopsis && cast == o.cast &&
+      director == o.director && runtimeMinutes == o.runtimeMinutes && releaseYear == o.releaseYear &&
+      countries == o.countries && genres == o.genres && posterUrl == o.posterUrl &&
+      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl
+    case _ => false
+  }
+  override def hashCode(): Int =
+    (title, rawTitle, originalTitle, englishTitle, synopsis, cast, director,
+     runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl).hashCode()
+}

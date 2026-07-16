@@ -25,18 +25,31 @@ object ShowtimesDigest {
   def digest(showtimes: Seq[Showtime]): Int =
     showtimes.iterator.map(s => (s.dateTime, s.room, s.format, s.bookingUrl)).toVector.hashCode
 
-  /** True iff `a` and `b` are equal for write-guard purposes when showtimes are
-   *  represented only by [[digest]]: every non-showtime field equal AND every slot's
-   *  showtime digest equal. Equivalent to `a == b` unless a digest collision hides a
-   *  real showtime difference — precisely the risk Phase 1's shadow measures. */
+  /** Digest of a slot with no showtimes — shared so an absent slot and a present-but-empty
+   *  slot compare equal. */
+  val EmptyDigest: Int = digest(Seq.empty)
+
+  /** A slot's effective showtime digest: from resident showtimes when present, else the
+   *  STORED `showtimesDigest` (slot was stripped for the cache). Lets the guard +
+   *  screenings-diff compare a stripped record against a freshly-scraped full one. */
+  def slotDigest(sd: SourceData): Int =
+    if (sd.showtimes.nonEmpty) digest(sd.showtimes) else sd.showtimesDigest.getOrElse(EmptyDigest)
+
+  /** Strip a record for cache residency: drop each slot's showtime LIST (they live in Mongo
+   *  `screenings`), keep only its digest. Idempotent + authoritative. */
+  def stripForCache(record: MovieRecord): MovieRecord =
+    record.copy(data = record.data.view.mapValues { sd =>
+      if (sd.showtimes.isEmpty && sd.showtimesDigest.isDefined) sd
+      else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)))
+    }.toMap)
+
+  /** The write-guard: equal non-showtime fields (via SourceData's showtime-agnostic `==`)
+   *  AND equal per-slot showtime digest. Unlike `==`, this DOES detect showtime changes —
+   *  that's its whole job. Works whether either side is stripped or full. */
   def leanEqual(a: MovieRecord, b: MovieRecord): Boolean =
-    a.copy(data = Map.empty) == b.copy(data = Map.empty) &&    // all top-level non-`data` fields
+    a.copy(data = Map.empty) == b.copy(data = Map.empty) &&
     a.data.keySet == b.data.keySet &&
     a.data.forall { case (source, sdA) =>
-      b.data.get(source).exists(sdB => slotLeanEqual(sdA, sdB))
+      b.data.get(source).exists(sdB => sdA == sdB && slotDigest(sdA) == slotDigest(sdB))
     }
-
-  private def slotLeanEqual(a: SourceData, b: SourceData): Boolean =
-    a.copy(showtimes = Nil) == b.copy(showtimes = Nil) &&     // all non-showtime slot fields
-    digest(a.showtimes) == digest(b.showtimes)
 }
