@@ -26,15 +26,14 @@ import scala.util.Try
  *      whose canonical slug deviates from MC's published convention (subtitle
  *      stripped, year suffix appended, etc.).
  *
- * The DE-ARTICLED slug variant is REJECTED when its `datePublished` year
- * conflicts with the film's release year (both known, differing by more than a
- * year). Without this guard a de-articled slug collides with an unrelated
- * same-named film: "The North" (2026) has no `/movie/the-north` page, so the
- * de-articled variant probes `/movie/north` — Rob Reiner's 1994 "North" — and
- * 200s. The year check catches that and lets the caller store None (view
- * synthesises a search link). The primary full-title slug is NOT year-checked:
- * legitimate films drift several years between their origin release and MC's US
- * date, and the full title is strong enough evidence on its own.
+ * A probed slug is REJECTED when its page `datePublished` year conflicts with
+ * the film's release year (both known, more than [[YearMatchTolerance]] apart).
+ * This guards EVERY candidate — primary and de-articled — because a plain title
+ * slug collides with an unrelated same-named film just as a de-articled one
+ * does: "Michael" (the 2026 biopic) slugs to `/movie/michael`, which is the
+ * 1996 comedy; "The North" (2026) de-articles to `/movie/north`, the 1994 film.
+ * On a conflict the caller stores None and the view synthesises a search link.
+ * The tolerance is wide so legitimate origin-vs-US-date drift still resolves.
  */
 class MetacriticClient(http: HttpFetch) {
   import MetacriticClient._
@@ -79,29 +78,24 @@ class MetacriticClient(http: HttpFetch) {
 
   /** Like [[canonicalUrl]] but keeps the validated page's parsed Metascore so
    *  the caller need not re-fetch the same page to read it. The first candidate
-   *  slug that returns 200 (and, for the de-articled variant, whose page year
-   *  is compatible with `year`) wins; its body is parsed for `aggregateRating`
-   *  on the spot (None when the page has no score yet). Lazy: a 200 on the
-   *  primary slug short-circuits before the de-articled variant is probed.
+   *  slug that returns 200 AND whose page year is compatible with `year` wins;
+   *  its body is parsed for `aggregateRating` on the spot (None when the page
+   *  has no score yet). Lazy: a compatible 200 on the primary slug
+   *  short-circuits before the de-articled variant is probed.
    *
-   *  The year guard applies ONLY to the de-articled variant. The primary
-   *  full-title slug is strong evidence, so it's accepted on a 200 regardless
-   *  of year — real films drift by several years between a festival/origin
-   *  release (what TMDB dates) and Metacritic's US date ("Picnic at Hanging
-   *  Rock" is 1975 on TMDB, 1979 on MC), and rejecting those would drop good
-   *  links. The de-articled slug is a WEAK guess — a bare common word ("north",
-   *  "stranger") collides with unrelated films far too easily — so we accept it
-   *  only when the page's `datePublished` year corroborates the film (or either
-   *  year is unknown). That's what stops "The North" (2026) from matching the
-   *  de-articled `/movie/north` (Rob Reiner's 1994 film). */
+   *  The year guard (see [[yearsCompatible]]) applies to EVERY candidate slug,
+   *  primary and de-articled alike, because a plain title slug collides with an
+   *  unrelated same-named film just as a de-articled one does: "Michael" (the
+   *  2026 biopic) slugs to `/movie/michael`, which is the 1996 comedy; "The
+   *  North" (2026) de-articles to `/movie/north`, the 1994 film. Its tolerance
+   *  is wide enough to keep legitimate cross-region drift (a film's TMDB origin
+   *  year vs Metacritic's later US date — "Picnic at Hanging Rock" is 1975 vs
+   *  1979) while rejecting the decade-plus gaps that mark a different film. */
   def canonicalResolve(title: String, year: Option[Int] = None): Option[Resolved] =
-    candidateSlugs(title).iterator.zipWithIndex
-      .flatMap { case (slug, idx) =>
-        // idx 0 is the primary full-title slug (no year guard); later slugs are
-        // de-articled variants that must clear the year check.
-        val requireYear = if (idx == 0) None else year
+    candidateSlugs(title).iterator
+      .flatMap { slug =>
         Try(http.get(s"$Site/movie/$slug")).toOption
-          .filter(body => MetacriticClient.yearsCompatible(requireYear, MetacriticClient.parseReleaseYear(body)))
+          .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
           .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
       }
       .nextOption()
@@ -262,16 +256,23 @@ object MetacriticClient {
   def parseReleaseYear(html: String): Option[Int] = JsonLdAggregateRating.datePublishedYear(html)
 
   /** How far a probed page's release year may sit from the film's before we
-   *  treat it as a different film. 1 absorbs legitimate cross-region release
-   *  drift (a film premiering late one year, opening early the next) without
-   *  admitting an unrelated same-named film decades apart. */
-  private val YearMatchTolerance = 1
+   *  treat it as a different film. Set generously (15y) to absorb legitimate
+   *  gaps between a film's TMDB origin year and a rating site's later US /
+   *  regional release date (festival premiere → wide release, foreign film →
+   *  delayed US date — "Picnic at Hanging Rock" is 1975 vs Metacritic's 1979),
+   *  while still catching the decade-plus gaps that mark a genuinely different
+   *  same-named film ("Michael" 2026 biopic vs the 1996 comedy at the same
+   *  slug; "The North" 2026 vs the 1994 film). Observed legitimate drift tops
+   *  out around 4 years and observed collisions start around 26, so a threshold
+   *  in the wide gap between them is what does the separating — the exact value
+   *  is not delicate. Shared by [[MetacriticClient]] and [[RottenTomatoesClient]]. */
+  private val YearMatchTolerance = 15
 
   /** True when the film's year and a probed page's year are compatible — i.e.
    *  we have NO positive evidence they're different films. Only a conflict of
    *  BOTH known years beyond [[YearMatchTolerance]] returns false; a missing
    *  year on either side is treated as compatible (we never had grounds to
-   *  reject). */
+   *  reject). Shared decision for Metacritic and Rotten Tomatoes slug probes. */
   def yearsCompatible(filmYear: Option[Int], pageYear: Option[Int]): Boolean =
     (filmYear, pageYear) match {
       case (Some(f), Some(p)) => math.abs(f - p) <= YearMatchTolerance

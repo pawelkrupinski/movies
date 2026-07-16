@@ -4679,10 +4679,10 @@ tmdbId:            936075
 imdbId:            tt11378946
 originalTitle:     Michael
 imdbRating:        7.7
-metascore:         38
+metascore:         —
 rottenTomatoes:    39
 filmwebRating:     7.0
-metacriticUrl:     https://www.metacritic.com/movie/michael
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/michael
 filmwebUrl:        https://www.filmweb.pl/film/Michael-2026-10008180
 cinemaFilmUrls:
@@ -7241,10 +7241,10 @@ imdbId:            tt0076786
 originalTitle:     Suspiria
 imdbRating:        7.3
 metascore:         79
-rottenTomatoes:    65
+rottenTomatoes:    —
 filmwebRating:     7.0
 metacriticUrl:     https://www.metacritic.com/movie/suspiria
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/suspiria
+rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Odg%C5%82osy-1977-90970
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14615-plenerowe-paacowe-suspiria/
@@ -8790,10 +8790,10 @@ tmdbId:            1273221
 imdbId:            tt32093575
 originalTitle:     Scary Movie
 imdbRating:        5.6
-metascore:         48
+metascore:         —
 rottenTomatoes:    24
 filmwebRating:     5.4
-metacriticUrl:     https://www.metacritic.com/movie/scary-movie
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/scary_movie_2026
 filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2026-10084281
 cinemaFilmUrls:
@@ -8943,10 +8943,10 @@ tmdbId:            1273221
 imdbId:            tt32093575
 originalTitle:     Scary Movie
 imdbRating:        5.6
-metascore:         48
+metascore:         —
 rottenTomatoes:    24
 filmwebRating:     5.4
-metacriticUrl:     https://www.metacritic.com/movie/scary-movie
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/scary_movie_2026
 filmwebUrl:        https://www.filmweb.pl/film/Straszny+film-2026-10084281
 cinemaFilmUrls:
@@ -9199,10 +9199,10 @@ tmdbId:            1081003
 imdbId:            tt8814476
 originalTitle:     Supergirl
 imdbRating:        —
-metascore:         41
+metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
-metacriticUrl:     https://www.metacritic.com/movie/supergirl
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/supergirl_2026
 filmwebUrl:        https://www.filmweb.pl/film/Supergirl-2026-10043741
 cinemaFilmUrls:
@@ -10438,10 +10438,10 @@ tmdbId:            454639
 imdbId:            tt0427340
 originalTitle:     Masters of the Universe
 imdbRating:        7.2
-metascore:         35
+metascore:         —
 rottenTomatoes:    66
 filmwebRating:     6.6
-metacriticUrl:     https://www.metacritic.com/movie/masters-of-the-universe
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/masters_of_the_universe_2026
 filmwebUrl:        https://www.filmweb.pl/film/W%C5%82adcy+Wszech%C5%9Bwiata-2026-176583
 cinemaFilmUrls:
@@ -10848,10 +10848,10 @@ tmdbId:            511
 imdbId:            tt0072446
 originalTitle:     Ziemia obiecana
 imdbRating:        7.8
-metascore:         77
+metascore:         —
 rottenTomatoes:    92
 filmwebRating:     7.9
-metacriticUrl:     https://www.metacritic.com/movie/the-promised-land
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/ziemia_obiecana
 filmwebUrl:        https://www.filmweb.pl/film/Ziemia+obiecana-1974-1073
 cinemaFilmUrls:

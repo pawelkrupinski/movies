@@ -28,6 +28,11 @@ import scala.util.Try
  *      best `/m/{slug}` link by exact-title match (year as tie-breaker).
  *      Same conservative bar as MC — partial matches lose to None.
  *
+ * A probed slug is REJECTED when its page release year conflicts with the
+ * film's (shared [[MetacriticClient.yearsCompatible]] tolerance), so a bare
+ * slug that 200s onto an unrelated same-named film from another decade is not
+ * stored — the RT twin of MC's "Michael"/"The North" collisions.
+ *
  * `scoreFor(url)` GETs the canonical movie page and parses the Tomatometer
  * percentage out of the embedded `media-scorecard-json` data island
  * (`criticsScore.score`), falling back to the schema.org
@@ -55,21 +60,29 @@ class RottenTomatoesClient(http: HttpFetch) {
       .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)))
   }
 
-  /** Canonical URL ONLY if any candidate returns 200; otherwise None. RT
-   *  frequently drops the leading "the"/"a"/"an" article (e.g. The Sting is
-   *  at /m/sting, not /m/the_sting), so we try the de-articled variant as a
-   *  second probe before giving up.
+  /** Canonical URL ONLY if any candidate returns 200 AND its page year is
+   *  compatible with the film's; otherwise None. RT frequently drops the
+   *  leading "the"/"a"/"an" article (e.g. The Sting is at /m/sting, not
+   *  /m/the_sting), so we try the de-articled variant as a second probe before
+   *  giving up.
    *
    *  When `year` is provided we try the `slug_year` variant BEFORE the plain
    *  slug. RT uses year-suffix disambiguation aggressively: for newer films,
    *  /m/<slug> often points to a stub or older film while /m/<slug>_<year>
    *  carries the actual Tomatometer (regression: "A Private Life" 2025 —
    *  /m/a_private_life is a stub, /m/a_private_life_2025 is the real page).
-   */
+   *
+   *  The year check ([[MetacriticClient.yearsCompatible]], shared with MC)
+   *  rejects a plain slug that 200s but points to an unrelated same-named film
+   *  a different decade apart — the RT twin of the "Michael"/"The North" MC
+   *  collisions. The year-suffixed variants already encode the right year, so
+   *  the guard is a no-op for them and only bites the bare slug. */
   def canonicalUrl(title: String, year: Option[Int] = None): Option[String] =
     candidateSlugs(title, year).iterator
       .map(s => s"$Site/m/$s")
-      .find(url => Try(http.get(url)).isSuccess)
+      .flatMap(url => Try(http.get(url)).toOption.map(body => (url, body)))
+      .find { case (_, body) => MetacriticClient.yearsCompatible(year, RottenTomatoesClient.parseReleaseYear(body)) }
+      .map(_._1)
 
   def candidateSlugs(title: String, year: Option[Int] = None): Seq[String] = {
     val primary = RottenTomatoesClient.slugify(title)
@@ -183,7 +196,25 @@ object RottenTomatoesClient {
   private val Site          = "https://www.rottentomatoes.com"
   private val MoviePathSlug = "/m/([^/?#]+)".r
 
+  // RT dropped JSON-LD `datePublished`. Its hydration JSON carries the film's
+  // ORIGIN year as `"releaseYear":"1974"` — the only field to trust. The sibling
+  // `"releaseDate":"<Mon DD, YYYY>"` is the theatrical/RE-release date: for an
+  // old film it's a much later restoration ("The Conversation" (1974) → "Oct 1,
+  // 2011"; Wajda's "Brzezina" (1970) → "Aug 25, 2018"), so reading it would
+  // wrongly reject the real film. We therefore key the guard ONLY on
+  // `releaseYear`; when a page omits it (some newer films do), we report no year
+  // and the guard abstains rather than guess from the unreliable `releaseDate`.
+  private val ReleaseYear = "\"releaseYear\":\"((?:19|20)\\d{2})\"".r
+
   case class SearchHit(slug: String, title: String, year: Option[Int], tomatometerScore: Option[Int])
+
+  /** The film's origin release year off an RT movie page (its `releaseYear`
+   *  field), or None when the page carries none. Feeds
+   *  [[MetacriticClient.yearsCompatible]] so a slug that 200s but points to a
+   *  different same-named film is rejected; a missing `releaseYear` makes the
+   *  guard abstain (we never guess off the re-release `releaseDate`). */
+  def parseReleaseYear(html: String): Option[Int] =
+    ReleaseYear.findFirstMatchIn(html).map(_.group(1).toInt)
 
   /**
    * RT-style slug: lowercase, accents stripped, apostrophes dropped, all
