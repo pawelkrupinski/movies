@@ -76,6 +76,66 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       Some("https://www.metacritic.com/movie/dark-knight")
   }
 
+  // A minimal MC movie page: JSON-LD carrying a name, release date and score,
+  // exactly the fields the resolver reads to validate a probed page.
+  private def moviePage(name: String, year: Int, score: Int): String =
+    s"""<html><head><script type="application/ld+json">{
+       |"@type":"Movie","name":"$name","datePublished":"$year-07-22",
+       |"aggregateRating":{"@type":"AggregateRating","ratingValue":$score}
+       |}</script></head><body></body></html>""".stripMargin
+
+  // Regression: "The North" (2026) has no /movie/the-north page, so the
+  // de-articled variant probes /movie/north — Rob Reiner's 1994 "North", which
+  // 200s. Without the year guard that unrelated film was stored as the link.
+  // With the film's year known and conflicting, the probe is rejected and
+  // (search empty) the whole resolve returns None.
+  "urlFor with a year" should "reject a de-articled slug whose page year conflicts with the film's" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/the-north")) throw new RuntimeException("HTTP 404")
+        else if (url.endsWith("/movie/north")) moviePage("North", 1994, 33)
+        else if (url.contains("/search/")) "<html><body></body></html>"
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+    c.urlFor("The North", year = Some(2026)) shouldBe None
+  }
+
+  it should "accept a de-articled slug whose page year matches the film's" in {
+    // Same probe shape, but now the film really is the 1994 "North" — the year
+    // agrees, so the de-articled slug is accepted.
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/the-north")) throw new RuntimeException("HTTP 404")
+        else if (url.endsWith("/movie/north")) moviePage("North", 1994, 33)
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+    c.urlFor("The North", year = Some(1994)) shouldBe
+      Some("https://www.metacritic.com/movie/north")
+  }
+
+  it should "reject the primary slug too when its page year conflicts (remake collision)" in {
+    // A same-titled older film sitting at the primary slug must not be stored
+    // for a newer remake. No de-articled variant here (no leading article).
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/suspiria")) moviePage("Suspiria", 1977, 79)
+        else if (url.contains("/search/")) "<html><body></body></html>"
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+    c.urlFor("Suspiria", year = Some(2018)) shouldBe None
+  }
+
+  it should "accept a probed page when the film year is unknown (no grounds to reject)" in {
+    // No year passed → the year guard never fires; behaviour matches the
+    // pre-guard resolver.
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/north")) moviePage("North", 1994, 33)
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+    c.urlFor("North") shouldBe Some("https://www.metacritic.com/movie/north")
+  }
+
   // Regression: TMDB's `original_title` for CJK / Cyrillic films is in the
   // production-language script. slugify strips everything non-Latin and
   // collapses to "". Without this guard, `canonicalUrl` would probe
@@ -299,6 +359,27 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
         |"@type":"Movie","aggregateRating":{"@type":"AggregateRating","reviewCount":3}
         |}</script></head><body></body></html>""".stripMargin
     MetacriticClient.parseMetascore(html) shouldBe None
+  }
+
+  "parseReleaseYear" should "read the year from JSON-LD datePublished" in {
+    MetacriticClient.parseReleaseYear(moviePage("North", 1994, 33)) shouldBe Some(1994)
+  }
+
+  it should "return None when the page has no datePublished" in {
+    MetacriticClient.parseReleaseYear("<html><body>no json-ld here</body></html>") shouldBe None
+  }
+
+  "yearsCompatible" should "treat a missing year on either side as compatible" in {
+    assert(MetacriticClient.yearsCompatible(None, Some(1994)))
+    assert(MetacriticClient.yearsCompatible(Some(2026), None))
+    assert(MetacriticClient.yearsCompatible(None, None))
+  }
+
+  it should "accept years within one (cross-region release drift) and reject a wider gap" in {
+    assert(MetacriticClient.yearsCompatible(Some(2025), Some(2025)))
+    assert(MetacriticClient.yearsCompatible(Some(2025), Some(2026)))
+    assert(!MetacriticClient.yearsCompatible(Some(2026), Some(1994)))
+    assert(!MetacriticClient.yearsCompatible(Some(2018), Some(1977)))
   }
 
   "metascoreFor" should "fetch the URL and return the parsed score" in {

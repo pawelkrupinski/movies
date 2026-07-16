@@ -25,6 +25,13 @@ import scala.util.Try
  *      the best `/movie/{slug}` link by title + year. Necessary for films
  *      whose canonical slug deviates from MC's published convention (subtitle
  *      stripped, year suffix appended, etc.).
+ *
+ * A probed movie page is REJECTED when its `datePublished` year conflicts with
+ * the film's release year (both known, differing by more than a year). Without
+ * this guard a de-articled slug can collide with an unrelated same-named film:
+ * "The North" (2026) has no `/movie/the-north` page, so the de-articled variant
+ * probes `/movie/north` — Rob Reiner's 1994 "North" — and 200s. The year check
+ * catches that and lets the caller store None (view synthesises a search link).
  */
 class MetacriticClient(http: HttpFetch) {
   import MetacriticClient._
@@ -55,8 +62,8 @@ class MetacriticClient(http: HttpFetch) {
     year:     Option[Int]    = None
   ): Option[Resolved] = {
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    canonicalResolve(title)
-      .orElse(effectiveFallback.flatMap(canonicalResolve))
+    canonicalResolve(title, year)
+      .orElse(effectiveFallback.flatMap(t => canonicalResolve(t, year)))
       .orElse(searchAndPickBest(title, year).map(Resolved(_, None)))
       .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)).map(Resolved(_, None)))
   }
@@ -69,13 +76,22 @@ class MetacriticClient(http: HttpFetch) {
 
   /** Like [[canonicalUrl]] but keeps the validated page's parsed Metascore so
    *  the caller need not re-fetch the same page to read it. The first candidate
-   *  slug that returns 200 wins; its body is parsed for `aggregateRating` on the
-   *  spot (None when the page has no score yet). Lazy: a 200 on the primary slug
-   *  short-circuits before the de-articled variant is probed. */
-  def canonicalResolve(title: String): Option[Resolved] =
+   *  slug that returns 200 AND whose page year is compatible with `year` wins;
+   *  its body is parsed for `aggregateRating` on the spot (None when the page
+   *  has no score yet). Lazy: a 200 on the primary slug short-circuits before
+   *  the de-articled variant is probed.
+   *
+   *  `year` is the FILM's release year; a probed page is skipped when its
+   *  `datePublished` year is known and conflicts (see the class comment — this
+   *  is what stops a de-articled slug from matching an unrelated same-named
+   *  film). When either year is unknown the page is accepted, preserving the
+   *  behaviour for films we have no year for. */
+  def canonicalResolve(title: String, year: Option[Int] = None): Option[Resolved] =
     candidateSlugs(title).iterator
       .map(s => s"$Site/movie/$s")
-      .flatMap(url => Try(http.get(url)).toOption.map(body => Resolved(url, MetacriticClient.parseMetascore(body))))
+      .flatMap(url => Try(http.get(url)).toOption.map(body => (url, body)))
+      .filter { case (_, body) => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)) }
+      .map { case (url, body) => Resolved(url, MetacriticClient.parseMetascore(body)) }
       .nextOption()
 
   def candidateSlugs(title: String): Seq[String] = {
@@ -227,6 +243,28 @@ object MetacriticClient {
    *  Returns None when MC hasn't aggregated a score yet (the JSON-LD
    *  omits `aggregateRating`) or when parsing fails. */
   def parseMetascore(html: String): Option[Int] = JsonLdAggregateRating.parseInt(html)
+
+  /** The film's release year off an MC movie page's JSON-LD `datePublished`.
+   *  Used only to reject a probed page whose year contradicts the film we're
+   *  resolving — see [[yearsCompatible]]. */
+  def parseReleaseYear(html: String): Option[Int] = JsonLdAggregateRating.datePublishedYear(html)
+
+  /** How far a probed page's release year may sit from the film's before we
+   *  treat it as a different film. 1 absorbs legitimate cross-region release
+   *  drift (a film premiering late one year, opening early the next) without
+   *  admitting an unrelated same-named film decades apart. */
+  private val YearMatchTolerance = 1
+
+  /** True when the film's year and a probed page's year are compatible — i.e.
+   *  we have NO positive evidence they're different films. Only a conflict of
+   *  BOTH known years beyond [[YearMatchTolerance]] returns false; a missing
+   *  year on either side is treated as compatible (we never had grounds to
+   *  reject). */
+  def yearsCompatible(filmYear: Option[Int], pageYear: Option[Int]): Boolean =
+    (filmYear, pageYear) match {
+      case (Some(f), Some(p)) => math.abs(f - p) <= YearMatchTolerance
+      case _                  => true
+    }
 
   /** True when `title` starts with `query` and the *next* non-space character
    *  is punctuation — indicating a modifier suffix like " - Re-Release",
