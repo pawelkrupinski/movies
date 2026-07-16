@@ -253,4 +253,30 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     val kept     = MovieRecordMerge.retainPastShowtimes(agedOut, Seq.empty, now)
     kept shouldBe empty                                // nothing survives → bounded, not append-only
   }
+
+  // ── Parallel screenings must survive dedup (Helios premiere data-loss) ──────
+  //
+  // A premiere opened in several halls at the SAME time shares (dateTime, room,
+  // format) — room is None because the hall isn't scraped — but each hall is a
+  // distinct Helios `/screen/<uuid>`. Keying dedup on (dateTime, room, format)
+  // alone collapsed all of them into ONE, silently deleting real sessions.
+  it should "NOT collapse parallel same-time screenings that carry distinct per-screening booking ids (Helios halls)" in {
+    val u = "https://bilety.helios.pl/screen/"
+    val halls = Seq(
+      Showtime(LocalDateTime.parse("2026-06-22T20:00"), Some(u + "18f0aa64-dfb9-472d-be3d-473b157a2b5f"), room = None, format = List("2D", "NAP")),
+      Showtime(LocalDateTime.parse("2026-06-22T20:00"), Some(u + "1e82ba32-f924-4d98-aa55-142e32f455e6"), room = None, format = List("2D", "NAP")),
+      Showtime(LocalDateTime.parse("2026-06-22T20:00"), Some(u + "3924f840-7224-4fc6-892c-5779857c6dac"), room = None, format = List("2D", "NAP"))
+    )
+    // FAILS before the fix (collapsed to 1); after, all three halls survive.
+    MovieRecordMerge.dedupShowtimes(halls).size shouldBe 3
+  }
+
+  it should "still collapse one screening reported under several per-event ticket links (aggregator default)" in {
+    // Kino Nowe Horyzonty / bilety24: distinct URLs, SAME screening → one survives.
+    val one = Seq(
+      withBooking("2026-06-22T20:00", "https://nh/bilet.s?eventId=194388"),
+      withBooking("2026-06-22T20:00", "https://nh/bilet.s?eventId=193538")
+    )
+    MovieRecordMerge.dedupShowtimes(one).size shouldBe 1
+  }
 }

@@ -123,8 +123,13 @@ object MovieRecordMerge {
    *  string) so the kept link — and therefore the rendered slot — is identical
    *  whatever order the sources arrived in. */
   def dedupShowtimes(showtimes: Seq[Showtime]): Seq[Showtime] = {
-    def identity(s: Showtime): (java.time.LocalDateTime, Option[String], List[String]) =
-      (s.dateTime, s.room, s.format)
+    // Screening identity is (dateTime, room, format) PLUS a per-screening
+    // discriminator from the booking URL: hosts that open a slot in several halls
+    // at once (Helios premieres, `room=None`) carry a distinct `/screen/<uuid>`,
+    // so those parallel screenings must NOT collapse. Everything else contributes
+    // `""` and collapses on the slot as before. See BookingUrlScreening.
+    def identity(s: Showtime): (java.time.LocalDateTime, Option[String], List[String], String) =
+      (s.dateTime, s.room, s.format, BookingUrlScreening.discriminator(s.bookingUrl))
     def rank(s: Showtime): (Boolean, String) =
       (s.bookingUrl.isEmpty, s.bookingUrl.getOrElse(""))
     // Total order (not just dateTime): `groupBy(...).values` iteration order is
