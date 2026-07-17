@@ -103,12 +103,17 @@ let package = Package(
                 // what carries the test-worthy behaviour.
                 "Networking/RepertoireClient.swift",
                 "Networking/DetailsStore.swift",
+                // App-target catalog store: URLSession + Bundle.main + UserDefaults.
+                "Networking/CatalogStore.swift",
                 "Storage",
                 // Asset catalog — not a Swift source.
                 "Assets.xcassets",
                 // String Catalog — an app-target resource; KinowoCore is
                 // Foundation-only and ships no localized bundle.
                 "Localizable.xcstrings",
+                // Bundled catalog seed — an app-target resource read from
+                // Bundle.main at launch; not a KinowoCore source.
+                "catalog-seed.json",
                 // Country registry — Foundation-only, but it's owned by the
                 // `KinowoAuth` SPM target (below) because `kinowoBaseURL` +
                 // `UserPreferences` there route the base URL / language through

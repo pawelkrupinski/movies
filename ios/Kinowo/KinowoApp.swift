@@ -4,6 +4,7 @@ import SwiftUI
 struct KinowoApp: App {
     @StateObject private var store = RepertoireStore()
     @StateObject private var details = DetailsStore()
+    @StateObject private var catalog = CatalogStore()
     @StateObject private var prefs: UserPreferences
     @StateObject private var authService: AuthService
     @StateObject private var sync: StateSyncService
@@ -33,6 +34,7 @@ struct KinowoApp: App {
             root
                 .environmentObject(store)
                 .environmentObject(details)
+                .environmentObject(catalog)
                 .environmentObject(prefs)
                 .environmentObject(authService)
                 .environmentObject(sync)
@@ -67,7 +69,7 @@ struct KinowoApp: App {
     /// from a link lands on the linked city's CityGate result) and park the
     /// parsed link for `ContentView` to apply its filters + film push.
     private func handleDeepLink(_ url: URL) {
-        guard let link = DeepLink.parse(url) else { return }
+        guard let link = DeepLink.parse(url, knownCitySlugs: catalog.allSlugs) else { return }
         if link.citySlug != prefs.selectedCity {
             prefs.setCity(link.citySlug)
             store.use(citySlug: link.citySlug)

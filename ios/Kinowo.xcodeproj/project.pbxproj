@@ -15,6 +15,7 @@
 		DD00000000000000000E02 /* CountrySelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E02 /* CountrySelection.swift */; };
 		DD00000000000000000E03 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E03 /* Localizable.xcstrings */; };
 		DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E04 /* InfoPlist.xcstrings */; };
+		DD00000000000000000E05 /* catalog-seed.json in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E05 /* catalog-seed.json */; };
 		DD00000000000000000005 /* Film.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000005 /* Film.swift */; };
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
 		DD00000000000000000261 /* CinemaCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000261 /* CinemaCatalog.swift */; };
@@ -55,6 +56,7 @@
 		DD00000000000000000040 /* FilmDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000040 /* FilmDetails.swift */; };
 		DD00000000000000000041 /* CinemaLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000041 /* CinemaLink.swift */; };
 		DD00000000000000000042 /* DetailsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000042 /* DetailsStore.swift */; };
+		DD00000000000000000E06 /* CatalogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E06 /* CatalogStore.swift */; };
 		DD00000000000000000043 /* DetailsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000043 /* DetailsCache.swift */; };
 		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
 		DD00000000000000000019 /* FlowLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000019 /* FlowLayoutMath.swift */; };
@@ -114,6 +116,7 @@
 		CC00000000000000000E02 /* CountrySelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySelection.swift; sourceTree = "<group>"; };
 		CC00000000000000000E03 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000E04 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		CC00000000000000000E05 /* catalog-seed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "catalog-seed.json"; sourceTree = "<group>"; };
 		CC00000000000000000005 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
 		CC00000000000000000261 /* CinemaCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaCatalog.swift; sourceTree = "<group>"; };
@@ -154,6 +157,7 @@
 		CC00000000000000000040 /* FilmDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetails.swift; sourceTree = "<group>"; };
 		CC00000000000000000041 /* CinemaLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaLink.swift; sourceTree = "<group>"; };
 		CC00000000000000000042 /* DetailsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsStore.swift; sourceTree = "<group>"; };
+		CC00000000000000000E06 /* CatalogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000043 /* DetailsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsCache.swift; sourceTree = "<group>"; };
 		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
 		CC00000000000000000019 /* FlowLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayoutMath.swift; sourceTree = "<group>"; };
@@ -237,6 +241,7 @@
 				CC00000000000000000004 /* Assets.xcassets */,
 				CC00000000000000000E03 /* Localizable.xcstrings */,
 				CC00000000000000000E04 /* InfoPlist.xcstrings */,
+				CC00000000000000000E05 /* catalog-seed.json */,
 			);
 			path = Kinowo;
 			sourceTree = "<group>";
@@ -287,6 +292,7 @@
 				CC00000000000000000007 /* RepertoireClient.swift */,
 				CC00000000000000000030 /* RepertoireCache.swift */,
 				CC00000000000000000042 /* DetailsStore.swift */,
+				CC00000000000000000E06 /* CatalogStore.swift */,
 				CC00000000000000000043 /* DetailsCache.swift */,
 				CC00000000000000000008 /* HTMLParser.swift */,
 				CC00000000000000000012 /* HTMLPrimitives.swift */,
@@ -458,6 +464,7 @@
 				DD00000000000000000004 /* Assets.xcassets in Resources */,
 				DD00000000000000000E03 /* Localizable.xcstrings in Resources */,
 				DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */,
+				DD00000000000000000E05 /* catalog-seed.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -511,6 +518,7 @@
 				DD00000000000000000040 /* FilmDetails.swift in Sources */,
 				DD00000000000000000041 /* CinemaLink.swift in Sources */,
 				DD00000000000000000042 /* DetailsStore.swift in Sources */,
+				DD00000000000000000E06 /* CatalogStore.swift in Sources */,
 				DD00000000000000000043 /* DetailsCache.swift in Sources */,
 				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
 				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,

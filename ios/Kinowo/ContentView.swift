@@ -4,6 +4,7 @@ struct ContentView: View {
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
     @EnvironmentObject var prefs: UserPreferences
+    @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var deepLink: DeepLinkCoordinator
     @Environment(\.scenePhase) private var scenePhase
@@ -248,6 +249,10 @@ struct ContentView: View {
             Text(String(format: String(localized: "switch.question"), suggestion.target.name))
         }
         .task {
+            // Revalidate the country/city catalog on cold open (conditional GET;
+            // a 304 costs only headers). Non-blocking — the UI already renders
+            // from the seeded/persisted catalog.
+            Task { await catalog.reload(baseURL: kinowoBaseURL) }
             store.loadCachedData()
             store.pruneStaleShowings()
             details.loadCachedData()
@@ -305,6 +310,7 @@ struct ContentView: View {
                 store.pruneStaleShowings()
                 Task { await store.reloadIfStale() }
                 Task { await details.reloadIfStale() }
+                Task { await catalog.reloadIfStale(baseURL: kinowoBaseURL) }
                 // Re-check on every foreground so travelling between cities
                 // mid-session offers the switch as soon as the app returns.
                 Task { await maybeSuggestCitySwitch() }
@@ -324,11 +330,11 @@ struct ContentView: View {
         guard let chosen = prefs.selectedCity,
               citySwitchSuggestion == nil,
               let fix = await locationResolver.resolveIfAuthorized(),
-              let suggestion = City.switchSuggestion(
+              let suggestion = catalog.switchSuggestion(
                 chosenSlug: chosen,
                 lat: fix.lat, lon: fix.lon,
                 lastPromptKey: prefs.citySwitchPromptKey,
-                in: prefs.selectedCountry.code
+                inCountry: prefs.selectedCountry.code
               )
         else { return }
         prefs.setCitySwitchPromptKey(suggestion.key)

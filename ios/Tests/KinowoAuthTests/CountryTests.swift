@@ -27,16 +27,27 @@ final class CountryTests: XCTestCase {
 
     func testDefaultIsPolandOnTheProdDeployment() {
         let pl = Country.default
-        XCTAssertEqual(pl.code, "PL")
+        XCTAssertEqual(pl.code, "pl")
         XCTAssertEqual(pl.baseURL.absoluteString, "https://kinowo.fly.dev")
         XCTAssertEqual(pl.languageCode, "pl")
     }
 
     func testUkEntryForcesEnglishOnItsOwnDeployment() {
-        let gb = Country.byCode("GB")
-        XCTAssertEqual(gb.displayName, "United Kingdom")
-        XCTAssertEqual(gb.baseURL.absoluteString, "https://showtimes-uk.fly.dev")
-        XCTAssertEqual(gb.languageCode, "en")
+        let uk = Country.byCode("uk")
+        XCTAssertEqual(uk.code, "uk")
+        XCTAssertEqual(uk.displayName, "United Kingdom")
+        XCTAssertEqual(uk.baseURL.absoluteString, "https://showtimes-uk.fly.dev")
+        XCTAssertEqual(uk.languageCode, "en")
+    }
+
+    /// Legacy persisted ISO codes (`PL`/`GB` from earlier builds) normalize to
+    /// the current server code space so an upgrade keeps the user's country.
+    func testLegacyIsoCodesNormalizeToServerCodes() {
+        XCTAssertEqual(Country.byCode("PL").code, "pl")
+        XCTAssertEqual(Country.byCode("GB").code, "uk")
+        XCTAssertEqual(Country.normalizeCode("PL"), "pl")
+        XCTAssertEqual(Country.normalizeCode("GB"), "uk")
+        XCTAssertEqual(Country.normalizeCode("uk"), "uk")
     }
 
     func testUnknownOrNilCodeFallsBackToDefault() {
@@ -51,15 +62,15 @@ final class CountryTests: XCTestCase {
 
     /// The switch is language-forcing, not device-derived.
     func testCountryDeterminesLanguageNotDeviceLocale() {
-        XCTAssertEqual(Country.byCode("PL").languageCode, "pl")
-        XCTAssertEqual(Country.byCode("GB").languageCode, "en")
+        XCTAssertEqual(Country.byCode("pl").languageCode, "pl")
+        XCTAssertEqual(Country.byCode("uk").languageCode, "en")
     }
 
     /// The in-app "Kraj" section renders only when there's more than one
     /// country to switch between — the visibility rule the Filtry sheet gates on.
     func testMoreThanOneDeployedCountryIsSwitchable() {
         XCTAssertGreaterThan(Country.all.count, 1)
-        XCTAssertTrue(Country.isSwitchable)
+        XCTAssertTrue(Country.all.isSwitchable)
     }
 
     // MARK: - In-app country switch (Filtry "Kraj" section)
@@ -76,7 +87,7 @@ final class CountryTests: XCTestCase {
         prefs.setCountry(Country.byCode("GB"))
         prefs.clearCity()
 
-        XCTAssertEqual(prefs.selectedCountry.code, "GB")
+        XCTAssertEqual(prefs.selectedCountry.code, "uk")
         XCTAssertEqual(
             CountrySelection.current(defaults).baseURL.absoluteString,
             "https://showtimes-uk.fly.dev"
@@ -85,7 +96,7 @@ final class CountryTests: XCTestCase {
 
         // A fresh instance sees the same post-switch state at the next launch.
         let reloaded = UserPreferences(store: defaults)
-        XCTAssertEqual(reloaded.selectedCountry.code, "GB")
+        XCTAssertEqual(reloaded.selectedCountry.code, "uk")
         XCTAssertNil(reloaded.selectedCity)
     }
 
@@ -94,18 +105,18 @@ final class CountryTests: XCTestCase {
     func testSelectedCountryDefaultsToPolandUntilChosen() {
         let prefs = UserPreferences(store: defaults)
         XCTAssertEqual(prefs.selectedCountry, .default)
-        XCTAssertEqual(prefs.selectedCountry.code, "PL")
+        XCTAssertEqual(prefs.selectedCountry.code, "pl")
     }
 
     func testSetCountryPersistsAndSurvivesAReload() {
         let prefs = UserPreferences(store: defaults)
         prefs.setCountry(Country.byCode("GB"))
-        XCTAssertEqual(prefs.selectedCountry.code, "GB")
+        XCTAssertEqual(prefs.selectedCountry.code, "uk")
 
         // A fresh instance over the same store reads the persisted choice —
         // exactly what `kinowoBaseURL` sees at the next launch.
         let reloaded = UserPreferences(store: defaults)
-        XCTAssertEqual(reloaded.selectedCountry.code, "GB")
+        XCTAssertEqual(reloaded.selectedCountry.code, "uk")
         XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://showtimes-uk.fly.dev")
     }
 

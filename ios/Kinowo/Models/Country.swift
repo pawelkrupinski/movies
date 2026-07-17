@@ -12,7 +12,8 @@ import Foundation
 /// Mirrors the Android `Country` registry one-for-one so the two apps agree on
 /// the set of countries, their base URLs, and their forced languages.
 struct Country: Codable, Hashable {
-    /// ISO 3166-1 alpha-2, e.g. `PL`, `GB`. The persisted selection key.
+    /// Server country code, e.g. `pl`, `uk` — the single code space the catalog
+    /// keys on (cities carry the same code). Also the persisted selection key.
     let code: String
     /// Human-readable label for the country picker.
     let displayName: String
@@ -22,17 +23,19 @@ struct Country: Codable, Hashable {
     /// BCP-47 primary language subtag forced as the app language when selected.
     let languageCode: String
 
-    /// Every country the app knows about. Poland is first (the default): the
-    /// current production deployment with a Polish UI.
+    /// Compile-time FALLBACK registry, used only until the bundled/fetched
+    /// catalog loads (and if that ever fails to decode). The live registry is the
+    /// `/api/catalog` payload the `CatalogStore` publishes. Poland is first (the
+    /// default). Codes match the server (`pl`/`uk`).
     static let all: [Country] = [
         Country(
-            code: "PL",
+            code: "pl",
             displayName: "Polska",
             baseURL: URL(string: "https://kinowo.fly.dev")!,
             languageCode: "pl"
         ),
         Country(
-            code: "GB",
+            code: "uk",
             displayName: "United Kingdom",
             baseURL: URL(string: "https://showtimes-uk.fly.dev")!,
             languageCode: "en"
@@ -42,13 +45,50 @@ struct Country: Codable, Hashable {
     /// Fallback when the user hasn't picked a country: Poland.
     static let `default` = all[0]
 
-    /// The country for `code`, or `default` when nil / unknown.
+    /// The country for `code` in the fallback registry, or `default` when nil /
+    /// unknown. Bootstrap only (e.g. `kinowoBaseURL` at launch, before the
+    /// catalog loads); live lookups use the `CatalogStore`'s countries.
     static func byCode(_ code: String?) -> Country {
-        all.first { $0.code == code } ?? .default
+        all.first { $0.code == normalizeCode(code) } ?? .default
     }
 
-    /// True when more than one country is deployed, i.e. an in-app country
-    /// switcher is worth showing. With a single country there's nothing to
-    /// switch to, so the Filtry "Kraj" section stays hidden entirely.
-    static var isSwitchable: Bool { all.count > 1 }
+    /// Map a legacy persisted selection code to the current server code space.
+    /// Earlier builds stored ISO codes (`PL`/`GB`); the catalog keys on `pl`/`uk`.
+    /// Applied wherever a persisted code is read so an upgrade keeps the user's
+    /// country without a migration write (the next selection persists the new code).
+    static func normalizeCode(_ code: String?) -> String? {
+        switch code {
+        case "PL": return "pl"
+        case "GB": return "uk"
+        default:   return code
+        }
+    }
+}
+
+/// Registry lookups over a catalog's country list — the live list the
+/// `CatalogStore` holds (fetched or seeded), so a country added server-side
+/// appears without an app update.
+extension Array where Element == Country {
+    /// The country for `code`, or `nil` when absent (e.g. a decommissioned one
+    /// the user still has selected — the caller then falls back to the default).
+    func withCode(_ code: String?) -> Country? { first { $0.code == code } }
+
+    /// Whether an in-app country switcher is worth showing (more than one
+    /// deployed country). With one there's nothing to switch to.
+    var isSwitchable: Bool { count > 1 }
+}
+
+/// Wire shape of one country in the `/api/catalog` payload (`{code,name,baseUrl,
+/// language,brand}`). Decoded then mapped to [Country]; `brand` is ignored (the
+/// apps render no brand text). A row with an unparseable `baseUrl` is dropped.
+struct CountryDTO: Decodable {
+    let code: String
+    let name: String
+    let baseUrl: String
+    let language: String
+
+    func toCountry() -> Country? {
+        guard let url = URL(string: baseUrl) else { return nil }
+        return Country(code: code, displayName: name, baseURL: url, languageCode: language)
+    }
 }

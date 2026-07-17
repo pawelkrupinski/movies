@@ -35,6 +35,7 @@ struct CityGate: View {
 /// manual `CityChoiceView` directly.
 struct CityResolverView: View {
     @EnvironmentObject var prefs: UserPreferences
+    @EnvironmentObject var catalog: CatalogStore
     @StateObject private var resolver = LocationCityResolver()
     @State private var detected: City?
     @State private var showChoice = false
@@ -74,7 +75,7 @@ struct CityResolverView: View {
                 return
             }
             #endif
-            switch await resolver.resolve(in: prefs.selectedCountry.code) {
+            switch await resolver.resolve(in: prefs.selectedCountry.code, cities: catalog.cities) {
             case .city(let city):
                 detected = city
             case .unavailable:
@@ -130,6 +131,7 @@ struct CityConfirmView: View {
 /// `City.all`, so it grows automatically as cities are added.
 struct CityChoiceView: View {
     @EnvironmentObject var prefs: UserPreferences
+    @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
     /// The location-detected nearest city, when one was found — used only to
@@ -141,7 +143,7 @@ struct CityChoiceView: View {
     /// contains it (diacritic-insensitive, so "lodz" finds "Łódź").
     @State private var query = ""
 
-    private var visibleCities: [City] { City.matching(query, in: prefs.selectedCountry.code) }
+    private var visibleCities: [City] { catalog.matching(query, inCountry: prefs.selectedCountry.code) }
 
     var body: some View {
         NavigationStack {
@@ -203,7 +205,7 @@ struct CityChoiceView: View {
                 details.use(country: country)
             }
         )) {
-            ForEach(Country.all, id: \.code) { country in
+            ForEach(catalog.countries, id: \.code) { country in
                 Text(country.displayName).tag(country)
             }
         }

@@ -395,6 +395,7 @@ struct FiltersSheet: View {
     let allDirectors: [(name: String, count: Int)]
     let allCast: [(name: String, count: Int)]
     @EnvironmentObject var authService: AuthService
+    @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
     @Environment(\.dismiss) private var dismiss
@@ -509,7 +510,7 @@ struct FiltersSheet: View {
                 // (`use(country:)`). Then `clearCity()` re-gates to the city
                 // chooser — the current city may not exist under the new host, so
                 // we never leave the app pointed at a stale city on a new base URL.
-                if Country.isSwitchable {
+                if catalog.isSwitchable {
                     Section("country.label") {
                         Picker("country.label", selection: Binding(
                             get: { prefs.selectedCountry },
@@ -522,7 +523,7 @@ struct FiltersSheet: View {
                                 dismiss()
                             }
                         )) {
-                            ForEach(Country.all, id: \.code) { country in
+                            ForEach(catalog.countries, id: \.code) { country in
                                 Text(country.displayName).tag(country)
                             }
                         }
@@ -536,14 +537,14 @@ struct FiltersSheet: View {
                 // choice. The picker lists the SELECTED country's cities.
                 Section("Miasto") {
                     Picker("Miasto", selection: Binding(
-                        get: { prefs.selectedCity ?? City.defaultCity(in: prefs.selectedCountry.code).slug },
+                        get: { prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug },
                         set: { slug in
                             prefs.setCity(slug)
                             store.use(citySlug: slug)
                             details.use(citySlug: slug)
                         }
                     )) {
-                        ForEach(City.sorted(in: prefs.selectedCountry.code), id: \.slug) { city in
+                        ForEach(catalog.sorted(inCountry: prefs.selectedCountry.code), id: \.slug) { city in
                             Text(city.name).tag(city.slug)
                         }
                     }
