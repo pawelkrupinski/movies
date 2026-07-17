@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import pl.kinowo.R
 import pl.kinowo.model.Cities
 import pl.kinowo.model.City
+import pl.kinowo.model.Country
 import pl.kinowo.ui.CountryPicker
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -57,7 +58,9 @@ fun CityChoiceScreen(
     onCountry: (String) -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
-    val cities = Cities.matching(query)
+    // Scope the list to the selected country so the chooser shows UK regions for
+    // a GB user, Polish cities for a PL user.
+    val cities = Cities.matching(query, selectedCountryCode ?: Country.default.code)
 
     Column(
         Modifier.fillMaxSize().padding(horizontal = 24.dp),

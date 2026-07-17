@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import pl.kinowo.R
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.City
+import pl.kinowo.model.Country
 import pl.kinowo.ui.city.CityChoiceScreen
 import pl.kinowo.ui.city.CityConfirmScreen
 import pl.kinowo.ui.common.LocalCitySlug
@@ -112,8 +113,12 @@ private fun CityGate(viewModel: KinowoViewModel) {
     var nearest by remember { mutableStateOf<City?>(null) }
 
     val resolver = remember { LocationCityResolver(context) }
+    // The selected country scopes the nearest-city resolution and the chooser
+    // list below, so a UK user is placed on/offered UK regions, a Polish user
+    // Polish cities.
+    val selectedCountry = viewModel.selectedCountryCode.collectAsState().value
     fun resolveFromLocation() = scope.launch {
-        val city = resolver.resolveNearestCity()
+        val city = resolver.resolveNearestCity(selectedCountry ?: Country.default.code)
         if (city != null) { detected = city; nearest = city } else showChooser = true
     }
 
@@ -129,7 +134,6 @@ private fun CityGate(viewModel: KinowoViewModel) {
     }
 
     val city = detected
-    val selectedCountry = viewModel.selectedCountryCode.collectAsState().value
     when {
         showChooser     -> CityChoiceScreen(
             onPick = { viewModel.chooseCityAtGate(it.slug, nearest?.slug) },

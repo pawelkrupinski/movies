@@ -24,9 +24,9 @@ import kotlin.coroutines.resume
 class LocationCityResolver(private val context: Context) {
 
     @SuppressLint("MissingPermission") // the gate requests ACCESS_COARSE_LOCATION before calling
-    suspend fun resolveNearestCity(): City? {
+    suspend fun resolveNearestCity(countryCode: String): City? {
         val fix = locationFix() ?: return null
-        return Cities.nearestWithin100km(fix.first, fix.second)
+        return Cities.nearestWithin100km(fix.first, fix.second, countryCode)
     }
 
     /**

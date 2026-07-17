@@ -41,6 +41,7 @@ import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
+import pl.kinowo.model.Country
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
@@ -435,6 +436,7 @@ class KinowoViewModel(
             lat = fix.first,
             lon = fix.second,
             lastPromptKey = prefs.citySwitchPromptKey.first(),
+            countryCode = selectedCountryCode.value ?: Country.default.code,
         ) ?: return@launch
         prefs.setCitySwitchPromptKey(suggestion.key)
         citySwitchSuggestion = suggestion

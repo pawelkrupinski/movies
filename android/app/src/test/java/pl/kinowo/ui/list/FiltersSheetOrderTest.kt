@@ -188,7 +188,7 @@ class FiltersSheetOrderTest {
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Miasto"))
 
         // The field shows the active city; another city is hidden until opened.
-        val other = Cities.allSorted.first { it.slug != Cities.DEFAULT.slug }.name
+        val other = Cities.sortedIn("PL").first { it.slug != Cities.DEFAULT.slug }.name
         compose.onNodeWithText(Cities.DEFAULT.name).assertIsDisplayed()
         compose.onNodeWithText(other).assertDoesNotExist()
 

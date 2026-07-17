@@ -418,15 +418,17 @@ private fun CountrySection(viewModel: KinowoViewModel) {
 
 /**
  * Miasto — the active city, as a Material3 ExposedDropdownMenu: a read-only
- * field showing the active city over an elevated, animated menu of
- * [Cities.allSorted]. Picking persists the choice (and re-fetches that city's
- * repertoire). Independent of login — it's just a city switch.
+ * field showing the active city over an elevated, animated menu of the selected
+ * country's cities ([Cities.sortedIn]). Picking persists the choice (and
+ * re-fetches that city's repertoire). Independent of login — it's just a city switch.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CitySection(viewModel: KinowoViewModel) {
     val selected by viewModel.selectedCity.collectAsState()
-    val current = Cities.allSorted.firstOrNull { it.slug == selected } ?: Cities.DEFAULT
+    val countryCode = viewModel.selectedCountryCode.collectAsState().value ?: Country.default.code
+    val cities = Cities.sortedIn(countryCode)
+    val current = cities.firstOrNull { it.slug == selected } ?: Cities.defaultCityIn(countryCode)
     var expanded by remember { mutableStateOf(false) }
     FilterSectionLabel("Miasto")
     ExposedDropdownMenuBox(
@@ -443,7 +445,7 @@ private fun CitySection(viewModel: KinowoViewModel) {
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            Cities.allSorted.forEach { city ->
+            cities.forEach { city ->
                 DropdownMenuItem(
                     text = { Text(city.name) },
                     onClick = {
