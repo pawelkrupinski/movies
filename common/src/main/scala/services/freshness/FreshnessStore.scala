@@ -3,7 +3,7 @@ package services.freshness
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{Filters, Sorts, Updates}
+import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
 import services.movies.KeysetScan
 
@@ -184,6 +184,16 @@ class MongoFreshnessStore(
   // first as a small filtered query and signal `scrapeReady` the moment they
   // land; the rest hydrates afterwards, off the boot-storm critical path.
   private def hydrate(c: MongoCollection[Document]): Unit = {
+    // Ensure the compound index the phased hydrate pages on. Without it,
+    // `find({kind}).sort(_id).limit` filters `kind` post-fetch behind an `_id`
+    // IXSCAN — measured 15,119 docs examined to return 306 (49:1), a COLLSCAN in
+    // an IXSCAN costume paid on EVERY boot. `{kind:1, _id:1}` covers filter +
+    // `_id`-range keyset + sort. Best-effort: a create failure just leaves the
+    // slow path, never blocks the hydrate.
+    Try(Await.result(
+      c.createIndex(Indexes.compoundIndex(Indexes.ascending("kind"), Indexes.ascending("_id"))).toFuture(),
+      10.seconds
+    )).recover { case exception => logger.warn(s"Freshness index create failed: ${exception.getMessage}") }
     val scrapeLabel = FreshnessKind.CinemaScrape.label
     MongoFreshnessStore.hydrateInPhases(
       loadScrape  = () => hydrateInto(c, Filters.eq("kind", scrapeLabel), 15.seconds, "scrape"),

@@ -2,9 +2,10 @@ package services.cadence
 
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonNull, BsonString, BsonValue}
-import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.model.{Filters, Sorts, Updates}
 import com.mongodb.client.model.UpdateOptions
 import play.api.Logging
+import services.movies.KeysetScan
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -107,12 +108,30 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
     }
   }
 
-  private def hydrate(c: MongoCollection[Document]): Unit =
-    Try {
-      val records = Await.result(c.find().toFuture(), 60.seconds).flatMap(MongoRatingCadenceStore.decodeRecord)
-      records.foreach { case (key, stats) => mirror.put(key, stats) }
-      if (records.nonEmpty) logger.info(s"Hydrated ${records.size} rating-cadence record(s) from Mongo.")
-    }.recover { case exception => logger.warn(s"Rating-cadence hydrate failed: ${exception.getMessage}") }
+  private def hydrate(c: MongoCollection[Document]): Unit = {
+    // Keyset-paged, NOT one unbounded `find().toFuture()`: rating_cadence is one row
+    // per (source, film) — thousands and growing with the corpus — and a single
+    // cursor over it brushes the 60s timeout / can StackOverflow the async driver as
+    // it grows (Sentry KINOWO-19, the class the freshness + read-model hydrates
+    // already migrated away from). Each page is a bounded
+    // `find(_id > last).sort(_id).limit`.
+    var count = 0
+    KeysetScan.scan[Document](
+      label          = "RatingCadenceStore hydrate",
+      batchSize      = 2000,
+      maxAttempts    = 3,
+      initialBackoff = 500.millis,
+      keyOf          = _.getString("_id"),
+      fetchPage      = (afterId, limit) => {
+        val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
+        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+      },
+      onIncomplete   = exception => logger.warn(s"Rating-cadence hydrate keyset scan failed: ${exception.getMessage}")
+    )(batch => batch.foreach { document =>
+      MongoRatingCadenceStore.decodeRecord(document).foreach { case (key, stats) => mirror.put(key, stats); count += 1 }
+    })
+    if (count > 0) logger.info(s"Hydrated $count rating-cadence record(s) from Mongo.")
+  }
 }
 
 object MongoRatingCadenceStore {

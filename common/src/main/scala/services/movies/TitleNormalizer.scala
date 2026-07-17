@@ -3,6 +3,7 @@ package services.movies
 import services.titlerules.{TitleRuleSet, TitleRules, ExtraTitleRules}
 
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 
 object TitleNormalizer {
@@ -30,7 +31,7 @@ object TitleNormalizer {
   }
 
   /** Install a rule set — used by tests that want to exercise a custom set globally. */
-  def installRules(rs: TitleRuleSet): Unit = active = rs
+  def installRules(rs: TitleRuleSet): Unit = { active = rs; sanitizeCache.clear() }
 
   /** Run `body` with `rs` as the active rule set for the CURRENT THREAD only,
    *  restoring the prior state afterwards. The scope is thread-local so a test
@@ -49,7 +50,7 @@ object TitleNormalizer {
   def currentRules: TitleRuleSet = active
 
   /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
-  def resetToDefaults(): Unit = active = TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all)
+  def resetToDefaults(): Unit = { active = TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all); sanitizeCache.clear() }
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
   def cinemaClean(cinemaId: String, raw: String): String = effective.perCinema(cinemaId, raw)
@@ -246,6 +247,22 @@ object TitleNormalizer {
    *  of the same film stay as separate records). The imdbId re-merge step
    *  (later phase) folds those across scripts. */
   def sanitize(title: String): String =
+    // Memoised because `sanitize` is the hottest normaliser — called per movie ×
+    // per corpus row inside `MovieCache`'s scrape scans (`concludedKeyFor`,
+    // `redirectToExistingVariant`, the per-tick index rebuilds) and every staging /
+    // projection key. The inner `canonical` fold is already cached per-`TitleRuleSet`,
+    // but the outer NFD-normalise + deburr + Unicode `replaceAll` ran uncached on
+    // every call. The cache is keyed on the raw title and scoped to the GLOBAL
+    // `active` rule set: cleared whenever `active` swaps (`installRules` /
+    // `resetToDefaults`), and BYPASSED under a thread-local `withRules` override
+    // (transient + rare — tests / admin preview) so a scoped set never poisons the
+    // shared cache nor reads a globally-cached value.
+    if (scopedOverride.get() != null) computeSanitize(title)
+    else sanitizeCache.computeIfAbsent(title, computeSanitize)
+
+  private val sanitizeCache = new ConcurrentHashMap[String, String]()
+
+  private val computeSanitize: java.util.function.Function[String, String] = title =>
     NonAlnumUnicode.matcher(
       tools.TextNormalization.deburr(normalize(canonical(title))).toLowerCase(Locale.ROOT)
     ).replaceAll("")

@@ -51,4 +51,14 @@ class TitleNormalizerScopingSpec extends AnyFlatSpec with Matchers {
     TitleNormalizer.withRules(customSet)(())
     TitleNormalizer.sanitize(title) shouldBe defaultKey               // no leak past the scope
   }
+
+  // Guards the `sanitize` memo cache: it's keyed on the raw title and scoped to the
+  // GLOBAL rule set, so a thread-local `withRules` override must BYPASS it (never
+  // serve the cached global value, never write the scoped value back). A naive
+  // `computeIfAbsent(title, …)` without the bypass fails both assertions below.
+  "the sanitize memo cache" should "be bypassed under a scoped rule set and never poisoned by it" in {
+    val defaultKey = TitleNormalizer.sanitize(title)                  // prime the global cache
+    TitleNormalizer.withRules(customSet)(TitleNormalizer.sanitize(title)) should not be defaultKey  // scope bypasses the cached default
+    TitleNormalizer.sanitize(title) shouldBe defaultKey               // the scoped call didn't overwrite the global cache
+  }
 }
