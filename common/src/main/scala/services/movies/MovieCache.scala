@@ -186,10 +186,6 @@ class CaffeineMovieCache(
   // Measures what the periodic backstop rehydrate catches that the incremental change
   // stream missed — the redundancy signal for retiring the rehydrate. No-op for web/tests.
   cacheMetrics: CacheSyncMetrics = CacheSyncMetrics.noop,
-  // Clock for the "now" used to tell past from future when a scrape merges its
-  // showtimes (see `buildCinemaSlot` → `MovieRecordMerge.retainPastShowtimes`).
-  // Injectable so tests can fix "now" deterministically.
-  clock: java.time.Clock = java.time.Clock.systemDefaultZone(),
   // The deployment's language, used to canonicalise cinema-reported production
   // countries into the deployment's own (Polish "USA"/"Wielka Brytania" on
   // `kinowo`, the source's already-localised name elsewhere — see
@@ -1219,14 +1215,15 @@ class CaffeineMovieCache(
       posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
       filmUrl        = cm.filmUrl,
       trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
-      // Canonical order (a reorder-only re-scrape stores an identical slot so the
-      // write-through guard skips it) AND retain RECENTLY past showings the scrape
-      // dropped — deleting a just-passed showtime is pure churn (it no longer
-      // displays), so keeping it lets an aging-only re-scrape hit the guard. Past
-      // OLDER than PastRetentionWindow IS reaped so the slot can't grow without
-      // bound. See MovieRecordMerge.sortShowtimes / retainPastShowtimes.
-      showtimes      = MovieRecordMerge.retainPastShowtimes(
-                         priorSlot.map(_.showtimes).getOrElse(Seq.empty), cm.showtimes, java.time.LocalDateTime.now(clock))
+      // Canonical order so a reorder-only re-scrape stores a byte-identical slot and
+      // the write-through guard skips it. Past showings the fresh scrape drops are NOT
+      // retained: under the index-only cache the resident `priorSlot` is stripped (Nil
+      // showtimes + a digest), so there's nothing to retain FROM, and re-stitching a
+      // film's screenings from Mongo per scrape would cost far more read I/O than the
+      // one deferred write it would save. Dropping a just-passed showtime is
+      // display-neutral (the web filters past showtimes at render). See
+      // MovieRecordMerge.sortShowtimes.
+      showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes)
     )
 
   /** If `primary` doesn't currently exist in the cache, look for an existing

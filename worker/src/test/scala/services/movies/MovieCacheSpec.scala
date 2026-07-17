@@ -4,7 +4,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.{Clock, LocalDateTime, ZoneOffset}
+import java.time.LocalDateTime
 
 class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
@@ -903,20 +903,26 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     slots.flatMap(_.title).exists(_.toLowerCase.contains("ukrai"))    shouldBe true
   }
 
-  it should "NOT delete an already-past showing when a re-scrape drops it (retain it → no churn write)" in {
-    val now   = LocalDateTime.of(2026, 6, 8, 21, 0)  // 21:00 is "now"
+  it should "rebuild a slot's showtimes from the fresh scrape alone — a dropped recently-past showing is NOT retained" in {
     val repo  = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repo, clock = Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
-    val past   = showtime("2026-06-08T18:00")  // before now → past
-    val future = showtime("2026-06-08T22:30")  // after now → future
-    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(past, future))))
-    repo.upserts should not be empty      // first scrape established the slot
-    repo.upserts.clear()
-    val emissions = changeStreamEmissions(repo)
-    // Cinema no longer lists the now-past 18:00 showing; only the future one.
+    val cache = new CaffeineMovieCache(repo)
+    // Now-relative so the dropped showing is RECENTLY past (within the 24h window the old
+    // retainPastShowtimes used) — with fixed dates against the real clock it'd be out of
+    // window and wouldn't retain even before this change, so the assertion wouldn't bite.
+    val now    = java.time.LocalDateTime.now()
+    val past   = Showtime(now.minusHours(2), bookingUrl = None)   // just passed
+    val future = Showtime(now.plusHours(2),  bookingUrl = None)
+    val key = cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Foo", Multikino, showtimes = Seq(past, future)))).head._2
+    // Re-scrape lists only the still-upcoming showing; the just-passed one is gone.
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Foo", Multikino, showtimes = Seq(future))))
-    repo.upserts shouldBe empty           // past showing retained → slot unchanged → no write
-    emissions.get() shouldBe 0            // no write → nothing on the change stream → no reprojection
+    val stored = cache.get(key).get.cinemaShowings.collect { case (Multikino, sd) => sd }.head
+    // The slot rebuilds from the fresh scrape ALONE — the just-passed showing is dropped,
+    // not retained. Under the index-only cache the resident record is stripped, so
+    // retention couldn't work anyway; dropping it here makes the un-stripped path (staging,
+    // tests) behave the same. Display-neutral: the web filters past showtimes at render.
+    // Before this change, retainPastShowtimes kept `past` in the slot here.
+    stored.showtimes.map(_.dateTime) shouldBe Seq(future.dateTime)
   }
 
   it should "fold same-cinema title variants that share a sanitized slot key, so a re-scrape doesn't ping-pong the slot" in {

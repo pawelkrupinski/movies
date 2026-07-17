@@ -150,41 +150,4 @@ object MovieRecordMerge {
    *  showings always collapse to the same sequence. */
   def sortShowtimes(showtimes: Seq[Showtime]): Seq[Showtime] =
     showtimes.sortBy(s => (s.dateTime.toString, s.room.getOrElse(""), s.format.mkString(","), s.bookingUrl.getOrElse("")))
-
-  /** How far back a re-scrape's dropped past showings are retained. Retaining a
-   *  just-passed showing lets an aging-only re-scrape hit `MovieCache`'s
-   *  `updated == before` write-through guard (see [[retainPastShowtimes]]); but
-   *  retention must be BOUNDED or past showings pile up forever in the
-   *  (maxSize-less) `positive` cache — the on-heap leak that OOM-restarted the
-   *  worker every ~4h (~191k Showtimes at OOM, ~2x the served set). One day
-   *  covers the churn-avoidance window (re-scrape TTL is ~60min) while capping
-   *  a slot's retained past to a single day. */
-  val PastRetentionWindow: java.time.Duration = java.time.Duration.ofHours(24)
-
-  /** Merge a fresh cinema scrape's showtimes over the prior stored ones, NEVER
-   *  deleting a screening that is already in the PAST *within the retention
-   *  window*. A re-scrape is authoritative for the future (adds/removes upcoming
-   *  showings) but a RECENTLY past showing it no longer lists is kept, not
-   *  dropped: dropping it is pure churn — it no longer displays (the web filters
-   *  past showtimes at render), so re-writing the slot just to remove an aged-out
-   *  time would fire a change event + reprojection for no visible effect. With the
-   *  recent past retained, an aging-only re-scrape yields a slot equal to what's
-   *  stored, so `MovieCache`'s `updated == before` guard skips the write.
-   *  "Past" is STRICT (`dateTime <= now`, no grace); a past showing OLDER than
-   *  [[PastRetentionWindow]] IS reaped (one deferred write as it ages out) so the
-   *  slot can't grow without bound. Result is canonical order. A genuine future
-   *  change still replaces the slot (and drops stale past the fresh scrape didn't
-   *  re-list, since it rebuilds from `fresh`). */
-  def retainPastShowtimes(
-    prior:  Seq[Showtime],
-    fresh:  Seq[Showtime],
-    now:    java.time.LocalDateTime,
-    window: java.time.Duration = PastRetentionWindow
-  ): Seq[Showtime] = {
-    val freshSet = fresh.toSet
-    val cutoff   = now.minus(window)
-    val keptPast = prior.filter(s =>
-      !s.dateTime.isAfter(now) && s.dateTime.isAfter(cutoff) && !freshSet.contains(s))
-    sortShowtimes(fresh ++ keptPast)
-  }
 }
