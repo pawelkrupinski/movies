@@ -843,6 +843,22 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     secondTick.head._3 shouldBe false
   }
 
+  it should "intern a shared synopsis so a film's cinema slots hold ONE String instance" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val blurb = "A sweeping epic that plays the same at every venue in town."
+    // Both cinemas report the SAME blurb, each as a distinct String instance (a fresh
+    // `new String` mirrors two independent scrapes producing byte-identical text).
+    val key = cache.recordCinemaScrape(Multikino,
+      Seq(cinemaMovie("Dune", Multikino, synopsis = Some(new String(blurb))))).head._2
+    cache.recordCinemaScrape(KinoMuranow,
+      Seq(cinemaMovie("Dune", KinoMuranow, synopsis = Some(new String(blurb)))))
+    val synopses = cache.get(key).get.data.values.flatMap(_.synopsis).toSeq
+    synopses should have size 2                 // one slot per cinema
+    synopses.head shouldBe blurb                // content preserved
+    // Interned: the two slots reference ONE object, not two byte-identical copies.
+    (synopses(0) eq synopses(1)) shouldBe true
+  }
+
   it should "NOT re-write the row when a re-scrape returns the same showings in a different order" in {
     val repository = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository)

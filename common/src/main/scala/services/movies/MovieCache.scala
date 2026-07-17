@@ -1194,7 +1194,9 @@ class CaffeineMovieCache(
       // (Bilety24's Kino Piast shipped the "Ojczyzna" synopsis 9× glued together)
       // at the ingestion boundary, so we never store the duplicate — not just hide
       // it at read time. See tools.SynopsisMarkdown.collapseRepeats.
-      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).orElse(priorSlot.flatMap(_.synopsis)),
+      // Intern so a film's N cinema slots carrying the same chain-wide blurb share ONE
+      // String instead of N byte-identical copies (see SynopsisPool).
+      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).map(SynopsisPool.canonical).orElse(priorSlot.flatMap(_.synopsis)),
       // Detail fields (cast/director/runtime/originalTitle/countries/genres) are
       // filled by the deferred EnrichDetails merge; a listing-only cinema's re-scrape
       // carries none of them. Carry the prior slot's values forward when the fresh
