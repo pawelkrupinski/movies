@@ -103,13 +103,22 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
-        // Re-create the activity when the selected country changes: attachBaseContext
-        // re-runs with the new locale, and the ViewModel factory re-wires KinowoApi
-        // at the new base URL. `drop(1)` skips the current value (the initial emission).
+        // Re-create the activity when the selected country changes so attachBaseContext
+        // re-runs with the new locale. `recreate()` alone is NOT enough to re-point the
+        // data layer: like any configuration change it RETAINS the ViewModel (via
+        // `by viewModels()`), so the KinowoApi built in the factory keeps the previous
+        // country's baseUrl — the UI flips to the new language while repertoire requests
+        // still hit the old deployment (a UK city fetched from the PL backend returns an
+        // empty 200, rendering as "no showings"). Clear the ViewModelStore first so the
+        // factory re-runs and re-wires KinowoApi at the new baseUrl.
+        // `drop(1)` skips the current value (the initial emission).
         UserPreferences(applicationContext).selectedCountryCode
             .drop(1)
             .onEach { code ->
-                if (Country.byCode(code).code != country.code) recreate()
+                if (Country.byCode(code).code != country.code) {
+                    viewModelStore.clear()
+                    recreate()
+                }
             }
             .launchIn(lifecycleScope)
         handleAuthDeepLink(intent)
