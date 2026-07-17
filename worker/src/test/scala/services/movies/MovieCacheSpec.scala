@@ -843,20 +843,23 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     secondTick.head._3 shouldBe false
   }
 
-  it should "intern a shared synopsis so a film's cinema slots hold ONE String instance" in {
+  it should "intern shared synopsis/cast/country strings so a film's cinema slots hold ONE instance each" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     val blurb = "A sweeping epic that plays the same at every venue in town."
-    // Both cinemas report the SAME blurb, each as a distinct String instance (a fresh
+    // Both cinemas report the SAME values, each as distinct String instances (a fresh
     // `new String` mirrors two independent scrapes producing byte-identical text).
-    val key = cache.recordCinemaScrape(Multikino,
-      Seq(cinemaMovie("Dune", Multikino, synopsis = Some(new String(blurb))))).head._2
-    cache.recordCinemaScrape(KinoMuranow,
-      Seq(cinemaMovie("Dune", KinoMuranow, synopsis = Some(new String(blurb)))))
-    val synopses = cache.get(key).get.data.values.flatMap(_.synopsis).toSeq
-    synopses should have size 2                 // one slot per cinema
-    synopses.head shouldBe blurb                // content preserved
-    // Interned: the two slots reference ONE object, not two byte-identical copies.
+    def dune(c: Cinema) = cinemaMovie("Dune", c, synopsis = Some(new String(blurb)),
+      cast = Seq(new String("Timothée Chalamet")), countries = Seq(new String("United States")))
+    val key = cache.recordCinemaScrape(Multikino, Seq(dune(Multikino))).head._2
+    cache.recordCinemaScrape(KinoMuranow, Seq(dune(KinoMuranow)))
+    val slots = cache.get(key).get.data.values.toSeq
+    slots should have size 2                     // one slot per cinema
+    val synopses = slots.flatMap(_.synopsis)
+    synopses.head shouldBe blurb                 // content preserved
+    // Interned: the two slots reference ONE object per field, not byte-identical copies.
     (synopses(0) eq synopses(1)) shouldBe true
+    (slots(0).cast.head eq slots(1).cast.head) shouldBe true
+    (slots(0).countries.head eq slots(1).countries.head) shouldBe true
   }
 
   it should "NOT re-write the row when a re-scrape returns the same showings in a different order" in {

@@ -1195,8 +1195,10 @@ class CaffeineMovieCache(
       // at the ingestion boundary, so we never store the duplicate — not just hide
       // it at read time. See tools.SynopsisMarkdown.collapseRepeats.
       // Intern so a film's N cinema slots carrying the same chain-wide blurb share ONE
-      // String instead of N byte-identical copies (see SynopsisPool).
-      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).map(SynopsisPool.canonical).orElse(priorSlot.flatMap(_.synopsis)),
+      // String instead of N byte-identical copies (see StringPool). Same applies to the
+      // cast/director/country/genre fields below — only the FRESH branch needs interning;
+      // the prior-slot carry-forward already holds interned instances.
+      synopsis       = cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats).map(StringPool.canonical).orElse(priorSlot.flatMap(_.synopsis)),
       // Detail fields (cast/director/runtime/originalTitle/countries/genres) are
       // filled by the deferred EnrichDetails merge; a listing-only cinema's re-scrape
       // carries none of them. Carry the prior slot's values forward when the fresh
@@ -1204,15 +1206,15 @@ class CaffeineMovieCache(
       // tick doesn't WIPE the enrichment (which EnrichDetails then re-adds, flapping
       // the row + doubling its change-stream writes). A listing that DOES carry the
       // field still wins, matching FilmDetail.mergeInto's "fill only if empty" rule.
-      cast           = if (cm.cast.nonEmpty) cm.cast.map(TextNormalization.titleCaseIfAllCaps)
+      cast           = if (cm.cast.nonEmpty) StringPool.canonicalAll(cm.cast.map(TextNormalization.titleCaseIfAllCaps))
                        else priorSlot.map(_.cast).getOrElse(Seq.empty),
-      director       = if (cm.director.nonEmpty) cm.director.map(TextNormalization.titleCaseIfAllCaps)
+      director       = if (cm.director.nonEmpty) StringPool.canonicalAll(cm.director.map(TextNormalization.titleCaseIfAllCaps))
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
       runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0).orElse(priorSlot.flatMap(_.runtimeMinutes)),
       releaseYear    = effectiveYear,
-      countries      = { val cs = cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct
+      countries      = { val cs = StringPool.canonicalAll(cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct)
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
-      genres         = if (cm.movie.genres.nonEmpty) cm.movie.genres
+      genres         = if (cm.movie.genres.nonEmpty) StringPool.canonicalAll(cm.movie.genres)
                        else priorSlot.map(_.genres).getOrElse(Seq.empty),
       posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
       filmUrl        = cm.filmUrl,
