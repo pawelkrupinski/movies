@@ -28,6 +28,9 @@ GET     /:city/api/details          controllers.MovieController.apiDetails(city:
 # The city's cinema universe + area grouping (static). Mobile reads this to
 # render the collapsible, per-area cinema filter (empty `areas` for a flat city).
 GET     /:city/api/cinemas          controllers.MovieController.apiCinemas(city: String)
+# Global country + city catalog (unprefixed, country-agnostic). Mobile apps fetch
+# this on each open with If-None-Match; an unchanged catalog answers 304.
+GET     /api/catalog                controllers.CatalogController.catalog()
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 # Top-level, not city-scoped: the debug table is the *global* corpus (every

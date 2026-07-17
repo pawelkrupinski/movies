@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AuthController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
+import controllers.{AdminAction, AuthController, CatalogController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -218,6 +218,9 @@ trait Wiring {
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)
+  // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
+  // identically by every deployment — no per-country/read-model dependency.
+  lazy val catalogController = new CatalogController(controllerComponents)
   lazy val healthController = new HealthController(controllerComponents)
   lazy val wellKnownController = new WellKnownController(controllerComponents)
   // Exposes the in-app /uptime health (Mongo `uptimeBuckets`) as Prometheus
