@@ -267,6 +267,34 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     FilmCanonicalizer.groupByFilm(rows) should have size 1
   }
 
+  it should "fold prefix- and suffix-decorated unresolved editions onto their base via the token-run edge" in {
+    // The token-run edge folds an UNRESOLVED decorated edition onto its resolved base
+    // when the base tokens are a PREFIX or SUFFIX run of the edition — a decoration no
+    // rule strips, so neither the search-title nor tmdbId edge applies; only the
+    // token-run edge can fold. Exercises BOTH the first-token (prefix) and last-token
+    // (suffix) index buckets the O(n²)→indexed rewrite introduced.
+    val rows = Seq(
+      resolved("Fight Club", tmdbId = 550, tmdbYear = 1999, cinema = Helios),
+      unresolved("Fight Club Maraton Grozy", None, cinema = Multikino),   // base is a PREFIX run
+      unresolved("Nocny Pokaz Fight Club", None, cinema = Kinoteka)       // base is a SUFFIX run
+    )
+    FilmCanonicalizer.groupByFilm(rows) should have size 1
+  }
+
+  it should "REFUSE a token-run fold when the edition edge-matches two DIFFERENT resolved films (ambiguous)" in {
+    // "Alfa Beta Gamma" starts with base A ("Alfa Beta", tmdb 1) and ends with base B
+    // ("Beta Gamma", tmdb 2) — two distinct tmdbIds, so it attaches to NEITHER. It can
+    // only interact with the bases via the token-run edge (no shared sanitize / tmdbId /
+    // search title), so this directly guards the indexed candidate-gathering + the
+    // distinct-tmdbId ambiguity refusal.
+    val rows = Seq(
+      resolved("Alfa Beta", tmdbId = 1, tmdbYear = 2020, cinema = Helios),
+      resolved("Beta Gamma", tmdbId = 2, tmdbYear = 2021, cinema = Multikino),
+      unresolved("Alfa Beta Gamma", None, cinema = Kinoteka)
+    )
+    FilmCanonicalizer.groupByFilm(rows) should have size 3
+  }
+
   it should "fold a programme/decorated edition sharing the base tmdbId into one record" in {
     // "Zaproszenie | Kinoteka dla rodziców" resolves to the base film's tmdbId, so
     // it is the SAME film and folds onto one storage record — even though its key

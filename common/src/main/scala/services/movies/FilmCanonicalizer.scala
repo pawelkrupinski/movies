@@ -305,12 +305,25 @@ object FilmCanonicalizer {
         .filter(i => rows(i)._2.tmdbId.isDefined)
         .flatMap(i => (rows(i)._2.tmdbTitleAliases + rows(i)._1.cleanTitle).iterator.map(titleTokens(_) -> i))
         .toSeq
+    // Index the resolved bases by their FIRST and LAST token so an unresolved row is
+    // only checked against bases that could edge-match it, instead of every base
+    // (this was O(unresolved × resolved) over the whole corpus each settle). A
+    // token-run is `whole.startsWith(base)` (⟹ base.head == whole.head) OR
+    // `whole.endsWith(base)` (⟹ base.last == whole.last), so the union of the two
+    // buckets is a SUPERSET of the real matches and `isTokenRun` still filters
+    // exactly — same result, far fewer comparisons.
+    val nonEmptyBases    = resolvedBaseRuns.filter(_._1.nonEmpty)
+    val basesByFirstToken = nonEmptyBases.groupBy(_._1.head)
+    val basesByLastToken  = nonEmptyBases.groupBy(_._1.last)
     rows.indices
       .filter(j => rows(j)._2.tmdbId.isEmpty)
       .foreach { j =>
-        val whole   = titleTokens(rows(j)._1.cleanTitle)
-        val matched = resolvedBaseRuns.collect { case (base, i) if isTokenRun(base, whole) => i }
-        if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))
+        val whole = titleTokens(rows(j)._1.cleanTitle)
+        if (whole.nonEmpty) {
+          val cands   = (basesByFirstToken.getOrElse(whole.head, Nil) ++ basesByLastToken.getOrElse(whole.last, Nil)).distinct
+          val matched = cands.collect { case (base, i) if isTokenRun(base, whole) => i }
+          if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))
+        }
       }
     rows.indices.groupBy(find).valuesIterator.toSeq
       .map(idxs => idxs.toSeq.sortBy(i => canonicalRank(rows(i)._1)).map(rows))
