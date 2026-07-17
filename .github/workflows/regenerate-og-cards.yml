@@ -27,10 +27,11 @@ on:
     # Manual trigger for an on-demand refresh.
     workflow_dispatch:
 
-    # Friday 00:01 UTC. GitHub cron is UTC-only and can't follow DST, so this is
-    # ~02:01 Warsaw in summer / 01:01 in winter — early Friday morning either way.
+    # Friday 00:00 UTC (midnight). GitHub cron is UTC-only and can't follow DST,
+    # so this is ~02:00 Warsaw in summer / 01:00 in winter — early Friday morning
+    # either way.
     schedule:
-        - cron: '1 0 * * 5'
+        - cron: '0 0 * * 5'
 
 # Author/commit the regenerated cards into the PR branch.
 permissions:
