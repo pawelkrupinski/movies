@@ -86,6 +86,7 @@ import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.TopBarLayout
 import pl.kinowo.ui.common.LocalCinemaHeaderStyle
+import pl.kinowo.ui.common.labelText
 import pl.kinowo.ui.common.PosterGridMetrics
 import pl.kinowo.ui.common.PosterPrefetch
 import pl.kinowo.ui.common.viewportWidthDp
@@ -159,12 +160,13 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     // swipes don't leave a stale label stuck. Skips the very first composition
     // (no swipe happened — just don't flash on arrival).
     var seenFirstDay by remember { mutableStateOf(false) }
+    val dateLabel = viewModel.dateFilter.labelText()
     LaunchedEffect(viewModel.dateFilter) {
         if (!seenFirstDay) {
             seenFirstDay = true
             return@LaunchedEffect
         }
-        tabLabel = viewModel.dateFilter.label
+        tabLabel = dateLabel
         delay(700)
         tabLabel = null
     }
@@ -371,7 +373,7 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
                 modifier = Modifier.size(34.dp),
             )
             Text(
-                "Przesuń, aby zmienić dzień",
+                stringResource(R.string.swipe_change_day),
                 color = Color.White,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
@@ -461,7 +463,7 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
     Spacer(Modifier.width(if (compact) 8.dp else 10.dp))
     Box(Modifier.weight(1f)) {
         if (value.isEmpty()) {
-            Text("Szukaj filmu", color = TextSecondary, fontSize = textStyle.fontSize)
+            Text(stringResource(R.string.search_films), color = TextSecondary, fontSize = textStyle.fontSize)
         }
         BasicTextField(
             value = value,
@@ -477,7 +479,7 @@ private fun RowScope.SearchFieldContent(value: String, onValueChange: (String) -
         Spacer(Modifier.width(8.dp))
         Icon(
             Icons.Filled.Close,
-            contentDescription = "Wyczyść",
+            contentDescription = stringResource(R.string.clear),
             tint = TextSecondary,
             modifier = Modifier.size(iconSize).clickable { onValueChange("") },
         )
@@ -520,7 +522,7 @@ internal fun DateBar(
         IconButton(onClick = onOpenFilters) {
             Icon(
                 Icons.Outlined.FilterList,
-                contentDescription = "Filtry",
+                contentDescription = stringResource(R.string.filters),
                 tint = if (filtersActive) Brand else TextSecondary,
             )
         }
@@ -542,7 +544,7 @@ private fun RowScope.DatePills(wide: Boolean, highlighted: DateFilter, onSelect:
     for (preset in DateFilter.presets) {
         val fills = TopBarLayout.datePillFillsRow(preset == DateFilter.Anytime, wide)
         DatePill(
-            label = preset.label,
+            label = preset.labelText(),
             selected = highlighted == preset,
             wide = wide,
             modifier = if (fills) Modifier.weight(1f) else Modifier,
@@ -666,7 +668,7 @@ internal fun FilmsGrid(
         // fillMaxSize() has no width box and its placement leaks from the
         // neighbour columns' content — jamming the message against the screen
         // edge on days whose neighbour is full.
-        EmptyState("Brak repertuaru.", modifier)
+        EmptyState(stringResource(R.string.no_showings), modifier)
         return
     }
     // Grid items map 1:1 to films, so the URL list lines up with item indices.

@@ -33,4 +33,72 @@
     <string name="areapicker_title">Choose your areas</string>
     <string name="areapicker_subtitle">Show cinemas only in the areas you pick. You can change this anytime.</string>
     <string name="areapicker_confirm">Show listings</string>
+
+    <!-- Generic actions / chrome -->
+    <string name="filters">Filters</string>
+    <string name="back">Back</string>
+    <string name="close">Close</string>
+    <string name="share">Share</string>
+    <string name="copy_link">Copy link</string>
+    <string name="link_copied">Link copied</string>
+    <string name="hide_film">Hide film</string>
+    <string name="all">All</string>
+    <string name="search_films">Search films</string>
+
+    <!-- List screen -->
+    <string name="swipe_change_day">Swipe to change day</string>
+    <string name="no_showings">No showings.</string>
+
+    <!-- Film detail -->
+    <string name="film_not_found">Film not found.</string>
+    <string name="meta_synopsis">Synopsis</string>
+    <string name="meta_director">Director</string>
+    <string name="meta_cast">Cast</string>
+    <string name="meta_countries">Countries</string>
+    <string name="showings_header">Showings</string>
+    <string name="trailers">Trailers</string>
+    <string name="trailer_number">Trailer %1$d</string>
+
+    <!-- Filters sheet -->
+    <string name="sort">Sort</string>
+    <string name="filter_country">Country</string>
+    <string name="filter_genre">Genre</string>
+    <string name="filter_dimension">Dimension</string>
+    <string name="filter_version">Version</string>
+    <string name="version_subtitles">Subtitles</string>
+    <string name="version_dubbing">Dubbing</string>
+    <string name="imax_only">IMAX only</string>
+    <string name="from_time">From time</string>
+    <string name="any">Any</string>
+    <string name="filter_city">City</string>
+    <string name="hidden_films">Hidden films</string>
+    <string name="show">Show</string>
+    <string name="show_all">Show all</string>
+
+    <!-- Account section -->
+    <string name="account">Account</string>
+    <string name="sign_out">Sign out</string>
+    <string name="delete_account">Delete account</string>
+    <string name="sign_in">Sign in</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="sign_in_facebook">Sign in with Facebook</string>
+
+    <!-- Date filter pills -->
+    <string name="date_today">Today</string>
+    <string name="date_tomorrow">Tomorrow</string>
+    <string name="date_week">7 days</string>
+
+    <!-- Sort options -->
+    <string name="sort_earliest">Soonest showing</string>
+    <string name="sort_rating">Rating</string>
+
+    <!-- Counts -->
+    <plurals name="showings_more">
+        <item quantity="one">+%1$d showing</item>
+        <item quantity="other">+%1$d showings</item>
+    </plurals>
+    <plurals name="hidden_count">
+        <item quantity="one">%1$d hidden</item>
+        <item quantity="other">%1$d hidden</item>
+    </plurals>
 </resources>

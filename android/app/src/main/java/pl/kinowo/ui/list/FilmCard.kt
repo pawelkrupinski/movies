@@ -31,9 +31,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import pl.kinowo.R
 import pl.kinowo.model.Film
 import pl.kinowo.ui.common.LocalCardSpacingStyle
 import pl.kinowo.ui.common.LocalCitySlug
@@ -131,7 +133,7 @@ fun FilmCard(
                 ) {
                     Icon(
                         Icons.Filled.Close,
-                        contentDescription = "Ukryj film",
+                        contentDescription = stringResource(R.string.hide_film),
                         tint = Color.White,
                         modifier = Modifier.size((16 * scale).dp),
                     )
@@ -187,12 +189,12 @@ private fun ShareMenu(
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
-            text = { Text("Udostępnij") },
+            text = { Text(stringResource(R.string.share)) },
             leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
             onClick = { onDismiss(); onShare() },
         )
         DropdownMenuItem(
-            text = { Text("Skopiuj link") },
+            text = { Text(stringResource(R.string.copy_link)) },
             leadingIcon = { Icon(Icons.Filled.Link, contentDescription = null) },
             onClick = { onDismiss(); onCopy() },
         )

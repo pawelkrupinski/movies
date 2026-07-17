@@ -33,4 +33,76 @@
     <string name="areapicker_title">Wybierz okolice</string>
     <string name="areapicker_subtitle">Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić.</string>
     <string name="areapicker_confirm">Pokaż repertuar</string>
+
+    <!-- Generic actions / chrome -->
+    <string name="filters">Filtry</string>
+    <string name="back">Wstecz</string>
+    <string name="close">Zamknij</string>
+    <string name="share">Udostępnij</string>
+    <string name="copy_link">Skopiuj link</string>
+    <string name="link_copied">Skopiowano link</string>
+    <string name="hide_film">Ukryj film</string>
+    <string name="all">Wszystkie</string>
+    <string name="search_films">Szukaj filmu</string>
+
+    <!-- List screen -->
+    <string name="swipe_change_day">Przesuń, aby zmienić dzień</string>
+    <string name="no_showings">Brak repertuaru.</string>
+
+    <!-- Film detail -->
+    <string name="film_not_found">Nie znaleziono filmu.</string>
+    <string name="meta_synopsis">Opis</string>
+    <string name="meta_director">Reżyseria</string>
+    <string name="meta_cast">Obsada</string>
+    <string name="meta_countries">Kraj(e) produkcji</string>
+    <string name="showings_header">Seanse</string>
+    <string name="trailers">Zwiastuny</string>
+    <string name="trailer_number">Zwiastun %1$d</string>
+
+    <!-- Filters sheet -->
+    <string name="sort">Sortuj</string>
+    <string name="filter_country">Kraj produkcji</string>
+    <string name="filter_genre">Gatunek</string>
+    <string name="filter_dimension">Wymiar</string>
+    <string name="filter_version">Wersja</string>
+    <string name="version_subtitles">Napisy</string>
+    <string name="version_dubbing">Dubbing</string>
+    <string name="imax_only">Tylko IMAX</string>
+    <string name="from_time">Od godziny</string>
+    <string name="any">Dowolna</string>
+    <string name="filter_city">Miasto</string>
+    <string name="hidden_films">Ukryte filmy</string>
+    <string name="show">Pokaż</string>
+    <string name="show_all">Pokaż wszystkie</string>
+
+    <!-- Account section -->
+    <string name="account">Konto</string>
+    <string name="sign_out">Wyloguj</string>
+    <string name="delete_account">Usuń konto</string>
+    <string name="sign_in">Zaloguj się</string>
+    <string name="sign_in_google">Zaloguj przez Google</string>
+    <string name="sign_in_facebook">Zaloguj przez Facebook</string>
+
+    <!-- Date filter pills -->
+    <string name="date_today">Dziś</string>
+    <string name="date_tomorrow">Jutro</string>
+    <string name="date_week">7 dni</string>
+
+    <!-- Sort options -->
+    <string name="sort_earliest">Najbliższy seans</string>
+    <string name="sort_rating">Ocena</string>
+
+    <!-- Counts (Polish plural: 1 / 2–4 / 5+) -->
+    <plurals name="showings_more">
+        <item quantity="one">+%1$d seans</item>
+        <item quantity="few">+%1$d seanse</item>
+        <item quantity="many">+%1$d seansów</item>
+        <item quantity="other">+%1$d seansów</item>
+    </plurals>
+    <plurals name="hidden_count">
+        <item quantity="one">%1$d ukryty</item>
+        <item quantity="few">%1$d ukryte</item>
+        <item quantity="many">%1$d ukrytych</item>
+        <item quantity="other">%1$d ukrytych</item>
+    </plurals>
 </resources>

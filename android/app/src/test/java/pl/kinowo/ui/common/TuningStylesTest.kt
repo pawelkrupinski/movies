@@ -45,7 +45,7 @@ import pl.kinowo.ui.theme.KinowoTheme
  * `./gradlew app:testDebugUnitTest` — no emulator. Sibling of [CardSpacingStyleTest].
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "xhdpi")
+@Config(sdk = [34], qualifiers = "pl-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class TuningStylesTest {
 

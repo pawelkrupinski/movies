@@ -32,11 +32,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import pl.kinowo.R
 
 /** testTag the UI/unit tests use to find the open viewer. */
 const val FullScreenPosterTag = "fullScreenPoster"
@@ -149,7 +151,7 @@ fun FullScreenPoster(
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
             ) {
-                Icon(Icons.Filled.Close, contentDescription = "Zamknij", tint = Color.White)
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close), tint = Color.White)
             }
         }
     }

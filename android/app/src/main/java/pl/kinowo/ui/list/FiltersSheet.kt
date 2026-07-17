@@ -64,6 +64,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -97,6 +98,7 @@ import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.NameCount
+import pl.kinowo.ui.common.labelText
 import pl.kinowo.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -164,6 +166,10 @@ private fun FiltersList(
     val allGenres = remember(films) { viewModel.allGenres(films) }
     val allDirectors = remember(films) { viewModel.allDirectors(films) }
     val allCast = remember(films) { viewModel.allCast(films) }
+    val countryTitle = stringResource(R.string.filter_country)
+    val genreTitle = stringResource(R.string.filter_genre)
+    val directorTitle = stringResource(R.string.meta_director)
+    val castTitle = stringResource(R.string.meta_cast)
 
     // Drag-to-close must only fire when the gesture STARTS with the list already
     // at the top. Otherwise a downward swipe to scroll back up — which rolls the
@@ -191,17 +197,17 @@ private fun FiltersList(
     ) {
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Filtry", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.clearFilters(); onClose() }) { Text("Wyczyść") }
+                    Text(stringResource(R.string.filters), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { viewModel.clearFilters(); onClose() }) { Text(stringResource(R.string.clear)) }
                 }
             }
 
             // Sortuj — view-ordering axis above the content filters, mirroring
             // the web "Sortuj" dropdown.
             item(key = "sec_sort") {
-                FilterSectionLabel("Sortuj")
+                FilterSectionLabel(stringResource(R.string.sort))
                 SegmentedChoice(
-                    options = SortOption.entries.map { it.label to it },
+                    options = SortOption.entries.map { it.labelText() to it },
                     selected = viewModel.sortBy,
                 ) { viewModel.sortBy = it }
             }
@@ -225,36 +231,36 @@ private fun FiltersList(
             item(key = "sec_cinemas") { CinemasSection(viewModel, films) }
 
             // Kraj / Gatunek / Reżyseria / Obsada (excluded sets)
-            collapsibleNameFilter(this, "Kraj produkcji", allCountries, viewModel.excludedCountries) { viewModel.excludedCountries = it }
-            collapsibleNameFilter(this, "Gatunek", allGenres, viewModel.excludedGenres) { viewModel.excludedGenres = it }
-            collapsibleNameFilter(this, "Reżyseria", allDirectors, viewModel.excludedDirectors) { viewModel.excludedDirectors = it }
-            collapsibleNameFilter(this, "Obsada", allCast, viewModel.excludedCast) { viewModel.excludedCast = it }
+            collapsibleNameFilter(this, countryTitle, allCountries, viewModel.excludedCountries) { viewModel.excludedCountries = it }
+            collapsibleNameFilter(this, genreTitle, allGenres, viewModel.excludedGenres) { viewModel.excludedGenres = it }
+            collapsibleNameFilter(this, directorTitle, allDirectors, viewModel.excludedDirectors) { viewModel.excludedDirectors = it }
+            collapsibleNameFilter(this, castTitle, allCast, viewModel.excludedCast) { viewModel.excludedCast = it }
 
             // Wymiar
             item {
-                FilterSectionLabel("Wymiar")
+                FilterSectionLabel(stringResource(R.string.filter_dimension))
                 SegmentedChoice(
-                    options = listOf("Wszystkie" to "", "2D" to "2D", "3D" to "3D"),
+                    options = listOf(stringResource(R.string.all) to "", "2D" to "2D", "3D" to "3D"),
                     selected = viewModel.formatFilter.dimension,
                 ) { viewModel.formatFilter = viewModel.formatFilter.copy(dimension = it) }
             }
             // Wersja
             item {
-                FilterSectionLabel("Wersja")
+                FilterSectionLabel(stringResource(R.string.filter_version))
                 SegmentedChoice(
-                    options = listOf("Wszystkie" to "", "Napisy" to "NAP", "Dubbing" to "DUB"),
+                    options = listOf(stringResource(R.string.all) to "", stringResource(R.string.version_subtitles) to "NAP", stringResource(R.string.version_dubbing) to "DUB"),
                     selected = viewModel.formatFilter.language,
                 ) { viewModel.formatFilter = viewModel.formatFilter.copy(language = it) }
             }
             // IMAX
             item {
-                ToggleRow("Tylko IMAX", viewModel.formatFilter.imax) {
+                ToggleRow(stringResource(R.string.imax_only), viewModel.formatFilter.imax) {
                     viewModel.formatFilter = viewModel.formatFilter.copy(imax = it)
                 }
             }
             // Od godziny
             item {
-                FilterSectionLabel("Od godziny")
+                FilterSectionLabel(stringResource(R.string.from_time))
                 FromHourRow(viewModel.formatFilter) { viewModel.formatFilter = it }
             }
 
@@ -290,7 +296,7 @@ private fun AccountSection(viewModel: KinowoViewModel) {
 
     Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         if (signedIn != null) {
-            Text("Konto", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+            Text(stringResource(R.string.account), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
             Text(
                 signedIn.displayName ?: signedIn.email ?: signedIn.provider,
                 fontSize = 14.sp,
@@ -302,22 +308,22 @@ private fun AccountSection(viewModel: KinowoViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OutlinedButton(onClick = { viewModel.signOut() }, modifier = Modifier.weight(1f)) {
-                    Text("Wyloguj")
+                    Text(stringResource(R.string.sign_out))
                 }
                 TextButton(onClick = { viewModel.deleteAccount() }) {
-                    Text("Usuń konto", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete_account), color = MaterialTheme.colorScheme.error)
                 }
             }
         } else {
-            Text("Zaloguj się", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
+            Text(stringResource(R.string.sign_in), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 4.dp))
             Button(
                 onClick = { viewModel.signInWithGoogle(context) },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Zaloguj przez Google") }
+            ) { Text(stringResource(R.string.sign_in_google)) }
             Button(
                 onClick = { viewModel.signInWithFacebook(context) },
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-            ) { Text("Zaloguj przez Facebook") }
+            ) { Text(stringResource(R.string.sign_in_facebook)) }
         }
     }
 }
@@ -338,7 +344,7 @@ private fun collapsibleNameFilter(
 ) {
     if (entries.isEmpty()) return
     scope.item(key = "sec_$title") {
-        CollapsibleSection(title, if (excluded.isNotEmpty()) "${excluded.size} ukrytych" else null) {
+        CollapsibleSection(title, if (excluded.isNotEmpty()) pluralStringResource(R.plurals.hidden_count, excluded.size, excluded.size) else null) {
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 280.dp)) {
                 items(entries, key = { "${title}_${it.name}" }) { nc ->
                     CheckRow(
@@ -562,7 +568,7 @@ private fun CitySection(viewModel: KinowoViewModel) {
     val current = cities.firstOrNull { it.slug == selected }
         ?: catalog.cities.defaultCity(countryCode) ?: Cities.DEFAULT
     var expanded by remember { mutableStateOf(false) }
-    FilterSectionLabel("Miasto")
+    FilterSectionLabel(stringResource(R.string.filter_city))
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = it },
@@ -602,7 +608,7 @@ private fun HiddenFilmsRow(count: Int, onClick: () -> Unit) {
         Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Ukryte filmy", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text(stringResource(R.string.hidden_films), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         Text("$count", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
     }
@@ -633,21 +639,21 @@ private fun HiddenFilmsCard(viewModel: KinowoViewModel, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 16.dp)) {
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wstecz")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
             }
-            Text("Ukryte filmy", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.hidden_films), fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         HiddenFilmsSearchField(query) { query = it }
         LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
             items(titles, key = { "hid_$it" }) { title ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.unhide(title) }) { Text("Pokaż") }
+                    TextButton(onClick = { viewModel.unhide(title) }) { Text(stringResource(R.string.show)) }
                 }
             }
             item(key = "hid_unhide_all") {
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { viewModel.unhideAll() }) { Text("Pokaż wszystkie") }
+                    TextButton(onClick = { viewModel.unhideAll() }) { Text(stringResource(R.string.show_all)) }
                 }
             }
         }
@@ -666,13 +672,13 @@ private fun HiddenFilmsSearchField(query: String, onChange: (String) -> Unit) {
         value = query,
         onValueChange = onChange,
         singleLine = true,
-        placeholder = { Text("Szukaj filmu") },
+        placeholder = { Text(stringResource(R.string.search_films)) },
         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 Icon(
                     Icons.Filled.Close,
-                    contentDescription = "Wyczyść",
+                    contentDescription = stringResource(R.string.clear),
                     modifier = Modifier.clickable { onChange("") },
                 )
             }
@@ -732,10 +738,10 @@ private fun FromHourRow(filter: FormatFilter, onChange: (FormatFilter) -> Unit) 
     var minExpanded by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Dropdown(
-            label = if (filter.fromHour < 0) "Dowolna" else "%02d".format(filter.fromHour),
+            label = if (filter.fromHour < 0) stringResource(R.string.any) else "%02d".format(filter.fromHour),
             expanded = hourExpanded,
             onExpandedChange = { hourExpanded = it },
-            items = hours.map { (if (it < 0) "Dowolna" else "%02d".format(it)) to it },
+            items = hours.map { (if (it < 0) stringResource(R.string.any) else "%02d".format(it)) to it },
             modifier = Modifier.weight(1f),
         ) { onChange(filter.copy(fromHour = it, fromMinute = if (it < 0) 0 else filter.fromMinute)); hourExpanded = false }
         if (filter.fromHour >= 0) {

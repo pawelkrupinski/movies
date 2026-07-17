@@ -48,7 +48,7 @@ import pl.kinowo.filter.DateFilter
  * mdpi (density 1) keeps 1 px == 1 dp, so the pixel tolerances below read as dp.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34], qualifiers = "w1280dp-h800dp")
+@Config(sdk = [34], qualifiers = "pl-w1280dp-h800dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class DayPillFitTest {
 
@@ -87,6 +87,17 @@ class DayPillFitTest {
     private fun isClipped(label: String): Boolean {
         val layout = layoutOf(label)
         return layout.size.width + 0.5f < layout.multiParagraph.maxIntrinsicWidth
+    }
+
+    /** The on-screen pill text for a preset under Robolectric's default
+     *  (Polish) resources. The pills resolve their label per-locale via
+     *  `labelText()`, so the default-locale render still shows these. */
+    private fun DateFilter.testLabel(): String = when (this) {
+        DateFilter.Today -> "Dziś"
+        DateFilter.Tomorrow -> "Jutro"
+        DateFilter.Week -> "7 dni"
+        DateFilter.Anytime -> "Wszystkie"
+        else -> error("unexpected preset $this")
     }
 
     @Test
@@ -137,14 +148,14 @@ class DayPillFitTest {
         compose.setContent { BarAtWidth(360) }
         for (preset in DateFilter.presets) {
             assertTrue(
-                "Date pill '${preset.label}' is horizontally clipped at 360dp " +
-                    "(laid-out ${layoutOf(preset.label).size.width}px < " +
-                    "intrinsic ${layoutOf(preset.label).multiParagraph.maxIntrinsicWidth}px)",
-                !isClipped(preset.label),
+                "Date pill '${preset.testLabel()}' is horizontally clipped at 360dp " +
+                    "(laid-out ${layoutOf(preset.testLabel()).size.width}px < " +
+                    "intrinsic ${layoutOf(preset.testLabel()).multiParagraph.maxIntrinsicWidth}px)",
+                !isClipped(preset.testLabel()),
             )
             assertEquals(
-                "Date pill '${preset.label}' wrapped onto 2 lines at 360dp",
-                1, layoutOf(preset.label).lineCount,
+                "Date pill '${preset.testLabel()}' wrapped onto 2 lines at 360dp",
+                1, layoutOf(preset.testLabel()).lineCount,
             )
         }
     }
@@ -158,7 +169,7 @@ class DayPillFitTest {
         compose.setContent { BarAtWidth(120) }
         assertTrue(
             "expected at least one date label to clip in a 120dp bar",
-            DateFilter.presets.any { isClipped(it.label) },
+            DateFilter.presets.any { isClipped(it.testLabel()) },
         )
     }
 }

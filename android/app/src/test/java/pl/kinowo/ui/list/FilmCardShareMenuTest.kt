@@ -32,7 +32,7 @@ import pl.kinowo.ui.common.filmShareUrl
  * plain tap anywhere still opens the detail screen and shows no menu.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "pl")
 class FilmCardShareMenuTest {
 
     @get:Rule

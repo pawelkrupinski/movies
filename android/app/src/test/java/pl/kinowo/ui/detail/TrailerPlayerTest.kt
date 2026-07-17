@@ -38,7 +38,7 @@ import pl.kinowo.model.FilmDetails
  * top-level `loadUrl` navigation.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "pl")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class TrailerPlayerTest {
 

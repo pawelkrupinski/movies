@@ -43,7 +43,7 @@ import pl.kinowo.ui.KinowoViewModel
  * sheet.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "pl")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FiltersSheetOrderTest {
 
@@ -82,6 +82,33 @@ class FiltersSheetOrderTest {
 
         assertTrue("Sortuj must sit above the Ukryte filmy row",
             top("Sortuj") < top("Ukryte filmy"))
+    }
+
+    /**
+     * Under the UK "en" resources the sheet must render fully in English — the
+     * chrome that used to be hardcoded Polish (header, Sortuj, the account
+     * section) now reads from string resources. Fails before that i18n pass:
+     * the literals rendered "Filtry" / "Sortuj" / "Zaloguj się" regardless of
+     * locale. Guards against a hardcoded Polish literal creeping back in.
+     */
+    @Test
+    @Config(qualifiers = "en")
+    fun rendersEnglishUnderUkLocale() {
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = emptyList())
+        }
+
+        // Top-of-sheet chrome is in English…
+        compose.onNodeWithText("Filters").assertIsDisplayed()
+        compose.onNodeWithText("Sort").assertIsDisplayed()
+        // …the account section (further down the list) too.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Sign in"))
+        compose.onNodeWithText("Sign in").assertIsDisplayed()
+
+        // …and the Polish originals are gone.
+        compose.onNodeWithText("Filtry").assertDoesNotExist()
+        compose.onNodeWithText("Sortuj").assertDoesNotExist()
+        compose.onNodeWithText("Zaloguj się").assertDoesNotExist()
     }
 
     /**

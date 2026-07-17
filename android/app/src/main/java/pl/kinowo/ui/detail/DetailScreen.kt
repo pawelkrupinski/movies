@@ -48,11 +48,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import pl.kinowo.R
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.ui.common.FullScreenPoster
@@ -85,7 +87,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                 title = { Text(film?.title ?: "", maxLines = 1, fontSize = 18.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wstecz")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -94,7 +96,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                     if (film != null) {
                         val context = LocalContext.current
                         IconButton(onClick = { shareFilm(context, citySlug, film.title) }) {
-                            Icon(Icons.Filled.Share, contentDescription = "Udostępnij")
+                            Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
                         }
                     }
                 },
@@ -104,7 +106,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
     ) { padding ->
         if (film == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Nie znaleziono filmu.", color = TextSecondary)
+                Text(stringResource(R.string.film_not_found), color = TextSecondary)
             }
             return@Scaffold
         }
@@ -176,10 +178,10 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
 
             // Meta blocks. Synopsis comes from the parallel /api/details fetch;
             // director/cast are already on the listing Film.
-            MetaBlock("Opis", details?.synopsis, markdown = true)
-            MetaBlock("Reżyseria", film.directors.joinToString(", ").ifEmpty { null })
-            MetaBlock("Obsada", film.cast.joinToString(", ").ifEmpty { null })
-            MetaBlock("Kraj(e) produkcji", film.countries.joinToString(", ").ifEmpty { null })
+            MetaBlock(stringResource(R.string.meta_synopsis), details?.synopsis, markdown = true)
+            MetaBlock(stringResource(R.string.meta_director), film.directors.joinToString(", ").ifEmpty { null })
+            MetaBlock(stringResource(R.string.meta_cast), film.cast.joinToString(", ").ifEmpty { null })
+            MetaBlock(stringResource(R.string.meta_countries), film.countries.joinToString(", ").ifEmpty { null })
 
             // Trailers (from /api/details).
             val trailers = details?.trailerURLs.orEmpty()
@@ -190,7 +192,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
             // Seanse (full).
             if (film.showings.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Seanse", fontSize = style.showingsHeaderFontSize, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    Text(stringResource(R.string.showings_header), fontSize = style.showingsHeaderFontSize, fontWeight = FontWeight.SemiBold, color = Color.White)
                     Showings(film = film, showCinemaHeaders = true, maxChips = null)
                 }
             }
@@ -233,12 +235,12 @@ private fun TrailerSection(trailers: List<String>) {
     // gesture that makes the embed's autoplay reliable.)
     var selected by remember(trailers) { mutableStateOf<Int?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Zwiastuny", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.trailers), color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             trailers.forEachIndexed { i, _ ->
                 val active = i == selected
                 Text(
-                    "Zwiastun ${i + 1}",
+                    stringResource(R.string.trailer_number, i + 1),
                     color = if (active) Color.Black else CinemaBlue,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,

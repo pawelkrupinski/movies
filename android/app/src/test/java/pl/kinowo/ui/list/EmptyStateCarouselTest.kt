@@ -42,7 +42,7 @@ import pl.kinowo.filter.DateFilter
  * state fills only its own column and centres within it.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "pl")
 class EmptyStateCarouselTest {
 
     @get:Rule

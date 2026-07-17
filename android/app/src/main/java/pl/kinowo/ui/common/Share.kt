@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.runtime.compositionLocalOf
+import pl.kinowo.R
 import java.net.URLEncoder
 
 /**
@@ -51,6 +52,6 @@ fun copyFilmLink(context: Context, citySlug: String, title: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText(title, filmShareUrl(citySlug, title)))
     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
-        Toast.makeText(context, "Skopiowano link", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.link_copied), Toast.LENGTH_SHORT).show()
     }
 }

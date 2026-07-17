@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import pl.kinowo.R
 import pl.kinowo.filter.FormatTokenFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.theme.CinemaBlue
@@ -189,7 +191,7 @@ fun Showings(
         val hidden = total - shown
         if (hidden > 0) {
             Text(
-                text = "+$hidden ${seansForm(hidden)}",
+                text = pluralStringResource(R.plurals.showings_more, hidden, hidden),
                 color = TextSecondary,
                 fontSize = (11 * scale).sp,
                 fontWeight = FontWeight.Medium,
@@ -320,15 +322,4 @@ private class RoomTooltipPositionProvider(private val gapPx: Int) : PopupPositio
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ): IntOffset = roomTooltipPopupOffset(anchorBounds, popupContentSize, gapPx, windowSize.width)
-}
-
-/** Polish plural: 1 seans, 2–4 seanse, else seansów. */
-private fun seansForm(count: Int): String {
-    val mod10 = count % 10
-    val mod100 = count % 100
-    return when {
-        count == 1 -> "seans"
-        mod10 in 2..4 && mod100 !in 12..14 -> "seanse"
-        else -> "seansów"
-    }
 }

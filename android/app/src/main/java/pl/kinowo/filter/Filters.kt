@@ -28,18 +28,21 @@ private val WARSAW_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("y
  * intermittently leaving the default filter behaving as a different option than
  * `Today`. Enum constants initialise eagerly in one well-defined static block
  * with no cycle, so `Kind.TODAY` is always the same value. The public API
- * (`DateFilter.Today`, `.Anytime`, `.Specific(...)`, `.presets`, `.label`,
- * `.matches`) is unchanged.
+ * (`DateFilter.Today`, `.Anytime`, `.Specific(...)`, `.presets`, `.matches`)
+ * is unchanged.
+ *
+ * The user-facing label is NOT a field here — the domain stays free of
+ * Android string resources. It's resolved per-locale at the composable call
+ * site by `DateFilter.labelText()` (see `ui/common/FilterLabels.kt`).
  */
 sealed interface DateFilter {
-    val label: String
     fun matches(date: String, now: Instant = Instant.now()): Boolean
 
-    enum class Kind(override val label: String) : DateFilter {
-        TODAY("Dziś"),
-        TOMORROW("Jutro"),
-        WEEK("7 dni"),
-        ANYTIME("Wszystkie");
+    enum class Kind : DateFilter {
+        TODAY,
+        TOMORROW,
+        WEEK,
+        ANYTIME;
 
         override fun matches(date: String, now: Instant): Boolean {
             val todayDate = LocalDate.ofInstant(now, WARSAW)
@@ -57,7 +60,6 @@ sealed interface DateFilter {
     }
 
     data class Specific(val date: String) : DateFilter {
-        override val label: String get() = date
         override fun matches(date: String, now: Instant): Boolean = date == this.date
     }
 
@@ -78,10 +80,14 @@ sealed interface DateFilter {
  * (`public/js/shared.js` `compareCards`): nearest upcoming showing first
  * (default), or highest weighted rating first. Both tie-break to the earliest
  * showing and then to input order (the sort is stable), as on the web.
+ *
+ * The per-locale label is resolved at the composable call site by
+ * `SortOption.labelText()` (see `ui/common/FilterLabels.kt`), so the domain
+ * enum carries no Android string resources.
  */
-enum class SortOption(val label: String) {
-    EARLIEST("Najbliższy seans"),
-    RATING("Ocena");
+enum class SortOption {
+    EARLIEST,
+    RATING;
 
     companion object {
         val DEFAULT = EARLIEST

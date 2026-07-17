@@ -69,7 +69,11 @@ class DateFilterTest {
         val presets = DateFilter.presets
         assertEquals(4, presets.size)
         assertTrue("no preset may be null", presets.none { @Suppress("SENSELESS_COMPARISON") (it == null) })
-        assertEquals(listOf("Dziś", "Jutro", "7 dni", "Wszystkie"), presets.map { it.label })
+        // Narrow → broad order (labels now resolve per-locale via labelText()).
+        assertEquals(
+            listOf(DateFilter.Today, DateFilter.Tomorrow, DateFilter.Week, DateFilter.Anytime),
+            presets,
+        )
     }
 
     @Test
