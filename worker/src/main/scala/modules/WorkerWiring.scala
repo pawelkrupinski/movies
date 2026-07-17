@@ -429,7 +429,7 @@ class WorkerWiring(
   // After a merge changes an enrichment's input fields, re-kick that enrichment
   // (per case) as a worker task — clearing its freshness stamp so the tmdbId-keyed
   // dedup doesn't skip the re-fetch. See QueueEnrichmentRetrigger / MergeRetrigger.
-  lazy val enrichmentRetrigger = new QueueEnrichmentRetrigger(taskQueue, freshnessStore)
+  lazy val enrichmentRetrigger = new QueueEnrichmentRetrigger(taskQueue, freshnessStore, country)
 
   // ── Denormalised read model (web_movies + web_screenings) ───────────────────
   // The worker projects every `movies` write into the two read-model collections
