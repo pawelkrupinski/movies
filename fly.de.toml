@@ -1,0 +1,56 @@
+app = 'showtimes-de'
+# Frankfurt — the German deployment runs close to its users. Mongo (fly/mongo)
+# lives in `arn` (Stockholm), so cache rehydrate + the change-stream cross a
+# region (~25-35 ms Frankfurt↔Stockholm); user-facing latency wins over the Mongo
+# colocation the Polish app keeps in `arn` (same trade-off as showtimes-uk/lhr).
+primary_region = 'fra'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  PORT = '9000'
+  # Serve the German repertoire: KINOWO_COUNTRY=de makes this process resolve
+  # `Country.Germany` at boot (German UI/labels, the kinowo_de database, the
+  # German city list), rendering the same `web` binary as the Polish app. The
+  # shared MONGODB_URI secret points at the same cluster; the db name derives to
+  # `kinowo_de` from the country.
+  KINOWO_COUNTRY = 'de'
+  # Same JVM sizing as the Polish/UK web apps. The current DE MovieCache is small
+  # (the 3 hand-authored cities); when the full 158-region roster lands it grows,
+  # so re-check heap then (the Polish app hit a 512 MB OOM — see fly.toml).
+  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=64m'
+
+[http_service]
+  internal_port = 9000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.tls_options]
+    alpn = ['h2', 'http/1.1']
+
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 50
+    soft_limit = 25
+
+[[vm]]
+  memory = '1024mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[checks]
+  [checks.health]
+    grace_period = '30s'
+    interval = '15s'
+    method = 'GET'
+    path = '/health'
+    port = 9000
+    timeout = '10s'
+    type = 'http'
+
+[[metrics]]
+  port = 9000
+  path = '/metrics'

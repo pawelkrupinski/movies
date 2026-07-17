@@ -1,0 +1,100 @@
+# German message bundle. Selected when the deployment's country language is
+# German (KINOWO_COUNTRY=de → Country.Germany, de-DE). Mirrors messages.en's keys.
+
+# ── Navbar / filters ────────────────────────────────────────────────────────
+nav.filters=Filter
+nav.hiddenFilms=Ausgeblendete Filme
+nav.sort=Sortieren
+sort.earliest=Nächste Vorstellung
+sort.rating=Bewertung
+nav.cinemas=Kinos
+nav.allCinemas=Alle Kinos
+nav.country=Land
+areaPicker.title=Wähle deine Regionen
+areaPicker.subtitle=Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit in den Filtern ändern.
+areaPicker.confirm=Programm anzeigen
+nav.genre=Genre
+nav.director=Regie
+nav.cast=Besetzung
+nav.rooms=Säle
+nav.dimension=Format
+nav.all=Alle
+nav.version=Version
+nav.subtitles=Untertitel
+nav.dubbing=Synchronisation
+nav.imaxOnly=Nur IMAX
+nav.fromHour=Ab
+nav.any=Beliebig
+nav.city=Stadt
+nav.countrySwitch=Land
+nav.clear=Zurücksetzen
+nav.copyLink=Link kopieren
+nav.search=Suchen…
+nav.filterByDate=Nach Datum filtern
+brand.title=Kinoprogramm {0}
+
+# ── Day pills ───────────────────────────────────────────────────────────────
+day.today=Heute
+day.tomorrow=Morgen
+day.week=7 Tage
+day.all=Alle
+
+# ── Auth ────────────────────────────────────────────────────────────────────
+auth.login=Anmelden
+auth.loginLong=Anmelden
+auth.logout=Abmelden
+auth.account=Konto
+auth.close=Schließen
+login.title=Anmelden
+login.sub=Deine Lieblingsfilme und ausgeblendeten Filme werden auf allen deinen Geräten synchronisiert.
+login.google=Weiter mit Google
+login.facebook=Weiter mit Facebook
+login.nag=Diese <strong>Lieblingsfilme und ausgeblendeten Filme</strong> bleiben nur auf diesem Gerät. <strong>Melde dich an</strong>, um sie zu synchronisieren.
+
+# ── Hidden-films modal ──────────────────────────────────────────────────────
+hidden.title=Ausgeblendete Filme
+
+# ── Empty states ────────────────────────────────────────────────────────────
+empty.repertoire=Keine Vorstellungen.
+empty.films=Keine Filme.
+
+# ── Browse (filtered film list) ─────────────────────────────────────────────
+browse.htmlTitle={0} – Kinoprogramm {1}
+browse.ogTitle={0} — Kinoprogramm {1}
+browse.ogDescription=Filme aus {0} Kinos: {1}. Mit aktuellen Spielzeiten, Bewertungen und Beschreibungen.
+
+# ── Landing (city picker) ───────────────────────────────────────────────────
+landing.title={0} — Kinoprogramm in deiner Stadt
+landing.ogDescription=Das Programm aller Kinos an einem Ort — mit IMDb-, Rotten-Tomatoes- und Metacritic-Bewertungen. Sieh dir die heutigen Spielzeiten in deiner Stadt an.
+landing.chooseCity=Wähle deine Stadt
+landing.searchCity=Nach einer Stadt suchen…
+landing.searchCityAria=Nach einer Stadt suchen
+landing.noCity=Keine Stadt mit diesem Namen.
+landing.locating=Standort wird ermittelt…
+landing.noNearby=Keine unterstützte Stadt in der Nähe — wähle eine aus der Liste.
+
+# ── Poster / detail labels ──────────────────────────────────────────────────
+poster.missing=Kein Poster
+detail.synopsis=Handlung
+detail.director=Regie
+detail.cast=Besetzung
+detail.countries=Länder
+detail.trailers=Trailer
+detail.trailer=Trailer {0}
+detail.trailerTitle=Trailer: {0}
+detail.showings=Vorstellungen
+card.hide=Film ausblenden
+
+# ── Film page (meta) ────────────────────────────────────────────────────────
+# `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative,
+# {1} = brand ("Kinowo" in PL, "Showtimes" elsewhere).
+film.titleSuffix=– Spielzeiten {0} | {1}
+
+# ── Film page back-nav ──────────────────────────────────────────────────────
+back.films=Filme
+back.plan=Plan
+back.back=Zurück
+back.repertoire=Programm
+
+# ── First-run swipe hint ────────────────────────────────────────────────────
+hint.swipe=Wischen, um den Tag zu wechseln

@@ -44,6 +44,16 @@ scrape_configs:
         labels:
           app: kinowo-worker-uk
 
+  # DE worker — the German (kinowo_de) scrape/enrich pipeline, split onto its own
+  # 2x machine (2026-07-17). Its kinowo_worker_* series carry country="de".
+  - job_name: kinowo-worker-de
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['kinowo-worker-de.internal:9000']
+        labels:
+          app: kinowo-worker-de
+
   # filmowo (the recommend app) is a separate Fly app in the SAME org, so its
   # 6PN hostname resolves from here too. Its Node server binds 9002 (not 9000
   # like the kinowo apps) and serves /metrics there. Unlike the kinowo targets,
@@ -74,3 +84,13 @@ scrape_configs:
       - targets: ['showtimes-uk.internal:9000']
         labels:
           app: showtimes-uk
+
+  # DE web app (KINOWO_COUNTRY=de, Frankfurt) — self-labels country="de", so its
+  # kinowo_web_* / kinowo_uptime_* series land under the shared $country var.
+  - job_name: showtimes-de-web
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['showtimes-de.internal:9000']
+        labels:
+          app: showtimes-de

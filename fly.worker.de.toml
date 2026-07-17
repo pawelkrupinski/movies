@@ -1,0 +1,72 @@
+# Germany scrape/enrich worker — the DE (kinowo_de / Filmstarts) half, SPLIT off
+# `kinowo-worker` onto its own shared-cpu-2x machine (2026-07-17). Same rationale
+# as fly.worker.uk.toml: a per-COUNTRY split gives each country its own 2x credit
+# bucket + its own db's change-stream/projection load, so machines never contend.
+# Germany's cinema roster is large (the full filmstarts roster is ~1,533 cinemas
+# across 158 regions — see data/germany/), so it needs its own machine rather than
+# riding on `kinowo-worker` alongside Poland.
+#
+# Same Dockerfile + `--build-arg BIN=worker`; identical JVM / throttle / GC tuning
+# — see fly.worker.toml for the rationale behind each flag. Differs only in `app`,
+# `KINOWO_COUNTRIES=de`, and its own volume.
+app = 'kinowo-worker-de'
+# Mongo colocation (fly/mongo lives in arn) — the worker serves no user traffic.
+primary_region = 'arn'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[[metrics]]
+  port = 9000
+  path = '/metrics'
+
+[env]
+  PORT = '9000'
+  # DE only → one WorkerWiring against the kinowo_de db (Country.dbNameFor).
+  KINOWO_COUNTRIES = 'de'
+  KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS = '20'
+  KINOWO_WORKER_POOL_SIZE = '4'
+  KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
+  KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '60'
+  # JVM sizing identical to kinowo-worker-uk (448m/1gb). NOTE: this is sized for
+  # the CURRENT DE roster (the 3 hand-authored cities). When the full 158-region /
+  # 1,533-cinema roster (data/germany/regions.json) is wired into the model, this
+  # working set grows a lot — re-measure heap and bump Xmx / the [[vm]] RAM then,
+  # exactly like the pl+uk 480m/1280mb episode (see fly.worker.toml). All other
+  # flags match kinowo-worker — see that file's JAVA_OPTS note.
+  JAVA_OPTS = '-Xms448m -Xmx448m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
+  MALLOC_ARENA_MAX = '2'
+  MALLOC_TRIM_THRESHOLD_ = '131072'
+  KINOWO_LOG_DIR = '/data/logs'
+
+[checks]
+  [checks.health]
+    grace_period = '30s'
+    interval = '15s'
+    method = 'GET'
+    path = '/health'
+    port = 9000
+    timeout = '10s'
+    type = 'http'
+
+# First-deploy bootstrap for a NEW per-country worker app (do BOTH before the
+# first `flyctl deploy`, or the machine crash-loops on boot — the fresh app boots
+# with no MONGODB_URI, the required-Mongo probe hits a stale 127.0.0.1 URI, and
+# MongoConnection.init throws "refusing to start" until the secret lands):
+#   1. Copy the worker secrets from the sibling app FIRST — at minimum MONGODB_URI
+#      (the shared prod cluster; use kinowo-worker's exact value, NOT the local
+#      .env.local 127.0.0.1 one), plus TMDB_API_KEY / ZYTE_API_KEY / SENTRY_DSN /
+#      TELEGRAM_* / KINOWO_PROXY_* etc. Secrets persist across deploys — one-time.
+#   2. Create the persistent volume (heap dumps + logs + AppCDS archive):
+#        flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker-de
+[[mounts]]
+  source = 'worker_heapdumps'
+  destination = '/data'
+
+[[vm]]
+  # 2 shared vCPUs / 1 GB — same class as kinowo-worker/-uk. Re-size when the full
+  # German roster lands (see the JAVA_OPTS note).
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 2

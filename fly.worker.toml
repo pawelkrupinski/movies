@@ -52,18 +52,18 @@ primary_region = 'arn'
   # probes it. No public router fronts it (no [http_service]).
   PORT = '9000'
   # Countries this worker scrapes + enriches — one WorkerWiring per code
-  # (WorkerMain.resolveCountries), each with its OWN Mongo db, sharing this
-  # machine's pool + Mongo client. Poland (kinowo) + Germany (kinowo_de, Filmstarts).
-  # The UK (kinowo_uk, Flicks) was SPLIT onto its own machine (kinowo-worker-uk,
-  # fly.worker.uk.toml) on 2026-07-17: the full-UK roster doubled this machine's
-  # scrape + change-stream/projection load past the shared-cpu-2x credit baseline.
-  # Unlike same-db REPLICAS (see "WHY MORE MACHINES DON'T HELP" above — change-stream
-  # + projection is a fixed per-machine cost that doesn't split across replicas of
-  # one db), a per-COUNTRY split DOES halve the per-machine cost: each machine
-  # watches only its own db's change stream. Every country is fully isolated (own db
-  # + task queue + freshness + staging + projection), so the two machines never
+  # (WorkerMain.resolveCountries), each with its OWN Mongo db. Poland (kinowo) only.
+  # The UK (kinowo_uk, Flicks) and Germany (kinowo_de, Filmstarts) were each SPLIT
+  # onto their own shared-cpu-2x machines (kinowo-worker-uk / fly.worker.uk.toml,
+  # kinowo-worker-de / fly.worker.de.toml, 2026-07-17): their full rosters push a
+  # combined machine's scrape + change-stream/projection load past the 2x credit
+  # baseline. Unlike same-db REPLICAS (see "WHY MORE MACHINES DON'T HELP" above —
+  # change-stream + projection is a fixed per-machine cost that doesn't split across
+  # replicas of one db), a per-COUNTRY split DOES halve per-machine cost: each
+  # machine watches only its own db's change stream. Every country is fully isolated
+  # (own db + task queue + freshness + staging + projection), so the machines never
   # contend on any collection.
-  KINOWO_COUNTRIES = 'pl,de'
+  KINOWO_COUNTRIES = 'pl'
   # Retry the boot cache hydrate while Mongo comes up alongside the worker. An
   # empty findAll at boot is "Mongo not ready", not "empty corpus"; without
   # retry the cache starts empty and quiescent rows never load (only re-scraped

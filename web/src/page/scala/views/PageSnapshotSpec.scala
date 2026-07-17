@@ -92,14 +92,14 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
 
     html should include ("""id="country-select"""")
     html should include ("""onchange="onCountryChange(this.value)"""")
-    // Both deployed hosts appear as option values...
+    // Every deployed host appears as an option value...
     html should include ("""value="https://kinowo.fly.dev"""")
     html should include ("""value="https://showtimes-uk.fly.dev"""")
+    html should include ("""value="https://showtimes-de.fly.dev"""")
     // ...with the current country (Poland, fromEnv default) pre-selected.
     html should include ("""value="https://kinowo.fly.dev" selected""")
-    // Germany has no deployment host, so it is absent from the switcher.
-    html should not include "https://kinowo-de"
-    html should not include ">Deutschland<"
+    // Germany is now deployed (showtimes-de) → present in the switcher.
+    html should include (">Deutschland<")
   }
 
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {

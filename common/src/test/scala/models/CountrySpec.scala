@@ -106,14 +106,14 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.allJson should not include "london"
   }
 
-  "Country.switchable" should "list only deployed countries (webUrl defined), Poland first, excluding Germany" in {
+  "Country.switchable" should "list every deployed country (webUrl defined), Poland first" in {
     // The navbar country <select> iterates this, in this order.
-    Country.switchable shouldBe Seq(Country.Poland, Country.UnitedKingdom)
+    Country.switchable shouldBe Seq(Country.Poland, Country.UnitedKingdom, Country.Germany)
     Country.Poland.webUrl shouldBe Some("https://kinowo.fly.dev")
     Country.UnitedKingdom.webUrl shouldBe Some("https://showtimes-uk.fly.dev")
-    // Germany is modelled but has no deployment, so it must be excluded.
-    Country.Germany.webUrl shouldBe None
-    Country.switchable should not contain Country.Germany
+    // Germany is now deployed (showtimes-de) → switchable.
+    Country.Germany.webUrl shouldBe Some("https://showtimes-de.fly.dev")
+    Country.switchable should contain (Country.Germany)
     // Every switchable country carries a host (no trailing slash) and a label.
     Country.switchable.foreach { c =>
       c.webUrl.get should (startWith("https://") and not endWith "/")
@@ -129,9 +129,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.homeOgImage shouldBe "og-home.png"                    // the default keeps the unsuffixed asset
     Country.UnitedKingdom.ogOrigin shouldBe "https://showtimes-uk.fly.dev"
     Country.UnitedKingdom.homeOgImage shouldBe "og-home-uk.png"
-    // Germany is modelled but undeployed: its share links fall back to the
-    // default country's host, yet it still gets a per-code montage name.
-    Country.Germany.ogOrigin shouldBe Country.Poland.ogOrigin
+    // Germany is now deployed (showtimes-de) → previews off its own host, with a
+    // per-code montage name (og-home-de.png).
+    Country.Germany.ogOrigin shouldBe "https://showtimes-de.fly.dev"
     Country.Germany.homeOgImage shouldBe "og-home-de.png"
   }
 

@@ -48,9 +48,9 @@ sealed abstract class Country(
 
   /** Public origin (scheme + host, no trailing slash) for this country's share /
    *  Open Graph links — the host Facebook scrapes and caches a preview against.
-   *  A deployed country carries its own [[webUrl]]; one modelled but not yet
-   *  deployed ([[Germany]]) falls back to the default country's host so a link
-   *  still resolves rather than dangling. */
+   *  A deployed country carries its own [[webUrl]]; a modelled-but-not-yet-deployed
+   *  country falls back to the default country's host so a link still resolves
+   *  rather than dangling. (All modelled countries are currently deployed.) */
   def ogOrigin: String = webUrl.getOrElse(Country.default.webUrl.get)
 
   /** Filename (under `assets/img/`) of the `/` landing's share-preview montage
@@ -105,7 +105,7 @@ object Country {
     language       = Locale.forLanguageTag("de-DE"),
     mongoDb        = "kinowo_de",
     filmwebEnabled = false,
-    webUrl         = None,
+    webUrl         = Some("https://showtimes-de.fly.dev"),
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
@@ -120,9 +120,9 @@ object Country {
   val default: Country = Poland
 
   /** The countries a user can SWITCH to from the web navbar: those with a real
-   *  deployment host ([[Country.webUrl]] defined), in [[all]] order (Poland
-   *  first). Germany is modelled but not deployed, so it is excluded. The
-   *  country `<select>` renders only when this holds more than one entry. */
+   *  deployment host ([[Country.webUrl]] defined), in [[all]] order (Poland,
+   *  UK, Germany). The country `<select>` renders only when this holds more than
+   *  one entry. */
   val switchable: Seq[Country] = all.filter(_.webUrl.isDefined)
 
   def byCode(code: String): Option[Country] =

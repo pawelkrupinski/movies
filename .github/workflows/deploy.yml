@@ -67,6 +67,11 @@ jobs:
                       toml: fly.uk.toml
                       bin: web
                       artifact: stage-web
+                    # DE frontend — KINOWO_COUNTRY=de → the kinowo_de db, in fra.
+                    - app: showtimes-de
+                      toml: fly.de.toml
+                      bin: web
+                      artifact: stage-web
                     - app: kinowo-worker
                       toml: fly.worker.toml
                       bin: worker
@@ -76,6 +81,12 @@ jobs:
                     # machine (KINOWO_COUNTRIES=uk → the kinowo_uk db).
                     - app: kinowo-worker-uk
                       toml: fly.worker.uk.toml
+                      bin: worker
+                      artifact: stage-worker
+                    # DE worker — split off kinowo-worker (KINOWO_COUNTRIES=de →
+                    # the kinowo_de db); the German roster gets its own 2x machine.
+                    - app: kinowo-worker-de
+                      toml: fly.worker.de.toml
                       bin: worker
                       artifact: stage-worker
         # Serialize deploys PER APP (so two passing builds can't race flyctl on
