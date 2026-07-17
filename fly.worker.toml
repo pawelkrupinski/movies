@@ -109,12 +109,21 @@ primary_region = 'arn'
   #     per-thread malloc arenas (default 8×nCPU → fragmentation that shows as
   #     RSS far above the JVM's own committed pools) and make glibc hand freed
   #     memory back to the OS sooner.
-  #   - Xms=Xmx=320m (was 384): NMT + a forced full GC on the live worker (JDK
-  #     base, 2026-06-17) measured the actual live working set — the whole
-  #     in-memory movie/showtime corpus — at only ~108 MB tenured, so a 384m
-  #     heap committed ~280 MB it never used (Xms=Xmx pre-commits and SerialGC
-  #     doesn't uncommit). 320m leaves ~2× headroom over the live set while
-  #     handing ~64 MB of committed RSS back. NMT breakdown of the rest:
+  #   - Xms=Xmx=480m (was 320, was 384): RAISED 2026-07-17 after the full-UK
+  #     rollout (07-12 doubling → the whole Flicks roster, ~299→687 due cinemas)
+  #     grew the resident scrape/index working set past what 320m could hold at
+  #     peak. Measured: heap peaked 311.6/320 MB and the worker took a confirmed
+  #     heap-space OOM at 05:01 UTC (253 MB java_pidNNN.hprof, not the ~11-28 MB
+  #     non-heap kind); staging (pending_movies) was EMPTY, so it's corpus size,
+  #     not a pipeline backlog. The 07-17 index-only strip + StringPool interning
+  #     dropped the post-GC floor ~224→~84 MB but the peak still re-crossed 320.
+  #     480m clears the 311 MB peak with ~170 MB headroom for further UK growth.
+  #     The 2026-06-17 measurement (~108 MB tenured) is STALE — pre-UK; the live
+  #     peak is now the binding number. Because Xms=Xmx pre-commits (+160 MB RSS)
+  #     and the 1 GB box measured only ~257 MB free at 320m, this bump is PAIRED
+  #     with the [[vm]] RAM step to 1280 MB below (else free would drop to ~97 MB,
+  #     the sub-100 MB OOM-loop territory that killed the old G1 config). NMT
+  #     breakdown of the non-heap rest:
   #     metaspace ~67 MB (≈13.8k Scala/Play/Pekko classes), code cache ~45 MB,
   #     symbols/threads/shared-class ~30 MB, + ~80 MB glibc/RSS overhead.
   #   - Caps tightened to ~2× the measured-actual to bound a worst-case spike on
@@ -226,7 +235,7 @@ primary_region = 'arn'
   # (HeapDumpOnOutOfMemoryError writes ~11MB/OOM and never prunes) — which is why the 01:08 OOM wrote no
   # dump. Cleaned to 15%; the Dockerfile CMD now prunes /data/heapdumps to the 3 newest + drops the
   # retired /data/jfr on every boot, so it can't refill.
-  JAVA_OPTS = '-Xms320m -Xmx320m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
+  JAVA_OPTS = '-Xms480m -Xmx480m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
@@ -288,9 +297,13 @@ primary_region = 'arn'
   # rebuilds. On 4x this gate is a dormant deep-safety-net. If 4x ever genuinely pins,
   # go performance-2x (dedicated, no credit throttle) rather than shared-2x.
   #
-  # RAM is INDEPENDENT of the CPU choice: 1 GB fits the SerialGC + tightened-cap JVM
-  # config (JVM ~210-346 MB used live, ~290 MB worst-case headroom, NMT-measured — see
-  # the JAVA_OPTS note); the 4x price includes 1 GB, so this is the cheapest 4x.
-  memory = '1gb'
+  # RAM is INDEPENDENT of the CPU choice. RAISED 1gb→1280mb on 2026-07-17, paired with
+  # the Xmx 320→480m bump (see the JAVA_OPTS note): the full-UK working set OOM'd a 320m
+  # heap, and the measured 1 GB envelope (~704 MB used / ~257 MB free at 320m) can't
+  # absorb the +160 MB pre-committed heap without dropping to ~97 MB free — the sub-100 MB
+  # OOM-loop zone. 1280mb restores ~360 MB free at the new 480m heap. 1280 (1.25 GB) is a
+  # valid 256 MB-increment step; extra RAM is ~$5.19/GB-mo (~+$1.30/mo). If the full-UK
+  # working set outgrows this too, next step is 640m/1536mb or a move back to 2 GB.
+  memory = '1280mb'
   cpu_kind = 'shared'
   cpus = 2
