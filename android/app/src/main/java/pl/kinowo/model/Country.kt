@@ -27,7 +27,7 @@ data class Country(
         /** Compile-time FALLBACK registry, used only until the bundled/fetched
          *  catalog loads (and if it ever fails to decode). The live registry is
          *  the `/api/catalog` payload the catalog repository publishes. Poland is
-         *  the default. Codes match the server (`pl`/`uk`). */
+         *  the default. Codes match the server (`pl`/`uk`/`de`). */
         val all: List<Country> = listOf(
             Country(
                 code = "pl",
@@ -40,6 +40,12 @@ data class Country(
                 displayName = "United Kingdom",
                 baseUrl = "https://showtimes-uk.fly.dev",
                 languageTag = "en",
+            ),
+            Country(
+                code = "de",
+                displayName = "Deutschland",
+                baseUrl = "https://showtimes-de.fly.dev",
+                languageTag = "de",
             ),
         )
 

@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Showtimes</string>
+
+    <!-- Country picker -->
+    <string name="country_label">Land</string>
+
+    <!-- City gate -->
+    <string name="choose_city_title">Stadt wählen</string>
+    <string name="choose_city_subtitle">Wir zeigen Spielzeiten für die von dir gewählte Stadt.</string>
+    <string name="search_city_hint">Nach einer Stadt suchen</string>
+    <string name="clear">Zurücksetzen</string>
+    <string name="no_city_matching">Keine Stadt namens „%1$s“.</string>
+    <string name="near_city_label">Du bist in der Nähe von</string>
+    <string name="show_repertoire">Spielzeiten anzeigen — %1$s</string>
+    <string name="choose_other_city">Andere Stadt wählen</string>
+
+    <!-- "You're nearer another city" prompt -->
+    <string name="nearer_city_title">Du bist näher an %1$s</string>
+    <string name="switch_repertoire_question">Spielzeiten zu %1$s wechseln?</string>
+    <string name="switch_action">Wechseln</string>
+    <string name="not_now">Jetzt nicht</string>
+
+    <!-- Repertoire list states -->
+    <string name="loading_repertoire">Spielzeiten werden geladen…</string>
+    <string name="error_repertoire">Spielzeiten konnten nicht geladen werden.</string>
+    <string name="retry">Erneut versuchen</string>
+
+    <!-- Split-city cinema area picker (e.g. London) -->
+    <string name="areabar_all_cinemas">Alle Kinos</string>
+    <string name="areabar_count">%1$d von %2$d Kinos</string>
+    <string name="areabar_expand">Kinos einblenden</string>
+    <string name="areabar_collapse">Kinos ausblenden</string>
+    <string name="areapicker_title">Wähle deine Regionen</string>
+    <string name="areapicker_subtitle">Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit ändern.</string>
+    <string name="areapicker_confirm">Programm anzeigen</string>
+</resources>

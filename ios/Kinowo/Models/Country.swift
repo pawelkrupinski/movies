@@ -26,7 +26,7 @@ struct Country: Codable, Hashable {
     /// Compile-time FALLBACK registry, used only until the bundled/fetched
     /// catalog loads (and if that ever fails to decode). The live registry is the
     /// `/api/catalog` payload the `CatalogStore` publishes. Poland is first (the
-    /// default). Codes match the server (`pl`/`uk`).
+    /// default). Codes match the server (`pl`/`uk`/`de`).
     static let all: [Country] = [
         Country(
             code: "pl",
@@ -39,6 +39,12 @@ struct Country: Codable, Hashable {
             displayName: "United Kingdom",
             baseURL: URL(string: "https://showtimes-uk.fly.dev")!,
             languageCode: "en"
+        ),
+        Country(
+            code: "de",
+            displayName: "Deutschland",
+            baseURL: URL(string: "https://showtimes-de.fly.dev")!,
+            languageCode: "de"
         ),
     ]
 

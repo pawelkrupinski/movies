@@ -40,6 +40,14 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(uk.languageCode, "en")
     }
 
+    func testDeEntryForcesGermanOnItsOwnDeployment() {
+        let de = Country.byCode("de")
+        XCTAssertEqual(de.code, "de")
+        XCTAssertEqual(de.displayName, "Deutschland")
+        XCTAssertEqual(de.baseURL.absoluteString, "https://showtimes-de.fly.dev")
+        XCTAssertEqual(de.languageCode, "de")
+    }
+
     /// Legacy persisted ISO codes (`PL`/`GB` from earlier builds) normalize to
     /// the current server code space so an upgrade keeps the user's country.
     func testLegacyIsoCodesNormalizeToServerCodes() {

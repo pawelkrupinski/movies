@@ -14,6 +14,12 @@
             "state": "translated",
             "value": "Kina: %@"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kinos: %@"
+          }
         }
       }
     },
@@ -29,6 +35,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wszystkie kina"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Kinos"
           }
         }
       }
@@ -46,6 +58,12 @@
             "state": "translated",
             "value": "Zwiń kina"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kinos ausblenden"
+          }
         }
       }
     },
@@ -61,6 +79,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$d z %2$d kin"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d von %2$d Kinos"
           }
         }
       }
@@ -78,6 +102,12 @@
             "state": "translated",
             "value": "Rozwiń kina"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kinos einblenden"
+          }
         }
       }
     },
@@ -93,6 +123,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pokaż repertuar"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programm anzeigen"
           }
         }
       }
@@ -110,6 +146,12 @@
             "state": "translated",
             "value": "Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit ändern."
+          }
         }
       }
     },
@@ -125,6 +167,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wybierz okolice"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle deine Regionen"
           }
         }
       }
@@ -142,6 +190,12 @@
             "state": "translated",
             "value": "Wybierz inne miasto"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere Stadt wählen"
+          }
         }
       }
     },
@@ -157,6 +211,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wybierz miasto"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stadt wählen"
           }
         }
       }
@@ -174,6 +234,12 @@
             "state": "translated",
             "value": "Miasto"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stadt"
+          }
         }
       }
     },
@@ -189,6 +255,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wygląda na to, że jesteś w pobliżu miasta"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sieht aus, als wärst du in der Nähe von"
           }
         }
       }
@@ -206,6 +278,12 @@
             "state": "translated",
             "value": "Brak miasta o nazwie „%@”."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Stadt namens „%@“."
+          }
         }
       }
     },
@@ -221,6 +299,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ustalamy najbliższe miasto…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine nächste Stadt wird ermittelt…"
           }
         }
       }
@@ -238,6 +322,12 @@
             "state": "translated",
             "value": "Szukaj miasta"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einer Stadt suchen"
+          }
         }
       }
     },
@@ -253,6 +343,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pokaż repertuar — %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten anzeigen — %@"
           }
         }
       }
@@ -270,6 +366,12 @@
             "state": "translated",
             "value": "Nie udało się pobrać repertuaru."
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten konnten nicht geladen werden."
+          }
         }
       }
     },
@@ -285,6 +387,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ładowanie repertuaru…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten werden geladen…"
           }
         }
       }
@@ -302,6 +410,12 @@
             "state": "translated",
             "value": "Spróbuj ponownie"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut versuchen"
+          }
         }
       }
     },
@@ -317,6 +431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kraj"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Land"
           }
         }
       }
@@ -334,6 +454,12 @@
             "state": "translated",
             "value": "Przełącz"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wechseln"
+          }
         }
       }
     },
@@ -349,6 +475,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jesteś bliżej miasta %@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du bist näher an %@"
           }
         }
       }
@@ -366,6 +498,12 @@
             "state": "translated",
             "value": "Nie teraz"
           }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt nicht"
+          }
         }
       }
     },
@@ -381,6 +519,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Przełączyć repertuar na %@?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten zu %@ wechseln?"
           }
         }
       }

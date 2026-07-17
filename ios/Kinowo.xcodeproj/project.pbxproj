@@ -447,6 +447,7 @@
 				en,
 				Base,
 				pl,
+				de,
 			);
 			mainGroup = BB00000000000000000001;
 			productRefGroup = BB00000000000000000003 /* Products */;
