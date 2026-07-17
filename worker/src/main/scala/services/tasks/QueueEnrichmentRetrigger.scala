@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.MovieRecord
+import models.{Country, MovieRecord}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, EnrichmentRetrigger, MovieService, RetriggerKind}
@@ -18,11 +18,49 @@ import services.movies.{CacheKey, EnrichmentRetrigger, MovieService, RetriggerKi
  *
  * TMDB resolve + IMDb-id resolve aren't freshness-gated (the queue's per-dedupKey
  * idempotency is their guard), so they're a plain enqueue.
+ *
+ * The merge decision ([[services.movies.MergeRetrigger]]) lives in `common` and is
+ * country-BLIND: it emits `FilmwebRating` for any resolved row whose rating inputs
+ * changed, unaware whether this deployment's country wires a Filmweb handler. So
+ * this sink applies the same country gate the reaper/census do — [[RatingSources.forCountry]]
+ * — and DROPS a rating retrigger whose source doesn't apply here. Without it, a
+ * non-Filmweb country (UK) enqueues a handler-less `FilmwebRating` task that
+ * [[TaskWorker]] re-releases forever ("no handler for FilmwebRating"), hot-looping
+ * in `waiting` — exactly the backlog [[RatingSources]] documents the gate exists to
+ * prevent, reached through the one enqueue path that used to skip it.
  */
-class QueueEnrichmentRetrigger(queue: TaskQueue, freshness: FreshnessStore) extends EnrichmentRetrigger with Logging {
+class QueueEnrichmentRetrigger(
+  queue:     TaskQueue,
+  freshness: FreshnessStore,
+  // The country this sink serves — selects which rating sources apply, mirroring
+  // [[RatingEnqueuer]]. Defaults to Poland so tests and single-country paths keep
+  // the historical (Filmweb-on) behaviour; the worker wiring passes the actual
+  // per-country value.
+  country: Country = Country.default
+) extends EnrichmentRetrigger with Logging {
+
+  // The rating task types whose handler THIS country wires — the single source of
+  // truth shared with the reaper + census (see RatingSources). A rating retrigger
+  // for a task type outside this set has no handler here, so we never enqueue it.
+  private val enabledRatingTaskTypes = RatingSources.forCountry(country).map(_.taskType).toSet
+
+  // The task type a rating retrigger kind maps to, for the country gate above. The
+  // non-rating kinds (resolve) apply in every country and aren't listed.
+  private val ratingTaskTypeOf: Map[RetriggerKind, TaskType] = Map(
+    RetriggerKind.ImdbRating    -> TaskType.ImdbRating,
+    RetriggerKind.FilmwebRating -> TaskType.FilmwebRating,
+    RetriggerKind.RtRating      -> TaskType.RtRating,
+    RetriggerKind.McRating      -> TaskType.McRating)
+
+  private def enabled(kind: RetriggerKind): Boolean =
+    ratingTaskTypeOf.get(kind).forall(enabledRatingTaskTypes.contains)
 
   override def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = {
-    kinds.foreach {
+    val (applicable, dropped) = kinds.partition(enabled)
+    if (dropped.nonEmpty)
+      logger.info(s"Dropping ${dropped.map(_.toString).toSeq.sorted.mkString(", ")} retrigger for " +
+        s"'${key.cleanTitle}' — source not enabled in ${country.code}")
+    applicable.foreach {
       case RetriggerKind.ResolveTmdb =>
         queue.enqueue(
           TaskType.ResolveTmdb,
@@ -38,7 +76,8 @@ class QueueEnrichmentRetrigger(queue: TaskQueue, freshness: FreshnessStore) exte
       case RetriggerKind.RtRating      => refreshRating(key, record, TaskType.RtRating,      FreshnessKind.RtRating)
       case RetriggerKind.McRating      => refreshRating(key, record, TaskType.McRating,      FreshnessKind.McRating)
     }
-    logger.info(s"Merge retrigger for '${key.cleanTitle}' (${key.year.getOrElse("—")}): ${kinds.map(_.toString).toSeq.sorted.mkString(", ")}")
+    if (applicable.nonEmpty)
+      logger.info(s"Merge retrigger for '${key.cleanTitle}' (${key.year.getOrElse("—")}): ${applicable.map(_.toString).toSeq.sorted.mkString(", ")}")
   }
 
   private def refreshRating(key: CacheKey, record: MovieRecord, taskType: TaskType, kind: FreshnessKind): Unit = {

@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{MovieRecord, Source, SourceData, Tmdb}
+import models.{Country, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
@@ -10,12 +10,14 @@ import scala.concurrent.duration._
 
 class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
 
-  private def fixture = {
+  private def fixtureFor(country: Country) = {
     val queue   = new InMemoryTaskQueue
     val fresh   = new InMemoryFreshnessStore
-    val trigger = new QueueEnrichmentRetrigger(queue, fresh)
+    val trigger = new QueueEnrichmentRetrigger(queue, fresh, country)
     (queue, fresh, trigger)
   }
+
+  private def fixture = fixtureFor(Country.Poland)
 
   private def drain(queue: InMemoryTaskQueue): Seq[Task] =
     Iterator.continually(queue.claim("w", 5.minutes)).takeWhile(_.isDefined).flatten.toSeq
@@ -28,6 +30,24 @@ class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
     val (queue, _, trigger) = fixture
     trigger.retrigger(filmKey, resolved, Set(RetriggerKind.ImdbRating, RetriggerKind.FilmwebRating))
     drain(queue).map(_.taskType).toSet shouldBe Set(TaskType.ImdbRating, TaskType.FilmwebRating)
+  }
+
+  it should "DROP a FilmwebRating retrigger in a non-Filmweb country (UK) — no handler-less task" in {
+    // The merge decision (common) is country-blind and emits FilmwebRating for any
+    // resolved row; the UK worker wires no Filmweb handler, so enqueuing it would
+    // hot-loop forever in `waiting` ("no handler for FilmwebRating"). The country
+    // gate must drop it while still enqueuing the sources UK DOES wire.
+    val (queue, _, trigger) = fixtureFor(Country.UnitedKingdom)
+    trigger.retrigger(filmKey, resolved,
+      Set(RetriggerKind.ImdbRating, RetriggerKind.FilmwebRating, RetriggerKind.RtRating, RetriggerKind.McRating))
+    drain(queue).map(_.taskType).toSet shouldBe
+      Set(TaskType.ImdbRating, TaskType.RtRating, TaskType.McRating) // FilmwebRating dropped
+  }
+
+  it should "KEEP a FilmwebRating retrigger in a Filmweb country (Poland)" in {
+    val (queue, _, trigger) = fixtureFor(Country.Poland)
+    trigger.retrigger(filmKey, resolved, Set(RetriggerKind.FilmwebRating))
+    drain(queue).map(_.taskType) shouldBe Seq(TaskType.FilmwebRating)
   }
 
   it should "INVALIDATE the tmdbId-keyed freshness stamp so the re-fetch isn't deduped away" in {
