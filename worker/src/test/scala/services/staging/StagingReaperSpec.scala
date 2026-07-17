@@ -4,7 +4,7 @@ import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.FakeDetailEnricher
-import services.events.TaskFinished
+import services.events.{StagingNewcomerDiverted, TaskFinished}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.tasks.{InMemoryTaskQueue, StagingTaskKeys, TaskType}
 
@@ -106,6 +106,12 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     val (queue, reaper, _, _) = fixture(("Done", Some(2026), concluded))
     reaper.onTaskFinished(TaskFinished(TaskType.StagingResolveTmdb, "k", StagingTaskKeys.titlePayload("Done")))
     active(queue).map(_._1) shouldBe Seq(TaskType.StagingFold.name)
+  }
+
+  "onNewcomerDiverted" should "kick a just-diverted newcomer's first step immediately (no tick needed)" in {
+    val (queue, reaper, _, _) = fixture(("Newcomer", Some(2026), listing("Newcomer", Some(2026))))
+    reaper.onNewcomerDiverted(StagingNewcomerDiverted("Newcomer"))
+    active(queue) shouldBe Seq((TaskType.StagingDetail.name, StagingTaskKeys.detailDedup("Newcomer", Helios.displayName)))
   }
 
   it should "ignore a finished StagingFold (terminal) and every non-staging task" in {

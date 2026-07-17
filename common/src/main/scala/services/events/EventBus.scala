@@ -95,6 +95,21 @@ case class ImdbIdMissing(title: String, year: Option[Int], searchTitle: String) 
  *  one of these per concluded year — `foldGroup` is idempotent. */
 case class StagingFilmEnriched(cleanTitle: String) extends DomainEvent
 
+/** A brand-new film was just diverted into the `pending_movies` staging
+ *  collection for the FIRST time by `recordCinemaScrape` (this cinema had no
+ *  prior staging row for the film). `StagingReaper` subscribes to fire the
+ *  film's first incubation step (a `StagingDetail` fetch) immediately, rather
+ *  than leaving it to wait up to a full backstop-tick interval for the initial
+ *  kick — the same low-latency, event-driven advance the rest of the chain
+ *  already gets off `TaskFinished`. Repeat scrapes of an already-incubating film
+ *  don't republish (the divert re-fires every tick until the film folds, but the
+ *  first-time gate suppresses all but the initial observation).
+ *
+ *  Carries only the display title; the reaper sanitizes it to the per-film
+ *  `anchor` the same way `tick()` does. Lost across a restart? The periodic
+ *  backstop still kicks it — this event only shrinks the initial latency. */
+case class StagingNewcomerDiverted(title: String) extends DomainEvent
+
 /** A queue task ran to a successful conclusion (`Done`/`Skipped` — NOT a
  *  reschedule). Published by `TaskWorker` (via an injected hook) the moment a
  *  task completes, so a consumer can chain follow-up work off it without the

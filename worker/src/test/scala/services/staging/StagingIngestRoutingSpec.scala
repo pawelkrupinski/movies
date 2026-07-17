@@ -3,7 +3,7 @@ package services.staging
 import models.{CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.events.InProcessEventBus
+import services.events.{InProcessEventBus, StagingNewcomerDiverted}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.time.LocalDateTime
@@ -34,6 +34,35 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
 
     cache.entries shouldBe empty
     staging.findAll().map(r => (r.cinema, r.title, r.year)) shouldBe Seq((Helios, "Brand New Film", Some(2026)))
+  }
+
+  "a first-time diverted newcomer" should "publish StagingNewcomerDiverted so the reaper kicks its chain off an event, but not republish on re-scrape" in {
+    val staging = new InMemoryStagingRepository
+    val bus     = new InProcessEventBus
+    val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
+    bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, bus, staging = Some(staging))
+
+    cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
+    kicked.toSeq shouldBe Seq("Brand New Film")                 // first divert → one event
+
+    cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
+    kicked.toSeq shouldBe Seq("Brand New Film")                 // still incubating → no republish
+  }
+
+  "a film already known to movies" should "stay on the direct path, not divert nor kick a newcomer event" in {
+    val staging = new InMemoryStagingRepository
+    val bus     = new InProcessEventBus
+    val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
+    bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, bus, staging = Some(staging))
+    cache.put(cache.keyOf("Kumotry", Some(2026)),
+      MovieRecord(tmdbId = Some(1454157), data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
+
+    cache.recordCinemaScrape(Helios, Seq(scrape("Kumotry", Some(2026))))
+
+    kicked shouldBe empty
   }
 
   "a film already known to movies" should "stay on the direct path, not divert" in {

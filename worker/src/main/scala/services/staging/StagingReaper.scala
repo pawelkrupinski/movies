@@ -2,7 +2,7 @@ package services.staging
 
 import play.api.Logging
 import services.Stoppable
-import services.events.{DomainEvent, TaskFinished}
+import services.events.{DomainEvent, StagingNewcomerDiverted, TaskFinished}
 import services.movies.TitleNormalizer
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import services.tasks.{EnqueueResult, StagingTaskKeys, TaskQueue, TaskType}
@@ -21,12 +21,14 @@ import scala.util.Try
  * per-`dedupKey` idempotency makes every enqueue safe to repeat.
  *
  * It advances the chain two ways, mirroring [[services.tasks.DetailReaper]]:
- *   - EVENT-DRIVEN: subscribes to `TaskFinished` and, when a staging step
- *     completes, enqueues the film's next step immediately (low latency).
+ *   - EVENT-DRIVEN: the whole chain runs off events. `onNewcomerDiverted` fires
+ *     the initial step the moment a film is diverted into `pending_movies`
+ *     (`StagingNewcomerDiverted`), and `onTaskFinished` enqueues the next step
+ *     the moment each staging task completes (`TaskFinished`) — both low latency.
  *   - PERIODIC BACKSTOP: a `ScheduledRunStore`-gated tick scans every incubating
- *     film and enqueues its next step — the initial kick for brand-new
- *     newcomers, and recovery for any film whose chain stalled (a step that kept
- *     rescheduling, or a completion event lost across a restart).
+ *     film and enqueues its next step — pure recovery now, for any film whose
+ *     chain stalled (a step that kept rescheduling, or a completion / divert
+ *     event lost across a restart).
  *
  * The decision lives in ONE place ([[enqueueNext]]) so both paths agree.
  */
@@ -54,6 +56,13 @@ class StagingReaper(
    *  task type. */
   def onTaskFinished: PartialFunction[DomainEvent, Unit] = {
     case TaskFinished(t, _, payload) if chainable(t) => enqueueNext(StagingTaskKeys.anchorOf(payload)); ()
+  }
+
+  /** Advance the chain the moment a brand-new film lands in `pending_movies` —
+   *  the initial kick that would otherwise wait for the next backstop tick. Same
+   *  idempotent [[enqueueNext]] decision, keyed on the newcomer's anchor. */
+  def onNewcomerDiverted: PartialFunction[DomainEvent, Unit] = {
+    case StagingNewcomerDiverted(title) => enqueueNext(TitleNormalizer.sanitize(title)); ()
   }
 
   private def chainable(t: TaskType): Boolean =

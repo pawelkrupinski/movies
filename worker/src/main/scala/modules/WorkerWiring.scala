@@ -1030,8 +1030,11 @@ class WorkerWiring(
     }
   }
   // The reaper advances the staging chain (detail → resolve → imdb → fold) one
-  // step per finished staging task.
+  // step per finished staging task, and kicks a brand-new newcomer's first step
+  // the moment it's diverted into `pending_movies` — so the whole chain runs off
+  // events, with the periodic tick only a backstop for lost events / stalls.
   eventBus.subscribe(stagingReaper.onTaskFinished)
+  eventBus.subscribe(stagingReaper.onNewcomerDiverted)
   // The coordinator enqueues a chunked scrape's reduce once its last chunk task
   // finishes (the ChunkScrapeReaper backstop covers lost completions).
   eventBus.subscribe(chunkScrapeCoordinator.onTaskFinished)
@@ -1085,8 +1088,9 @@ class WorkerWiring(
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
     chunkScrapeReaper.start()
-    // Incubate pending_movies through the queue: the reaper kicks new newcomers
-    // and backstops stalled chains; the TaskWorker (above) drains the steps.
+    // Incubate pending_movies through the queue: newcomers and every step run off
+    // events (subscribed above); this periodic tick only backstops stalled chains.
+    // The TaskWorker (above) drains the steps.
     stagingReaper.start()
     stagingStuckAlerter.foreach(_.start())
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan).

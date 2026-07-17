@@ -5,7 +5,7 @@ import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceDa
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
-import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus}
+import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus, StagingNewcomerDiverted}
 import services.titlerules.TitleRuleKey
 import tools.{DaemonExecutors, Env, TextNormalization}
 
@@ -992,6 +992,11 @@ class CaffeineMovieCache(
         _.findAll().iterator.collect { case r if r.cinema == cinema => TitleNormalizer.sanitize(r.title) -> r }.toMap
       }
     val divertedSanitized = scala.collection.mutable.Set.empty[String]
+    // Titles diverted into staging for the FIRST time this cinema (no prior row) —
+    // the newcomers whose initial step StagingReaper should kick off an event,
+    // rather than the periodic backstop. A re-divert of an already-incubating film
+    // (prior row present) is NOT collected, so we don't republish every tick.
+    val newlyDiverted = scala.collection.mutable.ArrayBuffer.empty[String]
 
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>
@@ -1026,6 +1031,7 @@ class CaffeineMovieCache(
             data        = Map(cinemaSlotKey(cinema, displayTitle) -> slot)
           ))
           divertedSanitized += norm
+          if (!priorStagingRows.contains(norm)) newlyDiverted += displayTitle
           None
         } else {
           // Land the slot on the *canonical* key for this film, chosen by
@@ -1158,6 +1164,12 @@ class CaffeineMovieCache(
     resolved.foreach { case ((cm, key, isNew), _) =>
       if (isNew) bus.publish(CinemaMovieAdded(cinema, key.cleanTitle, key.year, cm.filmUrl))
     }
+
+    // Kick each first-time newcomer's staging chain immediately. Published AFTER
+    // the staging `upsert`s above so a synchronous StagingReaper handler reading
+    // `pending_movies` sees the freshly-written row. Distinct: a same-tick spelling
+    // variant can't fire the same film's anchor twice.
+    newlyDiverted.distinct.foreach(t => bus.publish(StagingNewcomerDiverted(t)))
 
     resolved.map(_._1)
   }
