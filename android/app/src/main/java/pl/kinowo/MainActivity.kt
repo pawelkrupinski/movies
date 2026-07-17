@@ -78,7 +78,9 @@ class MainActivity : ComponentActivity() {
         val catalogSeed = runCatching {
             applicationContext.assets.open("catalog-seed.json").bufferedReader().use { it.readText() }
         }.getOrNull()
-        val catalogRepository = CatalogRepository(api, CatalogCache(cacheDir), catalogSeed)
+        // filesDir (durable), not cacheDir — the OS may evict cacheDir under
+        // storage pressure, and the catalog should survive that.
+        val catalogRepository = CatalogRepository(api, CatalogCache(filesDir), catalogSeed)
         KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient, api, catalogRepository)
     }
 

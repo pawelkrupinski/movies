@@ -12,6 +12,7 @@
 		DD00000000000000000220 /* DisplayInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000220 /* DisplayInfo.swift */; };
 		DD00000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000004 /* Assets.xcassets */; };
 		DD00000000000000000E01 /* Country.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E01 /* Country.swift */; };
+		DD00000000000000000E07 /* CatalogCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E07 /* CatalogCache.swift */; };
 		DD00000000000000000E02 /* CountrySelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E02 /* CountrySelection.swift */; };
 		DD00000000000000000E03 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E03 /* Localizable.xcstrings */; };
 		DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E04 /* InfoPlist.xcstrings */; };
@@ -113,6 +114,7 @@
 		CC00000000000000000220 /* DisplayInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayInfo.swift; sourceTree = "<group>"; };
 		CC00000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CC00000000000000000E01 /* Country.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Country.swift; sourceTree = "<group>"; };
+		CC00000000000000000E07 /* CatalogCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogCache.swift; sourceTree = "<group>"; };
 		CC00000000000000000E02 /* CountrySelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySelection.swift; sourceTree = "<group>"; };
 		CC00000000000000000E03 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000E04 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
@@ -274,6 +276,7 @@
 				CC00000000000000000041 /* CinemaLink.swift */,
 				CC00000000000000000300 /* City.swift */,
 				CC00000000000000000E01 /* Country.swift */,
+				CC00000000000000000E07 /* CatalogCache.swift */,
 				CC00000000000000000304 /* HiddenFilmsFilter.swift */,
 				CC00000000000000000303 /* CitySwitchSuppressor.swift */,
 				CC00000000000000000006 /* Filters.swift */,
@@ -531,6 +534,7 @@
 				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,
 				DD00000000000000000300 /* City.swift in Sources */,
 				DD00000000000000000E01 /* Country.swift in Sources */,
+				DD00000000000000000E07 /* CatalogCache.swift in Sources */,
 				DD00000000000000000E02 /* CountrySelection.swift in Sources */,
 				DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */,
 				DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */,

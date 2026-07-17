@@ -17,24 +17,21 @@ final class CatalogStore: ObservableObject {
     @Published private(set) var cities: [City]
 
     private let session: URLSession
-    private let defaults: UserDefaults
+    private let cache: CatalogCache
     private var etag: String?
     private var lastFetched: Date?
     /// Revalidate at most hourly on foreground; a cold open always revalidates.
     private let staleAfter: TimeInterval = 60 * 60
 
-    private let kBody = "catalogBody"
-    private let kEtag = "catalogEtag"
-
-    init(session: URLSession = .shared, defaults: UserDefaults = .standard) {
+    init(session: URLSession = .shared, cache: CatalogCache = CatalogCache()) {
         self.session = session
-        self.defaults = defaults
+        self.cache = cache
         // Prefer the last persisted fetch; else the bundled seed; else the
         // compile-time fallback registry (should never be needed).
-        if let body = defaults.string(forKey: kBody), let parsed = CatalogBody.decode(body) {
+        if let persisted = cache.load(), let parsed = CatalogBody.decode(persisted.body) {
             countries = parsed.countries
             cities = parsed.cities
-            etag = defaults.string(forKey: kEtag)
+            etag = persisted.etag
         } else if let seed = CatalogStore.loadBundledSeed() {
             countries = seed.body.countries
             cities = seed.body.cities
@@ -71,8 +68,7 @@ final class CatalogStore: ObservableObject {
             cities = parsed.cities
             etag = http.value(forHTTPHeaderField: "Etag")
             lastFetched = now
-            defaults.set(body, forKey: kBody)
-            defaults.set(etag, forKey: kEtag)
+            cache.save(body: body, etag: etag)
         } catch {
             // Offline / transient: keep whatever's loaded (persisted, seed, or fallback).
         }
