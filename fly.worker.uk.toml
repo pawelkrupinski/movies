@@ -56,9 +56,17 @@ primary_region = 'arn'
     timeout = '10s'
     type = 'http'
 
-# Own persistent volume for heap dumps + logs + the AppCDS archive (per-app, per
-# machine). Create it before the first deploy:
-#   flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker-uk
+# First-deploy bootstrap for a NEW per-country worker app (do BOTH before the
+# first `flyctl deploy`, or the machine crash-loops on boot — Sentry KINOWO
+# 135004692, 2026-07-17: the fresh kinowo-worker-uk booted before MONGODB_URI
+# was set, the required-Mongo boot probe hit a stale 127.0.0.1 URI, and
+# MongoConnection.init threw "refusing to start" 9× until the secret landed):
+#   1. Copy the secrets the worker needs from the sibling app FIRST — at minimum
+#      MONGODB_URI (the shared prod cluster; same digest as kinowo-worker), plus
+#      TMDB_API_KEY / ZYTE_API_KEY / SENTRY_DSN / TELEGRAM_* / KINOWO_PROXY_* etc.
+#      Secrets persist across deploys, so this is a one-time-per-new-app step.
+#   2. Create the persistent volume (heap dumps + logs + the AppCDS archive):
+#        flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker-uk
 [[mounts]]
   source = 'worker_heapdumps'
   destination = '/data'
