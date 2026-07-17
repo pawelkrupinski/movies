@@ -863,14 +863,12 @@ object City {
   )
 
   /** The UK cities currently live — the ones web serves and the worker scrapes.
-   *  Scoped to the five largest UK cities (London, Manchester, Birmingham,
-   *  Glasgow, Liverpool, and the next five by size — West Yorkshire, Lancashire,
-   *  Edinburgh & Lothians, Hampshire, North Yorkshire). Add entries from
-   *  [[allUkCities]] here to bring more back online; the disabled cities stay
-   *  fully modelled above. */
-  private[models] val activeUkCities: Set[City] =
-    Set(London, Manchester, Birmingham, Glasgow, Liverpool,
-        WestYorkshire, Lancashire, EdinburghAndLothians, Hampshire, NorthYorkshire)
+   *  Currently the FULL modelled roster: every Flicks region is live. To scope
+   *  the live set down again, narrow this to a subset of [[allUkCities]] (e.g.
+   *  `Set(London, Manchester, …)`); the disabled cities stay fully modelled
+   *  above, so re-enabling is always a one-line edit here — never a
+   *  re-declaration. */
+  private[models] val activeUkCities: Set[City] = allUkCities.toSet
 
   /** The authoritative UK list for [[Country.UnitedKingdom]] — the live subset
    *  of [[allUkCities]], kept in that list's declared order. */
