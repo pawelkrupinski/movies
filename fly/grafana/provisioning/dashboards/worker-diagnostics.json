@@ -49,7 +49,8 @@
         "definition": "label_values(kinowo_worker_throttled, country)",
         "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
         "current": { "text": "pl", "value": "pl", "selected": true },
-        "includeAll": false, "multi": false, "refresh": 2, "sort": 1, "hide": 0 }
+        "includeAll": false, "multi": false, "refresh": 2, "sort": 1, "hide": 0 },
+      { "name": "worker_app", "label": "Worker app", "type": "query", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "definition": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "query": { "query": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "refId": "worker_app" }, "current": { "text": "kinowo-worker", "value": "kinowo-worker", "selected": true }, "includeAll": false, "multi": true, "refresh": 2, "sort": 1, "hide": 2 }
     ]
   },
   "panels": [
@@ -82,7 +83,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kinowo_worker_native_memory_bytes{app=\"kinowo-worker\"}",
+          "expr": "kinowo_worker_native_memory_bytes{app=~\"$worker_app\"}",
           "legendFormat": "{{category}}",
           "datasource": {
             "type": "prometheus",
@@ -150,7 +151,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "process_resident_memory_bytes{app=\"kinowo-worker\"}",
+          "expr": "process_resident_memory_bytes{app=~\"$worker_app\"}",
           "legendFormat": "RSS",
           "datasource": {
             "type": "prometheus",
@@ -227,7 +228,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m]))*100",
+          "expr": "sum(rate(process_cpu_seconds_total{app=~\"$worker_app\"}[5m]))*100",
           "legendFormat": "process cc",
           "datasource": {
             "type": "prometheus",
@@ -236,7 +237,7 @@
         },
         {
           "refId": "B",
-          "expr": "rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100",
+          "expr": "rate(jvm_compilation_time_seconds_total{app=~\"$worker_app\"}[5m])*100",
           "legendFormat": "JIT cc",
           "datasource": {
             "type": "prometheus",
@@ -245,7 +246,7 @@
         },
         {
           "refId": "C",
-          "expr": "sum(rate(jvm_gc_collection_seconds_sum{app=\"kinowo-worker\"}[5m]))*100",
+          "expr": "sum(rate(jvm_gc_collection_seconds_sum{app=~\"$worker_app\"}[5m]))*100",
           "legendFormat": "GC cc",
           "datasource": {
             "type": "prometheus",
@@ -322,7 +323,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "fly_instance_cpu_balance{app=\"kinowo-worker\"}",
+          "expr": "fly_instance_cpu_balance{app=~\"$worker_app\"}",
           "legendFormat": "credit balance",
           "datasource": {
             "type": "prometheus",
@@ -369,7 +370,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(time()-process_start_time_seconds{app=\"kinowo-worker\"})/3600",
+          "expr": "(time()-process_start_time_seconds{app=~\"$worker_app\"})/3600",
           "legendFormat": "uptime h",
           "datasource": {
             "type": "prometheus",
@@ -407,7 +408,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "jvm_threads_current{app=\"kinowo-worker\"}",
+          "expr": "jvm_threads_current{app=~\"$worker_app\"}",
           "legendFormat": "current",
           "datasource": {
             "type": "prometheus",
@@ -416,7 +417,7 @@
         },
         {
           "refId": "B",
-          "expr": "jvm_threads_peak{app=\"kinowo-worker\"}",
+          "expr": "jvm_threads_peak{app=~\"$worker_app\"}",
           "legendFormat": "peak",
           "datasource": {
             "type": "prometheus",
@@ -454,7 +455,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "jvm_memory_used_bytes{app=\"kinowo-worker\",area=\"heap\"}",
+          "expr": "jvm_memory_used_bytes{app=~\"$worker_app\",area=\"heap\"}",
           "legendFormat": "heap used",
           "datasource": {
             "type": "prometheus",
@@ -492,7 +493,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\",app=\"kinowo-worker\"}[5m]))",
+          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=~\"$worker_app\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\",app=~\"$worker_app\"}[5m]))",
           "legendFormat": "avg project ms",
           "datasource": {
             "type": "prometheus",

@@ -35,7 +35,8 @@
         "definition": "label_values(kinowo_worker_throttled, country)",
         "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
         "current": { "text": "pl", "value": "pl", "selected": true },
-        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 0 }
+        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 0 },
+      { "name": "worker_app", "label": "Worker app", "type": "query", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "definition": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "query": { "query": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "refId": "worker_app" }, "current": { "text": "kinowo-worker", "value": "kinowo-worker", "selected": true }, "includeAll": false, "multi": true, "refresh": 2, "sort": 1, "hide": 2 }
     ]
   },
   "panels": [
@@ -123,7 +124,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "lineInterpolation": "stepAfter", "lineWidth": 2, "fillOpacity": 35 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max(kinowo_worker_throttled{country=~\"$country\",app=\"kinowo-worker\"})", "legendFormat": "throttled" }
+        { "refId": "A", "expr": "max(kinowo_worker_throttled{country=~\"$country\",app=~\"$worker_app\"})", "legendFormat": "throttled" }
       ]
     },
     {
@@ -434,11 +435,11 @@
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 165 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=\"kinowo-worker\"}", "legendFormat": "Host free" },
-        { "refId": "D", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{app=\"kinowo-worker\",area=\"heap\"})", "legendFormat": "Heap used" },
-        { "refId": "E", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "jvm_memory_pool_used_bytes{app=\"kinowo-worker\",pool=\"Tenured Gen\"}", "legendFormat": "Old gen (tenured)" },
-        { "refId": "F", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{app=\"kinowo-worker\",area=\"nonheap\"})", "legendFormat": "Non-heap" },
-        { "refId": "G", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "jvm_memory_max_bytes{app=\"kinowo-worker\",area=\"heap\"}", "legendFormat": "Heap cap (-Xmx)" }
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$worker_app\"}", "legendFormat": "Host free" },
+        { "refId": "D", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{app=~\"$worker_app\",area=\"heap\"})", "legendFormat": "Heap used" },
+        { "refId": "E", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "jvm_memory_pool_used_bytes{app=~\"$worker_app\",pool=\"Tenured Gen\"}", "legendFormat": "Old gen (tenured)" },
+        { "refId": "F", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{app=~\"$worker_app\",area=\"nonheap\"})", "legendFormat": "Non-heap" },
+        { "refId": "G", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "jvm_memory_max_bytes{app=~\"$worker_app\",area=\"heap\"}", "legendFormat": "Heap cap (-Xmx)" }
       ]
     },
     {
@@ -459,8 +460,8 @@
         ]
       },
       "targets": [
-        { "refId": "A", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100", "legendFormat": "java (cc, fresh)" },
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "sum(rate(fly_instance_cpu{app=\"kinowo-worker\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "host busy (cc, authoritative — lagged)" },
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "rate(process_cpu_seconds_total{app=~\"$worker_app\"}[5m])*100", "legendFormat": "java (cc, fresh)" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "sum(rate(fly_instance_cpu{app=~\"$worker_app\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "host busy (cc, authoritative — lagged)" },
         { "refId": "C", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "vector(13)", "legendFormat": "breakeven ~13cc (drains above)" }
       ]
     },
@@ -514,22 +515,22 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m])*100)",
+          "expr": "sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=~\"$worker_app\"}[5m])*100)",
           "legendFormat": "projection (cc)"
         },
         {
           "refId": "B",
-          "expr": "rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100",
+          "expr": "rate(jvm_compilation_time_seconds_total{app=~\"$worker_app\"}[5m])*100",
           "legendFormat": "JIT (cc)"
         },
         {
           "refId": "C",
-          "expr": "clamp_min( (rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100) - sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=\"kinowo-worker\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total{app=\"kinowo-worker\"}[5m])*100), 0 )",
+          "expr": "clamp_min( (rate(process_cpu_seconds_total{app=~\"$worker_app\"}[5m])*100) - sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=~\"$worker_app\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total{app=~\"$worker_app\"}[5m])*100), 0 )",
           "legendFormat": "other: scrape + Mongo I/O + GC (cc)"
         },
         {
           "refId": "D",
-          "expr": "rate(process_cpu_seconds_total{app=\"kinowo-worker\"}[5m])*100",
+          "expr": "rate(process_cpu_seconds_total{app=~\"$worker_app\"}[5m])*100",
           "legendFormat": "process CPU total (cc)"
         }
       ]
@@ -551,22 +552,22 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(kinowo_worker_movie_change_events_total{country=~\"$country\",app=\"kinowo-worker\"}[5m]))",
+          "expr": "sum(rate(kinowo_worker_movie_change_events_total{country=~\"$country\",app=~\"$worker_app\"}[5m]))",
           "legendFormat": "movie change-events /s (projection trigger)"
         },
         {
           "refId": "B",
-          "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{country=~\"$country\",app=\"kinowo-worker\"}[5m]))",
+          "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{country=~\"$country\",app=~\"$worker_app\"}[5m]))",
           "legendFormat": "projection calls /s"
         },
         {
           "refId": "C",
-          "expr": "sum(rate(kinowo_worker_readmodel_writes_total{country=~\"$country\",app=\"kinowo-worker\"}[5m]))",
+          "expr": "sum(rate(kinowo_worker_readmodel_writes_total{country=~\"$country\",app=~\"$worker_app\"}[5m]))",
           "legendFormat": "readmodel writes /s (projection output)"
         },
         {
           "refId": "D",
-          "expr": "sum(rate(kinowo_worker_tasks_started_total{country=~\"$country\",app=\"kinowo-worker\"}[5m]))",
+          "expr": "sum(rate(kinowo_worker_tasks_started_total{country=~\"$country\",app=~\"$worker_app\"}[5m]))",
           "legendFormat": "tasks started /s"
         }
       ]
@@ -598,22 +599,22 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{country=~\"$country\",app=\"kinowo-worker\"}[5m]))",
+          "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{country=~\"$country\",app=~\"$worker_app\"}[5m]))",
           "legendFormat": "projections /s"
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.5, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=\"kinowo-worker\"}[5m])) by (le))*1000",
+          "expr": "histogram_quantile(0.5, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=~\"$worker_app\"}[5m])) by (le))*1000",
           "legendFormat": "p50 ms"
         },
         {
           "refId": "C",
-          "expr": "histogram_quantile(0.95, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=\"kinowo-worker\"}[5m])) by (le))*1000",
+          "expr": "histogram_quantile(0.95, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=~\"$worker_app\"}[5m])) by (le))*1000",
           "legendFormat": "p95 ms"
         },
         {
           "refId": "D",
-          "expr": "histogram_quantile(0.99, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=\"kinowo-worker\"}[5m])) by (le))*1000",
+          "expr": "histogram_quantile(0.99, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=~\"$worker_app\"}[5m])) by (le))*1000",
           "legendFormat": "p99 ms"
         }
       ]
@@ -637,7 +638,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=\"kinowo-worker\"}[5m])) by (le)",
+          "expr": "sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\",app=~\"$worker_app\"}[5m])) by (le)",
           "format": "heatmap",
           "legendFormat": "{{le}}"
         }
