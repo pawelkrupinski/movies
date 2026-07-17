@@ -128,7 +128,7 @@ class PlanTests(unittest.TestCase):
     def test_wire_good_candidate(self):
         metas = [self._meta(slug="premiere-cinema-cardiff", display="Premiere Cinema Cardiff",
                             lat=51.48, lon=-3.18, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone=set())
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
         self.assertEqual(len(plan.wire), 1)
         w = plan.wire[0]
         self.assertEqual(w.obj, "PremiereCinemaCardiff")
@@ -136,24 +136,24 @@ class PlanTests(unittest.TestCase):
 
     def test_park_london(self):
         metas = [self._meta(slug="x", display="New Picturehouse Soho", lat=51.51, lon=-0.13, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone=set())
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
         self.assertEqual(plan.wire, [])
         self.assertIn("London", plan.park[0].reason)
 
     def test_park_no_sessions(self):
         metas = [self._meta(slug="x", display="Dark Hall Cardiff", lat=51.48, lon=-3.18, has_sessions=False)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone=set())
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
         self.assertIn("no sessions", plan.park[0].reason)
 
     def test_park_no_coords(self):
         metas = [self._meta(slug="x", display="Somewhere", lat=None, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone=set())
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
         self.assertIn("coordinates", plan.park[0].reason)
 
     def test_park_name_collision(self):
         metas = [self._meta(slug="chapter-cardiff-2", display="Chapter Cardiff",
                             lat=51.48, lon=-3.18, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone=set())
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
         self.assertIn("collision", plan.park[0].reason)
 
 
@@ -161,7 +161,7 @@ class SpliceTests(unittest.TestCase):
     def test_apply_plan_edits_all_three_sites(self):
         cities = d.parse_uk_cities(CITY_SCALA)
         metas = [d.VenueMeta("premiere-cinema-cardiff", "Premiere Cinema Cardiff", 51.48, -3.18, True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas, gone=set())
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas, gone_dead=[], gone_live=[])
         new_cin, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
         # case object added
         self.assertIn('case object PremiereCinemaCardiff extends Cinema("Premiere Cinema Cardiff"', new_cin)
@@ -181,11 +181,36 @@ class SpliceTests(unittest.TestCase):
 
     def test_no_candidates_is_noop(self):
         cities = d.parse_uk_cities(CITY_SCALA)
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas=[], gone={"gone-slug"})
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas=[],
+                            gone_dead=["gone-slug"], gone_live=[])
         new_cin, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
         self.assertEqual(new_cin, CINEMA_SCALA)
         self.assertEqual(new_cat, CATALOG_SCALA)
         self.assertIn("gone-slug", d.render_report(plan, applied=False))
+
+
+class GoneLivenessTests(unittest.TestCase):
+    """A slug gone from the sitemap is a retirement candidate ONLY if it also has
+    no sessions; a still-serving one is a benign index gap, never flagged."""
+
+    def test_partition_splits_dead_from_live(self):
+        gone = {"vue-cinemas-colchester", "palace-cinemas-isle-of-man", "really-closed-odeon"}
+        live_set = {"vue-cinemas-colchester", "palace-cinemas-isle-of-man"}
+        dead, live = d.partition_gone(gone, probe=lambda s: s in live_set)
+        self.assertEqual(dead, ["really-closed-odeon"])
+        self.assertEqual(live, ["palace-cinemas-isle-of-man", "vue-cinemas-colchester"])
+
+    def test_live_index_gap_is_not_a_retirement_candidate(self):
+        cities = d.parse_uk_cities(CITY_SCALA)
+        dead, live = d.partition_gone({"vue-cinemas-colchester"}, probe=lambda s: True)
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas=[],
+                            gone_dead=dead, gone_live=live)
+        report = d.render_report(plan, applied=False)
+        # reported as an index gap, NOT under retirement candidates
+        self.assertIn("index gap", report.lower())
+        self.assertEqual(plan.gone_dead, [])
+        retire_section = report.split("Retirement candidates")[1].split("###")[0]
+        self.assertNotIn("vue-cinemas-colchester", retire_section)
 
 
 class RealRepoInvariantTests(unittest.TestCase):
