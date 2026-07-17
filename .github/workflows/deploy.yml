@@ -71,6 +71,13 @@ jobs:
                       toml: fly.worker.toml
                       bin: worker
                       artifact: stage-worker
+                    # UK worker — same `worker` binary + artifact, split off
+                    # kinowo-worker so the full-UK scrape load gets its own 2x
+                    # machine (KINOWO_COUNTRIES=uk → the kinowo_uk db).
+                    - app: kinowo-worker-uk
+                      toml: fly.worker.uk.toml
+                      bin: worker
+                      artifact: stage-worker
         # Serialize deploys PER APP (so two passing builds can't race flyctl on
         # the same app) while letting web + worker deploy in parallel.
         # cancel-in-progress is false — a queued deploy still runs once the
@@ -121,9 +128,15 @@ jobs:
                           exit 0
                       fi
                   fi
-                  if [ "${{ matrix.app }}" = "kinowo-worker" ]; then
+                  # No-op guard for EVERY worker leg (kinowo-worker and kinowo-worker-uk):
+                  # hash the shared worker inputs + THIS app's own toml, and skip the
+                  # cold-boot redeploy when the live machine already runs that hash. Keyed
+                  # on `bin=worker` + `matrix.app`/`matrix.toml` so each worker app tracks
+                  # its own config independently (a fly.worker.uk.toml edit redeploys only
+                  # the UK worker; a shared worker/ or Dockerfile edit redeploys both).
+                  if [ "${{ matrix.bin }}" = "worker" ]; then
                       hash=""
-                      for p in worker common build.sbt project Dockerfile fly.worker.toml; do
+                      for p in worker common build.sbt project Dockerfile ${{ matrix.toml }}; do
                           hash="$hash$(git rev-parse "HEAD:$p")"
                       done
                       hash=$(printf '%s' "$hash" | sha256sum | cut -d' ' -f1)
@@ -131,9 +144,9 @@ jobs:
                       forced=false
                       case "${HEAD_MSG:-}" in *"[deploy-worker]"*) forced=true ;; esac
                       [ "${FORCE_WORKER:-}" = "true" ] && forced=true
-                      live_hash=$(flyctl ssh console -a kinowo-worker -C 'printenv WORKER_INPUT_HASH' 2>/dev/null | tr -d '[:space:]' || echo "")
+                      live_hash=$(flyctl ssh console -a ${{ matrix.app }} -C 'printenv WORKER_INPUT_HASH' 2>/dev/null | tr -d '[:space:]' || echo "")
                       if [ "$forced" != "true" ] && [ -n "$live_hash" ] && [ "$live_hash" = "$hash" ]; then
-                          echo "::warning::Skipping kinowo-worker — inputs unchanged (hash ${hash:0:8}… already live). Force with [deploy-worker] or the workflow_dispatch input."
+                          echo "::warning::Skipping ${{ matrix.app }} — inputs unchanged (hash ${hash:0:8}… already live). Force with [deploy-worker] or the workflow_dispatch input."
                           echo "skip=true" >> "$GITHUB_OUTPUT"
                           exit 0
                       fi

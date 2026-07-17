@@ -1,0 +1,73 @@
+# UK scrape/enrich worker — the UK (kinowo_uk / Flicks) half of the worker,
+# SPLIT off `kinowo-worker` on 2026-07-17 onto its own shared-cpu-2x machine.
+# Rationale: the full-UK roster (07-12 doubling) pushed the combined pl+uk+de
+# worker's scrape + change-stream/projection load past the shared-cpu-2x credit
+# baseline. A per-COUNTRY split halves the per-machine cost (each machine watches
+# only its own db's `movies` change stream — unlike same-db replicas, which don't
+# split that fixed cost; see fly.worker.toml's "WHY MORE MACHINES DON'T HELP").
+# Each country is fully isolated (own db + task queue + freshness + staging +
+# projection), so this machine and `kinowo-worker` (pl,de) never contend.
+#
+# Same Dockerfile + `--build-arg BIN=worker` as `kinowo-worker`; identical JVM /
+# throttle / GC tuning — see fly.worker.toml for the full rationale behind each
+# flag. This file only differs in `app`, `KINOWO_COUNTRIES=uk`, and its own volume.
+app = 'kinowo-worker-uk'
+# Same region as the shared Mongo cluster (fly/mongo) for ~1 ms write RTT. The UK
+# WEB app (showtimes-uk) runs in London for user latency, but the worker has no
+# user traffic — it wants Mongo colocation, like kinowo-worker.
+primary_region = 'arn'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[[metrics]]
+  port = 9000
+  path = '/metrics'
+
+[env]
+  PORT = '9000'
+  # UK only → one WorkerWiring against the kinowo_uk db (Country.dbNameFor).
+  KINOWO_COUNTRIES = 'uk'
+  KINOWO_BOOT_HYDRATE_MAX_ATTEMPTS = '20'
+  KINOWO_WORKER_POOL_SIZE = '4'
+  # Credit-throttle thresholds (ms of fly_instance_cpu_balance), same as kinowo-worker.
+  KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
+  KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
+  # Cinema-scrape freshness window — see fly.worker.toml for why 60min.
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '60'
+  # JVM sizing: Xms=Xmx=448m on the 1 GB box — the UK corpus is ~half the former
+  # combined set that needed 480m, and 448 + ~290 MB non-heap ≈ 738 MB RSS leaves
+  # ~220 MB free. All other flags (SerialGC, tightened caps, -UseTypeSpeculation +
+  # recompilation cutoffs, AppCDS, ExitOnOOM + HeapDump to /data, NMT diag, the
+  # LOAD-BEARING empty -Djdk.http.auth.tunneling.disabledSchemes= for the residential
+  # proxy) are identical to kinowo-worker — see that file's JAVA_OPTS note.
+  JAVA_OPTS = '-Xms448m -Xmx448m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
+  MALLOC_ARENA_MAX = '2'
+  MALLOC_TRIM_THRESHOLD_ = '131072'
+  KINOWO_LOG_DIR = '/data/logs'
+
+[checks]
+  [checks.health]
+    grace_period = '30s'
+    interval = '15s'
+    method = 'GET'
+    path = '/health'
+    port = 9000
+    timeout = '10s'
+    type = 'http'
+
+# Own persistent volume for heap dumps + logs + the AppCDS archive (per-app, per
+# machine). Create it before the first deploy:
+#   flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker-uk
+[[mounts]]
+  source = 'worker_heapdumps'
+  destination = '/data'
+
+[[vm]]
+  # 2 shared vCPUs / 1 GB — same class as kinowo-worker. The split gives UK its own
+  # 2x credit bucket for its own scrape + change-stream/projection load. If UK's
+  # steady CPU ever climbs over the ~13 cc 2x breakeven, escalate per fly.worker.toml
+  # (TieredStopAtLevel=1, then performance-2x).
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 2

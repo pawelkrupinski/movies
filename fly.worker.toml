@@ -51,10 +51,19 @@ primary_region = 'arn'
   # WorkerMain's JDK health server binds this port; the [checks] block below
   # probes it. No public router fronts it (no [http_service]).
   PORT = '9000'
-  # Countries this single worker scrapes + enriches — one WorkerWiring per code
-  # (WorkerMain.resolveCountries), sharing this machine's pool + Mongo client.
-  # Poland (kinowo) + the UK (kinowo_uk, Flicks) + Germany (kinowo_de, Filmstarts).
-  KINOWO_COUNTRIES = 'pl,uk,de'
+  # Countries this worker scrapes + enriches — one WorkerWiring per code
+  # (WorkerMain.resolveCountries), each with its OWN Mongo db, sharing this
+  # machine's pool + Mongo client. Poland (kinowo) + Germany (kinowo_de, Filmstarts).
+  # The UK (kinowo_uk, Flicks) was SPLIT onto its own machine (kinowo-worker-uk,
+  # fly.worker.uk.toml) on 2026-07-17: the full-UK roster doubled this machine's
+  # scrape + change-stream/projection load past the shared-cpu-2x credit baseline.
+  # Unlike same-db REPLICAS (see "WHY MORE MACHINES DON'T HELP" above — change-stream
+  # + projection is a fixed per-machine cost that doesn't split across replicas of
+  # one db), a per-COUNTRY split DOES halve the per-machine cost: each machine
+  # watches only its own db's change stream. Every country is fully isolated (own db
+  # + task queue + freshness + staging + projection), so the two machines never
+  # contend on any collection.
+  KINOWO_COUNTRIES = 'pl,de'
   # Retry the boot cache hydrate while Mongo comes up alongside the worker. An
   # empty findAll at boot is "Mongo not ready", not "empty corpus"; without
   # retry the cache starts empty and quiescent rows never load (only re-scraped
@@ -109,7 +118,12 @@ primary_region = 'arn'
   #     per-thread malloc arenas (default 8×nCPU → fragmentation that shows as
   #     RSS far above the JVM's own committed pools) and make glibc hand freed
   #     memory back to the OS sooner.
-  #   - Xms=Xmx=480m (was 320, was 384): RAISED 2026-07-17 after the full-UK
+  #   - Xms=Xmx=448m (was 480, 320, 384): the 480m bump below was for the COMBINED
+  #     pl+uk+de working set; once UK split onto kinowo-worker-uk (2026-07-17), pl+de
+  #     alone fits a smaller heap — 448m keeps margin for DE growth, and RSS
+  #     (448 + ~290 non-heap ≈ 738 MB) fits the 1 GB box with ~220 MB free, so the
+  #     paired 1280 MB RAM step is reverted to 1gb too. The 480m rationale is kept
+  #     below for the sizing method. Original note — RAISED 2026-07-17 after the full-UK
   #     rollout (07-12 doubling → the whole Flicks roster, ~299→687 due cinemas)
   #     grew the resident scrape/index working set past what 320m could hold at
   #     peak. Measured: heap peaked 311.6/320 MB and the worker took a confirmed
@@ -235,7 +249,7 @@ primary_region = 'arn'
   # (HeapDumpOnOutOfMemoryError writes ~11MB/OOM and never prunes) — which is why the 01:08 OOM wrote no
   # dump. Cleaned to 15%; the Dockerfile CMD now prunes /data/heapdumps to the 3 newest + drops the
   # retired /data/jfr on every boot, so it can't refill.
-  JAVA_OPTS = '-Xms480m -Xmx480m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
+  JAVA_OPTS = '-Xms448m -Xmx448m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
   # glibc allocator caps (read at process start, inherited by the JVM): bound the
   # arena count and trim freed heap back to the OS. See the JAVA_OPTS note above.
   MALLOC_ARENA_MAX = '2'
@@ -297,13 +311,11 @@ primary_region = 'arn'
   # rebuilds. On 4x this gate is a dormant deep-safety-net. If 4x ever genuinely pins,
   # go performance-2x (dedicated, no credit throttle) rather than shared-2x.
   #
-  # RAM is INDEPENDENT of the CPU choice. RAISED 1gb→1280mb on 2026-07-17, paired with
-  # the Xmx 320→480m bump (see the JAVA_OPTS note): the full-UK working set OOM'd a 320m
-  # heap, and the measured 1 GB envelope (~704 MB used / ~257 MB free at 320m) can't
-  # absorb the +160 MB pre-committed heap without dropping to ~97 MB free — the sub-100 MB
-  # OOM-loop zone. 1280mb restores ~360 MB free at the new 480m heap. 1280 (1.25 GB) is a
-  # valid 256 MB-increment step; extra RAM is ~$5.19/GB-mo (~+$1.30/mo). If the full-UK
-  # working set outgrows this too, next step is 640m/1536mb or a move back to 2 GB.
-  memory = '1280mb'
+  # RAM is INDEPENDENT of the CPU choice. Briefly 1280mb (2026-07-17, paired with the
+  # 480m heap for the COMBINED pl+uk+de working set); REVERTED to 1gb the same day when
+  # UK split onto kinowo-worker-uk — pl+de alone at 448m heap uses ~738 MB RSS, ~220 MB
+  # free of the 961 MB cgroup, so the extra RAM is no longer needed. If pl+de ever OOMs,
+  # the levers are unchanged: raise Xmx, then step RAM 1gb→1280mb (256 MB increments).
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 2
