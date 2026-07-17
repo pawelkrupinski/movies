@@ -82,6 +82,10 @@ import pl.kinowo.R
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.model.Cities
 import pl.kinowo.model.Country
+import pl.kinowo.model.defaultCity
+import pl.kinowo.model.isSwitchable
+import pl.kinowo.model.sortedForPicker
+import pl.kinowo.model.withCode
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
@@ -383,9 +387,10 @@ private fun CollapsibleSection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CountrySection(viewModel: KinowoViewModel) {
-    if (Country.all.size <= 1) return
+    val countries = viewModel.countryCatalog.collectAsState().value.countries
+    if (!countries.isSwitchable) return
     val selectedCode by viewModel.selectedCountryCode.collectAsState()
-    val current = Country.byCode(selectedCode)
+    val current = countries.withCode(Country.normalizeCode(selectedCode)) ?: Country.default
     var expanded by remember { mutableStateOf(false) }
     FilterSectionLabel(stringResource(R.string.country_label))
     ExposedDropdownMenuBox(
@@ -402,7 +407,7 @@ private fun CountrySection(viewModel: KinowoViewModel) {
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            Country.all.forEach { country ->
+            countries.forEach { country ->
                 DropdownMenuItem(
                     text = { Text(country.displayName) },
                     onClick = {
@@ -426,9 +431,11 @@ private fun CountrySection(viewModel: KinowoViewModel) {
 @Composable
 private fun CitySection(viewModel: KinowoViewModel) {
     val selected by viewModel.selectedCity.collectAsState()
-    val countryCode = viewModel.selectedCountryCode.collectAsState().value ?: Country.default.code
-    val cities = Cities.sortedIn(countryCode)
-    val current = cities.firstOrNull { it.slug == selected } ?: Cities.defaultCityIn(countryCode)
+    val catalog = viewModel.countryCatalog.collectAsState().value
+    val countryCode = Country.normalizeCode(viewModel.selectedCountryCode.collectAsState().value) ?: Country.default.code
+    val cities = catalog.cities.sortedForPicker(countryCode)
+    val current = cities.firstOrNull { it.slug == selected }
+        ?: catalog.cities.defaultCity(countryCode) ?: Cities.DEFAULT
     var expanded by remember { mutableStateOf(false) }
     FilterSectionLabel("Miasto")
     ExposedDropdownMenuBox(

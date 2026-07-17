@@ -8,8 +8,8 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.suspendCancellableCoroutine
-import pl.kinowo.model.Cities
 import pl.kinowo.model.City
+import pl.kinowo.model.nearestWithin100km
 import kotlin.coroutines.resume
 
 /**
@@ -24,9 +24,9 @@ import kotlin.coroutines.resume
 class LocationCityResolver(private val context: Context) {
 
     @SuppressLint("MissingPermission") // the gate requests ACCESS_COARSE_LOCATION before calling
-    suspend fun resolveNearestCity(countryCode: String): City? {
+    suspend fun resolveNearestCity(countryCode: String, cities: List<City>): City? {
         val fix = locationFix() ?: return null
-        return Cities.nearestWithin100km(fix.first, fix.second, countryCode)
+        return cities.nearestWithin100km(fix.first, fix.second, countryCode)
     }
 
     /**

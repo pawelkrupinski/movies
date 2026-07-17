@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.onEach
 import okhttp3.OkHttpClient
 import pl.kinowo.auth.AuthRepository
 import pl.kinowo.auth.HttpUserStateClient
+import pl.kinowo.data.CatalogCache
+import pl.kinowo.data.CatalogRepository
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
@@ -69,7 +71,15 @@ class MainActivity : ComponentActivity() {
         val prefs = UserPreferences(applicationContext)
         val authRepository = AuthRepository(httpClient, cookieJar)
         val userStateClient = HttpUserStateClient(client = httpClient)
-        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient, api)
+        // The country/city catalog: seeded from the bundled assets snapshot (so a
+        // fresh install renders offline and the first fetch already carries the
+        // build's ETag), refreshed via `api` (KinowoApi implements CatalogApi),
+        // persisted in cacheDir. Country-agnostic, so any deployment's base works.
+        val catalogSeed = runCatching {
+            applicationContext.assets.open("catalog-seed.json").bufferedReader().use { it.readText() }
+        }.getOrNull()
+        val catalogRepository = CatalogRepository(api, CatalogCache(cacheDir), catalogSeed)
+        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient, api, catalogRepository)
     }
 
     // Force the selected country's language regardless of the device locale, so

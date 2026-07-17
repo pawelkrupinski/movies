@@ -18,22 +18,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.R
 import pl.kinowo.model.Country
+import pl.kinowo.model.withCode
 import pl.kinowo.ui.theme.TextSecondary
 
 /**
- * The in-app country switch: one pill per [Country.all]. Selecting a country
- * persists it (via [onSelect]); the activity recreates so the app re-points at
- * that country's deployment and forces its UI language. Kept compact so it can
- * sit above the city list on the first-launch gate without disturbing the
- * two-per-row card layout further down.
+ * The in-app country switch: one pill per country in [countries] (the live
+ * catalog's list). Selecting a country persists it (via [onSelect]); the
+ * activity recreates so the app re-points at that country's deployment and
+ * forces its UI language. Kept compact so it can sit above the city list on the
+ * first-launch gate without disturbing the two-per-row card layout further down.
  */
 @Composable
 fun CountryPicker(
+    countries: List<Country>,
     selectedCode: String?,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val current = Country.byCode(selectedCode)
+    val current = countries.withCode(Country.normalizeCode(selectedCode)) ?: Country.default
     Column(modifier.fillMaxWidth()) {
         Text(
             stringResource(R.string.country_label),
@@ -45,7 +47,7 @@ fun CountryPicker(
             Modifier.fillMaxWidth().selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Country.all.forEach { country ->
+            countries.forEach { country ->
                 val selected = country.code == current.code
                 if (selected) {
                     Button(onClick = { onSelect(country.code) }) {

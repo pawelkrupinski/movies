@@ -13,17 +13,28 @@ class CountryTest {
     @Test
     fun defaultIsPolandOnTheProdDeployment() {
         val pl = Country.default
-        assertEquals("PL", pl.code)
+        assertEquals("pl", pl.code)
         assertEquals("https://kinowo.fly.dev", pl.baseUrl)
         assertEquals("pl", pl.languageTag)
     }
 
     @Test
     fun ukEntryForcesEnglishOnItsOwnDeployment() {
-        val gb = Country.byCode("GB")
-        assertEquals("United Kingdom", gb.displayName)
-        assertEquals("https://showtimes-uk.fly.dev", gb.baseUrl)
-        assertEquals("en", gb.languageTag)
+        val uk = Country.byCode("uk")
+        assertEquals("uk", uk.code)
+        assertEquals("United Kingdom", uk.displayName)
+        assertEquals("https://showtimes-uk.fly.dev", uk.baseUrl)
+        assertEquals("en", uk.languageTag)
+    }
+
+    @Test
+    fun legacyIsoCodesNormalizeToServerCodes() {
+        // Earlier builds persisted ISO codes (PL/GB); the catalog keys on pl/uk.
+        assertEquals("pl", Country.byCode("PL").code)
+        assertEquals("uk", Country.byCode("GB").code)
+        assertEquals("pl", Country.normalizeCode("PL"))
+        assertEquals("uk", Country.normalizeCode("GB"))
+        assertEquals("uk", Country.normalizeCode("uk"))
     }
 
     @Test

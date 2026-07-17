@@ -12,7 +12,8 @@ package pl.kinowo.model
  * set of countries, their base URLs, and their forced languages.
  */
 data class Country(
-    /** ISO 3166-1 alpha-2, e.g. `PL`, `GB`. The persisted selection key. */
+    /** Server country code, e.g. `pl`, `uk` — the single code space the catalog
+     *  keys on (cities carry the same code). Also the persisted selection key. */
     val code: String,
     /** Human-readable label for the country picker. */
     val displayName: String,
@@ -23,16 +24,19 @@ data class Country(
     val languageTag: String,
 ) {
     companion object {
-        /** Poland is the default: the current production deployment, Polish UI. */
+        /** Compile-time FALLBACK registry, used only until the bundled/fetched
+         *  catalog loads (and if it ever fails to decode). The live registry is
+         *  the `/api/catalog` payload the catalog repository publishes. Poland is
+         *  the default. Codes match the server (`pl`/`uk`). */
         val all: List<Country> = listOf(
             Country(
-                code = "PL",
+                code = "pl",
                 displayName = "Polska",
                 baseUrl = "https://kinowo.fly.dev",
                 languageTag = "pl",
             ),
             Country(
-                code = "GB",
+                code = "uk",
                 displayName = "United Kingdom",
                 baseUrl = "https://showtimes-uk.fly.dev",
                 languageTag = "en",
@@ -41,7 +45,38 @@ data class Country(
 
         val default: Country = all.first()
 
-        /** The country for [code], or [default] when null / unknown. */
-        fun byCode(code: String?): Country = all.firstOrNull { it.code == code } ?: default
+        /** The country for [code] in the fallback registry, or [default] when
+         *  null / unknown. Bootstrap only; live lookups use the catalog list. */
+        fun byCode(code: String?): Country = all.firstOrNull { it.code == normalizeCode(code) } ?: default
+
+        /** Map a legacy persisted selection code to the current server code space.
+         *  Earlier builds stored ISO codes (`PL`/`GB`); the catalog keys on
+         *  `pl`/`uk`. Applied wherever a persisted code is read so an upgrade keeps
+         *  the user's country without a migration write. */
+        fun normalizeCode(code: String?): String? = when (code) {
+            "PL" -> "pl"
+            "GB" -> "uk"
+            else -> code
+        }
     }
+}
+
+/** Registry lookups over a catalog's country list — the live list the catalog
+ *  repository holds, so a country added server-side appears without an app update. */
+fun List<Country>.withCode(code: String?): Country? = firstOrNull { it.code == code }
+
+/** Whether an in-app country switcher is worth showing (more than one deployed
+ *  country). With one there's nothing to switch to. */
+val List<Country>.isSwitchable: Boolean get() = size > 1
+
+/** Wire shape of one country in the `/api/catalog` payload (`{code,name,baseUrl,
+ *  language,brand}`). Decoded then mapped to [Country]; `brand` is ignored. */
+@kotlinx.serialization.Serializable
+data class CountryDto(
+    val code: String,
+    val name: String,
+    val baseUrl: String,
+    val language: String,
+) {
+    fun toCountry(): Country = Country(code = code, displayName = name, baseUrl = baseUrl, languageTag = language)
 }

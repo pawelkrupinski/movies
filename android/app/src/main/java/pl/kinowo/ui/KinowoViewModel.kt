@@ -30,6 +30,7 @@ import pl.kinowo.data.PosterCachePurge
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.auth.UserStateClient
+import pl.kinowo.data.CatalogRepository
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
@@ -41,6 +42,7 @@ import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
+import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaSection
@@ -70,7 +72,20 @@ class KinowoViewModel(
     // Last, with a flat-catalog default, so the existing test constructors (which
     // don't exercise split cities) keep compiling without threading a stub.
     private val catalogApi: CinemaCatalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },
+    // The live country/city catalog. Defaulted to a fallback-only repository (no
+    // network, no seed) so existing test constructors keep compiling.
+    private val catalogRepository: CatalogRepository = CatalogRepository(
+        api = pl.kinowo.net.CatalogApi { pl.kinowo.net.KinowoApi.FetchedCatalog(null, null, notModified = true) },
+        cache = pl.kinowo.data.CatalogCache(java.io.File(System.getProperty("java.io.tmpdir"), "kinowo-catalog-default")),
+        seedJson = null,
+    ),
 ) : ViewModel() {
+
+    /** The live country + city catalog (fetched on open, seeded from the distro).
+     *  The pickers and the nearest-city gate read `countryCatalog.value.cities` /
+     *  `.countries` and run the `List<City>`/`List<Country>` query extensions.
+     *  (Distinct from `catalog` below, which is the per-city cinema universe.) */
+    val countryCatalog: StateFlow<pl.kinowo.model.Catalog> = catalogRepository.catalog
 
     val films: StateFlow<List<Film>> = repository.films
     val isLoading: StateFlow<Boolean> = repository.isLoading
@@ -246,6 +261,10 @@ class KinowoViewModel(
         repository.loadCachedData()
         detailsRepository.loadCachedData()
         repository.pruneStaleShowings()
+        // Revalidate the country/city catalog on cold open (conditional GET; a
+        // 304 costs only headers). Non-blocking — the UI renders from the
+        // seeded/persisted catalog meanwhile.
+        viewModelScope.launch { catalogRepository.reload() }
         // The network fetch is gated on a city being chosen — until the
         // first-launch gate resolves one, `selectedCity` is null and nothing
         // hits the wire. Each distinct (non-null) slug triggers a fresh load,
@@ -283,6 +302,9 @@ class KinowoViewModel(
 
     fun onResume() {
         repository.pruneStaleShowings()
+        // Revalidate the catalog on each foreground (city-independent, so before
+        // the early return below when no city is chosen yet).
+        viewModelScope.launch { catalogRepository.reload() }
         val slug = selectedCity.value ?: return
         viewModelScope.launch {
             coroutineScope {
@@ -431,7 +453,7 @@ class KinowoViewModel(
         if (citySwitchSuggestion != null) return@launch
         val chosen = selectedCity.value ?: return@launch
         val fix = LocationCityResolver(context).resolveIfGranted() ?: return@launch
-        val suggestion = Cities.switchSuggestion(
+        val suggestion = countryCatalog.value.cities.switchSuggestion(
             chosenSlug = chosen,
             lat = fix.first,
             lon = fix.second,
@@ -530,9 +552,10 @@ class KinowoViewModel(
         private val authRepository: AuthRepository,
         private val userStateClient: UserStateClient,
         private val catalogApi: CinemaCatalogApi,
+        private val catalogRepository: CatalogRepository,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repository, detailsRepository, prefs, authRepository, userStateClient, catalogApi) as T
+            KinowoViewModel(repository, detailsRepository, prefs, authRepository, userStateClient, catalogApi, catalogRepository) as T
     }
 }

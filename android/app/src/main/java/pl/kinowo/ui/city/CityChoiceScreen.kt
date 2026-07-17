@@ -32,9 +32,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.R
-import pl.kinowo.model.Cities
+import pl.kinowo.model.Catalog
 import pl.kinowo.model.City
 import pl.kinowo.model.Country
+import pl.kinowo.model.matching
 import pl.kinowo.ui.CountryPicker
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -53,20 +54,22 @@ private val ControlMinHeight = 56.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CityChoiceScreen(
+    catalog: Catalog,
     onPick: (City) -> Unit,
     selectedCountryCode: String? = null,
     onCountry: (String) -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     // Scope the list to the selected country so the chooser shows UK regions for
-    // a GB user, Polish cities for a PL user.
-    val cities = Cities.matching(query, selectedCountryCode ?: Country.default.code)
+    // a UK user, Polish cities for a PL user — from the live catalog.
+    val cities = catalog.cities.matching(query, Country.normalizeCode(selectedCountryCode) ?: Country.default.code)
 
     Column(
         Modifier.fillMaxSize().padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         CountryPicker(
+            countries = catalog.countries,
             selectedCode = selectedCountryCode,
             onSelect = onCountry,
             modifier = Modifier.padding(top = 24.dp),

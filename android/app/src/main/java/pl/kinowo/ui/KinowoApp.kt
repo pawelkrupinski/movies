@@ -115,10 +115,14 @@ private fun CityGate(viewModel: KinowoViewModel) {
     val resolver = remember { LocationCityResolver(context) }
     // The selected country scopes the nearest-city resolution and the chooser
     // list below, so a UK user is placed on/offered UK regions, a Polish user
-    // Polish cities.
+    // Polish cities. Both read the live catalog.
     val selectedCountry = viewModel.selectedCountryCode.collectAsState().value
+    val catalog = viewModel.countryCatalog.collectAsState().value
     fun resolveFromLocation() = scope.launch {
-        val city = resolver.resolveNearestCity(selectedCountry ?: Country.default.code)
+        val city = resolver.resolveNearestCity(
+            Country.normalizeCode(selectedCountry) ?: Country.default.code,
+            catalog.cities,
+        )
         if (city != null) { detected = city; nearest = city } else showChooser = true
     }
 
@@ -136,6 +140,7 @@ private fun CityGate(viewModel: KinowoViewModel) {
     val city = detected
     when {
         showChooser     -> CityChoiceScreen(
+            catalog = catalog,
             onPick = { viewModel.chooseCityAtGate(it.slug, nearest?.slug) },
             selectedCountryCode = selectedCountry,
             onCountry = { viewModel.setCountry(it) },

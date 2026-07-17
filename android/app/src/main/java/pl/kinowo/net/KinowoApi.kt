@@ -28,6 +28,12 @@ fun interface CinemaCatalogApi {
     suspend fun fetchCinemas(citySlug: String): CinemaCatalog
 }
 
+/** The global country+city catalog (`GET /api/catalog`), fetched with a
+ *  conditional GET (`If-None-Match`) so an unchanged catalog answers 304. */
+fun interface CatalogApi {
+    suspend fun fetchCatalog(ifNoneMatch: String?): KinowoApi.FetchedCatalog
+}
+
 /**
  * Talks to the kinowo backend via two endpoints: `GET /{city}/api/repertoire`
  * (grid listing) and `GET /{city}/api/details` (synopsis, trailers, cast).
@@ -38,7 +44,7 @@ fun interface CinemaCatalogApi {
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.fly.dev",
     private val client: OkHttpClient = defaultClient,
-) : RepertoireApi, DetailsApi, CinemaCatalogApi {
+) : RepertoireApi, DetailsApi, CinemaCatalogApi, CatalogApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Result of a conditional GET: [items] is null on a 304 (use the cache). */
@@ -47,6 +53,30 @@ class KinowoApi(
         val lastModified: String?,
         val notModified: Boolean,
     )
+
+    /** Result of the catalog conditional GET: [body] is null on a 304, else the
+     *  raw `{countries,cities}` JSON; [etag] is the validator to persist + resend. */
+    data class FetchedCatalog(
+        val body: String?,
+        val etag: String?,
+        val notModified: Boolean,
+    )
+
+    /** Fetch `/api/catalog` (country-agnostic — any deployment serves the same
+     *  bytes) with `If-None-Match`. A 304 returns [FetchedCatalog.notModified]. */
+    override suspend fun fetchCatalog(ifNoneMatch: String?): FetchedCatalog = withContext(Dispatchers.IO) {
+        val builder = Request.Builder()
+            .url("$baseUrl/api/catalog")
+            .header("User-Agent", UA)
+            .cacheControl(CacheControl.FORCE_NETWORK)
+        if (ifNoneMatch != null) builder.header("If-None-Match", ifNoneMatch)
+        client.newCall(builder.build()).execute().use { response ->
+            if (response.code == 304) return@withContext FetchedCatalog(null, ifNoneMatch, notModified = true)
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val body = response.body?.string() ?: throw IOException("empty body")
+            FetchedCatalog(body, response.header("ETag"), notModified = false)
+        }
+    }
 
     override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?): Fetched<Film> =
         fetchList("$baseUrl/$citySlug/api/repertoire", ifModifiedSince)

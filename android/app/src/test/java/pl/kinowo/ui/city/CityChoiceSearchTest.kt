@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import pl.kinowo.model.Catalog
 import pl.kinowo.model.City
 
 /**
@@ -33,7 +34,7 @@ class CityChoiceSearchTest {
 
     @Test
     fun typingNarrowsTheListDiacriticInsensitively() {
-        compose.setContent { CityChoiceScreen(onPick = {}) }
+        compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
 
         // Białystok leads the Polish-collated list, so it's rendered up front.
         compose.onNodeWithText("Białystok").assertExists()
@@ -47,7 +48,7 @@ class CityChoiceSearchTest {
 
     @Test
     fun diacriticTypedQueryFindsThePolishCity() {
-        compose.setContent { CityChoiceScreen(onPick = {}) }
+        compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
 
         // "lodz" must surface "Łódź" (ł/ó folded away on both sides).
         compose.onNode(hasSetTextAction()).performTextInput("lodz")
@@ -57,7 +58,7 @@ class CityChoiceSearchTest {
 
     @Test
     fun noMatchShowsTheEmptyState() {
-        compose.setContent { CityChoiceScreen(onPick = {}) }
+        compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
 
         compose.onNode(hasSetTextAction()).performTextInput("zzzzz")
         compose.onNodeWithText("Brak miasta", substring = true).assertExists()
@@ -68,7 +69,7 @@ class CityChoiceSearchTest {
     @Test
     fun tappingAFilteredCityReportsIt() {
         var picked: City? = null
-        compose.setContent { CityChoiceScreen(onPick = { picked = it }) }
+        compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = { picked = it }) }
 
         compose.onNode(hasSetTextAction()).performTextInput("wroc")
         compose.onNodeWithText("Wrocław").performClick()
