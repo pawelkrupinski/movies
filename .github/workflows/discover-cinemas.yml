@@ -1,0 +1,123 @@
+name: Discover UK cinemas
+
+# Weekly discovery of NEW UK cinemas on flicks.co.uk, wired into the catalog as a
+# PR for a human to review.
+#
+# The UK roster is one hand-wired `FlicksClient` per venue (a `case object … extends
+# Cinema` in common/.../models/Cinema.scala + a `flicks("<slug>", Obj)` line in
+# worker/.../CinemaScraperCatalog.scala). Flicks lists every cinema in
+# sitemap-cinemas.xml; scripts/discover-cinemas/discover.py diffs that against the
+# slugs we already wire (minus scripts/discover-cinemas/exclude.txt, the known-
+# defunct venues) and splices compilable Scala for each genuinely new venue,
+# assigning it to the nearest wired UK city by coordinates.
+#
+# Venues it can't wire safely — London (needs a manual area-group), name
+# collisions, no coordinates, or no sessions this week — are PARKED into the PR
+# body, never written as broken Scala. It also lists GONE venues (wired by us but
+# dropped from Flicks' sitemap) as retirement candidates; it never auto-deletes.
+#
+# Like regenerate-og-cards.yml / sync-title-rules, the PR is opened via the
+# "Kinowo Sync Bot" GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY)
+# so Branch CI runs on it — a PR opened with the default GITHUB_TOKEN never fires
+# `pull_request`. A fixed branch means reruns amend the open PR; a week with no
+# new venues produces no diff and therefore no PR (the report still lands in the
+# run summary so retirement candidates stay visible).
+
+on:
+    workflow_dispatch:
+
+    # Monday 06:00 UTC — off on its own slot, away from the Friday OG-card refresh.
+    schedule:
+        - cron: '0 6 * * 1'
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    discover-cinemas:
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            # Short-lived installation token for the "Kinowo Sync Bot" GitHub App,
+            # so the PR fires `pull_request` and Branch CI runs on it. Same secrets
+            # as regenerate-og-cards.yml — see that file's header.
+            - uses: actions/create-github-app-token@v3
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            - uses: actions/checkout@v5
+
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: '3.12'
+
+            # Guard the tool itself before trusting its edits.
+            - name: Unit-test the discovery tool
+              working-directory: scripts/discover-cinemas
+              run: python3 test_discover.py
+
+            # Enumerate Flicks, diff, and splice new venues into the two source
+            # files (--apply). Stdlib only — no pip install. Writes the markdown
+            # report used for the PR body and the run summary.
+            - name: Discover + wire new cinemas
+              run: |
+                  python3 scripts/discover-cinemas/discover.py --apply --report-path discovery-report.md
+                  cat discovery-report.md >> "$GITHUB_STEP_SUMMARY"
+
+            # Only compile when the discovery actually changed the wiring — a bad
+            # splice must fail the job here, BEFORE a broken PR is opened. Weeks
+            # with no new venues skip the (slow) compile entirely.
+            - name: Check for wiring changes
+              id: changed
+              run: |
+                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala; then
+                      echo "wired=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "wired=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - uses: actions/setup-java@v5
+              if: steps.changed.outputs.wired == 'true'
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+              if: steps.changed.outputs.wired == 'true'
+
+            - uses: actions/cache@v5
+              if: steps.changed.outputs.wired == 'true'
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            # Gate: the generated Scala must compile (common + worker) or the job
+            # fails and no PR is opened.
+            - name: Compile-gate the generated wiring
+              if: steps.changed.outputs.wired == 'true'
+              run: sbt "worker/compile"
+
+            # Open (or amend) the PR with the newly wired venues. `add-paths` scopes
+            # the commit to the two source files; the report is the body only (not
+            # committed). No diff ⇒ no PR.
+            - name: Open discovery PR
+              uses: peter-evans/create-pull-request@v6
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+                  branch: chore/discover-cinemas
+                  delete-branch: true
+                  add-paths: |
+                      common/src/main/scala/models/Cinema.scala
+                      worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala
+                  commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
+                  title: 'chore: wire newly-discovered UK cinemas'
+                  body-path: discovery-report.md
