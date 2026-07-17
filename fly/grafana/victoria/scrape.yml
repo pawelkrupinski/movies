@@ -32,6 +32,18 @@ scrape_configs:
         labels:
           app: kinowo-worker
 
+  # UK worker — the UK (kinowo_uk) scrape/enrich pipeline was SPLIT off kinowo-worker
+  # onto its own 2x machine (2026-07-17, see fly.worker.uk.toml). Its own Fly app, so
+  # its own 6PN target + app label. Its kinowo_worker_* series still carry country="uk"
+  # (one WorkerWiring, country-labelled), so they land under the shared $country var.
+  - job_name: kinowo-worker-uk
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['kinowo-worker-uk.internal:9000']
+        labels:
+          app: kinowo-worker-uk
+
   # filmowo (the recommend app) is a separate Fly app in the SAME org, so its
   # 6PN hostname resolves from here too. Its Node server binds 9002 (not 9000
   # like the kinowo apps) and serves /metrics there. Unlike the kinowo targets,
@@ -44,10 +56,11 @@ scrape_configs:
     static_configs:
       - targets: ['filmowo.internal:9002']
 
-  # Multi-country: the ONE worker process serves every country and tags each
-  # kinowo_worker_* series with a `country` label, so the single kinowo-worker
-  # target above already carries all countries — no per-country worker target is
-  # needed. A WEB deployment, by contrast, serves exactly ONE country per Fly app
+  # Multi-country workers: pl+de share the kinowo-worker target above, and uk has
+  # its own kinowo-worker-uk target (split 2026-07-17). Each worker tags its
+  # kinowo_worker_* series with the `country` label, so per-country dashboard views
+  # work regardless of which Fly app produced them. A WEB deployment, by contrast,
+  # serves exactly ONE country per Fly app
   # (KINOWO_COUNTRY), so each country is a separate web app + a separate scrape
   # target here. Its /metrics already self-labels `country=…` (see
   # controllers.MetricsController / WebMovieMetrics), and the app label
