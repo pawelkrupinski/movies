@@ -327,7 +327,8 @@ struct ContentView: View {
               let suggestion = City.switchSuggestion(
                 chosenSlug: chosen,
                 lat: fix.lat, lon: fix.lon,
-                lastPromptKey: prefs.citySwitchPromptKey
+                lastPromptKey: prefs.citySwitchPromptKey,
+                in: prefs.selectedCountry.code
               )
         else { return }
         prefs.setCitySwitchPromptKey(suggestion.key)

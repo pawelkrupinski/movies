@@ -74,7 +74,7 @@ struct CityResolverView: View {
                 return
             }
             #endif
-            switch await resolver.resolve() {
+            switch await resolver.resolve(in: prefs.selectedCountry.code) {
             case .city(let city):
                 detected = city
             case .unavailable:
@@ -141,7 +141,7 @@ struct CityChoiceView: View {
     /// contains it (diacritic-insensitive, so "lodz" finds "Łódź").
     @State private var query = ""
 
-    private var visibleCities: [City] { City.matching(query) }
+    private var visibleCities: [City] { City.matching(query, in: prefs.selectedCountry.code) }
 
     var body: some View {
         NavigationStack {

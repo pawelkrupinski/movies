@@ -29,6 +29,10 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
 
     private let manager = CLLocationManager()
     private let timeout: TimeInterval
+    /// Country whose cities the gate resolves a fix against — set by `resolve`
+    /// so a fix is matched only to cities the SELECTED country serves (a Polish
+    /// fix never resolves to a UK region, or vice versa).
+    private var countryCode: String = Country.default.code
     private var continuation: CheckedContinuation<Outcome, Never>?
     private var coordinateContinuation: CheckedContinuation<Coordinate?, Never>?
     private var timeoutTask: Task<Void, Never>?
@@ -40,11 +44,13 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
-    /// Request authorization + a single fix and resolve to an `Outcome`.
-    /// Always returns (never throws): every failure mode maps to
-    /// `.unavailable` so the gate can show the manual picker.
-    func resolve() async -> Outcome {
-        await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
+    /// Request authorization + a single fix and resolve to an `Outcome`,
+    /// matching the fix against `countryCode`'s cities. Always returns (never
+    /// throws): every failure mode maps to `.unavailable` so the gate can show
+    /// the manual picker.
+    func resolve(in countryCode: String) async -> Outcome {
+        self.countryCode = countryCode
+        return await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
             continuation = cont
             timeoutTask = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64((self?.timeout ?? 8) * 1_000_000_000))
@@ -137,7 +143,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
             // raw fix; the gate's request wants it resolved to a `City`.
             if self.coordinateContinuation != nil {
                 self.finishCoordinate(Coordinate(lat: lat, lon: lon))
-            } else if let city = City.nearestWithin100km(lat: lat, lon: lon) {
+            } else if let city = City.nearestWithin100km(lat: lat, lon: lon, in: countryCode) {
                 self.finish(.city(city))
             } else {
                 self.finish(.unavailable)

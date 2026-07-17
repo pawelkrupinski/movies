@@ -533,17 +533,17 @@ struct FiltersSheet: View {
                 // Always available (signed in or out): picks which city's
                 // repertoire the app shows. Changing it re-points both
                 // stores at the new `/{slug}/api/…` path and persists the
-                // choice. The picker lists every `City.all` entry.
+                // choice. The picker lists the SELECTED country's cities.
                 Section("Miasto") {
                     Picker("Miasto", selection: Binding(
-                        get: { prefs.selectedCity ?? City.default.slug },
+                        get: { prefs.selectedCity ?? City.defaultCity(in: prefs.selectedCountry.code).slug },
                         set: { slug in
                             prefs.setCity(slug)
                             store.use(citySlug: slug)
                             details.use(citySlug: slug)
                         }
                     )) {
-                        ForEach(City.allSorted, id: \.slug) { city in
+                        ForEach(City.sorted(in: prefs.selectedCountry.code), id: \.slug) { city in
                             Text(city.name).tag(city.slug)
                         }
                     }
