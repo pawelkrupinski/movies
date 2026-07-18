@@ -92,4 +92,46 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     movies.map(_.movie.title) should contain("Vaiana")
     all(movies.map(_.externalIds.keySet)) should contain("webedia")
   }
+
+  // ── a scrape that fetched NOTHING must fail, not report an empty venue ─────
+  // Filmstarts 429'd every request on 2026-07-18. Each day's failure was
+  // swallowed into None, so fetch() returned an empty Seq FAST and SUCCESSFULLY
+  // — which HostScrapeStats recorded as a quick success, dragging the host's
+  // median down until the adaptive budget pinned at its 8s floor and cut the
+  // venues that were still working. A total fetch failure has to surface.
+  private val venue = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
+
+  private class ScriptedByUrl(respond: String => String) extends tools.GetOnlyHttpFetch {
+    def get(url: String): String = respond(url)
+  }
+
+  /** What Webedia actually serves for a venue with nothing on: HTTP 200, a real
+   *  body, `results: []`. Legitimately empty — NOT a failure. */
+  private val NoShowtimesBody =
+    """{"error":true,"message":"no.showtime.error","nextDate":null,"results":[],
+      |"pagination":{"page":1,"totalPages":1,"itemsPerPage":20,"totalItems":0}}""".stripMargin
+
+  private def clientOver(http: tools.HttpFetch, daysAhead: Int = 0) =
+    new WebediaShowtimesClient(
+      http, "www.filmstarts.de", "A0263", venue,
+      daysAhead = daysAhead, today = LocalDate.of(2026, 7, 11))
+
+  it should "FAIL when every day's request failed, rather than report zero films" in {
+    val allFailing = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 429"))
+    a[java.io.IOException] should be thrownBy clientOver(allFailing).fetch()
+  }
+
+  it should "still report an empty venue when the host ANSWERED with no showtimes" in {
+    // The distinction that matters: fetched-and-empty is a fact about the venue,
+    // fetch-failed is a fact about us. Only the latter is an error.
+    clientOver(new ScriptedByUrl(_ => NoShowtimesBody)).fetch() shouldBe empty
+  }
+
+  it should "tolerate a PARTIAL failure, keeping the days that did answer" in {
+    val partial = new ScriptedByUrl(url =>
+      if (url.contains("d-2026-07-11")) fixture
+      else throw new java.io.IOException("HTTP 429"))
+    val movies = clientOver(partial, daysAhead = 1).fetch()
+    movies.map(_.movie.title) should contain("Vaiana")
+  }
 }

@@ -70,6 +70,19 @@ class WebediaShowtimesClient(
       Try(http.get(url)).toOption.map(parsePage)
     }
 
+    // Tolerating a partial failure is right; tolerating a TOTAL one is not. If no
+    // day answered at all the venue's showtimes are unknown, not absent — and
+    // returning an empty Seq here reports it as a healthy, quick, film-less scrape:
+    // `AdaptiveTimeoutScraper` records that duration as a SUCCESS, dragging the
+    // host's rolling median down until the budget pins at its floor and starts
+    // cutting the venues that ARE answering. Filmstarts 429ing every request on
+    // 2026-07-18 is exactly that case. Fail loudly instead, so the scrape is
+    // recorded as the failure it is and feeds no baseline.
+    val answered = dates.flatMap(d => firstByDate.getOrElse(d, None))
+    if (answered.isEmpty)
+      throw new java.io.IOException(
+        s"${cinema.displayName}: all ${dates.size} showtime requests to $host failed (theater $theaterId)")
+
     val firstFilms = dates.flatMap(d => firstByDate.getOrElse(d, None).toSeq.flatMap(_.films))
 
     // A day with >20 films spills onto extra pages (rare); fetch those too.
