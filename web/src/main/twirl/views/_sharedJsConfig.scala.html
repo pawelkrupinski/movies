@@ -28,4 +28,9 @@
      swipe-hint / clear strings, and the showtime plural rule + forms. Replaces
      the Polish literals shared.js used to hardcode (DAY2/MONTHS/_showtimeNoun). *@
   const KINOWO_LOCALE       = @Html(controllers.JsLocale.json(messages));
+  @* Page-test ONLY (never emitted in prod): FixtureTestWiring sets this system
+     property to the fixture's capture date, pinning shared.js "today" so the
+     `#date-filter` day assertions don't age out as the real clock advances past
+     the recorded corpus. Absent in prod → shared.js falls back to `new Date()`. *@
+  @Html(sys.props.get("kinowo.pinnedToday").map(d => s"""window.KINOWO_PINNED_TODAY = "$d";""").getOrElse(""))
 </script>

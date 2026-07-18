@@ -16,17 +16,36 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val readModelRepository: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepository()
   lazy val webReadModel = new WebReadModel(readModelRepository)
 
-  // Pin Helios's REST date to the fixture's capture day when the `fixture` directory
-  // is named `dd-MM-yyyy` (e.g. "08-06-2026"). Helios bakes the date window into
-  // its `/screening` + `/event` URLs; without this the live `LocalDate.now`
-  // makes those URLs miss the recorded fixtures, dropping Helios room/format
-  // enrichment and breaking the whole-corpus snapshot on every day after
-  // capture. Fixtures named for something else ("multikino") aren't date-keyed,
-  // so fall back to the real date for them.
-  override protected def heliosToday: java.time.LocalDate =
+  // The fixture's capture day, parsed from a `dd-MM-yyyy` directory name (e.g.
+  // "08-06-2026" → 2026-06-08). `None` for fixtures named for something else
+  // ("multikino"), which aren't date-keyed. MUST be `lazy` — the super
+  // constructor reads it via the `heliosToday` override (WorkerWiring builds
+  // `cinemaScraperCatalog` during init) BEFORE this subclass's fields would
+  // otherwise initialize; a plain `val` reads as null there (NPE).
+  lazy val fixtureDate: Option[java.time.LocalDate] =
     scala.util.Try(
       java.time.LocalDate.parse(fixture, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"))
-    ).getOrElse(super.heliosToday)
+    ).toOption
+
+  // Pin Helios's REST date to the fixture's capture day. Helios bakes the date
+  // window into its `/screening` + `/event` URLs; without this the live
+  // `LocalDate.now` makes those URLs miss the recorded fixtures, dropping Helios
+  // room/format enrichment and breaking the whole-corpus snapshot on every day
+  // after capture.
+  override protected def heliosToday: java.time.LocalDate =
+    fixtureDate.getOrElse(super.heliosToday)
+
+  // Pin the CLIENT's notion of "today" (shared.js `dateBounds()`) to the fixture's
+  // capture day for every page-test render off this wiring — the in-JVM
+  // PageJsBehaviourSpec / PageSnapshotSpec renders AND the FixtureServerMain
+  // (Playwright + mobile LocalServer) server. The rendered film cards carry
+  // absolute fixture dates (June 2026), but the browser's real clock keeps
+  // advancing, so a `?date=today`/`tomorrow`/`week` filter matches ZERO aged-out
+  // cards a few weeks after capture — silently failing the day-filter JS specs.
+  // `_sharedJsConfig` reads this property and emits `window.KINOWO_PINNED_TODAY`
+  // ONLY when it's set; prod never constructs FixtureTestWiring, so prod keeps the
+  // real `new Date()` (correct for pages cached across midnight).
+  fixtureDate.foreach(d => System.setProperty("kinowo.pinnedToday", d.toString))
 
   // Route Multikino through the same `FakeHttpFetch` as every other cinema —
   // single override point. The base `TestWiring` inherits production's

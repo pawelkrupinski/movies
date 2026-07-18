@@ -1365,7 +1365,10 @@
   let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
 
   function dateBounds() {
-    const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    // `window.KINOWO_PINNED_TODAY` is set ONLY in page-test renders (fixture data
+    // carries absolute past dates; a real `new Date()` would age the day filters
+    // out). Prod leaves it undefined → the real clock, correct across midnight.
+    const today = window.KINOWO_PINNED_TODAY || new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
     if (today !== _cachedDay) {
       _cachedDay      = today;
       _cachedToday    = today;
@@ -2021,7 +2024,7 @@
     const element = document.getElementById('swipe-hint');
     if (!element) return;                                        // not the listing page
     if (_hintGet(SWIPE_HINT_DONE)) return;                 // retired by a past swipe
-    const today = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    const today = window.KINOWO_PINNED_TODAY || new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
     if (_hintGet(SWIPE_HINT_DAY) === today) return;        // already shown today
     _hintSet(SWIPE_HINT_DAY, today);
     element.classList.add('visible');
