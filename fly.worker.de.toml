@@ -29,16 +29,22 @@ primary_region = 'arn'
   KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
   KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
   KINOWO_SCRAPE_FRESHNESS_MINUTES = '60'
-  # JVM sizing: Xms=Xmx=448m on a 1 GB box — kept at the kinowo-worker-uk baseline
-  # even though the full 158-region / 1,533-cinema Filmstarts roster
-  # (data/germany/regions.json) is now wired in (DE's corpus is ~1.8× the UK one,
-  # 1,533 vs ~850 venues). Post index-only-cache the heap grows sub-linearly with
-  # cinema count, so 448m may well hold it; we deliberately do NOT pre-provision on
-  # a guess. MEASURE actual heap after the roster is live (worker heap metric / NMT)
-  # and only then bump Xmx / step the [[vm]] RAM (1gb→1280mb, 256 MB increments) if
-  # it OOMs, exactly like the pl+uk 480m/1280mb episode (see fly.worker.toml). All
-  # other flags match kinowo-worker — see that file's JAVA_OPTS note.
-  JAVA_OPTS = '-Xms448m -Xmx448m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
+  # JVM sizing: Xms=Xmx=640m on a 1280 MB box. This is the bump the previous note
+  # here said to make only once measured, and 2026-07-18 supplied the measurement:
+  # with the full 158-region / 1,533-cinema Filmstarts roster live, 448m did NOT
+  # hold. The worker crash-looped every ~15-30 min (12:58, 13:28, 13:55, 14:18,
+  # 14:32, 14:48, 15:04, 15:33 UTC) with `exit_code=3, oom_killed=false` — i.e.
+  # -XX:+ExitOnOutOfMemoryError firing on a real Java heap OOM, not the cgroup
+  # kill (137) or the native/non-heap OOM this fleet used to hit. The proof is the
+  # heap dump: java_pid662.hprof was 367.7 MB, ~82% of the 448m ceiling, where the
+  # old non-heap OOMs left near-empty ~11 MB dumps. So the "grows sub-linearly, 448m
+  # may well hold it" reasoning was simply wrong for DE's corpus.
+  # 640m + the unchanged non-heap caps (64+128+96 = 288m) + JVM/thread overhead
+  # leaves ~170 MB slack in 1280mb. Method unchanged for next time: measure, then
+  # step 256 MB. All other flags match kinowo-worker — see that file's JAVA_OPTS note.
+  # NOTE: a full dump is now ~640 MB against a 974 MB /data — one fits, two do not.
+  # Clear /data/heapdumps after diagnosing an OOM or the volume fills.
+  JAVA_OPTS = '-Xms640m -Xmx640m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
   MALLOC_ARENA_MAX = '2'
   MALLOC_TRIM_THRESHOLD_ = '131072'
   KINOWO_LOG_DIR = '/data/logs'
@@ -68,9 +74,10 @@ primary_region = 'arn'
   destination = '/data'
 
 [[vm]]
-  # 2 shared vCPUs / 1 GB — same class as kinowo-worker/-uk. Kept at 1 GB for the
-  # full 1,533-cinema German roster; measure heap once live and step to 1280mb only
-  # if it OOMs (see the JAVA_OPTS note).
-  memory = '1gb'
+  # 2 shared vCPUs / 1280 MB — one 256 MB step up from the kinowo-worker/-uk 1 GB
+  # baseline, taken 2026-07-18 because the 1,533-cinema German roster DID OOM the
+  # 448m heap (see the JAVA_OPTS note for the exit-code-3 / 367.7 MB-dump evidence).
+  # This funds Xmx=640m; DE is deliberately the only worker above the 1 GB baseline.
+  memory = '1280mb'
   cpu_kind = 'shared'
   cpus = 2
