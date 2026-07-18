@@ -59,6 +59,39 @@ case class TitleRule(
 
   val patternValid: Boolean = compiled.isDefined
 
+  /** True when this rule WRITES words rather than only deleting text. A strip
+   *  (empty replacement) or a pure capture-group reshuffle ("$1") is
+   *  language-neutral: it can't invent a word that belongs to one language. A
+   *  replacement carrying a letter can, and is therefore language-specific. */
+  val rewritesWords: Boolean = replacement.exists(_.isLetter)
+
+  /** True unless this is a CANONICAL word rewrite that forgot to name its
+   *  countries — the shape that reaches every country's corpus and rewrites
+   *  titles in a language they don't speak.
+   *
+   *  Twice now an unscoped Polish rewrite has leaked: `" & " → " i "` spelled a
+   *  German film "Minions i Monster", and `^The Mandalorian and Grogu$` →
+   *  "Mandalorian i Grogu" pinned the Berlin row to the Polish key
+   *  `mandalorianigrogu`. Both were Canonical, and that is not a coincidence: the
+   *  Canonical tier writes the `sanitize` MERGE KEY, so a foreign-language
+   *  rewrite pins the row to a key no local cinema slot can ever produce — and
+   *  since every re-key path runs through the same `sanitize`, nothing can
+   *  rescue it. The damage is structural and self-perpetuating.
+   *
+   *  Deliberately NOT extended to the other tiers:
+   *    - `GlobalStructural` shapes the TMDB SEARCH string. A bad rewrite there
+   *      degrades one lookup and is retried on the next resolve — it never pins
+   *      an identity. It also legitimately carries letters in language-neutral
+   *      format rewrites (`(\d+)D` → `"$1 D"`, "Avatar 3D" → "Avatar 3 D"), so
+   *      guarding it would disable real rules for no safety gain.
+   *    - `PerCinema` is already bound by `cinemaId` to one venue in one country.
+   *
+   *  `countries = None` meaning "everywhere" stays the right default for the
+   *  format-tag and bracketed-year strips that are most of the ~227 rules; only
+   *  the one genuinely dangerous shape has to declare. */
+  val countryScopeValid: Boolean =
+    !rewritesWords || countries.nonEmpty || scope != RuleScope.Canonical
+
   /** True when the pattern is anchored to the START of the title (a `^`, after an
    *  optional leading inline-flag group like `(?i)`) — i.e. a prefix/banner rule
    *  such as the programme prefixes or the Cykl banner, as opposed to a `$`-anchored
@@ -66,7 +99,12 @@ case class TitleRule(
   val isPrefixAnchored: Boolean =
     pattern.replaceFirst("""^\(\?[a-zA-Z]+\)""", "").startsWith("^")
 
-  /** Apply this rule to `in`. No-op when disabled or the pattern didn't compile.
+  /** Apply this rule to `in`. No-op when disabled, when the pattern didn't
+   *  compile, or when [[countryScopeValid]] is false — an unscoped Canonical word
+   *  rewrite is inert EVERYWHERE rather than wrong everywhere, which is the
+   *  fail-safe direction and the same degradation a malformed pattern gets. Code
+   *  rules can't reach this (a spec fails the build); it exists for a rule typed
+   *  into the admin editor, which no compiler sees.
    *
    *  The replace itself is also guarded: a `replacement` carrying a bare `$` or a
    *  trailing `\` is, to Java's `Matcher`, an illegal group reference and throws
@@ -75,7 +113,7 @@ case class TitleRule(
    *  same as a malformed pattern — never throw inside the hot normalisation path
    *  or the admin "affected" preview (Sentry KINOWO-Y). */
   def apply(in: String): String = compiled match {
-    case Some(re) if enabled =>
+    case Some(re) if enabled && countryScopeValid =>
       try if (applyAll) re.replaceAllIn(in, replacement) else re.replaceFirstIn(in, replacement)
       catch { case _: IllegalArgumentException | _: IndexOutOfBoundsException => in }
     case _ => in
