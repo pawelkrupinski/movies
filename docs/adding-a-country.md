@@ -83,11 +83,15 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
    `KINOWO_COUNTRY = '<cc>'`, `primary_region` near the users (DE→`fra`, UK→`lhr`),
    G1 web JVM tuning. Add a matrix leg to `deploy.yml`.
 2. **Flip `Country.<Cc>.webUrl` → `Some("https://showtimes-<cc>.fly.dev")`** — now
-   `switchable`. Update the CountrySpec/CatalogSpec/PageSnapshot assertions that
-   asserted the country was excluded, and **regenerate the page snapshots** (the
-   switcher gains an option) + the **mobile catalog seeds** (`CatalogSeedSpec`
-   rewrites `ios/…/catalog-seed.json` + `android/…/catalog-seed.json` — mobile then
-   picks up the country + cities via `/api/catalog` automatically).
+   `switchable`. This one flag AUTO-adds the country to (a) the navbar country
+   `<select>`, (b) the debug `?country=` switcher + the dev per-country `DebugStack`
+   wiring, and (c) the `/api/catalog` mobile endpoint — all three iterate
+   `Country.switchable`, so no separate edits. Then update the CountrySpec /
+   CatalogSpec / PageSnapshot assertions that asserted the country was excluded, and
+   **regenerate the page snapshots** (the switcher gains an option) + the **mobile
+   catalog seeds** (`CatalogSeedSpec` rewrites `ios/…/catalog-seed.json` +
+   `android/…/catalog-seed.json` — mobile then picks up the country + cities
+   automatically).
 3. Provision: `flyctl apps create showtimes-<cc>` + its 7 web secrets — `MONGODB_URI`
    (prod, same as the worker), OAuth (`GOOGLE_*`/`FACEBOOK_*`), `ADMIN_ALLOWLIST`
    from `.env.local`, and a **fresh** `APPLICATION_SECRET` (per-app; `secrets.token_urlsafe(48)`).
@@ -115,9 +119,14 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 
 ## 6. Observability
 
-`fly/grafana/victoria/scrape.yml` — add a `kinowo-worker-<cc>` target (country="<cc>"
-series) and a `showtimes-<cc>-web` target. The dashboards already switch worker
-panels per `$country` via `$worker_app`, so no dashboard edit is needed.
+`fly/grafana/victoria/scrape.yml` — add a `kinowo-worker-<cc>` target (its
+`kinowo_worker_*` series carry `country="<cc>"`) and a `showtimes-<cc>-web` target.
+That is the ONLY per-country Grafana step: the dashboards' worker panels map the
+selected `$country` to its worker app via a hidden `$worker_app` variable
+(`label_values(kinowo_worker_throttled{country=~"$country"}, app)`, defaulted to
+**All** so it always follows `$country` — a stale single selection would pin the
+wrong worker), so once the new worker is scraped, selecting `<cc>` shows its worker
+with no dashboard edit.
 
 ## 7. Ship
 
