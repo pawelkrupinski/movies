@@ -47,6 +47,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -78,9 +79,15 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.state.ToggleableState
 import pl.kinowo.R
+import pl.kinowo.filter.CinemaCheck
+import pl.kinowo.filter.CinemaFilterSection
+import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.model.Cities
+import pl.kinowo.model.CinemaArea
+import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.Country
 import pl.kinowo.model.defaultCity
 import pl.kinowo.model.isSwitchable
@@ -199,10 +206,10 @@ private fun FiltersList(
                 ) { viewModel.sortBy = it }
             }
 
-            // Section order mirrors the web Filtry panel (app/views/_navbar.scala.html):
-            // Sortuj → Ukryte filmy → Kraj/Gatunek/Reżyseria/Obsada → Wymiar/Wersja/IMAX/Od godziny.
-            // Cinema choice lives in the top-bar pill row (see CinemaPillBar), not
-            // here. (Web's "Sale" room picker has no Android equivalent either.)
+            // Section order mirrors the web Filtry panel (_navbar.scala.html):
+            // Sortuj → Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada →
+            // Wymiar/Wersja/IMAX/Od godziny. (Web's "Sale" room picker has no
+            // Android equivalent.)
 
             // Ukryte filmy — a nav row that opens its own card (HiddenFilmsCard),
             // mirroring iOS; the inline list would crowd out every other filter
@@ -212,6 +219,10 @@ private fun FiltersList(
                     HiddenFilmsRow(count = hidden.size, onClick = onOpenHidden)
                 }
             }
+
+            // Kina — the one cinema filter. Flat cities get a plain checkbox
+            // list, split cities the same universe grouped into areas.
+            item(key = "sec_cinemas") { CinemasSection(viewModel, films) }
 
             // Kraj / Gatunek / Reżyseria / Obsada (excluded sets)
             collapsibleNameFilter(this, "Kraj produkcji", allCountries, viewModel.excludedCountries) { viewModel.excludedCountries = it }
@@ -370,6 +381,120 @@ private fun CollapsibleSection(
             Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
         }
         if (expanded) content()
+    }
+}
+
+/**
+ * Kina — the single cinema filter, over the `disabledCinemas` exclusion set.
+ *
+ * A **flat** city renders one checkbox per cinema under a "Wszystkie kina"
+ * master; a **split** city (e.g. London) renders the same universe grouped into
+ * collapsible areas, each with its own tri-state checkbox. Both shapes and all
+ * the toggle arithmetic come from [CinemaFilterSection] — this composable only
+ * draws it. Mirrors the web's Filtry cinema panel and iOS FiltersBar's "Kina".
+ *
+ * Cinema universe: the city catalog when it has loaded (it includes venues with
+ * no showings today, so the list doesn't flicker as the day changes), otherwise
+ * the cinemas actually present in [films]. Exercised by
+ * FiltersSheetCinemaSectionTest.
+ */
+@Composable
+private fun CinemasSection(viewModel: KinowoViewModel, films: List<Film>) {
+    val catalog by viewModel.catalog.collectAsState()
+    val disabled by viewModel.disabledCinemas.collectAsState()
+    val fromFilms = remember(films) { viewModel.allCinemas(films) }
+    val effective = remember(catalog, fromFilms) {
+        if (catalog.cinemas.isNotEmpty()) catalog else CinemaCatalog(fromFilms, emptyList())
+    }
+    if (effective.cinemas.isEmpty()) return
+
+    val section = CinemaFilterSection(effective, disabled)
+    val offCount = section.cityCinemas.size - section.enabledCount
+
+    CollapsibleSection("Kina", if (offCount > 0) "$offCount wyłączonych" else null) {
+        // A plain Column (not a capped, inner-scrolling LazyColumn) so expanding
+        // shows EVERY cinema — the outer sheet scrolls.
+        Column(Modifier.fillMaxWidth()) {
+            ToggleRow("Wszystkie kina", section.allCheck == CinemaCheck.ON) { on ->
+                viewModel.setDisabledCinemas(section.settingAll(on))
+            }
+            if (section.isSplit) {
+                effective.areas.forEach { area ->
+                    CinemaAreaGroup(
+                        area = area,
+                        section = section,
+                        onSetArea = { on -> viewModel.setDisabledCinemas(section.settingArea(area, on)) },
+                        onSetCinema = { cinema, on ->
+                            viewModel.setDisabledCinemas(section.settingCinema(cinema, on))
+                        },
+                    )
+                }
+            } else {
+                section.cityCinemas.forEach { cinema ->
+                    CheckRow(
+                        label = CinemaSection.pillName(cinema),
+                        checked = section.checkOfCinema(cinema) == CinemaCheck.ON,
+                    ) { on -> viewModel.setDisabledCinemas(section.settingCinema(cinema, on)) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One area group inside [CinemasSection]: a checkbox covering the whole area
+ * (ticked / cleared / indeterminate) beside a tappable name that folds out the
+ * area's own cinemas. Only used by split cities.
+ */
+@Composable
+private fun CinemaAreaGroup(
+    area: CinemaArea,
+    section: CinemaFilterSection,
+    onSetArea: (Boolean) -> Unit,
+    onSetCinema: (String, Boolean) -> Unit,
+) {
+    var open by rememberSaveable(area.slug) { mutableStateOf(false) }
+    val check = section.checkOfArea(area)
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TriStateCheckbox(
+                state = when (check) {
+                    CinemaCheck.ON -> ToggleableState.On
+                    CinemaCheck.OFF -> ToggleableState.Off
+                    CinemaCheck.MIXED -> ToggleableState.Indeterminate
+                },
+                onClick = { onSetArea(check != CinemaCheck.ON) },
+            )
+            Row(
+                Modifier.weight(1f).clickable { open = !open },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(area.name, modifier = Modifier.weight(1f))
+                Text(
+                    "${area.cinemas.size}",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+                Icon(
+                    if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                )
+            }
+        }
+        if (open) {
+            Column(Modifier.fillMaxWidth().padding(start = 24.dp)) {
+                area.cinemas.forEach { cinema ->
+                    CheckRow(
+                        label = CinemaSection.pillName(cinema),
+                        checked = section.checkOfCinema(cinema) == CinemaCheck.ON,
+                    ) { on -> onSetCinema(cinema, on) }
+                }
+            }
+        }
     }
 }
 

@@ -108,29 +108,9 @@ struct ContentView: View {
                 )
                 .background(Color(.systemBackground).ignoresSafeArea(edges: .top))
 
-                // Slim expand-handle + horizontally-scrolling cinema pills,
-                // directly under the top bar. Hidden until the repertoire (hence
-                // the cinema universe) has loaded, so it never shows an empty
-                // handle over the loading / error state.
-                if store.catalog.isSplit {
-                    // Split city (e.g. London): multi-select area picker.
-                    CinemaAreaBar(
-                        catalog: store.catalog,
-                        disabled: prefs.disabledCinemas,
-                        onSetCinema: { prefs.setCinemaEnabled($0, $1) },
-                        onSetArea:   { prefs.setAreaEnabled($0, $1) },
-                        onSetAll:    { prefs.setAllCinemasEnabled($0, $1) }
-                    )
-                    .background(Color(.systemBackground))
-                } else if !allCinemas.isEmpty {
-                    CinemaPillBar(
-                        cinemas: allCinemas,
-                        selectedCinema: prefs.selectedCinema,
-                        onSelect: { prefs.setSelectedCinema($0) }
-                    )
-                    .background(Color(.systemBackground))
-                }
-
+                // Nothing sits between the top bar and the grid: the cinema
+                // filter lives in the Filtry sheet ("Kina"), not in a pulldown
+                // bar here.
                 content
             }
                 // Tap-to-dismiss: a transparent backdrop sits behind the
@@ -393,11 +373,10 @@ struct ContentView: View {
         if !filters.includedCast.isEmpty {
             excludedCast = filters.excluded(filters.includedCast, universe: Set(allCast.map(\.name)))
         }
-        // `?cinema=` deep links still write the web-compat `disabledCinemas`
-        // mirror (single global set across cities), preserving any disabled in
-        // other cities. iOS filtering itself is driven by the `selectedCinema`
-        // pill, not this set — so the write only affects account state that
-        // syncs back to the web (see `UserPreferences.disabledCinemas`).
+        // `?cinema=` deep links write the `disabledCinemas` set (one global set
+        // across cities), preserving any disabled in other cities. That set is
+        // also what drives the listing, so the link narrows the grid as well as
+        // the account state that syncs back to the web.
         let cityCinemas = Set(allCinemas)
         if let disabledHere = filters.disabledCinemas(allCinemas: cityCinemas) {
             let others = prefs.disabledCinemas.subtracting(cityCinemas)
@@ -553,10 +532,7 @@ struct ContentView: View {
             format: formatFilter,
             query: search,
             hidden: prefs.hiddenFilms,
-            // Split cities filter by the multi-select exclusion set; flat cities
-            // by the single-select pill. Only one is active per city.
-            selectedCinema: store.catalog.isSplit ? nil : prefs.selectedCinema,
-            disabledCinemas: store.catalog.isSplit ? prefs.disabledCinemas : [],
+            disabledCinemas: prefs.disabledCinemas,
             excludedCountries: excludedCountries,
             excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
@@ -566,10 +542,10 @@ struct ContentView: View {
     }
 
     /// Distinct cinemas that actually appear in the currently filtered film
-    /// list (after the user's per-cinema Filtry selection). When this is ≤ 1
+    /// list (after the Filtry sheet's "Kina" exclusions). When this is ≤ 1
     /// — the filter has been narrowed to a single cinema, or the city only
     /// has one — the per-card cinema label is redundant, so it's suppressed.
-    private var selectedCinemaCount: Int {
+    private var visibleCinemaCount: Int {
         var seen = Set<String>()
         for film in films(for: dateFilter) {
             for day in film.showings {
@@ -582,7 +558,7 @@ struct ContentView: View {
     /// Show the per-card cinema label only when more than one cinema is in
     /// view; a single-cinema listing names the cinema everywhere identically,
     /// so the label is just noise.
-    private var showCinemaHeaders: Bool { selectedCinemaCount > 1 }
+    private var showCinemaHeaders: Bool { visibleCinemaCount > 1 }
 
     /// Flash the given day label in the middle of the screen for ~0.7 s,
     /// then fade it out over 0.2 s. Cancels any previous fade-out task so

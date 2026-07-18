@@ -121,16 +121,20 @@ final class ParsePruneFilterPipelineTests: XCTestCase {
                        "'Michael' survived the hidden filter")
     }
 
-    func testSelectedCinemaKeepsOnlyThatCinema() throws {
+    func testExcludingEveryOtherCinemaKeepsOnlyTheRemainingOne() throws {
         let html = try Fixtures.load("home")
         let films = HTMLParser.parse(html: html)
         let now = try nowAtEarliestDay(films)
         let pruned = films.prunedPastShowings(now: now)
 
+        // Untick every cinema in the payload except one, the sheet's way of
+        // narrowing to a single venue.
         let selected = "Kino Muza"
+        let others = Set(pruned.flatMap { $0.showings.flatMap { $0.cinemas.map(\.cinema) } })
+            .subtracting([selected])
         let filtered = pruned.filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], selectedCinema: selected
+            hidden: [], disabledCinemas: others
         )
         for film in filtered {
             for day in film.showings {

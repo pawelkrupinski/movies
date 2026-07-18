@@ -146,9 +146,6 @@ class FiltersSheetOrderTest {
         assertTrue("Clicking Wyczyść should close the sheet", closed)
     }
 
-    // (Cinema selection moved out of the Filtry sheet into the top-bar pill row —
-    // see CinemaPillBarTest. The old Kina-collapsible tests were removed with it.)
-
     @Test
     fun cityPickerSitsBelowTheFiltersAndAboveTheAccountSection() {
         compose.setContent {

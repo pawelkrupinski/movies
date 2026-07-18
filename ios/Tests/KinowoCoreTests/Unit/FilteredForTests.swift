@@ -84,12 +84,12 @@ final class FilteredForTests: XCTestCase {
         XCTAssertEqual(result.count, 2)
     }
 
-    // MARK: - selectedCinema axis (single-select cinema pill)
+    // MARK: - disabledCinemas axis (the cinema exclusion set)
 
-    func testNilSelectedCinemaRetainsEveryCinemasShowings() {
+    func testEmptyExclusionSetRetainsEveryCinemasShowings() {
         let result = fixture().filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], selectedCinema: nil
+            hidden: [], disabledCinemas: []
         )
         // No cinema constraint: all three films survive with every cinema-group intact.
         XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2", "Title3"])
@@ -98,13 +98,13 @@ final class FilteredForTests: XCTestCase {
         XCTAssertEqual(todayDay.cinemas.map(\.cinema).sorted(), ["Apollo", "Helonki"])
     }
 
-    func testSelectedCinemaKeepsOnlyThatCinemaAndDropsFilmsWithNone() {
+    func testExcludingEveryOtherCinemaDropsFilmsLeftWithNone() {
+        // Untick everything but Apollo. Title2 played only at Apollo → survives;
+        // Title3 played only at Helonki → drops entirely.
         let result = fixture().filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], selectedCinema: "Apollo"
+            hidden: [], disabledCinemas: ["Helonki", "Muza"]
         )
-        // Only Apollo's screenings remain. Title2 played only at Apollo → survives;
-        // Title3 played only at Helonki → drops entirely.
         XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2"])
         for film in result {
             for day in film.showings {
@@ -113,20 +113,19 @@ final class FilteredForTests: XCTestCase {
         }
     }
 
-    func testSelectedCinemaAbsentFromCurrentCinemasTreatedAsAll() {
-        // A cinema persisted while browsing another city names nothing here —
-        // the guard must fall back to "all", never blank the whole screen.
+    func testAnExcludedNameFromAnotherCityChangesNothing() {
+        // The excluded set is GLOBAL across cities, so it routinely carries
+        // names this city has never heard of. They must simply never match —
+        // that's what makes a city switch safe without resetting the set.
         let result = fixture().filteredFor(
             date: .anytime, format: .empty, query: "",
-            hidden: [], selectedCinema: "Cinema In Another City"
+            hidden: [], disabledCinemas: ["Cinema In Another City"]
         )
         XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2", "Title3"])
         let mando = result.first { $0.title == "Mandalorian and Grogu" }!
         let todayDay = mando.showings.first { $0.date == today }!
         XCTAssertEqual(todayDay.cinemas.map(\.cinema).sorted(), ["Apollo", "Helonki"])
     }
-
-    // MARK: - disabledCinemas axis (multi-select exclusion, split cities)
 
     func testDisabledCinemasDropsThoseCinemasKeepsOthers() {
         let result = fixture().filteredFor(
@@ -196,7 +195,7 @@ final class FilteredForTests: XCTestCase {
     func testCombinedFiltersIntersect() {
         let result = fixture().filteredFor(
             date: .today, format: .empty, query: "Mand",
-            hidden: ["Title2"], selectedCinema: "Helonki"
+            hidden: ["Title2"], disabledCinemas: ["Apollo", "Muza"]
         )
         XCTAssertEqual(result.map(\.title), ["Mandalorian and Grogu"])
         let todayDay = result[0].showings[0]

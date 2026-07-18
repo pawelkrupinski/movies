@@ -44,59 +44,56 @@ final class UserPreferencesCityTests: XCTestCase {
         XCTAssertEqual(reloaded.selectedCity, "warszawa")
     }
 
-    // MARK: - Selected cinema pill
+    // MARK: - Excluded cinemas
 
-    func testSelectedCinemaStartsNil() {
+    func testDisabledCinemasStartsEmpty() {
         let prefs = UserPreferences(store: defaults)
-        XCTAssertNil(prefs.selectedCinema)
+        XCTAssertTrue(prefs.disabledCinemas.isEmpty)
     }
 
-    func testSetSelectedCinemaPersistsAndSurvivesAReload() {
+    func testDisabledCinemasPersistAndSurviveAReload() {
         let prefs = UserPreferences(store: defaults)
-        prefs.setSelectedCinema("Kino Muza")
-        XCTAssertEqual(prefs.selectedCinema, "Kino Muza")
+        prefs.setDisabledCinemas(["Kino Muza"])
+        XCTAssertEqual(prefs.disabledCinemas, ["Kino Muza"])
 
         let reloaded = UserPreferences(store: defaults)
-        XCTAssertEqual(reloaded.selectedCinema, "Kino Muza")
+        XCTAssertEqual(reloaded.disabledCinemas, ["Kino Muza"])
     }
 
-    func testSetSelectedCinemaNilClearsThePersistedValue() {
+    func testReEnablingACinemaClearsItFromThePersistedSet() {
         let prefs = UserPreferences(store: defaults)
-        prefs.setSelectedCinema("Kino Muza")
-        prefs.setSelectedCinema(nil)
-        XCTAssertNil(prefs.selectedCinema)
+        prefs.setDisabledCinemas(["Kino Muza"])
+        prefs.setDisabledCinemas([])
+        XCTAssertTrue(prefs.disabledCinemas.isEmpty)
 
         let reloaded = UserPreferences(store: defaults)
-        XCTAssertNil(reloaded.selectedCinema)
+        XCTAssertTrue(reloaded.disabledCinemas.isEmpty)
     }
 
-    func testSwitchingCityClearsTheSelectedCinema() {
-        // A cinema pill belongs to one city's cinema list; leaving that city
-        // must drop it so the new city can't open on a stale, guarded-away
-        // (empty) selection.
+    func testSwitchingCityKeepsTheExcludedSet() {
+        // The excluded set is GLOBAL across cities (it mirrors the web's
+        // localStorage and syncs to the account), and is scoped to the current
+        // city at read time — so a city switch must NOT reset it. Wiping it here
+        // would silently re-enable everything the user hid in the other city.
         let prefs = UserPreferences(store: defaults)
         prefs.setCity("poznan")
-        prefs.setSelectedCinema("Kino Muza")
+        prefs.setDisabledCinemas(["Kino Muza"])
         prefs.setCity("warszawa")
-        XCTAssertNil(prefs.selectedCinema)
+        XCTAssertEqual(prefs.disabledCinemas, ["Kino Muza"])
 
         let reloaded = UserPreferences(store: defaults)
-        XCTAssertNil(reloaded.selectedCinema)
+        XCTAssertEqual(reloaded.disabledCinemas, ["Kino Muza"])
     }
 
-    func testClearCityRegatesAndDropsTheSelectedCinema() {
-        // The in-app country switch clears the city so the gate re-asks; the
-        // stale cinema pill must go with it (same reason `setCity` drops it).
+    func testClearCityRegatesButKeepsTheExcludedSet() {
+        // Same reasoning as `setCity`: the in-app country switch re-gates to the
+        // city chooser, but the user's per-cinema picks stay theirs.
         let prefs = UserPreferences(store: defaults)
         prefs.setCity("poznan")
-        prefs.setSelectedCinema("Kino Muza")
+        prefs.setDisabledCinemas(["Kino Muza"])
         prefs.clearCity()
         XCTAssertNil(prefs.selectedCity)
-        XCTAssertNil(prefs.selectedCinema)
-
-        let reloaded = UserPreferences(store: defaults)
-        XCTAssertNil(reloaded.selectedCity)
-        XCTAssertNil(reloaded.selectedCinema)
+        XCTAssertEqual(prefs.disabledCinemas, ["Kino Muza"])
     }
 
     func testClearCityIsANoOpWhenNoCityIsSet() {
@@ -105,14 +102,19 @@ final class UserPreferencesCityTests: XCTestCase {
         XCTAssertNil(prefs.selectedCity)
     }
 
-    func testSettingTheSameCityKeepsTheSelectedCinema() {
-        // `setCity` early-returns when the slug is unchanged, so a redundant
-        // set must not wipe the current pick.
+    func testTheWholeSetIsReplacedAsWritten() {
+        // `setDisabledCinemas` is the single writer and stores verbatim — the
+        // per-cinema / per-area arithmetic (and its cross-city safety) lives in
+        // `CinemaFilterSection`, covered by CinemaFilterSectionTests.
         let prefs = UserPreferences(store: defaults)
-        prefs.setCity("poznan")
-        prefs.setSelectedCinema("Kino Muza")
-        prefs.setCity("poznan")
-        XCTAssertEqual(prefs.selectedCinema, "Kino Muza")
+        prefs.setDisabledCinemas(["Kino Pod Baranami", "Odeon Camden"])
+        XCTAssertEqual(prefs.disabledCinemas, ["Kino Pod Baranami", "Odeon Camden"])
+
+        prefs.setDisabledCinemas(["Kino Pod Baranami"])
+        XCTAssertEqual(prefs.disabledCinemas, ["Kino Pod Baranami"])
+
+        let reloaded = UserPreferences(store: defaults)
+        XCTAssertEqual(reloaded.disabledCinemas, ["Kino Pod Baranami"])
     }
 
     func testCitySwitchPromptKeyStartsNil() {

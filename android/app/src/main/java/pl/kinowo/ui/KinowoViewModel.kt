@@ -45,6 +45,7 @@ import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.filter.CinemaFilterSection
 import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
@@ -126,14 +127,13 @@ class KinowoViewModel(
      *  recreates itself so the new base URL + locale take effect.
      *
      *  Each country is its own deployment serving a DISJOINT set of cities, so the
-     *  switch also drops the current city (and its cinema pick): keeping the old
+     *  switch also drops the current city: keeping the old
      *  country's slug would request it against the new country's host, and re-arming
      *  the city gate lets the user pick a city that actually exists there. Clearing
      *  the city before persisting the code means the gate is already re-armed by the
      *  time MainActivity recreates. Harmless at the first-launch gate, where the
      *  city is null anyway. */
     fun setCountry(code: String) = viewModelScope.launch {
-        prefs.setSelectedCinema(null)
         prefs.clearCity()
         prefs.setCountryCode(code)
     }
@@ -144,9 +144,9 @@ class KinowoViewModel(
         prefs.disabledCinemas.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     /** The current city's cinema universe + area grouping (`/api/cinemas`).
-     *  `EMPTY` (flat) until fetched; a split city (London) drives the
-     *  multi-select area picker off `catalog.areas`, a flat city keeps the
-     *  single-select pill bar and ignores it. */
+     *  `EMPTY` (flat) until fetched. Drives the Filtry sheet's "Kina" section:
+     *  a split city (London) renders `catalog.areas` as groups, a flat city one
+     *  checkbox per cinema. */
     private val _catalog = MutableStateFlow(CinemaCatalog.EMPTY)
     val catalog: StateFlow<CinemaCatalog> = _catalog.asStateFlow()
     /** The city `_catalog` was fetched for — so the static catalog isn't
@@ -157,13 +157,6 @@ class KinowoViewModel(
      *  entry dialog shows once per city (never on a flat city). */
     val areaPickerSeenCities: StateFlow<Set<String>> =
         prefs.areaPickerSeenCities.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
-
-    /** The cinema the top-bar pill row narrows the listing to, or null
-     *  ("Wszystkie"). Persisted device-locally; the pill bar / [filmsFor] treat
-     *  a value absent from the current city as null so a cross-city leftover
-     *  never blanks the grid. */
-    val selectedCinema: StateFlow<String?> =
-        prefs.selectedCinema.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     // Per-screen filter axes (Compose state).
     /** A pending "you're nearer another city — switch?" prompt, or null. Set by
@@ -192,18 +185,23 @@ class KinowoViewModel(
 
     // The cinema pill row shows the current selection directly, so cinema
     // choice no longer feeds the Filtry icon — only the sheet's own axes do.
-    fun filtersActive(): Boolean =
+    // [cityCinemas] scopes the cinema clause to the current city — the excluded
+    // set is global, so a cinema unticked in another city lingers in it and must
+    // not light up the Filtry icon here (see CinemaFilterSection.enabledCount).
+    fun filtersActive(cityCinemas: List<String>): Boolean =
         !formatFilter.isEmpty ||
+            CinemaFilterSection(CinemaCatalog(cityCinemas, emptyList()), disabledCinemas.value)
+                .let { it.enabledCount < it.cityCinemas.size } ||
             hiddenFilms.value.isNotEmpty() ||
             excludedCountries.isNotEmpty() ||
             excludedGenres.isNotEmpty() ||
             excludedDirectors.isNotEmpty() ||
             excludedCast.isNotEmpty()
 
-    // `hidden`/`selectedCinema` are passed in (not read off the StateFlow here)
+    // `hidden`/`disabledCinemas` are passed in (not read off the StateFlow here)
     // so the caller composable observes them via collectAsState — reading them at
     // the call site is what makes Compose recompute the grid when a film is hidden
-    // or a cinema picked. Reading `.value` here would be invisible to Compose. The
+    // or a cinema unticked. Reading `.value` here would be invisible to Compose. The
     // day-swipe carousel needs the listing for an ARBITRARY day preset (the
     // revealed previous/next neighbour), not just the selected one — so the date is
     // an explicit parameter here.
@@ -211,7 +209,6 @@ class KinowoViewModel(
         date: DateFilter,
         all: List<Film>,
         hidden: Set<String>,
-        selectedCinema: String?,
         disabledCinemas: Set<String> = emptySet(),
     ): List<Film> =
         all.filteredFor(
@@ -219,7 +216,6 @@ class KinowoViewModel(
             format = formatFilter,
             query = search,
             hidden = hidden,
-            selectedCinema = selectedCinema,
             disabledCinemas = disabledCinemas,
             excludedCountries = excludedCountries,
             excludedGenres = excludedGenres,
@@ -253,7 +249,7 @@ class KinowoViewModel(
         excludedGenres = emptySet()
         excludedDirectors = emptySet()
         excludedCast = emptySet()
-        selectCinema(null)
+        viewModelScope.launch { prefs.setDisabledCinemas(emptySet()) }
     }
 
     // ── lifecycle / data ──────────────────────────────────────────────────
@@ -420,8 +416,8 @@ class KinowoViewModel(
      *  Also clears any pending switch prompt, since accepting one lands here. */
     fun setCity(slug: String) = viewModelScope.launch {
         citySwitchSuggestion = null
-        // A new city has its own cinemas — drop any cinema pick from the old one.
-        prefs.setSelectedCinema(null)
+        // The excluded-cinema set is global and scoped per city at read time, so
+        // a new city needs no reset — its own cinemas simply start unticked-free.
         prefs.setCity(slug)
     }
 
@@ -433,7 +429,6 @@ class KinowoViewModel(
     fun chooseCityAtGate(slug: String, nearestSlug: String?) = viewModelScope.launch {
         Cities.initialChoiceSuppressKey(slug, nearestSlug)?.let { prefs.setCitySwitchPromptKey(it) }
         citySwitchSuggestion = null
-        prefs.setSelectedCinema(null)
         prefs.setCity(slug)
     }
 
@@ -471,38 +466,11 @@ class KinowoViewModel(
     fun hide(title: String) = viewModelScope.launch { prefs.hide(title) }
     fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title) }
     fun unhideAll() = viewModelScope.launch { prefs.unhideAll() }
-    // Deep links still carry the cross-platform `disabledCinemas` set (mirrored
-    // to the server for web/iOS); Android persists it via this path even though
-    // its own listing is now narrowed by [selectedCinema] instead.
+    /** Replace the excluded-cinemas set. The Filtry sheet's "Kina" section works
+     *  out the new set via [pl.kinowo.filter.CinemaFilterSection] and hands it
+     *  here; deep links and the server sync write through the same path. */
     fun setDisabledCinemas(set: Set<String>) =
         viewModelScope.launch { prefs.setDisabledCinemas(set) }
-
-    /** Pick the single cinema the top-bar pill row narrows the listing to, or
-     *  null for "Wszystkie". */
-    fun selectCinema(cinema: String?) =
-        viewModelScope.launch { prefs.setSelectedCinema(cinema) }
-
-    // ── Split-city area picker mutators (over the excluded `disabledCinemas` set) ──
-    /** Enable/disable one cinema (a per-cinema checkbox). */
-    fun setCinemaEnabled(cinema: String, enabled: Boolean) = viewModelScope.launch {
-        val cur = disabledCinemas.value
-        prefs.setDisabledCinemas(if (enabled) cur - cinema else cur + cinema)
-    }
-
-    /** Enable/disable every cinema in an area (the area checkbox). */
-    fun setAreaEnabled(cinemas: List<String>, enabled: Boolean) = viewModelScope.launch {
-        val cur = disabledCinemas.value
-        val set = cinemas.toSet()
-        prefs.setDisabledCinemas(if (enabled) cur - set else cur + set)
-    }
-
-    /** Enable/disable every cinema in the city (the "all cinemas" master).
-     *  Other cities' entries in the global set are preserved. */
-    fun setAllCinemasEnabled(cityCinemas: List<String>, enabled: Boolean) = viewModelScope.launch {
-        val cur = disabledCinemas.value
-        val set = cityCinemas.toSet()
-        prefs.setDisabledCinemas(if (enabled) cur - set else cur + set)
-    }
 
     /** Complete the first-visit area picker for [citySlug]: keep only the areas
      *  in [keptAreaSlugs] (disable the rest's cinemas), then mark the city seen
@@ -542,7 +510,6 @@ class KinowoViewModel(
         authRepository.deleteAccount()
         prefs.unhideAll()
         prefs.setDisabledCinemas(emptySet())
-        prefs.setSelectedCinema(null)
     }
 
     class Factory(

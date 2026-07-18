@@ -179,32 +179,24 @@ fun List<Film>.prunedPastShowings(now: Instant = Instant.now()): List<Film> =
 
 /**
  * Apply the cross-screen filter stack — date / format / search / hidden /
- * selected-cinema / excluded country|director|cast — to a film list.
+ * excluded cinemas / excluded country|director|cast — to a film list.
  *
- * [selectedCinema] is the single-select cinema axis used by FLAT cities (the
- * top-bar pill row): `null` keeps every cinema, a non-null name keeps ONLY that
- * cinema's showings. The pill bar already treats a selection absent from the
- * current city as "Wszystkie" (passes `null` here), so a stale cross-city name
- * never empties the grid.
- *
- * [disabledCinemas] is the multi-select EXCLUSION set used by SPLIT cities
- * (e.g. London), mirroring the web's `disabledCinemas`: any cinema-group whose
- * name is in the set is dropped; empty = every cinema shown. The two axes are
- * independent — flat cities pass [selectedCinema], split cities pass
- * [disabledCinemas] — and both apply when set.
+ * [disabledCinemas] is the one cinema axis, an EXCLUSION set mirroring the web's
+ * `disabledCinemas`: any cinema-group whose name is in the set is dropped; empty
+ * = every cinema shown. Both city shapes use it — a flat city ticks cinemas off
+ * one by one in the Filtry sheet, a split city (e.g. London) by area — and it is
+ * global across cities, so a stale name from another city simply never matches.
  *
  * Semantics mirror the web's `applyFilters()`: drop a showtime whose
- * format/time fails, drop a cinema-group whose every showtime fell out (or that
- * isn't the selected cinema), drop a day whose every cinema fell out, drop a
- * film whose every day fell out. A film stays visible while one badge somewhere
- * still passes.
+ * format/time fails, drop a cinema-group that's excluded or whose every showtime
+ * fell out, drop a day whose every cinema fell out, drop a film whose every day
+ * fell out. A film stays visible while one badge somewhere still passes.
  */
 fun List<Film>.filteredFor(
     date: DateFilter,
     format: FormatFilter,
     query: String,
     hidden: Set<String>,
-    selectedCinema: String?,
     disabledCinemas: Set<String> = emptySet(),
     excludedCountries: Set<String> = emptySet(),
     excludedGenres: Set<String> = emptySet(),
@@ -232,7 +224,6 @@ fun List<Film>.filteredFor(
             if (!date.matches(day.date, now)) return@mapNotNull null
             val cinemas = day.cinemas.mapNotNull { cg ->
                 if (cg.cinema in disabledCinemas) return@mapNotNull null
-                if (selectedCinema != null && cg.cinema != selectedCinema) return@mapNotNull null
                 val times = if (format.isEmpty) cg.showtimes
                 else cg.showtimes.filter { format.matches(it) }
                 if (times.isEmpty()) null else cg.copy(showtimes = times)

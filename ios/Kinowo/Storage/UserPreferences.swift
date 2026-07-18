@@ -1,23 +1,18 @@
 import Foundation
 import Combine
 
-/// UserDefaults-backed per-device preferences: hidden films, the selected
-/// cinema pill, and a web-sync mirror of the browser's `disabledCinemas`.
+/// UserDefaults-backed per-device preferences: hidden films and the
+/// cross-platform `disabledCinemas` exclusion set.
 /// Mirrors what the web app stores in `localStorage` for anonymous users.
 final class UserPreferences: ObservableObject {
     @Published private(set) var hiddenFilms: Set<String> = []
-    /// Single-select cinema pill: `nil` = Wszystkie (no cinema constraint),
-    /// otherwise the full name of the one cinema whose screenings are shown.
-    /// Per-device (not server-synced); cleared when the user switches city so
-    /// a name from the old city can't linger and blank the new city's screen.
-    @Published private(set) var selectedCinema: String?
     /// The excluded-cinemas set, shared with the web's `disabledCinemas`
     /// localStorage (round-trips via `StateSyncService` + the `?cinema=` deep
-    /// link). It is the active cinema filter for SPLIT cities (London): the
-    /// multi-select area picker adds/removes names here and `filteredFor` drops
-    /// them. FLAT cities still use the single-select `selectedCinema` pill and
-    /// don't consult this set. Global across cities like the web — a stale name
-    /// from another city simply never matches.
+    /// link). It is THE cinema filter: the Filtry sheet's "Kina" section
+    /// adds/removes names here — one checkbox per cinema on a flat city, area
+    /// groups on a split one — and `filteredFor` drops them. Global across
+    /// cities like the web, so a stale name from another city never matches
+    /// (which is why a city switch needs no reset).
     @Published private(set) var disabledCinemas: Set<String> = []
     /// True once the user has swiped between Filmy / Kina at least once.
     @Published private(set) var hasSwipedScreens: Bool = false
@@ -46,7 +41,6 @@ final class UserPreferences: ObservableObject {
 
     private let store: UserDefaults
     private let kHidden        = "hiddenFilms"
-    private let kSelectedCinema = "selectedCinema"
     private let kDisabled      = "disabledCinemas"
     private let kSwiped        = "swipedScreens"
     private let kHintDate      = "swipeHintShownDate"
@@ -58,7 +52,6 @@ final class UserPreferences: ObservableObject {
     init(store: UserDefaults = .standard) {
         self.store = store
         hiddenFilms         = Set(store.stringArray(forKey: kHidden)        ?? [])
-        selectedCinema      = store.string(forKey: kSelectedCinema)
         disabledCinemas     = Set(store.stringArray(forKey: kDisabled)      ?? [])
         hasSwipedScreens    = store.bool(forKey: kSwiped)
         swipeHintShownDate  = store.string(forKey: kHintDate)              ?? ""
@@ -92,42 +85,13 @@ final class UserPreferences: ObservableObject {
         store.set(Array(hiddenFilms), forKey: kHidden)
     }
 
-    /// Pick the single active cinema (nil = Wszystkie). Persisted per-device.
-    func setSelectedCinema(_ cinema: String?) {
-        selectedCinema = cinema
-        if let cinema { store.set(cinema, forKey: kSelectedCinema) }
-        else          { store.removeObject(forKey: kSelectedCinema) }
-    }
-
-    /// Replace the whole excluded-cinemas set. Written by `StateSyncService`,
-    /// the `?cinema=` deep link, and the split-city area picker's mutators below.
+    /// Replace the whole excluded-cinemas set — the single writer. The Filtry
+    /// sheet's "Kina" section works the new set out via `CinemaFilterSection`
+    /// (which keeps other cities' entries intact); `StateSyncService`, the
+    /// `?cinema=` deep link and the first-visit area picker write here too.
     func setDisabledCinemas(_ s: Set<String>) {
         disabledCinemas = s
         store.set(Array(disabledCinemas), forKey: kDisabled)
-    }
-
-    /// Enable/disable one cinema (split-city area picker's per-cinema checkbox).
-    func setCinemaEnabled(_ cinema: String, _ enabled: Bool) {
-        var s = disabledCinemas
-        if enabled { s.remove(cinema) } else { s.insert(cinema) }
-        setDisabledCinemas(s)
-    }
-
-    /// Enable/disable every cinema in an area at once (the area checkbox). Other
-    /// areas' and other cities' entries are left untouched.
-    func setAreaEnabled(_ cinemas: [String], _ enabled: Bool) {
-        var s = disabledCinemas
-        if enabled { cinemas.forEach { s.remove($0) } } else { cinemas.forEach { s.insert($0) } }
-        setDisabledCinemas(s)
-    }
-
-    /// Enable/disable every cinema in the current (split) city — the "all
-    /// cinemas" master. `cityCinemas` is the city's full universe; entries
-    /// naming other cities' cinemas are preserved.
-    func setAllCinemasEnabled(_ cityCinemas: [String], _ enabled: Bool) {
-        var s = disabledCinemas
-        if enabled { cityCinemas.forEach { s.remove($0) } } else { cityCinemas.forEach { s.insert($0) } }
-        setDisabledCinemas(s)
     }
 
     /// Mark a split city's first-visit area picker as completed (shows once).
@@ -167,23 +131,19 @@ final class UserPreferences: ObservableObject {
         guard selectedCity != slug else { return }
         selectedCity = slug
         store.set(slug, forKey: kCity)
-        // A cinema pill from the old city names nothing in the new one; clear it
-        // so the new city opens on Wszystkie rather than an empty (guarded) list.
-        setSelectedCinema(nil)
+        // No cinema reset needed: `disabledCinemas` is global and scoped to the
+        // current city at read time, so the new city simply starts with none of
+        // its own cinemas excluded.
     }
 
     /// Clear the selected city, re-gating the app to the city chooser. Used by
     /// the in-app country switch: the old city may not exist under the new
-    /// country's deployment, so drop it (and its now-stale cinema pill) and let
-    /// the gate re-ask — the same state the app starts in before a city is
-    /// chosen. No-op when no city is set.
+    /// country's deployment, so drop it and let the gate re-ask — the same state
+    /// the app starts in before a city is chosen. No-op when no city is set.
     func clearCity() {
         guard selectedCity != nil else { return }
         selectedCity = nil
         store.removeObject(forKey: kCity)
-        // A cinema pill belongs to the old city's list; drop it so a re-picked
-        // city can't open on a stale (guarded-away, empty) selection.
-        setSelectedCinema(nil)
     }
 
     func setCitySwitchPromptKey(_ key: String) {

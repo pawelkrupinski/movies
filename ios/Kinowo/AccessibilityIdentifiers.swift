@@ -38,27 +38,18 @@ enum A11y {
         static let closeButton = "filmdetail.poster.close"
     }
 
-    /// Slim expand-handle row + horizontally-scrolling cinema pills, sitting
-    /// directly under the top bar.
-    enum CinemaBar {
-        /// The collapsed handle row (label + chevron); tap toggles the pills.
-        static let handle = "cinemabar.handle"
-        /// The leading "Wszystkie" pill (nil selection).
-        static let allPill = "cinemabar.pill.all"
-        /// Prefix; a per-cinema pill is `"cinemabar.pill.\(cinema)"`.
-        static let pillPrefix = "cinemabar.pill"
-
-        // ── Split-city area picker (multi-select) ──
-        /// The collapsed handle row of the area picker.
-        static let areaHandle = "cinemabar.area.handle"
+    /// The Filtry sheet's "Kina" section — the cinema filter.
+    enum CinemaFilter {
         /// The "all cinemas" master toggle.
-        static let areaAll = "cinemabar.area.all"
-        /// Prefix; an area's (de)select toggle is `"cinemabar.area.toggle.\(slug)"`.
-        static let areaTogglePrefix = "cinemabar.area.toggle"
-        /// Prefix; an area's fold header is `"cinemabar.area.header.\(slug)"`.
-        static let areaHeaderPrefix = "cinemabar.area.header"
-        /// Prefix; a per-cinema checkbox is `"cinemabar.area.cinema.\(cinema)"`.
-        static let areaCinemaPrefix = "cinemabar.area.cinema"
+        static let all = "filters.cinema.all"
+        /// Prefix; a per-cinema checkbox is `"filters.cinema.\(cinema)"`.
+        static let cinemaPrefix = "filters.cinema"
+        /// Prefix; a split city's area (de)select toggle is
+        /// `"filters.cinema.area.toggle.\(slug)"`.
+        static let areaTogglePrefix = "filters.cinema.area.toggle"
+        /// Prefix; a split city's area fold header is
+        /// `"filters.cinema.area.header.\(slug)"`.
+        static let areaHeaderPrefix = "filters.cinema.area.header"
     }
 
     enum FiltersSheet {
