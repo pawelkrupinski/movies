@@ -238,7 +238,7 @@ trait Wiring {
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).
   lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
-  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore)(using materializer)
+  lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore, models.Country.fromEnv)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's
   // `movies` + `pending_movies` via the same per-country stacks the /debug page
