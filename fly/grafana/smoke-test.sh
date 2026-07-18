@@ -168,9 +168,40 @@ assert "enqueued/started/fully-worked by-type panels share one row" \
 # The worker JVM/host memory panel must carry the host-free-memory series (the
 # whole point of the panel — how much RAM the machine has left) and be a Mixed
 # panel so it can join the worker's own jvm_* exports with Fly host metrics.
+# Scoped to $worker_app, not a hardcoded app, so the panel follows the country
+# picker now that each country has its own worker Fly app.
 assert "worker memory panel queries host free memory (Mixed datasource)" \
   "api/dashboards/uid/fly-overview" \
-  "any(t.get('expr')=='fly_instance_memory_mem_available{app=\"kinowo-worker\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
+  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"\$worker_app\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
+
+# \$worker_app must NOT offer an "All" option, and must stay VISIBLE.
+#
+# Process-level series (jvm_*, process_*, kinowo_worker_native_memory_bytes, and
+# the fly_instance_* host metrics) carry only an `app` label — no `country`, and
+# correctly so: heap, RSS, CPU and threads belong to the JVM, not to a country.
+# So \$worker_app is the ONLY thing scoping those panels to the selected country.
+#
+# It used to be hide:2 + includeAll:true, permanently parked on "All". A hidden
+# variable is never rendered, so its option list stayed unpopulated and "All"
+# interpolated as `.*` — matching every worker app regardless of \$country. That
+# put the Polish worker's series on every de/uk panel: panel 43 drew TWO "Heap
+# cap (-Xmx)" lines (464 MiB pre-redeploy PL + 433 MiB de), and panel 46 drew
+# "JIT" and "process CPU total" twice. Silent and very easy to misread as the
+# selected country's worker misbehaving.
+#
+# With includeAll:false the variable resolves to concrete app names from the
+# country-scoped option list, and hide:0 keeps it on screen so which app a panel
+# is showing is legible rather than implicit. Guards against a regression to
+# either hidden or All.
+for uid in fly-overview kinowo-worker-diag; do
+  assert "$uid: \$worker_app is visible and has no All option" \
+    "api/dashboards/uid/$uid" \
+    "any(v['name']=='worker_app' and v.get('includeAll') is False and v.get('hide')==0 for v in d['dashboard']['templating']['list'])"
+done
+
+assert "worker diagnostics dashboard provisioned" \
+  "api/search?query=kinowo" \
+  "any(x.get('uid')=='kinowo-worker-diag' for x in d)"
 
 echo "==> scanning Grafana logs for provisioning errors"
 # Ignore the benign "no plugins provisioning dir" line — we ship none.
