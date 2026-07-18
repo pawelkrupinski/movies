@@ -27,12 +27,53 @@ policies:
       # boot-storm window where credit is most drained. Re-POSTing "firing" every
       # 5m re-seeds the gate within minutes of any reboot. The POST is idempotent,
       # so re-nagging is harmless; it goes only to the webhook, never Telegram.
+      # ONE ROUTE PER WORKER APP, matched on the `app` label the rule carries
+      # (`min by (app, instance)` over app=~"kinowo-worker.*" emits one alert
+      # instance per worker). Grafana can't template a webhook URL, so the app
+      # must be resolved here, at routing time, to the matching contact point —
+      # see the comment in contact-points.yaml.
+      #
+      # group_by is [alertname, app] rather than [alertname]: with one shared
+      # group a low-credit PL worker and a healthy UK worker would collapse into
+      # a single notification and one webhook POST, throttling whichever app the
+      # contact point happens to point at. Grouping by app keeps each worker's
+      # firing/resolved transitions independent.
+      #
+      # A NEW worker app with no route here does not silently lose its backstop —
+      # it falls through to the default Telegram receiver and pages instead, and
+      # GrafanaWorkerThrottleCoverageSpec fails CI before it can ship.
       - receiver: WorkerThrottle
         object_matchers:
           - ['notify', '=', 'worker-throttle']
+          - ['app', '=', 'kinowo-worker']
         continue: false
         group_by:
           - alertname
+          - app
+        group_wait: 10s
+        group_interval: 30s
+        repeat_interval: 5m
+
+      - receiver: WorkerThrottleUk
+        object_matchers:
+          - ['notify', '=', 'worker-throttle']
+          - ['app', '=', 'kinowo-worker-uk']
+        continue: false
+        group_by:
+          - alertname
+          - app
+        group_wait: 10s
+        group_interval: 30s
+        repeat_interval: 5m
+
+      - receiver: WorkerThrottleDe
+        object_matchers:
+          - ['notify', '=', 'worker-throttle']
+          - ['app', '=', 'kinowo-worker-de']
+        continue: false
+        group_by:
+          - alertname
+          - app
         group_wait: 10s
         group_interval: 30s
         repeat_interval: 5m

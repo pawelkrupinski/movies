@@ -141,6 +141,37 @@ assert "WorkerThrottle route re-seeds the gate on a short (<=5m) repeat_interval
   "api/v1/provisioning/policies" \
   "any(r.get('receiver')=='WorkerThrottle' and r.get('repeat_interval')=='5m' for r in d.get('routes',[]))"
 
+# Each worker app must route to the contact point whose webhook URL targets THAT
+# app. ExternalThrottleGate reads only the top-level `status` and ignores labels,
+# so a crossed pairing would throttle the wrong fleet silently. Checked through
+# Grafana's own parsed config (two endpoints, hence not the `assert` helper) —
+# the YAML-text equivalent lives in GrafanaWorkerThrottleCoverageSpec, which is
+# what actually gates CI.
+if curl -fsS "$base/api/v1/provisioning/policies" -o /tmp/kw-policies.json \
+   && curl -fsS "$base/api/v1/provisioning/contact-points" -o /tmp/kw-contacts.json; then
+  got=$(python3 - <<'PY'
+import json
+policies = json.load(open('/tmp/kw-policies.json'))
+contacts = json.load(open('/tmp/kw-contacts.json'))
+url_by_name = {c['name']: c.get('settings', {}).get('url', '') for c in contacts}
+routes = [r for r in policies.get('routes', []) if r.get('receiver', '').startswith('WorkerThrottle')]
+paired = [
+    app in url_by_name.get(r['receiver'], '')
+    for r in routes
+    for m in r.get('object_matchers', [])
+    if m[0] == 'app'
+    for app in [m[2]]
+]
+print('PASS' if routes and paired and all(paired) else 'FAIL')
+PY
+) || got=FAIL
+  echo "$got: every worker-throttle route pairs its app with that app's own webhook"
+  [ "$got" = PASS ] || fail=1
+else
+  echo "FAIL: could not read policies/contact-points"; fail=1
+fi
+rm -f /tmp/kw-policies.json /tmp/kw-contacts.json
+
 assert "overview dashboard provisioned" \
   "api/search?query=kinowo" \
   "any(x.get('uid')=='fly-overview' for x in d)"
