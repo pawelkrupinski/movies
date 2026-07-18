@@ -15,7 +15,12 @@ primary_region = "arn"
   destination = "/data/db"
 
 [[vm]]
-  size = "shared-cpu-1x"
+  # Bumped shared-cpu-1x → 2x on 2026-07-18: wiring the full German Filmstarts
+  # roster stepped Mongo's load up at 07:15 UTC and it never came back down.
+  # One core couldn't keep up (loadavg 2.46), so mongod spent tens of SECONDS
+  # just planning cheap indexed queries and burned the whole 50k CPU-credit
+  # balance in ~4h. Two cores both raise the credit cap and refill it faster.
+  size = "shared-cpu-2x"
   # Bumped 512mb → 1gb after a 2026-06-06 OOM-kill (exit 137, oom_killed=true)
   # took Mongo down and cascaded into a kinowo web outage. 512mb left no
   # headroom over WiredTiger's cache + mongod baseline + the ~50 live
