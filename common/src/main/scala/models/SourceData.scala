@@ -99,4 +99,18 @@ case class SourceData(
     (title, rawTitle, originalTitle, englishTitle, synopsis, cast, director,
      runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl,
      language).hashCode()
+
+  /** The BCP-47 tag this slot's localized text was actually fetched in, reading an
+   *  unstamped slot as the historical hardcoded default. Every caller that compares
+   *  a slot's language against a deployment's wants this, not the raw `language`:
+   *  `None` is not "unknown", it is `pl-PL`. */
+  def fetchedLanguageTag: String = language.getOrElse(SourceData.LegacyLanguageTag)
+}
+
+object SourceData {
+  /** What an unstamped `Tmdb` slot was fetched in: every resolve before the
+   *  per-country enrichment language landed hardcoded `pl-PL`. Reading `None` as
+   *  this (rather than "unknown, re-resolve") keeps the Polish corpus — where the
+   *  stamp is absent and the text is already right — completely still. */
+  val LegacyLanguageTag: String = "pl-PL"
 }

@@ -414,7 +414,7 @@ class TmdbClient(
           // as a backup — the Tmdb slot ranks below every cinema in
           // `MovieRecord.posterUrl` — so a better localised portrait improves
           // the `data-fallbacks` chain (and the no-cinema-poster case).
-          posterUrl     = TmdbClient.bestPortraitPosterUrl(posters(tmdbId))
+          posterUrl     = TmdbClient.bestPortraitPosterUrl(posters(tmdbId), language.getLanguage)
                             .orElse((js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p"))
         )
       }
@@ -679,15 +679,21 @@ object TmdbClient {
       }
 
   /** Pick the best *portrait* poster URL from a `/images` poster set,
-   *  preferring Polish-tagged artwork. Drops landscape/square variants
-   *  (aspect ratio above `MaxPortraitAspectRatio`), then orders by
-   *  (Polish first, highest community vote, then resolution) and returns the
-   *  winner as a w500 CDN URL. None when nothing portrait survives — the
-   *  caller falls back to `poster_path`. */
-  def bestPortraitPosterUrl(posters: Seq[PosterImage]): Option[String] =
+   *  preferring artwork tagged with the DEPLOYMENT's language. Drops
+   *  landscape/square variants (aspect ratio above `MaxPortraitAspectRatio`),
+   *  then orders by (own language first, highest community vote, then
+   *  resolution) and returns the winner as a w500 CDN URL. None when nothing
+   *  portrait survives — the caller falls back to `poster_path`.
+   *
+   *  `language` is the bare subtag ("pl", "de", "en") matching `/images`'
+   *  `iso_639_1`. It used to be hardcoded "pl", which was inert only as long as
+   *  `posters` was already scoped to `<lang>,null`: any set that also carried
+   *  Polish artwork (a widened `include_image_language`, a default-language
+   *  client in a spec) handed a German deployment the Polish poster. */
+  def bestPortraitPosterUrl(posters: Seq[PosterImage], language: String): Option[String] =
     posters
       .filter(p => p.aspectRatio > 0 && p.aspectRatio <= MaxPortraitAspectRatio)
-      .sortBy(p => (if (p.language.contains("pl")) 0 else 1, -p.voteAverage, -p.width))
+      .sortBy(p => (if (p.language.contains(language)) 0 else 1, -p.voteAverage, -p.width))
       .headOption
       .map(p => s"$PosterBase${p.filePath}")
 
