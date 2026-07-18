@@ -1,5 +1,4 @@
-@import controllers.{BarData, FallbackRow, FlaggedRow, ServiceRow}
-@import play.api.libs.json.Json
+@import controllers.{FallbackRow, FlaggedRow, ServiceRow}
 @import services.UptimeMonitor
 @(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], current: models.Country = models.Country.fromEnv)
 <!DOCTYPE html>
@@ -236,17 +235,35 @@
 
   <div id="overlay"></div>
 
+  @*  Every bar's detail, in ONE block instead of an escaped JSON blob per cell —
+      see controllers.UptimeBarPayload for why (the German roster OOM'd the page).
+      Slot labels are shared across services; `data` holds only buckets that
+      recorded something, so a bar with no entry is the "no data" case.  *@
+  <script type="application/json" id="uptime-bars">@Html(controllers.UptimeBarPayload(
+    failing.map(_.row) ++ zero.map(_.row) ++ cinemasByCity.flatMap(_._2) ++ services ++ other))</script>
+
   <script>
     var overlay = document.getElementById('overlay');
     var statusLabels = {green:'All OK',yellow:'Degraded',red:'Unavailable',zero:'No screenings',empty:'No data'};
 
+    var barPayload = JSON.parse(document.getElementById('uptime-bars').textContent);
+    var barSlots = barPayload.slots, barDetail = barPayload.data;
+
+    // A bucket with no entry never recorded anything — that IS "no data", and the
+    // bar already renders grey for it. Keeps the payload to real activity only.
+    var EMPTY_BUCKET = {status:'empty', successes:0, failures:0, zeroes:0, errors:[], fallback:false};
+
     function attachBarHover(el) {
       el.addEventListener('mouseenter', function(ev) {
-        var raw = el.dataset.info;
-        if (!raw) return;
-        var d = JSON.parse(raw);
-        var html = '<div class="ov-service">' + esc(d.service) + '</div>'
-          + '<div class="ov-time">' + esc(d.dateLabel) + ', ' + esc(d.timeFrom) + ' – ' + esc(d.timeTo) + '</div>'
+        var ts = el.dataset.ts;
+        var row = el.closest('.row[data-service]');
+        if (!ts || !row) return;
+        var service = row.getAttribute('data-service');
+        var slot = barSlots[ts] || {timeFrom:'', timeTo:'', dateLabel:''};
+        var d = (barDetail[service] && barDetail[service][ts]) || EMPTY_BUCKET;
+
+        var html = '<div class="ov-service">' + esc(service) + '</div>'
+          + '<div class="ov-time">' + esc(slot.dateLabel) + ', ' + esc(slot.timeFrom) + ' – ' + esc(slot.timeTo) + '</div>'
           + '<div class="ov-status ' + d.status + '">' + statusLabels[d.status] + '</div>'
           + (d.fallback ? '<div class="ov-fallback">↳ served via Filmweb</div>' : '')
           + '<div class="ov-counts"><span class="ov-ok">' + d.successes + ' ok</span>'
@@ -293,25 +310,36 @@
     // append can tell a one-slot step from a multi-slot idle gap.
     var BUCKET_MS = @UptimeMonitor.BucketDurationMs;
 
-    function makeBar(ts, cls, info) {
+    function makeBar(ts, cls) {
       var b = document.createElement('div');
       b.className = cls;
       b.dataset.ts = String(ts);
-      if (info) b.dataset.info = info;
       attachBarHover(b);
       return b;
+    }
+
+    // A live frame carries the same fields the server-rendered payload holds, so
+    // folding it in keeps hover reading from one place whether a bucket arrived
+    // in the initial render or over SSE.
+    function recordUpdate(d) {
+      var ts = String(d.bucketTs);
+      barSlots[ts] = {timeFrom: d.timeFrom, timeTo: d.timeTo, dateLabel: d.dateLabel};
+      (barDetail[d.service] = barDetail[d.service] || {})[ts] = {
+        status: d.status, successes: d.successes, failures: d.failures,
+        zeroes: d.zeroes, errors: d.errors, fallback: d.fallback
+      };
     }
 
     function applyUpdate(d) {
       var rows = rowsByService[d.service];
       if (!rows) return;   // a service with no rendered row appears only on reload
       var timestamp = String(d.bucketTs);
+      recordUpdate(d);
       rows.forEach(function(row) {
         var barsDiv = row.querySelector('.bars');
         var bar = barsDiv.querySelector('.bar[data-ts="' + timestamp + '"]');
         if (bar) {
           bar.className = 'bar ' + d.status + (d.fallback ? ' fallback' : '');
-          bar.dataset.info = JSON.stringify(d);
         } else {
           // A live frame only arrives for a bucket that HAD activity, so a
           // service idle for a few slots (a cinema on ~hourly cadence, a quiet
@@ -329,9 +357,9 @@
             var t = Number(last.dataset.ts) + BUCKET_MS;
             var floor = newTs - @UptimeMonitor.MaxBuckets * BUCKET_MS;
             if (t < floor) t = floor;
-            for (; t < newTs; t += BUCKET_MS) barsDiv.appendChild(makeBar(t, 'bar empty', ''));
+            for (; t < newTs; t += BUCKET_MS) barsDiv.appendChild(makeBar(t, 'bar empty'));
           }
-          barsDiv.appendChild(makeBar(newTs, 'bar ' + d.status + (d.fallback ? ' fallback' : ''), JSON.stringify(d)));
+          barsDiv.appendChild(makeBar(newTs, 'bar ' + d.status + (d.fallback ? ' fallback' : '')));
           while (barsDiv.children.length > @UptimeMonitor.MaxBuckets) barsDiv.removeChild(barsDiv.firstElementChild);
         }
       });
@@ -372,7 +400,7 @@
     </div>
     <div class="bars">
       @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
+        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp"></div>
       }
     </div>
     <div class="latency" title="avg successful call latency — last 1h / all retained">
@@ -396,7 +424,7 @@
     <div class="name" title="@s.name">↳ enrichment</div>
     <div class="bars">
       @for(b <- s.bars) {
-        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp" data-info="@{Json.toJson(b)(BarData.writes).toString}"></div>
+        <div class="bar @b.status@if(b.fallback){ fallback}" data-ts="@b.bucketTimestamp"></div>
       }
     </div>
     <div class="latency" title="avg successful detail-fetch latency — last 1h / all retained">
