@@ -13,9 +13,10 @@ import pl.kinowo.model.Country
 /**
  * Proves the country → forced-language → resource pipeline end to end: wrapping
  * a context in the country's language tag (as MainActivity.attachBaseContext
- * does) makes `getString` resolve `values-en` for the UK country and the Polish
- * default otherwise — regardless of the device locale. Fails before `values-en`
- * existed (English would fall back to the Polish default).
+ * does) makes `getString` resolve `values-en`/`values-de` for the UK/German
+ * countries and the Polish default otherwise — regardless of the device locale.
+ * Fails before the localized `values-*` strings existed (they'd fall back to the
+ * Polish default).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -31,6 +32,19 @@ class LocaleStringsTest {
         assertEquals("Try again", en.getString(R.string.retry))
         // Outside Poland the app is branded "Showtimes", not "Kinowo".
         assertEquals("Showtimes", en.getString(R.string.app_name))
+    }
+
+    @Test
+    fun germanCountryResolvesGermanStrings() {
+        val de = LocaleWrapper.wrap(base, Country.byCode("de").languageTag)
+        assertEquals("Spielzeiten werden geladen…", de.getString(R.string.loading_repertoire))
+        // Strings externalised for the UK translation must also resolve in German
+        // (they fall back to the Polish default until values-de carries them).
+        assertEquals("Anmelden", de.getString(R.string.sign_in))
+        assertEquals("Regie", de.getString(R.string.meta_director))
+        assertEquals("Sortieren", de.getString(R.string.sort))
+        // Germany is branded "Showtimes", like the UK.
+        assertEquals("Showtimes", de.getString(R.string.app_name))
     }
 
     @Test

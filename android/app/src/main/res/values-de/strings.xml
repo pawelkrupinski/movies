@@ -33,4 +33,77 @@
     <string name="areapicker_title">Wähle deine Regionen</string>
     <string name="areapicker_subtitle">Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit ändern.</string>
     <string name="areapicker_confirm">Programm anzeigen</string>
+
+    <!-- Generic actions / chrome -->
+    <string name="filters">Filter</string>
+    <string name="back">Zurück</string>
+    <string name="close">Schließen</string>
+    <string name="share">Teilen</string>
+    <string name="copy_link">Link kopieren</string>
+    <string name="link_copied">Link kopiert</string>
+    <string name="hide_film">Film ausblenden</string>
+    <string name="all">Alle</string>
+    <string name="search_films">Filme suchen</string>
+
+    <!-- List screen -->
+    <string name="swipe_change_day">Wischen, um den Tag zu wechseln</string>
+    <string name="no_showings">Keine Vorstellungen.</string>
+
+    <!-- Film detail -->
+    <string name="film_not_found">Film nicht gefunden.</string>
+    <string name="meta_synopsis">Beschreibung</string>
+    <string name="meta_director">Regie</string>
+    <string name="meta_cast">Besetzung</string>
+    <string name="meta_countries">Länder</string>
+    <string name="showings_header">Vorstellungen</string>
+    <string name="trailers">Trailer</string>
+    <string name="trailer_number">Trailer %1$d</string>
+
+    <!-- Filters sheet -->
+    <string name="sort">Sortieren</string>
+    <string name="filter_country">Produktionsland</string>
+    <string name="filter_genre">Genre</string>
+    <string name="filter_dimension">Format</string>
+    <string name="filter_version">Version</string>
+    <string name="version_subtitles">Untertitel</string>
+    <string name="version_dubbing">Synchro</string>
+    <string name="imax_only">Nur IMAX</string>
+    <string name="from_time">Ab Uhrzeit</string>
+    <string name="any">Beliebig</string>
+    <string name="filter_city">Stadt</string>
+    <string name="filter_cinemas">Kinos</string>
+    <string name="hidden_films">Ausgeblendete Filme</string>
+    <string name="show">Einblenden</string>
+    <string name="show_all">Alle einblenden</string>
+
+    <!-- Account section -->
+    <string name="account">Konto</string>
+    <string name="sign_out">Abmelden</string>
+    <string name="delete_account">Konto löschen</string>
+    <string name="sign_in">Anmelden</string>
+    <string name="sign_in_google">Mit Google anmelden</string>
+    <string name="sign_in_facebook">Mit Facebook anmelden</string>
+
+    <!-- Date filter pills -->
+    <string name="date_today">Heute</string>
+    <string name="date_tomorrow">Morgen</string>
+    <string name="date_week">7 Tage</string>
+
+    <!-- Sort options -->
+    <string name="sort_earliest">Nächste Vorstellung</string>
+    <string name="sort_rating">Bewertung</string>
+
+    <!-- Counts (German plural: 1 / other) -->
+    <plurals name="showings_more">
+        <item quantity="one">+%1$d Vorstellung</item>
+        <item quantity="other">+%1$d Vorstellungen</item>
+    </plurals>
+    <plurals name="hidden_count">
+        <item quantity="one">%1$d ausgeblendet</item>
+        <item quantity="other">%1$d ausgeblendet</item>
+    </plurals>
+    <plurals name="cinemas_off_count">
+        <item quantity="one">%1$d ausgeschaltet</item>
+        <item quantity="other">%1$d ausgeschaltet</item>
+    </plurals>
 </resources>

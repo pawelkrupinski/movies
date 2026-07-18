@@ -417,11 +417,14 @@ private fun CinemasSection(viewModel: KinowoViewModel, films: List<Film>) {
     val section = CinemaFilterSection(effective, disabled)
     val offCount = section.cityCinemas.size - section.enabledCount
 
-    CollapsibleSection("Kina", if (offCount > 0) "$offCount wyłączonych" else null) {
+    CollapsibleSection(
+        stringResource(R.string.filter_cinemas),
+        if (offCount > 0) pluralStringResource(R.plurals.cinemas_off_count, offCount, offCount) else null,
+    ) {
         // A plain Column (not a capped, inner-scrolling LazyColumn) so expanding
         // shows EVERY cinema — the outer sheet scrolls.
         Column(Modifier.fillMaxWidth()) {
-            ToggleRow("Wszystkie kina", section.allCheck == CinemaCheck.ON) { on ->
+            ToggleRow(stringResource(R.string.areabar_all_cinemas), section.allCheck == CinemaCheck.ON) { on ->
                 viewModel.setDisabledCinemas(section.settingAll(on))
             }
             if (section.isSplit) {

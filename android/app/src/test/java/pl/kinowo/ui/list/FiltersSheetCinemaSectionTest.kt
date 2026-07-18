@@ -45,7 +45,7 @@ import pl.kinowo.ui.KinowoViewModel
  * was the top-bar pill row), so "Kina" never appears here.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "pl")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FiltersSheetCinemaSectionTest {
 

@@ -71,6 +71,7 @@
     <string name="from_time">Od godziny</string>
     <string name="any">Dowolna</string>
     <string name="filter_city">Miasto</string>
+    <string name="filter_cinemas">Kina</string>
     <string name="hidden_films">Ukryte filmy</string>
     <string name="show">Pokaż</string>
     <string name="show_all">Pokaż wszystkie</string>
@@ -104,5 +105,11 @@
         <item quantity="few">%1$d ukryte</item>
         <item quantity="many">%1$d ukrytych</item>
         <item quantity="other">%1$d ukrytych</item>
+    </plurals>
+    <plurals name="cinemas_off_count">
+        <item quantity="one">%1$d wyłączone</item>
+        <item quantity="few">%1$d wyłączone</item>
+        <item quantity="many">%1$d wyłączonych</item>
+        <item quantity="other">%1$d wyłączonych</item>
     </plurals>
 </resources>
