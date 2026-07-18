@@ -39,7 +39,11 @@ import scala.util.Try
  *    (UPDATE_LOOKUP) whose full-document lookups pegged the serving vCPU at multi-city
  *    volume, and it drops the change stream's replica-set requirement.
  */
-class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boolean = false) extends Logging {
+class UptimeMonitor(
+  db: Option[MongoDatabase] = None,
+  surfaceExternalWrites: Boolean = false,
+  tagReloadIntervalMs: Long = UptimeMonitor.TagReloadIntervalMs
+) extends Logging {
   import UptimeMonitor._
 
   private val data = new ConcurrentHashMap[String, java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]]()
@@ -77,15 +81,11 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         val th = new Thread(r, "uptime-monitor"); th.setDaemon(true); th
       })
       scheduler.set(exec)
-      exec.scheduleWithFixedDelay(() => Try(flush(c)), FlushIntervalMs, FlushIntervalMs, TimeUnit.MILLISECONDS)
-      if (surfaceExternalWrites) {
-        exec.scheduleWithFixedDelay(() => Try(poll(c)), PollIntervalMs, PollIntervalMs, TimeUnit.MILLISECONDS)
-        // Re-read the tiny tag collection on the same cadence so a cinema tagged by
-        // the worker after this app booted still surfaces (cheap full read — tags
-        // are ~one document per cinema, not the 24h × N-service bucket history).
-        tagColl.foreach(tc => exec.scheduleWithFixedDelay(() => Try(loadTags(tc)), PollIntervalMs, PollIntervalMs, TimeUnit.MILLISECONDS))
-        logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s for cross-process updates.")
+      backgroundSchedule(Some(c), tagColl).foreach { job =>
+        exec.scheduleWithFixedDelay(job.task, job.periodMs, job.periodMs, TimeUnit.MILLISECONDS)
       }
+      if (surfaceExternalWrites)
+        logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s for cross-process updates.")
     }, "uptime-monitor-init")
     thread.setDaemon(true)
     thread.start()
@@ -119,6 +119,29 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
         Indexes.compoundIndex(Indexes.ascending("service"), Indexes.ascending("bucket"))
       ).toFuture(), 10.seconds)
     }.recover { case exception => logger.warn(s"Uptime compound index creation failed: ${exception.getMessage}") }
+  }
+
+  /** The recurring background work this monitor runs once hydrate lands, as data
+   *  so the CADENCES are assertable without a scheduler or a Mongo round-trip.
+   *  The writer side always flushes; the reader side (serving app) additionally
+   *  polls the buckets and re-reads the tags — each on its OWN period, because
+   *  the two reads cost wildly different amounts (see `TagReloadIntervalMs`). */
+  private[services] def backgroundSchedule(
+    bucketCollection: Option[MongoCollection[Document]],
+    tagCollection: Option[MongoCollection[Document]]
+  ): Seq[ScheduledJob] = {
+    val flushJob = bucketCollection.map(c => ScheduledJob("flush", FlushIntervalMs, () => Try(flush(c))))
+    val readerJobs =
+      if (!surfaceExternalWrites) Seq.empty
+      else Seq(
+        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => Try(poll(c)))),
+        // Re-read the tag collection so a cinema tagged by the worker after this
+        // app booted still surfaces — but on its OWN, far slower period. The read
+        // is unfiltered and the collection is no longer small (see
+        // `TagReloadIntervalMs`), so it must not ride the 10s bucket poll.
+        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => Try(loadTags(tc)))),
+      ).flatten
+    flushJob.toSeq ++ readerJobs
   }
 
   def addListener(f: BucketListener): Unit = { listeners.add(f); () }
@@ -232,9 +255,14 @@ class UptimeMonitor(db: Option[MongoDatabase] = None, surfaceExternalWrites: Boo
    *  `tagService` (worker). */
   def serviceTagsSnapshot(): Map[String, Set[String]] = serviceTags.asScala.toMap
 
-  /** Load all service tags from Mongo into the in-memory map. The collection is
-   *  small (one document per tagged service), so an unfiltered read is cheap; `$set`
-   *  semantics make re-loading idempotent. */
+  /** Load all service tags from Mongo into the in-memory map. This is an
+   *  UNFILTERED read of the entire collection — NOT cheap: one document per tagged
+   *  service used to mean a handful, but it is 2,687 documents for Poland alone
+   *  (measured 2026-07-18) and grows with every cinema in every country. That is
+   *  why the reader schedules it on `TagReloadIntervalMs` (5 min) rather than the
+   *  10s bucket poll it once shared. `$set` semantics make re-loading idempotent,
+   *  so a slower cadence only delays a newly tagged cinema appearing, never
+   *  corrupts the map. */
   private def loadTags(c: MongoCollection[Document]): Unit = Try {
     val documents = Await.result(c.find().toFuture(), HydrateTimeout)
     documents.foreach { document =>
@@ -465,6 +493,16 @@ object UptimeMonitor {
   val FlushIntervalMs: Long = 10000L
   // The serving app re-reads the uptimeBuckets snapshot this often (reader side).
   val PollIntervalMs: Long = 10000L
+  // The serving app re-reads uptimeServiceTags this often. Deliberately MUCH
+  // slower than the bucket poll: `loadTags` is an UNFILTERED read of the whole
+  // collection, which is no longer the handful of documents it was when it rode
+  // the 10s poll — 2,687 tag documents for Poland alone (measured 2026-07-18),
+  // i.e. ~8,640 reloads/day × 2,687 documents × 4 web machines, ~23M document
+  // reads per day per instance for data that only changes when a cinema is
+  // (re)tagged. Tags are static config, so a 5-minute cadence still surfaces a
+  // newly tagged cinema well within the /uptime page's usefulness while cutting
+  // that read volume 30×.
+  val TagReloadIntervalMs: Long = 5 * 60 * 1000L
   // The poll only fetches buckets newer than this — older ones are frozen (writes
   // only ever hit the current slot) and were already loaded at boot. Must exceed
   // a slot + the final flush + slack for a poll delayed while the serving box is
@@ -506,6 +544,11 @@ object UptimeMonitor {
   def enrichmentService(cinemaDisplayName: String): String = cinemaDisplayName + EnrichmentSuffix
   def isEnrichmentService(service: String): Boolean = service.endsWith(EnrichmentSuffix)
   def baseCinemaOf(service: String): String = service.stripSuffix(EnrichmentSuffix)
+
+  /** One recurring background job: what it is, how often it runs, and the work.
+   *  Exists so the cadences are inspectable data rather than arguments buried in
+   *  a `scheduleWithFixedDelay` call. */
+  private[services] case class ScheduledJob(name: String, periodMs: Long, task: Runnable)
 
   case class Bucket(timestamp: Long) {
     val successes = new AtomicInteger(0)

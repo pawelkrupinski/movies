@@ -290,6 +290,42 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.serviceTagsSnapshot()("Kino Rialto") shouldBe Set.empty
   }
 
+  // `loadTags` is an UNFILTERED read of the whole uptimeServiceTags collection —
+  // 2,687 documents for Poland alone (measured 2026-07-18). Riding the 10s bucket
+  // poll made that ~8,640 reloads/day × 2,687 documents on each of the 4 web
+  // machines for data that changes only when a cinema is (re)tagged. The tag
+  // reload must therefore have its OWN, much slower period; the bucket poll must
+  // stay at 10s.
+  "the tag reload" should "run on its own slow cadence, not the 10s bucket poll" in {
+    val collection = closedClientDb.getCollection("uptimeServiceTags")
+    val monitor = new UptimeMonitor(surfaceExternalWrites = true)
+    val schedule = monitor.backgroundSchedule(Some(collection), Some(collection))
+
+    val tagJob  = schedule.find(_.name == "reload-tags").getOrElse(fail("no tag-reload job scheduled"))
+    val pollJob = schedule.find(_.name == "poll-buckets").getOrElse(fail("no bucket-poll job scheduled"))
+
+    pollJob.periodMs shouldBe UptimeMonitor.PollIntervalMs      // unchanged: 10s
+    tagJob.periodMs  shouldBe UptimeMonitor.TagReloadIntervalMs
+    tagJob.periodMs  shouldBe 5 * 60 * 1000L
+    tagJob.periodMs  should be > pollJob.periodMs
+  }
+
+  it should "schedule the interval it was constructed with" in {
+    val collection = closedClientDb.getCollection("uptimeServiceTags")
+    val monitor = new UptimeMonitor(surfaceExternalWrites = true, tagReloadIntervalMs = 1234L)
+
+    monitor.backgroundSchedule(Some(collection), Some(collection))
+      .find(_.name == "reload-tags").map(_.periodMs) shouldBe Some(1234L)
+  }
+
+  // The worker (surfaceExternalWrites = false) only writes — nothing reads its
+  // map — so it must schedule neither the bucket poll nor the tag reload.
+  it should "not be scheduled at all on the writer (worker) side" in {
+    val collection = closedClientDb.getCollection("uptimeServiceTags")
+    val monitor = new UptimeMonitor()
+    monitor.backgroundSchedule(Some(collection), Some(collection)).map(_.name) shouldBe Seq("flush")
+  }
+
   "BucketSnapshot.status" should "be green when all succeed" in {
     UptimeMonitor.BucketSnapshot(0, successes = 5, failures = 0, zeroes = 0, Seq.empty).status shouldBe "green"
   }
