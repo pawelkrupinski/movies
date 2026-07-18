@@ -50,10 +50,23 @@ object GenreLanguageAudit {
 
     if (filter.isDefined) rows.foreach { s =>
       val r = s.record
-      println(s"=== ${s.title} (${s.year.getOrElse("-")})  tmdbId=${r.tmdbId.getOrElse("-")}")
+      println(s"=== row key: '${s.title}' (${s.year.getOrElse("-")})  tmdbId=${r.tmdbId.getOrElse("-")}")
       println(s"    EFFECTIVE genres: ${r.genres.mkString(", ")}")
+      println(s"    Tmdb slot language stamp: ${r.data.get(Tmdb).flatMap(_.language).getOrElse("(unstamped)")}")
+      // Run the REAL display logic over the REAL stored record: if this already
+      // yields a local-language title, the row is fine and any Polish still on the
+      // page is a stale read-model projection, not a domain-logic bug.
+      println(s"    displayTitle(from key) -> '${r.displayTitle(s.title)}'")
+      println(s"    sanitize(key)='${services.movies.TitleNormalizer.sanitize(s.title)}'")
+      r.data.toSeq.collectFirst { case (_, sd) if sd.title.nonEmpty =>
+        println(s"    sanitize(cinema title)='${services.movies.TitleNormalizer.sanitize(sd.title.get)}'")
+      }
+      // The row KEY (what the page displays) is separate from any slot's title —
+      // a Polish key can outlive correctly-localized slots, so print both.
+      println(f"    ${"SLOT"}%-45s ${"TITLE"}%-40s GENRES")
       r.data.toSeq.sortBy(_._1.displayName).foreach { case (slot, sd) =>
-        if (sd.genres.nonEmpty) println(f"    ${slot.displayName}%-45s ${sd.genres.mkString(", ")}")
+        if (sd.genres.nonEmpty || sd.title.nonEmpty)
+          println(f"    ${slot.displayName}%-45s ${sd.title.getOrElse("-")}%-40s ${sd.genres.mkString(", ")}")
       }
       println()
     }
