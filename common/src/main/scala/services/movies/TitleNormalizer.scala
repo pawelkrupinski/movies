@@ -1,6 +1,6 @@
 package services.movies
 
-import services.titlerules.{TitleRuleSet, TitleRules, ExtraTitleRules}
+import services.titlerules.TitleRuleSet
 
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -11,8 +11,10 @@ object TitleNormalizer {
   // Rules live in code (TitleRules + ExtraTitleRules) and are loaded once
   // at class-load. `@volatile` makes the reference visible to scrape/enrich
   // threads; tests can swap it thread-locally via `withRules`.
+  // Scoped to the country THIS process serves: a language-specific rule (the
+  // Polish " & " → " i " unification) must not rewrite a German or British title.
   @volatile private var active: TitleRuleSet =
-    TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all)
+    TitleRuleSet.forCountry(models.Country.fromEnv.code)
 
   // A THREAD-SCOPED override that, when set, shadows `active` for the current
   // thread only. Tests that need a custom rule set install it here via
@@ -50,7 +52,7 @@ object TitleNormalizer {
   def currentRules: TitleRuleSet = active
 
   /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
-  def resetToDefaults(): Unit = { active = TitleRuleSet(TitleRules.all ++ ExtraTitleRules.all); sanitizeCache.clear() }
+  def resetToDefaults(): Unit = { active = TitleRuleSet.forCountry(models.Country.fromEnv.code); sanitizeCache.clear() }
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
   def cinemaClean(cinemaId: String, raw: String): String = effective.perCinema(cinemaId, raw)

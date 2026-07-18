@@ -61,4 +61,27 @@ class TitleNormalizerScopingSpec extends AnyFlatSpec with Matchers {
     TitleNormalizer.withRules(customSet)(TitleNormalizer.sanitize(title)) should not be defaultKey  // scope bypasses the cached default
     TitleNormalizer.sanitize(title) shouldBe defaultKey               // the scoped call didn't overwrite the global cache
   }
+
+  /** The canonical " & " → " i " unification is POLISH ("i" = "and"). It used to
+   *  run for every country, so the German film reported by CinemaxX Würzburg as
+   *  "Minions & Monster" (see the checked-in Filmstarts capture,
+   *  `test/resources/fixtures/webedia-de/.../theater-A0263/d-2026-07-11/p-1.json`)
+   *  was stored — and SERVED to German users — as "Minions i Monster", keyed
+   *  `minionsimonster`. No German cinema slot can ever produce that key, so the
+   *  row's key and its own cinemas' spellings disagreed permanently. */
+  "the Polish ' & ' → ' i ' unification" should "not touch a German title" in {
+    val de = TitleRuleSet.forCountry("de")
+    TitleNormalizer.withRules(de) {
+      TitleNormalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
+    }
+  }
+
+  it should "still apply in Poland, where 'i' IS the conjunction" in {
+    val pl = TitleRuleSet.forCountry("pl")
+    TitleNormalizer.withRules(pl) {
+      // "Mandalorian & Grogu" and "Mandalorian i Grogu" must keep merging.
+      TitleNormalizer.sanitize("Mandalorian & Grogu") shouldBe
+        TitleNormalizer.sanitize("Mandalorian i Grogu")
+    }
+  }
 }

@@ -35,8 +35,20 @@ case class TitleRule(
   // tag = Some("programmePrefix") so `TitleNormalizer.programmePrefix` can find
   // it to EXTRACT (not strip) the matched banner for separate-row casing.
   tag:         Option[String] = None,
-  note:        Option[String] = None
+  note:        Option[String] = None,
+  // Countries whose corpus this rule applies to, by `Country.code` ("pl", "de",
+  // "uk"). `None` — the default — means every country, which is right for
+  // language-neutral rules (format tags, 4K-restored suffixes, punctuation).
+  // A rule that rewrites words MUST name its languages: the canonical " & " →
+  // " i " unification is Polish, and applying it everywhere spelled a German
+  // film "Minions i Monster" and keyed it `minionsimonster` — a key no German
+  // cinema slot can ever produce, so every settle re-canonicalised the row.
+  countries:   Option[Set[String]] = None
 ) {
+  /** True when this rule is in force for the country a process serves. A rule
+   *  with no declared countries applies everywhere. */
+  def appliesTo(countryCode: String): Boolean = countries.forall(_.contains(countryCode))
+
   // Compiled once per rule. An invalid pattern (e.g. a half-typed regex from the
   // editor) is caught here and the rule becomes a no-op rather than throwing
   // inside the hot normalisation path and taking down every scrape.

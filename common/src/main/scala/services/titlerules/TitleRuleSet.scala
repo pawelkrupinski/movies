@@ -192,6 +192,14 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
 }
 
 object TitleRuleSet {
+
+  /** The in-code rule set as it applies to ONE country — the full seed minus
+   *  every rule that declares a different language's countries. Each process
+   *  serves a single country (`KINOWO_COUNTRY`), so the filter happens once at
+   *  load rather than per-call on the hot normalisation path. */
+  def forCountry(countryCode: String): TitleRuleSet =
+    TitleRuleSet((TitleRules.all ++ ExtraTitleRules.all).filter(_.appliesTo(countryCode)))
+
   val empty: TitleRuleSet = TitleRuleSet(Nil)
 
   /** One title a transient rule rewrites: the `original` corpus title and the

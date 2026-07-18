@@ -3,6 +3,7 @@ package services.movies
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.titlerules.TitleRuleSet
 
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
@@ -129,6 +130,37 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     val rows = cache.snapshot().map(r => (r.title, r.year)).toSet
     withClue(s"rows after re-scrape: $rows\n") {
       rows shouldBe Set(("Północ, północny zachód", Some(1959)))
+    }
+  }
+
+  "a settled German title containing ' & '" should "be a fixpoint under an identical re-scrape" in {
+    // The German "Minions & Monster" flap, from the recorded CinemaxX Würzburg
+    // (Filmstarts theater A0263) payload. The canonical " & " → " i " rule is POLISH
+    // and used to run everywhere, keying this German row `minionsimonster` — a key
+    // its own cinema slot can never produce, so each settle re-canonicalised it and
+    // orphaned its screenings (25 showtimes vanishing for 32 min of every hour in
+    // prod; see DzienObjawieniaFlapSpec for the full trace).
+    //
+    // Under the country-scoped rule set the row keys on the cinema's own spelling
+    // and the hourly re-scrape lands on it rather than forking a second row.
+    TitleNormalizer.withRules(TitleRuleSet.forCountry("de")) {
+      val wuerzburg = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
+      val cache     = new CaffeineMovieCache(new InMemoryMovieRepository)
+      cache.put(cache.keyOf("Minions & Monster", None),
+        MovieRecord(tmdbId = Some(1315772), data = Map[Source, SourceData](
+          (Tmdb: Source)      -> SourceData(title = Some("Minions & Monster")),
+          (wuerzburg: Source) -> SourceData(title = Some("Minions & Monster")))))
+
+      cache.recordCinemaScrape(wuerzburg, Seq(CinemaMovie(
+        movie     = Movie("Minions & Monster", originalTitle = Some("Minions & Monsters")),
+        cinema    = wuerzburg,
+        posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+        showtimes = Seq(Showtime(LocalDateTime.of(2026, 7, 11, 11, 30), None)))))
+
+      val rows = cache.snapshot().map(r => (r.title, r.year)).toSet
+      withClue(s"rows after re-scrape: $rows\n") {
+        rows shouldBe Set(("Minions & Monster", None))
+      }
     }
   }
 

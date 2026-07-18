@@ -3,6 +3,7 @@ package services.movies
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.titlerules.TitleRuleSet
 
 import java.time.LocalDateTime
 
@@ -52,6 +53,19 @@ class DzienObjawieniaFlapSpec extends AnyFlatSpec with Matchers {
       data = existing.data + (Tmdb ->
         SourceData(title = Some("Dzień objawienia"), originalTitle = Some("Disclosure Day"), releaseYear = Year)))
 
+  /** The real Würzburg venue and its real payload row (see the German case below).
+   *  Title / originalTitle / yearlessness / first `startsAt` are verbatim from the
+   *  checked-in A0263 capture — no invented spellings. */
+  private val Wuerzburg     = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
+  private val MinionsTmdbId = 1489031
+
+  private def minions: CinemaMovie =
+    CinemaMovie(
+      movie     = Movie("Minions & Monster", originalTitle = Some("Minions & Monsters")),
+      cinema    = Wuerzburg,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 7, 11, 11, 30), None)))
+
   "canonicalizeBySanitize" should
     "reach a fixpoint for a film whose cinemas SHOUT the title (no per-tick re-write)" in {
     val repo  = new InMemoryMovieRepository
@@ -74,6 +88,57 @@ class DzienObjawieniaFlapSpec extends AnyFlatSpec with Matchers {
       s"re-written ${writesAfterSecond - writesAfterFirst} more time(s) on a steady tick.\n" +
       s"stored = ${cache.snapshot().map(_.title)}\n") {
       writesAfterSecond shouldBe writesAfterFirst
+    }
+  }
+
+  /** The German "Minions & Monster" flap — the same churn, caused by a POLISH rule
+   *  leaking into a German corpus.
+   *
+   *  `f2dd5be1` fixed cross-LANGUAGE slot drift and the case above fixed
+   *  same-language CASE drift. This one was upstream of both: the canonical tier's
+   *  " & " → " i " unification is Polish ("i" = "and") but ran for every country,
+   *  so the film CinemaxX Würzburg reports as "Minions & Monster" (see the recorded
+   *  Filmstarts capture,
+   *  `test/resources/fixtures/webedia-de/www.filmstarts.de/_/showtimes/theater-A0263/d-2026-07-11/p-1.json`)
+   *  canonicalised to "Minions i Monster" and keyed `minionsimonster`. NO German
+   *  cinema slot can ever produce that key, so the row's key and its own cinemas'
+   *  spellings disagreed permanently and every settle re-canonicalised the row.
+   *
+   *  Observed in prod 2026-07-18 (confirmed against the live corpus):
+   *  `kinowo_worker_showtimes{country="de",city="wurzburg"}` square-waved 115 ↔ 90,
+   *  the film's 25 showtimes leaving and re-entering. The record's `updatedAt`
+   *  advanced on SettleReaper's exact :22:35/:52:35 beat and its `web_screenings`
+   *  went to 0 on each rewrite; the hourly :24 cinema scrape put them back. The row
+   *  stayed `readyToProject` throughout — it was the SCREENINGS that were orphaned.
+   *
+   *  Under the country-scoped rule set the German key is the cinema's own spelling,
+   *  so the settle converges. */
+  it should "reach a fixpoint for a German title whose ' & ' must not become ' i '" in {
+    TitleNormalizer.withRules(TitleRuleSet.forCountry("de")) {
+      val repo  = new InMemoryMovieRepository
+      val cache = new CaffeineMovieCache(repo)
+
+      cache.recordCinemaScrape(Wuerzburg, Seq(minions))
+      cache.entries.foreach { case (k, e) =>
+        cache.settleResolved(k, e.copy(
+          tmdbId = Some(MinionsTmdbId),
+          data   = e.data + (Tmdb -> SourceData(
+            title = Some("Minions & Monster"), originalTitle = Some("Minions & Monsters")))))
+      }
+
+      cache.canonicalizeBySanitize()                        // first settle: the legitimate re-key
+      val writesAfterFirst = repo.upserts.size + repo.deletes.size
+
+      cache.canonicalizeBySanitize()                        // second settle: must be a no-op
+      val writesAfterSecond = repo.upserts.size + repo.deletes.size
+
+      withClue(
+        s"\nThe German row was re-written ${writesAfterSecond - writesAfterFirst} " +
+        s"more time(s) on a steady tick.\nstored = ${cache.snapshot().map(r => (r.title, r.year))}\n") {
+        writesAfterSecond shouldBe writesAfterFirst
+      }
+      // The key is the cinema's own spelling — no Polish conjunction injected.
+      TitleNormalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
     }
   }
 }

@@ -88,7 +88,8 @@ object TitleRules {
       note = Some("Strip the 'Gwiezdne Wojny: ' franchise prefix")),
     TitleRule("canonical-ampersand-to-i", Canonical, None,
       """ & """, " i ", applyAll = true, order = 20,
-      note = Some("Unify ' & ' and ' i ' spellings"))
+      note = Some("Unify ' & ' and ' i ' spellings — POLISH ONLY ('i' = 'and')"),
+      countries = Some(Set("pl")))
   )
 
   // ── per-cinema tier — migrated from each client's `cleanTitle` ─────────────

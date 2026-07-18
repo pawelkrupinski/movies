@@ -116,6 +116,17 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
   (≤30), `short-description.txt` (≤80), `full-description.txt` (≤4000). Publish with
   `./gradlew :app:bootstrapReleaseListing` then `:app:publishReleaseListing` (see
   `android/PLAY_PUBLISHING.md`).
+- **Title rules** (`common/src/main/scala/services/titlerules/`): audit the seed for
+  rules that rewrite WORDS rather than punctuation/format, and tag each with the
+  countries it belongs to (`countries = Some(Set("pl"))`). A rule with
+  `countries = None` runs everywhere, which is right for language-neutral strips
+  (4K-restored suffixes, format tags) and wrong for anything language-specific.
+  Getting this wrong is silent and expensive: the Polish `" & "` → `" i "`
+  unification ran for every country, so a German film listed as
+  "Minions & Monster" was served as "Minions i Monster" AND keyed
+  `minionsimonster` — a key no German cinema slot can produce, so every settle
+  re-canonicalised the row and orphaned its showtimes until the next scrape
+  (a 30-minute square wave on `kinowo_worker_showtimes`, 2026-07-18).
 
 ## 6. Observability
 
