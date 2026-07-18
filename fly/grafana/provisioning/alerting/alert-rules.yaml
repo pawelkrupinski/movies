@@ -163,9 +163,22 @@ groups:
       # ignore it. What IS actionable is sustained throttling on a JVM that has finished
       # warming, which is exactly what survives the guard.
       #
-      # Deliberately NOT a fix for the underlying restart cadence: kinowo-worker restarts
-      # ~11.7x/day vs ~1.1-1.7 for -de/-uk (7d avg, 0 OOM exits), which no rule catches
-      # because crash-looping needs >4/HOUR. Left as a known gap rather than papered over.
+      # Deliberately NOT a fix for the underlying restart cadence, which IS a real gap.
+      # Measured from the persistent /data/logs/worker.log (2026-07-18): "Worker starting"
+      # outnumbers "received shutdown signal" EVERY day — 07-14 had 5 boots, 0 shutdown
+      # signals and 1 commit, i.e. 5 restarts with no deploy at all; 07-13 7, 07-15 6,
+      # 07-17 7. So kinowo-worker takes ~5-7 UNGRACEFUL restarts on a quiet day, and no
+      # rule catches them: crash-looping needs >4/HOUR and this is ~0.3/hour.
+      # (An earlier note here compared 7d restart averages across the three workers. That
+      # was WRONG — -de/-uk had only 13.7/16.7 HOURS of series in that window vs pl's 158,
+      # so the comparison measured metric availability, not restarts. Over a window where
+      # all three have data the counts are comparable.)
+      # Cause narrowed by ELIMINATION, not yet proven: not OOM (0 OutOfMemory markers in
+      # worker-stderr.log, newest heap dump predates the index-only fix), not a JVM crash
+      # (0 hs_err files), not the LivenessWatchdog (it has never logged "heartbeat stale"),
+      # not a graceful drain. That leaves an external kill. To PROVE it, read the machine
+      # event exit_code right after an ungraceful restart, BEFORE a deploy replaces the
+      # machine and wipes its event history: flyctl machine status <id> -a kinowo-worker.
       - uid: kinowo-worker-cpu-starved
         title: Worker CPU starved (sustained throttle)
         condition: C
