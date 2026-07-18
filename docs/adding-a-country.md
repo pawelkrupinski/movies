@@ -133,8 +133,21 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 
 `fly/grafana/victoria/scrape.yml` — add a `kinowo-worker-<cc>` target (its
 `kinowo_worker_*` series carry `country="<cc>"`) and a `showtimes-<cc>-web` target.
-That is the ONLY per-country Grafana step, because nothing downstream enumerates
-countries:
+Two per-country Grafana steps, and no more — nothing else enumerates countries:
+
+1. **`fly/grafana/victoria/scrape.yml`** (above).
+2. **The throttle backstop** — `fly/grafana/provisioning/alerting/contact-points.yaml`
+   needs a `WorkerThrottle<Cc>` webhook pointing at
+   `http://kinowo-worker-<cc>.internal:9000/throttle`, and
+   `notification-policies.yaml` a route matching `app = kinowo-worker-<cc>` to it.
+   This one is unavoidable: Grafana cannot template a webhook URL from
+   `$labels.app`, so the target worker must be resolved at routing time. Skipping
+   it is caught by `GrafanaWorkerThrottleCoverageSpec` before it can ship — and
+   note the worker's PRIMARY self-throttle (`CpuCreditPoller`, which polls Fly
+   Prometheus for its own `FLY_APP_NAME`) is per-app automatically; this is only
+   the fail-open backstop for when that poller is unavailable.
+
+Everything else follows automatically:
 
 - **App-level panels** (`kinowo_worker_*`, `kinowo_web_*` — task flow, queue depth,
   corpus, films served) carry a `country` label and are scoped by the `Country`

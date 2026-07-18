@@ -29,13 +29,26 @@ contactPoints:
           # "all good" rather than "did it recover?".
         disableResolveMessage: false
 
-  # NOT a notification — a control channel. The worker-credit-low rule posts here,
-  # and this webhook drives the worker's reaper backoff: Grafana POSTs the alert
-  # payload (status=firing on trip, status=resolved on recovery) to the worker's
-  # /throttle endpoint over the private network, which ExternalThrottleGate.parse
-  # turns into on/off. disableResolveMessage MUST stay false or the worker would
-  # never be told to resume. Reachable because the worker's :9000 health server is
-  # answered over the 6PN (verified 2026-06-20).
+  # NOT notifications — a control channel, ONE PER WORKER APP. The
+  # worker-credit-low rule posts here, and these webhooks drive the worker's
+  # reaper backoff: Grafana POSTs the alert payload (status=firing on trip,
+  # status=resolved on recovery) to that worker's /throttle endpoint over the
+  # private network, which ExternalThrottleGate.parse turns into on/off.
+  # disableResolveMessage MUST stay false or the worker would never be told to
+  # resume. Reachable because the worker's :9000 health server is answered over
+  # the 6PN (verified 2026-06-20).
+  #
+  # WHY ONE PER APP rather than a single templated webhook: Grafana's webhook
+  # integration does NOT support notification templates in the `url` field (only
+  # `title`/`message`), so the target app cannot be derived from `$labels.app` at
+  # send time. The URL is therefore the ONLY routing mechanism, which forces one
+  # contact point per worker + a per-app route in notification-policies.yaml.
+  # ExternalThrottleGate reads only the top-level `status` and ignores labels, so
+  # a webhook delivered to the wrong worker would silently throttle the wrong
+  # fleet — the per-app pairing is load-bearing, not cosmetic.
+  #
+  # Onboarding a country adds a block here AND a route; GrafanaWorkerThrottleCoverageSpec
+  # fails CI if a `fly.worker.<cc>.toml` exists without both.
   - orgId: 1
     name: WorkerThrottle
     receivers:
@@ -43,5 +56,25 @@ contactPoints:
         type: webhook
         settings:
           url: 'http://kinowo-worker.internal:9000/throttle'
+          httpMethod: POST
+        disableResolveMessage: false
+
+  - orgId: 1
+    name: WorkerThrottleUk
+    receivers:
+      - uid: worker-throttle-webhook-uk
+        type: webhook
+        settings:
+          url: 'http://kinowo-worker-uk.internal:9000/throttle'
+          httpMethod: POST
+        disableResolveMessage: false
+
+  - orgId: 1
+    name: WorkerThrottleDe
+    receivers:
+      - uid: worker-throttle-webhook-de
+        type: webhook
+        settings:
+          url: 'http://kinowo-worker-de.internal:9000/throttle'
           httpMethod: POST
         disableResolveMessage: false

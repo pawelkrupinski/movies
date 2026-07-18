@@ -162,8 +162,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'kinowo-worker is CPU-throttled for 15m+ (falling behind)'
-          description: 'rate(fly_instance_cpu_throttle{app="kinowo-worker"}) > 0.2 (throttled >20% of wall-clock) for 15m — the worker is starved past its baseline. Likely a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots. Check recent worker deploys/restarts and the queue depth (web queue-monitor page); if it recurs without a deploy, the fix is a bigger [[vm]] (more shared-CPU credit), not scheduling. Short reboot blips (~90s) are expected and sit below this 15m window.'
+          summary: '{{ $labels.app }} is CPU-throttled for 15m+ (falling behind)'
+          description: 'rate(fly_instance_cpu_throttle) > 0.2 on {{ $labels.app }} (throttled >20% of wall-clock) for 15m — the worker is starved past its baseline. Likely a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots. Check recent worker deploys/restarts and the queue depth (web queue-monitor page); if it recurs without a deploy, the fix is a bigger [[vm]] (more shared-CPU credit), not scheduling. Short reboot blips (~90s) are expected and sit below this 15m window.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -171,7 +171,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app="kinowo-worker"}[5m]))'
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo-worker.*"}[5m]))'
               instant: true
               range: false
               intervalMs: 1000
@@ -209,8 +209,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'kinowo-worker restarted > 4 times in the last hour'
-          description: 'changes(process_start_time_seconds{app="kinowo-worker"}[1h]) > 4 — the worker is restarting far above its normal ~5-6h cadence. Check the `flyctl machine status <id>` event log for the exit reason (exit_code=3 = ExitOnOutOfMemoryError native OOM; 126/127 = bad launcher; 1 = boot failure), recent worker deploys, and the "Kinowo — Worker Diagnostics" dashboard (native memory + RSS climb). See reference_worker_native_oom_and_disk.'
+          summary: '{{ $labels.app }} restarted > 4 times in the last hour'
+          description: 'changes(process_start_time_seconds[1h]) > 4 on {{ $labels.app }} — the worker is restarting far above its normal ~5-6h cadence. Check the `flyctl machine status <id>` event log for the exit reason (exit_code=3 = ExitOnOutOfMemoryError native OOM; 126/127 = bad launcher; 1 = boot failure), recent worker deploys, and the "Kinowo — Worker Diagnostics" dashboard (native memory + RSS climb). See reference_worker_native_oom_and_disk.'
         data:
           - refId: A
             relativeTimeRange: { from: 3600, to: 0 }
@@ -218,7 +218,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'max by (app, instance) (changes(process_start_time_seconds{app="kinowo-worker"}[1h]))'
+              expr: 'max by (app, instance) (changes(process_start_time_seconds{app=~"kinowo-worker.*"}[1h]))'
               instant: true
               range: false
               intervalMs: 1000
@@ -851,8 +851,8 @@ groups:
         labels:
           notify: worker-throttle
         annotations:
-          summary: 'kinowo-worker shared-CPU credit < 6k — backing off its reapers until it rebuilds past 12k'
-          description: 'fly_instance_cpu_balance{app="kinowo-worker"} dropped below 6000; the WorkerThrottle webhook tells the worker to throttle all reapers and HOLDS until credit climbs back over 12000 (the recovery threshold), so the idle pool builds a buffer before resuming. Band scaled to the 4x ~19k cap. By design — not an incident.'
+          summary: '{{ $labels.app }} shared-CPU credit < 6k — backing off its reapers until it rebuilds past 12k'
+          description: 'fly_instance_cpu_balance for {{ $labels.app }} dropped below 6000; the WorkerThrottle webhook for that app tells the worker to throttle all reapers and HOLDS until credit climbs back over 12000 (the recovery threshold), so the idle pool builds a buffer before resuming. Band scaled to the 4x ~19k cap. By design — not an incident.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -865,7 +865,7 @@ groups:
               # ~3 healthy ~19k samples around it, so it never alone pulls the mean
               # under 6k. Window (120s) < relativeTimeRange.from (300s), so it's fully
               # covered. Single venue still evaluated instantly at eval time.
-              expr: 'min by (app, instance) (avg_over_time(fly_instance_cpu_balance{app="kinowo-worker"}[2m]))'
+              expr: 'min by (app, instance) (avg_over_time(fly_instance_cpu_balance{app=~"kinowo-worker.*"}[2m]))'
               instant: true
               range: false
               intervalMs: 1000
