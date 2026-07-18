@@ -340,12 +340,21 @@ object RealHttpFetch {
     // them in bursts the host answers with 429. That was our steady state, not an
     // anomaly: ThrottledHttpFetch's reactive 5s gate then parked the venue past
     // AdaptiveTimeoutScraper's budget, so the scrape was cut and DE went stale.
-    // 250ms holds the whole fleet to ~4 req/s, which walks a full sweep in ~45min
-    // — inside the 60min scrape TTL, with headroom. This is a STARTING pace, not a
-    // measured limit (Webedia publishes none): if 429s persist, widen it — the
-    // sweep degrades to partial coverage rather than breaking, because the next
-    // tick re-queues whatever this one did not reach.
-    HostPolicy(Set("filmstarts.de"), minRequestInterval = Some(Duration.ofMillis(250))),
+    // 250ms (~4 req/s) was that starting pace, and the 429s never stopped: one
+    // live worker.log carried 3,118 of them, and 429 was the ONLY HTTP status in
+    // it — no 403s, no 5xx, so this is purely self-inflicted, not a Fly-ASN block.
+    // The cost is worse than the lost request: a 429 trips
+    // HostCircuitBreakerHttpFetch, whose 60s open window fast-fails all 7 of a
+    // venue's day requests at once ("all 7 showtime requests ... failed"), and
+    // RetryWithBackoff then re-runs the whole cinema up to 3x. So the fast pace
+    // spent its budget three times over on requests that could never land, and
+    // only ~30% of scrapes were succeeding.
+    // 500ms halves that to ~2 req/s → a full sweep in ~90min. That does NOT fit
+    // the old 60min TTL, which is why 250ms was chosen then; it fits the 120min
+    // cadence DE now runs (see fly.worker.de.toml), with ~25% headroom. Still not
+    // a measured limit — if 429s persist, the next step is 750ms/1000ms, which
+    // costs a sweep longer than the TTL and so needs the cadence widened with it.
+    HostPolicy(Set("filmstarts.de"), minRequestInterval = Some(Duration.ofMillis(500))),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted

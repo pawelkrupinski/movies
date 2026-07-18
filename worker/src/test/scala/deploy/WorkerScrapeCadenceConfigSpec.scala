@@ -1,7 +1,11 @@
 package deploy
 
+import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import tools.RateLimitedHttpFetch
+
+import scala.concurrent.duration.*
 
 /**
  * Locks the PER-COUNTRY scrape cadence, which lives only in each worker app's
@@ -30,6 +34,28 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
 
   "the DE worker" should "scrape on a 2-hour cadence, not the fleet's hourly default" in {
     cadenceOf("fly.worker.de.toml") shouldBe Some("120")
+  }
+
+  it should "pace Filmstarts slowly enough to stop the 429s, yet still sweep inside that cadence" in {
+    // These two numbers are coupled and live in different files, so a change to
+    // either alone silently breaks DE: the outbound pace (RealHttpFetch's
+    // HostPolicies) decides how long a full sweep takes, and the cadence (the
+    // toml above) decides how long it may take. Tightening the pace to fix 429s
+    // lengthens the sweep; shortening the cadence shrinks the budget. Assert the
+    // invariant rather than the arithmetic, so either can move as long as the
+    // sweep still fits.
+    val pace     = RateLimitedHttpFetch.configuredInterval("https://www.filmstarts.de/kinoprogramm/kino/A0006/")
+    val cadence  = cadenceOf("fly.worker.de.toml").map(_.toInt).map(_.minutes)
+    // One request per day-page per venue; WebediaShowtimesClient fetches 7 days.
+    val requests = Country.Germany.cities.flatMap(_.cinemas).distinct.size * 7
+
+    withClue("Filmstarts must stay paced — unpaced fan-out is what drew the 429s: ") {
+      pace should not be empty
+    }
+    val sweep = (requests * pace.get.toMillis).millis
+    withClue(s"$requests requests at ${pace.get.toMillis}ms = ${sweep.toMinutes}min sweep vs ${cadence.get.toMinutes}min cadence: ") {
+      sweep should be <= cadence.get
+    }
   }
 
   "the PL and UK workers" should "stay on the hourly cadence" in {

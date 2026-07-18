@@ -113,7 +113,9 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "read the pace for a real paced host off the HostPolicies table" in {
     // The production lookup, not the fixture's stub — guards the wiring between
     // the policy row and the decorator.
-    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(250.millis)
+    // 500ms, not the original 250ms: at ~4 req/s Filmstarts answered with a
+    // steady stream of 429s (3,118 in one worker.log). See the policy's comment.
+    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
     RateLimitedHttpFetch.configuredInterval(Unpaced) shouldBe None
   }
 }
