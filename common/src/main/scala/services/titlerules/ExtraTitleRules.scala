@@ -1,6 +1,7 @@
 package services.titlerules
 
 import RuleScope._
+import models.Country
 
 /** Post-baseline title-rule ADDITIONS: programme-cycle banners, search strips,
  *  canonical unifications, and per-cinema cleanups curated from a 2026-06 audit
@@ -42,8 +43,18 @@ object ExtraTitleRules {
   private def searchReplace(id: String, pattern: String, replacement: String, note: String): TitleRule =
     TitleRule(id, GlobalStructural, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
 
-  private def canon(id: String, pattern: String, replacement: String, note: String): TitleRule =
-    TitleRule(id, Canonical, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
+  /** A Canonical-tier rule. `countries` defaults to every country, which is right
+   *  for a language-NEUTRAL rule (a format-tag or bracketed-year strip). A rule
+   *  whose replacement writes WORDS must name its countries — see
+   *  [[TitleRule.countries]]: an unscoped Polish rewrite reaches the German and UK
+   *  corpora and pins their rows to a key no local cinema slot can produce. */
+  private def canon(id: String, pattern: String, replacement: String, note: String,
+                    countries: Option[Set[Country]] = None): TitleRule =
+    TitleRule(id, Canonical, None, pattern, replacement, applyAll = false, order = 0,
+      note = Some(note), countries = countries)
+
+  /** The countries a Polish-language rewrite may touch. */
+  private val PolishOnly: Option[Set[Country]] = Some(Set(Country.Poland))
 
   private def perCinema(id: String, cinemaId: String, pattern: String, note: String): TitleRule =
     TitleRule(id, PerCinema, Some(cinemaId), pattern, "", applyAll = false, order = 0, note = Some(note))
@@ -514,7 +525,8 @@ object ExtraTitleRules {
       "Trailing release year after a SEPARATOR ('Film - 1989', 'Film, 2001') — the non-bracketed delimited form `EmbeddedYear` also reads. Requires a comma / hyphen / en- or em-dash so a bare year that IS the title ('1917', '2049') is left alone."),
     canon("xtra-canonical-mandalorian-grogu-en",
       """(?iu)^The\s+Mandalorian\s+and\s+Grogu$""", "Mandalorian i Grogu",
-      "Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first."),
+      "Map the English title to the Polish canonical (same TMDB id 1228710) so the EN-titled listing merges; ordered after the trailing-format strip clears its '2D DUB' suffix first. POLAND ONLY — German cinemas list this film as 'The Mandalorian And Grogu', which matched this rule and pinned the Berlin row to the Polish key `mandalorianigrogu`, so showtimes-de displayed 'Mandalorian i Grogu'. The UK escaped only because its cinemas spell it with '&'.",
+      countries = PolishOnly),
     // "Niesamowite przygody skarpetek 3. Ale kosmos!" is a TMDB-no-match kids'
     // film that fragments across cinemas at the SUBTITLE level: Helios romanises
     // the sequel number (III), Cinema City ships a source-truncated
@@ -530,7 +542,8 @@ object ExtraTitleRules {
     canon("xtra-canonical-skarpetek-3",
       """(?iu)^Niesamowite\s+przygody\s+skarpetek\s+(?:III|3)\b.*$""",
       "Niesamowite przygody skarpetek 3. Ale kosmos!",
-      "Collapse every spelling of the TMDB-no-match 'Niesamowite przygody skarpetek 3. Ale kosmos!' (Roman III, the Cinema-City source-truncated 'Ale ko', the subtitle-less '…skarpetek 3', the format-tagged variants) onto one canonical title. The '3'/'III' requirement keeps films 1 (no number) and 2 (…skarpetek 2.) as their own rows.")
+      "Collapse every spelling of the TMDB-no-match 'Niesamowite przygody skarpetek 3. Ale kosmos!' (Roman III, the Cinema-City source-truncated 'Ale ko', the subtitle-less '…skarpetek 3', the format-tagged variants) onto one canonical title. The '3'/'III' requirement keeps films 1 (no number) and 2 (…skarpetek 2.) as their own rows. POLAND ONLY: the replacement writes Polish words, so it must not reach another country's corpus even though the pattern is unlikely to match there.",
+      countries = PolishOnly)
   )
 
   /** Per-cinema (client) cleanups — venue-specific junk too narrow to globalise
