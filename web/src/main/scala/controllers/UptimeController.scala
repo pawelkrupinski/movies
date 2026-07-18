@@ -256,6 +256,50 @@ object BarData {
   )
 }
 
+/** The per-bucket detail behind the uptime grid, emitted ONCE for the whole page
+ *  instead of inlined into every bar's `data-info` attribute.
+ *
+ *  The grid renders a complete 96-slot row per service, empty slots included, so
+ *  a large roster (Germany registers ~1550 services) means ~149k cells. Carrying
+ *  an HTML-escaped JSON blob on each of those built ~57 MB of HTML through nested
+ *  Twirl StringBuilders and OOM'd the 384 MB heap — which, with Pekko's
+ *  exit-on-fatal-error, took the whole site down on every /uptime load.
+ *
+ *  Two things make this small. The 96 slot labels are shared by every service, so
+ *  they're emitted once rather than once per cell. And only buckets that actually
+ *  recorded something get an entry — an absent bucket IS the "no data" case, which
+ *  the bar's `empty` class already renders. On the German deployment that's ~3.6k
+ *  real buckets against ~149k cells. */
+object UptimeBarPayload {
+
+  /** Serialised as `{"slots": {ts: {labels}}, "data": {service: {ts: {counts}}}}`,
+   *  safe to drop straight into a `<script type="application/json">` block: `<` is
+   *  escaped so an error string containing `</script>` can't break out. */
+  def apply(rows: Seq[ServiceRow]): String = {
+    val allRows = rows.flatMap(r => r +: r.enrichment.toSeq)
+
+    val slots = allRows.flatMap(_.bars).map { b =>
+      b.bucketTimestamp.toString -> Json.obj(
+        "timeFrom" -> b.timeFrom, "timeTo" -> b.timeTo, "dateLabel" -> b.dateLabel)
+    }.toMap
+
+    val data = allRows.map { row =>
+      row.name -> JsObject(row.bars.filter(_.status != "empty").map { b =>
+        b.bucketTimestamp.toString -> Json.obj(
+          "status"    -> b.status,
+          "successes" -> b.successes,
+          "failures"  -> b.failures,
+          "zeroes"    -> b.zeroes,
+          "errors"    -> b.errors,
+          "fallback"  -> b.fallback
+        )
+      })
+    }.filter(_._2.value.nonEmpty).toMap
+
+    Json.stringify(Json.obj("slots" -> slots, "data" -> data)).replace("<", "\\u003c")
+  }
+}
+
 case class FallbackRow(
   cinema: String, filmwebId: String, since: String, reason: String,
   fails: Int, nextProbe: String, history: Seq[String]

@@ -33,8 +33,20 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   private def bar(ts: Long): BarData =
     BarData("TestSvc", ts, "12:00", "12:15", "1 Jul", "green", 1, 0, 0, Seq.empty)
   private val row = ServiceRow("TestSvc", (5 to 0 by -1).map(i => bar(lastTs - i * step)))
+
+  // A second row whose bars have real detail behind them: one bucket that
+  // recorded a failure (with an error string) and one that recorded nothing.
+  // The tooltip reads both from the shared `#uptime-bars` payload — the omitted
+  // idle bucket is what "no data" looks like there.
+  private val activeTs = lastTs - step
+  private val idleTs   = lastTs
+  private val detailRow = ServiceRow("DetailSvc", Seq(
+    BarData("DetailSvc", activeTs, "09:30", "09:45", "13 Jul", "red", 0, 2, 0, Seq("connect timeout")),
+    BarData("DetailSvc", idleTs, "09:45", "10:00", "13 Jul", "empty", 0, 0, 0, Seq.empty),
+  ))
+
   private val uptimeHtml: String =
-    views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq(row)).body
+    views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq(row, detailRow)).body
 
   private var chrome: Option[Chrome] = None
   private var server: TestHttpServer = _
@@ -85,6 +97,53 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
 
       // 6 pre-rendered + 3 empty backfill + 1 new active.
       page.evalInt(allBars) shouldBe 10
+    }
+  }
+
+  private def hover(service: String, ts: Long): String =
+    s"""document.querySelector('.row[data-service="$service"] .bar[data-ts="$ts"]')""" +
+      """.dispatchEvent(new MouseEvent('mouseenter'))"""
+  private val overlayText = "document.getElementById('overlay').textContent"
+
+  // The per-bucket detail moved out of a per-bar `data-info` attribute and into
+  // one `#uptime-bars` payload (controllers.UptimeBarPayload) — the old shape
+  // OOM'd the German deployment. These lock that hover still shows the same
+  // thing, sourced from the payload.
+  "the /uptime bar tooltip" should "read a bucket's detail from the shared payload" in {
+    onUptime { page =>
+      page.eval(hover("DetailSvc", activeTs))
+      val text = page.evalString(overlayText)
+
+      text should include ("DetailSvc")          // the row's service, not a per-bar copy
+      text should include ("13 Jul")             // slot labels, shared across services
+      text should include ("09:30")
+      text should include ("2 failed")
+      text should include ("connect timeout")    // the bucket's error survives
+      page.evalBool("document.getElementById('overlay').classList.contains('visible')") shouldBe true
+    }
+  }
+
+  it should "show 'No data' for a slot the payload omits" in {
+    onUptime { page =>
+      page.eval(hover("DetailSvc", idleTs))
+      val text = page.evalString(overlayText)
+
+      text should include ("No data")
+      text should include ("09:45")              // the slot is still labelled …
+      text should not include ("connect timeout")  // … it just has no detail of its own
+    }
+  }
+
+  it should "fold a live SSE update into the payload so the tooltip shows the new counts" in {
+    onUptime { page =>
+      page.eval(
+        s"applyUpdate({service:'DetailSvc',bucketTs:$activeTs,status:'green',fallback:false," +
+        "successes:9,failures:0,zeroes:0,errors:[],timeFrom:'09:30',timeTo:'09:45',dateLabel:'13 Jul'})")
+      page.eval(hover("DetailSvc", activeTs))
+      val text = page.evalString(overlayText)
+
+      text should include ("9 ok")
+      text should not include ("connect timeout")  // the stale error is replaced
     }
   }
 }
