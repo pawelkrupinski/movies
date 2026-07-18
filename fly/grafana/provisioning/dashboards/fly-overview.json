@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 11,
+  "version": 12,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -35,7 +35,23 @@
         "definition": "label_values(kinowo_worker_throttled, country)",
         "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
         "current": { "text": "pl", "value": "pl", "selected": true },
-        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 0 }
+        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 0 },
+
+      { "name": "worker_host_app", "label": "Worker app (derived)", "type": "query",
+        "description": "Not a dropdown — the worker Fly app names belonging to $country, resolved from the country-labelled kinowo_worker_throttled. Exists solely so the memory panels' fly_instance_* (host) series can be narrowed to the selected country: those live on the fly-prometheus datasource, which carries no country label, so no on(app) join can reach them. Derived, so re-splitting countries across Fly apps needs no dashboard edit.",
+        "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+        "definition": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)",
+        "query": { "query": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "refId": "worker_host_app" },
+        "current": { "text": "All", "value": "$__all", "selected": true },
+        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 2 },
+
+      { "name": "web_host_app", "label": "Web app (derived)", "type": "query",
+        "description": "The web mirror of $worker_host_app, resolved from kinowo_web_movies_served. Same reason: it narrows the host-free series on the web memory panel to the selected country.",
+        "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+        "definition": "label_values(kinowo_web_movies_served{country=~\"$country\"}, app)",
+        "query": { "query": "label_values(kinowo_web_movies_served{country=~\"$country\"}, app)", "refId": "web_host_app" },
+        "current": { "text": "All", "value": "$__all", "selected": true },
+        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 2 }
     ]
   },
   "panels": [
@@ -433,13 +449,13 @@
     {
       "id": 43,
       "title": "Worker — JVM heap & host free memory (vs -Xmx)",
-      "description": "kinowo-worker heap detail + how much RAM the machine has left, scaled to the heap band (RSS and the 1GB machine-total line are omitted so this reads at ~0-320MB). JVM heap / old-gen / non-heap are the worker's own exports (app-metrics-live), scoped to $country by an `and on(app)` data join; host FREE is a Fly host metric (fly-prometheus, ~15-25min lag) and is deliberately FLEET-WIDE — fly_instance_* carries no country label, so a per-country host line would need a second template variable, which has twice caused silent cross-country leakage. Old gen (tenured) rides ~205MB of the ~309MB max heap (-Xmx320m), i.e. ~90% full at rest — so a whole-corpus read-model reprojection's transient allocation tips it into a SerialGC full-GC thrash (VM Thread ~0.6 core) that drains CPU credit to the floor (seen 2026-07-03 20:40). 'Host free' is the machine's remaining RAM: hovering ~200MB, it leaves little room to raise -Xmx on this box. Its twin to the right is the same view of the WEB app.",
+      "description": "kinowo-worker heap detail + how much RAM the machine has left, scaled to the heap band (RSS and the 1GB machine-total line are omitted so this reads at ~0-320MB). JVM heap / old-gen / non-heap are the worker's own exports (app-metrics-live), scoped to $country by an `and on(app)` data join; host FREE is a Fly host metric (fly-prometheus, ~15-25min lag), scoped to $country through the hidden $worker_host_app variable — fly_instance_* carries no country label and sits on a different datasource, so a data join cannot reach it and the derived app list is the only way to narrow it. Old gen (tenured) rides ~205MB of the ~309MB max heap (-Xmx320m), i.e. ~90% full at rest — so a whole-corpus read-model reprojection's transient allocation tips it into a SerialGC full-GC thrash (VM Thread ~0.6 core) that drains CPU credit to the floor (seen 2026-07-03 20:40). 'Host free' is the machine's remaining RAM: hovering ~200MB, it leaves little room to raise -Xmx on this box. Its twin to the right is the same view of the WEB app.",
       "type": "timeseries",
       "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 165 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"kinowo-worker.*\"}", "legendFormat": "Host free — {{app}}" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$worker_host_app\"}", "legendFormat": "Host free — {{app}}" },
         { "refId": "D", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"})", "legendFormat": "Heap used" },
         { "refId": "E", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "jvm_memory_pool_used_bytes{pool=\"Tenured Gen\"} and on(app) kinowo_worker_throttled{country=~\"$country\"}", "legendFormat": "Old gen (tenured)" },
         { "refId": "F", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{area=\"nonheap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"})", "legendFormat": "Non-heap" },
@@ -449,13 +465,13 @@
     {
       "id": 44,
       "title": "Web — JVM heap & host free memory (vs -Xmx)",
-      "description": "The WEB app's heap, read exactly like the worker panel to its left. The web JVM's own jvm_* exports carry no country label (one process per country, so the app label already implies it) — they are scoped to $country by intersecting with kinowo_web_movies_served{country}, the same `and on(app)` data join the worker panel uses against kinowo_worker_throttled. Host FREE is fleet-wide for the same reason as the worker panel (fly_instance_* has no country label). Different tuning from the worker, so read the shape differently: web runs G1 at -Xmx384m (fly.toml JAVA_OPTS), so 'Old gen (G1)' sawtooths as concurrent cycles reclaim rather than sitting pinned ~90% full, and a rising floor across cycles — not a single spike — is the leak signal.",
+      "description": "The WEB app's heap, read exactly like the worker panel to its left. The web JVM's own jvm_* exports carry no country label (one process per country, so the app label already implies it) — they are scoped to $country by intersecting with kinowo_web_movies_served{country}, the same `and on(app)` data join the worker panel uses against kinowo_worker_throttled. Host FREE is narrowed to $country through the hidden $web_host_app variable, the mirror of the worker panel's $worker_host_app — fly_instance_* has no country label, so that derived app list is what scopes it. Different tuning from the worker, so read the shape differently: web runs G1 at -Xmx384m (fly.toml JAVA_OPTS), so 'Old gen (G1)' sawtooths as concurrent cycles reclaim rather than sitting pinned ~90% full, and a rising floor across cycles — not a single spike — is the leak signal.",
       "type": "timeseries",
       "datasource": { "type": "datasource", "uid": "-- Mixed --" },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 165 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"kinowo|showtimes-.*\"}", "legendFormat": "Host free — {{app}}" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$web_host_app\"}", "legendFormat": "Host free — {{app}}" },
         { "refId": "D", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_web_movies_served{country=~\"$country\"})", "legendFormat": "Heap used" },
         { "refId": "E", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_pool_used_bytes{pool=\"G1 Old Gen\"} and on(app) kinowo_web_movies_served{country=~\"$country\"})", "legendFormat": "Old gen (G1)" },
         { "refId": "F", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{area=\"nonheap\"} and on(app) kinowo_web_movies_served{country=~\"$country\"})", "legendFormat": "Non-heap" },
