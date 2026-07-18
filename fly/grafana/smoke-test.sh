@@ -168,27 +168,34 @@ assert "enqueued/started/fully-worked by-type panels share one row" \
 # The worker JVM/host memory panel must carry the host-free-memory series (the
 # whole point of the panel — how much RAM the machine has left) and be a Mixed
 # panel so it can join the worker's own jvm_* exports with Fly host metrics.
-# Scoped to $worker_app, not a hardcoded app, so the panel follows the country
-# picker now that each country has its own worker Fly app.
-assert "worker memory panel queries host free memory (Mixed datasource)" \
+# Fly host metrics carry no `country` label and live on a different datasource,
+# so they can't be country-scoped — they show the whole worker fleet instead.
+assert "worker memory panel queries host free memory for the whole worker fleet" \
   "api/dashboards/uid/fly-overview" \
-  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"\$worker_app\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
+  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"kinowo-worker.*\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
 
-# Country is the ONLY control on these dashboards. \$worker_app exists purely to
-# turn the selected country into Fly app names for the three fly_instance_* host
-# targets, which live on the `fly-prometheus` datasource and so cannot be joined
-# against a country-carrying series. It must stay HIDDEN (hide:2) — a second
-# dropdown is exactly what we don't want — and must keep includeAll so a country
-# served by more than one worker app still resolves to all of them.
-#
-# Verified against a data-seeded Grafana (fly/grafana/local-harness.sh, same
-# 11.4.0 image as prod): hidden + All interpolates to the country-scoped app
-# list, NOT `.*`. Do not "fix" this by unhiding it.
+# \$country is the ONLY template variable on these dashboards. \$worker_app is
+# gone: every target whose metric carries a country is scoped by data (see the
+# `and on(app) kinowo_worker_throttled{country=~"$country"}` intersections), and
+# the three fly_instance_* host targets that can't be are deliberately fleet-wide.
+# A second variable here has twice been a source of silent cross-country leakage;
+# don't reintroduce one.
 for uid in fly-overview kinowo-worker-diag; do
-  assert "$uid: \$worker_app stays hidden (country is the only control)" \
+  assert "$uid: country is the only template variable" \
     "api/dashboards/uid/$uid" \
-    "any(v['name']=='worker_app' and v.get('hide')==2 and v.get('includeAll') is True for v in d['dashboard']['templating']['list'])"
+    "[v['name'] for v in d['dashboard']['templating']['list']]==['country']"
 done
+
+# Fleet-wide host series MUST carry {{app}} in the legend. Without it all three
+# workers render under one fixed display name and you get identical duplicate
+# legend entries — indistinguishable from the cross-country leak this replaced.
+assert "fleet-wide fly_instance_* series are labelled per app" \
+  "api/dashboards/uid/fly-overview" \
+  "all('{{app}}' in t.get('legendFormat','') for p in d['dashboard']['panels'] for t in p.get('targets',[]) if 'fly_instance_' in t.get('expr',''))"
+
+assert "worker-diag credit-balance series is labelled per app" \
+  "api/dashboards/uid/kinowo-worker-diag" \
+  "all('{{app}}' in t.get('legendFormat','') for p in d['dashboard']['panels'] for t in p.get('targets',[]) if 'fly_instance_' in t.get('expr',''))"
 
 assert "worker diagnostics dashboard provisioned" \
   "api/search?query=kinowo" \

@@ -49,8 +49,7 @@
         "definition": "label_values(kinowo_worker_throttled, country)",
         "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
         "current": { "text": "pl", "value": "pl", "selected": true },
-        "includeAll": false, "multi": false, "refresh": 2, "sort": 1, "hide": 0 },
-      { "name": "worker_app", "label": "Worker app", "type": "query", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "definition": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "query": { "query": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "refId": "worker_app" }, "current": { "text": "All", "value": "$__all", "selected": true }, "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 2 }
+        "includeAll": false, "multi": false, "refresh": 2, "sort": 1, "hide": 0 }
     ]
   },
   "panels": [
@@ -323,8 +322,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "fly_instance_cpu_balance{app=~\"$worker_app\"}",
-          "legendFormat": "credit balance",
+          "expr": "fly_instance_cpu_balance{app=~\"kinowo-worker.*\"}",
+          "legendFormat": "credit balance — {{app}}",
           "datasource": {
             "type": "prometheus",
             "uid": "fly-prometheus"

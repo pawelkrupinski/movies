@@ -35,8 +35,7 @@
         "definition": "label_values(kinowo_worker_throttled, country)",
         "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
         "current": { "text": "pl", "value": "pl", "selected": true },
-        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 0 },
-      { "name": "worker_app", "label": "Worker app", "type": "query", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "definition": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "query": { "query": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)", "refId": "worker_app" }, "current": { "text": "All", "value": "$__all", "selected": true }, "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 2 }
+        "includeAll": true, "multi": true, "refresh": 2, "sort": 1, "hide": 0 }
     ]
   },
   "panels": [
@@ -435,7 +434,7 @@
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 165 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$worker_app\"}", "legendFormat": "Host free" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"kinowo-worker.*\"}", "legendFormat": "Host free — {{app}}" },
         { "refId": "D", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"})", "legendFormat": "Heap used" },
         { "refId": "E", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "jvm_memory_pool_used_bytes{pool=\"Tenured Gen\"} and on(app) kinowo_worker_throttled{country=~\"$country\"}", "legendFormat": "Old gen (tenured)" },
         { "refId": "F", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "sum(jvm_memory_used_bytes{area=\"nonheap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"})", "legendFormat": "Non-heap" },
@@ -461,7 +460,7 @@
       },
       "targets": [
         { "refId": "A", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "rate(process_cpu_seconds_total[5m])*100 and on(app) kinowo_worker_throttled{country=~\"$country\"}", "legendFormat": "java (cc, fresh)" },
-        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "sum(rate(fly_instance_cpu{app=~\"$worker_app\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "host busy (cc, authoritative — lagged)" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo-worker.*\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "host busy — {{app}} (authoritative, lagged)" },
         { "refId": "C", "datasource": { "type": "prometheus", "uid": "app-metrics-live" }, "expr": "vector(13)", "legendFormat": "breakeven ~13cc (drains above)" }
       ]
     },
