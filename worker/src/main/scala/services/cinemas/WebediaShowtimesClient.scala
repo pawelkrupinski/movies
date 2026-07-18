@@ -165,7 +165,10 @@ object WebediaShowtimesClient {
         .flatMap(g => (g \ "translate").asOpt[String]).map(_.trim).filter(_.nonEmpty),
       director       = parseDirectors(movie \ "credits"),
       posterUrl      = (movie \ "poster" \ "url").asOpt[String].map(_.trim).filter(_.nonEmpty),
-      synopsis       = (movie \ "synopsisFull").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      // `synopsisFull` is HTML (`<p class="bo-p">…</p>` per paragraph), not prose —
+      // flatten it, keeping the paragraph breaks, or the tags render as visible text.
+      synopsis       = (movie \ "synopsisFull").asOpt[String]
+        .map(tools.TextNormalization.stripHtmlKeepingParagraphs).filter(_.nonEmpty),
       showtimes      = parseShowtimes(js \ "showtimes")
     )
   }

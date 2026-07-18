@@ -5,6 +5,8 @@ import java.util.Locale
 import java.util.regex.Pattern
 import org.jsoup.Jsoup
 
+import scala.jdk.CollectionConverters._
+
 /**
  * Shared text-normalization primitives. CLAUDE.md threshold-2 extraction:
  * the same NFD-decompose + strip-diacritics + Polish-`ł`-fold chain was
@@ -162,18 +164,30 @@ object TextNormalization {
     letters >= 4
   }
 
-  /**
-   * Strip the trailing partial name from a likely-truncated cast string.
-   *
-   * Cinema City's filmDetails JSON hard-caps `cast` at ~232 chars of
-   * content, severing the last name mid-word (`…, MAX HUANG, C.J. BLOOMFI`
-   * — should be Bloomfield). When the string is at or above `threshold`,
-   * assume the upstream cut it short and drop everything after the last
-   * comma. Below the threshold the string is left alone (a genuinely
-   * long-but-complete cast keeps its tail).
-   */
+  /** Flatten markup to a single line of prose — every whitespace run, including
+   *  the paragraph breaks the tags encoded, collapses to one space. */
   def stripHtml(s: String): String =
     Whitespace.matcher(Jsoup.parse(s).text()).replaceAll(" ").trim
+
+  /**
+   * Flatten markup to prose while KEEPING paragraph boundaries as `\n\n`.
+   *
+   * For synopses delivered as HTML in a JSON field — Webedia's `synopsisFull`
+   * ships `<p class="bo-p">…</p><p class="bo-p">…</p>` — `stripHtml` would run
+   * the plot and the "new film by …" note together into one wall of text. Each
+   * block-level `<p>` becomes its own paragraph instead, matching the blank-line
+   * convention the detail view (`white-space:pre-wrap`) and `/api/details`
+   * already render.
+   *
+   * Falls back to `stripHtml` when the input has no `<p>` blocks, so a
+   * plain-text or `<br>`-joined value is still cleaned rather than emptied.
+   */
+  def stripHtmlKeepingParagraphs(s: String): String = {
+    val paragraphs = Jsoup.parse(s).select("p").asScala
+      .map(p => Whitespace.matcher(p.text()).replaceAll(" ").trim)
+      .filter(_.nonEmpty)
+    if (paragraphs.isEmpty) stripHtml(s) else paragraphs.mkString("\n\n")
+  }
 
   /**
    * Strip URL tokens out of free text. Cinema detail pages occasionally

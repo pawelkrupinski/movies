@@ -60,6 +60,25 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     all(bookings) should not endWith ";"
   }
 
+  // `synopsisFull` arrives as HTML. Left raw it reached the detail page as
+  // visible `<p class="bo-p">` text, because SynopsisMarkdown escapes prose.
+  it should "flatten the HTML synopsis to prose" in {
+    val synopsis = page.films.find(_.title == "Vaiana").value.synopsis.value
+    synopsis should startWith("Vaiana (Catherine Laga'aia) will unbedingt weit raus")
+    synopsis should not include "<"
+    synopsis should not include "bo-p"
+    all(page.films.flatMap(_.synopsis)) should not include "<"
+  }
+
+  it should "keep a multi-paragraph synopsis' breaks as blank lines" in {
+    // Evil Dead Burn ships two <p class="bo-p"> blocks: plot, then a
+    // "new film by …" note. They must not run together into one wall of text.
+    val synopsis = page.films.find(_.title == "Evil Dead Burn").value.synopsis.value
+    val paragraphs = synopsis.split("\n\n")
+    paragraphs.length shouldBe 2
+    all(paragraphs.toSeq) should not be empty
+  }
+
   // ── fetch() through the real /_/showtimes URL (fixture-replayed) ──────────
   "fetch" should "assemble films for the venue via the showtimes endpoint" in {
     val cinemaxxWuerzburg = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")

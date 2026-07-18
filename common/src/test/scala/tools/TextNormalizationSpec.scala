@@ -99,6 +99,26 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
     TextNormalization.stripHtml("caf&eacute; &amp; bar") shouldBe "café & bar"
   }
 
+  // ── stripHtmlKeepingParagraphs ────────────────────────────────────────────
+
+  "stripHtmlKeepingParagraphs" should "keep each <p> block as its own paragraph" in {
+    TextNormalization.stripHtmlKeepingParagraphs(
+      """<p class="bo-p">First paragraph.</p><p class="bo-p">Second.</p>""") shouldBe
+      "First paragraph.\n\nSecond."
+  }
+
+  it should "collapse whitespace inside a paragraph and decode entities" in {
+    TextNormalization.stripHtmlKeepingParagraphs("<p>caf&eacute;   &amp;\n bar</p>") shouldBe "café & bar"
+  }
+
+  it should "drop empty paragraphs rather than emit blank-line runs" in {
+    TextNormalization.stripHtmlKeepingParagraphs("<p>One.</p><p>  </p><p>Two.</p>") shouldBe "One.\n\nTwo."
+  }
+
+  it should "fall back to a flat strip when there are no <p> blocks" in {
+    TextNormalization.stripHtmlKeepingParagraphs("Plain <b>text</b><br>here.") shouldBe "Plain text here."
+  }
+
   // ── stripUrls ─────────────────────────────────────────────────────────────
 
   "stripUrls" should "drop a leading YouTube watch URL folded into a synopsis" in {
