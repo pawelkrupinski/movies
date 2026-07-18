@@ -162,6 +162,28 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   // read-model projection cost, not an epoll spin (the fix was offloading projection off
   // the I/O threads + making it cheap). Reverting to the default drops the netty dep;
   // `getTransportSettings` is now null.
+  // The driver defaults to 100 connections per client, and mongod costs ~1 MB of RSS
+  // each. Every app holds its own pool against ONE 962 MB mongod (doubling while a
+  // rolling deploy runs old and new machines), so the default lets a handful of clients
+  // reserve the whole box — which is what exhausted it on 2026-07-18 and, because web
+  // boot hydrates off Mongo, stretched boots past flyctl's health-check wait and failed
+  // the deploys. Capping the pool is the lever, so its value is pinned here.
+  "MongoConnection.clientSettings" should "bound the connection pool well below the driver's default of 100" in {
+    // Asserted against LITERALS, not MongoConnection.MaxPoolSize: this must still
+    // compile against the un-capped code so it fails on the VALUE (the driver's 100),
+    // rather than failing to compile — a green-from-the-start test proves nothing.
+    val maxSize = MongoConnection.clientSettings(ValidUri).getConnectionPoolSettings.getMaxSize
+    maxSize shouldBe 25
+    maxSize should be <= 30
+    maxSize should be > 0
+  }
+
+  it should "let a URI that names its own maxPoolSize win, like compressors" in {
+    MongoConnection
+      .clientSettings(ValidUri + "&maxPoolSize=7")
+      .getConnectionPoolSettings.getMaxSize shouldBe 7
+  }
+
   "MongoConnection.clientSettings" should "leave the driver-default transport (no Netty TransportSettings)" in {
     MongoConnection.clientSettings(ValidUri).getTransportSettings  shouldBe null
     MongoConnection.clientSettings(RemoteUri).getTransportSettings shouldBe null
