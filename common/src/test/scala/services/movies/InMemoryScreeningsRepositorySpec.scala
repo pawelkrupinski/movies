@@ -93,6 +93,32 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     ScreeningsRepository.slotOps(before, Map(KinoMuranow -> before(KinoMuranow))) shouldBe Map("Kinoteka" -> None)
   }
 
+  // The delete half of `MongoScreeningsRepository.replaceFilm`. It replaced a
+  // `findForFilm` read + one `deleteOne` per stale slot with a single `deleteMany`, so
+  // this predicate is now the ONLY thing deciding which screenings a whole-record write
+  // destroys. The empty-`keep` case is the dangerous one: `replaceFilm(film, Map.empty)`
+  // must still clear exactly that film (and nothing else) the way the old loop did.
+  "staleSlotsFilter" should "scope to the one film and match every slot the write no longer names" in {
+    def clauses(filmId: String, keep: Set[String]) =
+      ScreeningsRepository.staleSlotsFilter(filmId, keep)
+        .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
+        .getArray("$and")
+
+    val kept = clauses("f|2026", Set("Bf"))
+    kept.get(0).asDocument.getString("filmId").getValue shouldBe "f|2026" // never leaves the film
+    val ninKept = kept.get(1).asDocument.getDocument("slotKey").getArray("$nin")
+    ninKept.size                       shouldBe 1
+    ninKept.get(0).asString.getValue   shouldBe "Bf" // the surviving slot is spared
+
+    // No slots kept ⇒ `$nin: []`. Nothing is a member of the empty set, so this matches
+    // EVERY slot of the film — an empty `slots` map clears it, precisely as before. A
+    // filter that instead degenerated to "match nothing" (or dropped the filmId clause
+    // and matched everything) is what this pins down.
+    val none = clauses("f|2026", Set.empty)
+    none.get(0).asDocument.getString("filmId").getValue shouldBe "f|2026"
+    none.get(1).asDocument.getDocument("slotKey").getArray("$nin").size shouldBe 0
+  }
+
   "stripShowtimes" should "empty every slot's showtimes, leaving the rest intact" in {
     val data = Map[models.Source, SourceData](
       KinoMuranow -> SourceData(title = Some("W"), director = Seq("D"), showtimes = Seq(st(18))),

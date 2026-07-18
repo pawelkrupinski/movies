@@ -890,4 +890,113 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     sentinels.distinct should have size 5
     sentinels          shouldBe sentinels.sorted // …in _id order across the boundaries
   }
+
+  private def show(hour: Int) =
+    Showtime(java.time.LocalDateTime.of(2026, 6, 1, hour, 0), Some(s"https://book/rf-$hour"))
+
+  private def screeningsDb(client: MongoClient) =
+    client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+
+  // `replaceFilm` used to cost a blocking `replaceOne` per slot, then a `findForFilm`
+  // read, then a blocking `deleteOne` per stale slot — 12 sequential round-trips for a
+  // film showing in 10 cinemas, paid on EVERY `MovieRepository.upsert` (i.e. constantly,
+  // right through a scrape pass). It is now ONE ordered `bulkWrite`: all the slot upserts
+  // plus a single `deleteMany` of the slots the write no longer names, which the driver
+  // puts on the wire as one `update` command and one `delete` command, with no `find` at
+  // all. Counted through a real driver command listener, so it fails before the change
+  // (find=1, update=3, delete=2) and passes after (find=0, update=1, delete=1).
+  it should "replace a film's slots in ONE bulk round-trip, with no read" in {
+    import com.mongodb.event.{CommandListener, CommandStartedEvent}
+    import com.mongodb.{ConnectionString, MongoClientSettings}
+    import services.movies.MongoScreeningsRepository
+    import java.util.concurrent.ConcurrentHashMap
+    import java.util.concurrent.atomic.AtomicInteger
+
+    val commands = new ConcurrentHashMap[String, AtomicInteger]()
+    val listener = new CommandListener {
+      override def commandStarted(event: CommandStartedEvent): Unit = {
+        commands.computeIfAbsent(event.getCommandName, _ => new AtomicInteger(0)).incrementAndGet(); ()
+      }
+    }
+    def count(name: String): Int = Option(commands.get(name)).map(_.get()).getOrElse(0)
+
+    val client = MongoClient(MongoClientSettings.builder()
+      .applyConnectionString(new ConnectionString(Env.get("MONGODB_URI").get))
+      .addCommandListener(listener).build())
+    val screenings = new MongoScreeningsRepository(Some(screeningsDb(client)))
+    val film       = "__it-screenings-bulk-roundtrips__"
+    try {
+      // Seed four slots (this also forces the lazy collection + its createIndex, so those
+      // commands land before the counter is reset).
+      screenings.replaceFilm(film, Map(
+        "A" -> Seq(show(10)), "B" -> Seq(show(11)), "C" -> Seq(show(12)), "STALE" -> Seq(show(13))))
+      screenings.findForFilm(film).keySet shouldBe Set("A", "B", "C", "STALE")
+
+      commands.clear()
+      // One changed slot, one unchanged, one brand new — and two slots going stale.
+      screenings.replaceFilm(film, Map("A" -> Seq(show(20)), "B" -> Seq(show(11)), "NEW" -> Seq(show(14))))
+
+      count("find")   shouldBe 0 // the findForFilm read is gone entirely
+      count("update") shouldBe 1 // all three upserts ride one bulk update
+      count("delete") shouldBe 1 // both stale slots go in one deleteMany
+
+      // …and the collapse did not change the result.
+      screenings.findForFilm(film) shouldBe Map(
+        "A" -> Seq(show(20)), "B" -> Seq(show(11)), "NEW" -> Seq(show(14)))
+    } finally { screenings.deleteFilm(film); client.close() }
+  }
+
+  // Data-integrity guard for that same collapse. This write path has already destroyed
+  // screenings once (a `replaceFilm` handed empty showtimes deleted a film's entire
+  // listing), and the new single `deleteMany` — `filmId == X AND slotKey $nin [kept]` —
+  // is now the ONLY thing deciding what a whole-record write destroys. Pins every case:
+  // new slots, unchanged slots, changed slots, disappeared slots, a slot carrying EMPTY
+  // showtimes, an empty `slots` map, a repeat of that empty map, a filmId containing the
+  // composite-`_id` separator, and a neighbouring film that must never be touched.
+  it should "preserve replaceFilm's exact set semantics without losing screenings" in {
+    import services.movies.MongoScreeningsRepository
+    val client     = MongoClient(Env.get("MONGODB_URI").get)
+    val screenings = new MongoScreeningsRepository(Some(screeningsDb(client)))
+    val film       = "__it-screenings-replace-semantics__"
+    val neighbour  = "__it-screenings-replace-neighbour__"
+    // A filmId that itself contains the `_id` separator, where `filmId + IdSep + slotKey`
+    // can no longer be split back apart — the delete must key off the FIELDS, not the _id.
+    val separatorFilm = s"__it-screenings${0x1f.toChar}sep__"
+    try {
+      screenings.replaceFilm(neighbour, Map("X" -> Seq(show(9))))
+
+      // brand-new slots land
+      screenings.replaceFilm(film, Map("A" -> Seq(show(10)), "B" -> Seq(show(11))))
+      screenings.findForFilm(film) shouldBe Map("A" -> Seq(show(10)), "B" -> Seq(show(11)))
+
+      // A unchanged, B changed, "E" mapped to EMPTY showtimes is STORED (never treated as
+      // a delete — `showtimesOf` filters empties out upstream, `replaceFilm` does not).
+      screenings.replaceFilm(film, Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty))
+      screenings.findForFilm(film) shouldBe Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty)
+
+      // repeating the identical write loses nothing (idempotent)
+      screenings.replaceFilm(film, Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty))
+      screenings.findForFilm(film) shouldBe Map("A" -> Seq(show(10)), "B" -> Seq(show(12)), "E" -> Seq.empty)
+
+      // a separator-carrying filmId is replaced on its own terms
+      screenings.replaceFilm(separatorFilm, Map("A" -> Seq(show(8)), "B" -> Seq(show(9))))
+      screenings.replaceFilm(separatorFilm, Map("B" -> Seq(show(9))))
+      screenings.findForFilm(separatorFilm) shouldBe Map("B" -> Seq(show(9)))
+
+      // THE delete vector: an empty `slots` map clears THIS film entirely (`$nin: []`
+      // matches every slot)…
+      screenings.replaceFilm(film, Map.empty)
+      screenings.findForFilm(film) shouldBe empty
+      // …and nothing else — the filter never leaves the film.
+      screenings.findForFilm(neighbour)     shouldBe Map("X" -> Seq(show(9)))
+      screenings.findForFilm(separatorFilm) shouldBe Map("B" -> Seq(show(9)))
+
+      // replacing an already-empty film is a harmless no-op, not an error
+      screenings.replaceFilm(film, Map.empty)
+      screenings.findForFilm(film) shouldBe empty
+    } finally {
+      Seq(film, neighbour, separatorFilm).foreach(screenings.deleteFilm)
+      client.close()
+    }
+  }
 }
