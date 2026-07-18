@@ -114,7 +114,7 @@ class DzienObjawieniaFlapSpec extends AnyFlatSpec with Matchers {
    *  Under the country-scoped rule set the German key is the cinema's own spelling,
    *  so the settle converges. */
   it should "reach a fixpoint for a German title whose ' & ' must not become ' i '" in {
-    TitleNormalizer.withRules(TitleRuleSet.forCountry("de")) {
+    TitleNormalizer.withRules(TitleRuleSet.forCountry(Country.Germany)) {
       val repo  = new InMemoryMovieRepository
       val cache = new CaffeineMovieCache(repo)
 

@@ -1,5 +1,6 @@
 package services.movies
 
+import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titlerules.{RuleScope, TitleRule, TitleRules, TitleRuleSet}
@@ -70,14 +71,14 @@ class TitleNormalizerScopingSpec extends AnyFlatSpec with Matchers {
    *  `minionsimonster`. No German cinema slot can ever produce that key, so the
    *  row's key and its own cinemas' spellings disagreed permanently. */
   "the Polish ' & ' → ' i ' unification" should "not touch a German title" in {
-    val de = TitleRuleSet.forCountry("de")
+    val de = TitleRuleSet.forCountry(Country.Germany)
     TitleNormalizer.withRules(de) {
       TitleNormalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
     }
   }
 
   it should "still apply in Poland, where 'i' IS the conjunction" in {
-    val pl = TitleRuleSet.forCountry("pl")
+    val pl = TitleRuleSet.forCountry(Country.Poland)
     TitleNormalizer.withRules(pl) {
       // "Mandalorian & Grogu" and "Mandalorian i Grogu" must keep merging.
       TitleNormalizer.sanitize("Mandalorian & Grogu") shouldBe

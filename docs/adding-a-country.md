@@ -118,7 +118,8 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
   `android/PLAY_PUBLISHING.md`).
 - **Title rules** (`common/src/main/scala/services/titlerules/`): audit the seed for
   rules that rewrite WORDS rather than punctuation/format, and tag each with the
-  countries it belongs to (`countries = Some(Set("pl"))`). A rule with
+  countries it belongs to (`countries = Some(Set(Country.Poland))` — the sealed
+  `Country` itself, never a string code). A rule with
   `countries = None` runs everywhere, which is right for language-neutral strips
   (4K-restored suffixes, format tags) and wrong for anything language-specific.
   Getting this wrong is silent and expensive: the Polish `" & "` → `" i "`

@@ -1,5 +1,7 @@
 package services.titlerules
 
+import models.Country
+
 import java.util.concurrent.ConcurrentHashMap
 
 /** An immutable, compiled snapshot of all title rules, grouped by tier and
@@ -197,8 +199,8 @@ object TitleRuleSet {
    *  every rule that declares a different language's countries. Each process
    *  serves a single country (`KINOWO_COUNTRY`), so the filter happens once at
    *  load rather than per-call on the hot normalisation path. */
-  def forCountry(countryCode: String): TitleRuleSet =
-    TitleRuleSet((TitleRules.all ++ ExtraTitleRules.all).filter(_.appliesTo(countryCode)))
+  def forCountry(country: Country): TitleRuleSet =
+    TitleRuleSet((TitleRules.all ++ ExtraTitleRules.all).filter(_.appliesTo(country)))
 
   val empty: TitleRuleSet = TitleRuleSet(Nil)
 

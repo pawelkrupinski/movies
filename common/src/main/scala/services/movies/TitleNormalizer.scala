@@ -14,7 +14,7 @@ object TitleNormalizer {
   // Scoped to the country THIS process serves: a language-specific rule (the
   // Polish " & " → " i " unification) must not rewrite a German or British title.
   @volatile private var active: TitleRuleSet =
-    TitleRuleSet.forCountry(models.Country.fromEnv.code)
+    TitleRuleSet.forCountry(models.Country.fromEnv)
 
   // A THREAD-SCOPED override that, when set, shadows `active` for the current
   // thread only. Tests that need a custom rule set install it here via
@@ -52,7 +52,7 @@ object TitleNormalizer {
   def currentRules: TitleRuleSet = active
 
   /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
-  def resetToDefaults(): Unit = { active = TitleRuleSet.forCountry(models.Country.fromEnv.code); sanitizeCache.clear() }
+  def resetToDefaults(): Unit = { active = TitleRuleSet.forCountry(models.Country.fromEnv); sanitizeCache.clear() }
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
   def cinemaClean(cinemaId: String, raw: String): String = effective.perCinema(cinemaId, raw)

@@ -143,7 +143,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     //
     // Under the country-scoped rule set the row keys on the cinema's own spelling
     // and the hourly re-scrape lands on it rather than forking a second row.
-    TitleNormalizer.withRules(TitleRuleSet.forCountry("de")) {
+    TitleNormalizer.withRules(TitleRuleSet.forCountry(Country.Germany)) {
       val wuerzburg = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
       val cache     = new CaffeineMovieCache(new InMemoryMovieRepository)
       cache.put(cache.keyOf("Minions & Monster", None),

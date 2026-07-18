@@ -1,6 +1,7 @@
 package services.titlerules
 
 import RuleScope._
+import models.Country
 
 /** The baseline rule set — every formerly-hardcoded `TitleNormalizer` regex,
  *  transcribed verbatim and tagged with the tier it ran in. Loaded at class-load
@@ -89,7 +90,7 @@ object TitleRules {
     TitleRule("canonical-ampersand-to-i", Canonical, None,
       """ & """, " i ", applyAll = true, order = 20,
       note = Some("Unify ' & ' and ' i ' spellings — POLISH ONLY ('i' = 'and')"),
-      countries = Some(Set("pl")))
+      countries = Some(Set(Country.Poland)))
   )
 
   // ── per-cinema tier — migrated from each client's `cleanTitle` ─────────────
