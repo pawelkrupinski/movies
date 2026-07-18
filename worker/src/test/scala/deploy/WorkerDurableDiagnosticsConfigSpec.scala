@@ -3,8 +3,6 @@ package deploy
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.io.{Codec, Source}
-
 /**
  * Locks the DURABLE-diagnostics launch wiring for the worker's chronic ~5 h
  * exit-code-3 native OOM: the JVM's dying stderr (the `ExitOnOutOfMemoryError`
@@ -20,13 +18,8 @@ import scala.io.{Codec, Source}
  * `test/resources/...` the same way), so the top-level files resolve directly.
  */
 class WorkerDurableDiagnosticsConfigSpec extends AnyFlatSpec with Matchers {
-  private def read(path: String): String = {
-    val src = Source.fromFile(path)(using Codec.UTF8)
-    try src.mkString finally src.close()
-  }
-
-  private lazy val dockerfile  = read("Dockerfile")
-  private lazy val workerToml  = read("fly.worker.toml")
+  private lazy val dockerfile  = RepoFile.read("Dockerfile")
+  private lazy val workerToml  = RepoFile.read("fly.worker.toml")
 
   "the Dockerfile CMD" should "redirect the worker JVM's stderr to a durable /data/logs file" in {
     // Appended so the pre-death readout survives across the restart.
