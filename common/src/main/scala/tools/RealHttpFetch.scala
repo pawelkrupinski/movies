@@ -286,11 +286,17 @@ object RealHttpFetch {
    *  over); `requestTimeout` bounds the response read. Each defaults to the
    *  matching RealHttpFetch default, so a row overrides only what it names.
    *  `hostSuffixes` matches by exact host or a dotted sub-domain (see
-   *  `hostMatches`), so `www.x` matches `x` but an unrelated `*.y` does not. */
+   *  `hostMatches`), so `www.x` matches `x` but an unrelated `*.y` does not.
+   *
+   *  `minRequestInterval` is the OUTBOUND pace [[RateLimitedHttpFetch]] holds the
+   *  whole fleet to for this host — the minimum gap between two requests to it,
+   *  across every thread. `None` (the default) means unpaced: the host absorbs
+   *  our natural concurrency, so only a host we structurally out-run names one. */
   final case class HostPolicy(
     hostSuffixes: Set[String],
     connectTimeout: Duration = DefaultConnectTimeout,
     requestTimeout: Duration = DefaultRequestTimeout,
+    minRequestInterval: Option[Duration] = None,
   )
 
   /** The per-host policy table — the single place a host earns a non-default
@@ -328,6 +334,18 @@ object RealHttpFetch {
     // Exception, leaving it perpetually red on /uptime though the page returns 200
     // given time. 40s covers the handshake; the read budget stays the default.
     HostPolicy(Set("iluzjon.fn.org.pl"), connectTimeout = Duration.ofSeconds(40)),
+
+    // Filmstarts (Webedia DE). Germany's 1,533 venues × 7 days = ~10.7k requests
+    // per sweep onto ONE origin, and with no pacing the worker's fan-out delivers
+    // them in bursts the host answers with 429. That was our steady state, not an
+    // anomaly: ThrottledHttpFetch's reactive 5s gate then parked the venue past
+    // AdaptiveTimeoutScraper's budget, so the scrape was cut and DE went stale.
+    // 250ms holds the whole fleet to ~4 req/s, which walks a full sweep in ~45min
+    // — inside the 60min scrape TTL, with headroom. This is a STARTING pace, not a
+    // measured limit (Webedia publishes none): if 429s persist, widen it — the
+    // sweep degrades to partial coverage rather than breaking, because the next
+    // tick re-queues whatever this one did not reach.
+    HostPolicy(Set("filmstarts.de"), minRequestInterval = Some(Duration.ofMillis(250))),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
@@ -343,6 +361,12 @@ object RealHttpFetch {
   /** The first host policy matching `url`, if any. */
   private def policyFor(url: String): Option[HostPolicy] =
     HostPolicies.find(policy => hostMatches(url, policy.hostSuffixes))
+
+  /** The minimum gap between two outbound requests to `url`'s host, if that host
+   *  is paced. `None` — the default for every host without a row naming one —
+   *  means [[RateLimitedHttpFetch]] passes the call straight through. */
+  def requestIntervalFor(url: String): Option[Duration] =
+    policyFor(url).flatMap(_.minRequestInterval)
 
   /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,
    *  else the tight default. */

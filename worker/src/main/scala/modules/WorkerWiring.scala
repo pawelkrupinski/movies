@@ -17,7 +17,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
-import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
+import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
@@ -88,9 +88,15 @@ class WorkerWiring(
   // call. Generalises RealHttpFetch's static per-host timeout policy (HostPolicies) to
   // any host, with no allowlist. Wrapped by ThrottledHttpFetch (429 gate) and
   // MonitoringHttpFetch (so a fast-fail still shows as the real unavailability).
+  // RateLimitedHttpFetch is innermost: the PROACTIVE half of rate-limit handling,
+  // pacing the hosts whose HostPolicies row names a minRequestInterval (Filmstarts)
+  // so we stay under the limit instead of rediscovering it via 429 every sweep.
+  // Inside the breaker so a fast-failed call never waits for (or consumes) a slot,
+  // and inside the 429 gate so a real Retry-After still overrides the steady pace.
   lazy val httoFetch: HttpFetch =
     new MonitoringHttpFetch(
-      new ThrottledHttpFetch(new HostCircuitBreakerHttpFetch(new RealHttpFetch())),
+      new ThrottledHttpFetch(
+        new HostCircuitBreakerHttpFetch(new RateLimitedHttpFetch(new RealHttpFetch()))),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
   // ── External API clients ──────────────────────────────────────────────────
