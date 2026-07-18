@@ -4,7 +4,8 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import models.{Showtime, Source, SourceData}
-import org.mongodb.scala.model.{Filters, Indexes, Sorts}
+import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, Indexes, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 
@@ -179,6 +180,24 @@ object ScreeningsRepository {
       s -> screenings.get(s.displayName).fold(if (sd.showtimes.isEmpty) sd else sd.copy(showtimes = Seq.empty))(st => sd.copy(showtimes = st))
     }
 
+  /** The stored slots of `filmId` that `keep` no longer names — the DELETE half of
+   *  `replaceFilm`, as ONE server-side predicate instead of a `findForFilm` read plus a
+   *  `deleteOne` per stale slot.
+   *
+   *  The same document set as the old loop: its candidates were exactly
+   *  `find(filmId == filmId)`, and for each it deleted `_id = filmId + IdSep + slotKey`,
+   *  which by the write invariant IS that document. Keying on the `filmId` + `slotKey`
+   *  FIELDS reproduces that set without re-deriving the composite `_id`, so it stays
+   *  unambiguous even for a `filmId` that itself contains [[IdSep]].
+   *
+   *  `keep` EMPTY yields `$nin: []` — nothing is a member of the empty set, so it matches
+   *  EVERY slot of the film. An empty `slots` map therefore still clears the film exactly
+   *  as the old "delete every key the read returned" did. This predicate is the only thing
+   *  standing between a whole-record write and a film's screenings, so it is unit-tested
+   *  directly. */
+  private[movies] def staleSlotsFilter(filmId: String, keep: Set[String]): Bson =
+    Filters.and(Filters.eq("filmId", filmId), Filters.nin[String]("slotKey", keep.toSeq*))
+
   // Non-printable separator so the composite `_id` never collides with a slot key.
   private[movies] val IdSep: Char = '\u001f'
 }
@@ -267,10 +286,31 @@ class MongoScreeningsRepository(
     case None => Map.empty
   }
 
+  /** ONE bulk round-trip: every slot's upsert plus a single `deleteMany` of whatever
+   *  `slots` no longer names. This used to be a blocking `replaceOne` per slot, then a
+   *  `findForFilm` read, then a blocking `deleteOne` per stale slot — 12 sequential
+   *  round-trips for a film showing in 10 cinemas, paid on EVERY `MovieRepository.upsert`.
+   *
+   *  Semantics are unchanged, edge cases included:
+   *   - empty `slots` → no upserts, and [[ScreeningsRepository.staleSlotsFilter]]'s
+   *     `$nin: []` still deletes every one of the film's slots;
+   *   - a slot mapped to EMPTY showtimes is still STORED (callers filter those out via
+   *     `showtimesOf`; `replaceFilm` itself never did), not treated as a delete;
+   *   - an unchanged slot is still rewritten — idempotent, as before.
+   *
+   *  ORDERED, so the upserts land before the delete exactly as they did and the delete
+   *  can never race ahead of a slot this same call is re-writing. The request list is
+   *  never empty (the delete is always present), so the driver's empty-`bulkWrite`
+   *  rejection is unreachable. */
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = coll.foreach { c =>
     Try {
-      slots.foreach { case (k, st) => upsertOne(c, filmId, k, st) }
-      (findForFilm(filmId).keySet -- slots.keySet).foreach(k => deleteOne(c, filmId, k))
+      val now     = Instant.now()
+      val upserts = slots.toSeq.map { case (k, st) =>
+        val dto = StoredScreeningsDto(idOf(filmId, k), filmId, k, st, now)
+        ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
+      }
+      val dropStale = DeleteManyModel[StoredScreeningsDto](ScreeningsRepository.staleSlotsFilter(filmId, slots.keySet))
+      Await.result(c.bulkWrite(upserts :+ dropStale, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)
     }.recover { case e => logger.warn(s"ScreeningsRepository.replaceFilm($filmId) failed: ${e.getMessage}") }
   }
 
