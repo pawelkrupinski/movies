@@ -569,18 +569,23 @@ class WorkerWiring(
   // Periodic census of THIS country's movies corpus (counts of resolved/rated
   // rows), sampled off-band into the shared corpus gauge — see WorkerCorpusMetrics.
   lazy val corpusMetrics: services.metrics.WorkerCorpusMetrics =
-    new services.metrics.WorkerCorpusMetrics(movieRepository, workerMetrics.corpusGauge, country.code)
+    new services.metrics.WorkerCorpusMetrics(workerMetrics.corpusGauge, country.code)
 
   // Per-city count of films the SOURCE `movies` collection would serve in this
   // country — the worker-side mirror of the web's kinowo_web_movies_served (read
   // model), so a Grafana panel overlays the two and a divergence flags drift.
   lazy val sourceFilmsMetrics: services.metrics.WorkerSourceFilmsMetrics =
-    new services.metrics.WorkerSourceFilmsMetrics(movieRepository, workerMetrics.servedGauge, country.code, cities = country.cities)
+    new services.metrics.WorkerSourceFilmsMetrics(workerMetrics.servedGauge, country.code, cities = country.cities)
   // Per-city (and, summed, country total) count of individual upcoming SHOWTIMES
   // the source `movies` collection would serve — the slot-volume complement to
   // sourceFilmsMetrics, exposed as kinowo_worker_showtimes{country,city}.
   lazy val showtimesMetrics: services.metrics.WorkerShowtimesMetrics =
-    new services.metrics.WorkerShowtimesMetrics(movieRepository, workerMetrics.showtimesGauge, country.code, cities = country.cities)
+    new services.metrics.WorkerShowtimesMetrics(workerMetrics.showtimesGauge, country.code, cities = country.cities)
+  // ONE 5-minute corpus scan feeding all three censuses above. They each used to run
+  // their own timer AND their own full scan of the same rows — 14,704 documents per
+  // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
+  lazy val corpusScan: services.metrics.WorkerCorpusScan =
+    new services.metrics.WorkerCorpusScan(movieRepository, Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics))
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: services.metrics.RatingRunCensus =
@@ -1103,15 +1108,12 @@ class WorkerWiring(
     // The TaskWorker (above) drains the steps.
     stagingReaper.start()
     stagingStuckAlerter.foreach(_.start())
-    // Census the corpus for the /metrics gauges (off-band, read-only paged scan).
+    // Census the corpus for the /metrics gauges (off-band, read-only paged scan):
+    // corpus coverage, per-city would-serve films (to overlay against the web's
+    // read-model gauge) and per-city upcoming-showtime volume, all off ONE scan.
     // (The process-level jvmVitals sampler is started once by WorkerMain via the
     // shared WorkerMetrics bundle, not per-country here.)
-    corpusMetrics.start()
-    // Per-city would-serve count off the source collection, to overlay against the
-    // web's read-model gauge (off-band, read-only paged scan).
-    sourceFilmsMetrics.start()
-    // Per-city upcoming-showtime volume off the source collection (off-band scan).
-    showtimesMetrics.start()
+    corpusScan.start()
     // Census the per-site never-run rating backlog (off-band, in-memory scan).
     ratingRunCensus.start()
   }
@@ -1124,9 +1126,7 @@ class WorkerWiring(
   def stop(): Unit = {
     envConfigService.stop()
     ratingRunCensus.stop()
-    showtimesMetrics.stop()
-    sourceFilmsMetrics.stop()
-    corpusMetrics.stop()
+    corpusScan.stop()
     // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.
     stagingStuckAlerter.foreach(_.stop())
     stagingReaper.stop()

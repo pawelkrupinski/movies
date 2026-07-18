@@ -3,14 +3,10 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.City
-import play.api.Logging
-import services.movies.MovieRepository
+import services.movies.StoredMovieRecord
 import services.readmodel.ReadModelProjection
-import tools.DaemonExecutors
 
 import java.time.{Clock, LocalDateTime}
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -30,42 +26,35 @@ import scala.util.{Failure, Success, Try}
  * the read model), and counts only UPCOMING slots ([[models.Showtime.isUpcoming]] in the
  * city's own zone) so retained past showings don't inflate the count.
  *
- * Sampled on its own scheduler (default every 5 min), decoupled from the Fly scrape rate,
- * scanning the cursor read-only (`foreachRecord`) so it adds no write load; between samples
- * the gauge re-reads its cached value. Mirrors [[WorkerSourceFilmsMetrics]]' shape.
+ * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 5 min), decoupled from
+ * the Fly scrape rate and read-only, so it adds no write load and no reads of its own;
+ * between samples the gauge re-reads its cached value. Mirrors
+ * [[WorkerSourceFilmsMetrics]]' shape.
  */
 class WorkerShowtimesMetrics(
-  repository:     MovieRepository,
-  showtimes:      Gauge,
-  countryCode:    String,
-  clock:          Clock          = Clock.systemDefaultZone(),
-  cities:         Seq[City]      = City.all,
-  sampleInterval: FiniteDuration = WorkerShowtimesMetrics.DefaultSampleInterval
-) extends Logging {
+  showtimes:   Gauge,
+  countryCode: String,
+  clock:       Clock     = Clock.systemDefaultZone(),
+  cities:      Seq[City] = City.all
+) extends CorpusMetricsCollector {
   import WorkerShowtimesMetrics._
 
   // Seed every city at 0 so a city that empties reads as an explicit 0, not a
   // vanished series — a drop-to-zero must be a sample, not an absence.
   for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(0.0)
 
-  private val scheduler = DaemonExecutors.scheduler("worker-showtimes-metrics")
+  def startSample(): CorpusRowSampler = new CorpusRowSampler {
+    private val tally = new ShowtimeTally(cities, clock)
 
-  /** Scan the corpus once and publish the per-city showtime counts onto the gauge.
-   *  Read-only, paged; bounded to once per `sampleInterval` regardless of scrape rate. */
-  def sample(): Unit = {
-    val counts = countAll(repository, cities, clock)
-    for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(counts.getOrElse(c.slug, 0).toDouble)
+    def accept(row: StoredMovieRecord): Unit = tally.accept(row)
+
+    /** Publishes on a partial scan too — matches what this gauge did before the scan
+     *  was shared (it ignored the scan's completeness boolean). */
+    def publish(scanComplete: Boolean): Unit = {
+      val counts = tally.counts
+      for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(counts.getOrElse(c.slug, 0).toDouble)
+    }
   }
-
-  def start(): Unit = {
-    Try(sample()).recover { case e => logger.warn(s"worker-showtimes-metrics initial sample failed: ${e.getMessage}") }
-    scheduler.scheduleAtFixedRate(
-      () => Try(sample()).recover { case e => logger.warn(s"worker-showtimes-metrics sample tick failed: ${e.getMessage}") },
-      sampleInterval.toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
-    ()
-  }
-
-  def stop(): Unit = scheduler.shutdown()
 }
 
 object WorkerShowtimesMetrics {
@@ -83,17 +72,17 @@ object WorkerShowtimesMetrics {
       .labelNames("country", "city")
       .register(registry)
 
-  /** Once every 5 minutes, mirroring [[WorkerSourceFilmsMetrics.DefaultSampleInterval]]. */
-  val DefaultSampleInterval: FiniteDuration = 5.minutes
+  /** Running tally, per city slug, of how many upcoming showtimes the corpus would serve
+   *  — folded one row at a time so the shared scan never buffers the corpus. Pure given a
+   *  fixed `clock`, so it's unit-tested directly (see [[countAll]]). Each row is projected
+   *  exactly as the read model does (per-title split + cinema→city bucketing) and gated on
+   *  `readyToProject`; a row that fails to project is skipped, matching the projector's
+   *  per-row resilience. */
+  class ShowtimeTally(cities: Seq[City], clock: Clock) {
+    private val bySlug = cities.map(c => c.slug -> c).toMap
+    private val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
 
-  /** Tally, per city slug, how many upcoming showtimes the corpus would serve. Pure given
-   *  a fixed `clock`, so it's unit-tested directly. Each row is projected exactly as the
-   *  read model does (per-title split + cinema→city bucketing) and gated on `readyToProject`;
-   *  a row that fails to project is skipped, matching the projector's per-row resilience. */
-  def countAll(repository: MovieRepository, cities: Seq[City], clock: Clock): Map[String, Int] = {
-    val bySlug = cities.map(c => c.slug -> c).toMap
-    val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
-    repository.foreachRecord { stored =>
+    def accept(stored: StoredMovieRecord): Unit =
       if (stored.record.readyToProject)
         Try(ReadModelProjection.screeningsAll(stored)) match {
           case Success(cards) =>
@@ -111,7 +100,15 @@ object WorkerShowtimesMetrics {
             }
           case Failure(_) => () // a row that won't project simply doesn't count
         }
-    }
-    acc.toMap
+
+    def counts: Map[String, Int] = acc.toMap
+  }
+
+  /** The tally over a fixed set of rows — the pure-logic entry point the specs drive;
+   *  production folds the same [[ShowtimeTally]] row-by-row off the shared scan. */
+  def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock): Map[String, Int] = {
+    val tally = new ShowtimeTally(cities, clock)
+    rows.iterator.foreach(tally.accept)
+    tally.counts
   }
 }

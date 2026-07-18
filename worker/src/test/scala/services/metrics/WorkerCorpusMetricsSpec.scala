@@ -4,8 +4,8 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.metrics.CorpusMetricsFixtures.{repositoryOf, row}
 import services.metrics.WorkerCorpusMetrics.{CorpusCounts, Subset}
-import services.movies.{MovieRepository, StoredMovieRecord}
 
 /**
  * Locks the corpus census the worker exposes for the Grafana "corpus coverage"
@@ -15,18 +15,10 @@ import services.movies.{MovieRepository, StoredMovieRecord}
  */
 class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
 
-  private def row(record: MovieRecord): StoredMovieRecord =
-    StoredMovieRecord("A Film", Some(2025), record)
-
-  private def repositoryOf(records: MovieRecord*): MovieRepository = new MovieRepository {
-    def enabled = true
-    def findAll() = records.map(row)
-    def delete(t: String, y: Option[Int]) = ()
-    def deleteById(id: String) = ()
-    def upsert(t: String, y: Option[Int], e: MovieRecord) = ()
-    def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
-    override def close() = ()
-  }
+  // Distinct titles: the in-memory store keys rows by `sanitize(title)|year`, so
+  // same-titled rows would collapse into one.
+  private def rows(records: Seq[MovieRecord]) =
+    records.zipWithIndex.map { case (r, i) => row(s"A Film $i", r) }
 
   private def render(registry: PrometheusRegistry): String = PrometheusExposition.render(registry)
 
@@ -60,9 +52,9 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
 
   "WorkerCorpusMetrics.sample" should "publish every subset onto the shared registry" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerCorpusMetrics(repositoryOf(corpus*), WorkerCorpusMetrics.gauge(registry), "pl")
+    val metrics  = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl")
 
-    metrics.sample()
+    new WorkerCorpusScan(repositoryOf(rows(corpus)*), Seq(metrics)).sample()
     val text = render(registry)
 
     gauge(text, Subset.Total)         shouldBe Some(5.0)
@@ -77,7 +69,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "materialize every subset series at 0 before the first sample" in {
     val registry = new PrometheusRegistry()
-    new WorkerCorpusMetrics(repositoryOf(), WorkerCorpusMetrics.gauge(registry), "pl") // constructed, not yet sampled
+    new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl") // constructed, not yet sampled
     val text = render(registry)
 
     Subset.all.foreach(s => gauge(text, s) shouldBe Some(0.0))
