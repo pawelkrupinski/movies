@@ -6,9 +6,9 @@ import controllers.MovieControllerService
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
 import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.RoutingHttpFetch
+import services.cinemas.pl.{CinemaCityClient, HeliosClient, MultikinoClient}
 
 /**
  * Regression: "Diabeł ubiera się u Prady 2" disappears from the main page

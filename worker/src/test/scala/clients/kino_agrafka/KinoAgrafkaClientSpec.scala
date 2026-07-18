@@ -1,11 +1,11 @@
 package clients.kino_agrafka
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoAgrafka
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoAgrafkaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoAgrafkaClient
 
 import java.time.LocalDateTime
 

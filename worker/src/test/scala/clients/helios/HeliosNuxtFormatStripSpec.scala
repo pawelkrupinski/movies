@@ -2,7 +2,7 @@ package clients.helios
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.HeliosNuxt
+import services.cinemas.pl.HeliosNuxt
 
 /** Helios bakes a screen-format/version tail into some Nuxt titles
  *  ("Babystar - 2D NAP"). The 2D/NAP it implies is already parsed into

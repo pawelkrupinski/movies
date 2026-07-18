@@ -1,11 +1,11 @@
 package clients.kino_sleza
 
-import clients.tools.FakeHttpFetch
-import models.KinoSleza
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoSlezaClient
+import models.KinoSleza
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoSlezaClient
 
 import java.time.LocalDateTime
 

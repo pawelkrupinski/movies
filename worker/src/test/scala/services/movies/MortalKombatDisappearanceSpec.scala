@@ -5,9 +5,9 @@ import clients.tools.FakeHttpFetch
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{CinemaCityClient, HeliosClient, MultikinoClient}
 import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.RoutingHttpFetch
+import services.cinemas.pl.{CinemaCityClient, HeliosClient, MultikinoClient}
 
 /**
  * Reproduction of the "Mortal Kombat II disappears" report.

@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.{PromKepaClient, SwitClient}
 import tools.RealHttpFetch
+import services.cinemas.pl.{PromKepaClient, SwitClient}
 
 object WriteSwitPromKepa {
   def main(args: Array[String]): Unit = {

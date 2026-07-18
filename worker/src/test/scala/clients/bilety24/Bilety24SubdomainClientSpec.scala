@@ -1,11 +1,11 @@
 package clients.bilety24
 
-import clients.tools.FakeHttpFetch
 import models._
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.Bilety24SubdomainClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.Bilety24SubdomainClient
 
 import java.time.{LocalDate, LocalDateTime}
 

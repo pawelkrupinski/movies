@@ -1,11 +1,11 @@
 package clients.falenica
 
-import clients.tools.FakeHttpFetch
 import models.{Showtime, StacjaFalenica}
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.FalenicaClient
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import services.cinemas.pl.FalenicaClient
 
 import java.time.LocalDateTime
 

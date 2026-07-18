@@ -1,11 +1,11 @@
 package clients.kino_aurum
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoAurum
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoAurumClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoAurumClient
 
 import java.time.LocalDateTime
 

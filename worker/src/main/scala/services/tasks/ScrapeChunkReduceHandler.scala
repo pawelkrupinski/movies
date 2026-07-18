@@ -1,8 +1,8 @@
 package services.tasks
 
 import play.api.Logging
-import services.cinemas.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, PreScrapedCinemaScraper}
 import services.freshness.{FreshnessKind, FreshnessStore}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, PreScrapedCinemaScraper}
 
 import java.time.Clock
 

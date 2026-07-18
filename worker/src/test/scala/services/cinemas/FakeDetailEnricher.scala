@@ -1,6 +1,7 @@
 package services.cinemas
 
 import models.{Cinema, Source}
+import services.cinemas.common.{DetailEnricher, FilmDetail}
 
 /** Shared test double for a deferred-detail cinema. The enqueuer and reaper only
  *  read `cinema`/`detailGroup`; the handler also drives `fetchFilmDetail`, which

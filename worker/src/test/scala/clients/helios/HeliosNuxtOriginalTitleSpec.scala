@@ -1,8 +1,8 @@
 package clients.helios
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.HeliosNuxt
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.HeliosNuxt
 
 import java.io.File
 import scala.io.{Codec, Source}

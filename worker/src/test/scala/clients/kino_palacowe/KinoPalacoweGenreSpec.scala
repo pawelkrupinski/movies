@@ -1,9 +1,9 @@
 package clients.kino_palacowe
 
+import org.scalatest.matchers.should.Matchers
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoPalacoweClient
+import services.cinemas.pl.KinoPalacoweClient
 
 import java.nio.file.{Files, Paths}
 

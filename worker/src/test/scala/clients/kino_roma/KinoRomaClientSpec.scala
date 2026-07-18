@@ -1,11 +1,11 @@
 package clients.kino_roma
 
-import clients.tools.FakeHttpFetch
-import models.KinoRoma
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoRomaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoRoma
+import services.cinemas.pl.KinoRomaClient
 
 import java.time.{LocalDate, LocalDateTime}
 

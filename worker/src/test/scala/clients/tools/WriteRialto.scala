@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.RialtoClient
 import tools.RealHttpFetch
+import services.cinemas.pl.RialtoClient
 
 object WriteRialto {
   def main(args: Array[String]): Unit = {

@@ -1,11 +1,11 @@
 package clients.kino_karolinka
 
-import clients.tools.FakeHttpFetch
-import models.KinoKarolinka
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoKarolinkaClient
+import models.KinoKarolinka
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoKarolinkaClient
 
 import java.time.LocalDateTime
 

@@ -1,8 +1,8 @@
 package clients.tools
 
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza}
-import services.cinemas.CinemaCityClient
 import tools.RealHttpFetch
+import services.cinemas.pl.CinemaCityClient
 
 object WriteCinemaCity {
   def main(args: Array[String]): Unit = {

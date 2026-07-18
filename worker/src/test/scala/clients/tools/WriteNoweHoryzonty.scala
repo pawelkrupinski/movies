@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.NoweHoryzontyClient
 import tools.RealHttpFetch
+import services.cinemas.pl.NoweHoryzontyClient
 
 import java.time.LocalDate
 

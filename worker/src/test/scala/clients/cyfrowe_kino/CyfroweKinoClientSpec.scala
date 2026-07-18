@@ -1,11 +1,11 @@
 package clients.cyfrowe_kino
 
-import clients.tools.FakeHttpFetch
 import models.KinoCyfroweKino
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CyfroweKinoClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.CyfroweKinoClient
 
 import java.time.LocalDateTime
 

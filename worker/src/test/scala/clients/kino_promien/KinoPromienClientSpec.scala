@@ -1,11 +1,11 @@
 package clients.kino_promien
 
-import clients.tools.FakeHttpFetch
 import models.KinoPromien
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoPromienClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoPromienClient
 
 import java.time.{LocalDate, LocalDateTime}
 

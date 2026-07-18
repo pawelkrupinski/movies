@@ -77,7 +77,7 @@ object DaemonExecutors {
    *  the calling thread during `execute`, so a `submit(...).get(...)` round-trip
    *  never spawns a thread and can never time out (the task is already done by
    *  the time `get` is called). Used by the deterministic test harness so a
-   *  decorator that hands work to an executor ([[services.cinemas.AdaptiveTimeoutScraper]])
+   *  decorator that hands work to an executor ([[services.cinemas.common.AdaptiveTimeoutScraper]])
    *  stays single-threaded and order-stable — no thread-pool race for the
    *  determinism specs to shuffle. Production uses [[virtualThreadEC]] instead,
    *  where a real timeout can fire. */

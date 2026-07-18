@@ -1,11 +1,11 @@
 package services.tasks
 
-import play.api.Logging
 import services.Stoppable
-import services.cinemas.CinemaScraper
+import play.api.Logging
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
+import services.cinemas.common.CinemaScraper
 
 import java.time.{Clock, Duration => JDuration, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}

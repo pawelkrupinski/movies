@@ -1,11 +1,11 @@
 package clients.kzr_cafe
 
-import clients.tools.FakeHttpFetch
 import models.KinoZaRogiemCafe
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoZaRogiemCafeClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoZaRogiemCafeClient
 
 import java.time.{LocalDate, LocalDateTime}
 

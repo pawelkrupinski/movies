@@ -1,8 +1,9 @@
 package services.cinemas
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import services.cinemas.common.CinemaClientMarkers
 
 import java.time.LocalDate
 

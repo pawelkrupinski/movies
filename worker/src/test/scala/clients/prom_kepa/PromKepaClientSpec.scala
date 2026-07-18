@@ -1,10 +1,10 @@
 package clients.prom_kepa
 
-import clients.tools.FakeHttpFetch
 import models.{KinoKepa, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.PromKepaClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.PromKepaClient
 
 import java.time.LocalDateTime
 

@@ -1,10 +1,10 @@
 package clients.helios
 
+import org.scalatest.matchers.should.Matchers
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.HeliosClient
 import tools.{CachingDetailFetch, HttpFetch}
+import services.cinemas.pl.HeliosClient
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger

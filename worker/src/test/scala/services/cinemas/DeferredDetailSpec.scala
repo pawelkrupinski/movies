@@ -1,8 +1,10 @@
 package services.cinemas
 
+import org.scalatest.matchers.should.Matchers
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import services.cinemas.common.{CinemaScraper, DetailEnricher}
+import services.cinemas.pl._
 
 import java.time.LocalDate
 

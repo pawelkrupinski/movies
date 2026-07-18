@@ -1,11 +1,11 @@
 package clients.webedia
 
-import clients.tools.FakeHttpFetch
 import models.GermanCinema
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.WebediaShowtimesClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.de.WebediaShowtimesClient
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.io.Source

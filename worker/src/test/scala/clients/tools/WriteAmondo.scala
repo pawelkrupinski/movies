@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.AmondoClient
 import tools.RealHttpFetch
+import services.cinemas.pl.AmondoClient
 
 object WriteAmondo {
   def main(args: Array[String]): Unit = {

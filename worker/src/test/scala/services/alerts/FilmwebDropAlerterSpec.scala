@@ -1,10 +1,10 @@
 package services.alerts
 
+import org.scalatest.matchers.should.Matchers
 import models.{Cinema, KinoTatry, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.ScrapeOutcome
-import services.cinemas.ScrapeOutcome._
+import services.cinemas.common.ScrapeOutcome
+import services.cinemas.common.ScrapeOutcome._
 
 import scala.collection.mutable.ListBuffer
 

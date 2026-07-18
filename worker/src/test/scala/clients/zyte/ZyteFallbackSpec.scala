@@ -2,8 +2,8 @@ package clients.zyte
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.ZyteFallback
 import tools.{FallbackHttpFetch, GetOnlyHttpFetch, HttpFetch}
+import services.cinemas.common.ZyteFallback
 
 /**
  * `ZyteFallback.fetchFor` composes the proxy chain at the composition root.

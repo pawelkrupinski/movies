@@ -1,11 +1,12 @@
 package clients.kino_fenomen
 
-import clients.tools.FakeHttpFetch
 import models.KinoFenomen
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoFenomenClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.DetailEnricher
+import services.cinemas.pl.KinoFenomenClient
 
 import java.time.LocalDateTime
 
@@ -128,7 +129,7 @@ class KinoFenomenClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "expose itself as a deferred DetailEnricher resolving TMDB from the listing" in {
-    client                       shouldBe a[services.cinemas.DetailEnricher]
+    client                       shouldBe a[services.cinemas.common.DetailEnricher]
     client.detailGroup           shouldBe "kino-fenomen"
     client.defersTmdbResolution  shouldBe false
   }

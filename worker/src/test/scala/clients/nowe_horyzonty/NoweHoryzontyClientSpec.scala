@@ -1,10 +1,11 @@
 package clients.nowe_horyzonty
 
-import clients.tools.FakeHttpFetch
-import models.{KinoNoweHoryzonty, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{FilmDetail, NoweHoryzontyClient}
+import models.{KinoNoweHoryzonty, Showtime}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.NoweHoryzontyClient
 
 import java.time.{LocalDate, LocalDateTime}
 

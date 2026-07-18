@@ -2,7 +2,7 @@ package clients.multikino
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.MultikinoParser
+import services.cinemas.pl.MultikinoParser
 
 /**
  * The recorded `cinemas/0011/films` fixture has empty `trailers: []` arrays

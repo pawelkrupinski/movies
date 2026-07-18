@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.cinemas.{ChunkedCinemaScraper, CinemaScraper, PreScrapedCinemaScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, PreScrapedCinemaScraper}
 
 import java.time.Clock
 import scala.concurrent.duration._

@@ -1,8 +1,9 @@
 package services.cinemas
 
-import org.jsoup.Jsoup
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import org.jsoup.Jsoup
+import services.cinemas.pl.ScraperParse
 
 import java.time.LocalTime
 

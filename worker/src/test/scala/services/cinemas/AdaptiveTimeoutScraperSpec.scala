@@ -1,10 +1,11 @@
 package services.cinemas
 
-import models.{Cinema, CinemaMovie, Multikino}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.ScriptedCinemaScraper.OneMovie
 import tools.{DaemonExecutors, HostScrapeStats}
+import models.{Cinema, CinemaMovie, Multikino}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.ScriptedCinemaScraper.OneMovie
+import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaScraper}
 
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._

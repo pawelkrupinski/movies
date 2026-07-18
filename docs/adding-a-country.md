@@ -41,6 +41,16 @@ standing rule; commit each phase.
    via `filmstarts(theaterId, cinema)`); a genuinely new source is a new
    `CinemaScraper` fitting the existing contract (no reaper change — open/closed).
 
+   Clients live in a **per-country subpackage** — `services.cinemas.pl` /
+   `.uk` / `.de` — so a new country gets its own `services/cinemas/<cc>/`
+   directory. Anything country-agnostic (the `CinemaScraper` contract, the
+   `Retrying`/`Chunked`/`AdaptiveTimeout`/`UptimeRecording` wrappers, the
+   `SlotsToMovies` fold, the Zyte egress plumbing) belongs in
+   `services.cinemas.common` instead — if a new country's client wants to reuse
+   a helper that currently sits under `pl`, lift the country-neutral part into
+   `common` rather than importing across country packages. The catalog itself
+   stays at `services.cinemas`, the one place that composes all of them.
+
 **Tests:** `CountrySpec`, `CatalogSpec`, and any city-count spec. `Source.all`
 grows — sanity-check `byDisplayName` uniqueness.
 

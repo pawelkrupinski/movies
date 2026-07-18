@@ -1,11 +1,11 @@
 package clients.kino_sfinks
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoSfinks
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoSfinksClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoSfinksClient
 
 import java.time.LocalDateTime
 

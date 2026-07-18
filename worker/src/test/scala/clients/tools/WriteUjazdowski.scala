@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.UjazdowskiClient
 import tools.RealHttpFetch
+import services.cinemas.pl.UjazdowskiClient
 
 object WriteUjazdowski {
   def main(args: Array[String]): Unit = {

@@ -1,10 +1,11 @@
 package clients.kinomuzeum
 
-import clients.tools.FakeHttpFetch
-import models.{Kinomuzeum, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{FilmDetail, KinomuzeumClient}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{Kinomuzeum, Showtime}
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.KinomuzeumClient
 
 import java.time.{LocalDate, LocalDateTime}
 

@@ -1,6 +1,7 @@
 package services.cinemas
 
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
+import services.cinemas.common.CinemaScraper
 
 import java.time.LocalDateTime
 

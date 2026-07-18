@@ -1,7 +1,7 @@
 package services.alerts
 
 import models.Cinema
-import services.cinemas.{ScrapeOutcome, ScrapeOutcomeListener}
+import services.cinemas.common.{ScrapeOutcome, ScrapeOutcomeListener}
 
 import scala.collection.concurrent.TrieMap
 

@@ -1,11 +1,11 @@
 package clients.kino_orzel
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoOrzel
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoOrzelClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoOrzelClient
 
 import java.time.LocalDateTime
 

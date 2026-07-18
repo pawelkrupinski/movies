@@ -3,10 +3,11 @@ package services.staging
 import models.{Cinema, CinemaShowing, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{DetailEnricher, FilmDetail, FilmwebShowtimesClient}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{MovieService, TitleNormalizer}
 import services.titlerules.{TitleRules, TitleRuleSet}
+import services.cinemas.common.{DetailEnricher, FilmDetail}
+import services.cinemas.pl.FilmwebShowtimesClient
 
 /** Unit specs for the staging enrichment steps factored out of the old
  *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the

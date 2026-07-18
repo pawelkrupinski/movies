@@ -1,0 +1,184 @@
+package services.cinemas.pl
+
+import models._
+import org.jsoup.Jsoup
+import tools.{CachingDetailFetch, HttpFetch}
+import org.jsoup.nodes.Element
+import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import scala.jdk.CollectionConverters._
+import scala.util.Try
+
+/**
+ * Dolnośląskie Centrum Filmowe (Wrocław). The repertoire page lists every
+ * screening with its full date, time, and auditorium encoded in the
+ * `aria-label` of each slot; ticketing and the richer film metadata live on
+ * the Bilety24 event page (`dcf.bilety24.pl/wydarzenie/?id=<filmId>`), fetched
+ * per film for runtime / genres / director / country / year / synopsis. A
+ * missing or slow detail fetch degrades to listing-only data for that film.
+ */
+class DcfClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+
+  // Static event detail pages cached across passes; the repertoire listing keeps
+  // the live `http` since its showtimes change every pass.
+  private val detailHttp = new CachingDetailFetch(http)
+
+  val cinema: Cinema = DolnoslaskieCentrumFilmowe
+
+  private val RepertoireUrl = "https://dcf.wroclaw.pl/repertuar/"
+  private val EventBase     = "https://dcf.bilety24.pl/wydarzenie/?id="
+  private val TicketBase    = "https://dcf.bilety24.pl/kup-bilety/?id="
+
+  // aria-label: "Tytuł; Miejsce: Sala Warszawa; Data: 05.06.2026 15:30"
+  private val AriaPat = """^(.+?); Miejsce: (.+?); Data: (\d{2}\.\d{2}\.\d{4}) (\d{2}:\d{2})$""".r
+  private val DateTimeFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+  private val FilmIdPat   = """film-(\d+)""".r
+
+  private case class RawSlot(dateTime: LocalDateTime, room: Option[String], bookingUrl: Option[String])
+
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, EventBase)
+  override def sourceUrl: Option[String] = Some(RepertoireUrl)
+
+  def fetch(): Seq[CinemaMovie] = parseListing()
+
+  private def parseListing(): Seq[CinemaMovie] = {
+    val document = Jsoup.parse(http.get(RepertoireUrl))
+
+    // A film can repeat under several date sections; each repeat is its own
+    // `.film__item` block. Group by the numeric film id so all its slots merge.
+    case class Block(filmId: String, title: String, poster: Option[String], slots: Seq[RawSlot])
+    val blocks = document.select("div.film__item").asScala.toSeq.flatMap { element =>
+      val filmId = element.classNames().asScala.collectFirst { case FilmIdPat(id) => id }
+      val title  = Option(element.selectFirst("h3.film__title")).map(_.text.trim).filter(_.nonEmpty)
+      for { id <- filmId; t <- title } yield
+        Block(id, t, posterOf(element), slotsOf(element))
+    }
+
+    // The same film recurs under several film ids when it plays in more than
+    // one programme strand (a regular run + a "| FKS" / "| DKF" / preview slot).
+    // Group by the cleaned title so each film is one row; the primary block
+    // (first seen) supplies the poster and the detail page to enrich from.
+    val byTitle = blocks.groupBy(b => DcfClient.normalizeTitle(b.title))
+
+    byTitle.toSeq.flatMap { case (title, group) =>
+      val primary = group.head
+      val slots   = group.flatMap(_.slots).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
+      if (slots.isEmpty) None
+      else Some(CinemaMovie(
+        movie     = Movie(title),
+        cinema    = cinema,
+        posterUrl = primary.poster,
+        filmUrl   = Some(EventBase + primary.filmId),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = slots.map(s => Showtime(s.dateTime, s.bookingUrl, s.room, Nil))
+      ))
+    }
+  }
+
+  override val detailGroup: String = "dcf"
+
+  /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
+   *  movie's filmUrl (EventBase + filmId). None on a fetch failure so the task
+   *  stays stale and is retried by the next scrape rather than recording an
+   *  empty result as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(detailHttp.get(ref)).toOption.map { html =>
+      val detail = DcfClient.parseDetail(html)
+      FilmDetail(
+        synopsis       = detail.synopsis,
+        cast           = Seq.empty,
+        director       = detail.director,
+        runtimeMinutes = detail.runtimeMinutes,
+        releaseYear    = detail.year,
+        countries      = detail.countries,
+        genres         = detail.genres,
+        trailerUrl     = detail.trailer
+      )
+    }
+
+  private def posterOf(block: Element): Option[String] =
+    Option(block.selectFirst("div.film__poster .thumbnail-cover"))
+      .map(_.attr("style"))
+      .flatMap(ScraperParse.cssUrl)
+      .filter(_.nonEmpty)
+
+  private def slotsOf(block: Element): Seq[RawSlot] =
+    block.select("div.repertoir__item").asScala.toSeq.flatMap { item =>
+      val label = Option(item.selectFirst("a.link-absolute")).map(_.attr("aria-label")).getOrElse("")
+      AriaPat.findFirstMatchIn(label).flatMap { m =>
+        Try(LocalDateTime.parse(s"${m.group(3)} ${m.group(4)}", DateTimeFmt)).toOption.map { dt =>
+          val room    = Some(m.group(2).trim).filter(_.nonEmpty)
+          val showId  = Option(item.selectFirst("[data-target]")).map(_.attr("data-target"))
+                          .flatMap(t => """#repertoir(\d+)""".r.findFirstMatchIn(t).map(_.group(1)))
+          RawSlot(dt, room, showId.map(TicketBase + _))
+        }
+      }
+    }
+}
+
+object DcfClient {
+
+  /** DCF tags special-programme screenings with a trailing `" | LABEL"`
+   *  (e.g. "| DKF", "| FKS", "| pokaz przedpremierowy"). Strip it so a tagged
+   *  screening merges onto — and enriches off — the same clean film title as
+   *  the regular run. Public for direct unit tests. */
+  def normalizeTitle(raw: String): String = {
+    val i = raw.indexOf(" | ")
+    (if (i > 0) raw.substring(0, i) else raw).trim
+  }
+
+  final case class Detail(
+    runtimeMinutes: Option[Int],
+    year:           Option[Int],
+    countries:      Seq[String],
+    genres:         Seq[String],
+    director:       Seq[String],
+    synopsis:       Option[String],
+    trailer:        Option[String]
+  )
+  object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None, None) }
+
+  private val RuntimePat = """(\d+)\s*min""".r
+  private val YearPat    = """\b((?:19|20)\d{2})\b""".r
+
+  /** Parse the Bilety24 event page: a `p.movie-parameters` pipe line
+   *  ("Dramat | Komedia | 120 min") and a description block whose first line is
+   *  "reż. <director> | <country> | <year>" followed by the synopsis. */
+  def parseDetail(html: String): Detail = {
+    val document = Jsoup.parse(html)
+
+    val parameters = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
+    val segs   = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
+    val runtime = segs.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
+    val genres  = segs.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined)
+                      .map(tools.TextNormalization.titleCaseIfAllLower)
+
+    // The trailer is the `youtube`-classed buy-style anchor; its href is already
+    // a `watch?v=` URL. Other YouTube links on the page are footer share buttons.
+    val trailer = Option(document.selectFirst("a.youtube[href*=youtube]")).map(_.attr("href"))
+                    .filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer)
+
+    Option(document.selectFirst("div.title-description-content")) match {
+      case None => Detail(runtime, None, Seq.empty, genres, Seq.empty, None, trailer)
+      case Some(desc) =>
+        val lines    = desc.html.split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).text.trim).filter(_.nonEmpty)
+        val infoLine = lines.headOption.getOrElse("")
+        val parts    = infoLine.split("\\|").map(_.trim).filter(_.nonEmpty)
+        val director = parts.find(_.toLowerCase.startsWith("reż")).map(_.replaceFirst("(?i)^reż\\.?\\s*", "").trim)
+                          .filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+        val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
+        val country  = parts.find(p => !p.toLowerCase.startsWith("reż") && YearPat.findFirstMatchIn(p).isEmpty)
+                          .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+        // The block sometimes ends with an organiser footer ("Więcej:
+        // www.<film>.pl"); drop URL-only / "Więcej: <url>" lines and strip any
+        // residual plain-text URL so it never lands in the synopsis.
+        val prose    = lines.drop(1).filterNot(_.matches("""(?i)^(?:więcej:?\s*)?(?:https?://|www\.)\S+$"""))
+        val synopsis = Option(ScraperParse.stripUrls(prose.mkString("\n")).trim).filter(_.length > 20)
+        Detail(runtime, year, country, genres, director, synopsis, trailer)
+    }
+  }
+}

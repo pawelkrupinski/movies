@@ -1,11 +1,11 @@
 package clients.ekobilet
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.{KinoJaworzyna, KinoMeduza}
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.EkobiletClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.EkobiletClient
 
 import java.time.{LocalDate, LocalDateTime}
 

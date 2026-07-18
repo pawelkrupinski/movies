@@ -1,11 +1,11 @@
 package clients.kino_tatry
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoTatry
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoTatryClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoTatryClient
 
 import java.time.{LocalDate, LocalDateTime}
 

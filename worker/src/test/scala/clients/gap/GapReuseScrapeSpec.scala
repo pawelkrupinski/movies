@@ -1,10 +1,10 @@
 package clients.gap
 
-import clients.tools.FakeHttpFetch
-import models.{Cinema, CinemaMovie, HeliosOutletPark, KinoCkLublin, KinoWisla}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{Bilety24Client, HeliosClient, HeliosNuxt, NoveKinoClient}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{Cinema, CinemaMovie, HeliosOutletPark, KinoCkLublin, KinoWisla}
+import services.cinemas.pl.{Bilety24Client, HeliosClient, HeliosNuxt, NoveKinoClient}
 
 import java.time.LocalDate
 

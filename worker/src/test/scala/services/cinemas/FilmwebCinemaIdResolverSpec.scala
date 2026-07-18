@@ -2,10 +2,11 @@ package services.cinemas
 
 import models._
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.FilmwebCinemaIdResolver._
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import services.cinemas.pl.FilmwebCinemaIdResolver
+import services.cinemas.pl.FilmwebCinemaIdResolver._
 
 import java.net.URI
 import java.nio.file.{Files, Paths}

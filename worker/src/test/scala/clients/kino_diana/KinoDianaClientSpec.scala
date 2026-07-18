@@ -1,11 +1,11 @@
 package clients.kino_diana
 
-import clients.tools.FakeHttpFetch
-import models.KinoDiana
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoDianaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoDiana
+import services.cinemas.pl.KinoDianaClient
 
 import java.time.LocalDateTime
 

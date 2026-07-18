@@ -1,11 +1,11 @@
 package clients.kino_spojnia
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoSpojnia
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoSpojniaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoSpojniaClient
 
 import java.time.LocalDateTime
 

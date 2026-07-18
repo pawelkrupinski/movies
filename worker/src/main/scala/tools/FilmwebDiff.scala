@@ -1,8 +1,10 @@
 package tools
 
 import models._
-import services.cinemas.FilmwebCinemaIdResolver.{Fuzzy, Override, OverrideSuppressed, Resolution, Source, Unmatched}
-import services.cinemas.{CinemaScraperCatalog, CinemaScraper, FilmwebCinemaIdResolver, FilmwebShowtimesClient}
+import services.cinemas.CinemaScraperCatalog
+import services.cinemas.common.CinemaScraper
+import services.cinemas.pl.FilmwebCinemaIdResolver.{Fuzzy, Override, OverrideSuppressed, Resolution, Source, Unmatched}
+import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 
 import play.api.libs.json.Json
 

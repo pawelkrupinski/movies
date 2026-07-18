@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.MultikinoClient
 import tools.RealHttpFetch
+import services.cinemas.pl.MultikinoClient
 
 /** Refresh the Multikino fixture. `RecordingHttpFetch` writes every
  *  response body the client touches under `test/resources/fixtures/multikino/`,

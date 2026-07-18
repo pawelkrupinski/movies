@@ -1,11 +1,11 @@
 package clients.kino_dkf_rumcajs
 
-import clients.tools.FakeHttpFetch
-import models.KinoDKFRumcajs
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoDKFRumcajsClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoDKFRumcajs
+import services.cinemas.pl.KinoDKFRumcajsClient
 
 import java.time.LocalDateTime
 

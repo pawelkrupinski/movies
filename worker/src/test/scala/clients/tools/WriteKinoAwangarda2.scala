@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.KinoAwangarda2Client
 import tools.RealHttpFetch
+import services.cinemas.pl.KinoAwangarda2Client
 
 object WriteKinoAwangarda2 {
   def main(args: Array[String]): Unit = {

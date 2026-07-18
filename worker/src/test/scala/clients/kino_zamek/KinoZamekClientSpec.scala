@@ -1,11 +1,11 @@
 package clients.kino_zamek
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoZamekSzczecin
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoZamekClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoZamekClient
 
 import java.time.{LocalDate, LocalDateTime, YearMonth}
 

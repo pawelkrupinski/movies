@@ -4,6 +4,8 @@ import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{GetOnlyHttpFetch, HttpFetch}
+import services.cinemas.common.{CinemaScraper, FallbackEligibility}
+import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
 
 class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
 

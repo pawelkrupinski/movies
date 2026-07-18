@@ -1,12 +1,12 @@
 package clients.cinemas
 
 import clients.tools.{FailingHttpFetch, FakeHttpFetch}
-import models.KinoPatria
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoPatriaClient
 import tools.HttpStatusException
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoPatria
+import services.cinemas.pl.KinoPatriaClient
 
 import java.time.{LocalDate, LocalDateTime}
 

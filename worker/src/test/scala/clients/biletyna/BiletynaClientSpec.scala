@@ -1,13 +1,13 @@
 package clients.biletyna
 
-import clients.tools.FakeHttpFetch
 import models._
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
+import org.scalatest.OptionValues
 import play.api.libs.json.Json
-import services.cinemas.BiletynaClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.BiletynaClient
 
 import java.time.LocalDateTime
 

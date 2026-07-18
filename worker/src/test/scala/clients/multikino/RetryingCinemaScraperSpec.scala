@@ -3,8 +3,9 @@ package clients.multikino
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{RetryingCinemaScraper, ScriptedCinemaScraper}
+import services.cinemas.ScriptedCinemaScraper
 import services.cinemas.ScriptedCinemaScraper.OneMovie
+import services.cinemas.common.RetryingCinemaScraper
 
 import scala.concurrent.duration._
 

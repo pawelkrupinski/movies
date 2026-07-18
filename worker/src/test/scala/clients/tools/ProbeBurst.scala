@@ -1,8 +1,10 @@
 package clients.tools
 
+import tools.{HttpFetch, RealHttpFetch}
 import models._
 import services.cinemas._
-import tools.{HttpFetch, RealHttpFetch}
+import services.cinemas.common.CinemaScraper
+import services.cinemas.pl._
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger

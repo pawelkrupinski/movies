@@ -1,11 +1,11 @@
 package services.tasks
 
 import models.{CinemaMovie, Movie, Multikino, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.{ChunkedCinemaScraper, CinemaScraper}
 import services.events.TaskFinished
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.collection.mutable

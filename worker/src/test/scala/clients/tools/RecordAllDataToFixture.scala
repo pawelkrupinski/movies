@@ -1,8 +1,9 @@
 package clients.tools
 
-import services.cinemas.{MultikinoClient, ZyteFallback}
-import services.movies.InMemoryMovieRepository
 import tools.{DaemonExecutors, HttpFetch, RealHttpFetch, TestWiring}
+import services.movies.InMemoryMovieRepository
+import services.cinemas.common.ZyteFallback
+import services.cinemas.pl.MultikinoClient
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._

@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.KinoPalacoweClient
 import tools.RealHttpFetch
+import services.cinemas.pl.KinoPalacoweClient
 
 object WriteKinoPalacowe {
   def main(args: Array[String]): Unit = {

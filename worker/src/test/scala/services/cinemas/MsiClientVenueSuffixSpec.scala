@@ -2,6 +2,7 @@ package services.cinemas
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.pl.MsiClient
 
 /** Kino Wybrzeże (RCK Kołobrzeg, an MSI portal) glues a constant `KINO WYBRZEŻE`
  *  venue label onto every title, with the screening's format word buried just

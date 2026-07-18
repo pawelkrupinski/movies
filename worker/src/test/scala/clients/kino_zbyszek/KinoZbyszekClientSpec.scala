@@ -1,11 +1,11 @@
 package clients.kino_zbyszek
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoZbyszek
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoZbyszekClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoZbyszekClient
 
 import java.time.LocalDateTime
 

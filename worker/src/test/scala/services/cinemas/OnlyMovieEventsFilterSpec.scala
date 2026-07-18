@@ -5,6 +5,8 @@ import models._
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.common.CinemaScraper
+import services.cinemas.pl.{BiletynaClient, NonMovieEventClassifier, OnlyMovieEventsFilter}
 
 class OnlyMovieEventsFilterSpec extends AnyFlatSpec with Matchers with OptionValues {
 

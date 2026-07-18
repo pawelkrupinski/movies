@@ -1,10 +1,11 @@
 package clients.amondo
 
-import clients.tools.FakeHttpFetch
-import models.{KinoAmondo, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{AmondoClient, FilmDetail}
+import clients.tools.FakeHttpFetch
+import models.{KinoAmondo, Showtime}
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.AmondoClient
 
 import java.time.LocalDateTime
 

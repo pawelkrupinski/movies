@@ -1,11 +1,11 @@
 package clients.kino_sck_stargard
 
-import clients.tools.FakeHttpFetch
-import models.KinoSCK
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.SckStargardClient
+import models.KinoSCK
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.SckStargardClient
 
 import java.time.LocalDateTime
 

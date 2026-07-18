@@ -1,11 +1,12 @@
 package services.cinemas
 
-import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
-import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
 import tools.HttpFetch
+import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
+import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
+import services.movies.TitleNormalizer
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient, CyfroweKinoClient, KinoBajkaClient, KinoKijowClient, SystemBiletowyClient}
 
 import java.time.YearMonth
 

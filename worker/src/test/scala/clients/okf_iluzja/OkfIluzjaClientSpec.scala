@@ -1,11 +1,11 @@
 package clients.okf_iluzja
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.OkfIluzja
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.OkfIluzjaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.OkfIluzjaClient
 
 import java.time.{LocalDate, LocalDateTime}
 

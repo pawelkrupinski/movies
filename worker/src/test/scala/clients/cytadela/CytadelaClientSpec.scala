@@ -1,10 +1,10 @@
 package clients.cytadela
 
-import clients.tools.FakeHttpFetch
-import models.{KinoCytadela, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CytadelaClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{KinoCytadela, Showtime}
+import services.cinemas.pl.CytadelaClient
 
 import java.time.LocalDateTime
 

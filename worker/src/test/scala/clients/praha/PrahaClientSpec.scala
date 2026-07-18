@@ -1,11 +1,11 @@
 package clients.praha
 
-import clients.tools.FakeHttpFetch
-import models.KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.PrahaClient
+import models.KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.PrahaClient
 
 import java.time.LocalDateTime
 

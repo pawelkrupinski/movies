@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.IluzjonClient
 import tools.RealHttpFetch
+import services.cinemas.pl.IluzjonClient
 
 object WriteIluzjon {
   def main(args: Array[String]): Unit = {

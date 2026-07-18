@@ -1,9 +1,10 @@
 package services.cinemas
 
-import clients.tools.FakeHttpFetch
-import models.KinoKadr
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoKadr
+import services.cinemas.pl.VisualTicketClient
 
 import java.time.LocalDate
 

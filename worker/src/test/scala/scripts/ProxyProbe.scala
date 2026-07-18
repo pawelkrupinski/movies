@@ -1,7 +1,7 @@
 package scripts
 
-import services.cinemas.MultikinoClient
 import tools.{RealHttpFetch, ResidentialProxy}
+import services.cinemas.pl.MultikinoClient
 
 /**
  * Prod-faithful PRE-DEPLOY check for the Decodo residential-proxy egress.

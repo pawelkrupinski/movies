@@ -1,9 +1,9 @@
 package services.tasks
 
-import models.Cinema
 import play.api.Logging
-import services.cinemas.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
 import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
+import models.Cinema
+import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
 
 import java.time.Clock
 

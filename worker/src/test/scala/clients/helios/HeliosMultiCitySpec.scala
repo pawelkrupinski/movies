@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.HeliosBlueCity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.HeliosNuxt
+import services.cinemas.pl.HeliosNuxt
 
 /** HeliosClient/HeliosNuxt used to hard-code Poznań's page slug + REST source
  *  UUID + `Helios` cinema. These pin the per-cinema config that lets the same

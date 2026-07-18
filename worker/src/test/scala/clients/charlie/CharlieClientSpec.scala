@@ -1,11 +1,11 @@
 package clients.charlie
 
-import clients.tools.FakeHttpFetch
 import models.KinoCharlie
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CharlieClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.CharlieClient
 
 import java.time.LocalDateTime
 

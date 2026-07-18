@@ -2,11 +2,11 @@ package services.staging
 
 import models.{CinemaShowing, MovieRecord, Source, SourceData, Tmdb}
 import play.api.Logging
-import services.cinemas.DetailEnricher
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{MovieRecordMerge, MovieService, TitleNormalizer}
 import services.resolution.ResolutionKeys
 import services.tasks.StagingTaskKeys
+import services.cinemas.common.DetailEnricher
 
 /**
  * The shared business logic for incubating a `pending_movies` newcomer — the

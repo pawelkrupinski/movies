@@ -1,11 +1,11 @@
 package clients.kino_kreska
 
-import clients.tools.FakeHttpFetch
 import models.KinoKreska
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoKreskaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoKreskaClient
 
 import java.time.LocalDateTime
 

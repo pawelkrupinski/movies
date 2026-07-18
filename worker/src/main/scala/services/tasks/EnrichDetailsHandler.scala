@@ -1,12 +1,12 @@
 package services.tasks
 
-import models.{CinemaShowing, Source, SourceData}
-import play.api.Logging
-import services.UptimeMonitor
-import services.cinemas.DetailEnricher
 import services.events.{EventBus, MovieDetailsComplete}
+import models.{CinemaShowing, Source, SourceData}
 import services.freshness.{FreshnessKind, FreshnessStore}
+import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
+import services.UptimeMonitor
+import services.cinemas.common.DetailEnricher
 
 import java.time.{Clock, Instant}
 

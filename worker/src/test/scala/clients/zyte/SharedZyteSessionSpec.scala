@@ -1,8 +1,8 @@
 package clients.zyte
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{SharedZyteSession, ZyteClient}
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.{SharedZyteSession, ZyteClient}
 
 import java.net.http.HttpClient
 import java.time.{Clock, Instant, ZoneId, ZoneOffset}

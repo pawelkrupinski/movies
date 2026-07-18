@@ -1,10 +1,10 @@
 package clients.sdk
 
-import clients.tools.FakeHttpFetch
-import models.{Showtime, SluzewskiDomKultury}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.SdkClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{Showtime, SluzewskiDomKultury}
+import services.cinemas.pl.SdkClient
 
 import java.time.LocalDateTime
 

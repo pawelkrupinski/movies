@@ -1,7 +1,8 @@
 package services.cinemas
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.ScrapeErrors
 
 import java.io.IOException
 import java.net.SocketTimeoutException

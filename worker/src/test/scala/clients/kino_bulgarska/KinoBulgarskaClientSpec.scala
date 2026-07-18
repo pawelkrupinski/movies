@@ -1,11 +1,11 @@
 package clients.kino_bulgarska
 
-import clients.tools.FakeHttpFetch
 import models.{KinoBulgarska, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoBulgarskaClient
+import clients.tools.FakeHttpFetch
 import services.movies.TitleNormalizer
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoBulgarskaClient
 
 import java.time.LocalDateTime
 

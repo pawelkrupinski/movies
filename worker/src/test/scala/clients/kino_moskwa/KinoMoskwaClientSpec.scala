@@ -1,11 +1,11 @@
 package clients.kino_moskwa
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoMoskwa
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoMoskwaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoMoskwaClient
 
 import java.time.{LocalDate, LocalDateTime}
 

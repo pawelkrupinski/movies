@@ -2,6 +2,7 @@ package services.cinemas
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.pl.MsiScraper
 
 /** Unit coverage for the director line mined out of an MSI `RepertoireEvents`
  *  Description. The portals emit several label shapes — these are the real ones

@@ -1,9 +1,9 @@
 package clients.helios
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.HeliosClient
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import services.cinemas.pl.HeliosClient
 
 import java.util.concurrent.CompletableFuture
 import scala.collection.mutable

@@ -1,23 +1,25 @@
 package modules
 
-import clients.TmdbClient
-import models.{Cinema, Country}
+import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
 import org.mongodb.scala.MongoClient
-import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
+import models.{Cinema, Country}
 import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
+import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
+import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
+import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, StagingFilmEnriched, TaskFinished}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
+import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
+import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
+import clients.TmdbClient
+import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
+import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
+import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
 import services.cinemas._
 import services.enrichment._
-import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
-import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, StagingFilmEnriched, TaskFinished}
-import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
-import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
-import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
-import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
-import services.metrics.{MeteredTaskQueue, WorkerTaskMetrics}
-import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
-import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
-import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
+import services.cinemas.common._
+import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebFallbackScraper, FilmwebShowtimesClient, MultikinoClient}
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit

@@ -1,10 +1,10 @@
 package clients.kinogram
 
-import clients.tools.FakeHttpFetch
-import models.{KinoGram, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoGramClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{KinoGram, Showtime}
+import services.cinemas.pl.KinoGramClient
 
 import java.time.LocalDateTime
 

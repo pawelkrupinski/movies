@@ -1,10 +1,10 @@
 package clients.ujazdowski
 
-import clients.tools.FakeHttpFetch
-import models.{Showtime, Ujazdowski}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.UjazdowskiClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{Showtime, Ujazdowski}
+import services.cinemas.pl.UjazdowskiClient
 
 import java.time.{LocalDate, LocalDateTime}
 

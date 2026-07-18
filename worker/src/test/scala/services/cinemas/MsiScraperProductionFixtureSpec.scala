@@ -1,8 +1,9 @@
 package services.cinemas
 
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.MsiScraper
 
 import scala.io.{Codec, Source}
 

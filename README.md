@@ -13,7 +13,9 @@ Live at **<https://kinowo.fly.dev>**.
 - **Scrapes showtimes** from Cinema City, Multikino, Helios, Kino
   Apollo, Kino Bułgarska, Kino Muza, Kino Pałacowe, Rialto, and
   Charlie Monroe. Each cinema has its own client under
-  `worker/src/main/scala/services/cinemas/`.
+  `worker/src/main/scala/services/cinemas/`, in a per-country
+  subpackage (`pl/`, `uk/`, `de/`); the country-agnostic scraping
+  machinery lives in `common/`.
 - **Enriches** every film with posters, synopses, trailers, and
   ratings from TMDB, IMDb, Filmweb, Metacritic, Rotten Tomatoes,
   OMDb and Cinemeta (`worker/src/main/scala/services/enrichment/`).

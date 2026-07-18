@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.{FalenicaClient, SdkClient}
 import tools.RealHttpFetch
+import services.cinemas.pl.{FalenicaClient, SdkClient}
 
 object WriteFalenicaSdk {
   def main(args: Array[String]): Unit = {

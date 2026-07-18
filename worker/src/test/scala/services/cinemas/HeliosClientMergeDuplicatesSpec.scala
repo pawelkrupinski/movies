@@ -1,8 +1,9 @@
 package services.cinemas
 
+import org.scalatest.matchers.should.Matchers
 import models.{CinemaMovie, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import services.cinemas.pl.HeliosClient
 
 import java.time.LocalDateTime
 

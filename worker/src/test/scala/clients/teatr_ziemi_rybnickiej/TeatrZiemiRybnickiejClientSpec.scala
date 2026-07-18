@@ -1,11 +1,11 @@
 package clients.teatr_ziemi_rybnickiej
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoTeatrZiemiRybnickiej
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.TeatrZiemiRybnickiejClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.TeatrZiemiRybnickiejClient
 
 import java.time.LocalDateTime
 
