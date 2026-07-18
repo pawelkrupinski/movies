@@ -155,6 +155,24 @@ def _first_coords(html: str) -> tuple[float, float] | None:
     return None
 
 
+def probe_sessions(slug: str, today: dt.date) -> bool:
+    """True if Flicks lists at least one session for the venue in today..+6d.
+
+    Hits the per-venue sessions endpoint directly — the same URL FlicksClient
+    scrapes — so it reflects what we could actually serve, independent of whether
+    the venue is in Flicks' (incomplete) sitemap index.
+    """
+    for i in range(SESSION_DAYS):
+        d = (today + dt.timedelta(days=i)).isoformat()
+        try:
+            frag = fetch(f"{FLICKS}/cinema/sessions/{slug}/{d}/", ajax=True)
+        except Exception:
+            continue
+        if "cinema-times__article" in frag:
+            return True
+    return False
+
+
 def venue_meta(slug: str, today: dt.date) -> VenueMeta:
     meta = VenueMeta(slug)
     try:
@@ -165,15 +183,7 @@ def venue_meta(slug: str, today: dt.date) -> VenueMeta:
     coords = _first_coords(page)
     if coords:
         meta.lat, meta.lon = coords
-    for i in range(SESSION_DAYS):
-        d = (today + dt.timedelta(days=i)).isoformat()
-        try:
-            frag = fetch(f"{FLICKS}/cinema/sessions/{slug}/{d}/", ajax=True)
-        except Exception:
-            continue
-        if "cinema-times__article" in frag:
-            meta.has_sessions = True
-            break
+    meta.has_sessions = probe_sessions(slug, today)
     return meta
 
 
@@ -207,7 +217,27 @@ class Parked:
 class Plan:
     wire: list[Wired] = field(default_factory=list)
     park: list[Parked] = field(default_factory=list)
-    gone: list[str] = field(default_factory=list)
+    # `gone_dead`: wired but dropped from the sitemap AND no longer serving any
+    # session — genuine retirement candidates. `gone_live`: dropped from the
+    # sitemap index yet still serving sessions — a benign Flicks-index gap, NOT a
+    # closure, so it needs no action (deleting it would drop working coverage).
+    gone_dead: list[str] = field(default_factory=list)
+    gone_live: list[str] = field(default_factory=list)
+
+
+def partition_gone(gone_slugs, probe) -> tuple[list[str], list[str]]:
+    """Split slugs dropped from the sitemap into truly-dead vs still-serving.
+
+    Flicks' sitemap-cinemas.xml index omits some live venues (e.g. Vue
+    Colchester, the Isle of Man cinemas), while their per-venue sessions endpoint
+    keeps returning films. `probe(slug) -> bool` reports session-liveness, so only
+    venues that are BOTH gone from the index AND sessionless surface as retirement
+    candidates — the index gap alone never does.
+    """
+    dead, live = [], []
+    for slug in sorted(gone_slugs):
+        (live if probe(slug) else dead).append(slug)
+    return dead, live
 
 
 def existing_objects(cinema_text: str) -> set[str]:
@@ -220,9 +250,9 @@ def scraper_val_for(catalog_text: str, city_slug: str) -> str | None:
     return m.group(1) if m else None
 
 
-def build_plan(cinema_text, catalog_text, cities, metas, gone) -> Plan:
+def build_plan(cinema_text, catalog_text, cities, metas, gone_dead, gone_live) -> Plan:
     """Pure planning step (no I/O) — decides wire vs park for each new venue."""
-    plan = Plan(gone=sorted(gone))
+    plan = Plan(gone_dead=sorted(gone_dead), gone_live=sorted(gone_live))
     taken = existing_objects(cinema_text)
     for meta in metas:
         if not meta.display:
@@ -297,11 +327,17 @@ def render_report(plan: Plan, applied: bool) -> str:
     if not plan.park:
         lines.append("- _none_")
     lines.append("")
-    lines.append(f"### Retirement candidates — {len(plan.gone)} wired slug(s) dropped from Flicks' sitemap")
-    for g in plan.gone:
-        lines.append(f"- `{g}` — no longer in sitemap-cinemas.xml; verify + remove if closed")
-    if not plan.gone:
+    lines.append(f"### Retirement candidates — {len(plan.gone_dead)} slug(s) dropped from Flicks + no sessions")
+    for g in plan.gone_dead:
+        lines.append(f"- `{g}` — gone from sitemap-cinemas.xml AND no sessions this week; verify + remove if closed")
+    if not plan.gone_dead:
         lines.append("- _none_")
+    if plan.gone_live:
+        lines.append("")
+        lines.append(f"### Sitemap-index gaps (no action) — {len(plan.gone_live)} slug(s) still serving sessions")
+        lines.append("_Dropped from Flicks' sitemap index but their sessions endpoint still returns films — a Flicks index gap, not a closure. Left wired._")
+        for g in plan.gone_live:
+            lines.append(f"- `{g}`")
     return "\n".join(lines)
 
 
@@ -335,7 +371,17 @@ def main(argv=None) -> int:
         with futures.ThreadPoolExecutor(max_workers=args.workers) as ex:
             metas = list(ex.map(lambda s: venue_meta(s, today), new_slugs))
 
-    plan = build_plan(cinema_text, catalog_text, cities, metas, gone)
+    # A slug gone from the sitemap index is only a retirement candidate if its
+    # sessions endpoint is ALSO empty — otherwise it's a live venue Flicks simply
+    # dropped from the index, and must stay wired.
+    gone_dead, gone_live = [], []
+    if gone:
+        with futures.ThreadPoolExecutor(max_workers=args.workers) as ex:
+            liveness = dict(zip(sorted(gone), ex.map(lambda s: probe_sessions(s, today), sorted(gone))))
+        gone_dead, gone_live = partition_gone(gone, lambda s: liveness[s])
+    print(f"gone → retirement candidates: {len(gone_dead)}  live index-gaps: {len(gone_live)}", file=sys.stderr)
+
+    plan = build_plan(cinema_text, catalog_text, cities, metas, gone_dead, gone_live)
 
     if args.apply and plan.wire:
         new_cinema, new_catalog = apply_plan(cinema_text, catalog_text, plan)

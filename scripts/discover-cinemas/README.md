@@ -18,7 +18,7 @@ The UK roster is one hand-wired `FlicksClient` per venue, spread across two file
 2. Diffs it against the slugs we already wire, minus [`exclude.txt`](exclude.txt).
 3. For each genuinely new slug, fetches the cinema page for its display name + coordinates and probes the sessions endpoint (today … +6d) for whether it currently lists showtimes.
 4. Assigns each venue to the **nearest wired UK city** by great-circle distance (cities carry lat/lon in `City.scala`), then splices compilable Scala into both files.
-5. Reports **GONE** venues — wired by us but dropped from Flicks' sitemap — as retirement candidates. It never auto-deletes.
+5. Reports venues wired by us but **dropped from Flicks' sitemap index**, split by session-liveness: a slug that also has **no sessions** this week is a genuine **retirement candidate**; one that **still serves sessions** is a benign Flicks index gap (the sitemap-cinemas.xml index omits some live venues — e.g. Vue Colchester, the Isle of Man cinemas — while their per-venue sessions endpoint keeps working), reported as "no action" and left wired. It never auto-deletes.
 
 ### Parking (never emit broken Scala)
 
