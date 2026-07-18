@@ -35,10 +35,11 @@ class CircuitOpenException(host: String, openForMs: Long)
  * even the short timeout and the slot is freed for hosts that ARE answering.
  * Per-host, so one bad host never blocks the others.
  *
- * 4xx and other non-failure outcomes never trip it — 404 is a real "not found"
- * signal for the MC/RT slug probes, not host trouble. `now` is injectable for
- * tests. Wire it CLOSE to the wire (inside `ThrottledHttpFetch`/`MonitoringHttpFetch`)
- * so a fast-fail still surfaces to uptime as the genuine unavailability it is.
+ * Other 4xx and non-failure outcomes never trip it — 404 is a real "not found"
+ * signal for the MC/RT slug probes, not host trouble; sustained 429 is the one
+ * 4xx that does (see `isTripWorthy`). `now` is injectable for tests. Wire it CLOSE
+ * to the wire (inside `ThrottledHttpFetch`/`MonitoringHttpFetch`) so a fast-fail
+ * still surfaces to uptime as the genuine unavailability it is.
  */
 class HostCircuitBreakerHttpFetch(
   delegate:         HttpFetch,
@@ -79,10 +80,18 @@ class HostCircuitBreakerHttpFetch(
   }
 
   /** Trip-worthy = the host is failing to serve us: a timeout (request OR connect —
-   *  HttpConnectTimeoutException is a subtype), a 5xx, or a lower-level IO error
-   *  (connection refused/reset). A 4xx status is the host answering — never trips. */
+   *  HttpConnectTimeoutException is a subtype), a 5xx, a 429, or a lower-level IO
+   *  error (connection refused/reset).
+   *
+   *  429 is the one 4xx that counts. Every other 4xx is the host ANSWERING (404 is
+   *  a real "not found" for the MC/RT slug probes) — but a 429 is it declining to,
+   *  and `failureThreshold` CONSECUTIVE ones (any success resets the count) mean it
+   *  is refusing us outright rather than shaping a burst. Without this the breaker
+   *  could not open on the case that most needs it: Filmstarts 429'd every request
+   *  for hours on 2026-07-18 while the worker kept firing ~14k of them an hour,
+   *  since ThrottledHttpFetch's gate only paces retries and never gives up. */
   private def isTripWorthy(e: Throwable): Boolean = e match {
-    case s: HttpStatusException                 => s.code >= 500
+    case s: HttpStatusException                 => s.code >= 500 || s.code == 429
     case _: java.net.http.HttpTimeoutException  => true
     case _: java.io.IOException                 => true
     case _                                      => false

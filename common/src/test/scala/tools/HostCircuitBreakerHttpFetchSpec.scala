@@ -23,6 +23,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers {
   private def timeout: String => String = _ => throw new HttpTimeoutException("timed out")
   private def serverError: String => String = url => throw new HttpStatusException(503, "GET", url, None)
   private def notFound: String => String = url => throw new HttpStatusException(404, "GET", url, None)
+  private def tooManyRequests: String => String = url => throw new HttpStatusException(429, "GET", url, None)
 
   private def breaker(delegate: HttpFetch, now: () => Instant = () => Instant.parse("2026-06-23T00:00:00Z")) =
     new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, now = now)
@@ -58,7 +59,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers {
     cb.openRemainingMillis(hostA) shouldBe 0L // 3 fresh failures, still under threshold — proves no carry-over
   }
 
-  it should "trip on 5xx but NEVER on 4xx (a 404 is the host answering, not host trouble)" in {
+  it should "trip on 5xx but NOT on a 404 (the host answering, not host trouble)" in {
     val notFoundCb = breaker(new FakeDelegate(notFound))
     (1 to 8).foreach(_ => a[HttpStatusException] should be thrownBy notFoundCb.get(urlA))
     notFoundCb.openRemainingMillis(hostA) shouldBe 0L // 8 × 404 never opens
@@ -66,6 +67,29 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers {
     val serverErrCb = breaker(new FakeDelegate(serverError))
     (1 to 4).foreach(_ => a[HttpStatusException] should be thrownBy serverErrCb.get(urlA))
     serverErrCb.openRemainingMillis(hostA) should be > 0L // 4 × 503 opens
+  }
+
+  it should "trip on SUSTAINED 429 — a host refusing us, unlike other 4xx" in {
+    // Filmstarts (2026-07-18) answered every request 429 for hours. Without this
+    // the breaker never opened (429 is a 4xx) and the worker kept firing ~14k
+    // guaranteed-rejected requests an hour at a host that had said stop.
+    val cb = breaker(new FakeDelegate(tooManyRequests))
+    (1 to 4).foreach(_ => a[HttpStatusException] should be thrownBy cb.get(urlA))
+    cb.openRemainingMillis(hostA) should be > 0L
+  }
+
+  it should "NOT trip on a 429 that recovers — transient backpressure isn't a refusal" in {
+    // TMDB throttles a burst then serves the retry; ThrottledHttpFetch's gate
+    // handles that, and the success must clear the accrued 429s so an ordinary
+    // rate-limit blip never costs the host a 60s blackout.
+    val delegate = new FakeDelegate(tooManyRequests)
+    val cb = breaker(delegate)
+    (1 to 3).foreach(_ => a[HttpStatusException] should be thrownBy cb.get(urlA))
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+    delegate.respond = tooManyRequests
+    (1 to 3).foreach(_ => a[HttpStatusException] should be thrownBy cb.get(urlA))
+    cb.openRemainingMillis(hostA) shouldBe 0L // no carry-over across the success
   }
 
   it should "go half-open after the cooldown and close again on a success" in {
