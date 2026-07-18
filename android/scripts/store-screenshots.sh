@@ -43,19 +43,21 @@ snap() { adb exec-out screencap -p > "$1"; }
 naps() { command sleep "$1"; }
 
 locale_country() { case "$1" in en-GB) echo uk;; pl-PL) echo pl;; de-DE) echo de;; *) echo "";; esac; }
+# The pill labels are ENDONYMS from the catalog — identical in every locale, so
+# they double as the tap target (see tap_text) regardless of the app's language.
 country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; esac; }
 country_base()   { case "$1" in pl) echo "https://kinowo.fly.dev";; uk) echo "https://showtimes-uk.fly.dev";; de) echo "https://showtimes-de.fly.dev";; *) echo "";; esac; }
-country_pill_x() { case "$1" in pl) echo 205;; uk) echo 694;; de) echo 1096;; *) echo 0;; esac; }
+# The gate's "Country" header, which IS localized — picking a country forces that
+# country's language, so seeing this label is proof the switch actually landed.
+country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; esac; }
 
 # kinowo_xl tap coordinates (px)
-X_SEARCH=694;  Y_SEARCH=680        # gate: search field
-X_RESULT=694;  Y_RESULT=891        # gate: first result
 X_ALL=1140;    Y_PILLS=164         # list: "All / Wszystkie / Alle" pill
 X_FILTERS=1260                     # list: filters icon (same Y_PILLS)
 X_FILM=250;    Y_FILM=1275         # list: first film → detail
 X_CINEMA=180;  Y_CINEMA=682        # Filtry: cinema section header
 X_SHOWLIST=895; Y_SHOWLIST=2047    # split-city "Show listings"
-Y_SEARCH_FILM=2800                 # list: "Search films" field
+X_SEARCH_FILM=694; Y_SEARCH_FILM=2800  # list: "Search films" field
 
 # ── self-setup ────────────────────────────────────────────────────────────────
 booted() { [ "$(adb get-state 2>/dev/null)" = "device" ] &&
@@ -97,6 +99,83 @@ pad_playsafe() { # $1 in, $2 out — pad width so long:short ≤ 1.98:1 (Play ca
 
 in_app() { adb shell dumpsys activity activities 2>/dev/null | grep -m1 topResumedActivity | grep -q "$PKG"; }
 
+# ── tapping by label, not by pixel ────────────────────────────────────────────
+# The gate (country pills, city search, city rows) is driven through the
+# accessibility tree instead of hardcoded coordinates. Coordinates alone can't
+# tell "the screen I meant" from "whatever is on screen right now": a tap sent
+# before the gate has rendered is swallowed, and every later tap then lands on
+# the wrong screen — which is how `en-GB Liverpool` once produced GERMAN
+# screenshots (the list's "All dates" tap at 1140,164 sits exactly on the
+# Deutschland pill of the still-showing gate, and the first city row under it is
+# Amberg). Waiting for a node with the expected TEXT makes each step assert the
+# state it thinks it's in, so a miss fails loudly instead of silently capturing
+# the wrong country.
+ui_xml() { adb shell uiautomator dump /sdcard/kinowo-ui.xml >>"$NOISE" 2>&1 && adb shell cat /sdcard/kinowo-ui.xml 2>>"$NOISE"; }
+
+# Tap-point of the first node reading $1; empty when absent. The text node
+# itself isn't the clickable one (Compose wraps it), so we aim at the label's
+# centre — the enclosing button always covers it.
+# Text fields are skipped: typing "Liverpool" into the city search makes the
+# EditText itself read "Liverpool", so matching on text alone finds the box we
+# just typed into instead of the city row below it — and tapping the box is a
+# no-op that leaves the run stranded on the gate.
+#
+# Comparison folds case and diacritics, matching how the app's own city search
+# behaves: `store-screenshots.sh pl-PL Poznan` must find the row rendered
+# "Poznań" (and `Wroclaw` → "Wrocław"), so callers can stay on ASCII.
+node_center() { python3 -c '
+import re, sys, unicodedata
+def fold(s):
+    s = s.replace("ł", "l").replace("Ł", "L")
+    return "".join(c for c in unicodedata.normalize("NFD", s)
+                   if not unicodedata.combining(c)).casefold()
+text, xml = fold(sys.argv[1]), sys.stdin.read()
+for node in re.finditer(r"<node[^>]*>", xml):
+    n = node.group(0)
+    if "EditText" in n: continue
+    t = re.search(r" text=\"([^\"]*)\"", n)
+    b = re.search(r" bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"", n)
+    if t and b and fold(t.group(1)) == text:
+        x1, y1, x2, y2 = map(int, b.groups())
+        print((x1 + x2) // 2, (y1 + y2) // 2); break
+' "$1"; }
+
+# Wait until a node reading $1 is on screen ($2 secs, default 120).
+wait_text() {
+  local t=0 limit="${2:-120}" hit
+  while [ "$t" -lt "$limit" ]; do
+    hit="$(ui_xml | node_center "$1")"
+    [ -n "$hit" ] && { echo "$hit"; return 0; }
+    naps 3; t=$((t+3))
+  done
+  return 1
+}
+
+# Wait for $1 then tap it. Dies with the label in the message, so a failure says
+# WHICH element never appeared rather than leaving a wrong-looking screenshot.
+tap_text() {
+  local point; point="$(wait_text "$1" "${2:-120}")" || die "'$1' never appeared on screen — the app is on an unexpected screen."
+  tap ${point}
+}
+
+# Tap the gate's city search box — the screen's only EditText, and unlabelled
+# (its placeholder is drawn by Compose, not exposed as node text), so it's found
+# by class rather than by text.
+tap_field() {
+  local point; point="$(ui_xml | python3 -c '
+import re, sys
+for node in re.finditer(r"<node[^>]*>", sys.stdin.read()):
+    n = node.group(0)
+    if "android.widget.EditText" in n:
+        b = re.search(r" bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"", n)
+        if b:
+            x1, y1, x2, y2 = map(int, b.groups())
+            print((x1 + x2) // 2, (y1 + y2) // 2); break
+')"
+  [ -n "$point" ] || die "no search field on the gate — the app is on an unexpected screen."
+  tap ${point}
+}
+
 # Poll a screencap until it's bigger than $2 bytes (a blank/near-black frame
 # compresses tiny; a rendered screen is 60 KB+, one with posters 250 KB+). This
 # replaces fixed sleeps so a slow cold-boot first launch doesn't yield blanks.
@@ -126,23 +205,42 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir
     adb shell pm clear "$PKG" >>"$NOISE" 2>&1
     adb shell pm grant "$PKG" android.permission.ACCESS_COARSE_LOCATION >>"$NOISE" 2>&1 || true
     adb shell am start -n "$PKG/$ACT" >>"$NOISE" 2>&1
-    wait_frame 120 60000 || warn "gate slow to render"   # cold first launch can take ~40s
+    # Wait for a country PILL, not just a big frame: right after `am start` the
+    # launcher is still on screen and compresses well past any size threshold,
+    # so a size-only wait returns before the app has drawn anything.
+    wait_text "$(country_name "$country")" 150 >/dev/null ||
+      die "the city gate never appeared — cold launch may have failed (see BUILD=1)."
+  done_
+
+  # We always tap the target pill (even Polska): a country left persisted by a
+  # previous run — which pm clear on a fresh boot doesn't always reset — would
+  # otherwise leak in. Re-selecting the current country is a harmless no-op.
+  step "country → $(country_name "$country")"
+    tap_text "$(country_name "$country")" 30             # forces locale + backend
+    # Picking a country forces its language, so the localized "Country" header
+    # coming back is proof the switch took effect — the app recreates itself
+    # (~30s of blank screen) between the tap and that label appearing.
+    wait_text "$(country_header "$country")" 150 >/dev/null ||
+      die "country never switched to $(country_name "$country") — the pill tap didn't land."
     naps 2
   done_
 
-  # Always tap the target country pill (even Polska) so a country left persisted by
-  # a previous run — which pm clear on a fresh boot doesn't always reset — can't leak
-  # in. Re-selecting the current country is a harmless no-op; a change recreates.
-  step "country → $(country_name "$country")"
-    tap "$(country_pill_x "$country")" 234; naps 4       # select → forces locale + backend
-    wait_frame 120 60000 || warn "gate slow after country select"; naps 2
-  done_
-
   step "loading $term"
-    tap "$X_SEARCH" "$Y_SEARCH"; naps 1; type_ "$term"; naps 2; tap "$X_RESULT" "$Y_RESULT"
+    tap_field                                            # gate: the city search box
+    naps 1; type_ "$term"; naps 2
+    # Tap the row NAMED $term rather than "whatever is first": on the wrong
+    # country (or before the list loads) there is no such row, so this dies
+    # instead of opening some other city — the Amberg failure above.
+    tap_text "$term" 60
     wait_frame 50 60000 || true                          # list / area dialog chrome up
     [ -n "${SPLIT:-}" ] && { tap "$X_SHOWLIST" "$Y_SHOWLIST"; naps 3; }
     in_app || die "app fell out of foreground — a stray tap opened a browser (SPLIT=1 for split cities?)"
+    # Everything below taps by coordinate, which is only safe once we are off the
+    # gate — the list's "All dates" spot sits on the gate's Deutschland pill, so a
+    # run still stranded here would silently capture GERMAN screens.
+    if ui_xml | node_center "$(country_header "$country")" | grep -q .; then
+      die "still on the city gate after picking $term — nothing was captured."
+    fi
   done_
 
   step "capturing 4 screens"
@@ -151,7 +249,7 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir
     naps 3
     snap "$stage/1.png"                                   # repertoire
     if [ -n "${CLEAN_FILM:-}" ]; then
-      tap "$X_SEARCH" "$Y_SEARCH_FILM"; naps 1; type_ "$CLEAN_FILM"; naps 3
+      tap "$X_SEARCH_FILM" "$Y_SEARCH_FILM"; naps 1; type_ "$CLEAN_FILM"; naps 3
     fi
     # Screen-to-screen transitions are quick animations between two non-blank
     # screens, so wait_frame (a size threshold) can't tell them apart — use fixed
