@@ -18,10 +18,13 @@ import scala.util.Try
  * Periodically enqueues a `ScrapeCinema` task for every cinema that is due under
  * the shared [[DueWindow]] — its phase-window boundary has passed since the last
  * successful scrape, or it has never been scraped. The window's period is the
- * freshness setting (default 60min, `KINOWO_SCRAPE_FRESHNESS_MINUTES`); each
- * cinema's boundary sits at a deterministic phase offset hashed from its key, so
- * the ~300 cinemas spread evenly across the period instead of all falling due
- * together and scraping in a lockstep wave. Enqueue is deduped by the queue, so a
+ * freshness setting (`KINOWO_SCRAPE_FRESHNESS_MINUTES`, default 60min) — set per
+ * country in that worker app's fly toml, so the rate is NOT uniform across the
+ * fleet: DE runs 120min against its ~1,533-cinema roster while PL and UK stay
+ * hourly (see `WorkerScrapeCadenceConfigSpec`). Each cinema's boundary sits at a
+ * deterministic phase offset hashed from its key, so a country's cinemas spread
+ * evenly across the period instead of all falling due together and scraping in a
+ * lockstep wave. Enqueue is deduped by the queue, so a
  * cinema with a task already waiting/working isn't queued twice; the handler
  * re-checks the SAME `DueWindow` and skips only if a concurrent run already
  * refreshed it this window (never a still-due task — that churn is what [[DueWindow]] fixes).
