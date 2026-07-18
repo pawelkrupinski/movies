@@ -153,6 +153,19 @@ groups:
       # pinning it at baseline long enough to fall behind. 15m window so the expected
       # ~90s reboot blip (post boot-stagger fix) doesn't page; the 2026-06-12 episode
       # was 28m of >75% steal with throttle pinned high — this would have caught it.
+      # WARM-JVM GUARD (`and on(app,instance) uptime > 1h`). A cold JVM legitimately
+      # burns CPU re-JITing the whole scrape/parse surface, and a machine replaced by a
+      # deploy starts at ~0 credit, so it is throttled to baseline for roughly an hour
+      # while it warms. That flare is a KNOWN, self-limiting, harmless pattern (CPU-only,
+      # 0 uncommon traps, bucket recovers — see reference_worker_jit_churn_c2), NOT a
+      # starved worker. Without the guard this rule fired for ~31%% of a 24h window on
+      # kinowo-worker and on every deploy for all three, which is noise that trains you to
+      # ignore it. What IS actionable is sustained throttling on a JVM that has finished
+      # warming, which is exactly what survives the guard.
+      #
+      # Deliberately NOT a fix for the underlying restart cadence: kinowo-worker restarts
+      # ~11.7x/day vs ~1.1-1.7 for -de/-uk (7d avg, 0 OOM exits), which no rule catches
+      # because crash-looping needs >4/HOUR. Left as a known gap rather than papered over.
       - uid: kinowo-worker-cpu-starved
         title: Worker CPU starved (sustained throttle)
         condition: C
@@ -163,7 +176,7 @@ groups:
           severity: warning
         annotations:
           summary: '{{ $labels.app }} is CPU-throttled for 15m+ (falling behind)'
-          description: 'rate(fly_instance_cpu_throttle) > 0.2 on {{ $labels.app }} (throttled >20% of wall-clock) for 15m — the worker is starved past its baseline. Likely a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots. Check recent worker deploys/restarts and the queue depth (web queue-monitor page); if it recurs without a deploy, the fix is a bigger [[vm]] (more shared-CPU credit), not scheduling. Short reboot blips (~90s) are expected and sit below this 15m window.'
+          description: 'rate(fly_instance_cpu_throttle) > 0.2 on {{ $labels.app }}, on a JVM already up >1h (see the warm-JVM guard below) (throttled >20% of wall-clock) for 15m — the worker is starved past its baseline. Likely a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots. Check recent worker deploys/restarts and the queue depth (web queue-monitor page); if it recurs without a deploy, the fix is a bigger [[vm]] (more shared-CPU credit), not scheduling. Short reboot blips (~90s) are expected and sit below this 15m window.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -171,7 +184,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo-worker.*"}[5m]))'
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo-worker.*"}[5m])) and on (app, instance) ((time() - max by (app, instance) (process_start_time_seconds{app=~"kinowo-worker.*"})) > 3600)'
               instant: true
               range: false
               intervalMs: 1000
