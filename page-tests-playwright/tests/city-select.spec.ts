@@ -8,12 +8,13 @@ import { waitForCards } from './helpers';
 test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   test('lists every supported city and a pick navigates into that city', async ({ page }) => {
     await page.goto('/');
-    // 41 Polish + 79 UK + 3 German cities — the fixture `/` renders `City.all`,
+    // 41 Polish + 79 UK + 158 German cities — the fixture `/` renders `City.all`,
     // the LIVE union across every country (see FixtureServerMain), not one
     // country. Every Flicks region is now live (`activeUkCities = allUkCities`),
-    // so the full 79-region UK roster appears.
+    // so the full 79-region UK roster appears, and Germany is the full
+    // 158-region Filmstarts roster (data/germany).
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(123);
+    await expect(links).toHaveCount(278);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
@@ -45,6 +46,11 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list')).toContainText('Cornwall');
     await expect(page.locator('.city-list')).toContainText('Kent');
     await expect(page.locator('.city-list')).toContainText('Yorkshire');
+    // The full German roster (native labels) is live too.
+    await expect(page.locator('.city-list')).toContainText('Berlin');
+    await expect(page.locator('.city-list')).toContainText('München');
+    await expect(page.locator('.city-list')).toContainText('Köln');
+    await expect(page.locator('.city-list')).toContainText('Hamburg');
 
     await page.locator('.city-list a', { hasText: 'Poznań' }).click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
