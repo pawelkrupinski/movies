@@ -5,15 +5,15 @@
 #
 # The gap this fills: `smoke-test.sh` proves the provisioning YAML/JSON parses,
 # but its Grafana has no metrics backend at all. `label_values(...)` returns
-# nothing there, so `$country` / `$worker_app` never populate and no panel
-# query is ever interpolated with a real value. Every scoping bug that lives in
-# the interpolation (the "All" → `.*` cross-country leak, a query missing the
-# `$worker_app` matcher) is invisible to that test.
+# nothing there, so `$country` never populates and no panel query is ever
+# interpolated with a real value. Every scoping bug that lives in the
+# interpolation (the "All" → `.*` cross-country leak, an `and on(app)` join
+# against the wrong country-labelled metric) is invisible to that test.
 #
 # Here a single-node VictoriaMetrics is seeded (see seed-metrics.py) with three
-# worker apps across pl/uk/de, and the `app-metrics-live` datasource is pointed
-# at it. The checked-in datasource YAML is NOT edited: provisioning is copied to
-# a temp dir and the URL rewritten there.
+# worker apps and three web apps across pl/uk/de, and the `app-metrics-live`
+# datasource is pointed at it. The checked-in datasource YAML is NOT edited:
+# provisioning is copied to a temp dir and the URL rewritten there.
 #
 # Usage:
 #   fly/grafana/local-harness.sh            # boot, verify, print URL, exit (containers stay up)
@@ -78,7 +78,7 @@ for _ in $(seq 1 60); do
 done
 [ "${vm_ok:-0}" = 1 ] || { echo "FAIL: VictoriaMetrics never became healthy"; docker logs "$VM_NAME" | tail -40; exit 1; }
 
-echo "==> seeding ${SEED_HOURS}h of samples at ${SEED_STEP}s steps (3 worker apps: pl/uk/de)"
+echo "==> seeding ${SEED_HOURS}h of samples at ${SEED_STEP}s steps (3 worker + 3 web apps: pl/uk/de)"
 python3 "$DIR/seed-metrics.py" --hours "$SEED_HOURS" --step-seconds "$SEED_STEP" \
   > "$WORK/seed.prom"
 curl -fsS --data-binary "@$WORK/seed.prom" \
@@ -138,31 +138,69 @@ assert_labels() { # label  expected-csv
 }
 
 assert_labels country "de,pl,uk"
-assert_labels app "kinowo-worker,kinowo-worker-de,kinowo-worker-uk"
+assert_labels app "kinowo,kinowo-worker,kinowo-worker-de,kinowo-worker-uk,showtimes-de,showtimes-uk"
 
-# `$worker_app` is resolved from kinowo_worker_throttled scoped by $country —
-# reproduce that interpolation to prove country scoping actually narrows it.
-for c in pl uk de; do
-  expected="kinowo-worker"; [ "$c" = pl ] || expected="kinowo-worker-$c"
-  got=$(curl -fsS --get --data-urlencode "match[]=kinowo_worker_throttled{country=~\"$c\"}" \
-    "$proxy/label/app/values" \
-    | python3 -c "import sys,json;print(','.join(sorted(json.load(sys.stdin)['data'])))")
-  if [ "$got" = "$expected" ]; then
-    echo "PASS: \$worker_app scoped to country=$c resolves to [$got]"
+# Run a panel's real PromQL and report which apps came back. `$country` is
+# interpolated by hand here — that IS the thing under test.
+apps_returned() { # promql
+  curl -fsS --get --data-urlencode "query=$1" "$proxy/query" \
+    | python3 -c "
+import sys, json
+r = json.load(sys.stdin)['data']['result']
+print(','.join(sorted({s['metric'].get('app', '?') for s in r})) or 'NO DATA')"
+}
+
+assert_scoped_to() { # what  promql  expected-csv
+  local got; got=$(apps_returned "$2")
+  if [ "$got" = "$3" ]; then
+    echo "PASS: $1 → [$got]"
   else
-    echo "FAIL: \$worker_app scoped to country=$c resolved to [$got], expected [$expected]"
+    echo "FAIL: $1 → [$got], expected [$3]"
+    fail=1
+  fi
+}
+
+# The side-by-side memory panels (43 worker / 44 web). Neither app's jvm_*
+# carries a country label, so BOTH scope by intersecting with a metric that does
+# — `and on(app) kinowo_worker_throttled` for the worker, the mirrored
+# `and on(app) kinowo_web_movies_served` for web. That join is the whole scoping
+# mechanism, and no template variable is involved (a second variable has twice
+# caused silent cross-country leakage). Run each panel's real expr per country
+# and assert it comes back with that country's app and nothing else — including
+# that the two panels never land on the same app.
+for c in pl uk de; do
+  worker_expected="kinowo-worker"; [ "$c" = pl ] || worker_expected="kinowo-worker-$c"
+  web_expected="kinowo";           [ "$c" = pl ] || web_expected="showtimes-$c"
+  assert_scoped_to "worker heap, country=$c" \
+    "jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_worker_throttled{country=~\"$c\"}" \
+    "$worker_expected"
+  assert_scoped_to "web heap, country=$c" \
+    "jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_web_movies_served{country=~\"$c\"}" \
+    "$web_expected"
+  if [ "$worker_expected" = "$web_expected" ]; then
+    echo "FAIL: the worker and web memory panels both resolve to [$worker_expected] for country=$c"
     fail=1
   fi
 done
 
-# The asymmetry the dashboards depend on: jvm_* has no country label, so
-# $worker_app is the only thing scoping those panels. If this ever returns a
-# country the seed (and the assumption) is wrong.
+# The join is only as good as its right-hand side: if the web app ever stops
+# exporting the country-labelled gauge, the web panel silently empties rather
+# than showing the wrong country. Assert the per-country pools the panel plots.
+for c in pl uk de; do
+  web_expected="kinowo"; [ "$c" = pl ] || web_expected="showtimes-$c"
+  assert_scoped_to "web G1 old gen, country=$c" \
+    "jvm_memory_pool_used_bytes{pool=\"G1 Old Gen\"} and on(app) kinowo_web_movies_served{country=~\"$c\"}" \
+    "$web_expected"
+done
+
+# The asymmetry the dashboards depend on: jvm_* has no country label — on
+# EITHER app — so the `and on(app)` join is the only thing scoping those panels.
+# If this ever returns a country the seed (and the assumption) is wrong.
 got=$(curl -fsS --get --data-urlencode 'match[]=jvm_memory_max_bytes' \
   "$proxy/label/country/values" \
   | python3 -c "import sys,json;print(','.join(sorted(json.load(sys.stdin).get('data') or [])))")
 if [ -z "$got" ]; then
-  echo "PASS: jvm_memory_max_bytes carries no country label (so \$worker_app must scope it)"
+  echo "PASS: jvm_memory_max_bytes carries no country label (so the on(app) join must scope it)"
 else
   echo "FAIL: jvm_memory_max_bytes unexpectedly carries country=[$got]"
   fail=1

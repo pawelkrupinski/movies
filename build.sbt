@@ -80,6 +80,16 @@ lazy val common = (project in file("common"))
       mongoScalaDriver,
       Dependencies.caffeine,   // qualified: Play's autoImport also defines `caffeine`
       jsoup,
+      // Prometheus client. Lives here, not in one app, because BOTH deployed
+      // JVMs expose exposition text on their own /metrics: the worker's task
+      // pipeline and the web app's uptime/served gauges + JVM resource
+      // collectors. `services.metrics.JvmProcessMetrics` /
+      // `PrometheusExposition` are the shared pieces they both build on, so the
+      // dependency belongs at the shared layer they live in.
+      // `-instrumentation-jvm` supplies the standard process/JVM collectors.
+      prometheusCore,
+      prometheusText,
+      prometheusJvm,
       // common's test config covers ONLY its own specs (models, codecs, Mongo,
       // DaemonExecutors, …) — the shared fakes live in `testkit`, not here, so
       // common's test surface stays lean and self-contained.
@@ -157,13 +167,9 @@ lazy val worker = (project in file("worker"))
       // EVERY log line — WorkerMain lifecycle, scrape ticks, and Sentry error
       // reporting all vanish. (Version pinned in Dependencies.scala to match Play.)
       logbackClassic,
-      // Prometheus client: build + expose the worker's task-pipeline metrics
-      // (scraped by Fly Prometheus via the [[metrics]] block in fly.worker.toml).
-      // `-instrumentation-jvm` adds the standard process/JVM resource collectors
-      // (process CPU, memory, GC, threads) — see JvmProcessMetrics.
-      prometheusCore,
-      prometheusText,
-      prometheusJvm,
+      // The Prometheus client the task-pipeline metrics are built on (scraped by
+      // Fly Prometheus via the [[metrics]] block in fly.worker.toml) arrives via
+      // `common`, which owns it for both apps — see its libraryDependencies.
       scalatestPlay % Test,
     )
   )
