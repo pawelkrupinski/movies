@@ -174,29 +174,20 @@ assert "worker memory panel queries host free memory (Mixed datasource)" \
   "api/dashboards/uid/fly-overview" \
   "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"\$worker_app\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
 
-# \$worker_app must NOT offer an "All" option, and must stay VISIBLE.
+# Country is the ONLY control on these dashboards. \$worker_app exists purely to
+# turn the selected country into Fly app names for the three fly_instance_* host
+# targets, which live on the `fly-prometheus` datasource and so cannot be joined
+# against a country-carrying series. It must stay HIDDEN (hide:2) — a second
+# dropdown is exactly what we don't want — and must keep includeAll so a country
+# served by more than one worker app still resolves to all of them.
 #
-# Process-level series (jvm_*, process_*, kinowo_worker_native_memory_bytes, and
-# the fly_instance_* host metrics) carry only an `app` label — no `country`, and
-# correctly so: heap, RSS, CPU and threads belong to the JVM, not to a country.
-# So \$worker_app is the ONLY thing scoping those panels to the selected country.
-#
-# It used to be hide:2 + includeAll:true, permanently parked on "All". A hidden
-# variable is never rendered, so its option list stayed unpopulated and "All"
-# interpolated as `.*` — matching every worker app regardless of \$country. That
-# put the Polish worker's series on every de/uk panel: panel 43 drew TWO "Heap
-# cap (-Xmx)" lines (464 MiB pre-redeploy PL + 433 MiB de), and panel 46 drew
-# "JIT" and "process CPU total" twice. Silent and very easy to misread as the
-# selected country's worker misbehaving.
-#
-# With includeAll:false the variable resolves to concrete app names from the
-# country-scoped option list, and hide:0 keeps it on screen so which app a panel
-# is showing is legible rather than implicit. Guards against a regression to
-# either hidden or All.
+# Verified against a data-seeded Grafana (fly/grafana/local-harness.sh, same
+# 11.4.0 image as prod): hidden + All interpolates to the country-scoped app
+# list, NOT `.*`. Do not "fix" this by unhiding it.
 for uid in fly-overview kinowo-worker-diag; do
-  assert "$uid: \$worker_app is visible and has no All option" \
+  assert "$uid: \$worker_app stays hidden (country is the only control)" \
     "api/dashboards/uid/$uid" \
-    "any(v['name']=='worker_app' and v.get('includeAll') is False and v.get('hide')==0 for v in d['dashboard']['templating']['list'])"
+    "any(v['name']=='worker_app' and v.get('hide')==2 and v.get('includeAll') is True for v in d['dashboard']['templating']['list'])"
 done
 
 assert "worker diagnostics dashboard provisioned" \
