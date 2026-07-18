@@ -1,11 +1,11 @@
 package clients.mcsw_elektrownia
 
-import clients.tools.FakeHttpFetch
-import models.McswElektrowniaCinema
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import models.McswElektrowniaCinema
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.McswElektrowniaCinemaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.McswElektrowniaCinemaClient
 
 import java.time.{LocalDate, LocalDateTime}
 

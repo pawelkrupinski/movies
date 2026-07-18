@@ -1,9 +1,9 @@
 package clients.rialto
 
+import org.scalatest.matchers.should.Matchers
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.RialtoClient
+import services.cinemas.pl.RialtoClient
 
 import java.nio.file.{Files, Paths}
 

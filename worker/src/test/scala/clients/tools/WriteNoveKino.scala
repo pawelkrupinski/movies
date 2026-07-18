@@ -1,8 +1,8 @@
 package clients.tools
 
 import models.KinoAtlantic
-import services.cinemas.NoveKinoClient
 import tools.RealHttpFetch
+import services.cinemas.pl.NoveKinoClient
 
 object WriteNoveKino {
   def main(args: Array[String]): Unit = {

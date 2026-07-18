@@ -97,7 +97,7 @@ object Country {
 
   /** Germany — the third country: a German-language deployment on its own
    *  `kinowo_de` database, sourced from the AlloCiné/Filmstarts website-JSON
-   *  ([[services.cinemas.WebediaShowtimesClient]], via `www.filmstarts.de`).
+   *  ([[services.cinemas.de.WebediaShowtimesClient]], via `www.filmstarts.de`).
    *  No Filmweb (Polish-only). */
   case object Germany extends Country(
     code           = "de",

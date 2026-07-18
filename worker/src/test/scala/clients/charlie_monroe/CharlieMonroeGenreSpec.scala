@@ -3,7 +3,7 @@ package clients.charlie_monroe
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CharlieMonroeClient
+import services.cinemas.pl.CharlieMonroeClient
 
 /**
  * Charlie Monroe / Kino Malta lists each film's genre on the listing card's

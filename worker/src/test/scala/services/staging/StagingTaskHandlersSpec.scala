@@ -3,9 +3,9 @@ package services.staging
 import models.{Cinema, CinemaShowing, Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{DetailEnricher, FilmDetail}
 import services.freshness.InMemoryFreshnessStore
 import services.tasks.{HandlerOutcome, StagingTaskKeys, Task, TaskType}
+import services.cinemas.common.{DetailEnricher, FilmDetail}
 
 /** Specs for the four thin staging handlers — each parses its payload, runs the
  *  matching `StagingSteps` step, and maps the result to a `HandlerOutcome`. */

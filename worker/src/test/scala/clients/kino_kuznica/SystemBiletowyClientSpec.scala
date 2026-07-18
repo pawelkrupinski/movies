@@ -1,11 +1,11 @@
 package clients.kino_kuznica
 
+import org.scalatest.OptionValues
+import org.scalatest.matchers.should.Matchers
 import clients.tools.FakeHttpFetch
 import models.{KinoCentrum3D, KinoFarys, KinoKawiarnia, KinoKuznica, KinoPckulKino, KinoRegis}
-import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.SystemBiletowyClient
+import services.cinemas.pl.SystemBiletowyClient
 
 import java.time.LocalDateTime
 

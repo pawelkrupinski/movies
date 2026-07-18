@@ -1,8 +1,8 @@
 package clients.tools
 
 import models.KinoOskard
-import services.cinemas.Bilety24Client
 import tools.RealHttpFetch
+import services.cinemas.pl.Bilety24Client
 
 object WriteOskard {
   def main(args: Array[String]): Unit = {

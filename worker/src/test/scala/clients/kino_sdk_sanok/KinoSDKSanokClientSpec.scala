@@ -1,11 +1,11 @@
 package clients.kino_sdk_sanok
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoSDK
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoSDKSanokClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoSDKSanokClient
 
 import java.time.{LocalDate, LocalDateTime}
 

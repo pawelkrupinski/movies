@@ -1,11 +1,12 @@
 package clients.kino_pod_baranami
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoPodBaranami
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoPodBaranamiClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.DetailEnricher
+import services.cinemas.pl.KinoPodBaranamiClient
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -90,7 +91,7 @@ class KinoPodBaranamiClientSpec extends AnyFlatSpec with Matchers with OptionVal
   }
 
   it should "expose itself as a deferred DetailEnricher that resolves TMDB from the listing" in {
-    client shouldBe a[services.cinemas.DetailEnricher]
+    client shouldBe a[services.cinemas.common.DetailEnricher]
     client.detailGroup            shouldBe "kino-pod-baranami"
     client.defersTmdbResolution   shouldBe false
   }

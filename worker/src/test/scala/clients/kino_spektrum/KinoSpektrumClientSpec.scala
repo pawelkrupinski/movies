@@ -1,11 +1,11 @@
 package clients.kino_spektrum
 
-import clients.tools.FakeHttpFetch
-import models.KinoSpektrum
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoSpektrumClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoSpektrum
+import services.cinemas.pl.KinoSpektrumClient
 
 import java.time.LocalDateTime
 

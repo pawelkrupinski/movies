@@ -2,6 +2,10 @@ package services.cinemas
 
 import models._
 import tools.{CachingDetailFetch, HttpFetch}
+import services.cinemas.common.{CinemaScraper, ZyteFallback}
+import services.cinemas.de.WebediaShowtimesClient
+import services.cinemas.pl._
+import services.cinemas.uk.FlicksClient
 
 import java.time.{LocalDate, ZoneId}
 import scala.concurrent.duration._

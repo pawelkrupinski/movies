@@ -2,10 +2,10 @@ package clients.kinematograf_lodz
 
 import models.KinoCharlie
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinematografLodzClient
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import services.cinemas.pl.KinematografLodzClient
 
 import java.time.{LocalDate, LocalDateTime}
 

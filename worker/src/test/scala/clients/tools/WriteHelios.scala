@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.HeliosClient
 import tools.HeliosFetch
+import services.cinemas.pl.HeliosClient
 
 object WriteHelios {
   def main(args: Array[String]): Unit = {

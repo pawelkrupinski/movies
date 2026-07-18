@@ -1,9 +1,9 @@
 package services.tasks
 
-import services.cinemas.DetailEnricher
 import services.events.{CinemaMovieAdded, DomainEvent}
 import services.freshness.FreshnessStore
 import services.movies.MovieCacheReader
+import services.cinemas.common.DetailEnricher
 
 /**
  * One per deferred cinema ("one handler per movie client"): on the first

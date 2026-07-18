@@ -1,7 +1,7 @@
 package scripts
 
-import services.cinemas.MultikinoClient
 import tools.{HttpFetch, RealHttpFetch, ResidentialProxy, SessionWarmingHttpFetch}
+import services.cinemas.pl.MultikinoClient
 
 /**
  * Reproduce + isolate the intermittent Multikino-via-proxy 401 (the

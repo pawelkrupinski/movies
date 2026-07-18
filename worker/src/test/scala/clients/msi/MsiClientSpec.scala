@@ -1,13 +1,13 @@
 package clients.msi
 
-import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import models._
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
-import services.cinemas.MsiClient
+import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import org.scalatest.OptionValues
 import tools.HttpStatusException
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.MsiClient
 
 import java.time.{LocalDate, LocalDateTime}
 

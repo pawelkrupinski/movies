@@ -1,12 +1,12 @@
 package clients.kino_mikro
 
-import clients.tools.FakeHttpFetch
-import models.{KinoMikro, MikroBronowice}
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import clients.tools.FakeHttpFetch
 import play.api.libs.json.JsString
-import services.cinemas.{KinoMikroClient, KinoMikroParser}
+import org.scalatest.matchers.should.Matchers
+import models.{KinoMikro, MikroBronowice}
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.{KinoMikroClient, KinoMikroParser}
 
 import java.time.LocalDate
 

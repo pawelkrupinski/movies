@@ -1,11 +1,12 @@
 package clients.alternatywy
 
-import clients.tools.FakeHttpFetch
 import models.KinoAlternatywy
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.AlternatywyClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.DetailEnricher
+import services.cinemas.pl.AlternatywyClient
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -72,7 +73,7 @@ class AlternatywyClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "expose itself as a deferred DetailEnricher resolving TMDB from the listing" in {
-    client                       shouldBe a[services.cinemas.DetailEnricher]
+    client                       shouldBe a[services.cinemas.common.DetailEnricher]
     client.detailGroup           shouldBe "kino-alternatywy"
     client.defersTmdbResolution  shouldBe false
   }

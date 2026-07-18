@@ -1,11 +1,11 @@
 package clients.kino_zacisze
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.KinoZacisze
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoZaciszeClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoZaciszeClient
 
 import java.time.LocalDateTime
 

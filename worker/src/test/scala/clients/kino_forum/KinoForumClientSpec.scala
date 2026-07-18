@@ -1,11 +1,11 @@
 package clients.kino_forum
 
-import clients.tools.FakeHttpFetch
 import models.KinoForum
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoForumClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoForumClient
 
 import java.time.{LocalDate, LocalDateTime}
 

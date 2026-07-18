@@ -1,10 +1,11 @@
 package services.cinemas
 
+import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
+import org.scalatest.matchers.should.Matchers
 import models.{Cinema, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
-import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
+import services.cinemas.common.{RetryingCinemaScraper, ScrapeOutcome, ScrapeOutcomeListener, UptimeRecordingScraper}
 
 import scala.concurrent.duration._
 

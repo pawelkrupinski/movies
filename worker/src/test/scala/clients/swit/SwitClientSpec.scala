@@ -1,10 +1,10 @@
 package clients.swit
 
-import clients.tools.FakeHttpFetch
-import models.{KinoSwit, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.SwitClient
+import clients.tools.FakeHttpFetch
+import models.{KinoSwit, Showtime}
+import services.cinemas.pl.SwitClient
 
 import java.time.LocalDateTime
 

@@ -1,10 +1,11 @@
 package clients.nove_kino
 
-import clients.tools.FakeHttpFetch
-import models.{KinoAtlantic, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{FilmDetail, NoveKinoClient}
+import models.{KinoAtlantic, Showtime}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.NoveKinoClient
 
 import java.time.LocalDateTime
 

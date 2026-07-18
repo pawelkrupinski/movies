@@ -1,9 +1,9 @@
 package tools
 
-import models.{Cinema, CinemaMovie, KinoMikro, KinoNaBoku, Movie}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CinemaScraper
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{Cinema, CinemaMovie, KinoMikro, KinoNaBoku, Movie}
+import services.cinemas.common.CinemaScraper
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.util.{Failure, Success}

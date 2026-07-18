@@ -1,11 +1,11 @@
 package clients.multikino
 
-import clients.tools.FakeHttpFetch
 import models.{Multikino, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.{MultikinoClient, MultikinoParser}
+import clients.tools.FakeHttpFetch
 import services.movies.TitleNormalizer
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.{MultikinoClient, MultikinoParser}
 
 import java.time.LocalDateTime
 

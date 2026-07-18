@@ -1,9 +1,9 @@
 package clients.rialto
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.RialtoClient
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.HttpFetch
+import services.cinemas.pl.RialtoClient
 
 import java.time.LocalDateTime
 

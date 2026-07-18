@@ -1,9 +1,10 @@
 package services.cinemas
 
-import models.KinoTatry
 import org.scalatest.LoneElement
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoTatry
+import services.cinemas.pl.KinoTatryClient
 
 import java.time.{LocalDate, LocalDateTime}
 

@@ -1,8 +1,8 @@
 package clients.tools
 
 import models.{Cinema, KinoElektronik, KinoKosmos, KinoLuna, KinoSwiatowid}
-import services.cinemas.{Bilety24Client, Bilety24OrganizerClient}
 import tools.RealHttpFetch
+import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient}
 
 object WriteBilety24 {
   def main(args: Array[String]): Unit = {

@@ -1,8 +1,8 @@
 package clients.tools
 
 import models.KinoPatria
-import services.cinemas.KinoPatriaClient
 import tools.RealHttpFetch
+import services.cinemas.pl.KinoPatriaClient
 
 /** Record the live kinopatria.com/repertuar/ response as a fixture under
  *  test/resources/fixtures/kino-patria/ for replay by KinoPatriaClientSpec. */

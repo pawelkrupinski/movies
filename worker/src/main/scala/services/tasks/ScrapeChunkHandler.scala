@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.cinemas.{ChunkedCinemaScraper, CinemaMovieJson}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson}
 
 import java.time.Clock
 

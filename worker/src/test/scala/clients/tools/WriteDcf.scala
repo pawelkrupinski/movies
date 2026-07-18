@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.DcfClient
 import tools.RealHttpFetch
+import services.cinemas.pl.DcfClient
 
 object WriteDcf {
   def main(args: Array[String]): Unit = {

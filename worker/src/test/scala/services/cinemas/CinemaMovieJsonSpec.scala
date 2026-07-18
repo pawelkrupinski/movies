@@ -1,8 +1,9 @@
 package services.cinemas
 
-import models.{Movie, Multikino, CinemaMovie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import models.{Movie, Multikino, CinemaMovie, Showtime}
+import services.cinemas.common.CinemaMovieJson
 
 import java.time.LocalDateTime
 

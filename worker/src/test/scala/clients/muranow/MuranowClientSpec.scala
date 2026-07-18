@@ -1,10 +1,11 @@
 package clients.muranow
 
-import clients.tools.FakeHttpFetch
-import models.{KinoMuranow, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{FilmDetail, MuranowClient}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{KinoMuranow, Showtime}
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.MuranowClient
 
 import java.time.LocalDateTime
 

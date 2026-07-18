@@ -1,0 +1,22 @@
+package services.cinemas.common
+
+import java.io.IOException
+import java.util.concurrent.TimeoutException
+
+/** Classifies scrape failures. Network/HTTP errors from external cinema sites
+ *  are expected and not actionable, so callers log them at WARN (invisible to
+ *  Sentry) rather than ERROR. Used by the queue-driven ScrapeCinemaHandler. */
+object ScrapeErrors {
+  def isTransientHttpError(e: Throwable): Boolean = e match {
+    case _: IOException          => true // timeouts, SSL, connection errors
+    case _: TimeoutException     => true // Future timeouts
+    case _: InterruptedException => true // worker cancelled / interrupted a blocking scrape Await (shutdown, deadline)
+    case e: RuntimeException =>
+      val message = Option(e.getMessage).getOrElse("")
+      // "HTTP <code> for <method> <url>"          — RealHttpFetch.checkStatus
+      // "All N backends failed for <verb> <url>"  — FallbackHttpFetch.tryEach
+      message.startsWith("HTTP ") ||
+        (message.startsWith("All ") && message.contains(" backends failed for "))
+    case _ => false
+  }
+}

@@ -1,13 +1,14 @@
 package services.tasks
 
 import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.UptimeMonitor
-import services.cinemas.{DetailEnricher, FakeDetailEnricher, FilmDetail}
-import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
-import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
+import services.cinemas.FakeDetailEnricher
+import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.UptimeMonitor
+import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
+import services.cinemas.common.{DetailEnricher, FilmDetail}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._

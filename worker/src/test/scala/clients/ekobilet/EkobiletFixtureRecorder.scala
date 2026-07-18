@@ -1,9 +1,9 @@
 package clients.ekobilet
 
-import clients.tools.RecordingHttpFetch
-import models.KinoJaworzyna
-import services.cinemas.EkobiletClient
 import tools.RealHttpFetch
+import models.KinoJaworzyna
+import clients.tools.RecordingHttpFetch
+import services.cinemas.pl.EkobiletClient
 
 import java.time.LocalDate
 

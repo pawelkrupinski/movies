@@ -1,7 +1,7 @@
 package clients.tools
 
-import services.cinemas.MuranowClient
 import tools.RealHttpFetch
+import services.cinemas.pl.MuranowClient
 
 object WriteMuranow {
   def main(args: Array[String]): Unit = {

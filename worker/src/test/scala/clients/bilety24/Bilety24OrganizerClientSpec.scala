@@ -1,12 +1,12 @@
 package clients.bilety24
 
-import clients.tools.FakeHttpFetch
 import models._
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
-import services.cinemas.Bilety24OrganizerClient
+import org.scalatest.OptionValues
+import clients.tools.FakeHttpFetch
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.Bilety24OrganizerClient
 
 import java.time.LocalDateTime
 

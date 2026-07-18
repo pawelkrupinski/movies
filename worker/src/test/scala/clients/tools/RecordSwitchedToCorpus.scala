@@ -1,8 +1,9 @@
 package clients.tools
 
 import models._
-import services.cinemas._
 import tools.RealHttpFetch
+import services.cinemas._
+import services.cinemas.pl._
 
 import java.time.LocalDate
 import scala.util.Try

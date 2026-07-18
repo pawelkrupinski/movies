@@ -1,8 +1,8 @@
 package clients.tools
 
 import models._
-import services.cinemas._
 import tools.RealHttpFetch
+import services.cinemas.pl.{BiletynaClient, GdynskieCentrumFilmoweClient}
 
 import scala.util.Try
 

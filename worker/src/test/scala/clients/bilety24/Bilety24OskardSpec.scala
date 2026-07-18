@@ -1,10 +1,10 @@
 package clients.bilety24
 
-import clients.tools.FakeHttpFetch
-import models.{KinoOskard, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.Bilety24Client
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{KinoOskard, Showtime}
+import services.cinemas.pl.Bilety24Client
 
 import java.time.LocalDateTime
 

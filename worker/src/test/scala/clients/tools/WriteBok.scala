@@ -1,8 +1,8 @@
 package clients.tools
 
 import models.{KinoGlebocka66, KinoNaBoku}
-import services.cinemas.BokClient
 import tools.RealHttpFetch
+import services.cinemas.pl.BokClient
 
 object WriteBok {
   def main(args: Array[String]): Unit = {

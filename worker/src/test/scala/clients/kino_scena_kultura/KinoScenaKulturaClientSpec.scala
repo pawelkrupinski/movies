@@ -1,11 +1,11 @@
 package clients.kino_scena_kultura
 
-import clients.tools.FakeHttpFetch
-import models.KinoScenaKultura
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoScenaKulturaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoScenaKultura
+import services.cinemas.pl.KinoScenaKulturaClient
 
 import java.time.LocalDateTime
 

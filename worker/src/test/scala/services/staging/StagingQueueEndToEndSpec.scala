@@ -1,13 +1,13 @@
 package services.staging
 
-import models.{Cinema, Helios, MovieRecord, Source, SourceData}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.{DetailEnricher, FilmDetail}
-import services.events.{DomainEvent, InProcessEventBus, StagingFilmEnriched, TaskFinished}
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{CacheKey, InMemoryMovieRepository}
+import models.{Cinema, Helios, MovieRecord, Source, SourceData}
 import services.tasks.{HandlerOutcome, InMemoryTaskQueue, TaskHandler}
+import services.events.{DomainEvent, InProcessEventBus, StagingFilmEnriched, TaskFinished}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.{DetailEnricher, FilmDetail}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._

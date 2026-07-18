@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{Multikino, MultikinoZloteTarasy}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.MultikinoClient
+import services.cinemas.pl.MultikinoClient
 
 /** The client used to be hard-wired to Poznań's Stary Browar (`0011` →
  *  `Multikino`). These pin the parameterisation that lets one client serve

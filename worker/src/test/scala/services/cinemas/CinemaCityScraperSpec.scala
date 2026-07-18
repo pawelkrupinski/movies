@@ -4,6 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper}
 
 /** Cinema City's per-film detail is fetched once per network, not per venue: all
  *  venues share one `detailGroup` (so the queue + freshness drop sibling

@@ -5,7 +5,7 @@ import scala.concurrent.duration._
 
 /**
  * In-memory, thread-safe per-host scrape-duration stats that back the adaptive
- * scrape timeout ([[services.cinemas.AdaptiveTimeoutScraper]]).
+ * scrape timeout ([[services.cinemas.common.AdaptiveTimeoutScraper]]).
  *
  * For each host key we keep a bounded window of the most recent *successful*
  * scrape durations and derive a per-host budget: `multiplier × the rolling

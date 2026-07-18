@@ -1,11 +1,11 @@
 package clients.flicks
 
-import clients.tools.FakeHttpFetch
 import models.OdeonNorwich
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.FlicksClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.uk.FlicksClient
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.io.Source

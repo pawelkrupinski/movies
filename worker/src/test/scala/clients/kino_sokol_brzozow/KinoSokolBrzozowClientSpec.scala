@@ -1,11 +1,11 @@
 package clients.kino_sokol_brzozow
 
-import clients.tools.FakeHttpFetch
-import models.KinoSokolBrzozow
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoSokolBrzozowClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoSokolBrzozow
+import services.cinemas.pl.KinoSokolBrzozowClient
 
 import java.time.LocalDateTime
 

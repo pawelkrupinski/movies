@@ -1,14 +1,14 @@
 package services.tasks
 
-import models.MovieRecord
-import play.api.Logging
-import services.Stoppable
-import services.cinemas.DetailEnricher
 import services.events.{EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.movies.{CacheKey, MovieCache}
-import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
+import models.MovieRecord
+import play.api.Logging
+import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
+import services.movies.{CacheKey, MovieCache}
+import services.Stoppable
+import services.cinemas.common.DetailEnricher
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}

@@ -1,9 +1,9 @@
 package clients.multikino
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.MultikinoClient
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.HttpFetch
+import services.cinemas.pl.MultikinoClient
 
 import scala.collection.mutable
 

@@ -1,10 +1,10 @@
 package clients.kino_zak
 
-import models.{CinemaMovie, KinoZak}
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoZakClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{CinemaMovie, KinoZak}
+import services.cinemas.pl.KinoZakClient
 
 import java.time.{LocalDate, LocalDateTime}
 

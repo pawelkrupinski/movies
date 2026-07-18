@@ -1,13 +1,15 @@
 package services.tasks
 
 import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import services.cinemas.{CinemaScrapeRunner, CinemaScraper, FakeDetailEnricher, FilmwebShowtimesClient}
 import services.events.InProcessEventBus
-import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
+import services.cinemas.FakeDetailEnricher
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
+import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
+import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper}
+import services.cinemas.pl.FilmwebShowtimesClient
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration._

@@ -1,10 +1,11 @@
 package clients.dcf
 
-import clients.tools.FakeHttpFetch
-import models.{DolnoslaskieCentrumFilmowe, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{DcfClient, FilmDetail}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{DolnoslaskieCentrumFilmowe, Showtime}
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.DcfClient
 
 import java.time.LocalDateTime
 

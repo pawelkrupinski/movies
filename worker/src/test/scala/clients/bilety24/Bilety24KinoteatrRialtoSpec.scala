@@ -1,12 +1,12 @@
 package clients.bilety24
 
-import clients.tools.FakeHttpFetch
-import models.KinoteatrRialto
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoteatrRialto
+import services.cinemas.pl.Bilety24Client
 
 import java.time.LocalDateTime
-import services.cinemas.Bilety24Client
 
 /** Kinoteatr Rialto Katowice — the third Silesia Film venue, hosted on
  *  bilety24.pl at kinoteatrrialto.bilety24.pl (confirmed from live site

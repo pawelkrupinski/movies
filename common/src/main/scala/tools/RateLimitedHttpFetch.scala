@@ -15,7 +15,7 @@ import scala.concurrent.duration._
  * host we normally stay well under (TMDB), but it is the wrong shape for one we
  * out-run structurally — there, every sweep discovers the limit by tripping it,
  * the fleet stands down for the pause, and the scrape budget upstream
- * ([[services.cinemas.AdaptiveTimeoutScraper]]) cuts the venue before the retry
+ * ([[services.cinemas.common.AdaptiveTimeoutScraper]]) cuts the venue before the retry
  * lands. The 429s are then not an anomaly to back off from but our steady state.
  *
  * This decorator instead spaces requests to a host so the limit is not reached:

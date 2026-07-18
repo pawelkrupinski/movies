@@ -1,10 +1,11 @@
 package clients.newcities
 
-import clients.tools.FakeHttpFetch
 import models._
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas._
+import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosNuxt, MultikinoClient}
 
 import java.time.LocalDate
 

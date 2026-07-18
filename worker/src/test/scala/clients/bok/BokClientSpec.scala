@@ -1,10 +1,10 @@
 package clients.bok
 
-import clients.tools.FakeHttpFetch
-import models.{KinoGlebocka66, KinoNaBoku, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.BokClient
+import models.{KinoGlebocka66, KinoNaBoku, Showtime}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.BokClient
 
 import java.time.{LocalDate, LocalDateTime}
 

@@ -1,8 +1,8 @@
 package clients.zyte
 
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{ZyteClient, ZyteFetch}
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.{ZyteClient, ZyteFetch}
 
 import java.net.http.HttpClient
 

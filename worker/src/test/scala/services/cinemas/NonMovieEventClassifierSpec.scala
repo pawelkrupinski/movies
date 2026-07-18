@@ -2,6 +2,7 @@ package services.cinemas
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.pl.NonMovieEventClassifier
 
 /** Ground truth is the live prod corpus: every title below was actually scraped
  *  into `movies`. The two lists are the line the product owner drew — "filter

@@ -1,10 +1,11 @@
 package clients.iluzjon
 
-import clients.tools.FakeHttpFetch
 import models.{KinoIluzjon, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{FilmDetail, IluzjonClient}
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.IluzjonClient
 
 import java.time.{LocalDate, LocalDateTime}
 

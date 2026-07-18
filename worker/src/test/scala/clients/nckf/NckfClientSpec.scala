@@ -2,10 +2,10 @@ package clients.nckf
 
 import models.KinoBajka
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.NckfClient
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import services.cinemas.pl.NckfClient
 
 import java.time.{LocalDate, LocalDateTime}
 

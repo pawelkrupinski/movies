@@ -1,11 +1,11 @@
 package clients.filmweb_showtimes
 
-import clients.tools.FakeHttpFetch
 import models._
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.FilmwebShowtimesClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.FilmwebShowtimesClient
 
 import java.time.LocalDate
 

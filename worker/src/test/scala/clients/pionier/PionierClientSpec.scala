@@ -1,11 +1,11 @@
 package clients.pionier
 
-import clients.tools.FakeHttpFetch
-import models.KinoPionier
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.PionierClient
+import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoPionier
+import services.cinemas.pl.PionierClient
 
 import java.time.LocalDateTime
 

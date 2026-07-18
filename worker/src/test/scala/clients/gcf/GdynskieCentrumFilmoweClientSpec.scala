@@ -1,12 +1,13 @@
 package clients.gcf
 
+import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.GdynskieCentrumFilmowe
-import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{GdynskieCentrumFilmoweClient, RetryingCinemaScraper}
+import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import services.cinemas.common.RetryingCinemaScraper
+import services.cinemas.pl.GdynskieCentrumFilmoweClient
 
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger

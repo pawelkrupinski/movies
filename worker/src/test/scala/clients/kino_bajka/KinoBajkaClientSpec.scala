@@ -1,11 +1,11 @@
 package clients.kino_bajka
 
-import clients.tools.FakeHttpFetch
 import models.KinoBajka
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoBajkaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoBajkaClient
 
 import java.time.LocalDateTime
 

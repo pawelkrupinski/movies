@@ -1,10 +1,11 @@
 package clients.kino_apollo
 
-import clients.tools.FakeHttpFetch
-import models.{KinoApollo, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoApolloClient
+import clients.tools.FakeHttpFetch
+import models.{KinoApollo, Showtime}
+import services.cinemas.common.FilmDetail
+import services.cinemas.pl.KinoApolloClient
 
 import java.time.LocalDateTime
 
@@ -236,7 +237,7 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
   // the fixtures; an unreachable one yields None — the graceful-degradation
   // contract used in production.)
 
-  private def detailOf(title: String): Option[services.cinemas.FilmDetail] =
+  private def detailOf(title: String): Option[services.cinemas.common.FilmDetail] =
     byTitle(title).filmUrl.flatMap(client.fetchFilmDetail)
 
   private val niewinniTitle =

@@ -1,10 +1,10 @@
 package clients.helios
 
-import clients.tools.FakeHttpFetch
-import models.{Helios, Showtime}
-import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.HeliosClient
+import clients.tools.FakeHttpFetch
+import org.scalatest.flatspec.AnyFlatSpec
+import models.{Helios, Showtime}
+import services.cinemas.pl.HeliosClient
 
 import java.time.LocalDateTime
 

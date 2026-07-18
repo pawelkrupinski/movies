@@ -1,11 +1,11 @@
 package clients.chatka_zaka
 
-import clients.tools.FakeHttpFetch
-import models.KinoChatkaZaka
 import org.scalatest.OptionValues
-import org.scalatest.flatspec.AnyFlatSpec
+import models.KinoChatkaZaka
+import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.KinoChatkaZakaClient
+import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.pl.KinoChatkaZakaClient
 
 import java.time.LocalDateTime
 
@@ -15,7 +15,7 @@ import java.time.LocalDateTime
  *
  *  The calendar mixes the venue's films (a French-cinema review at 18:00) with
  *  its concerts/theatre, so the fixture list also carries a real venue concert
- *  ("Koncert: Muzyka łatwa…") that [[services.cinemas.OnlyMovieEventsFilter]]
+ *  ("Koncert: Muzyka łatwa…") that [[services.cinemas.pl.OnlyMovieEventsFilter]]
  *  must drop. Previously scraped from Filmweb, which had silently gone empty. */
 class KinoChatkaZakaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
