@@ -89,4 +89,58 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     t.get(Tmdb) shouldBe "ok"
     slept should contain (7000L)
   }
+
+  it should "report a host's 429 RATE, not just a bare count, once per summary interval" in {
+    // A raw 429 count can't be judged: 3,000 of them is either catastrophic or
+    // noise depending on the total, and the per-429 warning never carried one.
+    // Tuning the pace empirically needs the denominator, so the summary reports
+    // requests, throttles and the clean-rate together.
+    val delegate = new ScriptedFetch
+    val reports  = mutable.ListBuffer.empty[String]
+    var clockMs  = 0L
+    val throttle = new ThrottledHttpFetch(
+      delegate, maxAttempts = 1, jitterMillis = () => 0,
+      now = () => Instant.ofEpochMilli(clockMs), sleep = _ => (),
+      summaryInterval = 5.minutes, report = Some(msg => { reports += msg; () }))
+
+    // Three clean calls, then one 429 — 4 requests, 1 throttled = 75% clean.
+    throttle.get(Tmdb) shouldBe "default"
+    throttle.get(Tmdb) shouldBe "default"
+    throttle.get(Tmdb) shouldBe "default"
+    delegate.queue(Tmdb, http429(None))
+    a [HttpStatusException] should be thrownBy throttle.get(Tmdb)
+
+    withClue("no summary before the interval elapses: ") { reports shouldBe empty }
+
+    clockMs = 5.minutes.toMillis
+    throttle.get(Tmdb) shouldBe "default"
+
+    reports should have size 1
+    reports.head should include ("api.themoviedb.org")
+    reports.head should include ("throttled (429)")
+    reports.head should include ("75.0% clean")
+  }
+
+  it should "reset its tally each interval so a recovered host stops reporting failures" in {
+    // Otherwise a burst of 429s during tuning would drag the clean-rate down
+    // forever and the next pace could never be seen to have worked.
+    val delegate = new ScriptedFetch
+    val reports  = mutable.ListBuffer.empty[String]
+    var clockMs  = 0L
+    val throttle = new ThrottledHttpFetch(
+      delegate, maxAttempts = 1, jitterMillis = () => 0,
+      now = () => Instant.ofEpochMilli(clockMs), sleep = _ => (),
+      summaryInterval = 5.minutes, report = Some(msg => { reports += msg; () }))
+
+    delegate.queue(Tmdb, http429(None))
+    a [HttpStatusException] should be thrownBy throttle.get(Tmdb)
+    clockMs = 5.minutes.toMillis
+    throttle.get(Tmdb)                       // flushes window 1 (0% clean)
+    clockMs = 10.minutes.toMillis
+    throttle.get(Tmdb)                       // flushes window 2 — clean only
+
+    reports should have size 2
+    reports(0) should include ("0.0% clean")
+    reports(1) should include ("100.0% clean")
+  }
 }

@@ -118,4 +118,30 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
     RateLimitedHttpFetch.configuredInterval(Unpaced) shouldBe None
   }
+
+  it should "let KINOWO_FILMSTARTS_PACE_MS retune the pace without a restart" in {
+    // The point of the knob: Webedia publishes no rate limit, so the pace is
+    // found empirically. Resolving per request means an /admin/config flip
+    // applies to the very next request, with no worker restart or cold JVM.
+    withProperty("KINOWO_FILMSTARTS_PACE_MS", "900") {
+      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(900.millis)
+    }
+    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
+  }
+
+  it should "ignore a non-positive knob rather than unpacing the host" in {
+    // 0 would read as "no gap at all" — the burst behaviour that drew the 429s
+    // in the first place. Env.positiveLong drops it back to the compiled default.
+    withProperty("KINOWO_FILMSTARTS_PACE_MS", "0") {
+      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
+    }
+    withProperty("KINOWO_FILMSTARTS_PACE_MS", "not-a-number") {
+      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
+    }
+  }
+
+  /** Env reads system properties as well as the process env, so a property is
+   *  how a test drives a knob. Cleared in `finally` to avoid cross-test leakage. */
+  private def withProperty[A](key: String, value: String)(body: => A): A =
+    try { System.setProperty(key, value); body } finally System.clearProperty(key)
 }
