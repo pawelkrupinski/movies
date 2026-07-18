@@ -28,7 +28,12 @@ primary_region = 'arn'
   KINOWO_WORKER_POOL_SIZE = '4'
   KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
   KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
-  KINOWO_SCRAPE_FRESHNESS_MINUTES = '60'
+  # 120, not the fleet default of 60: DE's roster is ~1,533 cinemas across 158
+  # Filmstarts regions — roughly 5x PL — so an hourly sweep gives this one worker
+  # far more scrape work per unit time than the other countries' apps carry. German
+  # showtimes don't churn fast enough to need hourly freshness, so halving the rate
+  # buys back scrape throughput and CPU credit on the box that has least of both.
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '120'
   # JVM sizing: Xms=Xmx=640m on a 1280 MB box. This is the bump the previous note
   # here said to make only once measured, and 2026-07-18 supplied the measurement:
   # with the full 158-region / 1,533-cinema Filmstarts roster live, 448m did NOT
