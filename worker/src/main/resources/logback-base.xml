@@ -21,6 +21,15 @@
        the process that actually runs enrichment, so this logger lives here. -->
   <logger name="services.enrichment.EnrichmentService" level="DEBUG"/>
 
+  <!-- ThrottledHttpFetch's per-host "pace-report" (requests / 429s / clean-rate
+       / pace-in-force, once per host per 5min). It's the signal for tuning a
+       paced host's rate empirically — e.g. Filmstarts, which draws 429s until
+       KINOWO_FILMSTARTS_PACE_MS is wide enough. The class is in `tools`, which
+       otherwise stays at root WARN, so surface just this one logger at INFO. A
+       clean report is genuinely informational, not a warning — hence INFO, not
+       a warn we'd have to filter back out once the 429s stop. -->
+  <logger name="tools.ThrottledHttpFetch" level="INFO"/>
+
   <!-- MongoDB driver 5.x's TLS selector-monitor loop races against
        connection-pool churn: a SocketChannel queued for selector
        registration can be closed by another thread (idle-pool shrinkage,
