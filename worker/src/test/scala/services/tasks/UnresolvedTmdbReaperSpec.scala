@@ -1,6 +1,6 @@
 package services.tasks
 
-import models.{CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime}
+import models.{CinemaMovie, Country, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
@@ -60,6 +60,74 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     seedRow(cache, "Pending")(_.copy(detailPending = true)) // unresolved but detail owed
     runOnePeriod(new UnresolvedTmdbReaper(cache, retry)).sum shouldBe 0
     seen shouldBe empty
+  }
+
+  // ── stale enrichment language ────────────────────────────────────────────────
+  // `fullDetails` is fetched only at resolve time, so a row resolved before its
+  // deployment enriched in its own language stays frozen — Berlin showed the Polish
+  // "Familijny, Komedia, Przygodowy" for Der Super Mario Galaxy Film. These pin the
+  // detect-and-force-re-resolve behaviour that unfreezes it.
+
+  /** A resolved row whose Tmdb slot carries `genres`/`title` fetched under `language`
+   *  (`None` = unstamped, i.e. written before the stamp existed → legacy pl-PL). */
+  private def seedResolvedTmdbRow(
+    cache: CaffeineMovieCache, title: String, genres: Seq[String], language: Option[String]
+  ): Unit =
+    seedRow(cache, title)(r => r.copy(
+      tmdbId = Some(42),
+      data   = r.data + ((Tmdb: Source) -> SourceData(title = Some(title), genres = genres, language = language))))
+
+  it should "force a re-resolve of a row whose Tmdb slot was enriched in another language" in {
+    val cache = newCache(); val (retried, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedResolvedTmdbRow(cache, "Der Super Mario Galaxy Film", Seq("Familijny", "Komedia"), Some("pl-PL"))
+    val reaper = new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry, country = Country.Germany)
+    runOnePeriod(reaper).sum shouldBe 1
+    // The row IS resolved, so the plain retry seam would no-op — it must take the forced path.
+    forced.map(_.cleanTitle) shouldBe Seq(cache.keyOf("Der Super Mario Galaxy Film", None).cleanTitle)
+    retried shouldBe empty
+  }
+
+  it should "treat an UNSTAMPED Tmdb slot as the legacy Polish enrichment" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    // Written before the language stamp existed — the rows this fix has to reach.
+    seedResolvedTmdbRow(cache, "Die Odyssee", Seq("Przygodowy", "Akcja"), language = None)
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry, country = Country.Germany))
+    forced.map(_.cleanTitle) shouldBe Seq(cache.keyOf("Die Odyssee", None).cleanTitle)
+  }
+
+  it should "leave an unstamped Tmdb slot alone on the Polish deployment" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    // The whole PL corpus is unstamped and already correct — it must not churn.
+    seedResolvedTmdbRow(cache, "Chłopi", Seq("Dramat", "Historyczny"), language = None)
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry, country = Country.Poland)).sum shouldBe 0
+    forced shouldBe empty
+  }
+
+  it should "leave a row already enriched in the deployment's own language alone" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedResolvedTmdbRow(cache, "Die Odyssee", Seq("Abenteuer", "Action"), Some("de-DE"))
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry, country = Country.Germany)).sum shouldBe 0
+    forced shouldBe empty
+  }
+
+  it should "not force a Tmdb slot that carries no localized text to re-resolve" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    // A slot the details fetch never filled has nothing stale to correct; forcing it
+    // would re-run a search that already concluded.
+    seedRow(cache, "Empty Slot")(r => r.copy(
+      tmdbId = Some(7), data = r.data + ((Tmdb: Source) -> SourceData(language = None))))
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry, country = Country.Germany)).sum shouldBe 0
+    forced shouldBe empty
+  }
+
+  it should "spread a wrong-language backlog across the period rather than bursting" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    // The real DE shape: a whole corpus frozen at once by a single pre-fix deploy.
+    (0 until 120).foreach(i => seedResolvedTmdbRow(cache, f"Stale$i%03d", Seq("Komedia"), None))
+    val perTick = runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry, country = Country.Germany))
+    perTick.sum shouldBe 120
+    forced.size shouldBe 120
+    perTick.max should be <= 6 // a flat trickle, not one spike that pins the CPU credit
   }
 
   // ── the spread property ──────────────────────────────────────────────────────

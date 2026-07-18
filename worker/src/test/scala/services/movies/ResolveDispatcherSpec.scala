@@ -32,6 +32,18 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     EnrichTaskKeys.yearOf(task.payload)      shouldBe Some(2014)
     EnrichTaskKeys.directorOf(task.payload)  shouldBe Some("Christopher Nolan")
     EnrichTaskKeys.originalTitleOf(task.payload) shouldBe Some("Interstellar")
+    EnrichTaskKeys.forceOf(task.payload)     shouldBe false
+  }
+
+  it should "carry `force` into the payload, so an already-resolved row re-resolves" in {
+    // The stale-language sweep re-resolves rows that already have a tmdbId; without
+    // `force` on the payload the handler treats them as done and the wrong-language
+    // Tmdb slot stays frozen.
+    val queue = new InMemoryTaskQueue()
+    new QueueResolveDispatcher(queue).dispatch("Die Odyssee", Some(2026), None, None, force = true)
+
+    val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
+    EnrichTaskKeys.forceOf(task.payload) shouldBe true
   }
 
   private val keyOf: (String, Option[Int]) => CacheKey =
@@ -41,7 +53,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     val ec    = DaemonExecutors.boundedEC("inline-dispatch-test", 4)
     val count = new AtomicInteger(0)
     val ran   = new CountDownLatch(1)
-    val d = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _) => { count.incrementAndGet(); ran.countDown() })
+    val d = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _, _) => { count.incrementAndGet(); ran.countDown() })
     try {
       d.dispatch("A", Some(2020), None, None)
       ran.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
@@ -55,7 +67,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     val count   = new AtomicInteger(0)
     val release = new CountDownLatch(1)   // holds the first resolve in-flight
     val started = new CountDownLatch(1)
-    val d = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _) => {
+    val d = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _, _) => {
       count.incrementAndGet(); started.countDown(); release.await()
     })
     try {
@@ -65,7 +77,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
       d.dispatch("A", Some(2020), None, None)
       // A DIFFERENT key still runs.
       val otherRan = new CountDownLatch(1)
-      val d2 = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _) => { count.incrementAndGet(); otherRan.countDown() })
+      val d2 = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _, _) => { count.incrementAndGet(); otherRan.countDown() })
       d2.dispatch("B", Some(2020), None, None)
       otherRan.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
       release.countDown()
@@ -82,7 +94,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     val ec        = DaemonExecutors.boundedEC("inline-dispatch-drain", 4)
     val completed = new AtomicInteger(0)
     val started   = new CountDownLatch(1)
-    val d = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _) => {
+    val d = new InlineResolveDispatcher(ec, keyOf, (_, _, _, _, _) => {
       started.countDown(); Thread.sleep(150); completed.incrementAndGet()
     })
     try {

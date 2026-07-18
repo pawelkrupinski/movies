@@ -10,7 +10,14 @@ import scala.concurrent.{ExecutionContextExecutorService, Future}
  *  production hands off to the durable task queue, the default runs it inline on a
  *  pool. */
 trait ResolveDispatcher {
-  def dispatch(title: String, year: Option[Int], originalTitle: Option[String], director: Option[String]): Unit
+  /** `force` re-resolves a row that already has a `tmdbId` — the only way to refresh
+   *  a `Tmdb` slot, whose `fullDetails` are otherwise fetched once at first resolve
+   *  and then frozen (see `UnresolvedTmdbReaper`'s stale-language sweep). */
+  def dispatch(title:         String,
+               year:          Option[Int],
+               originalTitle: Option[String],
+               director:      Option[String],
+               force:         Boolean = false): Unit
 
   /** Drain any owned pool so in-flight inline resolutions finish before shutdown.
    *  The queue dispatcher owns no pool (the TaskWorker lifecycle drains its work),
@@ -21,11 +28,15 @@ trait ResolveDispatcher {
 /** Production: enqueue a `ResolveTmdb` worker task — retried (Reschedule), deduped
  *  by dedupKey, and visible on `/debug`. */
 class QueueResolveDispatcher(queue: TaskQueue) extends ResolveDispatcher {
-  def dispatch(title: String, year: Option[Int], originalTitle: Option[String], director: Option[String]): Unit = {
+  def dispatch(title:         String,
+               year:          Option[Int],
+               originalTitle: Option[String],
+               director:      Option[String],
+               force:         Boolean): Unit = {
     queue.enqueue(
       TaskType.ResolveTmdb,
       EnrichTaskKeys.resolveTmdbDedup(title, year),
-      EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle))
+      EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle, force))
     ()
   }
 }
@@ -36,14 +47,18 @@ class QueueResolveDispatcher(queue: TaskQueue) extends ResolveDispatcher {
 class InlineResolveDispatcher(
   ec:       ExecutionContextExecutorService,
   dedupKey: (String, Option[Int]) => CacheKey,
-  resolve:  (String, Option[Int], Option[String], Option[String]) => Unit
+  resolve:  (String, Option[Int], Option[String], Option[String], Boolean) => Unit
 ) extends ResolveDispatcher {
   private val pending = ConcurrentHashMap.newKeySet[CacheKey]()
 
-  def dispatch(title: String, year: Option[Int], originalTitle: Option[String], director: Option[String]): Unit = {
+  def dispatch(title:         String,
+               year:          Option[Int],
+               originalTitle: Option[String],
+               director:      Option[String],
+               force:         Boolean): Unit = {
     val key = dedupKey(title, year)
     if (pending.add(key)) {
-      Future(try resolve(title, year, originalTitle, director) finally { pending.remove(key); () })(using ec)
+      Future(try resolve(title, year, originalTitle, director, force) finally { pending.remove(key); () })(using ec)
       ()
     }
   }
