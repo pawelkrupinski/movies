@@ -1,0 +1,9 @@
+# Heap for the sbt JVM. `testUnit` runs every module's specs UNFORKED in this
+# one JVM (CI never hits this — it splits the modules across runners), and the
+# default heap OOMs partway through: the launcher dies with a Java heap space
+# error, the remaining modules never run, and sbt still exits 0. A "green"
+# testUnit was silently covering only common + web.
+-Xmx4g
+# Fail LOUDLY instead. Without this an OOM leaves a misleading success: the run
+# reports the modules that finished and says nothing about the ones it skipped.
+-XX:+ExitOnOutOfMemoryError
