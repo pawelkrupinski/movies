@@ -9,8 +9,9 @@
 #   android/scripts/store-screenshots.sh pl-PL "Poznan" /tmp/x   # → a scratch dir
 #   android/scripts/store-screenshots.sh --top uk 10             # biggest cities by film count
 #
-# env: SPLIT=1 for split cities (London) · CLEAN_FILM="…" for a clean German detail
-#      (showtimes-de enrichment lags) · BUILD=1 force rebuild+install · AVD=<name>
+# When done it opens the four shots in Preview (macOS). Env: SPLIT=1 for split
+# cities (London) · CLEAN_FILM="…" for a clean German detail (showtimes-de lags) ·
+# BUILD=1 force rebuild+install · AVD=<name> · NO_OPEN=1 skip the Preview.
 #
 set -euo pipefail
 
@@ -169,6 +170,11 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir
   for n in 1 2 3 4; do pad_playsafe "$stage/$n.png" "$dest/$n.png"; done
   rm -rf "$stage"
   ok "wrote $dest/{1..4}.png"
+
+  # Open the four shots in Preview to eyeball them (macOS). NO_OPEN=1 to skip.
+  if [ -z "${NO_OPEN:-}" ] && command -v open >/dev/null 2>&1; then
+    open -a Preview "$dest/1.png" "$dest/2.png" "$dest/3.png" "$dest/4.png" >>"$NOISE" 2>&1 || true
+  fi
 }
 
 cmd_top() { # $1 country, $2 N — rank cities by live film count
