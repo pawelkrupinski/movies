@@ -158,4 +158,30 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     if (tools.Env.get("MONGODB_DB").isEmpty)
       Country.resolvedDbName shouldBe Country.fromEnv.mongoDb
   }
+
+  /** The two deployments name their country through DIFFERENT env vars — web
+   *  `KINOWO_COUNTRY=de`, each worker `KINOWO_COUNTRIES=de` — so anything
+   *  process-global that must be country-correct has to read both. Reading only
+   *  the singular is why the country-scoped title rules shipped working on web
+   *  and doing NOTHING on the worker that writes the corpus. */
+  "soleFrom" should "read the worker's plural KINOWO_COUNTRIES" in {
+    Country.soleFrom(None, Some("de")) shouldBe Some(Country.Germany)
+    Country.soleFrom(None, Some("uk")) shouldBe Some(Country.UnitedKingdom)
+    Country.soleFrom(None, Some("pl")) shouldBe Some(Country.Poland)
+  }
+
+  it should "prefer the web's singular KINOWO_COUNTRY when both are set" in {
+    Country.soleFrom(Some("de"), Some("pl")) shouldBe Some(Country.Germany)
+  }
+
+  it should "tolerate whitespace, unknown codes and empty entries" in {
+    Country.soleFrom(None, Some(" de ")) shouldBe Some(Country.Germany)
+    Country.soleFrom(None, Some("de,,")) shouldBe Some(Country.Germany)
+    Country.soleFrom(None, Some("atlantis")) shouldBe None
+    Country.soleFrom(None, None) shouldBe None
+  }
+
+  it should "yield None for a multi-country worker — no single global value fits" in {
+    Country.soleFrom(None, Some("pl,de")) shouldBe None
+  }
 }

@@ -77,6 +77,19 @@ class TitleNormalizerScopingSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** The wiring bug behind the first attempt: `TitleNormalizer` resolved its rule
+   *  set through `Country.fromEnv`, which reads only the SINGULAR `KINOWO_COUNTRY`.
+   *  Web sets that; every worker sets the PLURAL `KINOWO_COUNTRIES` instead, so the
+   *  worker — the process that writes the corpus — silently got Poland's rules and
+   *  kept keying German films `minionsimonster`. The scoping worked only where it
+   *  didn't matter. */
+  it should "give a process configured like kinowo-worker-de the German rule set" in {
+    val asDeployed = Country.soleFrom(None, Some("de")).get   // KINOWO_COUNTRIES=de, no KINOWO_COUNTRY
+    TitleNormalizer.withRules(TitleRuleSet.forCountry(asDeployed)) {
+      TitleNormalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
+    }
+  }
+
   it should "still apply in Poland, where 'i' IS the conjunction" in {
     val pl = TitleRuleSet.forCountry(Country.Poland)
     TitleNormalizer.withRules(pl) {
