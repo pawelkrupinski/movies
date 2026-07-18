@@ -1,0 +1,36 @@
+@(path: String, current: models.Country = models.Country.fromEnv)
+@* Country dimension for the standalone ADMIN pages (/uptime, /tasks).
+
+   Each of these pages is scoped to the ONE country its deployment serves — the
+   uptime bars and the task queue both come off that country's own worker and
+   Mongo db. Surface which, and — when more than one country is deployed
+   (`Country.switchable`) — let you hop to the SAME page on the other country's
+   host, so switching keeps your place instead of dumping you on a landing page.
+   `path` is that page's path ("/uptime", "/tasks"), appended to each country's
+   `webUrl`.
+
+   Deliberately NOT shared with `_debugNavbar`'s switcher: that one carries a Dev
+   `sameOrigin` mode (`?country=xx`) which swaps the served db in-process. These
+   pages read one shared store per deployment, so there is no in-process db to
+   swap — a cross-host link is the only thing that can work here.
+
+   Callers own the surrounding header layout (`.page-head`); this owns only the
+   control and its own appearance. *@
+@if(models.Country.switchable.sizeIs > 1) {
+  <select class="country-switch" aria-label="Country" onchange="location.href=this.value">
+    @for(c <- models.Country.switchable) {
+      <option value="@{c.webUrl.get}@path"@if(c == current){ selected}>@c.displayName</option>
+    }
+  </select>
+} else {
+  <span class="country-switch-label">@current.displayName</span>
+}
+<style>
+  .country-switch, .country-switch-label {
+    margin-left: auto;
+    color: #ffd479; background: #1a1a1a; border: 1px solid #333;
+    padding: .25rem .7rem; border-radius: 3px; font: 12px monospace;
+  }
+  .country-switch { cursor: pointer; }
+  .country-switch:hover { background: #252525; }
+</style>

@@ -1,14 +1,17 @@
-@()
+@(current: models.Country = models.Country.fromEnv)
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tasks — Kinowo</title>
+  <title>Tasks — @current.brandName</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
-    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    /* The title and the country switcher share one row; the row carries the
+       heading's old bottom margin so `.sub` below sits where it did. */
+    .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; }
     .sub { color: #666; font-size: 11px; margin-bottom: 20px; }
     .sub .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
       background: #2ecc40; margin-right: 5px; vertical-align: middle; }
@@ -70,7 +73,10 @@
   </style>
 </head>
 <body>
-  <h1>Task queue</h1>
+  <div class="page-head">
+    <h1>Task queue</h1>
+    @_countrySwitch("/tasks", current)
+  </div>
   <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span></div>
 
   <div class="runbar">

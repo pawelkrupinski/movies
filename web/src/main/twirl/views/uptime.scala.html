@@ -161,24 +161,9 @@
   </style>
 </head>
 <body>
-  @* This page is scoped to the ONE country this deployment serves: every bar is
-     that country's scrape result, off its own worker + Mongo db. Surface which,
-     and — when more than one country is deployed (`Country.switchable`) — let
-     you hop to the SAME page on the other country's host. Same model as the
-     debug navbar's switcher (`_debugNavbar`), minus its Dev same-origin mode:
-     /uptime reads one shared uptime store, so there is no in-process db to
-     swap — the other country's bars only exist on its own deployment. *@
   <div class="page-head">
     <h1>Service Uptime</h1>
-    @if(models.Country.switchable.sizeIs > 1) {
-      <select class="country-switch" aria-label="Country" onchange="location.href=this.value">
-        @for(c <- models.Country.switchable) {
-          <option value="@{c.webUrl.get}/uptime"@if(c == current){ selected}>@c.displayName</option>
-        }
-      </select>
-    } else {
-      <span class="country-switch-label">@current.displayName</span>
-    }
+    @_countrySwitch("/uptime", current)
   </div>
 
   @if(failing.isEmpty && zero.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty) {
