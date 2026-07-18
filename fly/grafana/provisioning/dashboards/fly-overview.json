@@ -42,7 +42,7 @@
     {
       "id": 9,
       "title": "CPU load by app — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
-      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. (Scoped to the kinowo apps + the UK showtimes-uk web app via app=~\"kinowo.*|showtimes-uk\" — filmowo has its own dashboard, schowek is separate.)",
+      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. FLEET-WIDE: shows every country's instances at once and is NOT filtered by the Country dropdown — fly_instance_* carries no country label, so scoping is by app name. The matcher app=~\"kinowo.*|showtimes-.*\" follows the naming convention (PL web = kinowo, other web = showtimes-<cc>, workers = kinowo-worker[-<cc>]), so a new country appears here the moment it deploys, with no dashboard edit. filmowo has its own dashboard, schowek is separate.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
@@ -53,66 +53,71 @@
         ]
       },
       "targets": [
-        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-uk\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "{{app}} busy" },
-        { "refId": "B", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-uk\",mode=\"steal\"}[5m]))", "legendFormat": "{{app}} steal" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-.*\",mode!~\"idle|steal\"}[5m]))", "legendFormat": "{{app}} busy" },
+        { "refId": "B", "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-.*\",mode=\"steal\"}[5m]))", "legendFormat": "{{app}} steal" }
       ]
     },
     {
       "id": 1,
       "title": "CPU credit balance (serving apps — alarm < 500)",
+      "description": "Shared-cpu-1x credit left per app. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'CPU credit exhausted' alert.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
       "fieldConfig": { "defaults": { "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance{app=~\"kinowo.*|showtimes-uk\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_cpu_balance{app=~\"kinowo.*|showtimes-.*\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
       "id": 2,
       "title": "CPU throttled (rate, fraction of wall-clock)",
+      "description": "Fraction of wall-clock the host held the app off-CPU once credit ran out. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'CPU throttled' and 'Worker CPU starved' alerts.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle{app=~\"kinowo.*|showtimes-uk\"}[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (rate(fly_instance_cpu_throttle{app=~\"kinowo.*|showtimes-.*\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
       "id": 3,
       "title": "CPU steal %",
+      "description": "Steal as a share of that app's total CPU time — the same signal as the dashed lines on the top panel, normalised. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'CPU steal high' alert.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app=~\"kinowo.*|showtimes-uk\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-uk\"}[5m]))", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app=~\"kinowo.*|showtimes-.*\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-.*\"}[5m]))", "legendFormat": "{{app}}" }
       ]
     },
     {
       "id": 4,
       "title": "Memory available % (alarm < 8%)",
+      "description": "Host memory still available, as a fraction of total — the pre-OOM warning. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'Memory pressure (pre-OOM)' alert. For the worker's JVM-side breakdown (heap vs non-heap vs -Xmx) see the 'Worker — JVM heap & host free memory' panel below.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available{app=~\"kinowo.*|showtimes-uk\"} / fly_instance_memory_mem_total{app=~\"kinowo.*|showtimes-uk\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "min by (app) (fly_instance_memory_mem_available{app=~\"kinowo.*|showtimes-.*\"} / fly_instance_memory_mem_total{app=~\"kinowo.*|showtimes-.*\"})", "legendFormat": "{{app}}" }
       ]
     },
     {
       "id": 5,
       "title": "HTTP latency — web (s)",
+      "description": "Fly edge-measured response time for the WEB apps only (app=~\"kinowo|showtimes-.*\" — no workers, they serve no HTTP). One line per percentile PER APP, so every country's web instance is plotted: kinowo = PL, showtimes-<cc> = the rest. NOT filtered by the Country dropdown (fly_app_* has no country label).",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "fly-prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
       "fieldConfig": { "defaults": { "unit": "s", "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p99 {{app}}" },
-        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p95 {{app}}" },
-        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p75 {{app}}" },
-        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-uk\"}[5m])))", "legendFormat": "p50 {{app}}" }
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))", "legendFormat": "p99 {{app}}" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))", "legendFormat": "p95 {{app}}" },
+        { "refId": "C", "expr": "histogram_quantile(0.75, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))", "legendFormat": "p75 {{app}}" },
+        { "refId": "D", "expr": "histogram_quantile(0.50, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))", "legendFormat": "p50 {{app}}" }
       ]
     },
     {
@@ -134,7 +139,7 @@
       "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
       "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 20, "lineInterpolation": "stepAfter" } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "max by (app) (fly_instance_up{app=~\"kinowo.*|showtimes-uk\"})", "legendFormat": "{{app}}" }
+        { "refId": "A", "expr": "max by (app) (fly_instance_up{app=~\"kinowo.*|showtimes-.*\"})", "legendFormat": "{{app}}" }
       ]
     },
     {

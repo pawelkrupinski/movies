@@ -44,7 +44,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'min by (app, instance) (fly_instance_cpu_balance{app=~"kinowo|kinowo-mongo|showtimes-uk"})'
+              expr: 'min by (app, instance) (fly_instance_cpu_balance{app=~"kinowo|kinowo-mongo|showtimes-.*"})'
               instant: true
               range: false
               intervalMs: 1000
@@ -84,7 +84,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo|kinowo-mongo|showtimes-uk"}[5m]))'
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo|kinowo-mongo|showtimes-.*"}[5m]))'
               instant: true
               range: false
               intervalMs: 1000
@@ -407,7 +407,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: fly-prometheus }
               editorMode: code
-              expr: 'max by (app, instance) (fly_instance_memory_pressure_some{app=~"kinowo|kinowo-mongo|showtimes-uk", pressure_duration="avg60"})'
+              expr: 'max by (app, instance) (fly_instance_memory_pressure_some{app=~"kinowo|kinowo-mongo|showtimes-.*", pressure_duration="avg60"})'
               instant: true
               range: false
               intervalMs: 1000

@@ -133,12 +133,25 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 
 `fly/grafana/victoria/scrape.yml` — add a `kinowo-worker-<cc>` target (its
 `kinowo_worker_*` series carry `country="<cc>"`) and a `showtimes-<cc>-web` target.
-That is the ONLY per-country Grafana step: the dashboards' worker panels map the
-selected `$country` to its worker app via a hidden `$worker_app` variable
-(`label_values(kinowo_worker_throttled{country=~"$country"}, app)`, defaulted to
-**All** so it always follows `$country` — a stale single selection would pin the
-wrong worker), so once the new worker is scraped, selecting `<cc>` shows its worker
-with no dashboard edit.
+That is the ONLY per-country Grafana step, because nothing downstream enumerates
+countries:
+
+- **App-level panels** (`kinowo_worker_*`, `kinowo_web_*` — task flow, queue depth,
+  corpus, films served) carry a `country` label and are scoped by the `Country`
+  dropdown, so the new country appears in it as soon as its worker is scraped.
+- **Fly-host panels** (CPU load / credit / throttle / steal, memory, HTTP latency,
+  instance up) are fleet-wide and are NOT country-scoped — Fly's managed Prometheus
+  exports no `country` label on `fly_instance_*` / `fly_app_*`, only `app`. They
+  scope by app-name convention instead: `kinowo.*|showtimes-.*` for both roles,
+  `kinowo|showtimes-.*` web-only, `kinowo-worker.*` worker-only. Deploying
+  `showtimes-<cc>` / `kinowo-worker-<cc>` is enough to make them show up.
+
+Never widen those matchers by adding the new app to a list — an enumerated matcher
+is how `showtimes-de` went invisible on all six Fly-host panels and three alert
+rules until 2026-07-18. `GrafanaCountryBlindAppMatcherSpec`
+(`worker/src/test/scala/deploy/`) derives the deployed app set from the repo's
+`fly*.toml` files and fails CI if any `app=~"…"` matcher accepts one country's app
+of a role while rejecting another's, so this can't regress silently.
 
 ## 7. Ship
 
