@@ -3,13 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
-import play.api.Logging
-import services.movies.MovieRepository
-import tools.DaemonExecutors
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
-import scala.util.Try
+import services.movies.StoredMovieRecord
 
 /**
  * A periodic census of the live `movies` corpus, exposed as Prometheus gauges on
@@ -26,45 +20,28 @@ import scala.util.Try
  *   - `with_imdb_id`     resolved an IMDb id
  *   - `imdb_rating` / `rt_rating` / `mc_rating` / `fw_rating`  per-source rating coverage
  *
- * Sampled on its own scheduler (default every 5 min), decoupled from the scrape
- * rate. The scan pages the cursor read-only (`foreachRecord` — never materialising
- * the ~13 MB corpus on the heap), so it adds no write load; between samples the
- * gauge just re-reads its cached value. Mirrors the web app's
+ * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 5 min), decoupled
+ * from the scrape rate: this census reads ratings/ids only and simply ignores the
+ * showtimes the pass stitches for its sibling collectors, so it costs no reads of its
+ * own. Between samples the gauge just re-reads its cached value. Mirrors the web app's
  * [[controllers.WebMovieMetrics]] sample-and-cache shape.
  */
-class WorkerCorpusMetrics(
-  repository:     MovieRepository,
-  corpus:         Gauge,
-  countryCode:    String,
-  sampleInterval: FiniteDuration = WorkerCorpusMetrics.DefaultSampleInterval
-) extends Logging {
+class WorkerCorpusMetrics(corpus: Gauge, countryCode: String) extends CorpusMetricsCollector {
   import WorkerCorpusMetrics._
 
   // Materialize this country's every series at 0 so it exists from boot — no Grafana gaps.
   Subset.all.foreach(s => corpus.labelValues(countryCode, s).set(0.0))
 
-  private val scheduler = DaemonExecutors.scheduler("worker-corpus-metrics")
+  def startSample(): CorpusRowSampler = new CorpusRowSampler {
+    private var counts = CorpusCounts.empty
 
-  /** Scan the corpus once and publish the census onto the gauges. Read-only,
-   *  paged; bounded to once per `sampleInterval` by the scheduler regardless of
-   *  how often Fly scrapes `/metrics`. */
-  def sample(): Unit = {
-    var counts = CorpusCounts.empty
-    // Counts ratings/ids only — no showtimes — so use the cheaper scan that skips the
-    // per-scan `screenings` load (this runs on a 5-min timer).
-    repository.foreachRecordWithoutShowtimes(row => counts = counts.add(row.record))
-    counts.bySubset.foreach { case (subset, value) => corpus.labelValues(countryCode, subset).set(value.toDouble) }
+    def accept(row: StoredMovieRecord): Unit = counts = counts.add(row.record)
+
+    /** Publishes on a partial scan too — an incomplete census reads as a dip, which is
+     *  what this gauge did before the scan was shared (it ignored the scan's boolean). */
+    def publish(scanComplete: Boolean): Unit =
+      counts.bySubset.foreach { case (subset, value) => corpus.labelValues(countryCode, subset).set(value.toDouble) }
   }
-
-  def start(): Unit = {
-    Try(sample()).recover { case e => logger.warn(s"worker-corpus-metrics initial sample failed: ${e.getMessage}") }
-    scheduler.scheduleAtFixedRate(
-      () => Try(sample()).recover { case e => logger.warn(s"worker-corpus-metrics sample tick failed: ${e.getMessage}") },
-      sampleInterval.toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
-    ()
-  }
-
-  def stop(): Unit = scheduler.shutdown()
 }
 
 object WorkerCorpusMetrics {
@@ -80,11 +57,6 @@ object WorkerCorpusMetrics {
       .help("Distinct movie records in the live movies collection, by country and subset: total population, those with any rating, with a resolved tmdb/imdb id, and the per-source rating populations (imdb/rt/mc/fw).")
       .labelNames("country", "subset")
       .register(registry)
-
-  /** Once every 5 minutes — the corpus changes on the order of a scrape cadence,
-   *  far slower than the seconds-apart Fly scrape, so a frequent re-scan would be
-   *  wasted reads. */
-  val DefaultSampleInterval: FiniteDuration = 5.minutes
 
   /** Subset label values, in the order the Grafana panel lists them. */
   object Subset {

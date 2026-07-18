@@ -3,14 +3,10 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{City, CityScreening}
-import play.api.Logging
-import services.movies.MovieRepository
+import services.movies.StoredMovieRecord
 import services.readmodel.ReadModelProjection
-import tools.DaemonExecutors
 
 import java.time.{Clock, LocalDateTime}
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -31,44 +27,36 @@ import scala.util.{Failure, Success, Try}
  * projector writes by, so a film still pending TMDB enrichment is absent from BOTH
  * sides rather than inflating the source count.
  *
- * Sampled on its own scheduler (default every 5 min), decoupled from the Fly scrape
- * rate, scanning the cursor read-only (`foreachRecord`) so it adds no write load;
- * between samples the gauge re-reads its cached value. Mirrors [[WorkerCorpusMetrics]]'
- * sample-and-cache shape.
+ * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 5 min), decoupled
+ * from the Fly scrape rate and read-only, so it adds no write load and no reads of its
+ * own; between samples the gauge re-reads its cached value. Mirrors
+ * [[WorkerCorpusMetrics]]' sample-and-cache shape.
  */
 class WorkerSourceFilmsMetrics(
-  repository:     MovieRepository,
-  served:         Gauge,
-  countryCode:    String,
-  clock:          Clock          = Clock.systemDefaultZone(),
-  cities:         Seq[City]      = City.all,
-  sampleInterval: FiniteDuration = WorkerSourceFilmsMetrics.DefaultSampleInterval
-) extends Logging {
+  served:      Gauge,
+  countryCode: String,
+  clock:       Clock     = Clock.systemDefaultZone(),
+  cities:      Seq[City] = City.all
+) extends CorpusMetricsCollector {
   import WorkerSourceFilmsMetrics._
 
   // Seed every (city, scope) at 0 so a city that empties reads as an explicit 0,
   // not a vanished series — the swing/floor alerts need the zero present.
   for (c <- cities; scope <- Scope.all) served.labelValues(countryCode, c.slug, scope).set(0.0)
 
-  private val scheduler = DaemonExecutors.scheduler("worker-source-films-metrics")
+  def startSample(): CorpusRowSampler = new CorpusRowSampler {
+    private val tally = new FilmTally(cities, clock)
 
-  /** Scan the corpus once and publish the per-city counts onto the gauge. Read-only,
-   *  paged; bounded to once per `sampleInterval` regardless of the Fly scrape rate. */
-  def sample(): Unit = {
-    val counts = countAll(repository, cities, clock)
-    for (c <- cities; scope <- Scope.all)
-      served.labelValues(countryCode, c.slug, scope).set(counts.getOrElse((c.slug, scope), 0).toDouble)
+    def accept(row: StoredMovieRecord): Unit = tally.accept(row)
+
+    /** Publishes on a partial scan too — matches what this gauge did before the scan
+     *  was shared (it ignored the scan's completeness boolean). */
+    def publish(scanComplete: Boolean): Unit = {
+      val counts = tally.counts
+      for (c <- cities; scope <- Scope.all)
+        served.labelValues(countryCode, c.slug, scope).set(counts.getOrElse((c.slug, scope), 0).toDouble)
+    }
   }
-
-  def start(): Unit = {
-    Try(sample()).recover { case e => logger.warn(s"worker-source-films-metrics initial sample failed: ${e.getMessage}") }
-    scheduler.scheduleAtFixedRate(
-      () => Try(sample()).recover { case e => logger.warn(s"worker-source-films-metrics sample tick failed: ${e.getMessage}") },
-      sampleInterval.toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
-    ()
-  }
-
-  def stop(): Unit = scheduler.shutdown()
 }
 
 object WorkerSourceFilmsMetrics {
@@ -87,10 +75,6 @@ object WorkerSourceFilmsMetrics {
       .labelNames("country", "city", "scope")
       .register(registry)
 
-  /** Once every 5 minutes — the corpus changes on the order of a scrape cadence,
-   *  far slower than the seconds-apart Fly scrape; mirrors [[WorkerCorpusMetrics]]. */
-  val DefaultSampleInterval: FiniteDuration = 5.minutes
-
   /** Scope label values, matching `kinowo_web_movies_served`'s scopes exactly. */
   object Scope {
     val All      = "all"
@@ -98,19 +82,21 @@ object WorkerSourceFilmsMetrics {
     val all: Seq[String] = Seq(All, Tomorrow)
   }
 
-  /** Tally, per (city slug, scope), how many ready films the corpus would serve.
-   *  Pure given a fixed `clock`, so it's unit-tested directly. Each row is projected
-   *  exactly as the read model does (per-title split + cinema→city bucketing) and
-   *  gated on `readyToProject`; a row that fails to project is skipped, matching the
-   *  projector's per-row resilience. */
-  def countAll(repository: MovieRepository, cities: Seq[City], clock: Clock): Map[(String, String), Int] = {
-    val bySlug = cities.map(c => c.slug -> c).toMap
-    val acc    = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
-    repository.foreachRecord { stored =>
+  /** Running tally, per (city slug, scope), of how many ready films the corpus would
+   *  serve — folded one row at a time so the shared scan never buffers the corpus.
+   *  Pure given a fixed `clock`, so it's unit-tested directly (see [[countAll]]). Each
+   *  row is projected exactly as the read model does (per-title split + cinema→city
+   *  bucketing) and gated on `readyToProject`; a row that fails to project is skipped,
+   *  matching the projector's per-row resilience. */
+  class FilmTally(cities: Seq[City], clock: Clock) {
+    private val bySlug = cities.map(c => c.slug -> c).toMap
+    private val acc    = scala.collection.mutable.Map.empty[(String, String), Int].withDefaultValue(0)
+
+    def accept(stored: StoredMovieRecord): Unit =
       if (stored.record.readyToProject)
         // Only the SCREENINGS half is needed to count qualifying cards per city;
         // `screeningsAll` skips the `resolve`/synopsis/ratings materialisation
-        // `projectAll` does (this census re-scanned the whole corpus every 5 min,
+        // `projectAll` does (this census re-reads the whole corpus every 5 min,
         // and that metadata work was the worker's single biggest CPU consumer).
         Try(ReadModelProjection.screeningsAll(stored)) match {
           case Success(cards) =>
@@ -119,8 +105,16 @@ object WorkerSourceFilmsMetrics {
             }
           case Failure(_) => () // a row that won't project simply doesn't count
         }
-    }
-    acc.toMap
+
+    def counts: Map[(String, String), Int] = acc.toMap
+  }
+
+  /** The tally over a fixed set of rows — the pure-logic entry point the specs drive;
+   *  production folds the same [[FilmTally]] row-by-row off the shared scan. */
+  def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock): Map[(String, String), Int] = {
+    val tally = new FilmTally(cities, clock)
+    rows.iterator.foreach(tally.accept)
+    tally.counts
   }
 
   /** The (city slug, scope) keys ONE projected card qualifies for: `all` for each
