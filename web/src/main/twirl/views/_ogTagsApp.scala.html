@@ -42,6 +42,10 @@
 <meta property="og:title"       content="@pageTitle">
 <meta property="og:type"        content="website">
 <meta property="og:site_name"   content="@models.Country.fromEnv.brandName">
+@* og:locale tells Facebook/Messenger which language the share preview is in
+   (underscore form, e.g. de_DE) — driven by the deployment's country language so
+   the German site previews as de_DE, the UK as en_GB, Poland as pl_PL. *@
+<meta property="og:locale"      content="@{models.Country.fromEnv.language.toLanguageTag.replace("-", "_")}">
 @if(pageUrl.nonEmpty) {
 <meta property="og:url"         content="@pageUrl">
 }

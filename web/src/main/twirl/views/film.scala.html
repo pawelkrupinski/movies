@@ -22,6 +22,9 @@
   <meta property="og:type"        content="video.movie">
   <meta property="og:url"         content="@canonicalUrl">
   <meta property="og:site_name"   content="@messages("brand.title", city.labels.nominative)">
+  @* og:locale — the film page's language for FB/Messenger previews (de_DE etc.),
+     driven by the city's country language. *@
+  <meta property="og:locale"      content="@{city.country.language.toLanguageTag.replace("-", "_")}">
   @* og:image is a server-composited 1200×630 card (MovieController.ogImage /
      tools.OgCardRenderer): the full poster + title + rating badges baked into
      one landscape image. Handing the raw 2:3 poster to og:image instead let
