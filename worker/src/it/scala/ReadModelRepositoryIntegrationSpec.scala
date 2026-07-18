@@ -20,6 +20,9 @@ import tools.Env
 class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  // Never against a real cluster: these specs write + purge sentinels, and
+  // `.env.local` aims MONGODB_URI at the prod tunnel. See `IntegrationMongo`.
+  tools.IntegrationMongo.requireThrowaway()
 
   private val client = MongoClient(Env.get("MONGODB_URI").get)
   private val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
