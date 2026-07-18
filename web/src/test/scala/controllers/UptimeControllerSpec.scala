@@ -27,7 +27,9 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
   private val fallbackStore = new InMemoryFilmwebFallbackStore
-  private val controller = new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(), fallbackStore)
+  private def controllerFor(country: models.Country) =
+    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(), fallbackStore, country)
+  private val controller = controllerFor(models.Country.Poland)
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
   private def fakeRow(n: String) = ServiceRow(n, Seq.empty)
 
@@ -50,6 +52,40 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   // A real cinema that the controller will place under "Cinemas" via Cinema.byCity.
   private val cinema = Cinema.byCity.head._2.head.displayName
+
+  // "Studio" names TWO unrelated cinemas: one in Opole (Cinema.scala, Poland) and
+  // one in Germany's roster (GermanRosterData, Cologne area). The page grouped by
+  // the all-country `Cinema.byCity`, matching rows to cities by display name with
+  // no country filter — so the German deployment rendered an "Opole" header
+  // holding the German cinema's row, and rendered that one cinema twice.
+  private val SharedName = "Studio"
+  private def regionOf(country: models.Country, cinema: String) =
+    country.cities.find(_.cinemas.exists(_.displayName == cinema)).get.labels.nominative
+
+  "groupRows on a German deployment" should "group a name shared with a Polish city under the German region" in {
+    val (_, _, cinemasByCity, _, _) = controllerFor(models.Country.Germany).groupRows(Set(SharedName), fakeRow)
+
+    cinemasByCity.map(_._1) should contain (regionOf(models.Country.Germany, SharedName))
+    cinemasByCity.map(_._1) should not contain ("Opole")
+    // One cinema, one row — not one per country whose roster happens to share the name.
+    cinemasByCity.flatMap(_._2).count(_.name == SharedName) shouldBe 1
+  }
+
+  it should "never render another country's cities at all" in {
+    val active = models.Country.Germany.cities.flatMap(_.cinemas).map(_.displayName).toSet
+    val (_, _, cinemasByCity, _, _) = controllerFor(models.Country.Germany).groupRows(active, fakeRow)
+
+    val germanRegions = models.Country.Germany.cities.map(_.labels.nominative).toSet
+    cinemasByCity.map(_._1).filterNot(germanRegions.contains) shouldBe empty
+  }
+
+  "groupRows on the Polish deployment" should "not render German regions" in {
+    val active = models.Country.Poland.cities.flatMap(_.cinemas).map(_.displayName).toSet
+    val (_, _, cinemasByCity, _, _) = controller.groupRows(active, fakeRow)
+
+    val polishCities = models.Country.Poland.cities.map(_.labels.nominative).toSet
+    cinemasByCity.map(_._1).filterNot(polishCities.contains) shouldBe empty
+  }
 
   "groupRows" should "attach a cinema's |enrichment service as a sub-row, never in Other" in {
     val enrich = UptimeMonitor.enrichmentService(cinema)
@@ -185,7 +221,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "403 a logged-in user whose email is not on the allowlist" in {
     val outsider = new UptimeController(Helpers.stubControllerComponents(),
-      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(), fallbackStore)
+      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(), fallbackStore, models.Country.Poland)
     status(outsider.index(adminSession)) shouldBe FORBIDDEN
   }
 

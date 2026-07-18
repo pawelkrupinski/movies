@@ -14,11 +14,23 @@ import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FilmwebFallbackStore)(using mat: Materializer) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FilmwebFallbackStore, country: models.Country)(using mat: Materializer) extends AbstractController(cc) {
+
+  // The city groups this deployment can render, scoped to the ONE country it
+  // serves. `Cinema.byCity` spans every country at once, and rows are matched to
+  // a city BY DISPLAY NAME — so an unscoped grouping put any cinema whose name is
+  // shared across rosters under a foreign city too. "Studio" names a cinema in
+  // both Opole and Germany, which is how the German page grew an "Opole" header
+  // (and rendered that one German cinema twice).
+  private val byCity: Seq[(String, Seq[Cinema])] =
+    country.cities.map(c => c.labels.nominative -> c.cinemas)
 
   // Derived from the cinema model so every wired scraper groups under the
   // "Cinemas" header automatically — no edit needed when a cinema is added.
-  private val cinemaNames = Cinema.all.map(_.displayName)
+  // Scoped with `byCity` above: a service that ISN'T one of this country's
+  // cinemas must fall through to "Other" and stay visible, rather than being
+  // excluded here and dropped from the page entirely.
+  private val cinemaNames = byCity.flatMap(_._2).map(_.displayName)
 
   // External enrichment sources plus network-level (chain-wide) detail health.
   // Cinema City fetches each film's detail once per network and records it here
@@ -111,7 +123,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
     // Built once, in city order; reused for both the triage split and the
     // by-city section so a cinema's row identity is stable.
-    val cinemaUnits: Seq[(String, ServiceRow)] = Cinema.byCity.flatMap { case (city, venues) =>
+    val cinemaUnits: Seq[(String, ServiceRow)] = byCity.flatMap { case (city, venues) =>
       venues.map(_.displayName).filter(active.contains).map(dn => city -> cinemaRow(dn))
     }
     val serviceRows = enrichmentNames.filter(active.contains).map(row)
@@ -128,7 +140,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     val zero    = candidates.collect { case (r, c) if health(r) == Zero    => FlaggedRow(r, c) }
 
     // The remainder (healthy / mixed) keeps its normal home.
-    val cinemasByCity = Cinema.byCity.flatMap { case (city, _) =>
+    val cinemasByCity = byCity.flatMap { case (city, _) =>
       val rows = cinemaUnits.collect { case (c, r) if c == city && health(r) == Healthy => r }
       Option.when(rows.nonEmpty)(city -> rows)
     }

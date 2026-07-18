@@ -16,9 +16,12 @@ primary_region = 'fra'
   # shared MONGODB_URI secret points at the same cluster; the db name derives to
   # `kinowo_de` from the country.
   KINOWO_COUNTRY = 'de'
-  # Same JVM sizing as the Polish/UK web apps. The current DE MovieCache is small
-  # (the 3 hand-authored cities); when the full 158-region roster lands it grows,
-  # so re-check heap then (the Polish app hit a 512 MB OOM — see fly.toml).
+  # Same JVM sizing as the Polish/UK web apps. The full 158-region roster HAS
+  # landed (~1550 cinemas — `GermanRosterData`), so this is now the LARGEST
+  # deployment by far: it registers ~4x Poland's uptime services. That roster
+  # size is what pushed /uptime past this heap once already, so re-check here
+  # before adding anything that renders per-cinema (the Polish app hit a 512 MB
+  # OOM too — see fly.toml).
   JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=64m'
 
 [http_service]
