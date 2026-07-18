@@ -89,12 +89,20 @@ jobs:
                       toml: fly.worker.de.toml
                       bin: worker
                       artifact: stage-worker
-        # Serialize deploys PER APP (so two passing builds can't race flyctl on
-        # the same app) while letting web + worker deploy in parallel.
+        # Serialize deploys PER TIER (all web apps in one lane, all workers in
+        # another) rather than per app. Per-app groups let every web app restart
+        # at the same moment, so a shared dependency that is merely SLOW takes
+        # the whole fleet down at once instead of one app: on 2026-07-18 all
+        # three web apps rolled simultaneously into an overloaded Mongo, none
+        # finished its boot probe inside Fly's health-check window, and every
+        # machine crash-looped. One lane per tier means the first app's failure
+        # is visible before the next one restarts, and at most one app is
+        # mid-restart when a dependency goes bad. Web and workers still deploy
+        # in parallel with each other — they don't share a failure mode.
         # cancel-in-progress is false — a queued deploy still runs once the
         # active one finishes, then the guard below decides whether to ship it.
         concurrency:
-            group: fly-deploy-${{ matrix.app }}
+            group: fly-deploy-${{ matrix.bin }}
             cancel-in-progress: false
         steps:
             - uses: actions/checkout@v5

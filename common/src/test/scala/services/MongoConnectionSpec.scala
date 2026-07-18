@@ -36,6 +36,57 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     exception.getMessage should include ("required")
   }
 
+  // A MISCONFIGURED Mongo and an UNREACHABLE one are different failures and must
+  // be handled differently. Aborting boot is right for the first (nothing will
+  // ever fix itself) and actively harmful for the second: the 2026-07-18 outage
+  // was four web machines crash-looping against an overloaded Mongo, each restart
+  // re-running the heavy boot hydrates and keeping the cluster too busy to
+  // recover. Refusing to start is what made a slow dependency a total outage —
+  // the process never binds port 9000, so nothing serves, and the loop is
+  // self-sustaining. Binding the port and serving degraded lets the cluster
+  // recover and the retry reconnect.
+  "the boot-failure classifier" should "treat a server-selection timeout as transient" in {
+    val timeout = new com.mongodb.MongoTimeoutException("Timed out while waiting for a server")
+    MongoConnection.isTransient(timeout).shouldBe(true)
+  }
+
+  it should "treat a socket read timeout as transient" in {
+    val socketTimeout = new com.mongodb.MongoSocketReadTimeoutException(
+      "Timeout while receiving message",
+      new com.mongodb.ServerAddress("kinowo-mongo.internal", 27017),
+      new java.io.IOException("read timed out"))
+    MongoConnection.isTransient(socketTimeout).shouldBe(true)
+  }
+
+  it should "treat a malformed connection string as PERMANENT (nothing will fix it)" in {
+    MongoConnection.isTransient(new IllegalArgumentException("not a mongo uri")).shouldBe(false)
+  }
+
+  it should "treat an authentication failure as PERMANENT" in {
+    val security = new com.mongodb.MongoSecurityException(
+      com.mongodb.MongoCredential.createCredential("u", "kinowo", "p".toCharArray),
+      "auth failed",
+      new java.io.IOException("bad credentials"))
+    MongoConnection.isTransient(security).shouldBe(false)
+  }
+
+  // The behavioural gate: an unreachable-but-well-formed Mongo must NOT abort boot
+  // even when `required`. Port 1 is reserved and refuses/blackholes immediately, so
+  // the probe fails fast without touching a real cluster.
+  "MongoConnection with required = true against an UNREACHABLE server" should
+    "start degraded rather than refuse to boot" in {
+    val connection = new MongoConnection(
+      uri                    = Some("mongodb://127.0.0.1:1/?connectTimeoutMS=150&socketTimeoutMS=150"),
+      dbName                 = "kinowo",
+      required               = true,
+      probeTimeout           = 3.seconds,
+      serverSelectionTimeout = Some(200.millis))
+    withClue("an unreachable Mongo must leave the app bootable (port bound, degraded) — not crash-loop: ") {
+      connection.database shouldBe None
+    }
+    connection.close()
+  }
+
   "MongoConnection with required = false" should "disable (database None) when MONGODB_URI is absent" in {
     val connection = new MongoConnection(uri = None, dbName = "kinowo", required = false)
     connection.database shouldBe None

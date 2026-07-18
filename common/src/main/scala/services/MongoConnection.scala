@@ -70,16 +70,28 @@ class MongoConnection(
   // `database` at the top of `start()` so the chain fires before any
   // background worker tries to read or write. When `required`, a failure
   // here throws straight out of construction and aborts boot.
-  private val initResult: (Option[MongoClient], Option[MongoDatabase]) = init()
+  // `var` because a `required` connection that found Mongo UNREACHABLE starts
+  // degraded and swaps a live client in from the background retry (see
+  // `retryInBackground`). `@volatile` so readers on request threads see it.
+  @volatile private var initResult: (Option[MongoClient], Option[MongoDatabase]) = init()
 
   /** The shared `MongoDatabase` view — pre-bound to `dbName`. Repos
    *  `.withCodecRegistry(...)` it. `None` only when `required` is false and
    *  Mongo was absent/unreachable (when `required`, init threw instead). */
   def database: Option[MongoDatabase] = initResult._2
 
+  // Stops the background reconnect. Without it a closed connection keeps probing
+  // — and could publish a live client into a connection its owner has already
+  // torn down — plus every test that exercises the degraded path would leak a
+  // retry thread for the rest of the JVM's life.
+  @volatile private var closed = false
+
   // Only close a client WE built. A `sharedClient` is owned by the caller
   // (WorkerMain closes it once, after every borrowing connection is stopped).
-  def close(): Unit = if (sharedClient.isEmpty) initResult._1.foreach(_.close())
+  def close(): Unit = {
+    closed = true
+    if (sharedClient.isEmpty) initResult._1.foreach(_.close())
+  }
 
   /** Start a fresh `ClientSession` for a multi-document transaction (the staging
    *  fold). `None` when Mongo is disabled. Requires a replica set — a standalone
@@ -87,6 +99,59 @@ class MongoConnection(
    *  The caller owns `close()`-ing the returned session. */
   def startSession(): Option[ClientSession] =
     initResult._1.map(c => Await.result(c.startSession().toFuture(), probeTimeout))
+
+  /** One connect attempt: build (or borrow) the client and PROBE it. Shared by the
+   *  boot path and the background retry so both mean exactly the same thing by
+   *  "connected" — a probe that actually round-tripped, not a constructed client. */
+  private def connect(connectionString: String): Try[(MongoClient, MongoDatabase)] = Try {
+    val client = sharedClient.getOrElse(
+      MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout)))
+    val db     = client.getDatabase(dbName)
+    // Touch the database to surface connectivity errors at boot
+    // (same `countDocuments`-against-a-known-collection probe the
+    // old per-repository init used). Picking `movies` here because it
+    // exists in every environment; an empty collection still
+    // round-trips fine. The wait is `probeTimeout` (default 30s) rather
+    // than the old hard-coded 10s — see `DefaultProbeTimeout`.
+    Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout)
+    logger.info(s"MongoConnection connected to $dbName")
+    (client, db)
+  }
+
+  /** Keep trying to reach an UNREACHABLE-at-boot Mongo, and publish the connection
+   *  once it answers. Daemon thread so it never holds shutdown open. The backoff
+   *  matters as much as the retry: a tight loop of connect probes from every web
+   *  machine is the same stampede that kept the cluster down, so back off to a
+   *  minute and stay there. Only reached when `required` — an optional connection
+   *  that failed stays disabled, as before. */
+  private def retryInBackground(connectionString: String): Unit = {
+    val thread = new Thread(
+      () => {
+        var waitSeconds = 5L
+        while (!closed && initResult._2.isEmpty) {
+          Thread.sleep(waitSeconds * 1000L)
+          if (!closed)
+            connect(connectionString) match {
+              case Success((client, db)) =>
+                // Re-check under the close flag: `close()` may have landed while the
+                // probe was in flight, and publishing here would hand the owner a
+                // client it will never close.
+                if (closed) client.close()
+                else {
+                  initResult = (Some(client), Some(db))
+                  logger.info(s"MongoConnection to $dbName RECOVERED — serving from the database again.")
+                }
+              case Failure(exception) =>
+                waitSeconds = math.min(waitSeconds * 2, 60L)
+                logger.warn(s"MongoConnection to $dbName still unreachable (${exception.getMessage}) — " +
+                  s"retrying in ${waitSeconds}s.")
+            }
+        }
+      },
+      s"mongo-reconnect-$dbName")
+    thread.setDaemon(true)
+    thread.start()
+  }
 
   private def init(): (Option[MongoClient], Option[MongoDatabase]) =
     uri match {
@@ -97,20 +162,7 @@ class MongoConnection(
         logger.info("MONGODB_URI not set — MongoConnection disabled.")
         (None, None)
       case Some(connectionString) =>
-        Try {
-          val client = sharedClient.getOrElse(
-            MongoClient(MongoConnection.clientSettings(connectionString, serverSelectionTimeout)))
-          val db     = client.getDatabase(dbName)
-          // Touch the database to surface connectivity errors at boot
-          // (same `countDocuments`-against-a-known-collection probe the
-          // old per-repository init used). Picking `movies` here because it
-          // exists in every environment; an empty collection still
-          // round-trips fine. The wait is `probeTimeout` (default 30s) rather
-          // than the old hard-coded 10s — see `DefaultProbeTimeout`.
-          Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout)
-          logger.info(s"MongoConnection connected to $dbName")
-          (client, db)
-        } match {
+        connect(connectionString) match {
           case Success((client, db)) =>
             (Some(client), Some(db))
           case Failure(exception) =>
@@ -118,11 +170,25 @@ class MongoConnection(
             val hint = if (isLocalUri)
               " (local URI — start the tunnel with `flyctl proxy 27017:27017 --app kinowo-mongo` and restart, or uncomment the Atlas fallback in .env.local)"
             else ""
-            if (required)
+            // A REACHABILITY failure must not abort boot, even when `required`. Refusing
+            // to start means Play never binds port 9000, so Fly's health check can never
+            // pass and the machine crash-loops — and every restart re-runs the boot
+            // hydrates, keeping an already-overloaded cluster too busy to recover. That
+            // is exactly how a slow Mongo became a total outage on 2026-07-18. Start
+            // degraded instead (`database` None → repos no-op, pages render film-less),
+            // let the health check pass, and reconnect in the background once the
+            // cluster answers. A MISCONFIGURATION still aborts: nothing about a bad URI
+            // or bad credentials fixes itself, so failing loudly at boot is right.
+            if (required && !MongoConnection.isTransient(exception))
               throw new IllegalStateException(
                 s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${exception.getMessage}$hint",
                 exception)
-            logger.error(s"MongoConnection init failed (${exception.getMessage}) — disabled.$hint")
+            if (required) {
+              logger.error(s"MongoConnection to $dbName is UNREACHABLE (${exception.getMessage}) — " +
+                s"starting DEGRADED rather than crash-looping; retrying in the background.$hint")
+              retryInBackground(connectionString)
+            } else
+              logger.error(s"MongoConnection init failed (${exception.getMessage}) — disabled.$hint")
             (None, None)
         }
     }
@@ -135,6 +201,34 @@ object MongoConnection extends Logging {
    *  so the services layer doesn't depend on the framework and the rule
    *  stays trivially unit-testable. */
   def isRequired(testMode: Boolean, optedOut: Boolean): Boolean = !testMode && !optedOut
+
+  /** Is this init failure worth waiting out? Pure classifier, and the other half of
+   *  the boot-failure decision alongside [[isRequired]].
+   *
+   *  TRANSIENT — the cluster is there but did not answer in time (server selection
+   *  timed out, a socket timed out, the connection dropped). Retrying fixes it, so
+   *  a `required` connection starts DEGRADED rather than aborting boot: a process
+   *  that refuses to start never binds its port, never passes a health check, and
+   *  crash-loops — re-running its boot hydrates each time and keeping an
+   *  overloaded cluster from recovering (the 2026-07-18 outage).
+   *
+   *  PERMANENT — everything else: a malformed connection string, bad credentials,
+   *  an unknown database. No amount of retrying helps, so failing loudly at boot
+   *  is the honest signal and the existing behaviour is kept.
+   *
+   *  Deliberately matched on the driver's TIMEOUT/SOCKET family rather than on
+   *  message text, which changes between driver versions. `MongoSecurityException`
+   *  is checked FIRST because it extends `MongoException` and can wrap an
+   *  `IOException` — an auth failure must never read as transient. */
+  def isTransient(exception: Throwable): Boolean = exception match {
+    case _: com.mongodb.MongoSecurityException      => false
+    case _: com.mongodb.MongoTimeoutException       => true
+    case _: com.mongodb.MongoSocketException        => true
+    case _: com.mongodb.MongoNotPrimaryException    => true
+    case _: com.mongodb.MongoNodeIsRecoveringException => true
+    case _: java.util.concurrent.TimeoutException   => true
+    case _                                          => false
+  }
 
   /** Boot connectivity-probe timeout. Raised from a hard-coded 10s after the
    *  2026-06-06 incident: the self-hosted Mongo went unresponsive under memory
