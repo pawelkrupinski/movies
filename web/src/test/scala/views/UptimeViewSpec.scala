@@ -99,6 +99,33 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     out should not include ("leading-fallback\" id=\"filmweb-fallback\" open")
   }
 
+  // /uptime is scoped to the ONE country this deployment serves — the bars are
+  // that country's scrape results, off its own worker + Mongo db. Since more
+  // than one country is deployed, the header offers a hop to the SAME page on
+  // the other country's host. Mirrors the debug navbar's switcher
+  // (`DebugViewCountrySwitchSpec`).
+  "the uptime header" should "offer a switch to another country's uptime page on that country's host" in {
+    html should include ("""class="country-switch"""")
+    html should include ("""value="https://showtimes-uk.fly.dev/uptime"""")
+    html should include ("""value="https://showtimes-de.fly.dev/uptime"""")
+  }
+
+  it should "mark this deployment's own country as the selected option" in {
+    // KINOWO_COUNTRY unset in tests → Poland; its option is pre-selected.
+    html should include ("""value="https://kinowo.fly.dev/uptime" selected""")
+  }
+
+  it should "select the served country's own option, and brand the title after it" in {
+    // A UK deployment (KINOWO_COUNTRY=uk) serves the same page under its own
+    // brand, with its own option pre-selected — never Poland's.
+    val out = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Nil, Nil, Nil,
+      current = models.Country.UnitedKingdom).body
+
+    out should include ("<title>Uptime — Showtimes</title>")
+    out should include ("""value="https://showtimes-uk.fly.dev/uptime" selected""")
+    out should not include ("""value="https://kinowo.fly.dev/uptime" selected""")
+  }
+
   it should "show only the most recent history event, with the full history in an instant hover tooltip" in {
     val fallback = FallbackRow("Kino Praha", "2180", "1 Jan 12:00", "down",
       2, "1 Jan 13:00", Seq("evt-recent", "evt-older"))
