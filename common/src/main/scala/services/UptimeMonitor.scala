@@ -85,7 +85,7 @@ class UptimeMonitor(
         exec.scheduleWithFixedDelay(job.task, job.periodMs, job.periodMs, TimeUnit.MILLISECONDS)
       }
       if (surfaceExternalWrites)
-        logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s for cross-process updates.")
+        logger.info(s"UptimeMonitor: polling uptimeBuckets every ${PollIntervalMs / 1000}s, reloading uptimeServiceTags every ${tagReloadIntervalMs / 1000}s for cross-process updates.")
     }, "uptime-monitor-init")
     thread.setDaemon(true)
     thread.start()
