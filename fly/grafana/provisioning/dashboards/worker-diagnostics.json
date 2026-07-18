@@ -83,7 +83,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kinowo_worker_native_memory_bytes{app=~\"$worker_app\"}",
+          "expr": "kinowo_worker_native_memory_bytes and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "{{category}}",
           "datasource": {
             "type": "prometheus",
@@ -151,7 +151,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "process_resident_memory_bytes{app=~\"$worker_app\"}",
+          "expr": "process_resident_memory_bytes and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "RSS",
           "datasource": {
             "type": "prometheus",
@@ -228,7 +228,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(process_cpu_seconds_total{app=~\"$worker_app\"}[5m]))*100",
+          "expr": "sum(rate(process_cpu_seconds_total[5m]) and on(app) kinowo_worker_throttled{country=~\"$country\"})*100",
           "legendFormat": "process cc",
           "datasource": {
             "type": "prometheus",
@@ -237,7 +237,7 @@
         },
         {
           "refId": "B",
-          "expr": "rate(jvm_compilation_time_seconds_total{app=~\"$worker_app\"}[5m])*100",
+          "expr": "rate(jvm_compilation_time_seconds_total[5m])*100 and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "JIT cc",
           "datasource": {
             "type": "prometheus",
@@ -246,7 +246,7 @@
         },
         {
           "refId": "C",
-          "expr": "sum(rate(jvm_gc_collection_seconds_sum{app=~\"$worker_app\"}[5m]))*100",
+          "expr": "sum(rate(jvm_gc_collection_seconds_sum[5m]) and on(app) kinowo_worker_throttled{country=~\"$country\"})*100",
           "legendFormat": "GC cc",
           "datasource": {
             "type": "prometheus",
@@ -370,7 +370,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(time()-process_start_time_seconds{app=~\"$worker_app\"})/3600",
+          "expr": "(time()-process_start_time_seconds)/3600 and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "uptime h",
           "datasource": {
             "type": "prometheus",
@@ -408,7 +408,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "jvm_threads_current{app=~\"$worker_app\"}",
+          "expr": "jvm_threads_current and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "current",
           "datasource": {
             "type": "prometheus",
@@ -417,7 +417,7 @@
         },
         {
           "refId": "B",
-          "expr": "jvm_threads_peak{app=~\"$worker_app\"}",
+          "expr": "jvm_threads_peak and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "peak",
           "datasource": {
             "type": "prometheus",
@@ -455,7 +455,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "jvm_memory_used_bytes{app=~\"$worker_app\",area=\"heap\"}",
+          "expr": "jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "heap used",
           "datasource": {
             "type": "prometheus",
@@ -493,7 +493,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\",app=~\"$worker_app\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\",app=~\"$worker_app\"}[5m]))",
+          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[5m]))",
           "legendFormat": "avg project ms",
           "datasource": {
             "type": "prometheus",
