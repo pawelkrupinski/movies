@@ -40,13 +40,50 @@ class ThrottledHttpFetch(
   maxPause:     FiniteDuration = 60.seconds,
   jitterMillis: () => Long     = () => (scala.util.Random.nextDouble() * 250).toLong,
   now:          () => Instant  = () => Instant.now(),
-  sleep:        Long => Unit   = Thread.sleep
+  sleep:        Long => Unit   = Thread.sleep,
+  summaryInterval: FiniteDuration = 5.minutes,
+  // Where the pace-report goes. Defaults to this class's logger; injected in
+  // tests so the summary can be asserted on as data instead of scraped out of
+  // captured log output.
+  report:       Option[String => Unit] = None
 ) extends HttpFetch with Logging {
 
   private val pausedUntil = new ConcurrentHashMap[String, Instant]()
 
+  // Per-host {requests, 429s} since that host's last summary. Individual 429s
+  // are already logged below, but a raw count has no denominator — 3,000 of them
+  // reads as catastrophic or negligible depending on a total the log never
+  // carried. Tuning a pace empirically needs the RATE, so accumulate both and
+  // emit one summary per host per `summaryInterval`.
+  private val stats = new ConcurrentHashMap[String, HostCallStats]()
+
   private def hostOf(url: String): Option[String] =
     scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase)
+
+  /** Count one call (and whether it drew a 429) and, once per `summaryInterval`,
+   *  log that host's clean-rate. Summarising on the request path rather than from
+   *  a timer keeps this decorator thread-free; a host that stops being called
+   *  simply stops reporting, which is the honest signal anyway. */
+  private def record(host: String, throttled: Boolean): Unit = {
+    val s = stats.computeIfAbsent(host, _ => new HostCallStats(now().toEpochMilli))
+    // Flush the elapsed window BEFORE counting this call, so each summary covers
+    // exactly its own interval and the call that trips the boundary opens the
+    // next one rather than being double-counted at the edge.
+    val nowMs = now().toEpochMilli
+    val since = s.lastSummaryMs.get()
+    if (nowMs - since >= summaryInterval.toMillis && s.lastSummaryMs.compareAndSet(since, nowMs)) {
+      val total = s.requests.getAndSet(0)
+      val t429  = s.throttled.getAndSet(0)
+      val clean = if (total == 0) 100.0 else 100.0 * (total - t429) / total
+      val pace  = RateLimitedHttpFetch.configuredInterval(s"https://$host/")
+        .map(d => s"${d.toMillis}ms").getOrElse("unpaced")
+      val msg = f"pace-report $host: $total%d requests, $t429%d throttled (429), $clean%.1f%% clean, pace=$pace"
+      report.fold(logger.info(msg))(_(msg))
+    }
+    s.requests.incrementAndGet()
+    if (throttled) s.throttled.incrementAndGet()
+    ()
+  }
 
   /** Park until this host's gate elapses, plus a little jitter so the fleet
    *  doesn't resume in lockstep and immediately re-trip the limit. */
@@ -60,9 +97,14 @@ class ThrottledHttpFetch(
     case Some(host) =>
       def attempt(n: Int): T = {
         awaitGate(host)
-        try block
+        try {
+          val result = block
+          record(host, throttled = false)
+          result
+        }
         catch {
           case e: HttpStatusException if e.code == 429 =>
+            record(host, throttled = true)
             val pause = (e.retryAfter.getOrElse(defaultPause)).min(maxPause)
             pausedUntil.put(host, now().plusMillis(pause.toMillis))
             if (n >= maxAttempts) {
@@ -85,4 +127,12 @@ class ThrottledHttpFetch(
 
   // Async = cinema-scrape fan-out, not a rate-limited TMDB path — bypass the gate.
   override def getAsync(url: String): java.util.concurrent.CompletableFuture[String] = delegate.getAsync(url)
+}
+
+/** One host's call tally between summaries. Mutable and thread-safe by design —
+ *  every paced request touches it from the worker pool. */
+private final class HostCallStats(startedMs: Long) {
+  val requests      = new java.util.concurrent.atomic.AtomicLong(0)
+  val throttled     = new java.util.concurrent.atomic.AtomicLong(0)
+  val lastSummaryMs = new java.util.concurrent.atomic.AtomicLong(startedMs)
 }

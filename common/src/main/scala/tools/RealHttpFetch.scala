@@ -291,12 +291,21 @@ object RealHttpFetch {
    *  `minRequestInterval` is the OUTBOUND pace [[RateLimitedHttpFetch]] holds the
    *  whole fleet to for this host — the minimum gap between two requests to it,
    *  across every thread. `None` (the default) means unpaced: the host absorbs
-   *  our natural concurrency, so only a host we structurally out-run names one. */
+   *  our natural concurrency, so only a host we structurally out-run names one.
+   *
+   *  `paceKnob` names an [[Env]] key that overrides `minRequestInterval` at
+   *  RUNTIME. A host whose tolerance we don't know (nobody publishes one) can
+   *  only be tuned empirically — push the pace until the 429s stop — and doing
+   *  that through redeploys costs a worker restart and a cold JVM per attempt.
+   *  Naming a knob makes the pace flippable from `/admin/config` mid-flight: the
+   *  resolve below reads it per request, so the next request uses the new value.
+   *  Still DATA, not an if-branch — any future host can name its own key. */
   final case class HostPolicy(
     hostSuffixes: Set[String],
     connectTimeout: Duration = DefaultConnectTimeout,
     requestTimeout: Duration = DefaultRequestTimeout,
     minRequestInterval: Option[Duration] = None,
+    paceKnob: Option[String] = None,
   )
 
   /** The per-host policy table — the single place a host earns a non-default
@@ -354,7 +363,16 @@ object RealHttpFetch {
     // cadence DE now runs (see fly.worker.de.toml), with ~25% headroom. Still not
     // a measured limit — if 429s persist, the next step is 750ms/1000ms, which
     // costs a sweep longer than the TTL and so needs the cadence widened with it.
-    HostPolicy(Set("filmstarts.de"), minRequestInterval = Some(Duration.ofMillis(500))),
+    // Webedia publishes no limit, so 500ms is a step in an empirical search, not
+    // a known-safe number. KINOWO_FILMSTARTS_PACE_MS makes that search cheap:
+    // flip it on /admin/config, watch the 429-rate summary ThrottledHttpFetch
+    // logs, flip again — no redeploy, no cold JVM. Once a value holds at 0
+    // throttled over a full sweep, fold it back in here as the new default.
+    HostPolicy(
+      Set("filmstarts.de"),
+      minRequestInterval = Some(Duration.ofMillis(500)),
+      paceKnob           = Some("KINOWO_FILMSTARTS_PACE_MS"),
+    ),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
@@ -373,9 +391,26 @@ object RealHttpFetch {
 
   /** The minimum gap between two outbound requests to `url`'s host, if that host
    *  is paced. `None` — the default for every host without a row naming one —
-   *  means [[RateLimitedHttpFetch]] passes the call straight through. */
+   *  means [[RateLimitedHttpFetch]] passes the call straight through.
+   *
+   *  Resolved PER REQUEST rather than baked into the table at class-init, so a
+   *  `paceKnob` flip on `/admin/config` takes effect without a worker restart.
+   *  The read is a map lookup against the override cache — cheap enough to sit
+   *  on the request path, and it only runs for the few hosts that are paced. */
   def requestIntervalFor(url: String): Option[Duration] =
-    policyFor(url).flatMap(_.minRequestInterval)
+    policyFor(url).flatMap(tunedInterval)
+
+  /** A policy's live pace: its knob's current value if it names one, else the
+   *  compiled-in default. `Env.positiveLong` ignores a non-positive or
+   *  unparseable override, so a fat-fingered `0` falls back to the default
+   *  rather than silently unpacing a host we know we out-run. */
+  private def tunedInterval(policy: HostPolicy): Option[Duration] =
+    policy.paceKnob match {
+      case None      => policy.minRequestInterval
+      case Some(key) =>
+        val compiledIn = policy.minRequestInterval.map(_.toMillis).getOrElse(0L)
+        Some(Duration.ofMillis(Env.positiveLong(key, compiledIn)))
+    }
 
   /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,
    *  else the tight default. */
