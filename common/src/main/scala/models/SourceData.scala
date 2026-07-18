@@ -42,11 +42,11 @@ case class SourceData(
   // the merged-record accessor on `MovieRecord` unions across sources in
   // priority order. Stored already-canonicalised by `recordCinemaScrape`.
   countries:      Seq[String]     = Seq.empty,
-  // Polish-language genre names ("Komedia", "Dramat"). One entry per genre,
-  // verbatim per source — each source has its own taxonomy and spelling.
-  // `MovieRecord.genres` picks the first non-empty list in source-priority
-  // order (TMDB → Filmweb → cinemas) rather than unioning, so the row shows
-  // a single coherent taxonomy.
+  // Genre names in this source's own language ("Komedia" / "Komödie"). One
+  // entry per genre, verbatim per source — each source has its own taxonomy
+  // and spelling. `MovieRecord.genres` picks the first non-empty list in
+  // source-priority order (TMDB → Filmweb → cinemas) rather than unioning, so
+  // the row shows a single coherent taxonomy.
   genres:         Seq[String]     = Seq.empty,
   posterUrl:      Option[String]  = None,
   // Cinema-only: empty for `Tmdb` / `Imdb` slots.
@@ -57,6 +57,18 @@ case class SourceData(
   // an embed URL at display time via `TrailerEmbed.embedUrlFor`.
   trailerUrl:     Option[String]  = None,
   showtimes:      Seq[Showtime]   = Seq.empty,
+  // BCP-47 tag of the language this slot's localized text (title, synopsis,
+  // genres, country names) was fetched in — `Tmdb` slot only; `None` on cinema
+  // and `Imdb` slots, which carry their site's own fixed language.
+  //
+  // Exists so a slot frozen in the WRONG language can be DETECTED. TMDB details
+  // are fetched only at resolve time, so a row resolved before its deployment
+  // learned to enrich in its own language (pre-`d0bf10d8e`) kept Polish text
+  // forever — Berlin showing "Familijny, Komedia" and a Polish title. The
+  // reaper re-resolves any slot whose tag ≠ the deployment's language; `None`
+  // means pl-PL, the historical hardcoded default, so Polish rows are already
+  // correct and never churn. See `UnresolvedTmdbReaper.staleLanguage`.
+  language:       Option[String]  = None,
   // CACHE-ONLY, NEVER PERSISTED. The worker's MovieCache strips `showtimes` (they live
   // in Mongo `screenings`) and keeps this digest so the write-guard + screenings-diff
   // still detect showtime changes without the lists resident. `None` everywhere else.
@@ -69,16 +81,22 @@ case class SourceData(
   // (endless re-divert/re-fold churn). Showtime-CHANGE detection routes through the
   // digest (`ShowtimesDigest.leanEqual` / `slotOps`), never `==`. So `showtimes` and the
   // transient `showtimesDigest` are excluded from equals/hashCode.
+  //
+  // `language` IS included, unlike those two: the cache write-guard skips the
+  // repository write when the new record `==` the stored one, so a re-resolve that
+  // corrected ONLY the language stamp (TMDB returning the same text under a freshly
+  // -confirmed tag) would never persist — and the row would be re-swept forever.
   override def equals(that: Any): Boolean = that match {
     case o: SourceData =>
       title == o.title && rawTitle == o.rawTitle && originalTitle == o.originalTitle &&
       englishTitle == o.englishTitle && synopsis == o.synopsis && cast == o.cast &&
       director == o.director && runtimeMinutes == o.runtimeMinutes && releaseYear == o.releaseYear &&
       countries == o.countries && genres == o.genres && posterUrl == o.posterUrl &&
-      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl
+      filmUrl == o.filmUrl && trailerUrl == o.trailerUrl && language == o.language
     case _ => false
   }
   override def hashCode(): Int =
     (title, rawTitle, originalTitle, englishTitle, synopsis, cast, director,
-     runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl).hashCode()
+     runtimeMinutes, releaseYear, countries, genres, posterUrl, filmUrl, trailerUrl,
+     language).hashCode()
 }

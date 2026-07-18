@@ -105,6 +105,31 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.cinemaData(Helios).countries shouldBe Seq("Polska", "Francja")
   }
 
+  it should "round-trip the Tmdb slot's enrichment-language stamp" in {
+    // The stamp is what lets the reaper spot a slot frozen in another deployment's
+    // language; if it doesn't survive Mongo, every row looks stale forever.
+    val slot   = SourceData(title = Some("Der Super Mario Galaxy Film"),
+                            genres = Seq("Animation", "Abenteuer"), language = Some("de-DE"))
+    val record = MovieRecord(data = Map[Source, SourceData](Tmdb -> slot))
+    val dto    = StoredMovieDto.fromDomain("mario|2026", record, Instant.now())
+
+    val back = StoredMovieDto.toDomain(roundTrip(dto))
+    back.record.data(Tmdb).language shouldBe Some("de-DE")
+    back.record.data(Tmdb)          shouldBe slot
+  }
+
+  it should "decode a pre-stamp row's Tmdb slot as an unstamped language" in {
+    // Every row written before the stamp existed lacks the key — it must read back
+    // as None (which the reaper reads as the legacy pl-PL), not blow up the decode.
+    val raw    = new BsonDocument()
+    val dto    = StoredMovieDto.fromDomain("legacy|2025",
+      MovieRecord(data = Map[Source, SourceData](Tmdb -> SourceData(genres = Seq("Komedia")))), Instant.now())
+    codec.encode(new BsonDocumentWriter(raw), dto, EncoderContext.builder().build())
+    raw.getDocument("sourceData").getDocument(Tmdb.displayName).containsKey("language") shouldBe false
+
+    StoredMovieDto.toDomain(roundTrip(dto)).record.data(Tmdb).language shouldBe None
+  }
+
   it should "round-trip Showtimes including dateTime, room, format" in {
     val showtimes = Seq(
       Showtime(LocalDateTime.of(2026, 5, 17, 19, 30), Some("https://example/booking/1"), Some("Sala 1"), List("2D", "NAP")),

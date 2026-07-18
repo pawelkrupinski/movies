@@ -898,6 +898,10 @@ class WorkerWiring(
   // reaper does — the leftover stays due and re-tries next period.
   def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
   lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,
+    // `forceResolve` + `country` drive the stale-language sweep: a row whose Tmdb slot
+    // was fetched in another deployment's language gets re-resolved so its title /
+    // synopsis / genres come back in this country's own.
+    forceRetry = movieService.forceResolve, country = country,
     maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
     throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)

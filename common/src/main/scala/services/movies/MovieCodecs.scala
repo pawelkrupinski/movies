@@ -175,6 +175,10 @@ object MovieCodecs {
         posterUrl      = optStr("posterUrl"),
         filmUrl        = optStr("filmUrl"),
         trailerUrl     = optStr("trailerUrl"),
+        // Absent on every row written before the stamp existed — `None` reads as
+        // pl-PL (the historical hardcoded enrichment language), which is what
+        // those rows actually hold.
+        language       = optStr("language"),
         showtimes      = showtimes
       )
     }

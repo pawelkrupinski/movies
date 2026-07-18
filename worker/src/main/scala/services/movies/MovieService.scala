@@ -108,7 +108,7 @@ class MovieService(
   private val resolveDispatcher: ResolveDispatcher =
     dispatcher.getOrElse(new InlineResolveDispatcher(
       executionContext, cache.keyOf,
-      (t, y, ot, d) => { resolveTmdbOnce(t, y, ot, d, force = false); () }))
+      (t, y, ot, d, force) => { resolveTmdbOnce(t, y, ot, d, force); () }))
 
   // EC notes: each lookup is mostly network wait; virtual threads make per-task
   // concurrency free, and TMDB's published rate limit (~50 req/s) is enforced
@@ -603,7 +603,10 @@ class MovieService(
         countries      = if (d.countries.nonEmpty) d.countries.map(c => CountryNames.canonical(c, tmdb.language)).distinct
                          else existingTmdbSlot.countries,
         genres         = if (d.genres.nonEmpty) d.genres else existingTmdbSlot.genres,
-        posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl)
+        posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl),
+        // Stamp the language these fields were fetched in, so a slot frozen by a
+        // pre-locale-fix resolve is detectable rather than silently Polish forever.
+        language       = Some(tmdb.language.toLanguageTag)
       )
       case None => existingTmdbSlot.copy(
         title         = hitTitle.orElse(existingTmdbSlot.title),
@@ -696,13 +699,22 @@ class MovieService(
       dispatchWithHints(key, e)
     }
 
+  /** Re-resolve a row that ALREADY has a `tmdbId`, so its `Tmdb` slot is re-fetched
+   *  rather than left frozen at whatever the first resolve stored. The stale-language
+   *  sweep ([[services.tasks.UnresolvedTmdbReaper]]) drives this: `fullDetails` is
+   *  fetched only at resolve time, so a row enriched before its deployment learned
+   *  its own language keeps Polish text until something forces the re-fetch. */
+  def forceResolve(key: CacheKey): Unit =
+    cache.get(key).foreach(e => dispatchWithHints(key, e, force = true))
+
   /** Dispatch a row's TMDB resolution with its `data`-merged director +
    *  originalTitle hints (the only path `directorWalk` can fire on for films
    *  TMDB doesn't index under their Polish title). Shared by the bulk
-   *  [[retryUnresolvedTmdb]] sweep and the per-row [[retryResolve]]. */
-  private def dispatchWithHints(key: CacheKey, e: MovieRecord): Unit = {
+   *  [[retryUnresolvedTmdb]] sweep, the per-row [[retryResolve]], and
+   *  [[forceResolve]]. */
+  private def dispatchWithHints(key: CacheKey, e: MovieRecord, force: Boolean = false): Unit = {
     val (origHint, directoryHint) = tmdbHints(e)
-    resolveDispatcher.dispatch(key.cleanTitle, key.year, origHint, directoryHint)
+    resolveDispatcher.dispatch(key.cleanTitle, key.year, origHint, directoryHint, force)
   }
 
   /** The originalTitle + director hints the TMDB resolution needs, derived from

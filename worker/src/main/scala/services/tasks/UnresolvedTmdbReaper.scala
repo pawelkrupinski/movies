@@ -1,5 +1,6 @@
 package services.tasks
 
+import models.{Country, MovieRecord, Tmdb}
 import play.api.Logging
 import services.Stoppable
 import services.movies.{CacheKey, MovieCacheReader}
@@ -12,7 +13,14 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * Re-tries TMDB resolution for rows still missing a `tmdbId`, SMEARED across the
+ * Re-runs TMDB resolution for the two kinds of row whose `Tmdb` slot is not what it
+ * should be: rows still missing a `tmdbId` (never resolved), and rows RESOLVED IN THE
+ * WRONG LANGUAGE — a slot stamped with a tag that isn't this deployment's. The second
+ * exists because `fullDetails` is fetched only at resolve time, so a row resolved
+ * before its deployment learned to enrich in its own language keeps Polish title /
+ * synopsis / genres forever; Berlin was listing "Familijny, Komedia, Przygodowy" and
+ * a Polish Star Wars title long after the fetch itself was fixed. Both kinds are
+ * SMEARED across the
  * [[DueWindow]] period the same way [[EnrichmentReaper]] smears rating refresh.
  * This is the queue-era replacement for `MovieService`'s daily, all-at-once
  * `retryUnresolvedTmdb` sweep, which re-dispatched the WHOLE unresolved backlog
@@ -50,6 +58,16 @@ class UnresolvedTmdbReaper(
   // Re-try one still-unresolved row (clear its negative + dispatch ResolveTmdb).
   // Wired to `MovieService.retryResolve`; a recording fn in tests.
   retry:     CacheKey => Unit,
+  // Force a re-resolve of an ALREADY-resolved row, so its `Tmdb` slot is re-fetched.
+  // Wired to `MovieService.forceResolve`; a recording fn in tests. A no-op default
+  // keeps the construction sites that don't exercise the stale-language path (specs,
+  // scripts) unchanged — paired with the `Country.default` below, which matches every
+  // legacy slot's language, so a defaulted reaper never reaches this seam anyway.
+  forceRetry: CacheKey => Unit = _ => (),
+  // This deployment's country — its `language` is the tag every `Tmdb` slot is
+  // expected to carry. Poland by default, matching the historical enrichment
+  // language, so a defaulted construction sweeps nothing extra.
+  country:   Country = Country.default,
   // The shared due schedule — each unresolved row re-tried once per its period,
   // phase-spread across it. 24h matches the old daily sweep cadence.
   dueWindow: DueWindow = new DueWindow(24.hours),
@@ -97,18 +115,44 @@ class UnresolvedTmdbReaper(
     val since = Instant.ofEpochMilli(nowMillis - tickInterval.toMillis)
     val cap   = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
     var enqueued = 0
+    var forced   = 0
     val rows = cache.entries.iterator
     while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
-      if (record.tmdbId.isEmpty && !record.detailPending &&
+      val unresolved = record.tmdbId.isEmpty && !record.detailPending
+      val staleLang  = staleLanguage(record)
+      if ((unresolved || staleLang) &&
           dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {
-        retry(key)
+        // A stale-language row is already resolved, so the plain retry (which
+        // only fires on `tmdbId.isEmpty`) would no-op — it needs the forced path.
+        if (unresolved) retry(key) else { forceRetry(key); forced += 1 }
         enqueued += 1
       }
     }
-    if (enqueued > 0) logger.info(s"UnresolvedTmdbReaper re-tried $enqueued unresolved row(s).")
+    if (enqueued > 0)
+      logger.info(s"UnresolvedTmdbReaper re-tried ${enqueued - forced} unresolved row(s)" +
+                  (if (forced > 0) s" and force-re-resolved $forced row(s) enriched in the wrong language." else "."))
     enqueued
   }
+
+  /** True when this row's `Tmdb` slot holds text fetched in a language that is no
+   *  longer the deployment's — the frozen-slot case. `fullDetails` is fetched only
+   *  at resolve time, so without this sweep a row resolved before its deployment
+   *  learned to enrich in its own language shows Polish text forever (Berlin
+   *  listing "Familijny, Komedia" and a Polish title). An unstamped slot reads as
+   *  `pl-PL`, the historical hardcoded default — exactly what those rows hold — so
+   *  the Polish deployment matches on every row and never churns.
+   *
+   *  Gated on a slot that actually carries localized text: a slot the details
+   *  fetch never filled has nothing stale to correct, and forcing it would just
+   *  re-run a search that already concluded. */
+  private[tasks] def staleLanguage(record: MovieRecord): Boolean =
+    record.data.get(Tmdb).exists { slot =>
+      val carriesLocalizedText =
+        slot.genres.nonEmpty || slot.synopsis.nonEmpty || slot.countries.nonEmpty || slot.title.nonEmpty
+      carriesLocalizedText &&
+        slot.language.getOrElse(UnresolvedTmdbReaper.LegacyLanguageTag) != country.language.toLanguageTag
+    }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
 }
@@ -117,4 +161,10 @@ object UnresolvedTmdbReaper {
   /** How often the reaper wakes to re-try the now-due slice. At 5min over a 24h
    *  period the backlog is spread across ~288 ticks. */
   val DefaultTickInterval: FiniteDuration = 5.minutes
+
+  /** What an unstamped `Tmdb` slot was fetched in: every resolve before the
+   *  per-country enrichment language landed hardcoded `pl-PL`. Reading `None` as
+   *  this (rather than "unknown, re-resolve") keeps the Polish corpus — where the
+   *  stamp is absent and the text is already right — completely still. */
+  val LegacyLanguageTag: String = "pl-PL"
 }
