@@ -81,10 +81,24 @@ object GenreLanguageAudit {
     // distinctly-Polish spellings, so it UNDER-counts). Anything not on the
     // deployment's own tag is what the reaper will force-re-resolve.
     val expected = country.language.toLanguageTag
-    val byTag = rows.map(_.record.data.get(Tmdb).flatMap(_.language).getOrElse("(unstamped → pl-PL)"))
-      .groupBy(identity).view.mapValues(_.size).toSeq.sortBy(-_._2)
+    // Distinguish "no Tmdb slot at all" (never resolved — nothing for the reaper to
+    // correct) from "Tmdb slot present but unstamped" (a genuinely stale legacy row
+    // the reaper WILL re-resolve). Collapsing the two makes a healthy corpus look
+    // like it has permanent re-resolve debt.
+    val byTag = rows.map { s =>
+      s.record.data.get(Tmdb) match {
+        case None                              => "(no Tmdb slot — unresolved)"
+        case Some(slot) if slot.language.isEmpty && slot.genres.isEmpty && slot.synopsis.isEmpty &&
+                           slot.countries.isEmpty && slot.title.isEmpty => "(Tmdb slot, no localized text)"
+        case Some(slot)                        => slot.language.getOrElse("(unstamped → pl-PL)")
+      }
+    }.groupBy(identity).view.mapValues(_.size).toSeq.sortBy(-_._2)
     println(s"\nTmdb slot enrichment-language stamp (deployment expects $expected):")
-    byTag.foreach { case (tag, n) => println(f"  $tag%-24s $n${if (tag.startsWith(expected)) "" else "   ← re-resolve due"}") }
+    byTag.foreach { case (tag, n) =>
+      // Only a stamped-but-wrong or unstamped-WITH-text slot is re-resolve debt.
+      val due = tag == "(unstamped → pl-PL)" || (!tag.startsWith("(") && !tag.startsWith(expected))
+      println(f"  $tag%-32s $n${if (due) "   ← re-resolve due" else ""}")
+    }
 
     println("\nsample of rows with Polish effective genres:")
     rows.filter(s => isPolish(s.record.genres)).take(15).foreach { s =>
