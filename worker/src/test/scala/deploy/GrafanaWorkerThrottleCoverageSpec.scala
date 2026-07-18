@@ -88,6 +88,26 @@ class GrafanaWorkerThrottleCoverageSpec extends AnyFlatSpec with Matchers {
     alertRules should include("""process_start_time_seconds{app=~"kinowo-worker.*"}""")
   }
 
+  it should "not page for the CPU-starved flare while a JVM is still warming up" in {
+    // A cold JVM re-JITs the whole parse surface, and a deploy-replaced machine starts at
+    // ~0 credit — so it sits throttled at baseline for ~an hour. That is benign and
+    // self-limiting; without an uptime guard the rule fired for ~31% of a 24h window on
+    // kinowo-worker alone. Only starvation that OUTLASTS warmup is actionable.
+    val starved = alertRules
+      .linesIterator
+      .dropWhile(!_.contains("uid: kinowo-worker-cpu-starved"))
+      .takeWhile(!_.contains("uid: kinowo-worker-crash-looping"))
+      .mkString("\n")
+
+    withClue("the CPU-starved rule lost its warm-JVM guard — it will page on every deploy: ") {
+      starved should include("process_start_time_seconds")
+      starved should include("> 3600")
+    }
+    withClue("the guard must JOIN on app+instance, or it would gate the wrong worker: ") {
+      starved should include("and on (app, instance)")
+    }
+  }
+
   "the derived worker set" should "cover every country the repo deploys" in {
     workerApps should contain allOf ("kinowo-worker", "kinowo-worker-uk", "kinowo-worker-de")
   }
