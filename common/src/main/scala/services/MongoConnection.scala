@@ -335,6 +335,15 @@ object MongoConnection extends Logging {
    *  would only burn CPU on the driver's I/O event-loop threads — the worker's
    *  measured CPU sink — for bandwidth we don't need. So a non-loopback link stays
    *  uncompressed. A URI that names its own `compressors=` always wins either way. */
+  /** Connections per `MongoClient`. Deliberately far below the driver's default of
+   *  100: every app holds its own pool against ONE small shared mongod, so the default
+   *  lets a handful of clients reserve the whole box. 25 still leaves ample headroom —
+   *  the worker's background concurrency and the web's request threads are both well
+   *  under it — while capping the fleet's worst case to something the VM can hold.
+   *  Tunable without a code change (same pattern as the credit thresholds) because
+   *  it is a capacity knob we may need to move under pressure. */
+  private[services] val MaxPoolSize: Int = Env.positiveInt("KINOWO_MONGO_MAX_POOL_SIZE", 25)
+
   private[services] def clientSettings(
       connectionString: String,
       serverSelectionTimeout: Option[FiniteDuration] = None): MongoClientSettings = {
@@ -348,6 +357,17 @@ object MongoConnection extends Logging {
     // irrelevant, so it's back to the driver default.
     if ((cs.getCompressorList == null || cs.getCompressorList.isEmpty) && isLoopbackLink(cs))
       builder.compressorList(java.util.List.of(MongoCompressor.createZlibCompressor()))
+    // Bound the pool. The driver's default is 100 connections PER CLIENT, and mongod
+    // costs roughly a megabyte of RSS per connection — so six-ish clients (web x3,
+    // worker x3, doubling while a rolling deploy runs old and new machines at once)
+    // can reserve more than the 962 MB the kinowo-mongo VM has. That is the shape of
+    // the memory exhaustion measured 2026-07-18: mongo sat 285 min/day under the 8%
+    // mem-available alarm and 45 min at 0%, which is NOT the dataset (PL is ~53 MB of
+    // data), and web boots hydrate straight off Mongo — so when it thrashed, boot went
+    // 20s -> 4m+ and flyctl's health-check wait expired, failing the deploy.
+    // A URI that names its own `maxPoolSize=` still wins, same as `compressors=`.
+    if (cs.getMaxConnectionPoolSize == null)
+      builder.applyToConnectionPoolSettings { b => b.maxSize(MaxPoolSize); () }
     serverSelectionTimeout.foreach { timeout =>
       builder.applyToClusterSettings { b =>
         b.serverSelectionTimeout(timeout.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); ()
