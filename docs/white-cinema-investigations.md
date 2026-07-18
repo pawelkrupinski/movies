@@ -32,6 +32,96 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-18
+
+**16 cinemas were 3-scrape-white** (real buckets ~02:15–03:15 UTC / 04:15–05:15
+Warsaw, newest bucket 03:15 UTC across services — actively scraping, all three
+white buckets per venue within ~1h of the newest, not a boot artifact). **All 16
+are genuinely film-dormant or the standing needs-human festival gap — every one
+live-probed this run and confirmed the parser is correct (zero films actually
+listed).** **No code change shipped** — an accurate "why each white venue is
+white" run.
+
+**Set changes vs 2026-07-14:**
+- **Fell off the white set** (recovered / no longer 3-white): **Kino Sfinks**
+  (was `needs-human` — film-dormant + markup drift) and **Kino Jaworzyna**
+  (was `intentionally-dormant`). Both gone from the white set = no longer 3-white.
+- **Returned to white this run:** **Kino PDK (Pyrzyce)** — dormant in the
+  June/early-July runs, fell off for 07-07…07-14, now 3-white again. Re-probed
+  live (below) — still dormant.
+- **Carried over unchanged (14):** ADA Kino Studyjne, DKF Politechnika, Kino
+  Chatka Żaka, Kino CK Lublin, Kino Krapkowice, Kino Kuźnica, Kino nad Wartą,
+  Kino Świt, Kino Warszawa (Przeworsk), Kino Wisła Brzeszcze, Kino Zamek
+  (needs-human), Kozienicki Dom Kultury, Patria, Studio (Opole), Teatr Ziemi
+  Rybnickiej. (That's 15 carried + PDK returned = 16.)
+
+**Out-of-scope heads-up (RED, not white — a fetch failure, different mode):**
+**Kinomax** was 3-scrape-**failing** (red) this run — `CircuitOpenException:
+circuit open for bilety.kinomax.info.pl`. The circuit breaker tripped after
+repeated fetch failures, so it correctly surfaces red (not white); the system is
+handling it. Not a white target; flagged here for the next run / a human.
+
+Discovery method unchanged (`/uptime` is auth-gated): a mongosh replay of
+`UptimeController`'s predicate against prod `uptimeBuckets` via the running
+`flyctl proxy` on `127.0.0.1:27017` — per service, last 3 non-empty buckets all
+`status==zero` (`successes==0 && failures==0 && zeroes>0`), excluding
+`|enrichment` / the 6 enrichment sources / `img:*`. All 16 venues then live-HTTP
+probed (one batched pass) to distinguish genuinely-dormant from a
+recovered-but-broken parser. **Result: none recovered** — every white bar is the
+correct output of a healthy parser against a venue with no current film programme.
+
+**Live-probe verdicts (all DORMANT unless noted):**
+- **Kino PDK** — `BiletynaClient` @ `biletyna.pl/Pyrzyce/Pyrzycki-Dom-Kultury`.
+  ld+json `Place.events` has **2** events, both non-film (`ComedyEvent` 06.11,
+  `TheaterEvent` 20.11); **0** `ScreeningEvent`. Parser correct — `intentionally-dormant`.
+- **DKF Politechnika** — `FilmwebShowtimesClient` (Filmweb 1645). API `[]` for
+  2026-07-18/19/25 — still the summer/academic break. `intentionally-dormant`.
+- **ADA Kino Studyjne** — `BiletynaClient`. `<h2>Brak wydarzeń</h2>`, ld+json
+  `events:[]`. `intentionally-dormant`.
+- **Kino CK Lublin** — `Bilety24Client`. 0 `Kup bilet - Film:` anchors; only a
+  Jazz-festival concert/workshop programme live. `intentionally-dormant`.
+- **Kino nad Wartą (Koło)** — `Bilety24OrganizerClient` (KCK 1626). 0 `Film:`
+  anchors, 30 non-film (Koncert/Spektakl). `intentionally-dormant`.
+- **Kino Wisła Brzeszcze** — `Bilety24OrganizerClient` (1539). 0 `Film:`, 18
+  concert + 4 show anchors. `intentionally-dormant`.
+- **Kino Świt (DK Świt, Warszawa)** — `SwitClient` @ `dkswit.com.pl/kino/`.
+  "Brak nadchodzących seansów filmowych", 0 `div.cks-movie-card`. `intentionally-dormant`.
+- **Patria (Ruda Śląska)** — `KinoPatriaClient` @ `kinopatria.com/repertuar/`.
+  Every slot "Brak filmu". `intentionally-dormant`.
+- **Kino Warszawa (Przeworsk)** — `MsiClient`. July+August pages 0
+  `div.movies-movie__single`; data endpoint `GetShortEventsWithFilters?date=2026-07`
+  = `{"repertoireEvents":[],"dates":[]}`. Genuinely empty at the data layer.
+  `intentionally-dormant`.
+- **Kozienicki Dom Kultury** — `MsiClient` @ `bilety.dkkozienice.pl`. Data
+  endpoint `repertoireEvents:[]`. `intentionally-dormant`.
+- **Kino Kuźnica (SOK Suchedniów)** — `SystemBiletowyClient` @
+  `shd.systembiletowy.pl`. `table.tbl_repertoire` header-only, 0 booking rows.
+  `intentionally-dormant`.
+- **Kino Chatka Żaka (UMCS)** — `KinoChatkaZakaClient`. Calendar empty (no
+  `h3.header-light` / `div.box-row`). `intentionally-dormant`.
+- **Kino Krapkowice** — `KdkKrapkowiceClient`. `view-kino`/`latest-kino-item`
+  empty; known summer break → **31 Jul 2026** (still in window). `intentionally-dormant`.
+- **Studio (Opole)** — `KinoStudioClient`. `kino-studio.html` 404s;
+  `kino-studio-przerwa.html` still says "…nieczynne… Startujemy już 3 września"
+  → break confirmed to **3 Sept 2026**. `intentionally-dormant`.
+- **Teatr Ziemi Rybnickiej** — `TeatrZiemiRybnickiejClient`. `?type[]=film`
+  returns the same 8 tiles as `?type[]=all` — all non-film (Festiwal/Koncert/Jam
+  Session), **0 film**. `intentionally-dormant`. **Minor drift note (NOT
+  actionable this run):** the site appears to IGNORE the `type[]=film` query
+  param (returns unfiltered), so the client's film filter is a no-op — but the
+  venue has zero film tiles regardless, so nothing is being hidden and there's no
+  fail-before/pass-after test to write (can't assert "should show film X" when no
+  film exists). Re-check when the venue programmes films: if a real film tile is
+  then present but still filtered out, THAT is the test-backable bug — rebuild the
+  film filter against tile markup instead of the ignored query param.
+- **Kino Zamek (Szczecin)** — `KinoZamekClient`. Castle listing still yields only
+  2 festival-banner slugs (`44-45-pomorskie-spotkania-z-diaporama`,
+  `zamkowe-noce-filmowe-2026`), no individual film-title slugs. Unchanged standing
+  `needs-human` festival filter-gap (see 2026-07-07). Likely self-resolves when
+  normal repertoire resumes and individual film slugs return to the listing.
+
+---
+
 ## 2026-07-14
 
 **17 cinemas were 3-scrape-white** (real buckets ~17:15–18:00 Warsaw, newest
