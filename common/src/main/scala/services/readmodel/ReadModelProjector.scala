@@ -133,7 +133,15 @@ class ReadModelProjector(
   // wrong screenings. `screeningsAll` is byte-identical to `projectAll(...).map(_._2)` but skips
   // the resolve/synopsisByCity/ratings work — that skip is the whole optimisation.
   private def projectReusingMetadata(stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
-    val rowKey = ReadModelProjection.filmId(stored)
+    // Keyed by the SOURCE ROW (`persistedId`, unique per `movies` document), NOT by the
+    // projected `ReadModelProjection.filmId`: that id keys on `resolvedYear` and so
+    // deliberately COLLAPSES several source rows onto one card (`kumotry|2025` and
+    // `kumotry|2026` both project to `kumotry|2026` — see its doc). The cached VALUE is one
+    // row's hash + `ResolvedMovie`s, so keying on the shared card id let two rows overwrite
+    // each other's entry on every alternating change: neither ever read its own hash back,
+    // every projection recomputed, and the miss rate never decayed. Keying per row makes each
+    // row's entry its own.
+    val rowKey = StoredMovieRecord.idOf(stored)
     val hash   = ReadModelProjection.metadataHash(stored)
     lastMetadata.get(rowKey) match {
       case Some((cachedHash, movies)) if cachedHash == hash =>
@@ -179,11 +187,10 @@ class ReadModelProjector(
     metrics.recordFilmPruned(1)
     lastMovie.remove(filmId)
     lastScreenings.remove(filmId)
-    // Evict the metadata-reuse entry. Keyed by the row's ANCHOR filmId, which equals the
-    // pruned `filmId` for a single-variant row (the common case); a split row's anchor may
-    // differ, so this is best-effort — a lingering entry is harmless (a future row reusing the
-    // same key with a matching hash would reuse identical metadata) and bounded by corpus size.
-    lastMetadata.remove(filmId)
+    // NOT evicted here: `lastMetadata` is keyed by SOURCE ROW id, and `filmId` is a projected
+    // CARD id — several rows can collapse onto one card, so there is no card→row mapping to
+    // remove by. The prune sweep retains exactly the live row keys instead (see `sweep`),
+    // which is a tighter eviction than this best-effort remove ever was.
   }
 
   /** One reconciliation pass over the whole corpus.
@@ -218,10 +225,13 @@ class ReadModelProjector(
     // no longer metered — the reproject retirement gate it fed has been removed.
     val kind = if (reproject) "reproject" else ReconcileKind.Prune
     val liveIds = scala.collection.mutable.Set.empty[String]
+    // The source-row keys behind those cards — what `lastMetadata` is keyed by.
+    val liveRowKeys = scala.collection.mutable.Set.empty[String]
     var reprojected = 0
     val scanComplete = movieRepository.foreachRecord { row =>
       if (row.record.readyToProject) {
         liveIds ++= ReadModelProjection.filmIds(row)
+        liveRowKeys += StoredMovieRecord.idOf(row)
         if (reproject)
           try reprojected += project(row)
           catch { case exception: Throwable =>
@@ -242,6 +252,10 @@ class ReadModelProjector(
     } else {
       // Prune off id-only projections — the prune reads ids/filmIds, never payloads.
       reader.findAllMovieIds().iterator.filterNot(liveIds).foreach { id => deleteFilm(id); prunedFilms += 1 }
+      // Drop metadata cached for source rows that no longer exist. Only reachable on a
+      // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
+      // live rows' metadata, costing a needless recompute each.
+      lastMetadata.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
       reader.findAllScreeningRefs().iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
         writer.deleteScreening(ref._id)
         metrics.recordWrite(Target.Screening, Op.Delete, 1)

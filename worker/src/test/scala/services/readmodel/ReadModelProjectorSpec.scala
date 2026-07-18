@@ -450,4 +450,55 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.screeningUpserts shouldBe empty
     projector.stop()
   }
+
+  // Two SOURCE ROWS that deliberately collapse onto ONE read-model card. `filmId` keys on
+  // `resolvedYear` (TMDB's), NOT on the row's own key year, so source rows `kumotry|2025`
+  // and `kumotry|2026` both project to `kumotry|2026` — stated outright in the
+  // `ReadModelProjection.filmId` doc, and normal while the worker cache churns same-tmdbId
+  // year variants faster than `settle` collapses them.
+  //
+  // The metadata cache must therefore key on the SOURCE ROW, never on that shared card id:
+  // its VALUE (the row's `metadataHash` + projected `ResolvedMovie`s) belongs to exactly one
+  // row, so two rows sharing one slot overwrite each other's entry on every alternating
+  // change. Neither ever reads its own hash back, every projection recomputes, and the miss
+  // rate NEVER decays — it is not a cold cache warming up, it is two rows evicting each
+  // other forever. Alternating the pair is exactly what the change stream delivers.
+  private def yearVariant(rowYear: Int, showtimes: Seq[Showtime]): StoredMovieRecord =
+    StoredMovieRecord(
+      "Kumotry",
+      Some(rowYear),
+      MovieRecord(
+        tmdbId = Some(1),
+        data = Map[Source, SourceData](
+          // TMDB's year is what `resolvedYear` — and so `filmId` — keys on, so both rows
+          // collapse onto `kumotry|2026` regardless of the year they are stored under.
+          Tmdb       -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)),
+          Multikino  -> SourceData(title = Some("Kumotry"), releaseYear = Some(rowYear),
+                                   filmUrl = Some("https://mk/kumotry"), showtimes = showtimes))))
+
+  "two source rows that project to the same film id" should "not evict each other's cached metadata" in {
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+
+    val olderRow = yearVariant(2025, Seq(at("2026-06-12T20:00")))
+    val newerRow = yearVariant(2026, Seq(at("2026-06-12T20:00")))
+    // Both rows really do land on ONE card — the premise of the whole test.
+    ReadModelProjection.filmId(olderRow) shouldBe ReadModelProjection.filmId(newerRow)
+
+    // Prime both: the first projection of each row is a legitimate recompute.
+    projector.onMovieUpsert(olderRow)
+    projector.onMovieUpsert(newerRow)
+    val primed = m.metadataRecomputed
+
+    // Now replay each row with a SHOWTIME-ONLY change — the metadata inputs of each row are
+    // unchanged from when it was primed, so each must reuse ITS OWN cached metadata.
+    projector.onMovieUpsert(yearVariant(2025, Seq(at("2026-06-12T20:00"), at("2026-06-13T18:00"))))
+    projector.onMovieUpsert(yearVariant(2026, Seq(at("2026-06-12T20:00"), at("2026-06-13T18:00"))))
+
+    withClue("each row must reuse its own metadata; sharing one cache slot makes both recompute forever: ") {
+      m.metadataReused     shouldBe 2
+      m.metadataRecomputed shouldBe primed
+    }
+  }
 }
