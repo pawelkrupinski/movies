@@ -526,25 +526,35 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     TmdbClient.bestPortraitPosterUrl(Seq(
       TmdbClient.PosterImage("/neutral.jpg", None,       0.667, 9.0, 2000),
       TmdbClient.PosterImage("/polish.jpg",  Some("pl"), 0.667, 5.0, 2000)
-    )) shouldBe Some("https://image.tmdb.org/t/p/w500/polish.jpg")
+    ), "pl") shouldBe Some("https://image.tmdb.org/t/p/w500/polish.jpg")
+  }
+
+  // Berlin was serving the Polish "Backrooms. Bez wyjścia" artwork. The picker
+  // hardcoded a Polish preference, so any poster set that carried Polish artwork
+  // handed it to a non-Polish deployment regardless of that deployment's language.
+  it should "prefer the DEPLOYMENT's language, not Polish, on a non-Polish deployment" in {
+    TmdbClient.bestPortraitPosterUrl(Seq(
+      TmdbClient.PosterImage("/polish.jpg", Some("pl"), 0.667, 9.0, 3000),
+      TmdbClient.PosterImage("/german.jpg", Some("de"), 0.667, 5.0, 1000)
+    ), "de") shouldBe Some("https://image.tmdb.org/t/p/w500/german.jpg")
   }
 
   it should "break ties among same-language posters by community vote, then resolution" in {
     TmdbClient.bestPortraitPosterUrl(Seq(
       TmdbClient.PosterImage("/low.jpg",  Some("pl"), 0.667, 5.0, 3000),
       TmdbClient.PosterImage("/high.jpg", Some("pl"), 0.667, 8.0, 1000)
-    )) shouldBe Some("https://image.tmdb.org/t/p/w500/high.jpg")
+    ), "pl") shouldBe Some("https://image.tmdb.org/t/p/w500/high.jpg")
   }
 
   it should "exclude landscape/square variants and return None when nothing portrait survives" in {
     TmdbClient.bestPortraitPosterUrl(Seq(
       TmdbClient.PosterImage("/wide.jpg",   Some("pl"), 1.78, 9.0, 3000),
       TmdbClient.PosterImage("/square.jpg", Some("pl"), 1.0,  9.0, 2000)
-    )) shouldBe None
+    ), "pl") shouldBe None
   }
 
   it should "return None for an empty poster set" in {
-    TmdbClient.bestPortraitPosterUrl(Seq.empty) shouldBe None
+    TmdbClient.bestPortraitPosterUrl(Seq.empty, "pl") shouldBe None
   }
 
   "parsePosters" should "decode file_path, language, aspect, vote and width (null language → None)" in {

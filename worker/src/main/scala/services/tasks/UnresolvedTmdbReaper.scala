@@ -150,8 +150,7 @@ class UnresolvedTmdbReaper(
     record.data.get(Tmdb).exists { slot =>
       val carriesLocalizedText =
         slot.genres.nonEmpty || slot.synopsis.nonEmpty || slot.countries.nonEmpty || slot.title.nonEmpty
-      carriesLocalizedText &&
-        slot.language.getOrElse(UnresolvedTmdbReaper.LegacyLanguageTag) != country.language.toLanguageTag
+      carriesLocalizedText && slot.fetchedLanguageTag != country.language.toLanguageTag
     }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
@@ -161,10 +160,4 @@ object UnresolvedTmdbReaper {
   /** How often the reaper wakes to re-try the now-due slice. At 5min over a 24h
    *  period the backlog is spread across ~288 ticks. */
   val DefaultTickInterval: FiniteDuration = 5.minutes
-
-  /** What an unstamped `Tmdb` slot was fetched in: every resolve before the
-   *  per-country enrichment language landed hardcoded `pl-PL`. Reading `None` as
-   *  this (rather than "unknown, re-resolve") keeps the Polish corpus — where the
-   *  stamp is absent and the text is already right — completely still. */
-  val LegacyLanguageTag: String = "pl-PL"
 }

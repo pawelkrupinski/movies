@@ -585,12 +585,23 @@ class MovieService(
     // ("Left-Handed Girl"), this is the alias that folds the English-keyed
     // duplicate onto the Polish-titled row — see `MovieRecord.tmdbTitleAliases`.
     val englishTitle = tmdb.englishTitle(tmdbId).orElse(existingTmdbSlot.englishTitle)
+    // Whether the slot we're merging onto was fetched in the language we're
+    // fetching in NOW. When it wasn't — the stale-language re-resolve
+    // `UnresolvedTmdbReaper` exists to drive — its LOCALIZED text (title,
+    // synopsis, genres, poster) is exactly the wrong-language content we came
+    // to replace, so it must not survive as an `.orElse` fallback. Letting it
+    // through while stamping the slot with the new language would seal the row
+    // in: it reads as correctly-localised, and the reaper never looks again.
+    // Language-neutral fields (runtime, year, cast, director) carry over as before.
+    val existingMatchesLanguage = existingTmdbSlot.fetchedLanguageTag == tmdb.language.toLanguageTag
+    def carriedLocalized[A](existing: Option[A]): Option[A] =
+      if (existingMatchesLanguage) existing else None
     val tmdbSlot = detailsOpt match {
       case Some(d) => SourceData(
-        title          = d.title.orElse(hitTitle).orElse(existingTmdbSlot.title),
+        title          = d.title.orElse(hitTitle).orElse(carriedLocalized(existingTmdbSlot.title)),
         originalTitle  = d.originalTitle.orElse(hit.flatMap(_.originalTitle)).orElse(existingTmdbSlot.originalTitle),
         englishTitle   = englishTitle,
-        synopsis       = d.synopsis.orElse(existingTmdbSlot.synopsis),
+        synopsis       = d.synopsis.orElse(carriedLocalized(existingTmdbSlot.synopsis)),
         cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
         director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
         runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
@@ -601,9 +612,10 @@ class MovieService(
         // deployment keeps TMDB's already-localised name ("United Kingdom") so
         // it isn't mislabelled with a Polish one.
         countries      = if (d.countries.nonEmpty) d.countries.map(c => CountryNames.canonical(c, tmdb.language)).distinct
-                         else existingTmdbSlot.countries,
-        genres         = if (d.genres.nonEmpty) d.genres else existingTmdbSlot.genres,
-        posterUrl      = d.posterUrl.orElse(existingTmdbSlot.posterUrl),
+                         else if (existingMatchesLanguage) existingTmdbSlot.countries else Seq.empty,
+        genres         = if (d.genres.nonEmpty) d.genres
+                         else if (existingMatchesLanguage) existingTmdbSlot.genres else Seq.empty,
+        posterUrl      = d.posterUrl.orElse(carriedLocalized(existingTmdbSlot.posterUrl)),
         // Stamp the language these fields were fetched in, so a slot frozen by a
         // pre-locale-fix resolve is detectable rather than silently Polish forever.
         language       = Some(tmdb.language.toLanguageTag)
