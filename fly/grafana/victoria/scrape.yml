@@ -9,9 +9,12 @@
 # Play server binds 9000 and serves `/metrics` (root fly.toml), and the worker's
 # JDK health server binds 9000 likewise (fly.worker.toml [[metrics]]).
 #
-# Only the kinowo_* / kinowo_worker_* app series live here. Host metrics
-# (fly_instance_* / fly_edge_*) are produced solely by Fly's host agent and are
-# NOT scrapeable from us — they stay on the `fly-prometheus` datasource.
+# Only app-emitted series live here: the kinowo_* / kinowo_worker_* business
+# metrics plus the standard jvm_* / process_* resource collectors, which BOTH
+# apps now export (services.metrics.JvmProcessMetrics, registered by the worker's
+# WorkerMetrics and the web app's WebJvmMetrics). Host metrics (fly_instance_* /
+# fly_edge_*) are produced solely by Fly's host agent and are NOT scrapeable from
+# us — they stay on the `fly-prometheus` datasource.
 global:
   scrape_interval: 15s
   scrape_timeout: 10s

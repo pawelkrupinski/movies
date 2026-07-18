@@ -1,7 +1,6 @@
 package services.metrics
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
-import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
 import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, SplitMetrics}
@@ -9,7 +8,6 @@ import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
 
-import java.io.ByteArrayOutputStream
 import java.time.Instant
 
 /** Lifecycle hook the [[services.tasks.TaskWorker]] calls so instrumentation
@@ -264,8 +262,6 @@ object WorkerTaskMetrics {
       .labelNames("country", "kind")
       .register(registry)
 
-    private val writer = PrometheusTextFormatWriter.create()
-
     seed()
 
     /** Materialize every series at 0 for every country so it exists from boot (no
@@ -366,9 +362,7 @@ object WorkerTaskMetrics {
         StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(s.stagingByStep.getOrElse(step, 0).toDouble))
         throttledGauge.labelValues(s.countryCode).set(if (s.throttled) 1.0 else 0.0)
       }
-      val out = new ByteArrayOutputStream()
-      writer.write(out, registry.scrape())
-      out.toString("UTF-8")
+      PrometheusExposition.render(registry)
     }
 
     private def refreshQueueGauges(country: String, snapshot: QueueSnapshot, now: Instant): Unit = {

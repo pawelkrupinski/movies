@@ -205,6 +205,30 @@ assert "worker memory panel queries host free memory for the whole worker fleet"
   "api/dashboards/uid/fly-overview" \
   "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"kinowo-worker.*\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
 
+# The WEB app has the same panel, side by side with the worker's. It exists
+# because the web JVM exports jvm_*/process_* too (services.metrics.WebJvmMetrics)
+# — before that, web memory was answerable only from host RAM, which can't see
+# the heap inside it. Same host-free caveat, so the same fleet-wide matcher, but
+# web-only: kinowo|showtimes-.* deliberately excludes kinowo-worker.
+assert "web memory panel queries host free memory for the whole web fleet" \
+  "api/dashboards/uid/fly-overview" \
+  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"kinowo|showtimes-.*\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
+
+# The web JVM series carry no country label (one web process per country), so
+# they are country-scoped by intersecting with the country-labelled business
+# gauge — the mirror of the worker panel's kinowo_worker_throttled join. Without
+# this join the panel would plot every country's web heap at once.
+assert "web memory panel scopes its jvm_* targets by an on(app) join to \$country" \
+  "api/dashboards/uid/fly-overview" \
+  "all('and on(app) kinowo_web_movies_served{country=~\"\$country\"}' in t['expr'] for p in d['dashboard']['panels'] if p.get('id')==44 for t in p.get('targets',[]) if t['expr'].startswith(('sum(jvm_','max(jvm_')))"
+
+# The two memory panels must sit side by side in one row — worker left, web
+# right — so one country's two JVMs are compared at a glance rather than by
+# scrolling. Guards against a later edit reflowing one of them onto its own row.
+assert "worker + web memory panels share one row, half width each" \
+  "api/dashboards/uid/fly-overview" \
+  "(lambda ps: len(ps)==2 and len({p['gridPos']['y'] for p in ps})==1 and {p['gridPos']['x'] for p in ps}=={0,12} and all(p['gridPos']['w']==12 for p in ps))([p for p in d['dashboard']['panels'] if p.get('id') in (43,44)])"
+
 # \$country is the ONLY template variable on these dashboards. \$worker_app is
 # gone: every target whose metric carries a country is scoped by data (see the
 # `and on(app) kinowo_worker_throttled{country=~"$country"}` intersections), and

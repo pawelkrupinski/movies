@@ -4,6 +4,7 @@ import models.Country
 import play.api.mvc._
 import services.UptimeMonitor
 import services.UptimeMonitor.BucketSnapshot
+import services.metrics.WebJvmMetrics
 
 /**
  * Prometheus exposition endpoint (`GET /metrics`), scraped by Fly's managed
@@ -22,12 +23,18 @@ import services.UptimeMonitor.BucketSnapshot
  * actually serving (all future / showing tomorrow) — so Grafana can alert when
  * a city's repertoire suddenly swings (the read-model-outage signal: a city
  * silently dropping to zero).
+ *
+ * Finally appends [[WebJvmMetrics]] — the standard `jvm_*` / `process_*`
+ * resource collectors, matching what the worker already exports — so the
+ * Fly-health dashboard can chart the web JVM's heap against its `-Xmx384m`
+ * rather than inferring it from the machine's free RAM.
  */
 class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, movieMetrics: WebMovieMetrics,
-  country: String = Country.default.code) extends AbstractController(cc) {
+  jvmMetrics: WebJvmMetrics, country: String = Country.default.code) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
     val snapshots = monitor.services.iterator.map(service => service -> monitor.history(service)).toMap
-    val body = MetricsController.render(snapshots, System.currentTimeMillis(), country) + movieMetrics.render()
+    val body = MetricsController.render(snapshots, System.currentTimeMillis(), country) +
+      movieMetrics.render() + jvmMetrics.render()
     Ok(body).as("text/plain; version=0.0.4; charset=utf-8")
   }
 }
