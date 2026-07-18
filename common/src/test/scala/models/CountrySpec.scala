@@ -60,7 +60,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Germany.language.toLanguageTag shouldBe "de-DE"
     Country.Germany.brandName shouldBe "Showtimes"   // any non-Polish deployment
     Country.Germany.cities shouldBe City.germanCities
-    Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "munich", "wurzburg")
+    // The full data-driven Filmstarts roster: 158 regions (German slugs — muenchen,
+    // koeln, …), each an aggregation of nearby cities' cinemas (see data/germany/).
+    Country.Germany.cities should have size 158
+    Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
+    // Every region carries cinemas; the roster totals 1,533 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1533
   }
 
   "Country.Poland" should "keep the original kinowo database and Filmweb enabled" in {
@@ -88,7 +93,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.of(Poznan) shouldBe Country.Poland
     Warszawa.country shouldBe Country.Poland
     London.country shouldBe Country.UnitedKingdom
-    Berlin.country shouldBe Country.Germany
+    City.bySlug("berlin").get.country shouldBe Country.Germany
     // Every city belongs to exactly the country whose list contains it.
     City.all.foreach(c => Country.of(c).cities should contain(c))
   }

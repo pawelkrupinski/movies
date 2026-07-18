@@ -1,7 +1,7 @@
 package clients.webedia
 
 import clients.tools.FakeHttpFetch
-import models.CinemaxxWuerzburg
+import models.GermanCinema
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -62,13 +62,14 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   // ── fetch() through the real /_/showtimes URL (fixture-replayed) ──────────
   "fetch" should "assemble films for the venue via the showtimes endpoint" in {
+    val cinemaxxWuerzburg = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
     val client = new WebediaShowtimesClient(
-      new FakeHttpFetch("webedia-de"), "www.filmstarts.de", "A0263", CinemaxxWuerzburg,
+      new FakeHttpFetch("webedia-de"), "www.filmstarts.de", "A0263", cinemaxxWuerzburg,
       daysAhead = 0, today = LocalDate.of(2026, 7, 11))
     val movies = client.fetch()
 
     movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(CinemaxxWuerzburg)
+    movies.map(_.cinema).toSet shouldBe Set(cinemaxxWuerzburg)
     movies.map(_.movie.title) should contain("Vaiana")
     all(movies.map(_.externalIds.keySet)) should contain("webedia")
   }

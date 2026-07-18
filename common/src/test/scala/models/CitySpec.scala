@@ -72,14 +72,17 @@ class CitySpec extends AnyFlatSpec with Matchers {
     )
 
     // The foreign cities are present in the global sort too.
-    City.allSorted.map(_.slug) should contain allOf ("london", "manchester", "birmingham", "berlin", "munich", "wurzburg")
+    City.allSorted.map(_.slug) should contain allOf ("london", "manchester", "birmingham", "berlin", "muenchen", "koeln")
   }
 
   it should "collate Ł after L (Łódź follows Lublin), not dump it at the end" in {
     // The Polish-collation discriminator: a naive code-point sort puts "Łódź"
     // (Ł = U+0141) after every ASCII-initial name, i.e. near the very end.
     val slugs = City.allSorted.map(_.slug)
-    slugs.indexOf("lodz") shouldBe slugs.indexOf("lublin") + 1
+    // Ł collates within the L-group, AFTER Lublin (naive code-point sort would push
+    // it past every ASCII-initial name). Not `+1` anymore: German L-cities (Lübeck,
+    // Lüneburg, Luckenwalde…) now interleave between Lublin and Łódź.
+    slugs.indexOf("lodz") should be > slugs.indexOf("lublin")
     slugs.indexOf("lodz") should be < slugs.indexOf("zabrze")
   }
 

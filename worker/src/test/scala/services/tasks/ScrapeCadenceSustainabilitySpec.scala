@@ -20,7 +20,8 @@ import java.time.LocalDate
  * throttle deliberately slows: the backlog stays bounded so the credit-starved
  * pool idles and rebuilds credit instead of staying pinned busy (the 2026-06-24
  * spiral). The capacity guard still matters — it sizes the cap big enough that the
- * common blip doesn't lag — and the corpus size is read from the live catalogue,
+ * common blip doesn't lag — and the corpus size is read from the live catalogue
+ * (the largest single country's roster, since each worker scrapes one country),
  * so adding cinemas faster than the cap can sustain fails HERE and forces a
  * re-tune instead of silently letting scraping lag.
  */
@@ -30,8 +31,16 @@ class ScrapeCadenceSustainabilitySpec extends AnyFlatSpec with Matchers {
   // fetches until tick()/handle() — so a no-op fetch is enough to count the corpus.
   private object NoFetch extends GetOnlyHttpFetch { def get(url: String): String = "" }
 
+  // Post the per-country worker split each machine scrapes exactly ONE country's
+  // cinemas (its own Mongo db + change-stream), so the binding constraint on the
+  // shared caps is the LARGEST single country's corpus — NOT the global sum across
+  // every country. Germany (the full Filmstarts roster, ~1,533 venues) is currently
+  // that max; if a bigger country lands, this recomputes and fails HERE.
+  private val catalog = new CinemaScraperCatalog(NoFetch, LocalDate.of(2026, 6, 21))
   private val corpusSize: Int =
-    new CinemaScraperCatalog(NoFetch, LocalDate.of(2026, 6, 21)).all.size
+    models.Country.all
+      .map(country => country.cities.flatMap(city => catalog.byCity.getOrElse(city.slug, Nil)).size)
+      .max
 
   private val ticksPerWindow: Int =
     (Freshness.defaultScrapeTtl.toMillis / ScrapeCadence.ReaperTickInterval.toMillis).toInt

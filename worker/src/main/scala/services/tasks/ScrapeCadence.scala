@@ -29,10 +29,13 @@ object ScrapeCadence {
   val ReaperTickInterval: FiniteDuration = 1.minute
 
   /** Healthy per-tick enqueue cap (`KINOWO_SCRAPE_MAX_ENQUEUE_PER_TICK`). Sized so
-   *  the whole catalogue clears within one freshness window with ≥1.5× headroom
-   *  (`cap × ticksPerWindow ≥ corpus × 1.5`); rose 25→30 when the full nationwide
-   *  UK Flicks roster took the corpus past ~1150 (60 ticks × 30 = 1800 ≥ 1159×1.5). */
-  val MaxEnqueuePerTick: Int = 30
+   *  the largest PER-COUNTRY catalogue clears within one freshness window with
+   *  ≥1.5× headroom (`cap × ticksPerWindow ≥ corpus × 1.5`). Post the per-country
+   *  worker split each machine scrapes ONE country, so the binding corpus is the
+   *  largest country, not the global sum. Rose 25→30 for the nationwide UK Flicks
+   *  roster, then 30→40 when the full German Filmstarts roster (1,533 cinemas) made
+   *  Germany the largest country (60 ticks × 40 = 2400 ≥ 1533 × 1.5 = 2300). */
+  val MaxEnqueuePerTick: Int = 40
 
   /** Throttled cap for [[ScrapeReaper]] (`KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK`).
    *  ScrapeReaper treats this as a bound on the OUTSTANDING waiting-scrape backlog
@@ -42,7 +45,9 @@ object ScrapeCadence {
    *  guard allows (`cap × ticksPerWindow ≥ corpus`, ~20 at the 60-min window — rose
    *  5→6 when the corpus passed 300 with the first UK + Germany cinemas, 6→8 when the
    *  Greater-London + Manchester Flicks roster took it past 450, then 8→20 when the
-   *  full nationwide UK Flicks roster (~850 venues) took the corpus past 1150), so a
+   *  full nationwide UK Flicks roster (~850 venues) took the corpus past 1150, then
+   *  20→26 when the full German Filmstarts roster made Germany the largest per-country
+   *  corpus at 1,533 — 60 ticks × 26 = 1560 ≥ 1533), so a
    *  credit-starved pool — which Fly caps to baseline, clearing only a scrape or two
    *  per minute — reaches idle as fast as the freshness guard permits. The old cap
    *  of 15 let a standing backlog of 15 keep the throttled pool pinned busy, so
@@ -51,7 +56,7 @@ object ScrapeCadence {
    *  load). Freshness during a sustained throttle is deliberately sacrificed for
    *  recovery; it catches up once the throttle clears and the full
    *  [[MaxEnqueuePerTick]] resumes. */
-  val ThrottledMaxEnqueuePerTick: Int = 20
+  val ThrottledMaxEnqueuePerTick: Int = 26
 
   /** How many staggered sub-slices each (non-throttled) ScrapeReaper tick enqueues
    *  the due batch in (`KINOWO_SCRAPE_ENQUEUE_SPREAD_SLICES`). The tick's clump of

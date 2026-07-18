@@ -29,12 +29,15 @@ primary_region = 'arn'
   KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
   KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
   KINOWO_SCRAPE_FRESHNESS_MINUTES = '60'
-  # JVM sizing identical to kinowo-worker-uk (448m/1gb). NOTE: this is sized for
-  # the CURRENT DE roster (the 3 hand-authored cities). When the full 158-region /
-  # 1,533-cinema roster (data/germany/regions.json) is wired into the model, this
-  # working set grows a lot — re-measure heap and bump Xmx / the [[vm]] RAM then,
-  # exactly like the pl+uk 480m/1280mb episode (see fly.worker.toml). All other
-  # flags match kinowo-worker — see that file's JAVA_OPTS note.
+  # JVM sizing: Xms=Xmx=448m on a 1 GB box — kept at the kinowo-worker-uk baseline
+  # even though the full 158-region / 1,533-cinema Filmstarts roster
+  # (data/germany/regions.json) is now wired in (DE's corpus is ~1.8× the UK one,
+  # 1,533 vs ~850 venues). Post index-only-cache the heap grows sub-linearly with
+  # cinema count, so 448m may well hold it; we deliberately do NOT pre-provision on
+  # a guess. MEASURE actual heap after the roster is live (worker heap metric / NMT)
+  # and only then bump Xmx / step the [[vm]] RAM (1gb→1280mb, 256 MB increments) if
+  # it OOMs, exactly like the pl+uk 480m/1280mb episode (see fly.worker.toml). All
+  # other flags match kinowo-worker — see that file's JAVA_OPTS note.
   JAVA_OPTS = '-Xms448m -Xmx448m -XX:+UseSerialGC -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=128m -XX:MaxDirectMemorySize=96m -XX:CICompilerCount=2 -XX:-UseTypeSpeculation -XX:PerMethodRecompilationCutoff=20 -XX:PerBytecodeRecompilationCutoff=20 -XX:+AutoCreateSharedArchive -XX:SharedArchiveFile=/data/app.jsa -XX:NativeMemoryTracking=summary -XX:+UnlockDiagnosticVMOptions -XX:+PrintNMTStatistics -XX:+ExitOnOutOfMemoryError -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/data/heapdumps -XX:ErrorFile=/data/logs/hs_err_%p.log -Djdk.http.auth.tunneling.disabledSchemes='
   MALLOC_ARENA_MAX = '2'
   MALLOC_TRIM_THRESHOLD_ = '131072'
@@ -65,8 +68,9 @@ primary_region = 'arn'
   destination = '/data'
 
 [[vm]]
-  # 2 shared vCPUs / 1 GB — same class as kinowo-worker/-uk. Re-size when the full
-  # German roster lands (see the JAVA_OPTS note).
+  # 2 shared vCPUs / 1 GB — same class as kinowo-worker/-uk. Kept at 1 GB for the
+  # full 1,533-cinema German roster; measure heap once live and step to 1280mb only
+  # if it OOMs (see the JAVA_OPTS note).
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 2

@@ -1375,20 +1375,13 @@ class CinemaScraperCatalog(
   // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
   private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
     new WebediaShowtimesClient(http, "www.filmstarts.de", theaterId, cinema, today = today)
-  private val berlinScrapers: Seq[CinemaScraper] = Seq(
-    filmstarts("A0275", CinemaxxPotsdamerPlatz),
-    filmstarts("A0332", CineStarCubixAlexanderplatz),
-    filmstarts("A0597", HackescheHoefeKino),
-    filmstarts("A0625", KinoInternationalBerlin),
-    filmstarts("A0185", KinoCentralBerlin),
-  )
-  private val munichScrapers: Seq[CinemaScraper] = Seq(
-    filmstarts("A0025", MathaeserFilmpalast),
-    filmstarts("A0943", CinemaxxMuenchen),
-    filmstarts("A1610", RoyalFilmpalast),
-    filmstarts("A1570", MuseumLichtspiele),
-  )
-  private val wurzburgScrapers: Seq[CinemaScraper] = Seq(filmstarts("A0263", CinemaxxWuerzburg))
+  // Germany — data-driven from the full GermanRoster (158 regions / 1,533 cinemas):
+  // one filmstarts scraper per cinema, keyed by region slug (the slug City.slug uses).
+  // Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
+  private val germanBaseByCity: Map[String, Seq[CinemaScraper]] =
+    models.GermanRoster.regions.map { region =>
+      region.slug -> region.cinemas.map(c => filmstarts(models.GermanRoster.theaterIdByCinema(c), c))
+    }.toMap
 
   private val baseByCity: Map[String, Seq[CinemaScraper]] = Map(
     "poznan"     -> poznanScrapers,
@@ -1512,11 +1505,7 @@ class CinemaScraperCatalog(
     "wiltshire" -> wiltshireScrapers,
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
-    // Germany (Filmstarts)
-    "berlin"     -> berlinScrapers,
-    "munich"     -> munichScrapers,
-    "wurzburg"   -> wurzburgScrapers,
-  )
+  ) ++ germanBaseByCity  // Germany: the full 158-region roster (data-driven)
 
   /** Per-city scrapers plus any Filmweb-catchment venues for that city. */
   val byCity: Map[String, Seq[CinemaScraper]] =

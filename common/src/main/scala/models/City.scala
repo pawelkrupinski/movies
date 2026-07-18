@@ -828,17 +828,15 @@ case object Yorkshire extends City("yorkshire",
 
 // ── Germany (also non-declining for our purposes). ───────────────────────────
 
-case object Berlin extends City("berlin",
-  CityLabels("Berlin", "Berlin", "Berlin"), 52.5200, 13.4050, ZoneId.of("Europe/Berlin")) {
-  val cinemas: Seq[Cinema] = Cinema.berlin
-}
-case object Munich extends City("munich",
-  CityLabels("München", "München", "München"), 48.1351, 11.5820, ZoneId.of("Europe/Berlin")) {
-  val cinemas: Seq[Cinema] = Cinema.munich
-}
-case object Wurzburg extends City("wurzburg",
-  CityLabels("Würzburg", "Würzburg", "Würzburg"), 49.7913, 9.9534, ZoneId.of("Europe/Berlin")) {
-  val cinemas: Seq[Cinema] = Cinema.wurzburg
+/** A German region — the data-driven `City` subtype. The full roster (158 regions
+ *  / 1,533 cinemas) is generated into `GermanRosterData` and materialised by
+ *  [[GermanRoster]]; each region groups the cinemas within ~35 km of a hub city
+ *  (see `data/germany/`). Instances are built ONCE (in `GermanRoster`), so
+ *  identity equality holds just like the hand-authored `case object` cities —
+ *  every lookup uses those singletons. */
+final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Double, cinemas0: Seq[Cinema])
+  extends City(slug, labels, lat, lon, ZoneId.of("Europe/Berlin")) {
+  val cinemas: Seq[Cinema] = cinemas0
 }
 
 object City {
@@ -874,8 +872,10 @@ object City {
    *  of [[allUkCities]], kept in that list's declared order. */
   private[models] val ukCities: Seq[City] = allUkCities.filter(activeUkCities)
 
-  /** Germany's cities — the authoritative list for [[Country.Germany]]. */
-  private[models] val germanCities: Seq[City] = Seq(Berlin, Munich, Wurzburg)
+  /** Germany's cities — the authoritative list for [[Country.Germany]]. The full
+   *  158-region roster, materialised data-driven from `GermanRosterData` (see
+   *  [[GermanRegion]] / `GermanRoster`), rather than hand-authored case objects. */
+  private[models] val germanCities: Seq[City] = GermanRoster.regions
 
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse

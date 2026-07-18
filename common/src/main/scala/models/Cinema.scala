@@ -1483,18 +1483,28 @@ case object TheLightSheffield extends Cinema("The Light Sheffield", "The Light S
 case object VueCinemasSheffield extends Cinema("Vue Cinemas Sheffield", "Vue Sheffield")
 
 
-// ── Germany (AlloCiné/Filmstarts-sourced) ────────────────────────────────────
+// ── Germany (Filmstarts) — data-driven from the full roster ──────────────────
+// `GermanRosterData` (generated from data/germany/regions.json) carries 158
+// regions / 1,533 cinemas. Each venue is a `GermanCinema` instance built ONCE in
+// `GermanRoster` and reused everywhere (the region's cinemas, `Cinema.byCity`, and
+// the scrape catalog) — so the same `Source` instance is used throughout and
+// identity equality holds like the hand-authored `case object` cinemas did.
+final class GermanCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
 
-case object CinemaxxPotsdamerPlatz extends Cinema("CinemaxX Potsdamer Platz", "CinemaxX Potsdamer Platz")
-case object CineStarCubixAlexanderplatz extends Cinema("CineStar Cubix am Alexanderplatz", "Cubix Alexanderplatz")
-case object HackescheHoefeKino extends Cinema("Hackesche Höfe Kino", "Hackesche Höfe")
-case object KinoInternationalBerlin extends Cinema("Kino International", "Kino International")
-case object KinoCentralBerlin extends Cinema("Kino Central", "Kino Central")
-case object MathaeserFilmpalast extends Cinema("Mathäser Filmpalast", "Mathäser")
-case object CinemaxxMuenchen extends Cinema("CinemaxX München", "CinemaxX München")
-case object RoyalFilmpalast extends Cinema("Royal Filmpalast", "Royal Filmpalast")
-case object MuseumLichtspiele extends Cinema("Museum-Lichtspiele", "Museum-Lichtspiele")
-case object CinemaxxWuerzburg extends Cinema("CinemaxX Würzburg", "CinemaxX Würzburg")
+/** Materialises the generated German roster into `GermanRegion` cities +
+ *  `GermanCinema` venues, once. Exposes the regions for `City.germanCities`, the
+ *  by-display-name grouping for `Cinema.byCity`, and each cinema's Filmstarts
+ *  `theaterId` for the scrape catalog. */
+object GermanRoster {
+  private val built: Seq[(GermanRegion, Seq[(GermanCinema, String)])] =
+    GermanRosterData.regions.map { case (slug, name, lat, lon, cinemas) =>
+      val venues = cinemas.map { case (disp, pill, tid) => (new GermanCinema(disp, pill), tid) }
+      (new GermanRegion(slug, CityLabels(name, name, name), lat, lon, venues.map(_._1)), venues)
+    }
+  val regions: Seq[GermanRegion]             = built.map(_._1)
+  val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, v) => r.labels.nominative -> v.map(_._1) }
+  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._2).toMap
+}
 
 
 object Cinema {
@@ -1719,10 +1729,8 @@ object Cinema {
   val worcestershire: Seq[Cinema] = Seq(CastlemortonCinemaMortonMajestic, FuturistCinema, MalvernTheatres, Number8Pershore, OdeonCinemaWorcester, RegalCinemaEvesham, RegalCinemaTenburyWells, VueCinemasRedditch, VueCinemasWorcester)
   val yorkshire: Seq[Cinema] = Seq(CineworldSheffield, OdeonLuxeSheffield, ParamountPenistone, ShowroomSheffield, TheLightSheffield, VueCinemasSheffield)
 
-  // ── Germany (Filmstarts) ──
-  val berlin: Seq[Cinema]     = Seq(CinemaxxPotsdamerPlatz, CineStarCubixAlexanderplatz, HackescheHoefeKino, KinoInternationalBerlin, KinoCentralBerlin)
-  val munich: Seq[Cinema]     = Seq(MathaeserFilmpalast, CinemaxxMuenchen, RoyalFilmpalast, MuseumLichtspiele)
-  val wurzburg: Seq[Cinema]   = Seq(CinemaxxWuerzburg)
+  // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
+  // not per-city vals — the full 158-region roster is data-driven.
 
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city
@@ -1849,11 +1857,7 @@ object Cinema {
     "Wiltshire" -> wiltshire,
     "Worcestershire" -> worcestershire,
     "Yorkshire" -> yorkshire,
-    // Germany
-    "Berlin"      -> berlin,
-    "München"     -> munich,
-    "Würzburg"    -> wurzburg,
-  )
+  ) ++ GermanRoster.byCity  // Germany: the full 158-region roster (data-driven)
 
   val all: Seq[Cinema] = byCity.flatMap(_._2)
 
