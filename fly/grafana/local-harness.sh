@@ -193,6 +193,47 @@ for c in pl uk de; do
     "$web_expected"
 done
 
+# The memory panels' HOST line (fly_instance_memory_mem_available) can't be
+# scoped by a join: it lives on fly-prometheus, a datasource with no country
+# label and no shared series to intersect with. It is narrowed by the derived
+# $worker_host_app / $web_host_app variables instead, whose options come from
+# THIS datasource. Grafana resolves those with label_values, whose wire form is
+# a /label/app/values call filtered by the variable's own matcher — so running
+# that call per country is running the variable definition itself. If a derived
+# variable ever returned another country's app, the host line would contradict
+# every other series on its panel, which is precisely the old $worker_app bug.
+label_values_app() { # match-selector
+  curl -fsS --get --data-urlencode "match[]=$1" "$proxy/label/app/values" \
+    | python3 -c "import sys,json;print(','.join(sorted(json.load(sys.stdin).get('data') or [])) or 'NO DATA')"
+}
+
+assert_variable_resolves_to() { # what  match-selector  expected-csv
+  local got; got=$(label_values_app "$2")
+  if [ "$got" = "$3" ]; then
+    echo "PASS: $1 → [$got]"
+  else
+    echo "FAIL: $1 → [$got], expected [$3]"
+    fail=1
+  fi
+}
+
+for c in pl uk de; do
+  worker_expected="kinowo-worker"; [ "$c" = pl ] || worker_expected="kinowo-worker-$c"
+  web_expected="kinowo";           [ "$c" = pl ] || web_expected="showtimes-$c"
+  assert_variable_resolves_to "\$worker_host_app, country=$c" \
+    "kinowo_worker_throttled{country=~\"$c\"}" "$worker_expected"
+  assert_variable_resolves_to "\$web_host_app, country=$c" \
+    "kinowo_web_movies_served{country=~\"$c\"}" "$web_expected"
+done
+
+# Multi-select is the case a per-country regex gets wrong most quietly: $country
+# interpolates to `pl|uk`, and a variable that mishandled it would silently drop
+# one country's host line rather than error.
+assert_variable_resolves_to "\$worker_host_app, country=pl|uk (multi-select)" \
+  "kinowo_worker_throttled{country=~\"pl|uk\"}" "kinowo-worker,kinowo-worker-uk"
+assert_variable_resolves_to "\$web_host_app, country=pl|uk (multi-select)" \
+  "kinowo_web_movies_served{country=~\"pl|uk\"}" "kinowo,showtimes-uk"
+
 # The asymmetry the dashboards depend on: jvm_* has no country label — on
 # EITHER app — so the `and on(app)` join is the only thing scoping those panels.
 # If this ever returns a country the seed (and the assumption) is wrong.

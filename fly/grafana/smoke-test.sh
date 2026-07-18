@@ -199,20 +199,22 @@ assert "enqueued/started/fully-worked by-type panels share one row" \
 # The worker JVM/host memory panel must carry the host-free-memory series (the
 # whole point of the panel — how much RAM the machine has left) and be a Mixed
 # panel so it can join the worker's own jvm_* exports with Fly host metrics.
-# Fly host metrics carry no `country` label and live on a different datasource,
-# so they can't be country-scoped — they show the whole worker fleet instead.
-assert "worker memory panel queries host free memory for the whole worker fleet" \
+# Fly host metrics carry no `country` label AND sit on a different datasource, so
+# no on(app) data join can reach them — they are narrowed to the selected country
+# by the derived $worker_host_app variable instead (see the templating assertions
+# below). A regression here shows every country's worker on a one-country panel.
+assert "worker memory panel scopes host free memory to \$country" \
   "api/dashboards/uid/fly-overview" \
-  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"kinowo-worker.*\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
+  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"\$worker_host_app\"}' for p in d['dashboard']['panels'] if p.get('id')==43 for t in p.get('targets',[]))"
 
 # The WEB app has the same panel, side by side with the worker's. It exists
 # because the web JVM exports jvm_*/process_* too (services.metrics.WebJvmMetrics)
 # — before that, web memory was answerable only from host RAM, which can't see
-# the heap inside it. Same host-free caveat, so the same fleet-wide matcher, but
-# web-only: kinowo|showtimes-.* deliberately excludes kinowo-worker.
-assert "web memory panel queries host free memory for the whole web fleet" \
+# the heap inside it. Its host line is scoped by the web mirror of that variable,
+# which must be a DIFFERENT one: sharing it would plot the worker's host RAM here.
+assert "web memory panel scopes host free memory to \$country" \
   "api/dashboards/uid/fly-overview" \
-  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"kinowo|showtimes-.*\"}' for p in d['dashboard']['panels'] if p.get('datasource',{}).get('uid')=='-- Mixed --' for t in p.get('targets',[]))"
+  "any(t.get('expr')=='fly_instance_memory_mem_available{app=~\"\$web_host_app\"}' for p in d['dashboard']['panels'] if p.get('id')==44 for t in p.get('targets',[]))"
 
 # The web JVM series carry no country label (one web process per country), so
 # they are country-scoped by intersecting with the country-labelled business
@@ -229,21 +231,39 @@ assert "worker + web memory panels share one row, half width each" \
   "api/dashboards/uid/fly-overview" \
   "(lambda ps: len(ps)==2 and len({p['gridPos']['y'] for p in ps})==1 and {p['gridPos']['x'] for p in ps}=={0,12} and all(p['gridPos']['w']==12 for p in ps))([p for p in d['dashboard']['panels'] if p.get('id') in (43,44)])"
 
-# \$country is the ONLY template variable on these dashboards. \$worker_app is
-# gone: every target whose metric carries a country is scoped by data (see the
-# `and on(app) kinowo_worker_throttled{country=~"$country"}` intersections), and
-# the three fly_instance_* host targets that can't be are deliberately fleet-wide.
-# A second variable here has twice been a source of silent cross-country leakage;
-# don't reintroduce one.
+# \$country is the only variable anyone can PICK. The hand-selectable \$worker_app
+# it replaced twice caused silent cross-country leakage — its value lived in the
+# URL independently of the country, so a bookmarked link happily showed country=uk
+# next to worker_app=kinowo-worker-de. Every target whose metric carries a country
+# is therefore scoped by data (the `and on(app) kinowo_worker_throttled{country=~
+# "$country"}` intersections), never by a variable.
+#
+# The two exceptions are DERIVED, not selectable: the memory panels' fly_instance_*
+# host series live on fly-prometheus, which no join can reach, so $worker_host_app /
+# $web_host_app resolve the country's app names from app-metrics-live. What makes
+# them safer than the old variable is that their query is a function OF $country,
+# so the value they DERIVE cannot disagree with it, and hide: 2 removes the
+# dropdown that made pinning routine (Grafana writes $__all back to the URL, so
+# bookmarks re-derive). Not a guarantee: a hand-written `&var-worker_host_app=...`
+# still overrides — verified, and asserted as a known residual by
+# fly/grafana/interpolation-probe.mjs, whose {{app}} legend is the visible tell.
+# Both properties below are what keep it derived; a variable that stops
+# referencing $country, or gains a dropdown, is the old leak coming back.
 for uid in fly-overview kinowo-worker-diag; do
-  assert "$uid: country is the only template variable" \
+  assert "$uid: country is the only user-facing template variable" \
     "api/dashboards/uid/$uid" \
-    "[v['name'] for v in d['dashboard']['templating']['list']]==['country']"
+    "[v['name'] for v in d['dashboard']['templating']['list'] if v.get('hide')!=2]==['country']"
 done
 
-# Fleet-wide host series MUST carry {{app}} in the legend. Without it all three
-# workers render under one fixed display name and you get identical duplicate
-# legend entries — indistinguishable from the cross-country leak this replaced.
+assert "fly-overview: the derived host-app variables are hidden and defined from \$country" \
+  "api/dashboards/uid/fly-overview" \
+  "(lambda vs: sorted(vs)==['web_host_app','worker_host_app'] and all(v.get('hide')==2 and 'country=~\"\$country\"' in v.get('definition','') and v['datasource']['uid']=='app-metrics-live' for v in d['dashboard']['templating']['list'] if v['name'] in vs))([v['name'] for v in d['dashboard']['templating']['list'] if v['name'].endswith('_host_app')])"
+
+# Host series MUST carry {{app}} in the legend — the panels that stay fleet-wide
+# (CPU, credit, throttle, steal, memory %) and the two country-scoped memory ones
+# alike. Without it several apps render under one fixed display name and you get
+# identical duplicate legend entries — indistinguishable from the cross-country
+# leak this replaced, and on the memory panels the only way to SEE a bad scope.
 assert "fleet-wide fly_instance_* series are labelled per app" \
   "api/dashboards/uid/fly-overview" \
   "all('{{app}}' in t.get('legendFormat','') for p in d['dashboard']['panels'] for t in p.get('targets',[]) if 'fly_instance_' in t.get('expr',''))"
