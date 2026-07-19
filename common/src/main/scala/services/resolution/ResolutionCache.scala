@@ -25,6 +25,14 @@ trait ResolutionCache {
    *  result. A None result is NOT cached. Concurrent calls with the same key
    *  collapse to a single `resolve`. */
   def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String]
+
+  /** Forget every memoised resolution for the film titled `cleanTitle`, so the
+   *  next `getOrResolve` genuinely re-resolves.
+   *
+   *  Lives on the CACHE, not the store: the write-through implementation fronts
+   *  the store with its own Caffeine layer, so clearing only the durable side
+   *  would leave the stale value in memory and change nothing. */
+  def forget(cleanTitle: String): Unit = ()
 }
 
 object ResolutionCache {
@@ -53,6 +61,15 @@ class WriteThroughResolutionCache(store: ResolutionStore) extends ResolutionCach
 
   override def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] =
     Option(cache.get(hintKey, _ => loadOrResolve(hintKey, resolve).orNull))
+
+  /** Both layers, in that order: Caffeine first so a concurrent read can't
+   *  re-warm it from the row we are about to delete. */
+  override def forget(cleanTitle: String): Unit = {
+    import scala.jdk.CollectionConverters._
+    cache.invalidateAll(cache.asMap().keySet().asScala.filter(ResolutionKeys.belongsTo(_, cleanTitle)).toSeq.asJava)
+    store.removeForFilm(cleanTitle)
+    ()
+  }
 
   private def loadOrResolve(hintKey: String, resolve: => Option[String]): Option[String] =
     store.get(hintKey).orElse {

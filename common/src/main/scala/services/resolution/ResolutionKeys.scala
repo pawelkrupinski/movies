@@ -43,4 +43,26 @@ object ResolutionKeys {
   /** Metacritic url: title + fallback title + year. */
   def mc(title: String, fallback: Option[String], year: Option[Int]): String =
     Seq("mc", norm(title), opt(fallback), this.year(year)).mkString(Sep)
+
+  /** True when `hintKey` was built for the film whose cache key title is
+   *  `cleanTitle` — i.e. that title appears as one of the key's fields.
+   *
+   *  Every builder above places the film's sanitized title in SOME field, but
+   *  not the same one: `tmdb`/`imdb`/`filmweb` lead with it, while `mc`/`rt` lead
+   *  with the ORIGINAL title and carry the film's own title in the fallback field
+   *  (`mc|theodyssey|odyseja|2026`). Matching on whole fields — never a substring
+   *  — is what keeps that uniform: `sanitize` strips everything but letters and
+   *  digits, so `|` cannot occur inside a field.
+   *
+   *  Deliberately NOT year-scoped. The year in a key is the resolver's (TMDB's
+   *  release year), which can differ from the row's cache-key year, so filtering
+   *  on it would silently miss the entry we most want gone. A forced re-enrich
+   *  means "forget what we concluded about this title", and clearing a same-title
+   *  remake's entry too is harmless — it re-resolves on its next pass. */
+  def belongsTo(hintKey: String, cleanTitle: String): Boolean = {
+    val title = norm(cleanTitle)
+    // -1 keeps trailing empty fields (an absent fallback / year), so a key ending
+    // in a blank field still splits into the full field list.
+    title.nonEmpty && hintKey.split("\\|", -1).contains(title)
+  }
 }

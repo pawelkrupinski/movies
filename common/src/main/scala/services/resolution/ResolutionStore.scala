@@ -2,7 +2,7 @@ package services.resolution
 
 import com.mongodb.client.model.{IndexOptions => JIndexOptions, ReplaceOptions}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes}
+import org.mongodb.scala.model.{Filters, Indexes, Projections}
 import play.api.Logging
 
 import java.time.{Clock, Instant}
@@ -33,6 +33,16 @@ trait ResolutionStore {
 
   /** Store (or refresh the timestamp of) `hintKey` → `value`. */
   def put(hintKey: String, value: String): Unit
+
+  /** Forget every memoised resolution for the film titled `cleanTitle`,
+   *  returning how many were dropped.
+   *
+   *  The operator's forced re-enrich calls this. Without it, forcing is far less
+   *  fresh than it looks: `scrapedOnly` clears the row's URLs and ids, and the
+   *  re-resolve then replays THIS cache instead of re-probing, so a wrong answer
+   *  comes straight back (prod: Nolan's "Odyseja" re-resolved to the memoised
+   *  Cousteau-biopic Metacritic URL for the whole 24h TTL). */
+  def removeForFilm(cleanTitle: String): Int
 }
 
 object ResolutionStore {
@@ -53,6 +63,13 @@ class InMemoryResolutionStore(clock: Clock = Clock.systemUTC()) extends Resoluti
 
   override def put(hintKey: String, value: String): Unit = {
     entries.put(hintKey, (value, clock.instant())); ()
+  }
+
+  override def removeForFilm(cleanTitle: String): Int = {
+    import scala.jdk.CollectionConverters._
+    val doomed = entries.keySet.asScala.filter(ResolutionKeys.belongsTo(_, cleanTitle)).toSeq
+    doomed.foreach(entries.remove)
+    doomed.size
   }
 }
 
@@ -108,6 +125,28 @@ class MongoResolutionStore(
         (exception: Throwable) => logger.debug(s"Resolution write failed for $collectionName/$hintKey: ${exception.getMessage}")
       )
     }.recover { case exception => logger.debug(s"Resolution write failed for $collectionName/$hintKey: ${exception.getMessage}") }
+  }
+
+  /** Reads the collection's ids and deletes those belonging to `cleanTitle`.
+   *  A full id scan is fine here: the 24h TTL keeps each of these collections to
+   *  a handful of documents, and this runs only on an operator's forced
+   *  re-enrich. The segment match can't be expressed as an index-friendly Mongo
+   *  filter (the title sits in a different field per source), and duplicating it
+   *  as a regex would let it drift from `ResolutionKeys.belongsTo`. */
+  override def removeForFilm(cleanTitle: String): Int = coll.fold(0) { c =>
+    Try {
+      val ids = Await.result(c.find().projection(Projections.include("_id")).toFuture(), 10.seconds)
+        .map(_.getString("_id"))
+        .filter(ResolutionKeys.belongsTo(_, cleanTitle))
+      if (ids.isEmpty) 0
+      else {
+        Await.result(c.deleteMany(Filters.in("_id", ids*)).toFuture(), 10.seconds)
+        logger.info(s"Resolution cache: forgot ${ids.size} $collectionName entr(ies) for '$cleanTitle'.")
+        ids.size
+      }
+    }.recover { case exception =>
+      logger.warn(s"Resolution forget failed for $collectionName/'$cleanTitle': ${exception.getMessage}"); 0
+    }.getOrElse(0)
   }
 
   /** Create the TTL index on `at`, and bring an existing one's expiry in line
