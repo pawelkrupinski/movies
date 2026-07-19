@@ -32,8 +32,10 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
       .filterNot(_.startsWith("#"))
       .collectFirst { case s"KINOWO_SCRAPE_FRESHNESS_MINUTES$rest" => rest.dropWhile(_ != '\'').filter(_.isDigit) }
 
-  "the DE worker" should "scrape on a 2-hour cadence, not the fleet's hourly default" in {
-    cadenceOf("fly.worker.de.toml") shouldBe Some("120")
+  "the DE worker" should "scrape on a 3-hour cadence, not the fleet's hourly default" in {
+    // 180, coupled to the 1000ms Filmstarts pace — a ~179min sweep needs a budget
+    // that fits it. See the invariant test below and fly.worker.de.toml.
+    cadenceOf("fly.worker.de.toml") shouldBe Some("180")
   }
 
   it should "pace Filmstarts slowly enough to stop the 429s, yet still sweep inside that cadence" in {

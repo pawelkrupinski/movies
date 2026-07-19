@@ -113,9 +113,10 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "read the pace for a real paced host off the HostPolicies table" in {
     // The production lookup, not the fixture's stub — guards the wiring between
     // the policy row and the decorator.
-    // 500ms, not the original 250ms: at ~4 req/s Filmstarts answered with a
-    // steady stream of 429s (3,118 in one worker.log). See the policy's comment.
-    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
+    // 1000ms: pace-report measurement showed 250ms and 500ms both throttled
+    // under German daytime load (Filmstarts tolerates ~1 req/s), so the pace
+    // stepped down to ~1 req/s for 0 throttled. See the policy's comment.
+    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
     RateLimitedHttpFetch.configuredInterval(Unpaced) shouldBe None
   }
 
@@ -126,17 +127,17 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     withProperty("KINOWO_FILMSTARTS_PACE_MS", "900") {
       RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(900.millis)
     }
-    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
+    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
   }
 
   it should "ignore a non-positive knob rather than unpacing the host" in {
     // 0 would read as "no gap at all" — the burst behaviour that drew the 429s
     // in the first place. Env.positiveLong drops it back to the compiled default.
     withProperty("KINOWO_FILMSTARTS_PACE_MS", "0") {
-      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
+      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
     }
     withProperty("KINOWO_FILMSTARTS_PACE_MS", "not-a-number") {
-      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(500.millis)
+      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
     }
   }
 
