@@ -521,8 +521,8 @@
     },
     {
       "id": 10,
-      "title": "Worker HTTP outcomes \u2014 clean % over error share (per country)",
-      "description": "Every outbound HTTP attempt incl. retries, as a share of all attempts, stacked to 100%. The error bands sit at the bottom and 'clean %' rides on top, so the coloured band at the floor is exactly the failure budget and its thickness reads as 'how much of the gap below 100% is this error'. The 4xx range is split by code because one bucket hid two opposite meanings: http_404 is mostly the RT/Metacritic resolvers probing up to 4 candidate slugs per title (working as designed \u2014 expect a large steady band), while http_403 is a host REFUSING us (Cloudflare, datacentre-IP ban) and any rise there is an outage forming. Improbable codes (409/422/451/\u2026) fold into the residual http_4xx. Other categories: http_429=rate limited, http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. Replaces the separate raw-rate failures panel, which showed the same categories without the denominator.",
+      "title": "Worker HTTP outcomes \u2014 error share, all phases (per country)",
+      "description": "Every outbound HTTP attempt incl. retries \u2014 ALL phases (cinema scraping AND third-party enrichment) \u2014 as a share of all attempts. Only the error bands are drawn, stacked at the floor, so the total stack height is exactly the failure budget and each band's thickness is that error's share of all attempts (the ~90-99% clean remainder is the empty space above). The 4xx range is split by code because one bucket hid two opposite meanings: http_404 is mostly the RT/Metacritic resolvers probing up to 4 candidate slugs per title (working as designed \u2014 expect a large steady band), while http_403 is a host REFUSING us (Cloudflare, datacentre-IP ban) and any rise there is an outage forming. Improbable codes (409/422/451/\u2026) fold into the residual http_4xx. Other categories: http_429=rate limited, http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. For the cinema-scrape side alone (listing + chunk + detail), see the phase=scrape panel below.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -555,15 +555,6 @@
           "refId": "A",
           "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
           "legendFormat": "{{outcome}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          }
-        },
-        {
-          "refId": "B",
-          "expr": "100 * sum(rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "clean %",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"
@@ -683,6 +674,49 @@
           "refId": "A",
           "expr": "100 * sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[5m])) / sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[5m]))",
           "legendFormat": "{{source}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Cinema-scrape HTTP outcomes — error share, scrape phase (per country)",
+      "description": "The same failure-budget view as the all-phases panel above, but scoped to phase=\"scrape\": ONLY the cinema-site HTTP — every listing scrape, chunk scrape and per-film detail fetch — with the third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/Filmweb/Trakt/Letterboxd/Wikidata/Cinemeta, phase=\"enrich\") excluded. Each error band's thickness is that error's share of scrape attempts, stacked at the floor; the empty space above is the clean remainder. This isolates cinema-scrape health from the enrichment APIs' by-design 404 slug-probing and API 429s: here a rising http_403 (a cinema Cloudflare/datacentre-IP block) or http_5xx/timeout stands out instead of hiding under the enrichment 404 noise floor.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 65
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "spanNulls": 300000,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\",outcome!=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\"}[5m]))",
+          "legendFormat": "{{outcome}}",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"

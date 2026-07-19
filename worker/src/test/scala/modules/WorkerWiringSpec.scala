@@ -7,7 +7,8 @@ import models.Country
 import services.MongoConnection
 import services.events.ImdbIdMissing
 import services.tasks.{ScrapeReaper, TaskType, UnresolvedTmdbReaper}
-import tools.{ExecutionBudget, SharedExecutionBudget, TestWiring}
+import services.metrics.{PrometheusExposition, WorkerHttpMetrics}
+import tools.{ExecutionBudget, GetOnlyHttpFetch, HttpFetch, SharedExecutionBudget, TestWiring}
 
 import scala.concurrent.duration._
 
@@ -157,5 +158,33 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     w1.country shouldBe Country.Poland
     w1.defaultScrapeCitiesForTest shouldBe Country.Poland.cities.map(_.slug).toSet
     w1.dbNameForTest              shouldBe Country.dbNameFor(Country.Poland)
+  }
+
+  // The phase split: cinema-site HTTP (`httoFetch`) and third-party metadata/rating
+  // HTTP (`enrichmentFetch`) are separate chains sharing one wire leaf, differing
+  // ONLY at the innermost counter's `phase` label. This is what lets a Grafana
+  // panel read the cinema-scrape failure budget without the enrichment APIs' 404
+  // slug-probing and 429s blurring it. Drives a real call through each full chain
+  // over a fake leaf (no network) and asserts the two land on different series.
+  class PhaseLeafProbe extends SpyWiring {
+    override protected def realHttpLeaf: HttpFetch = new GetOnlyHttpFetch {
+      override def get(url: String): String = "ok"
+    }
+  }
+
+  "The phase-split fetch chains" should "tally cinema-site calls under `scrape` and metadata calls under `enrich`" in {
+    val wiring = new PhaseLeafProbe
+    (wiring.enrichmentFetch eq wiring.httoFetch) shouldBe false
+    wiring.httoFetch.get("https://cinema.example/listing")
+    wiring.enrichmentFetch.get("https://api.themoviedb.org/3/movie/1")
+
+    val text = PrometheusExposition.render(wiring.workerMetrics.registry)
+    val scrape = WorkerHttpMetrics.Phase.Scrape
+    val enrich = WorkerHttpMetrics.Phase.Enrich
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape"} 1""")
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$enrich"} 1""")
+    // Not double-counted onto the other phase.
+    text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape"} 1""")
+    wiring.stop()
   }
 }

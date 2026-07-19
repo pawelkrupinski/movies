@@ -96,38 +96,66 @@ class WorkerWiring(
   // Inside the breaker so a fast-failed call never waits for (or consumes) a slot,
   // and inside the 429 gate so a real Retry-After still overrides the steady pace.
   // CountingHttpFetch is INNERMOST (around the leaf RealHttpFetch): it tallies
-  // every wire attempt's outcome into kinowo_worker_http_total for THIS country.
-  // Innermost is deliberate — each 429 retry (ThrottledHttpFetch) and each
-  // scraper backoff retry re-hits the leaf as a distinct call, so every attempt
-  // is counted once; a circuit-breaker fast-fail never reaches here and so isn't
-  // miscounted as a real attempt.
-  lazy val httoFetch: HttpFetch =
+  // every wire attempt's outcome into kinowo_worker_http_total for THIS country
+  // under the chain's call PHASE label. Innermost is deliberate — each 429 retry
+  // (ThrottledHttpFetch) and each scraper backoff retry re-hits the leaf as a
+  // distinct call, so every attempt is counted once; a circuit-breaker fast-fail
+  // never reaches here and so isn't miscounted as a real attempt.
+  //
+  // ── Phase split ───────────────────────────────────────────────────────────
+  // We build the SAME chain twice, once per call phase (see WorkerHttpMetrics.Phase),
+  // differing ONLY at the innermost counter's `phase` label: `httoFetch` tags every
+  // cinema-site call `scrape`, `enrichmentFetch` tags every third-party
+  // metadata/rating/resolution call `enrich`. Both wrap ONE shared RealHttpFetch
+  // leaf, so there is still one connection pool / cookie jar exactly as before —
+  // the split is a labelling concern, not a second wire. The two chains own
+  // independent per-host 429-gate / circuit-breaker state, which is fine: their
+  // host sets are disjoint (cinema sites vs metadata APIs) bar Filmweb, whose
+  // rating client and fallback-scraper client legitimately live on opposite phases.
+  protected def realHttpLeaf: HttpFetch = new RealHttpFetch()
+  private lazy val sharedRealHttpLeaf: HttpFetch = realHttpLeaf
+  private def phaseFetch(phase: String): HttpFetch =
     new MonitoringHttpFetch(
       new ThrottledHttpFetch(
         new HostCircuitBreakerHttpFetch(
           new RateLimitedHttpFetch(
-            new CountingHttpFetch(new RealHttpFetch(), workerMetrics.httpMetrics.recorderFor(country.code))))),
+            new CountingHttpFetch(sharedRealHttpLeaf,
+              workerMetrics.httpMetrics.recorderFor(country.code, phase))))),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
+  // Cinema-site HTTP — every listing scrape, chunk scrape and per-film detail
+  // fetch. The `scrape` phase; dominates volume and is what the scrape-health panel
+  // isolates. The catalog + Multikino/biletyna/Zyte proxy chains + detail cache all
+  // draw from this fetch, so they all tally under `scrape`.
+  lazy val httoFetch: HttpFetch =
+    phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)
+  // Third-party metadata/rating/resolution APIs. The `enrich` phase; separated so
+  // its by-design 404 slug-probing and API 429s don't blur the cinema-scrape
+  // failure budget. Every rating/resolution client (below) draws from this fetch.
+  lazy val enrichmentFetch: HttpFetch =
+    phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)
+
   // ── External API clients ──────────────────────────────────────────────────
-  lazy val tmdbClient = new TmdbClient(httoFetch, language = country.language)
-  lazy val filmwebClient = new FilmwebClient(httoFetch)
-  lazy val imdbClient = new ImdbClient(httoFetch)
-  lazy val metacriticClient = new MetacriticClient(httoFetch)
-  lazy val rottenTomatoesClient = new RottenTomatoesClient(httoFetch)
+  // All draw from `enrichmentFetch` so their attempts tally under the `enrich`
+  // phase, apart from the cinema-facing scrapers/resolvers which use `httoFetch`.
+  lazy val tmdbClient = new TmdbClient(enrichmentFetch, language = country.language)
+  lazy val filmwebClient = new FilmwebClient(enrichmentFetch)
+  lazy val imdbClient = new ImdbClient(enrichmentFetch)
+  lazy val metacriticClient = new MetacriticClient(enrichmentFetch)
+  lazy val rottenTomatoesClient = new RottenTomatoesClient(enrichmentFetch)
   // OMDb (omdbapi.com) — feature-gated fallback for the three IMDb-keyed ratings.
   // The client itself no-ops (returns None, makes no HTTP call) when OMDB_API_KEY
   // is unset; `omdbBackfill` in the ratings block builds the refresher only when
   // the key is present.
-  lazy val omdbClient = new OMDbClient(httoFetch)
+  lazy val omdbClient = new OMDbClient(enrichmentFetch)
   // Trakt + Letterboxd — id-crosswalk resolution SOURCES (not rating sources):
   // they turn a known imdbId into the exact tmdbId (and vice versa) for the
   // arthouse/festival long tail TMDB's own indexes leave unmapped. Trakt is
   // feature-gated on TRAKT_API_CLIENT_ID (no key → no HTTP, resolver no-ops);
   // Letterboxd scrapes its film pages. Wired into `resolveTmdbId` (after TMDB
   // /find) and `ImdbIdResolver` (after Wikidata) as last-resort fallbacks.
-  lazy val traktClient          = new TraktClient(httoFetch)
-  lazy val letterboxdClient     = new LetterboxdClient(httoFetch)
+  lazy val traktClient          = new TraktClient(enrichmentFetch)
+  lazy val letterboxdClient     = new LetterboxdClient(enrichmentFetch)
   lazy val traktIdResolver      = new TraktIdResolver(traktClient)
   lazy val letterboxdIdResolver = new LetterboxdIdResolver(letterboxdClient)
 
@@ -480,7 +508,7 @@ class WorkerWiring(
   /** Every per-source resolution cache — what a forced re-enrich clears. */
   lazy val resolutionCaches: Seq[ResolutionCache] =
     Seq(tmdbIdCache, imdbIdCache, rtLinkCache, mcLinkCache, filmwebLinkCache)
-  lazy val wikidataClient = new WikidataClient(httoFetch)
+  lazy val wikidataClient = new WikidataClient(enrichmentFetch)
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
     wikidata = Some(wikidataClient),
@@ -488,7 +516,7 @@ class WorkerWiring(
     // Same OMDB_API_KEY gate as `omdbBackfill` below — the OMDb rung is inert when unset.
     omdb = Env.get("OMDB_API_KEY").map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
-    cinemeta = Some(new CinemetaClient(httoFetch)))
+    cinemeta = Some(new CinemetaClient(enrichmentFetch)))
   lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, rtLinkCache,
     cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating))
   lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, mcLinkCache,

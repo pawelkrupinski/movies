@@ -4,56 +4,64 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Guards the stacking ORDER of the worker HTTP outcomes panel.
+ * Guards the worker HTTP-outcomes panels' "failure budget" reading.
  *
- * Grafana stacks frames in the order its targets return them, so the LAST
- * target is drawn on top. That is load-bearing here rather than cosmetic: the
- * panel exists to show the failure budget, and the error bands are only
- * readable when they sit together at the floor of the chart with the ~90-99%
- * `clean %` band above them. Put `clean %` first and it becomes the bottom
- * band, shoving every error band up to float in the middle of the plot against
- * a moving baseline — which is exactly the arrangement that made the errors
- * unreadable and got the separate raw-rate panel deleted.
+ * The panels exist to show the failure budget: the error bands are only legible
+ * when they stack together at the FLOOR of the chart, so the stack height is the
+ * total error share and the empty space above is the clean remainder. An earlier
+ * revision drew a full-height `clean %` band at the bottom, which shoved every
+ * error band up to float in the middle against a moving baseline — exactly the
+ * arrangement that made the errors unreadable and got the separate raw-rate panel
+ * deleted. `clean %` was therefore dropped entirely: reintroducing it (or any
+ * `outcome="success"` series) re-floats the error bands, so this locks its
+ * absence — a change with no visible compile or test consequence otherwise.
  *
- * A reordering is a one-line JSON edit with no visible compile or test
- * consequence, hence this lock.
+ * It also guards the phase split: there are TWO such panels — one over all phases
+ * and one filtered to `phase="scrape"` (cinema-site scraping only) — and the
+ * scrape panel must actually carry that filter, or it silently duplicates the
+ * all-phases panel.
  */
 class GrafanaStackOrderSpec extends AnyFlatSpec with Matchers {
 
-  /** ASCII-only slice of the panel title — see `legendsOfPanelTitled`. */
-  private val PanelTitleFragment = "clean % over error share (per country)"
+  /** ASCII-only slices of the two panel titles — the provisioning JSON escapes
+   *  non-ASCII (the em-dash is written `—`), so matching a literal one fails. */
+  private val AllPhasesTitleFragment = "error share, all phases (per country)"
+  private val ScrapePhaseTitleFragment = "error share, scrape phase (per country)"
 
   private val dashboard = RepoFile.read("fly/grafana/provisioning/dashboards/worker-diagnostics.json")
 
-  /** The `legendFormat` values of one panel's targets, in declaration order.
-   *  Read straight off the raw JSON: the panel is located by an ASCII fragment
-   *  of its title, and the legends follow in document order within that panel's
-   *  block. The fragment must be ASCII — the provisioning JSON escapes non-ASCII
-   *  (the title's em-dash is written `—`), so matching a literal one fails. */
-  private def legendsOfPanelTitled(titleFragment: String): Seq[String] = {
+  /** One panel's raw JSON block, located by an ASCII fragment of its title and
+   *  bounded at the next panel's `"id":` so a neighbour's targets never leak in. */
+  private def panelBlockTitled(titleFragment: String): String = {
     val start = dashboard.indexOf(titleFragment)
     withClue(s"no panel title containing '$titleFragment': ") { start should be >= 0 }
-    // Bound the scan at the next panel's `"id":` so we never read a neighbour's targets.
     val end = dashboard.indexOf("\n      \"id\":", start) match {
       case -1 => dashboard.length
       case i  => i
     }
-    """"legendFormat": "([^"]*)"""".r.findAllMatchIn(dashboard.substring(start, end)).map(_.group(1)).toSeq
+    dashboard.substring(start, end)
   }
 
-  "the worker HTTP outcomes panel" should "stack `clean %` last so it rides above the error bands" in {
-    val legends = legendsOfPanelTitled(PanelTitleFragment)
-    legends should contain ("clean %")
-    withClue(s"targets in order: ${legends.mkString(" -> ")}; ") {
-      legends.last shouldBe "clean %"
-    }
-  }
+  /** The `legendFormat` values of one panel's targets, in declaration order. */
+  private def legendsOfPanelTitled(titleFragment: String): Seq[String] =
+    """"legendFormat": "([^"]*)"""".r.findAllMatchIn(panelBlockTitled(titleFragment)).map(_.group(1)).toSeq
 
-  it should "draw the error breakdown beneath it, not as a separate panel" in {
-    val legends = legendsOfPanelTitled(PanelTitleFragment)
+  "the all-phases HTTP outcomes panel" should "stack only error bands, with no clean%/success baseline" in {
+    val legends = legendsOfPanelTitled(AllPhasesTitleFragment)
     legends should contain ("{{outcome}}")
+    legends should not contain "clean %"
+    panelBlockTitled(AllPhasesTitleFragment) should not include "outcome=\\\"success\\\""
     // The retired panel showed these same categories as a raw rate, with no
-    // denominator — one panel with both is strictly more informative.
+    // denominator — one panel with the share is strictly more informative.
     dashboard should not include "Scraper HTTP failures by category"
+  }
+
+  "the scrape-phase HTTP outcomes panel" should "stack error bands filtered to phase=scrape, no clean% baseline" in {
+    val block = panelBlockTitled(ScrapePhaseTitleFragment)
+    legendsOfPanelTitled(ScrapePhaseTitleFragment) should contain ("{{outcome}}")
+    legendsOfPanelTitled(ScrapePhaseTitleFragment) should not contain "clean %"
+    // The whole point of the second panel: it must isolate the scrape phase.
+    block should include ("phase=\\\"scrape\\\"")
+    block should not include "outcome=\\\"success\\\""
   }
 }

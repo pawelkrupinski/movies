@@ -7,6 +7,11 @@ import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadMod
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val httoFetch: HttpFetch = new FakeHttpFetch(fixture)
+  // Enrichment (TMDB/IMDb/RT/…) now draws from a SEPARATE phase-labelled chain in
+  // production; in fixture replay it must replay from the SAME `FakeHttpFetch`, or
+  // the metadata clients would fall through to the real network. Point it at the
+  // one fake so every cinema-site AND enrichment call is served from the fixtures.
+  override lazy val enrichmentFetch: HttpFetch = httoFetch
   override lazy val movieRepository = new InMemoryMovieRepository()
 
   // Mongo-free read model: the worker projects the scraped corpus into this
