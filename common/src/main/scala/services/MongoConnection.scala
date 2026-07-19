@@ -288,7 +288,39 @@ object MongoConnection extends Logging {
    *  connection then degrades on its own. The caller OWNS `close()`-ing the
    *  returned client, after every connection that borrowed it is closed. */
   def sharedClientFromEnv(serverSelectionTimeout: Option[FiniteDuration] = None): Option[MongoClient] =
-    Env.get("MONGODB_URI").map(cs => MongoClient(clientSettings(cs, serverSelectionTimeout)))
+    Env.get("MONGODB_URI").map(cs => sharedClientFor(cs, serverSelectionTimeout))
+
+  /** Like [[sharedClientFromEnv]] but against an EXPLICIT URI — the `/debug`
+   *  read-mirror, whose several per-country database views share one pool the
+   *  same way the prod per-country connections do. The caller OWNS `close()`. */
+  def sharedClientFor(uri: String, serverSelectionTimeout: Option[FiniteDuration] = None): MongoClient =
+    MongoClient(clientSettings(uri, serverSelectionTimeout))
+
+  /** The local mirror database holding `prodDb`'s synced copy.
+   *
+   *  The mirror keeps prod's per-country databases side by side on ONE local
+   *  instance, each suffixed rather than reusing prod's name. The suffix is load
+   *  bearing: a locally-run worker pointed at the same instance defaults to the
+   *  `kinowo` database, and without it that worker would write straight into the
+   *  mirrored corpus — the collision the README's `kinowo_local` split exists to
+   *  prevent. `scripts/local-mirror/mirror-targets.js` derives the SAME name for
+   *  the sync side; change one and you must change the other. */
+  def mirrorDbFor(prodDb: String): String = s"${prodDb}_prod_mirror"
+
+  /** A `/debug` mirror view of ONE country's database, bound to an already-open
+   *  mirror client. Never `required`: the mirror is a dev-only read optimisation,
+   *  so an unreachable one disables this connection (→ an empty /debug for that
+   *  country) rather than failing boot. Short timeouts for the same reason
+   *  [[LocalMirrorTimeout]] exists — a loopback Mongo that goes quiet is down,
+   *  not slow. */
+  def mirrorForDb(uri: String, prodDb: String, sharedClient: Option[MongoClient] = None): MongoConnection =
+    new MongoConnection(
+      Some(uri),
+      mirrorDbFor(prodDb),
+      required               = false,
+      probeTimeout           = LocalMirrorTimeout,
+      serverSelectionTimeout = Some(LocalMirrorTimeout),
+      sharedClient           = sharedClient)
 
   /** Build from an explicit URI rather than `MONGODB_URI` — for a second
    *  connection alongside the primary one. The web wiring uses it for the

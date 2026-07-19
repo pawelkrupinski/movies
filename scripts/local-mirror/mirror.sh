@@ -1,20 +1,29 @@
 #!/usr/bin/env bash
 #
-# Keep a local `movies` mirror in sync with prod, continuously, so the dev
-# `/debug` page reads the full corpus from a fast LAN Mongo instead of over the
-# 30–60s prod `flyctl` tunnel (where findAll's 60s timeout intermittently
-# strands the table empty). Steps:
+# Keep a local mirror of prod's /debug data in sync, continuously, so the dev
+# `/debug` pages read from a fast LAN Mongo instead of over the prod `flyctl`
+# tunnel — where the corpus scan takes 30–60s (intermittently stranding the
+# table empty at findAll's 60s timeout) and every per-row read pays a ~110ms
+# round-trip. Steps, per mirrored database:
 #
 #   1. ensure the local mirror Mongo is up (start-local-mongo.sh),
 #   2. ensure prod (the source) is reachable via the tunnel,
-#   3. seed the local `movies` once if empty (or `--reseed` to force),
-#   4. tail prod's `movies` change stream → local, restarting on disconnect.
+#   3. seed the mirrored collections once if empty (or `--reseed` to force),
+#   4. tail prod's database change stream → local, restarting on disconnect.
 #
-# Reads MONGODB_URI (prod tunnel = source) and MONGODB_MOVIES_MIRROR_URI
-# (local = target) from .env.local. Long-running — leave it in its own
-# terminal; Ctrl-C to stop. The web app reads the mirror only when
-# MONGODB_MOVIES_MIRROR_URI is set (see web modules.Wiring); unset → /debug
-# reads prod directly, exactly as before.
+# WHICH databases and collections are mirrored lives in mirror-targets.js —
+# every country /debug can switch to (so `?country=uk` is LAN-fast too, not just
+# the boot country), and the four collections a /debug load reads. Each database
+# gets its OWN tailer process: a change stream is per-database here (a
+# deployment-wide one is Unauthorized for these credentials) and mongosh is
+# single-threaded, so N databases means N supervised children, not one loop.
+#
+# Reads MONGODB_URI (prod tunnel = source), MONGODB_MOVIES_MIRROR_URI (local =
+# target) and the optional KINOWO_MIRROR_DBS (space/comma-separated prod
+# databases; default: every kinowo* database the tunnel exposes) from
+# .env.local. Long-running — leave it in its own terminal; Ctrl-C to stop. The
+# web app reads the mirror only when MONGODB_MOVIES_MIRROR_URI is set (see web
+# modules.Wiring); unset → /debug reads prod directly, exactly as before.
 #
 # Usage:  scripts/local-mirror/mirror.sh [--reseed]
 set -euo pipefail
@@ -79,26 +88,66 @@ ensure_local_mongo() {
   "$HERE/start-local-mongo.sh" || return 1
 }
 
-reseed() { mongosh "$SRCZ" --quiet --eval "var DST='$DST'" --file "$HERE/seed.js"; }
+# Which prod databases to mirror. Explicit KINOWO_MIRROR_DBS wins (space- or
+# comma-separated); otherwise discover every `kinowo*` database the tunnel
+# exposes, so onboarding a country needs no edit here. The mirror databases
+# themselves (`*_prod_mirror`) live on the LOCAL instance, never on prod, so
+# there is nothing to exclude from this listing.
+discover_dbs() {
+  local configured; configured="$(envval KINOWO_MIRROR_DBS | tr ',' ' ')"
+  if [ -n "$configured" ]; then echo "$configured"; return 0; fi
+  mongosh "$SRCZ" --quiet --eval \
+    'db.adminCommand({listDatabases:1,nameOnly:true}).databases.map(d=>d.name).filter(n=>/^kinowo/.test(n)).join(" ")' \
+    2>/dev/null | tail -1
+}
 
-# ── Resilient sync loop ──────────────────────────────────────────────────────
-# Every cycle re-ensures the mirror Mongo + the tunnel, (re)seeds when the local
-# `movies` is empty (a fresh container or a wiped volume), then tails. tail.js
-# exits 2 when its resume token has aged out of prod's oplog → full re-seed; any
-# other exit is a transient blip → resume from the saved token. Nothing here is
-# fatal: a down tunnel, a stopped container, or a wiped mirror all recover on the
-# next cycle instead of killing the sync.
+reseed()   { mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
+mirror_db() { echo "${1}_prod_mirror"; }   # must match mirror-targets.js `mirrorDbFor`
+
+# ── Resilient per-database sync loop ─────────────────────────────────────────
+# Every cycle re-ensures the mirror Mongo + the tunnel, (re)seeds when this
+# database's `movies` is empty (a fresh instance or a wiped volume), then tails.
+# tail.js exits 2 when its resume token has aged out of prod's oplog → full
+# re-seed; any other exit is a transient blip → resume from the saved token.
+# Nothing here is fatal: a down tunnel, a stopped Mongo, or a wiped mirror all
+# recover on the next cycle instead of killing the sync.
+supervise_db() {
+  local srcdb="$1" force="$2" code local_n
+  while true; do
+    if ! ensure_local_mongo; then echo "[mirror] $srcdb: local Mongo unavailable — retrying in 5s"; sleep 5; continue; fi
+    if ! ensure_tunnel;     then echo "[mirror] $srcdb: tunnel unavailable — retrying in 5s";     sleep 5; continue; fi
+
+    local_n="$(mongosh "$DST" --quiet --eval \
+      "print(db.getSiblingDB('$(mirror_db "$srcdb")').getCollection('movies').countDocuments())" 2>/dev/null | tail -1)" || local_n=""
+    if [ "$force" = "1" ] || [ "${local_n:-0}" = "0" ]; then reseed "$srcdb"; force=0; fi
+
+    set +e; mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
+      --file "$HERE/mirror-targets.js" --file "$HERE/tail.js"; code=$?; set -e
+    if [ "$code" -eq 2 ]; then echo "[mirror] $srcdb: resume token expired — re-seeding…"; reseed "$srcdb"
+    else echo "[mirror] $srcdb: stream ended (exit $code) — recovering in 2s…"; fi
+    sleep 2
+  done
+}
+
+# ── Fan out: one supervised tailer per database ──────────────────────────────
+# The tunnel has to be up before we can list databases, so ensure it first;
+# after that each child re-ensures it independently. `cleanup` already kills our
+# flyctl proxy on exit — extend it to take the children down with us, so Ctrl-C
+# doesn't strand N background mongosh processes.
 FORCE_RESEED="$([ "$RESEED" = "--reseed" ] && echo 1 || echo 0)"
-while true; do
-  if ! ensure_local_mongo; then echo "[mirror] local Mongo unavailable (Docker down?) — retrying in 5s"; sleep 5; continue; fi
-  if ! ensure_tunnel; then echo "[mirror] tunnel unavailable — retrying in 5s"; sleep 5; continue; fi
+until ensure_local_mongo && ensure_tunnel; do echo "[mirror] waiting for local Mongo + tunnel…"; sleep 5; done
 
-  LOCAL_N="$(mongosh "$DST" --quiet --eval 'print(db.getCollection("movies").countDocuments())' 2>/dev/null | tail -1)" || LOCAL_N=""
-  if [ "$FORCE_RESEED" = "1" ] || [ "${LOCAL_N:-0}" = "0" ]; then reseed; FORCE_RESEED=0; fi
+DBS="$(discover_dbs)"
+[ -n "$DBS" ] || { echo "[mirror] no kinowo* databases found via the tunnel — is MONGODB_URI right?" >&2; exit 1; }
+echo "[mirror] mirroring: $DBS"
 
-  echo "[mirror] tailing prod→local change stream (Ctrl-C to stop)…"
-  set +e; mongosh "$SRCZ" --quiet --eval "var DST='$DST'" --file "$HERE/tail.js"; code=$?; set -e
-  if [ "$code" -eq 2 ]; then echo "[mirror] resume token expired — re-seeding…"; reseed
-  else echo "[mirror] stream ended (exit $code) — recovering in 2s…"; fi
-  sleep 2
+CHILDREN=()
+cleanup_children() { for pid in "${CHILDREN[@]:-}"; do kill "$pid" 2>/dev/null || true; done; }
+trap 'cleanup_children; cleanup' EXIT INT TERM
+
+for srcdb in $DBS; do
+  supervise_db "$srcdb" "$FORCE_RESEED" &
+  CHILDREN+=($!)
 done
+echo "[mirror] ${#CHILDREN[@]} tailer(s) running (Ctrl-C to stop)…"
+wait

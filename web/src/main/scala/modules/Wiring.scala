@@ -71,10 +71,10 @@ trait Wiring {
   // loopback Mongo that answers in ~ms when healthy, so a few seconds of silence
   // means it's down. Capping the boot probe and the driver's per-request
   // server-selection makes a down/unreachable mirror disable fast (→ empty
-  // /debug, per `movieConnection`'s no-fallback rule) instead of wedging boot
+  // /debug, per `debugMirrorConnection`'s no-fallback rule) instead of wedging boot
   // and every /debug load on the driver's 30s default.
   lazy val movieMirrorConnection: MongoConnection =
-    Wiring.movieConnection(
+    Wiring.debugMirrorConnection(
       Env.get("MONGODB_MOVIES_MIRROR_URI"),
       MongoConnection.fromUri(_, required = false,
         probeTimeout           = MongoConnection.LocalMirrorTimeout,
@@ -169,13 +169,17 @@ trait Wiring {
   // The /debug "pending enrichment (staging)" table reads + live-watches this.
   lazy val stagingRepository: services.staging.StagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database)
   // Read-only view of the worker-written `rating_cadence` collection for the
-  // dev-only /debug/cadence page (reads the primary Mongo, like the read model).
+  // dev-only /debug/cadence page. Read from the MIRROR alongside `movies`: both
+  // this and the attempt log below are read per /debug row-expand, so leaving
+  // them on the prod tunnel would keep two ~110ms round-trips on a page whose
+  // corpus read is already a LAN hop. They're mirrored collections, so this is
+  // the same data, locally.
   lazy val ratingCadenceReader: services.cadence.RatingCadenceReader =
-    new services.cadence.MongoRatingCadenceReader(mongoConnection.database)
+    new services.cadence.MongoRatingCadenceReader(movieMirrorConnection.database)
   // Read-only view of the worker-written `enrichment_attempts` collection — the
   // last fetch per (source, film) behind the /debug row's expand section.
   lazy val enrichmentAttemptReader: services.attempts.EnrichmentAttemptReader =
-    new services.attempts.MongoEnrichmentAttemptReader(mongoConnection.database)
+    new services.attempts.MongoEnrichmentAttemptReader(movieMirrorConnection.database)
 
   // ── Dev-only per-country /debug data ─────────────────────────────────────────
   // The /debug pages read ONE country's Mongo db. In prod that's this
@@ -185,8 +189,10 @@ trait Wiring {
   // mode and 404s every /debug route). Each extra country reads its OWN database
   // (`country.mongoDb`, NOT the MONGODB_DB override — that would pin every country
   // to one db) off ONE shared MongoClient, so N countries add N database views,
-  // not N connection pools. Its `movies` comes from the MAIN Mongo, since the
-  // /debug read-mirror only holds the boot country's db.
+  // not N connection pools. When the read-mirror is configured those views come
+  // from the MIRROR (which holds every country's db, not just the boot one), so
+  // `?country=uk` is as fast as the boot country instead of paying the tunnel's
+  // ~110ms per round-trip; unset → the MAIN Mongo, as before.
   private lazy val bootDebugStack: DebugStack = new DebugStack(
     models.Country.fromEnv, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
     readModelMovies       = () => webReadModel.allMovies(),
@@ -197,11 +203,16 @@ trait Wiring {
   // debug switch stays off.
   private lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient] =
     if (environmentMode == Mode.Prod || models.Country.switchable.sizeIs <= 1) None
-    else MongoConnection.sharedClientFromEnv()
+    else Env.get("MONGODB_MOVIES_MIRROR_URI")
+      .map(MongoConnection.sharedClientFor(_, Some(MongoConnection.LocalMirrorTimeout)))
+      .orElse(MongoConnection.sharedClientFromEnv())
   private lazy val debugExtraStacks: Seq[(models.Country, MongoConnection, DebugStack)] =
     debugExtraClient.toSeq.flatMap { client =>
       models.Country.switchable.filterNot(_ == models.Country.fromEnv).map { country =>
-        val conn       = MongoConnection.fromEnvForDb(country.mongoDb, required = false, sharedClient = Some(client))
+        val conn       = Wiring.debugMirrorConnection(
+          Env.get("MONGODB_MOVIES_MIRROR_URI"),
+          MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
+          MongoConnection.fromEnvForDb(country.mongoDb, required = false, sharedClient = Some(client)))
         val screenings = new services.movies.MongoScreeningsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)
         val stack = new DebugStack(country,
@@ -306,14 +317,15 @@ trait Wiring {
 }
 
 object Wiring {
-  /** The connection `movieRepository` reads the `movies` corpus from for /debug.
+  /** Where a /debug data source reads from — the boot country's `movies` corpus,
+   *  and equally each extra country's per-database stack.
    *  With `MONGODB_MOVIES_MIRROR_URI` set, always the local mirror `openMirror`
    *  builds — there is deliberately NO fall-back to the prod tunnel, even when
    *  the mirror is unreachable (then that connection is simply disabled and
    *  /debug renders empty). Unset → the shared `prod` connection. `prod` is
    *  by-name so a configured mirror never forces the primary connection here. */
-  def movieConnection(mirrorUri: Option[String],
-                      openMirror: String => MongoConnection,
-                      prod: => MongoConnection): MongoConnection =
+  def debugMirrorConnection(mirrorUri: Option[String],
+                            openMirror: String => MongoConnection,
+                            prod: => MongoConnection): MongoConnection =
     mirrorUri.fold(prod)(openMirror)
 }

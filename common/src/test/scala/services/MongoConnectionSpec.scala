@@ -259,4 +259,48 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     MongoConnection.parseProbeTimeout(Some("0"))  shouldBe MongoConnection.DefaultProbeTimeout
     MongoConnection.parseProbeTimeout(Some("-5")) shouldBe MongoConnection.DefaultProbeTimeout
   }
+
+  // ── The /debug mirror's cross-language contract ─────────────────────────────
+  // Two halves in different languages have to agree on the mirror: the sync
+  // (scripts/local-mirror/*.js) WRITES the mirrored databases and collections,
+  // and this Scala side READS them. Nothing at compile time links the two, so a
+  // rename or a newly-read collection can silently leave the app pointed at a
+  // database the tailer never fills — which degrades to an empty /debug, not an
+  // error. These tests are that link.
+  private val mirrorTargetsJs =
+    scala.io.Source.fromFile("scripts/local-mirror/mirror-targets.js").mkString
+
+  "MongoConnection.mirrorDbFor" should "suffix rather than reuse prod's database name" in {
+    // Reusing the name would let a locally-run worker (which defaults to the
+    // `kinowo` database on the same instance) write into the mirrored corpus.
+    MongoConnection.mirrorDbFor("kinowo")    shouldBe "kinowo_prod_mirror"
+    MongoConnection.mirrorDbFor("kinowo_uk") shouldBe "kinowo_uk_prod_mirror"
+    MongoConnection.mirrorDbFor("kinowo")    should not be "kinowo"
+  }
+
+  it should "derive the same name the sync script writes to" in {
+    // mirror-targets.js: `function mirrorDbFor(prodDb) { return prodDb + "_suffix"; }`
+    val jsSuffix = """return\s+prodDb\s*\+\s*"([^"]+)"""".r
+      .findFirstMatchIn(mirrorTargetsJs).map(_.group(1))
+    withClue("mirror-targets.js no longer defines mirrorDbFor as a suffix concat: ") {
+      jsSuffix shouldBe defined
+    }
+    MongoConnection.mirrorDbFor("kinowo_de") shouldBe s"kinowo_de${jsSuffix.get}"
+  }
+
+  it should "have the sync mirror every collection the /debug stacks read" in {
+    // Each of these backs a reader Wiring points at the mirror connection:
+    // movies + screenings (the corpus table, showtimes stitched back in) and
+    // enrichment_attempts + rating_cadence (the per-row expand). A collection
+    // missing from the sync reads as permanently empty rather than failing.
+    val read = Set("movies", "screenings", "enrichment_attempts", "rating_cadence")
+    val mirrored = """"([a-z_]+)"""".r.findAllMatchIn(
+      """\[([^\]]*)\]""".r.findFirstMatchIn(
+        mirrorTargetsJs.linesIterator.dropWhile(!_.contains("MIRRORED_COLLECTIONS")).mkString(" ")
+      ).map(_.group(1)).getOrElse("")
+    ).map(_.group(1)).toSet
+    withClue(s"mirror-targets.js mirrors $mirrored but /debug reads $read: ") {
+      (read -- mirrored) shouldBe empty
+    }
+  }
 }

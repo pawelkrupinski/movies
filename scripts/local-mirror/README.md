@@ -8,18 +8,34 @@ rs0`. One instance, two databases:
 
 | DB           | Role | Written by |
 |--------------|------|------------|
-| `kinowo_prod_mirror` | The `/debug` corpus mirror — prod's `movies` synced in, read-only locally | `mirror.sh` tailer |
+| `<prod db>_prod_mirror` | The `/debug` mirror — prod's data synced in, read-only locally. One per country: `kinowo_prod_mirror`, `kinowo_uk_prod_mirror`, `kinowo_de_prod_mirror` | `mirror.sh` tailers |
 | `kinowo_local` | The local **web + worker** read/write playground (its own change streams) | a locally-run worker |
 
-Why the `kinowo_prod_mirror` mirror exists: `/debug` renders the whole `movies`
-corpus (`movieRepo.findAll()` — a full scan, 1200+ docs). Read over the prod
-`flyctl` tunnel that takes **8–30s** and intermittently times out to an empty
-table; from the LAN mirror it's **~200ms**.
+Why the mirror exists: everything `/debug` reads is otherwise a prod-tunnel
+round-trip, and the tunnel charges **~110ms per round-trip** on top of queries
+that themselves run in single-digit ms. Two shapes of pain follow. The corpus
+table is a full `movies` scan (`movieRepo.findAll()`, 1200+ docs) that takes
+**8–30s** and intermittently times out to an empty table. And expanding one row
+costs three sequential reads — the row, its enrichment attempts, its rating
+cadence — i.e. **~340ms of pure latency**. Against the LAN mirror the ping is
+**~0.5ms**: the corpus lands in ~200ms and a row expand in single-digit ms.
 
-> One source of truth per collection. The tailer **replaces**
-> `kinowo_prod_mirror.movies` from prod, so don't also write it from a local
-> worker — point the worker at `kinowo_local`. That's the whole reason for two
-> databases.
+**What's mirrored** — `scripts/local-mirror/mirror-targets.js`, the single
+source of truth for both halves:
+
+- **Collections:** `movies`, `screenings`, `enrichment_attempts`,
+  `rating_cadence` — exactly what a `/debug` load reads.
+- **Databases:** every `kinowo*` database the tunnel exposes, discovered at
+  startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
+  (`/debug?country=uk`) is LAN-fast too, not just the boot country.
+
+`MongoConnection.mirrorDbFor` derives the same `_prod_mirror` names on the Scala
+side, and `MongoConnectionSpec` fails if the two drift apart or if `/debug`
+starts reading a collection the sync doesn't carry.
+
+> One source of truth per collection. The tailers **replace** the mirrored
+> collections from prod, so don't also write them from a local worker — point
+> the worker at `kinowo_local`. That's the whole reason for the suffix.
 
 ## One-time setup
 
@@ -40,8 +56,12 @@ table; from the LAN mirror it's **~200ms**.
 3. **Start the mirror + sync** — either in a terminal (`scripts/local-mirror/mirror.sh`)
    or, better, as a login service (next section). It brings up the native Mongo
    via `start-local-mongo.sh` (writing a replica-set config to
-   `$(brew --prefix)/etc/mongod.conf` and `rs.initiate()`-ing once), seeds
-   `kinowo_prod_mirror.movies` from prod, then tails prod's change stream into it.
+   `$(brew --prefix)/etc/mongod.conf` and `rs.initiate()`-ing once), discovers
+   prod's `kinowo*` databases, seeds each one's mirrored collections, then tails
+   a change stream per database into them. One supervised tailer process per
+   database — a change stream is per-database here (a deployment-wide one is
+   `Unauthorized` for these credentials) and mongosh is single-threaded, so N
+   databases means N children rather than one loop.
 
 4. **Run the web app** (`sbt run`) and open `/debug` — it now reads the mirror.
 
