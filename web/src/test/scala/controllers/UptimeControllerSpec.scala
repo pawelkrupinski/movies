@@ -6,6 +6,7 @@ import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
 import services.UptimeMonitor
@@ -227,5 +228,59 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "render /uptime for an allowlisted admin" in {
     status(controller.index(adminSession)) shouldBe OK
+  }
+
+  // ── img-event: the browser-reported poster telemetry ───────────────────────
+  //
+  // Until 2026-07-19 every event collapsed into one `img: images.weserv.nl`
+  // row, because the tracker posted the host of the *proxied* URL. That hid a
+  // real outage: m.media-amazon.com was 404ing for every poster it served
+  // while the single merged row still looked mostly green from TMDB's traffic.
+  // The tracker now posts the ORIGIN host plus whether the attempt was a
+  // fallback, so each CDN gets its own row and a dead spare is distinguishable
+  // from a poster the user actually saw break.
+
+  private def imgEvents(events: JsObject*) =
+    FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
+      .withBody(Json.obj("events" -> JsArray(events)))
+
+  private def imgController = {
+    val monitor = new UptimeMonitor()
+    (new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
+      fallbackStore, models.Country.Poland), monitor)
+  }
+
+  "the /uptime img-event endpoint" should "give each origin host its own service row" in {
+    val (ctl, monitor) = imgController
+    status(ctl.imgEvent(imgEvents(
+      Json.obj("host" -> "m.media-amazon.com", "success" -> false, "error" -> "img load failed"),
+      Json.obj("host" -> "image.tmdb.org",     "success" -> true)
+    ))) shouldBe NO_CONTENT
+
+    val services = monitor.services
+    services should contain ("img: m.media-amazon.com")
+    services should contain ("img: image.tmdb.org")
+  }
+
+  it should "record a fallback attempt as its own row, separate from the primary" in {
+    val (ctl, monitor) = imgController
+    status(ctl.imgEvent(imgEvents(
+      Json.obj("host" -> "m.media-amazon.com", "success" -> false, "fallback" -> true,
+               "error" -> "img load failed"),
+      Json.obj("host" -> "m.media-amazon.com", "success" -> false, "error" -> "img load failed")
+    ))) shouldBe NO_CONTENT
+
+    val services = monitor.services
+    // A failed spare and a failed primary are different severities — the
+    // primary is a poster the user watched break, the fallback is only a dead
+    // spare behind a poster that may well have rendered fine.
+    services should contain ("img: m.media-amazon.com · fallback")
+    services should contain ("img: m.media-amazon.com")
+  }
+
+  it should "fall back to 'unknown' when the payload carries no host" in {
+    val (ctl, monitor) = imgController
+    status(ctl.imgEvent(imgEvents(Json.obj("success" -> false)))) shouldBe NO_CONTENT
+    monitor.services should contain ("img: unknown")
   }
 }

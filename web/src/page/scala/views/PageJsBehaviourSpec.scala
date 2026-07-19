@@ -1356,6 +1356,138 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Image uptime tracker: origin host + primary/fallback ──────────────────
+  //
+  // The tracker used to post `new URL(src).host`, which is `images.weserv.nl`
+  // for every proxied poster — so TMDB, Amazon and AlloCiné all landed in one
+  // row and a total Amazon outage hid behind TMDB's healthy traffic. It now
+  // unwraps the proxy's `?url=` to report the real origin, and flags attempts
+  // at a non-primary URL so a dead spare is distinguishable from a poster the
+  // visitor actually watched break.
+
+  "the img uptime tracker" should "report the origin CDN, not the weserv proxy fronting it" in {
+    onPath("/") { page =>
+      page.evalString(
+        "_imgOriginHost('https://images.weserv.nl/?url=m.media-amazon.com%2Fimages%2FM%2Fx.jpg&w=480')"
+      ) shouldBe "m.media-amazon.com"
+      page.evalString(
+        "_imgOriginHost('https://images.weserv.nl/?url=de.web.img3.acsta.net%2Fimg%2Fa.jpg&w=480')"
+      ) shouldBe "de.web.img3.acsta.net"
+    }
+  }
+
+  it should "report a directly-served origin unchanged" in {
+    onPath("/") { page =>
+      // PosterProxy skips the proxy for hosts that block weserv (multikino,
+      // m.media-amazon.com), so these arrive at the browser unwrapped.
+      page.evalString("_imgOriginHost('https://m.media-amazon.com/images/M/x.jpg')") shouldBe
+        "m.media-amazon.com"
+      page.evalString("_imgOriginHost('https://www.multikino.pl/media/x.jpg?rev=1')") shouldBe
+        "www.multikino.pl"
+    }
+  }
+
+  it should "fall back to the proxy host when a weserv URL carries no url= param" in {
+    onPath("/") { page =>
+      // Degrade to the proxy's own host rather than 'unknown' — a weserv URL
+      // with no inner target is still a weserv request worth counting.
+      page.evalString("_imgOriginHost('https://images.weserv.nl/?w=480')") shouldBe "images.weserv.nl"
+    }
+  }
+
+  it should "queue nothing at all for an img with an empty src" in {
+    onPath("/") { page =>
+      // `record` guards on a falsy src before classifying, so an empty src is
+      // never bucketed (not even as 'unknown') — asserting the guard rather
+      // than what originHost would have returned for input it never sees.
+      page.evalString(
+        """(() => {
+          |  _drainImgEvents();
+          |  const img = document.createElement('img');
+          |  document.body.appendChild(img);
+          |  img.dispatchEvent(new Event('error', { bubbles: false }));
+          |  const events = _drainImgEvents();
+          |  img.remove();
+          |  return String(events.length);
+          |})()""".stripMargin) shouldBe "0"
+    }
+  }
+
+  it should "treat the primary src as primary and a swapped-in fallback as fallback" in {
+    onPath("/") { page =>
+      val verdicts = page.evalString(
+        """(() => {
+          |  const mk = (src, original) => {
+          |    const img = document.createElement('img');
+          |    img.setAttribute('src', src);
+          |    img.dataset.originalSrc = original;
+          |    return _imgIsFallback(img);
+          |  };
+          |  const primary  = mk('https://a.example/p.jpg', 'https://a.example/p.jpg');
+          |  const fallback = mk('https://b.example/f.jpg', 'https://a.example/p.jpg');
+          |  // A retry re-requests the SAME primary with a cache-buster appended —
+          |  // that is still the primary, not a fallback.
+          |  const retried  = mk('https://a.example/p.jpg?_kinowo_t=3', 'https://a.example/p.jpg');
+          |  return [primary, fallback, retried].join(',');
+          |})()""".stripMargin)
+      verdicts shouldBe "false,true,false"
+    }
+  }
+
+  it should "not flag a non-poster image, which has no primary to compare against" in {
+    onPath("/") { page =>
+      page.evalString(
+        """(() => {
+          |  const img = document.createElement('img');
+          |  img.setAttribute('src', 'https://cdn.example/logo.png');
+          |  return String(_imgIsFallback(img));
+          |})()""".stripMargin) shouldBe "false"
+    }
+  }
+
+  // End-to-end through the real capture-phase error listener, rather than just
+  // the two helpers: proves what actually lands in the batch the server reads.
+  it should "queue the origin host and fallback flag for a failed fallback poster" in {
+    onPath("/") { page =>
+      val queued = page.evalString(
+        """(() => {
+          |  _drainImgEvents();                        // discard anything the page itself queued
+          |  const img = document.createElement('img');
+          |  img.dataset.originalSrc = 'https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg';
+          |  img.setAttribute('src', 'https://images.weserv.nl/?url=m.media-amazon.com%2Fimages%2FM%2Fx.jpg');
+          |  document.body.appendChild(img);
+          |  img.dispatchEvent(new Event('error', { bubbles: false }));
+          |  const events = _drainImgEvents();
+          |  img.remove();
+          |  return JSON.stringify(events);
+          |})()""".stripMargin)
+      queued should include (""""host":"m.media-amazon.com"""")   // origin, not images.weserv.nl
+      queued should include (""""fallback":true""")
+      queued should include (""""success":false""")
+    }
+  }
+
+  it should "queue a successful primary with no fallback flag" in {
+    onPath("/") { page =>
+      val queued = page.evalString(
+        """(() => {
+          |  _drainImgEvents();
+          |  const src = 'https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg';
+          |  const img = document.createElement('img');
+          |  img.dataset.originalSrc = src;
+          |  img.setAttribute('src', src);
+          |  document.body.appendChild(img);
+          |  img.dispatchEvent(new Event('load', { bubbles: false }));
+          |  const events = _drainImgEvents();
+          |  img.remove();
+          |  return JSON.stringify(events);
+          |})()""".stripMargin)
+      queued should include (""""host":"image.tmdb.org"""")
+      queued should include (""""success":true""")
+      queued should not include """"fallback":true"""
+    }
+  }
+
   // ── Filtry dropdown ───────────────────────────────────────────────────────
 
   "the Filtry dropdown" should "narrow badges to 3D-only when Wymiar = 3D" in {

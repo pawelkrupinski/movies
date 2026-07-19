@@ -2391,26 +2391,67 @@
 
   // ── Image-fetch uptime tracker ────────────────────────────────────────────
   //
-  // Captures browser-side img load/error outcomes — including the
-  // `images.weserv.nl` proxy that fronts every cinema poster — and
-  // batches them to /uptime/img-event so the uptime page can show
-  // per-host reliability bars. Event listeners are registered in the
-  // capture phase because `load` / `error` don't bubble on <img>.
+  // Captures browser-side img load/error outcomes and batches them to
+  // /uptime/img-event so the uptime page can show per-origin reliability bars.
+  // Event listeners are registered in the capture phase because `load` /
+  // `error` don't bubble on <img>.
+  //
+  // Two things each event carries, both learned the hard way:
+  //
+  //   host      the ORIGIN CDN, with the `images.weserv.nl` proxy unwrapped.
+  //             Posting the proxy's own host merged image.tmdb.org,
+  //             m.media-amazon.com and de.web.img3.acsta.net into a single
+  //             row, so a total Amazon outage sat invisible behind TMDB's
+  //             healthy traffic until it was found by probing prod by hand.
+  //   fallback  whether this was an attempt at a non-primary poster URL.
+  //             A failed primary is a poster the visitor watched break; a
+  //             failed fallback is only a dead spare behind a poster that may
+  //             have rendered fine. Merged, either can mask the other.
   (function() {
     var pending = [];
     var FLUSH_INTERVAL_MS = 10000;
     var BATCH_SIZE_TRIGGER = 50;
 
-    function hostOf(src) {
-      try { return new URL(src, window.location.href).host || 'unknown'; }
-      catch (e) { return 'unknown'; }
+    // PosterProxy wraps most posters as
+    // `https://images.weserv.nl/?url=<origin-host>%2F<path>&w=…`, but skips
+    // hosts that block weserv (multikino, m.media-amazon.com), which arrive
+    // unwrapped. Report the origin either way.
+    function originHost(src) {
+      try {
+        var url = new URL(src, window.location.href);
+        if (url.host === 'images.weserv.nl') {
+          var inner = url.searchParams.get('url');
+          if (inner) {
+            return inner.replace(/^https?:\/\//, '').split('/')[0].toLowerCase() || 'unknown';
+          }
+        }
+        return url.host || 'unknown';
+      } catch (e) { return 'unknown'; }
+    }
+
+    // A poster carries its primary URL in data-original-src; anything else in
+    // the src is a fallback the onerror chain swapped in. The retry loop
+    // re-requests the SAME primary with a `_kinowo_t` cache-buster appended,
+    // so strip that before comparing or every retry would look like a
+    // fallback. Images with no data-original-src (site chrome, icons) have no
+    // primary to differ from, so they are never fallbacks.
+    function isFallback(img) {
+      var primary = img.dataset ? img.dataset.originalSrc : null;
+      if (!primary) return false;
+      var current = img.getAttribute('src') || '';
+      return stripCacheBust(current) !== stripCacheBust(primary);
+    }
+
+    function stripCacheBust(url) {
+      return url.replace(/[?&]_kinowo_t=\d+/, '');
     }
 
     function record(target, success) {
       if (!target || target.tagName !== 'IMG') return;
       var src = target.currentSrc || target.src;
       if (!src) return;
-      var ev = { host: hostOf(src), success: success };
+      var ev = { host: originHost(src), success: success };
+      if (isFallback(target)) ev.fallback = true;
       if (!success) ev.error = 'img load failed (' + src.substring(0, 120) + ')';
       pending.push(ev);
       if (pending.length >= BATCH_SIZE_TRIGGER) flush();
@@ -2433,4 +2474,11 @@
     document.addEventListener('error', function(ev) { record(ev.target, false); }, true);
     setInterval(flush, FLUSH_INTERVAL_MS);
     window.addEventListener('pagehide', flush);
+
+    // Test seams for PageJsBehaviourSpec, same shape as _posterDelay /
+    // _posterCacheBust: assert the classification directly, and read the
+    // queued batch without having to intercept sendBeacon and decode a Blob.
+    window._imgOriginHost = originHost;
+    window._imgIsFallback = isFallback;
+    window._drainImgEvents = function() { var drained = pending; pending = []; return drained; };
   })();

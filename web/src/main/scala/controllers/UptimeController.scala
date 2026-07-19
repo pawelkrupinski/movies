@@ -205,16 +205,28 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   }
 
   /** Browser-reported image load outcomes. The page's tracker batches
-   *  ~10s of img onload/onerror events and POSTimestamp them here so the
-   *  uptime page sees per-host image-fetch reliability (the
-   *  `images.weserv.nl` proxy that fronts every cinema poster, the
-   *  origin CDNs we link directly, etc.). */
+   *  ~10s of img onload/onerror events and POSTs them here so the uptime
+   *  page sees per-host image-fetch reliability.
+   *
+   *  `host` is the ORIGIN CDN (image.tmdb.org, m.media-amazon.com,
+   *  de.web.img3.acsta.net …), not the `images.weserv.nl` proxy that fronts
+   *  most of them — the tracker unwraps the proxy's `?url=` before posting.
+   *  Reporting the proxy host instead merged every CDN into one row, which is
+   *  how a total m.media-amazon.com outage stayed invisible behind TMDB's
+   *  healthy traffic.
+   *
+   *  `fallback` marks an attempt at a non-primary poster URL, and gets its own
+   *  service row. The two are worth separating: a failed primary is a poster
+   *  the visitor watched break, whereas a failed fallback is only a dead spare
+   *  behind a poster that may have rendered fine. Merging them would let a
+   *  broken spare mask — or fake — a user-visible outage. */
   def imgEvent: Action[JsValue] = adminAction(parse.json) { request =>
     val events = (request.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
     events.foreach { e =>
-      val host    = (e \ "host").asOpt[String].getOrElse("unknown")
-      val success = (e \ "success").asOpt[Boolean].getOrElse(false)
-      val service = s"img: $host"
+      val host     = (e \ "host").asOpt[String].getOrElse("unknown")
+      val success  = (e \ "success").asOpt[Boolean].getOrElse(false)
+      val fallback = (e \ "fallback").asOpt[Boolean].getOrElse(false)
+      val service  = if (fallback) s"img: $host${UptimeController.FallbackSuffix}" else s"img: $host"
       if (success) monitor.recordSuccess(service)
       else {
         val error = (e \ "error").asOpt[String].getOrElse("image load failed")
@@ -333,6 +345,13 @@ case class ServiceRow(
   /** The venue's public source-page URL, parsed out of the `url:` tag — the
    *  href the name links to. Same extractor /debug uses (one source of truth). */
   def url: Option[String] = UptimeMonitor.urlFromTags(tags)
+}
+
+object UptimeController {
+  /** Distinguishes a non-primary poster attempt's row from its origin's primary
+   *  row (`img: m.media-amazon.com · fallback`). Mirrors the `·` separator the
+   *  page already uses for a triage row's cinema/city hover title. */
+  val FallbackSuffix = " · fallback"
 }
 
 /** A row promoted into the leading "Failing" / "No screenings" triage sections,
