@@ -225,4 +225,44 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     gets.get() shouldBe 4
   }
 
+  // The operator's corpus-wide button exists to CORRECT bad data, but it used to
+  // treat a stored URL as authoritative and only re-scrape the score off it — so
+  // a row pointing at the wrong film could never be fixed, and the run reported
+  // "0 changed". A row with a tmdbId now re-resolves even when it already has a
+  // URL, and a better one replaces it.
+  it should "re-resolve a row that ALREADY has a URL, instead of trusting it" in {
+    val stored = "https://www.rottentomatoes.com/m/the_odyssey"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("The Odyssey", Some(2026), MovieRecord(tmdbId = Some(1368337), rottenTomatoesUrl = Some(stored)))))
+    val cache = new CaffeineMovieCache(repository)
+    val asked = scala.collection.mutable.Set.empty[String]
+    val client = new RottenTomatoesClient(http = new GetOnlyHttpFetch {
+      def get(url: String): String = { asked += url; throw new RuntimeException("HTTP 404") }
+    })
+
+    new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), client).refreshAll()
+
+    // The de-articled slug probe proves the DISCOVERY path ran. Before the
+    // re-partition this row was score-only: the sole request would have been to
+    // the stored URL, and a wrong one could never be corrected.
+    asked should contain("https://www.rottentomatoes.com/m/theodyssey")
+    // The stored URL is still fetched — step 2 refreshes the score off whatever
+    // URL the row ends up holding. Re-resolving must ADD a check, not replace one.
+    asked should contain(stored)
+  }
+
+  // The fallback the re-partition must not break: a row with a URL but NO tmdbId
+  // cannot re-resolve, so it keeps refreshing its score off the stored URL.
+  it should "still refresh the score of a row that has a URL but no tmdbId" in {
+    val url = "https://www.rottentomatoes.com/m/a"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("A", None, MovieRecord(rottenTomatoes = Some(50), rottenTomatoesUrl = Some(url)))))
+    val cache = new CaffeineMovieCache(repository)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      rtClient(Map(url -> pageWithScore(74))))
+
+    ratings.refreshAll()
+
+    cache.get(cache.keyOf("A", None)).flatMap(_.rottenTomatoes) shouldBe Some(74)
+  }
 }

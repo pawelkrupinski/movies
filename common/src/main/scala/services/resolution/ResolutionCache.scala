@@ -33,6 +33,11 @@ trait ResolutionCache {
    *  the store with its own Caffeine layer, so clearing only the durable side
    *  would leave the stale value in memory and change nothing. */
   def forget(cleanTitle: String): Unit = ()
+
+  /** Forget EVERY memoised resolution for this source. The operator's
+   *  corpus-wide refresh button calls this first, so the walk genuinely
+   *  re-derives instead of replaying the answers it is meant to re-check. */
+  def forgetAll(): Unit = ()
 }
 
 object ResolutionCache {
@@ -68,6 +73,12 @@ class WriteThroughResolutionCache(store: ResolutionStore) extends ResolutionCach
     import scala.jdk.CollectionConverters._
     cache.invalidateAll(cache.asMap().keySet().asScala.filter(ResolutionKeys.belongsTo(_, cleanTitle)).toSeq.asJava)
     store.removeForFilm(cleanTitle)
+    ()
+  }
+
+  override def forgetAll(): Unit = {
+    cache.invalidateAll()
+    store.removeAll()
     ()
   }
 

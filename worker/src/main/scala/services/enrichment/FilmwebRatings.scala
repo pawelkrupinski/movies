@@ -258,39 +258,44 @@ class FilmwebRatings(
   private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
-    val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.filmwebUrl.isDefined }
+    val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
     logger.info(s"Filmweb refresh: starting tick over ${snapshot.size} cached row(s) " +
-                s"(${withUrl.size} with URL → rating-only, ${missingUrl.size} without → full lookup).")
+                s"($resolvable re-resolving their URL first).")
     val changed       = new AtomicInteger(0)
     val failed        = new AtomicInteger(0)
     val urlDiscovered = new AtomicInteger(0)
 
-    BoundedParallel.foreach("Filmweb-refresh-rating", withUrl, refreshConcurrency) { case (key, enrichment) =>
-      val url = enrichment.filmwebUrl.get
-      Try(filmweb.ratingFor(url).map(RatingDisplay.oneDecimal)) match {
-        case Success(fresh) if fresh != enrichment.filmwebRating =>
-          logger.debug(s"Filmweb refresh: ${key.cleanTitle} $url ${enrichment.filmwebRating.getOrElse("—")} → ${fresh.getOrElse("—")}")
-          cache.putIfPresent(key, _.copy(filmwebRating = fresh))
-          fresh.foreach(r => recordCadenceChange(key, enrichment.tmdbId, Some(RatingDisplay.label(r))))
-          changed.incrementAndGet()
-        case Success(_) => ()
-        case Failure(exception) =>
-          failed.incrementAndGet()
-          logger.debug(s"Filmweb refresh: $url lookup failed: ${exception.getMessage}")
+    // One pass, two steps per row — see the note in MetascoreRatings.refreshAll:
+    // a stored URL used to be authoritative, so the button could never correct a
+    // wrong one; and re-resolving ALONE would stop refreshing the rating of any
+    // row whose re-resolution fails.
+    BoundedParallel.foreach("Filmweb-refresh", snapshot, refreshConcurrency) { case (key, enrichment) =>
+      if (enrichment.tmdbId.isDefined) {
+        Try(resolveAndPersistUrl(key, enrichment)) match {
+          case Success(reported) =>
+            reported.foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v)))
+            // urlDiscovered: re-read the cache to see if the helper actually
+            // stored a URL the row didn't have before.
+            if (cache.get(key).exists(_.filmwebUrl.isDefined && !enrichment.filmwebUrl.isDefined)) urlDiscovered.incrementAndGet()
+          case Failure(exception) =>
+            failed.incrementAndGet()
+            logger.debug(s"Filmweb refresh: ${key.cleanTitle} lookup failed: ${exception.getMessage}")
+        }
       }
-    }
 
-    BoundedParallel.foreach("Filmweb-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
-      Try(resolveAndPersistUrl(key, enrichment)) match {
-        case Success(reported) =>
-          reported.foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v)))
-          // urlDiscovered: re-read the cache to see if the helper actually
-          // stored a URL. Cheap (single Caffeine lookup) and avoids leaking
-          // the resolved Option through the helper's API.
-          if (cache.get(key).exists(_.filmwebUrl.isDefined && !enrichment.filmwebUrl.isDefined)) urlDiscovered.incrementAndGet()
-        case Failure(exception) =>
-          failed.incrementAndGet()
-          logger.debug(s"Filmweb refresh: ${key.cleanTitle} full-lookup failed: ${exception.getMessage}")
+      val current = cache.get(key).getOrElse(enrichment)
+      current.filmwebUrl.foreach { url =>
+        Try(filmweb.ratingFor(url).map(RatingDisplay.oneDecimal)) match {
+          case Success(fresh) if fresh != current.filmwebRating =>
+            logger.debug(s"Filmweb refresh: ${key.cleanTitle} $url ${current.filmwebRating.getOrElse("—")} → ${fresh.getOrElse("—")}")
+            cache.putIfPresent(key, _.copy(filmwebRating = fresh))
+            fresh.foreach(r => recordCadenceChange(key, enrichment.tmdbId, Some(RatingDisplay.label(r))))
+            changed.incrementAndGet()
+          case Success(_) => ()
+          case Failure(exception) =>
+            failed.incrementAndGet()
+            logger.debug(s"Filmweb refresh: $url lookup failed: ${exception.getMessage}")
+        }
       }
     }
 

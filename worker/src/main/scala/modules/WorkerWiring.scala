@@ -951,10 +951,14 @@ class WorkerWiring(
   lazy val operatorHandlers: Seq[services.tasks.TaskHandler] = Seq(
     // TMDB re-enrich + settle have no per-source count tally, so they report a
     // generic "ran" message; the four `*Ratings` and OMDb walks return real counts.
-    new BulkRefreshHandler(TaskType.RefreshAllTmdb,       "TMDB",       () => { movieService.retryUnresolvedTmdb(); services.tasks.BulkRefreshResult.message("re-enrich dispatched for unresolved-TMDB rows") }, bulkTaskResultStore),
-    new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => imdbRatings.refreshAllNow(),         bulkTaskResultStore),
-    new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => metascoreRatings.refreshAllNow(),    bulkTaskResultStore),
-    new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => rottenTomatoesRatings.refreshAllNow(), bulkTaskResultStore),
+    // Each operator button FORGETS that source's memoised resolutions before it
+    // walks. Without this the walk re-derives from the very answers it exists to
+    // re-check — the same trap the per-film re-enrich had, where a wrong URL was
+    // replayed from `resolve_*` rather than re-probed (see `ResolutionCache.forgetAll`).
+    new BulkRefreshHandler(TaskType.RefreshAllTmdb,       "TMDB",       () => { tmdbIdCache.forgetAll(); movieService.retryUnresolvedTmdb(); services.tasks.BulkRefreshResult.message("re-enrich dispatched for unresolved-TMDB rows") }, bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { movieService.settle(); services.tasks.BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
     new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
@@ -964,7 +968,7 @@ class WorkerWiring(
   ) ++
     // The Filmweb bulk-refresh button only when this country's Filmweb path is on.
     Option.when(filmwebEnabled)(
-      new BulkRefreshHandler(TaskType.RefreshAllFilmweb, "Filmweb", () => filmwebRatings.refreshAllNow(), bulkTaskResultStore)) ++
+      new BulkRefreshHandler(TaskType.RefreshAllFilmweb, "Filmweb", () => { filmwebLinkCache.forgetAll(); filmwebRatings.refreshAllNow() }, bulkTaskResultStore)) ++
     // OMDb identifier sweep as a coarse task — only when the feature is on
     // (`omdbBackfill` is `Some`). Enqueued daily by `omdbBackfillReaper`, run here
     // off a background EC like the other corpus-wide refreshes.

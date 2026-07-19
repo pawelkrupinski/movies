@@ -123,4 +123,27 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     cache.getOrResolve("mc|thenorth|polnoc|2026") { resolved = true; Some("other") } shouldBe Some("north")
     resolved shouldBe false
   }
+
+  // The operator's corpus-wide button calls this before it walks: otherwise the
+  // walk re-derives from the very memoised answers it exists to re-check, which
+  // is why "Metacritic refresh" could report 0 changed while films sat on the
+  // wrong page.
+  "forgetAll" should "clear every entry from both layers" in {
+    val store = new InMemoryResolutionStore
+    val cache = new WriteThroughResolutionCache(store)
+    cache.getOrResolve("mc|a||2026")(Some("url-a")) shouldBe Some("url-a")
+    cache.getOrResolve("mc|b||2026")(Some("url-b")) shouldBe Some("url-b")
+
+    cache.forgetAll()
+
+    var reresolved = 0
+    cache.getOrResolve("mc|a||2026") { reresolved += 1; Some("url-a2") } shouldBe Some("url-a2")
+    cache.getOrResolve("mc|b||2026") { reresolved += 1; Some("url-b2") } shouldBe Some("url-b2")
+    reresolved shouldBe 2
+    store.get("mc|a||2026") shouldBe Some("url-a2")
+  }
+
+  it should "be a no-op on the passthrough cache" in {
+    noException should be thrownBy ResolutionCache.passthrough.forgetAll()
+  }
 }
