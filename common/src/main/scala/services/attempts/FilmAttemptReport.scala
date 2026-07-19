@@ -1,9 +1,11 @@
 package services.attempts
 
-import services.cadence.{RatingCadence, RatingChangeStats}
+import services.cadence.{RatingCadence, RatingCadenceReader, RatingChangeStats}
 import services.freshness.FreshnessKind
 
 import java.time.Instant
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
  * One rating source's enrichment state for ONE film, as the /debug row's expand
@@ -66,4 +68,32 @@ object FilmAttemptReport {
         SourceAttemptStatus(source, key, attempts.get(key), cadence.get(key))
       }
     }
+
+  /**
+   * [[build]], but reading the two stores CONCURRENTLY.
+   *
+   * The attempt log and the cadence history are independent — each is keyed only
+   * on the film's rating keys, neither feeds the other — yet each is its own
+   * Mongo round-trip. Awaiting them in turn pays two RTTs, and against a remote
+   * Mongo (the dev `flyctl` tunnel: ~110ms each) those round-trips ARE the /debug
+   * row-expand latency, not the queries, which are bounded `_id in [...]` reads
+   * that execute in single-digit ms. Issuing both before awaiting either pays one.
+   *
+   * An unresolved film (no `tmdbId`) reads nothing at all — [[keysFor]] yields no
+   * keys, both stores would short-circuit to empty, and [[build]] drops the row.
+   */
+  def buildFrom(
+    tmdbId:        Option[Int],
+    attemptReader: EnrichmentAttemptReader,
+    cadenceReader: RatingCadenceReader,
+    timeout:       FiniteDuration = 30.seconds
+  )(using ExecutionContext): Seq[SourceAttemptStatus] = {
+    val keys = tmdbId.toSeq.flatMap(keysFor)
+    if (keys.isEmpty) Seq.empty
+    else {
+      val attempts = Future(attemptReader.forKeys(keys))
+      val cadence  = Future(cadenceReader.forKeys(keys))
+      build(tmdbId, Await.result(attempts, timeout), Await.result(cadence, timeout))
+    }
+  }
 }

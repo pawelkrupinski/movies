@@ -2,10 +2,11 @@ package services.attempts
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cadence.RatingChangeStats
+import services.cadence.{RatingCadenceReader, RatingChangeStats}
 import services.freshness.FreshnessKind
 
 import java.time.Instant
+import scala.concurrent.ExecutionContext
 
 class FilmAttemptReportSpec extends AnyFlatSpec with Matchers {
 
@@ -60,5 +61,49 @@ class FilmAttemptReportSpec extends AnyFlatSpec with Matchers {
     FilmAttemptReport.build(None, Map("imdb|tmdb:7" -> EnrichmentAttempt(now, 1, AttemptOutcome.Unchanged)), Map.empty) shouldBe empty
     FilmAttemptReport.keysFor(7) should contain theSameElementsAs
       Seq("imdb|tmdb:7", "fw|tmdb:7", "rt|tmdb:7", "mc|tmdb:7")
+  }
+
+  // The row-expand's latency is round-trips, not query time: against a remote Mongo
+  // each store read costs ~110ms, so reading them in turn doubles the wait for no
+  // reason — neither read's keys depend on the other's result. The gate below makes
+  // that structural rather than a timing assertion: each reader parks until the
+  // OTHER has entered, so a serial implementation can never get past the first.
+  it should "read the attempt log and the cadence history concurrently, not one after the other" in {
+    val bothEntered = new java.util.concurrent.CountDownLatch(2)
+    def gate(): Unit = {
+      bothEntered.countDown()
+      if (!bothEntered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        fail("the two store reads ran serially — the second never started while the first was in flight")
+    }
+    val attemptReader = new EnrichmentAttemptReader {
+      override def all() = Seq.empty
+      override def forKeys(keys: Seq[String]) = {
+        gate(); Map("imdb|tmdb:7" -> EnrichmentAttempt(now, 1, AttemptOutcome.Unchanged))
+      }
+    }
+    val cadenceReader = new RatingCadenceReader {
+      override def all() = Seq.empty
+      override def forKeys(keys: Seq[String]) = { gate(); Map("mc|tmdb:7" -> stats(5)) }
+    }
+
+    val report = FilmAttemptReport.buildFrom(Some(7), attemptReader, cadenceReader)(using ExecutionContext.global)
+
+    // Both reads' results still land on the right sources — concurrency didn't lose a half.
+    report.find(_.source == FreshnessKind.ImdbRating).flatMap(_.attempt).map(_.outcome) shouldBe
+      Some(AttemptOutcome.Unchanged)
+    report.find(_.source == FreshnessKind.McRating).flatMap(_.stats).map(_.backoffLevel) shouldBe Some(5)
+  }
+
+  // An unresolved row has no keys to look up, so it must not pay a round-trip at all.
+  it should "not touch either store for a film with no tmdbId" in {
+    val exploding = new EnrichmentAttemptReader {
+      override def all() = Seq.empty
+      override def forKeys(keys: Seq[String]) = fail("should not read the attempt log without a tmdbId")
+    }
+    val explodingCadence = new RatingCadenceReader {
+      override def all() = Seq.empty
+      override def forKeys(keys: Seq[String]) = fail("should not read the cadence history without a tmdbId")
+    }
+    FilmAttemptReport.buildFrom(None, exploding, explodingCadence)(using ExecutionContext.global) shouldBe empty
   }
 }

@@ -605,15 +605,17 @@ class MovieController( cc: ControllerComponents,
    *  rows are keyed on. */
   def debugDetails(id: String): Action[AnyContent] = Action { request =>
     devOnly {
+      implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
       val stack = debugCountries.stackFor(debugCountries.resolve(request))
       stack.movieRepository.findById(id) match {
         case Some(row) =>
           // The per-source enrichment log, joined on the tmdbId-keyed rating key.
           // Two bounded `_id in [...]` lookups (4 keys each), not the readers'
-          // full-collection reads — this runs per row-expand.
-          val keys     = row.record.tmdbId.toSeq.flatMap(services.attempts.FilmAttemptReport.keysFor)
-          val statuses = services.attempts.FilmAttemptReport.build(
-            row.record.tmdbId, stack.attemptReader.forKeys(keys), stack.ratingCadenceReader.forKeys(keys))
+          // full-collection reads — this runs per row-expand. Issued CONCURRENTLY:
+          // the reads are independent, and against a remote Mongo the round-trip
+          // is the whole cost (see `buildFrom`).
+          val statuses = services.attempts.FilmAttemptReport.buildFrom(
+            row.record.tmdbId, stack.attemptReader, stack.ratingCadenceReader)
           Ok(views.html.debugDetails(row.title, row.year, row.record, cinemaSourceUrls(), statuses))
         case None      => NotFound("no such row")
       }
