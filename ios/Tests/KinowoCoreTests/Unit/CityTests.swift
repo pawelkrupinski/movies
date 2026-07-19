@@ -123,6 +123,18 @@ final class CityTests: XCTestCase {
         XCTAssertLessThan(slugs.firstIndex(of: "lodz")!, slugs.firstIndex(of: "zabrze")!)
     }
 
+    // ── country(ofSlug:) (deep-link → right deployment) ───────────
+
+    func testCountryOfSlugResolvesEachCitysCountry() {
+        XCTAssertEqual(City.all.country(ofSlug: "poznan"), "pl")
+        XCTAssertEqual(City.all.country(ofSlug: "london"), "uk")
+    }
+
+    func testCountryOfSlugIsNilForUnknownCity() {
+        XCTAssertNil(City.all.country(ofSlug: "berlin"))   // DE arrives via the live catalog, not the fallback
+        XCTAssertNil(City.all.country(ofSlug: "nope"))
+    }
+
     // ── switchSuggestion (you're-nearer-another-city prompt) ──────
 
     func testSwitchSuggestionWhenNearerCityDiffers() {

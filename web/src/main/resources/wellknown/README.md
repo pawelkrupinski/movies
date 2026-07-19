@@ -5,19 +5,24 @@ Served by `controllers.WellKnownController` at:
 - `/.well-known/apple-app-site-association` — iOS Universal Links
 - `/.well-known/assetlinks.json` — Android App Links
 
-These let `https://kinowo.fly.dev/...` links (including the copy-to-clipboard
-filter links) open the native apps instead of the browser.
+These let `https://<host>/...` links (including the copy-to-clipboard filter
+links) open the native apps instead of the browser. The same web binary +
+resources deploy to every country, so this identical AASA is served on all three
+deployments — `kinowo.fly.dev` (PL), `showtimes-uk.fly.dev` (UK),
+`showtimes-de.fly.dev` (DE) — and one app ID (`CQ4YC43YDM.dev.kinowo.Kinowo`)
+claims links on all of them.
 
-## ⚠️ iOS Universal Links need a PAID Apple Developer account
+## iOS Universal Links need a PAID Apple Developer account
 
-The AASA above is served, but iOS Universal Links also require the app to carry
+The AASA above is served, and iOS Universal Links also require the app to carry
 the **Associated Domains** entitlement — which a **free/personal** Apple team
 cannot provision ("Personal development teams do not support the Associated
-Domains capability"). So the entitlement is currently NOT wired into the build
-(`ios/Kinowo/Kinowo.entitlements` exists but isn't referenced by
-`CODE_SIGN_ENTITLEMENTS`), and iOS ships with only the `kinowo://` custom URL
-scheme. Re-enable per the comment in that entitlements file once on a paid team.
-Android App Links have no such gate.
+Domains capability"). On the paid team this is now wired in:
+`ios/Kinowo/Kinowo.entitlements` lists `applinks:` for all three hosts and is
+referenced by `CODE_SIGN_ENTITLEMENTS` in both app-target build configs. With
+automatic signing Xcode enables the capability for the App ID on the next
+build/archive. (The `kinowo://` custom URL scheme still works as a fallback and
+needs no paid account.) Android App Links have no such gate.
 
 ## Android signing fingerprints (`assetlinks.json`)
 

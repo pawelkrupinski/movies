@@ -2,27 +2,35 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <!--
-  NOT CURRENTLY WIRED INTO THE BUILD. Associated Domains (iOS Universal Links)
-  requires a PAID Apple Developer Program membership; a free/personal team can't
-  provision it ("Personal development teams do not support the Associated Domains
-  capability"). So `CODE_SIGN_ENTITLEMENTS` is intentionally absent from
-  project.pbxproj and the app ships with only the kinowo:// custom URL scheme
-  (Info.plist CFBundleURLTypes), which needs no paid account.
+  Wired into the build via `CODE_SIGN_ENTITLEMENTS = Kinowo/Kinowo.entitlements;`
+  on the app target (both Debug and Release build settings in project.pbxproj).
+  Associated Domains (iOS Universal Links) requires a PAID Apple Developer
+  Program membership; with automatic signing on a paid team, Xcode enables the
+  Associated Domains capability for the App ID in the portal on the next
+  build/archive. (On a free/personal team this file must be un-referenced again —
+  "Personal development teams do not support the Associated Domains capability" —
+  leaving only the kinowo:// custom URL scheme in Info.plist, which needs no
+  paid account.)
 
-  To enable Universal Links once on a paid team: add
-  `CODE_SIGN_ENTITLEMENTS = Kinowo/Kinowo.entitlements;` to the app target's
-  build settings (it was in all four XCBuildConfiguration blocks) and enable the
-  Associated Domains capability for the App ID in the developer portal. The AASA
-  is already served at https://kinowo.fly.dev/.well-known/apple-app-site-association.
+  The AASA is served on every country deployment at
+  https://<host>/.well-known/apple-app-site-association — one identical file
+  (same app ID, same path patterns) across kinowo.fly.dev / showtimes-uk.fly.dev
+  / showtimes-de.fly.dev, since all three run the same web binary + resources.
 -->
 <dict>
-	<!-- Universal Links: the OS fetches https://kinowo.fly.dev/.well-known/
-	     apple-app-site-association and routes matching links (city, film,
-	     copy-to-clipboard filter links) into the app via onOpenURL. -->
+	<!-- Universal Links: the OS fetches https://<host>/.well-known/
+	     apple-app-site-association for each associated domain and routes matching
+	     links (city, film, copy-to-clipboard filter links) into the app via
+	     onOpenURL. One entry per country deployment (PL/UK/DE) — mirror the hosts
+	     in DeepLink.webHosts and Country.all. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:kinowo.fly.dev</string>
+		<string>applinks:showtimes-uk.fly.dev</string>
+		<string>applinks:showtimes-de.fly.dev</string>
 		<string>webcredentials:kinowo.fly.dev</string>
+		<string>webcredentials:showtimes-uk.fly.dev</string>
+		<string>webcredentials:showtimes-de.fly.dev</string>
 	</array>
 </dict>
 </plist>

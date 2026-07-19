@@ -2,15 +2,18 @@ import Foundation
 
 /// A parsed deep link into the app.
 ///
-/// The grammar mirrors the web URLs one-for-one so the SAME `kinowo.fly.dev`
-/// links open the app via Universal Links — including the copy-to-clipboard
-/// filter links, whose query string we decode back into `DeepLinkFilters`. The
-/// `kinowo://` custom scheme is accepted too (host = city slug), so an internal
-/// or fallback link works without the associated-domain round trip.
+/// The grammar mirrors the web URLs one-for-one so the SAME links — on any
+/// country deployment (`kinowo.fly.dev`, `showtimes-uk.fly.dev`,
+/// `showtimes-de.fly.dev`) — open the app via Universal Links, including the
+/// copy-to-clipboard filter links, whose query string we decode back into
+/// `DeepLinkFilters`. The `kinowo://` custom scheme is accepted too (host =
+/// city slug), so an internal or fallback link works without the
+/// associated-domain round trip.
 ///
 ///   https://kinowo.fly.dev/poznan/                     → city
 ///   https://kinowo.fly.dev/poznan/?dim=2D&genre=Komedia → city + filters
 ///   https://kinowo.fly.dev/poznan/film?title=Oppenheimer → city + film detail
+///   https://showtimes-uk.fly.dev/london/                → city (UK deployment)
 ///   kinowo://poznan/                                    → city (custom scheme)
 ///   kinowo://poznan/film?title=Oppenheimer              → film (custom scheme)
 ///
@@ -22,7 +25,15 @@ struct DeepLink: Equatable {
     let filmTitle: String?
     let filters: DeepLinkFilters
 
-    static let webHosts: Set<String> = ["kinowo.fly.dev", "www.kinowo.fly.dev"]
+    /// Every country deployment's host — a link on any of them opens the app.
+    /// Mirrors the `baseURL` hosts of `Country.all` (PL/UK/DE); keep in sync
+    /// when a country is added. (`Country` lives in a different SPM target, so
+    /// this can't derive from `Country.all` directly.)
+    static let webHosts: Set<String> = [
+        "kinowo.fly.dev", "www.kinowo.fly.dev",
+        "showtimes-uk.fly.dev",
+        "showtimes-de.fly.dev",
+    ]
     /// Reserved custom-scheme host already used for the OAuth callback — never a
     /// city, so never a navigation deep link.
     static let reservedSchemeHosts: Set<String> = ["auth-done"]

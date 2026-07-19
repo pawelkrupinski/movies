@@ -70,6 +70,15 @@ struct KinowoApp: App {
     /// parsed link for `ContentView` to apply its filters + film push.
     private func handleDeepLink(_ url: URL) {
         guard let link = DeepLink.parse(url, knownCitySlugs: catalog.allSlugs) else { return }
+        // A link on another country's deployment (showtimes-uk / showtimes-de)
+        // must switch the country too, or the city would resolve against the
+        // wrong deployment's catalog. Setting it re-points `kinowoBaseURL`; the
+        // root's `.id(selectedCountry.code)` then rebuilds ContentView, which
+        // reloads the new country's catalog + repertoire. No-ops when already
+        // in that country (e.g. a same-country kinowo.fly.dev link).
+        if let countryCode = catalog.cities.country(ofSlug: link.citySlug) {
+            prefs.setCountry(catalog.country(code: countryCode))
+        }
         if link.citySlug != prefs.selectedCity {
             prefs.setCity(link.citySlug)
             store.use(citySlug: link.citySlug)

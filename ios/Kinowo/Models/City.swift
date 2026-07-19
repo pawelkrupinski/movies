@@ -247,6 +247,12 @@ extension Array where Element == City {
     /// The subset belonging to `countryCode` (`"pl"`, `"uk"`), in this list's order.
     func inCountry(_ countryCode: String) -> [City] { filter { $0.country == countryCode } }
 
+    /// The country code of the city with `slug`, or `nil` when no such city.
+    /// Lets a deep link that lands on another country's city (a
+    /// `showtimes-uk` / `showtimes-de` link) switch the app to the right
+    /// deployment before the repertoire loads.
+    func country(ofSlug slug: String) -> String? { first { $0.slug == slug }?.country }
+
     /// [inCountry] ordered alphabetically under that country's collation (Polish
     /// for `pl`, so `Ł` sorts after `L`; English elsewhere) — what the pickers show.
     func sortedForPicker(inCountry countryCode: String) -> [City] {

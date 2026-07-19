@@ -61,6 +61,22 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertNil(parse("mailto:hi@kinowo.fly.dev"))
     }
 
+    // MARK: per-country deployment hosts
+
+    func testUKDeploymentHostOpensInApp() {
+        let dl = parse("https://showtimes-uk.fly.dev/london/film?title=Wicked")
+        XCTAssertEqual(dl?.citySlug, "london")
+        XCTAssertEqual(dl?.filmTitle, "Wicked")
+    }
+
+    func testDEDeploymentHostOpensInApp() {
+        // No German city ships in the compile-time `City.all` fallback (they
+        // arrive via the live catalog), so pass the slug set the app hands in at
+        // runtime (`catalog.allSlugs`) — the same call `handleDeepLink` makes.
+        let dl = DeepLink.parse(URL(string: "https://showtimes-de.fly.dev/berlin/")!, knownCitySlugs: ["berlin"])
+        XCTAssertEqual(dl?.citySlug, "berlin")
+    }
+
     func testEmptyTitleParamIsNoFilm() {
         XCTAssertNil(parse("https://kinowo.fly.dev/poznan/film?title=")?.filmTitle)
     }
