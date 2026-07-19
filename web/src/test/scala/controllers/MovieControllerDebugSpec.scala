@@ -203,9 +203,18 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include("attempt-failed")                   // and flagged as a failure
     html should include("L6")                               // MC's backoff level from the cadence
     html should include("never")                            // MC/Filmweb never attempted
-    // Above the per-cinema slots: the enrichment state is what you open a row FOR,
-    // and the slot list is long enough to push it off-screen.
-    html.indexOf("Enrichment attempts") should be < html.indexOf(CinemaCityWroclavia.displayName)
+    // Position is part of the contract: the enrichment state is what you open a
+    // row FOR, and Odyseja's slot list ran 8,774 lines — enough to bury it
+    // entirely when it was appended last. Pin the whole sequence, not just one
+    // side of it: general details (posterUrl is the last of them) → enrichment →
+    // first cinema slot.
+    val posterAt = html.indexOf("posterUrl")
+    val enrichAt = html.indexOf("Enrichment attempts")
+    val cinemaAt = html.indexOf(CinemaCityWroclavia.displayName)
+    info(s"posterUrl@$posterAt < enrichment@$enrichAt < first cinema@$cinemaAt")
+    all(Seq(posterAt, enrichAt, cinemaAt)) should be >= 0
+    posterAt should be < enrichAt
+    enrichAt should be < cinemaAt
   }
 
   it should "explain an unresolved row instead of showing an empty table" in {
