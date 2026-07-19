@@ -203,6 +203,9 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include("attempt-failed")                   // and flagged as a failure
     html should include("L6")                               // MC's backoff level from the cadence
     html should include("never")                            // MC/Filmweb never attempted
+    // Above the per-cinema slots: the enrichment state is what you open a row FOR,
+    // and the slot list is long enough to push it off-screen.
+    html.indexOf("Enrichment attempts") should be < html.indexOf(CinemaCityWroclavia.displayName)
   }
 
   it should "explain an unresolved row instead of showing an empty table" in {

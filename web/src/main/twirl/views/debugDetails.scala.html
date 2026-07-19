@@ -131,24 +131,6 @@
   }
 }
 
-@if(e.data.isEmpty) {
-  <em class="miss">No source data yet for this row.</em>
-} else {
-  <div class="cinema-list">
-    @for((source, slot) <- e.cinemaSlots.sortBy { case (s, sd) => (Source.priorityOf(s), sd.title.getOrElse("")) }) {
-      @Source.cinemaOf(source).map { cinema =>
-        @perSourceSlot(
-          Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"),
-          source,
-          cinemaUrls.get(cinema.displayName))
-      }
-    }
-    @perSourceSlot("TMDB", Tmdb)
-    @perSourceSlot("IMDB", Imdb)
-    @perSourceSlot("Filmweb", Filmweb, e.filmwebUrl)
-  </div>
-}
-
 
 @*-- Per-source enrichment log: what each rating source's LAST fetch actually did,
      and when the adaptive cadence will let it run again. The pair matters: a
@@ -192,4 +174,23 @@
     }
     </tbody>
   </table>
+}
+
+
+@if(e.data.isEmpty) {
+  <em class="miss">No source data yet for this row.</em>
+} else {
+  <div class="cinema-list">
+    @for((source, slot) <- e.cinemaSlots.sortBy { case (s, sd) => (Source.priorityOf(s), sd.title.getOrElse("")) }) {
+      @Source.cinemaOf(source).map { cinema =>
+        @perSourceSlot(
+          Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"),
+          source,
+          cinemaUrls.get(cinema.displayName))
+      }
+    }
+    @perSourceSlot("TMDB", Tmdb)
+    @perSourceSlot("IMDB", Imdb)
+    @perSourceSlot("Filmweb", Filmweb, e.filmwebUrl)
+  </div>
 }
