@@ -49,15 +49,43 @@ class FlicksClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/cinema/$cinemaSlug/")
 
-  // Each of the venue's ~7 days is one chunk, run as its own `ScrapeChunk` task
-  // (see ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the
-  // task queue and the shared Flicks pace gate instead of bursting from a single
-  // task that parks a worker thread for ~7 back-to-back AJAX calls. The in-process
-  // `fetch()` the trait composes (planChunks → fetchChunk → reduceChunks) is used
-  // only by the deterministic fixture harness + unit tests, where every day answers.
+  // Each populated day is one chunk, run as its own `ScrapeChunk` task (see
+  // ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the task
+  // queue and the shared Flicks pace gate instead of bursting from a single task
+  // that parks a worker thread for that many back-to-back AJAX calls. The
+  // in-process `fetch()` the trait composes (planChunks → fetchChunk →
+  // reduceChunks) is used only by the deterministic fixture harness + unit tests.
 
-  /** One chunk key per day, today .. today+daysAhead. */
-  def planChunks(): Seq[String] = (0 to daysAhead).map(today.plusDays(_).toString)
+  /** The days to scrape. The venue programme page (`sourceUrl`) renders one
+   *  `<div class="timetable__day" data-date="YYYY-MM-DD">` tab per day it has a
+   *  programme — the exact days with sessions, gap days excluded (a date absent
+   *  from the tab list returns an empty sessions fragment). The list is sparse
+   *  and reaches months out (Flicks advertises a venue's whole booking horizon,
+   *  not a fixed window), so reading it once lifts the scrape from the old fixed
+   *  7-day grid to the site's full advertised horizon WITHOUT firing a request
+   *  per empty day: the page names precisely which days to fetch.
+   *
+   *  Falls back to the old `today .. today+daysAhead` grid when the programme
+   *  page can't be fetched or carries no parseable date list, so a page outage or
+   *  a markup change degrades to the prior 7-day behaviour rather than dropping
+   *  the venue. Bounded to `[today, today+MaxHorizonDays]` so a stray attribute
+   *  date can't balloon the per-venue chunk fan-out. */
+  def planChunks(): Seq[String] =
+    discoverProgrammeDates().getOrElse((0 to daysAhead).map(today.plusDays(_))).map(_.toString)
+
+  /** The days named by the venue programme page's `data-date` tabs, bounded to
+   *  the horizon, or `None` when the page is unreachable / carries no usable date
+   *  list (→ the caller's grid fallback). The page fetch's failure is swallowed
+   *  here on purpose: unlike a per-day chunk (whose throw reschedules just that
+   *  day), a failed index page should not fail the whole venue when a safe
+   *  default exists. */
+  private def discoverProgrammeDates(): Option[Seq[LocalDate]] =
+    sourceUrl.flatMap { url =>
+      Try(http.get(url)).toOption
+        .map(parseProgrammeDates)
+        .map(_.filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong))))
+        .filter(_.nonEmpty)
+    }
 
   /** Fetch + parse ONE day's sessions fragment into that day's films. The fetch
    *  THROWS on failure so ONLY that day's chunk task reschedules (the per-day
@@ -115,6 +143,27 @@ class FlicksClient(
 object FlicksClient {
 
   val BaseUrl = "https://www.flicks.co.uk"
+
+  /** A safety ceiling on the discovered horizon, not a target: Flicks advertises
+   *  a venue's whole booking horizon (observed out to ~5 months), and we fetch
+   *  every advertised day, but bound it so a stray far-future date in the tab
+   *  list can't balloon a venue's chunk fan-out. ~7 months clears the real
+   *  horizon with headroom. */
+  val MaxHorizonDays = 210
+
+  private val DataDate = """data-date="(\d{4}-\d{2}-\d{2})"""".r
+
+  /** The days a venue has a programme on, read off the programme page's
+   *  `<div class="timetable__day" data-date="YYYY-MM-DD">` day tabs — a sparse,
+   *  months-long list with gap days omitted (a date absent from it returns an
+   *  empty sessions fragment). Every `data-date` on the page is a day tab, so
+   *  pull the ISO dates straight out; deduped and sorted. Empty when no tab is
+   *  present (older / changed markup) → the caller falls back to the fixed grid.
+   *  Pure + public so a spec feeds it a recorded page directly. */
+  def parseProgrammeDates(html: String): Seq[LocalDate] =
+    DataDate.findAllMatchIn(html).map(_.group(1)).toSeq
+      .flatMap(s => Try(LocalDate.parse(s)).toOption)
+      .distinct.sortBy(_.toString)
 
   // Flicks 403s a non-browser fetch and only serves the sessions fragment (rather
   // than the full page) when this header is set; RealHttpFetch already sends a
