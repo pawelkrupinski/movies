@@ -520,50 +520,9 @@
       ]
     },
     {
-      "id": 9,
-      "title": "Scraper HTTP failures by category (per country)",
-      "description": "Rate of NON-success outbound HTTP attempts, by category, STACKED \u2014 band thickness is that category's share and the top of the stack is the total error rate. Every retry is one entry. The 4xx range is split by code because one bucket hid two opposite meanings: http_404 is mostly the RT/Metacritic resolvers probing up to 4 candidate slugs per title (working as designed, expect a large steady line), while http_403 is a host REFUSING us (Cloudflare, datacentre-IP ban) and any rise there is an outage forming. http_400/401/410 are the other codes this workload actually produces; improbable ones (409/422/451/\u2026) fold into the residual http_4xx. Categories: http_429=rate limited, http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 41
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 25,
-            "stacking": {
-              "mode": "normal"
-            },
-            "spanNulls": 300000
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"success\"}[5m]))",
-          "legendFormat": "{{outcome}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          }
-        }
-      ]
-    },
-    {
       "id": 10,
-      "title": "Worker HTTP clean-rate % + error share by type (per country)",
-      "description": "What the attempts resolved to, as a share of ALL attempts incl. retries \u2014 stacked to 100%. The 'clean %' band is the success rate the Filmstarts pacing targets; every other band is one error category from the panel to the left, expressed as a percentage rather than a raw rate so it shares this panel's axis (a req/s series on a percent axis would need a second scale). Band thickness therefore reads directly as 'how much of the gap below 100% is this error'.",
+      "title": "Worker HTTP outcomes \u2014 clean % over error share (per country)",
+      "description": "Every outbound HTTP attempt incl. retries, as a share of all attempts, stacked to 100%. The error bands sit at the bottom and 'clean %' rides on top, so the coloured band at the floor is exactly the failure budget and its thickness reads as 'how much of the gap below 100% is this error'. The 4xx range is split by code because one bucket hid two opposite meanings: http_404 is mostly the RT/Metacritic resolvers probing up to 4 candidate slugs per title (working as designed \u2014 expect a large steady band), while http_403 is a host REFUSING us (Cloudflare, datacentre-IP ban) and any rise there is an outage forming. Improbable codes (409/422/451/\u2026) fold into the residual http_4xx. Other categories: http_429=rate limited, http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. Replaces the separate raw-rate failures panel, which showed the same categories without the denominator.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -571,8 +530,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
+        "w": 24,
+        "x": 0,
         "y": 41
       },
       "fieldConfig": {
@@ -594,8 +553,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum(rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "clean %",
+          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "{{outcome}}",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"
@@ -603,8 +562,8 @@
         },
         {
           "refId": "B",
-          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "{{outcome}}",
+          "expr": "100 * sum(rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "clean %",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"
