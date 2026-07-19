@@ -5,7 +5,7 @@ import org.mongodb.scala.MongoClient
 import models.{Cinema, Country}
 import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, TelegramNotifier}
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
-import tools.{DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
+import tools.{CountingHttpFetch, DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, StagingFilmEnriched, TaskFinished}
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
@@ -95,10 +95,18 @@ class WorkerWiring(
   // so we stay under the limit instead of rediscovering it via 429 every sweep.
   // Inside the breaker so a fast-failed call never waits for (or consumes) a slot,
   // and inside the 429 gate so a real Retry-After still overrides the steady pace.
+  // CountingHttpFetch is INNERMOST (around the leaf RealHttpFetch): it tallies
+  // every wire attempt's outcome into kinowo_worker_http_total for THIS country.
+  // Innermost is deliberate — each 429 retry (ThrottledHttpFetch) and each
+  // scraper backoff retry re-hits the leaf as a distinct call, so every attempt
+  // is counted once; a circuit-breaker fast-fail never reaches here and so isn't
+  // miscounted as a real attempt.
   lazy val httoFetch: HttpFetch =
     new MonitoringHttpFetch(
       new ThrottledHttpFetch(
-        new HostCircuitBreakerHttpFetch(new RateLimitedHttpFetch(new RealHttpFetch()))),
+        new HostCircuitBreakerHttpFetch(
+          new RateLimitedHttpFetch(
+            new CountingHttpFetch(new RealHttpFetch(), workerMetrics.httpMetrics.recorderFor(country.code))))),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
   // ── External API clients ──────────────────────────────────────────────────
