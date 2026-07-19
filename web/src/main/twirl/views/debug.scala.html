@@ -260,7 +260,8 @@
   }
   // Fetch + inject a row's per-source breakdown the first time it's expanded.
   // Cached after (the loaded `<td>` is reused on a re-expand); an SSE row-replace
-  // re-parks a fresh empty shell, so a changed row refetches up-to-date details.
+  // re-parks a fresh empty shell, so a CHANGED row refetches up-to-date details —
+  // a frame that changed nothing never gets here (applyUpsert's digest guard).
   function loadDetails(d) {
     if (d.dataset.loaded || !d.dataset.detailsUrl) return;
     d.dataset.loaded = '1';
@@ -526,6 +527,16 @@
     const fresh = Array.from(tmp.children); // [data row, details row]
     if (!fresh.length) return;
     const existing = rowsFor(id);
+    // No-op guard. A change-stream frame fires on ANY write to the film's
+    // document, and the common one re-asserts an unchanged scrape slot: it bumps
+    // `updatedAt` and nothing else. Applying such a frame is invisible in the
+    // table but re-parks an EMPTY details shell, so an EXPANDED row refetches its
+    // multi-MB /debug/details body — every ~15s on a wide release, without end.
+    // `data-digest` covers the whole record (per-slot showtimes included, which
+    // the light data row does NOT show), so an equal digest means nothing the row
+    // OR its details would render has changed: drop the frame entirely.
+    const prior = detailsById.get(id);
+    if (existing.length && prior && fresh[1] && prior.dataset.digest === fresh[1].dataset.digest) return;
     const tbody = table.tBodies[0];
     const wasExpanded = existing.length > 0 && existing[0].classList.contains('expanded');
     if (existing.length) {

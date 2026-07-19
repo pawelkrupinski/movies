@@ -1,4 +1,4 @@
-@import services.movies.StoredMovieRecord
+@import services.movies.{ShowtimesDigest, StoredMovieRecord}
 @import services.readmodel.ReadModelProjection
 @import controllers.FilmHref
 @*
@@ -86,7 +86,19 @@
             title="Re-enrich TMDB, then ratings">↻</button>
   </td>
 </tr>
-<tr class="details hidden" data-id="@id" data-row-id="@id" data-details-url="@routes.MovieController.debugDetails(id)">
+@* `data-digest` is the change-stream NO-OP GUARD. A frame fires on ANY write to
+   the film's document — a re-asserted scrape slot bumps only `updatedAt`, which
+   nothing here renders — and the page's applyUpsert would replace the row and
+   re-park an EMPTY details shell, so an EXPANDED row refetches its multi-MB
+   /debug/details body. On a wide release that write lands every ~15s, so the
+   open row reloads forever with no information gain (12 consecutive frames for
+   The Odyssey rendered byte-identical markup). The digest covers the whole
+   record INCLUDING per-slot showtimes (which the light data row doesn't show),
+   so an unchanged digest means the details body is unchanged too and the frame
+   can be dropped whole. *@
+<tr class="details hidden" data-id="@id" data-row-id="@id"
+    data-digest="@ShowtimesDigest.recordDigest(e)"
+    data-details-url="@routes.MovieController.debugDetails(id)">
   <td colspan="9"></td>
 </tr>
 }
