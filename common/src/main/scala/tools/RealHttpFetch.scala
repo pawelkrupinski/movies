@@ -358,19 +358,20 @@ object RealHttpFetch {
     // RetryWithBackoff then re-runs the whole cinema up to 3x. So the fast pace
     // spent its budget three times over on requests that could never land, and
     // only ~30% of scrapes were succeeding.
-    // 500ms halves that to ~2 req/s → a full sweep in ~90min. That does NOT fit
-    // the old 60min TTL, which is why 250ms was chosen then; it fits the 120min
-    // cadence DE now runs (see fly.worker.de.toml), with ~25% headroom. Still not
-    // a measured limit — if 429s persist, the next step is 750ms/1000ms, which
-    // costs a sweep longer than the TTL and so needs the cadence widened with it.
-    // Webedia publishes no limit, so 500ms is a step in an empirical search, not
-    // a known-safe number. KINOWO_FILMSTARTS_PACE_MS makes that search cheap:
-    // flip it on /admin/config, watch the 429-rate summary ThrottledHttpFetch
-    // logs, flip again — no redeploy, no cold JVM. Once a value holds at 0
-    // throttled over a full sweep, fold it back in here as the new default.
+    // The pace-report logging (see ThrottledHttpFetch, surfaced at INFO in the
+    // worker's logback-base.xml) turned that search into measurement. 500ms was
+    // 100% clean overnight but only ~95% under German morning load — a steady
+    // ~4-5% throttle with bursts to ~35%, i.e. Filmstarts' tolerance sits right
+    // around our 2 req/s. Halving again to 1000ms (~1 req/s) drops under it for
+    // 0 throttled. The cost is the sweep: 1,533 venues × 7 day-pages × 1000ms =
+    // ~179min, which no longer fits a 2h cadence — so DE moved to a 180min cadence
+    // in lockstep (fly.worker.de.toml). The two are coupled: pace sets sweep
+    // length, cadence sets the budget, and WorkerScrapeCadenceConfigSpec asserts
+    // sweep ≤ cadence so neither can drift alone. KINOWO_FILMSTARTS_PACE_MS still
+    // overrides this live (per request) for re-tuning without a redeploy.
     HostPolicy(
       Set("filmstarts.de"),
-      minRequestInterval = Some(Duration.ofMillis(500)),
+      minRequestInterval = Some(Duration.ofMillis(1000)),
       paceKnob           = Some("KINOWO_FILMSTARTS_PACE_MS"),
     ),
   )
