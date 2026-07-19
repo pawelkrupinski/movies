@@ -127,11 +127,57 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     clientOver(new ScriptedByUrl(_ => NoShowtimesBody)).fetch() shouldBe empty
   }
 
-  it should "tolerate a PARTIAL failure, keeping the days that did answer" in {
+  // ── chunked: one ScrapeChunk task per day, reduced into the venue listing ──
+  // fetch() (used only by the fixture harness + these tests) composes
+  // reduceChunks ∘ fetchChunk ∘ planChunks; in prod each day is its own task.
+
+  private def fakeClient(daysAhead: Int = 0) =
+    new WebediaShowtimesClient(
+      new FakeHttpFetch("webedia-de"), "www.filmstarts.de", "A0263", venue,
+      daysAhead = daysAhead, today = LocalDate.of(2026, 7, 11))
+
+  "planChunks" should "yield one chunk key per day across the window" in {
+    fakeClient(daysAhead = 6).planChunks() shouldBe
+      (0 to 6).map(d => LocalDate.of(2026, 7, 11).plusDays(d.toLong).toString)
+  }
+
+  "fetchChunk" should "parse one day's page into that day's films" in {
+    val films = fakeClient().fetchChunk("2026-07-11")
+    films.map(_.movie.title) should contain("Vaiana")
+    all(films.map(_.externalIds.keySet)) should contain("webedia")
+    all(films.flatMap(_.showtimes).map(_.dateTime.toLocalDate)) should be(LocalDate.of(2026, 7, 11))
+  }
+
+  it should "throw a fetch failure so only that day's chunk task reschedules" in {
+    val failing = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 429"))
+    a[java.io.IOException] should be thrownBy clientOver(failing).fetchChunk("2026-07-11")
+  }
+
+  "reduceChunks" should "merge the same film across days by webedia id, unioning showtimes" in {
+    val client = fakeClient()
+    val day1   = client.fetchChunk("2026-07-11")
+    // Fabricate the next day's chunk: same films, showtimes shifted +1 day.
+    val day2 = day1.map(m => m.copy(showtimes = m.showtimes.map(s => s.copy(dateTime = s.dateTime.plusDays(1)))))
+
+    val reduced = client.reduceChunks(Map("2026-07-11" -> day1, "2026-07-12" -> day2))
+
+    reduced.size shouldBe day1.size // one row per film, not doubled
+    val vaiana = reduced.find(_.movie.title == "Vaiana").value
+    vaiana.showtimes.map(_.dateTime.toLocalDate).distinct should contain allOf
+      (LocalDate.of(2026, 7, 11), LocalDate.of(2026, 7, 12))
+  }
+
+  it should "keep a day that answered when reduced alongside a missing (failed) one" in {
+    // In prod a failed day's chunk reschedules; the reduce runs on whatever
+    // landed — so a single dead day degrades to a partial listing, not a loss.
+    val day1 = fakeClient().fetchChunk("2026-07-11")
+    fakeClient().reduceChunks(Map("2026-07-11" -> day1)).map(_.movie.title) should contain("Vaiana")
+  }
+
+  it should "throw from the in-process fetch when any day fails (the task path retries per-day instead)" in {
     val partial = new ScriptedByUrl(url =>
       if (url.contains("d-2026-07-11")) fixture
       else throw new java.io.IOException("HTTP 429"))
-    val movies = clientOver(partial, daysAhead = 1).fetch()
-    movies.map(_.movie.title) should contain("Vaiana")
+    a[java.io.IOException] should be thrownBy clientOver(partial, daysAhead = 1).fetch()
   }
 }
