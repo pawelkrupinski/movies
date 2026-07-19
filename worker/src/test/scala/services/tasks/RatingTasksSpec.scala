@@ -2,6 +2,7 @@ package services.tasks
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.attempts.{AttemptOutcome, InMemoryEnrichmentAttemptStore}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.movies.CacheKey
 
@@ -73,6 +74,41 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     cad.statsFor("imdb|tmdb:7").map(_.windowChanges)   shouldBe Some(1)  // still one change, no phantom
     cad.statsFor("imdb|tmdb:7").map(_.unchangedStreak) shouldBe Some(1)  // backed off instead
     cad.statsFor("imdb|tmdb:7").flatMap(_.prevChange)  shouldBe None
+  }
+
+  // The /debug per-film expand section answers "did this source's last attempt
+  // actually work". Until it was recorded, a fetch that ERRORED and a fetch that
+  // ran fine but reported no change were indistinguishable — both arrived here as
+  // `None`, both stamped freshness, both fed the cadence a no-change (backing the
+  // source off toward the 4-day cap). See services.attempts.AttemptOutcome.
+  it should "record a changed attempt under the task's dedup key" in {
+    val attempts = new InMemoryEnrichmentAttemptStore
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, new InMemoryFreshnessStore, dueWindow,
+                      cadence, (_, _) => Some("8.3"), attempts = attempts)
+      .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
+    attempts.all().toMap.get("imdb|tmdb:7").map(_.outcome) shouldBe Some(AttemptOutcome.Changed("8.3"))
+  }
+
+  it should "record an unchanged attempt distinctly from a failed one" in {
+    val attempts = new InMemoryEnrichmentAttemptStore
+    new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, new InMemoryFreshnessStore, dueWindow,
+                      cadence, (_, _) => None, attempts = attempts)
+      .handle(ratingTask("imdb|tmdb:7", "X", None)) shouldBe HandlerOutcome.Done
+    attempts.all().toMap.get("imdb|tmdb:7").map(_.outcome) shouldBe Some(AttemptOutcome.Unchanged)
+  }
+
+  it should "record a throwing refresh as Failed, carrying the error, and still propagate the exception" in {
+    val attempts = new InMemoryEnrichmentAttemptStore
+    val handler  = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, new InMemoryFreshnessStore,
+                                     dueWindow, cadence,
+                                     (_, _) => throw new RuntimeException("HTTP 503 from imdb.com"),
+                                     attempts = attempts)
+
+    // Recording must not swallow: the queue's retry/backoff still sees the failure.
+    a[RuntimeException] should be thrownBy handler.handle(ratingTask("imdb|tmdb:7", "X", None))
+
+    attempts.all().toMap.get("imdb|tmdb:7").map(_.outcome) shouldBe
+      Some(AttemptOutcome.Failed("RuntimeException: HTTP 503 from imdb.com"))
   }
 
   it should "not touch the cadence for a task it skips as still-fresh" in {

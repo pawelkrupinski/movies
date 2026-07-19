@@ -1,7 +1,9 @@
 @import models.{Cinema, CinemaShowing, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb, Filmweb}
 @import services.movies.TitleNormalizer
 @import java.time.format.DateTimeFormatter
-@(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty)
+@import java.time.{Duration, Instant, ZoneOffset}
+@import services.attempts.{AttemptOutcome, SourceAttemptStatus}
+@(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
 @dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}
 
@@ -145,4 +147,49 @@
     @perSourceSlot("IMDB", Imdb)
     @perSourceSlot("Filmweb", Filmweb, e.filmwebUrl)
   </div>
+}
+
+
+@*-- Per-source enrichment log: what each rating source's LAST fetch actually did,
+     and when the adaptive cadence will let it run again. The pair matters: a
+     failed fetch plus a multi-day backoff is why a film can sit rating-less
+     without anything looking broken. --*@
+@stamp(i: Instant) = @{
+  val ago = Duration.between(i, Instant.now())
+  val rel = if(ago.toMinutes < 60) { s"${ago.toMinutes}m ago" }
+            else if(ago.toHours < 48) { s"${ago.toHours}h ago" }
+            else { s"${ago.toDays}d ago" }
+  s"${DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneOffset.UTC).format(i)} ($rel)"
+}
+
+<h4 class="enrichment-heading">Enrichment attempts</h4>
+@if(enrichment.isEmpty) {
+  <em class="miss">No tmdbId — rating sources are keyed on it, so nothing has been attempted.</em>
+} else {
+  <table class="enrichment-log">
+    <thead>
+      <tr><th>source</th><th>last attempt</th><th>result</th><th>took</th><th>next due</th><th>backoff</th></tr>
+    </thead>
+    <tbody>
+    @for(status <- enrichment) {
+      <tr class="@if(status.failing){attempt-failed}@if(status.neverRan){attempt-never}">
+        <td class="src">@status.source.label</td>
+        <td>@status.attempt.map(a => stamp(a.at)).getOrElse{<span class="miss">never</span>}</td>
+        <td>
+          @status.attempt.map(_.outcome) match {
+            case Some(AttemptOutcome.Changed(v)) => { <span class="ok">→ @v</span> }
+            case Some(AttemptOutcome.Unchanged)  => { <span class="muted">no change</span> }
+            case Some(AttemptOutcome.Failed(m))  => { <span class="err" title="@m">@m</span> }
+            case None                            => { <span class="miss">—</span> }
+          }
+        </td>
+        <td>@status.attempt.map(a => s"${a.durationMs}ms").getOrElse("—")</td>
+        <td>@status.nextDueAt.map(stamp).getOrElse{<span class="ok">due now</span>}</td>
+        @* The backoff level IS the reason a source is not being retried; the
+           check/change counts say whether that backoff is justified. *@
+        <td>@status.stats.map(st => s"L${st.backoffLevel} · ${st.windowChanges}/${st.windowChecks} moved").getOrElse("—")</td>
+      </tr>
+    }
+    </tbody>
+  </table>
 }

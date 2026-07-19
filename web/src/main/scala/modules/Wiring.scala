@@ -172,6 +172,10 @@ trait Wiring {
   // dev-only /debug/cadence page (reads the primary Mongo, like the read model).
   lazy val ratingCadenceReader: services.cadence.RatingCadenceReader =
     new services.cadence.MongoRatingCadenceReader(mongoConnection.database)
+  // Read-only view of the worker-written `enrichment_attempts` collection — the
+  // last fetch per (source, film) behind the /debug row's expand section.
+  lazy val enrichmentAttemptReader: services.attempts.EnrichmentAttemptReader =
+    new services.attempts.MongoEnrichmentAttemptReader(mongoConnection.database)
 
   // ── Dev-only per-country /debug data ─────────────────────────────────────────
   // The /debug pages read ONE country's Mongo db. In prod that's this
@@ -184,7 +188,7 @@ trait Wiring {
   // not N connection pools. Its `movies` comes from the MAIN Mongo, since the
   // /debug read-mirror only holds the boot country's db.
   private lazy val bootDebugStack: DebugStack = new DebugStack(
-    models.Country.fromEnv, movieRepository, stagingRepository, taskQueue, ratingCadenceReader,
+    models.Country.fromEnv, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
     readModelMovies       = () => webReadModel.allMovies(),
     readModelScreenings   = () => webReadModel.allScreenings(),
     readModelLastModified = () => webReadModel.lastModified)
@@ -205,6 +209,7 @@ trait Wiring {
           new services.staging.MongoStagingRepository(conn.database),
           new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
+          new services.attempts.MongoEnrichmentAttemptReader(conn.database),
           readModelMovies       = () => reader.findAllMovies(),
           readModelScreenings   = () => reader.findAllScreenings(),
           readModelLastModified = () => java.time.Instant.now())

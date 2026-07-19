@@ -2,6 +2,7 @@ package controllers
 
 import models.{CityScreening, Country, ResolvedMovie}
 import play.api.mvc.{Cookie, RequestHeader}
+import services.attempts.EnrichmentAttemptReader
 import services.cadence.RatingCadenceReader
 import services.movies.MovieRepository
 import services.staging.StagingRepository
@@ -27,6 +28,7 @@ final class DebugStack(
   val stagingRepository:     StagingRepository,
   val taskQueue:             TaskQueue,
   val ratingCadenceReader:   RatingCadenceReader,
+  val attemptReader:         EnrichmentAttemptReader,
   val readModelMovies:       () => Seq[ResolvedMovie],
   val readModelScreenings:   () => Seq[CityScreening],
   val readModelLastModified: () => Instant,

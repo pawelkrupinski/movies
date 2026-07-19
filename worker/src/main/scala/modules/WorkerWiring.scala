@@ -875,6 +875,11 @@ class WorkerWiring(
   // instance (their due definitions must agree — see DueWindow).
   lazy val ratingCadenceStore: services.cadence.RatingCadenceStore =
     new services.cadence.MongoRatingCadenceStore(mongoConnection.database)
+  // Last-attempt-per-(source, film) log, read by the web app's /debug expand
+  // section. Write-only here; a failed write is swallowed, since observing an
+  // enrichment must never break it.
+  lazy val enrichmentAttemptStore: services.attempts.EnrichmentAttemptStore =
+    new services.attempts.MongoEnrichmentAttemptStore(mongoConnection.database)
   val ratingDueWindow = new services.tasks.DueWindow(
     key => services.cadence.RatingCadence.intervalFor(ratingCadenceStore.statsFor(key)),
     services.cadence.RatingCadence.BaseInterval
@@ -883,11 +888,11 @@ class WorkerWiring(
   // TaskType is otherwise never enqueued — the EnrichmentReaper is the sole
   // enqueue path and there's no Filmweb source to move a value).
   lazy val ratingHandlers: Seq[services.tasks.TaskHandler] = Seq(
-    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, ratingCadenceStore, imdbRatings.refreshOneSync,         metrics = taskMetrics),
-    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, rottenTomatoesRatings.refreshOneSync, metrics = taskMetrics),
-    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, metascoreRatings.refreshOneSync,    metrics = taskMetrics)
+    new RatingHandler(TaskType.ImdbRating,    FreshnessKind.ImdbRating,    freshnessStore, ratingDueWindow, ratingCadenceStore, imdbRatings.refreshOneSync,         metrics = taskMetrics, attempts = enrichmentAttemptStore),
+    new RatingHandler(TaskType.RtRating,      FreshnessKind.RtRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, rottenTomatoesRatings.refreshOneSync, metrics = taskMetrics, attempts = enrichmentAttemptStore),
+    new RatingHandler(TaskType.McRating,      FreshnessKind.McRating,      freshnessStore, ratingDueWindow, ratingCadenceStore, metascoreRatings.refreshOneSync,    metrics = taskMetrics, attempts = enrichmentAttemptStore)
   ) ++ Option.when(filmwebEnabled)(
-    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, ratingCadenceStore, filmwebRatings.refreshOneSync,      metrics = taskMetrics))
+    new RatingHandler(TaskType.FilmwebRating, FreshnessKind.FilmwebRating, freshnessStore, ratingDueWindow, ratingCadenceStore, filmwebRatings.refreshOneSync,      metrics = taskMetrics, attempts = enrichmentAttemptStore))
   // Cap on rating-refresh tasks the EnrichmentReaper enqueues per tick. The phase
   // spread keeps steady-state ticks small (~N·tickInterval/period per source ≈ a
   // handful across all four at the 1min cadence), so this only bites a cold/long-down

@@ -63,12 +63,16 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   private val cadenceNow = Instant.parse("2026-06-27T10:00:00Z")
   // Two sources of the same film (tmdbId 1 = "Belle"): MC backed off to the 4-day
   // cap (stable, backoff level 6) with a recorded change; IMDb fresh at the 2h base.
-  private val cadenceReader: services.cadence.RatingCadenceReader = () => Seq(
+  private val cadenceStats = Seq(
     "mc|tmdb:1"   -> services.cadence.RatingChangeStats(6, 7, 1, cadenceNow, cadenceNow,
                        lastChange = Some(services.cadence.RatingChange(cadenceNow, "80", "85")),
                        backoffLevel = 6),
     "imdb|tmdb:1" -> services.cadence.RatingChangeStats(0, 1, 0, cadenceNow, cadenceNow)
   )
+  private val cadenceReader: services.cadence.RatingCadenceReader = new services.cadence.RatingCadenceReader {
+    override def all() = cadenceStats
+    override def forKeys(keys: Seq[String]) = cadenceStats.toMap.view.filterKeys(keys.contains).toMap
+  }
   private val cadenceRecords = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1))))
 
   "GET /debug/cadence" should "group films by refresh interval (slowest first) with the title and change history" in {
@@ -172,6 +176,39 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include("cacheKey")
     html should include("Belle")
     html should include(CinemaCityWroclavia.displayName)
+  }
+
+  // The enrichment log is the answer to "why does this film have no rating" —
+  // it must distinguish a source that ERRORED from one that simply reported no
+  // change, and show the backoff that decides when it will be retried.
+  it should "render each rating source's last attempt, its error, and its backoff" in {
+    val resolved = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1),
+      data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"))))))
+    val attempts = new services.attempts.InMemoryEnrichmentAttemptStore
+    attempts.record("imdb|tmdb:1", services.attempts.EnrichmentAttempt(
+      cadenceNow, 120, services.attempts.AttemptOutcome.Changed("8.3")))
+    attempts.record("rt|tmdb:1", services.attempts.EnrichmentAttempt(
+      cadenceNow, 30, services.attempts.AttemptOutcome.Failed("IOException: connect timed out")))
+
+    val (controller, _) = TestMovieController.build(resolved, Mode.Dev,
+      ratingCadenceReader = cadenceReader, attemptReader = attempts)
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val result = controller.debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
+
+    status(result) shouldBe OK
+    val html = contentAsString(result)
+    html should include("Enrichment attempts")
+    html should include("8.3")                              // the IMDb change
+    html should include("IOException: connect timed out")   // the RT error, verbatim
+    html should include("attempt-failed")                   // and flagged as a failure
+    html should include("L6")                               // MC's backoff level from the cadence
+    html should include("never")                            // MC/Filmweb never attempted
+  }
+
+  it should "explain an unresolved row instead of showing an empty table" in {
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val result = buildController(Mode.Dev).debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
+    contentAsString(result) should include("No tmdbId")
   }
 
   it should "404 an unknown id" in {

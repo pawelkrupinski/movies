@@ -23,6 +23,7 @@ class DebugCountriesSpec extends AnyFlatSpec with Matchers {
     services.staging.StagingRepository.empty,
     new services.tasks.InMemoryTaskQueue,
     services.cadence.RatingCadenceReader.empty,
+    services.attempts.EnrichmentAttemptReader.empty,
     () => Seq.empty, () => Seq.empty, () => Instant.EPOCH)
 
   private val switching = DebugCountries.of(
