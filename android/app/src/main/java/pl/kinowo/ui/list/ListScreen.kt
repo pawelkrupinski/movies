@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Swipe
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,6 +68,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
@@ -257,7 +259,7 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                 val gridBottomInset = if (wide) 12.dp else SearchBarBottomInset
                 Box(Modifier.fillMaxSize().haze(hazeState)) {
                     when {
-                        isLoading && films.isEmpty() -> CenteredMessage(stringResource(R.string.loading_repertoire))
+                        isLoading && films.isEmpty() -> LoadingState(stringResource(R.string.loading_repertoire))
                         error != null && films.isEmpty() -> ErrorState(error!!) { viewModel.reload() }
                         else -> PullToRefreshBox(
                             isRefreshing = refreshing,
@@ -734,10 +736,21 @@ internal fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bot
     }
 }
 
+/** Test tag on the initial-load spinner so Robolectric can assert it renders. */
+internal const val LoadingSpinnerTag = "loading-spinner"
+
+// Centred spinner + label shown on the first load of a city, before any films
+// arrive (mirrors the iOS `loadingState`). On later launches cached films render
+// immediately, so this only surfaces when there's nothing to show yet.
 @Composable
-private fun CenteredMessage(text: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, color = TextSecondary)
+internal fun LoadingState(text: String) {
+    Column(
+        Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        CircularProgressIndicator(color = Brand, modifier = Modifier.testTag(LoadingSpinnerTag))
+        Text(text, color = TextSecondary, modifier = Modifier.padding(top = 12.dp))
     }
 }
 
