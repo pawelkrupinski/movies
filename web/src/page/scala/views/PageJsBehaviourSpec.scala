@@ -2,7 +2,7 @@ package views
 
 import testsupport.TestMessages.given
 
-import models.{CinemaCityWroclavia, CinemaShowing, Helios, MovieRecord, Poznan, SourceData}
+import models.{CinemaCityWroclavia, CinemaShowing, Helios, MovieRecord, Poznan, Showtime, SourceData}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -52,6 +52,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // boot exactly once across all tests.
   private var chrome: Option[Chrome] = None
   private var server: TestHttpServer = _
+  // `/debug-slots`' single row, plus the two change-stream frames the no-op-guard
+  // test replays through it (built in beforeAll, alongside the row itself).
+  private var slotsRowId: String = _
+  private var slotsUnchangedFrame: String = _
+  private var slotsChangedFrame: String = _
 
   override def beforeAll(): Unit = {
     chrome = Chrome.tryStart()
@@ -154,6 +159,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
           CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))))
       val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), Seq.empty).body
+      slotsRowId = StoredMovieRecord.idOf(slotsRow)
+      // Change-stream frames for the no-op-guard test, rendered by the SAME
+      // `_debugRow` partial DebugStreamController ships. One re-asserts `slotsRow`
+      // UNCHANGED (the common scrape-tick write, which bumps only `updatedAt`);
+      // the other adds a SHOWTIME to an existing slot — a real change that leaves
+      // the light data row byte-identical (same cinema count, same ids), so only
+      // the details digest can tell the two apart.
+      slotsUnchangedFrame = views.html._debugRow(slotsRow).body
+      slotsChangedFrame = views.html._debugRow(slotsRow.copy(record = slotsRow.record.copy(
+        data = slotsRow.record.data.map { case (showing, source) =>
+          showing -> source.copy(showtimes = Seq(
+            Showtime(LocalDateTime.of(2026, 6, 8, 18, 30), bookingUrl = Some("https://example.test/book"))))
+        }))).body
       // The queue snapshot the page polls (/debug/queue). "Staging Film"'s detail
       // fetch is being worked on (▶ running); "Done Newcomer"'s IMDb recovery
       // waits at place #1 (the only waiting task). The dedup keys mirror the real
@@ -194,7 +212,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // debugDetails, mirroring MovieController.debugDetails.
           case p if p.startsWith("/debug/details?") =>
             val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
-            debugRows.find(r => StoredMovieRecord.idOf(r) == id)
+            (debugRows :+ slotsRow).find(r => StoredMovieRecord.idOf(r) == id)
               .map(r => views.html.debugDetails(r.title, r.year, r.record, Map.empty[String, String]).body)
               .getOrElse("")
         },
@@ -230,6 +248,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onDebug(body: CdpPage => Any): Unit =
     chrome match {
       case Some(c) => c.openPage(server.baseUrl + "/debug")(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the single-row `/debug-slots` variant of the corpus table — the row
+   *  carries real cinema slots, so it drives both the Cinemas-cell layout and the
+   *  change-stream no-op guard without disturbing `/debug`'s three-row tests. */
+  private def onDebugSlots(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + "/debug-slots")(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -3382,6 +3409,43 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A change-stream frame fires on ANY write to a film's document, and the common
+  // one re-asserts an unchanged scrape slot: it bumps `updatedAt` and nothing the
+  // row renders. Applying such a frame re-parks an EMPTY details shell, so an
+  // EXPANDED row refetched its /debug/details body — 4.4 MB every ~15s for a wide
+  // release on the live UK corpus, without end (12 consecutive frames for The
+  // Odyssey rendered byte-identical row markup). `data-digest` on the details row
+  // covers the whole record INCLUDING per-slot showtimes, so an unchanged frame is
+  // dropped whole while a showtime-only change — invisible in the light data row —
+  // still refetches.
+  "the /debug corpus table" should "drop a change-stream frame that changed nothing, and keep an expanded row loaded" in {
+    onDebugSlots { page =>
+      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 1""")
+      page.eval("""document.querySelector('#t tbody tr.data').click()""")
+      page.waitFor(
+        """[...document.querySelectorAll('#t tbody tr.details td')].some(td => td.innerHTML.indexOf('cacheKey') !== -1)""")
+      // Count /debug/details fetches from here on. loadDetails calls the global
+      // `fetch`, so the counter sees every refetch a replayed frame provokes.
+      page.eval("""window.__detailFetches = 0; const _f = window.fetch;
+        window.fetch = function (u) {
+          if (String(u).indexOf('/debug/details') !== -1) window.__detailFetches++;
+          return _f.apply(this, arguments);
+        };""")
+      // An UNCHANGED frame (same digest) must not refetch — and must leave the
+      // loaded body in place rather than swapping in a fresh empty shell.
+      page.eval(s"""applySse(JSON.stringify({type:'upsert', id:${Json.stringify(Json.toJson(slotsRowId))},
+        html:${Json.stringify(Json.toJson(slotsUnchangedFrame))}})); flushSse();""")
+      page.evalString("String(window.__detailFetches)") shouldBe "0"
+      page.evalBool(
+        """[...document.querySelectorAll('#t tbody tr.details td')].some(td => td.innerHTML.indexOf('cacheKey') !== -1)""") shouldBe true
+      // A frame whose showtimes changed shifts the digest, so the open row does
+      // refetch — the guard suppresses no-ops, not real updates.
+      page.eval(s"""applySse(JSON.stringify({type:'upsert', id:${Json.stringify(Json.toJson(slotsRowId))},
+        html:${Json.stringify(Json.toJson(slotsChangedFrame))}})); flushSse();""")
+      page.waitFor("""window.__detailFetches === 1""")
+    }
+  }
+
   // The "Ratings" column sorts by the COMBINED weighted score (the same
   // MovieRecord.weightedRating the main page sorts cards by), not the raw IMDb
   // value. "Done Film" tops it on Metacritic+RT with no imdbRating at all, so a
@@ -3410,24 +3474,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // the cell a grid and dropped the `(nr)` span to its own row. Assert the cell
   // is a normal table-cell and the slot span shares the count's line, to its right.
   "the /debug Cinemas cell" should "keep the (nr) slot count on the same line as the count" in {
-    chrome match {
-      case None => cancel("Chrome not installed — skipping JS behaviour test")
-      case Some(c) => c.openPage(server.baseUrl + "/debug-slots") { page =>
-        page.waitFor("""!!document.querySelector('#t tbody td.cinemas .slots')""")
-        // The bracket renders because slots (2) exceed distinct cinemas (1).
-        page.evalString(
-          """document.querySelector('#t tbody td.cinemas').textContent.replace(/\s+/g,'')""") shouldBe "1(2)"
-        // Layout: the cell is a plain table-cell (NOT a grid), and the slot span
-        // sits on the count's line (tops aligned within a line) and to its right.
-        page.evalBool("""(function(){
-          var td = document.querySelector('#t tbody td.cinemas');
-          var slot = td.querySelector('.slots');
-          var tdR = td.getBoundingClientRect(), sR = slot.getBoundingClientRect();
-          return getComputedStyle(td).display === 'table-cell'
-              && sR.left > tdR.left
-              && Math.abs(sR.top - tdR.top) < sR.height;
-        })()""") shouldBe true
-      }
+    onDebugSlots { page =>
+      page.waitFor("""!!document.querySelector('#t tbody td.cinemas .slots')""")
+      // The bracket renders because slots (2) exceed distinct cinemas (1).
+      page.evalString(
+        """document.querySelector('#t tbody td.cinemas').textContent.replace(/\s+/g,'')""") shouldBe "1(2)"
+      // Layout: the cell is a plain table-cell (NOT a grid), and the slot span
+      // sits on the count's line (tops aligned within a line) and to its right.
+      page.evalBool("""(function(){
+        var td = document.querySelector('#t tbody td.cinemas');
+        var slot = td.querySelector('.slots');
+        var tdR = td.getBoundingClientRect(), sR = slot.getBoundingClientRect();
+        return getComputedStyle(td).display === 'table-cell'
+            && sR.left > tdR.left
+            && Math.abs(sR.top - tdR.top) < sR.height;
+      })()""") shouldBe true
     }
   }
 

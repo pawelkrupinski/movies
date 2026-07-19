@@ -43,6 +43,16 @@ object ShowtimesDigest {
       else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)))
     }.toMap)
 
+  /** Whole-record content digest, for a VIEWER that has to decide "did anything I
+   *  render change?" from two renders of the same film (the /debug table's
+   *  change-stream no-op guard). Combines the record's own hashCode with the
+   *  per-slot showtime digest — the same two components [[leanEqual]] compares —
+   *  because `MovieRecord.hashCode` alone is showtime-BLIND by design (see
+   *  `SourceData.equals`), so a showtime-only change would otherwise hash equal.
+   *  Order-independent: `data` is a Map. */
+  def recordDigest(record: MovieRecord): Int =
+    (record, record.data.view.mapValues(slotDigest).toMap).hashCode
+
   /** The write-guard: equal non-showtime fields (via SourceData's showtime-agnostic `==`)
    *  AND equal per-slot showtime digest. Unlike `==`, this DOES detect showtime changes —
    *  that's its whole job. Works whether either side is stripped or full. */
