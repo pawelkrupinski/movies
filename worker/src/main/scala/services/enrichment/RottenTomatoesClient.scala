@@ -90,14 +90,10 @@ class RottenTomatoesClient(http: HttpFetch) {
     // movies landing page — a 200 that would corrupt the stored URL.
     if (primary.isEmpty) Seq.empty
     else {
-      val deArticled = MetacriticClient.dropLeadingArticle(primary, '_')
-      // Order: year-suffixed first (when year given), then plain, then
-      // year-suffixed de-articled, then plain de-articled.
-      val baseSlugs = primary +: deArticled.toSeq
-      year match {
-        case Some(y) => baseSlugs.flatMap(s => Seq(s"${s}_$y", s)).distinct
-        case None    => baseSlugs
-      }
+      // Year-suffixed form first, then plain, per form — the shared ordering
+      // rule (see MetacriticClient.yearSuffixedFirst), which MC needs too.
+      MetacriticClient.yearSuffixedFirst(
+        primary +: MetacriticClient.dropLeadingArticle(primary, '_').toSeq, year, '_')
     }
   }
 

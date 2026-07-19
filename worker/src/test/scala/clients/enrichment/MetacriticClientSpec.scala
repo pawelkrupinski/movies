@@ -84,6 +84,14 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
        |"aggregateRating":{"@type":"AggregateRating","ratingValue":$score}
        |}</script></head><body></body></html>""".stripMargin
 
+  /** A real MC shape for a film with no release date: `datePublished` is the
+   *  literal "0000-00-00", which yields NO parseable year — so the year guard
+   *  treats the page as compatible with any film's year. */
+  private def undatedMoviePage(name: String): String =
+    s"""<html><head><script type="application/ld+json">{
+       |"@type":"Movie","name":"$name","datePublished":"0000-00-00"
+       |}</script></head><body></body></html>""".stripMargin
+
   // Regression: "The North" (2026) has no /movie/the-north page, so the
   // de-articled variant probes /movie/north — Rob Reiner's 1994 "North", which
   // 200s. Without the year guard that unrelated film was stored as the link.
@@ -156,6 +164,46 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // collapses to "". Without this guard, `canonicalUrl` would probe
   // `/movie/` (MC's movie index, status 200) and store that as the canonical
   // URL — so every CJK-original film got the same bogus link in production.
+  // Regression, from prod (2026-07-19): Nolan's "The Odyssey" (2026). Metacritic
+  // disambiguates same-titled films with a `-<year>` slug suffix, exactly as RT
+  // does with `_<year>`. `/movie/the-odyssey` is Jerome Salle's Cousteau biopic
+  // and — crucially — serves `datePublished: "0000-00-00"`, which parses to NO
+  // year, so `yearsCompatible` had no grounds to reject it and we stored the
+  // wrong film's page. The real film lives at `/movie/the-odyssey-2026` with a
+  // Metascore of 89, and nothing in the ladder ever probed that slug.
+  "urlFor with a year" should "prefer the year-suffixed slug, which Metacritic uses to disambiguate same-titled films" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/the-odyssey-2026")) moviePage("The Odyssey", 2026, 89)
+        // The wrong film at the bare slug: no parseable year (MC's placeholder
+        // for a film with no release date), so the year guard cannot reject it.
+        else if (url.endsWith("/movie/the-odyssey")) undatedMoviePage("The Odyssey")
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+
+    c.urlFor("The Odyssey", year = Some(2026)) shouldBe
+      Some("https://www.metacritic.com/movie/the-odyssey-2026")
+    c.resolve("The Odyssey", year = Some(2026)).flatMap(_.metascore) shouldBe Some(89)
+  }
+
+  it should "fall back to the bare slug when no year-suffixed page exists" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/the-dark-knight-2008")) throw new RuntimeException("HTTP 404")
+        else if (url.endsWith("/movie/the-dark-knight")) moviePage("The Dark Knight", 2008, 84)
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+    c.urlFor("The Dark Knight", year = Some(2008)) shouldBe
+      Some("https://www.metacritic.com/movie/the-dark-knight")
+  }
+
+  "candidateSlugs with a year" should "put each year-suffixed variant ahead of its bare form" in {
+    val c = new MetacriticClient(stub(Set.empty))
+    c.candidateSlugs("The Odyssey", Some(2026)) shouldBe
+      Seq("the-odyssey-2026", "the-odyssey", "odyssey-2026", "odyssey")
+    c.candidateSlugs("The Odyssey") shouldBe Seq("the-odyssey", "odyssey")
+  }
+
   "candidateSlugs" should "return empty when the title slugs to an empty string (CJK / Cyrillic only)" in {
     val c = new MetacriticClient(stub(Set.empty))
     c.candidateSlugs("")               shouldBe empty
