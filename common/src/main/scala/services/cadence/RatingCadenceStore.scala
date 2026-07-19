@@ -189,11 +189,19 @@ object MongoRatingCadenceStore {
  *  an empty list rather than throwing. */
 trait RatingCadenceReader {
   def all(): Seq[(String, RatingChangeStats)]
+
+  /** Stats for a KNOWN set of keys — what one film's /debug expand needs (its four
+   *  `<site>|tmdb:<id>` keys), as a bounded `_id in [...]` lookup instead of the
+   *  full-collection read `all` does for the cadence overview page. */
+  def forKeys(keys: Seq[String]): Map[String, RatingChangeStats]
 }
 
 object RatingCadenceReader {
   /** No data — the default where cadence isn't wired (tests, Mongo-less dev). */
-  val empty: RatingCadenceReader = () => Seq.empty
+  val empty: RatingCadenceReader = new RatingCadenceReader {
+    override def all(): Seq[(String, RatingChangeStats)] = Seq.empty
+    override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] = Map.empty
+  }
 }
 
 class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceReader with Logging {
@@ -206,4 +214,13 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
         .recover { case e => logger.warn(s"Rating-cadence read failed: ${e.getMessage}"); Seq.empty }
         .getOrElse(Seq.empty)
   }
+
+  override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] =
+    if (keys.isEmpty) Map.empty
+    else coll.fold(Map.empty[String, RatingChangeStats]) { c =>
+      Try(Await.result(c.find(Filters.in("_id", keys*)).toFuture(), 10.seconds))
+        .map(_.flatMap(MongoRatingCadenceStore.decodeRecord).toMap)
+        .recover { case e => logger.warn(s"Rating-cadence lookup failed: ${e.getMessage}"); Map.empty }
+        .getOrElse(Map.empty)
+    }
 }

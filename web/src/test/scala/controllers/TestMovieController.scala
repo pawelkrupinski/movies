@@ -25,6 +25,7 @@ object TestMovieController {
     movieRepository: Option[services.movies.MovieRepository] = None,
     stagingRepository: services.staging.StagingRepository = services.staging.StagingRepository.empty,
     ratingCadenceReader: services.cadence.RatingCadenceReader = services.cadence.RatingCadenceReader.empty,
+    attemptReader: services.attempts.EnrichmentAttemptReader = services.attempts.EnrichmentAttemptReader.empty,
     // The per-country /debug stacks. Defaults to a single-country holder wrapping
     // the collaborators above; a spec exercising the Dev country switch injects a
     // multi-country `DebugCountries` instead.
@@ -38,7 +39,7 @@ object TestMovieController {
       debugCountries         = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
         models.Country.default,
         movieRepository.getOrElse(new InMemoryMovieRepository(records)),
-        stagingRepository, taskQueue, ratingCadenceReader,
+        stagingRepository, taskQueue, ratingCadenceReader, attemptReader,
         readModelMovies       = () => readModel.allMovies(),
         readModelScreenings   = () => readModel.allScreenings(),
         readModelLastModified = () => readModel.lastModified))),

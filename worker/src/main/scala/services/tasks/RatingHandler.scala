@@ -1,10 +1,12 @@
 package services.tasks
 
+import services.attempts.{AttemptOutcome, EnrichmentAttempt, EnrichmentAttemptStore}
 import services.cadence.RatingCadenceStore
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.CacheKey
 
 import java.time.Clock
+import scala.util.{Failure, Success, Try}
 
 /** Dedup/freshness key + payload for a rating-refresh task. The key encodes the
  *  rating source and the film, so "refresh the IMDb rating of film F" can't be
@@ -27,7 +29,7 @@ object RatingTasks {
    *  corpus-wide rating surge that exhausted the worker's CPU credit after a merge
    *  wave. Falls back to the title key for a rare eligible row without a tmdbId. */
   def dedupKey(kind: FreshnessKind, key: CacheKey, tmdbId: Option[Int]): String =
-    tmdbId.fold(dedupKey(kind, key))(id => s"${kind.label}|tmdb:$id")
+    tmdbId.fold(dedupKey(kind, key))(services.attempts.RatingKeys.tmdbKey(kind, _))
 
   def payload(key: CacheKey): Map[String, String] =
     Map(TitleKey -> key.cleanTitle, YearKey -> key.year.map(_.toString).getOrElse(""))
@@ -95,7 +97,10 @@ class RatingHandler(
   cadence:               RatingCadenceStore,
   refresh:               (String, Option[Int]) => Option[String],
   clock:                 Clock = Clock.systemUTC(),
-  metrics:               RatingLatencyMetrics = RatingLatencyMetrics.NoOp
+  metrics:               RatingLatencyMetrics = RatingLatencyMetrics.NoOp,
+  // Where each attempt's outcome is recorded for the /debug per-film expand
+  // section. Defaults to NoOp so scripts/tests opt in rather than out.
+  attempts:              EnrichmentAttemptStore = EnrichmentAttemptStore.NoOp
 ) extends TaskHandler {
   import HandlerOutcome._
 
@@ -111,7 +116,21 @@ class RatingHandler(
       val title = task.payload.getOrElse(RatingTasks.TitleKey, "")
       val year  = task.payload.get(RatingTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
       val now    = clock.instant()
-      val reported = refresh(title, year)   // Some(displayValue) when the row's badge was (re)set this refresh
+      // Record the attempt whatever happens — a thrown fetch is the case the
+      // /debug page most needs to show, and it never reached the lines below.
+      // `Try` + rethrow, NOT a catch: the queue's retry/backoff must still see the
+      // failure exactly as before; this only observes it on the way past.
+      val attempted = Try(refresh(title, year))   // Some(displayValue) when the row's badge was (re)set this refresh
+      attempts.record(key, EnrichmentAttempt(
+        at         = now,
+        durationMs = clock.instant().toEpochMilli - now.toEpochMilli,
+        outcome    = attempted match {
+          case Success(Some(value)) => AttemptOutcome.Changed(value)
+          case Success(None)        => AttemptOutcome.Unchanged
+          case Failure(exception)   => AttemptOutcome.failed(exception)
+        }
+      ))
+      val reported = attempted.get   // rethrows a failed fetch, as before
       freshness.markFresh(key, kind, now)
       // Feed the adaptive cadence: a refresh that moved the DISPLAYED value to a
       // new badge snaps the interval back to the base; a no-change refresh — or one
