@@ -96,6 +96,23 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     ).foreach(url => PosterProxy.proxy(url) shouldBe url)
   }
 
+  // m.media-amazon.com is IMDb's poster CDN, and it 403s weserv's outbound IP
+  // exactly like multikino does (weserv surfaces that as its own 404):
+  //   {"status":"error","code":404,"message":"The requested URL returned error: 403"}
+  // Probed every unique Amazon poster referenced by the DE, PL and UK city
+  // pages on 2026-07-19: 535/535 failed through weserv, 535/535 returned
+  // 200 image/jpeg fetched directly — with or without a browser UA/Referer,
+  // so it's weserv's IP being blocked, not a missing header.
+  //
+  // This one is mostly invisible in /uptime because Amazon is nearly always a
+  // *fallback* poster rather than the primary src (182 fallback refs vs 6
+  // primary on /berlin/), and the onerror chain silently walks past a failed
+  // fallback. The films that DO have it primary just render no poster.
+  it should "pass m.media-amazon.com URLs through unproxied (their origin blocks weserv)" in {
+    val imdbPoster = "https://m.media-amazon.com/images/M/MV5BYzBjMDg4YjctYzg3ZS00ZDFmLmpwZw@@._V1_.jpg"
+    PosterProxy.proxy(imdbPoster) shouldBe imdbPoster
+  }
+
   // Guard the suffix match against the classic "endsWith" hole — a
   // lookalike domain that merely ends in the same letters must NOT be
   // treated as acsta.net and must still be proxied.

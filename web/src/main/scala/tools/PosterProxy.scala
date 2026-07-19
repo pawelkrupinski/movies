@@ -61,22 +61,31 @@ object PosterProxy {
 
 
   // Hosts whose origin servers block weserv's outbound IP with 403
-  // (cross-checked against direct-browser fetches that return 200).
-  // For these, the proxy is a net regression — serve the original URL
-  // and let the browser fetch it directly, where the request carries
-  // a real UA + a `Referer: https://kinowo.fly.dev/` that the origin
-  // accepts. Verified empirically on prod:
-  //   probe of 178 unique poster URLs through weserv
+  // (cross-checked against direct fetches that return 200). weserv reports
+  // the origin's 403 as its own 404. For these the proxy is a net regression
+  // — serve the original URL and let the browser fetch it directly. Every
+  // entry here is already HTTPS, so skipping the proxy loses the resize win
+  // but not the mixed-content fix (there's no mixed content to fix) and not
+  // the "actually displays" property.
+  //
+  // Verified empirically on prod:
+  //   www.multikino.pl — probe of 178 unique poster URLs through weserv
   //     115  ✓ 200 image/webp
   //      63  ✗ 404 (weserv reported origin 403)
   //          → 62 of those were www.multikino.pl
   //          → 1 was a stale cinema-city URL (origin 404, scrape bug)
-  // multikino origins are already HTTPS, so skipping the proxy loses the
-  // resize win but not the mixed-content fix (there's no mixed content to
-  // fix) and not the "actually displays" property the user reported.
+  //   m.media-amazon.com — IMDb's poster CDN, reached from every country.
+  //     Probe of all 535 unique Amazon posters on the DE + PL + UK city
+  //     pages (2026-07-19): 535/535 ✗ 404 through weserv, 535/535 ✓ 200
+  //     image/jpeg direct, with and without a browser UA/Referer — so it's
+  //     the IP being blocked, not a header weserv omits. This hid in
+  //     /uptime because Amazon is nearly always a *fallback* poster (182
+  //     fallback refs vs 6 primary on /berlin/) and the onerror chain walks
+  //     silently past a failed fallback.
   private val SkipHosts = Set(
     "www.multikino.pl",
-    "multikino.pl"
+    "multikino.pl",
+    "m.media-amazon.com"
   )
 
   // The mirror image of SkipHosts: domains weserv itself refuses to fetch,
