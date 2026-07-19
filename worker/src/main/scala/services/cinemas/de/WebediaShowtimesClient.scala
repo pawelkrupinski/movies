@@ -45,7 +45,6 @@ class WebediaShowtimesClient(
   host:      String,              // e.g. "www.filmstarts.de"
   theaterId: String,              // e.g. "A0263" — the letter prefix is per-country
   override val cinema: Cinema,
-  daysAhead: Int       = 6,
   today:     LocalDate = LocalDate.now(ZoneId.of("Europe/Berlin"))
 ) extends ChunkedCinemaScraper {
 
@@ -65,7 +64,7 @@ class WebediaShowtimesClient(
   // trait composes (planChunks → fetchChunk → reduceChunks) is used only by the
   // deterministic fixture harness + unit tests.
 
-  /** The days to scrape. The venue page (`sourceUrl`) carries a
+  /** The days to scrape, read off the venue page's (`sourceUrl`)
    *  `data-showtimes-dates` attribute — the exact days that have screenings
    *  inside Filmstarts' own fixed ~28-day booking window, gap days excluded
    *  (verified empty in the per-day API). Reading it once lifts the horizon from
@@ -75,27 +74,24 @@ class WebediaShowtimesClient(
    *  days) and it rolls into the window — and so into this list — well before its
    *  showtime, so a ~28-day horizon captures it in time without blind probing.
    *
-   *  Falls back to the old `today .. today+daysAhead` grid when the venue page
-   *  can't be fetched or carries no parseable date list, so a page outage or a
-   *  markup change degrades to the prior 7-day behaviour rather than dropping the
-   *  venue. Bounded to `[today, today+MaxHorizonDays]` so a stray attribute date
-   *  can't balloon the chunk fan-out. */
-  def planChunks(): Seq[String] =
-    discoverShowtimeDates().getOrElse((0 to daysAhead).map(today.plusDays(_))).map(_.toString)
-
-  /** The populated days named by the venue page, bounded to the horizon, or
-   *  `None` when the page is unreachable / carries no usable date list (→ the
-   *  caller's grid fallback). The page fetch's failure is swallowed here on
-   *  purpose: unlike a per-day chunk (whose throw reschedules just that day),
-   *  a failed index page should not fail the whole venue when a safe default
-   *  exists. */
-  private def discoverShowtimeDates(): Option[Seq[LocalDate]] =
-    sourceUrl.flatMap { url =>
-      Try(http.get(url)).toOption
-        .map(parseShowtimeDates)
-        .map(_.filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong))))
-        .filter(_.nonEmpty)
-    }
+   *  No fallback: this IS the nav/index fetch the `ChunkedCinemaScraper` contract
+   *  allows, and its failure fails the whole scrape (recorded as a normal
+   *  outcome). A fetch error propagates; a 200 that lacks the attribute entirely
+   *  — Filmstarts markup changed, or a block/error page came back — is a
+   *  discovery failure too, so `parseShowtimeDates` returns `None` and we throw
+   *  rather than silently scraping nothing. An attribute that IS present but
+   *  lists no days is a legitimately empty venue (empty result, kept by the
+   *  empty-guard), not a failure. Bounded to `[today, today+MaxHorizonDays]` so a
+   *  stray attribute date can't balloon the chunk fan-out. */
+  def planChunks(): Seq[String] = {
+    val url  = sourceUrl.getOrElse(throw new IllegalStateException("WebediaShowtimesClient has no sourceUrl"))
+    val html = http.get(url)
+    parseShowtimeDates(html)
+      .getOrElse(throw new IllegalStateException(
+        s"$url carries no data-showtimes-dates attribute — Filmstarts markup changed?"))
+      .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
+      .map(_.toString)
+  }
 
   /** Fetch + parse ONE day into that day's films. A page-1 fetch failure THROWS
    *  so ONLY that day's chunk task reschedules (the per-day retry); the other
@@ -178,13 +174,16 @@ object WebediaShowtimesClient {
    *  `data-showtimes-dates="[&quot;2026-07-19&quot;,…]"` — an HTML-entity-escaped
    *  JSON array of ISO dates spanning Filmstarts' fixed ~28-day window with gap
    *  days omitted. The entity-escaping is irrelevant to a date regex, so pull the
-   *  ISO dates straight out of the attribute value; deduped and sorted. Empty when
-   *  the attribute is absent (older / changed markup) → the caller falls back to
-   *  the fixed grid. Pure + public so a spec feeds it a recorded page directly. */
-  def parseShowtimeDates(html: String): Seq[LocalDate] =
-    ShowtimesDatesAttr.findFirstMatchIn(html).map(_.group(1)).toSeq.flatMap { raw =>
-      IsoDate.findAllIn(raw).toSeq.flatMap(s => Try(LocalDate.parse(s)).toOption)
-    }.distinct.sortBy(_.toString)
+   *  ISO dates straight out of the attribute value; deduped and sorted.
+   *
+   *  `None` when the attribute is ABSENT — unexpected markup, so the caller fails
+   *  the scrape rather than scrape nothing. `Some(dates)` when present, where
+   *  `Some(Nil)` (an empty `[]`) is a legitimately empty venue, not a failure.
+   *  Pure + public so a spec feeds it a recorded page directly. */
+  def parseShowtimeDates(html: String): Option[Seq[LocalDate]] =
+    ShowtimesDatesAttr.findFirstMatchIn(html).map { m =>
+      IsoDate.findAllIn(m.group(1)).toSeq.flatMap(s => Try(LocalDate.parse(s)).toOption).distinct.sortBy(_.toString)
+    }
 
   /** One parsed page: its films plus the response's total page count (so the
    *  caller knows whether to fetch p-2…). Pure so a spec can feed fixture bytes. */
