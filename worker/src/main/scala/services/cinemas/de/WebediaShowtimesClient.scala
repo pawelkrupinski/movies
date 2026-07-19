@@ -1,12 +1,11 @@
 package services.cinemas.de
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 import models._
 import play.api.libs.json._
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -48,7 +47,7 @@ class WebediaShowtimesClient(
   override val cinema: Cinema,
   daysAhead: Int       = 6,
   today:     LocalDate = LocalDate.now(ZoneId.of("Europe/Berlin"))
-) extends CinemaScraper {
+) extends ChunkedCinemaScraper {
 
   import WebediaShowtimesClient._
 
@@ -59,77 +58,78 @@ class WebediaShowtimesClient(
   // above is uniform across the family. Parameterize it when a second country lands.
   override def sourceUrl: Option[String] = Some(s"https://$host/kinoprogramm/kino/$theaterId/")
 
-  def fetch(): Seq[CinemaMovie] = {
-    val dates = (0 to daysAhead).map(today.plusDays(_))
+  // Each of the venue's ~7 days is one chunk, run as its own `ScrapeChunk` task
+  // (see ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the
+  // task queue and the shared Filmstarts pace gate instead of bursting from a
+  // single task that parks a worker thread for ~7×1s. The in-process `fetch()`
+  // the trait composes (planChunks → fetchChunk → reduceChunks) is used only by
+  // the deterministic fixture harness + unit tests, where every day answers.
 
-    // One first page per date, fetched in parallel + tolerantly: a day whose
-    // request fails or won't parse contributes nothing rather than failing the
-    // batch (Webedia routinely serves an empty `results` for far-future days).
-    val firstByDate = ParallelDetailFetch.keyed(
-      "webedia-showtimes-day", dates, 1.minute, maxConcurrent = 2
-    )(d => showtimesUrl(host, theaterId, d, 1)) { url =>
-      Try(http.get(url)).toOption.map(parsePage)
+  /** One chunk key per day, today .. today+daysAhead. */
+  def planChunks(): Seq[String] = (0 to daysAhead).map(today.plusDays(_).toString)
+
+  /** Fetch + parse ONE day into that day's films. A page-1 fetch failure THROWS
+   *  so ONLY that day's chunk task reschedules (the per-day retry); the other
+   *  days are unaffected. A day that ANSWERS with no films is a valid empty
+   *  result, not a failure — Webedia serves an empty `results` for far-future
+   *  days. Spillover pages (>20 films/day, rare) are best-effort: page 1 already
+   *  answered, so a lost page 2 drops a few films rather than failing the day.
+   *
+   *  (The old monolithic fetch swallowed a day's failure to None and threw only
+   *  if ALL days failed, to avoid feeding AdaptiveTimeoutScraper a fast-empty
+   *  "success". Chunked scrapers skip that wrapper, and the total-failure case is
+   *  now the empty reduce — no chunk lands → recordCinemaScrape's empty-guard
+   *  keeps last-known data.) */
+  def fetchChunk(dateKey: String): Seq[CinemaMovie] = {
+    val date  = LocalDate.parse(dateKey)
+    val first = parsePage(http.get(showtimesUrl(host, theaterId, date, 1)))
+    val extra = (2 to first.totalPages).flatMap { p =>
+      Try(http.get(showtimesUrl(host, theaterId, date, p))).toOption.toSeq.flatMap(parsePage(_).films)
     }
-
-    // Tolerating a partial failure is right; tolerating a TOTAL one is not. If no
-    // day answered at all the venue's showtimes are unknown, not absent — and
-    // returning an empty Seq here reports it as a healthy, quick, film-less scrape:
-    // `AdaptiveTimeoutScraper` records that duration as a SUCCESS, dragging the
-    // host's rolling median down until the budget pins at its floor and starts
-    // cutting the venues that ARE answering. Filmstarts 429ing every request on
-    // 2026-07-18 is exactly that case. Fail loudly instead, so the scrape is
-    // recorded as the failure it is and feeds no baseline.
-    val answered = dates.flatMap(d => firstByDate.getOrElse(d, None))
-    if (answered.isEmpty)
-      throw new java.io.IOException(
-        s"${cinema.displayName}: all ${dates.size} showtime requests to $host failed (theater $theaterId)")
-
-    val firstFilms = dates.flatMap(d => firstByDate.getOrElse(d, None).toSeq.flatMap(_.films))
-
-    // A day with >20 films spills onto extra pages (rare); fetch those too.
-    val extraUrls = dates.flatMap { d =>
-      firstByDate.getOrElse(d, None).toSeq.flatMap { page =>
-        (2 to page.totalPages).map(p => showtimesUrl(host, theaterId, d, p))
-      }
-    }
-    val extraByUrl = ParallelDetailFetch.keyed(
-      "webedia-showtimes-page", extraUrls, 1.minute, maxConcurrent = 2
-    )(identity) { url =>
-      Try(http.get(url)).toOption.toSeq.flatMap(parsePage(_).films)
-    }
-    val allFilms = firstFilms ++ extraUrls.flatMap(u => extraByUrl.getOrElse(u, Seq.empty))
-
-    // One row per film (same `internalId` across dates/pages), showtimes merged,
-    // deduped by (time, booking) and time-ordered.
-    allFilms.groupBy(_.internalId).toSeq.flatMap { case (id, group) =>
-      val showtimes = group.flatMap(_.showtimes)
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val head = group.head
-        Some(CinemaMovie(
-          movie = Movie(
-            title          = head.title,
-            runtimeMinutes = head.runtimeMinutes,
-            releaseYear    = head.year,
-            genres         = head.genres,
-            // Carry the international title only when it differs from the German
-            // one — for German films the site echoes the same string there.
-            originalTitle  = head.originalTitle.filter(_ != head.title)
-          ),
-          cinema      = cinema,
-          posterUrl   = head.posterUrl,
-          filmUrl     = None,   // no stable public film-page URL is derivable from the JSON
-          synopsis    = head.synopsis,
-          cast        = Seq.empty,
-          director    = head.director,
-          showtimes   = showtimes,
-          externalIds = Map("webedia" -> id.toString)
-        ))
-      }
-    }
+    (first.films ++ extra).map(raw => toCinemaMovie(raw, raw.showtimes))
   }
+
+  /** Merge every day's films into the venue's listing: one row per Webedia film
+   *  id, showtimes unioned, deduped by (time, booking) and time-ordered — the same
+   *  grouping the monolithic scrape used, so `reduceChunks ∘ fetchChunk ∘
+   *  planChunks` equals the old `fetch()`. Overrides the identity default because
+   *  Webedia rows carry no `filmUrl` (that default would collapse films to their
+   *  title); the Webedia id (`externalIds("webedia")`) is the stable key. A film
+   *  with no showtimes on any day drops out. */
+  override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
+    chunks.toSeq.sortBy(_._1).flatMap(_._2)
+      .groupBy(m => m.externalIds.getOrElse("webedia", m.movie.title))
+      .toSeq.sortBy(_._1)
+      .flatMap { case (_, group) =>
+        val showtimes = group.flatMap(_.showtimes)
+          .distinctBy(s => (s.dateTime, s.bookingUrl))
+          .sortBy(_.dateTime)
+        if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
+      }
+
+  /** Build the venue-agnostic film row from one parsed Webedia result. The
+   *  showtimes to attach are supplied by the caller — one day's in `fetchChunk`,
+   *  the cross-day union in `reduceChunks`. */
+  private def toCinemaMovie(raw: RawWebediaFilm, showtimes: Seq[Showtime]): CinemaMovie =
+    CinemaMovie(
+      movie = Movie(
+        title          = raw.title,
+        runtimeMinutes = raw.runtimeMinutes,
+        releaseYear    = raw.year,
+        genres         = raw.genres,
+        // Carry the international title only when it differs from the German one —
+        // for German films the site echoes the same string there.
+        originalTitle  = raw.originalTitle.filter(_ != raw.title)
+      ),
+      cinema      = cinema,
+      posterUrl   = raw.posterUrl,
+      filmUrl     = None,   // no stable public film-page URL is derivable from the JSON
+      synopsis    = raw.synopsis,
+      cast        = Seq.empty,
+      director    = raw.director,
+      showtimes   = showtimes,
+      externalIds = Map("webedia" -> raw.internalId.toString)
+    )
 }
 
 object WebediaShowtimesClient {
