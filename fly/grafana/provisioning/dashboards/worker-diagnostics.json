@@ -44,12 +44,30 @@
   },
   "templating": {
     "list": [
-      { "name": "country", "label": "Country", "type": "query",
-        "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      {
+        "name": "country",
+        "label": "Country",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "app-metrics-live"
+        },
         "definition": "label_values(kinowo_worker_throttled, country)",
-        "query": { "query": "label_values(kinowo_worker_throttled, country)", "refId": "country" },
-        "current": { "text": "pl", "value": "pl", "selected": true },
-        "includeAll": false, "multi": false, "refresh": 2, "sort": 1, "hide": 0 }
+        "query": {
+          "query": "label_values(kinowo_worker_throttled, country)",
+          "refId": "country"
+        },
+        "current": {
+          "text": "pl",
+          "value": "pl",
+          "selected": true
+        },
+        "includeAll": false,
+        "multi": false,
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0
+      }
     ]
   },
   "panels": [
@@ -323,7 +341,7 @@
         {
           "refId": "A",
           "expr": "fly_instance_cpu_balance{app=~\"kinowo-worker.*\"}",
-          "legendFormat": "credit balance — {{app}}",
+          "legendFormat": "credit balance \u2014 {{app}}",
           "datasource": {
             "type": "prometheus",
             "uid": "fly-prometheus"
@@ -504,7 +522,7 @@
     {
       "id": 9,
       "title": "Scraper HTTP failures by category (per country)",
-      "description": "Rate of NON-success outbound HTTP attempts, by category. Every retry is one entry — a throttled cinema contributes each 429 retry separately. Fed by CountingHttpFetch at the wire, so it counts all worker HTTP; cinema scraping is ~10x the enrichment volume, so these lines are scraper-dominated (a TMDB/IMDb 429 also lands under http_429). Categories: http_429=rate limited, http_4xx/http_5xx=other status, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified.",
+      "description": "Rate of NON-success outbound HTTP attempts, by category. Every retry is one entry \u2014 a throttled cinema contributes each 429 retry separately. Fed by CountingHttpFetch at the wire, so it counts all worker HTTP; cinema scraping is ~10x the enrichment volume, so these lines are scraper-dominated (a TMDB/IMDb 429 also lands under http_429). Categories: http_429=rate limited, http_4xx/http_5xx=other status, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -545,7 +563,7 @@
     {
       "id": 10,
       "title": "Worker HTTP clean-rate % (per country)",
-      "description": "Share of outbound HTTP attempts that succeeded (2xx) over all attempts incl. retries. 100% = no throttling or errors. This is the 'success rate' the Filmstarts pacing targets — 100% overnight, dips under German daytime load until the pace is wide enough.",
+      "description": "Share of outbound HTTP attempts that succeeded (2xx) over all attempts incl. retries. 100% = no throttling or errors. This is the 'success rate' the Filmstarts pacing targets \u2014 100% overnight, dips under German daytime load until the pace is wide enough.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -575,6 +593,125 @@
           "refId": "A",
           "expr": "100 * sum(rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
           "legendFormat": "clean %",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Resolution cache \u2014 hit rate % by source",
+      "description": "Share of identity resolutions (film \u2192 TMDB id / IMDb id / rating-site url) served from cache instead of running a live probe chain. A chain costs up to ~30 upstream GETs for RT/Metacritic and ~36 for Filmweb, so this is the cache's actual saving. Low here means the cache is doing little \u2014 the resolved url is persisted on the film record anyway, which is the competing gate.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 49
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[5m])) / sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "{{source}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Resolution chains RUN \u2014 by source and kind",
+      "description": "Probe chains actually executed, per second. `miss_resolved` mints a cached answer and should decay as the corpus resolves; `miss_unresolved` is a chain that found nothing and \u2014 because the cache is hits-only \u2014 was NOT cached, so the same film burns the same chain again next cycle. If miss_unresolved dominates, the fix is caching negative results, not deleting the cache.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 49
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (source, outcome) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"miss_.*\"}[5m]))",
+          "legendFormat": "{{source}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Durable-store share of cache hits % by source",
+      "description": "Of the hits, how many came from the Mongo `resolve_*` collections rather than the in-process Caffeine layer. This is what the durable half buys over a plain in-memory cache \u2014 it is the only part that survives a worker restart. Near 0% across sources means the 5 collections + TTL-index reconciliation are carrying nothing and could be dropped.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 57
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[5m])) / sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[5m]))",
+          "legendFormat": "{{source}}",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"

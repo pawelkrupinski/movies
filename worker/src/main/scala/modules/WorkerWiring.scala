@@ -15,7 +15,7 @@ import clients.TmdbClient
 import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
 import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
 import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
-import services.resolution.{MongoResolutionStore, ResolutionCache, WriteThroughResolutionCache}
+import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, WriteThroughResolutionCache}
 import services.cinemas._
 import services.enrichment._
 import services.cinemas.common._
@@ -523,7 +523,12 @@ class WorkerWiring(
   // One factory so the test wiring can swap in a passthrough (the fixture harness
   // proves the pipeline is a pure function of the corpus, with no shared cache).
   protected def resolutionCache(collection: String): ResolutionCache =
-    new WriteThroughResolutionCache(new MongoResolutionStore(mongoConnection.database, collection))
+    new WriteThroughResolutionCache(
+      new MongoResolutionStore(mongoConnection.database, collection),
+      // Labels the counter with the source this collection serves (`resolve_rt` →
+      // `rt`), so `kinowo_worker_resolution_total` breaks the saving down per
+      // rating source rather than lumping all five together.
+      workerMetrics.resolutionMetrics.recorderFor(country.code, ResolutionOutcome.sourceOf(collection)))
   lazy val tmdbIdCache: ResolutionCache = resolutionCache("resolve_tmdb")
   lazy val movieService: MovieService = new MovieService(
     movieCache, eventBus, tmdbClient,

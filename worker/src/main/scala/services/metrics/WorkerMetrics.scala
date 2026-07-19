@@ -43,6 +43,11 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // own country's recorder into the innermost fetch decorator.
   val httpMetrics: WorkerHttpMetrics = new WorkerHttpMetrics(countryCodes, registry)
 
+  // Per-attempt identity-resolution counter (kinowo_worker_resolution_total) —
+  // what each per-source resolution cache saved or had to run. Same shape: one
+  // registered-once family, each wiring binds its own country's recorders.
+  val resolutionMetrics: WorkerResolutionMetrics = new WorkerResolutionMetrics(countryCodes, registry)
+
   // Census gauges, each registered once with a leading `country` label; a
   // per-country sampler (built in the wiring) writes its own slice.
   val corpusGauge:    Gauge          = WorkerCorpusMetrics.gauge(registry)

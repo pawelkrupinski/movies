@@ -59,13 +59,32 @@ object ResolutionCache {
  * herd), and a `null` loader return is NOT cached — which is exactly the
  * hits-only contract. The loader checks the durable store first (warming a cold
  * Caffeine after a restart), then resolves live and writes through on a hit.
+ *
+ * Every call reports a [[ResolutionOutcome]] to `recorder`, which is how the
+ * `kinowo_worker_resolution_total` panel shows what the cache is actually worth
+ * per source — chains avoided vs chains run, and how many of the latter came
+ * back empty and will therefore run again next cycle.
  */
-class WriteThroughResolutionCache(store: ResolutionStore) extends ResolutionCache {
+class WriteThroughResolutionCache(
+  store: ResolutionStore,
+  recorder: ResolutionOutcomeRecorder = ResolutionOutcomeRecorder.noop) extends ResolutionCache {
+
   private val cache: Cache[String, String] =
     Caffeine.newBuilder().expireAfterWrite(ResolutionStore.Ttl.toMillis, TimeUnit.MILLISECONDS).build()
 
-  override def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] =
-    Option(cache.get(hintKey, _ => loadOrResolve(hintKey, resolve).orNull))
+  /** The loader runs only on a Caffeine miss, so "loader never ran" IS the
+   *  in-memory hit — including for a caller whose concurrent duplicate lost the
+   *  race and blocked on the winner's load. Counting that as `hit_memory` is
+   *  right for what the counter measures: it did not run a probe chain. */
+  override def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = {
+    var loaderRan = false
+    val value = Option(cache.get(hintKey, _ => {
+      loaderRan = true
+      loadOrResolve(hintKey, resolve).orNull
+    }))
+    if (!loaderRan) recorder.record(ResolutionOutcome.HitMemory)
+    value
+  }
 
   /** Both layers, in that order: Caffeine first so a concurrent read can't
    *  re-warm it from the row we are about to delete. */
@@ -83,10 +102,17 @@ class WriteThroughResolutionCache(store: ResolutionStore) extends ResolutionCach
   }
 
   private def loadOrResolve(hintKey: String, resolve: => Option[String]): Option[String] =
-    store.get(hintKey).orElse {
-      resolve match {
-        case hit @ Some(value) => store.put(hintKey, value); hit
-        case None              => None
-      }
+    store.get(hintKey) match {
+      case warm @ Some(_) => recorder.record(ResolutionOutcome.HitStore); warm
+      case None =>
+        resolve match {
+          case hit @ Some(value) =>
+            store.put(hintKey, value)
+            recorder.record(ResolutionOutcome.MissResolved)
+            hit
+          case None =>
+            recorder.record(ResolutionOutcome.MissUnresolved)
+            None
+        }
     }
 }

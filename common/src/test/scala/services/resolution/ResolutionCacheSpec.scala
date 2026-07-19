@@ -146,4 +146,46 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   it should "be a no-op on the passthrough cache" in {
     noException should be thrownBy ResolutionCache.passthrough.forgetAll()
   }
+
+  // The four outcomes are what `kinowo_worker_resolution_total` charts, and each
+  // means something different for the "is this cache worth keeping" question —
+  // so each must be reported for exactly the path it names.
+  "outcome reporting" should "distinguish the two hit layers from the two miss kinds" in {
+    val store    = new InMemoryResolutionStore
+    val recorded = scala.collection.mutable.ListBuffer.empty[String]
+    def cacheOver(s: ResolutionStore) =
+      new WriteThroughResolutionCache(s, (o: String) => { recorded += o; () })
+
+    val cache = cacheOver(store)
+    cache.getOrResolve("k")(Some("tt1"))  // cold both layers → resolved live
+    cache.getOrResolve("k")(Some("tt1"))  // Caffeine serves it
+    cache.getOrResolve("nope")(None)      // chain ran, nothing to cache
+
+    // A fresh Caffeine over the SAME store is the post-restart path: the durable
+    // half is the only thing that can still save the chain.
+    cacheOver(store).getOrResolve("k")(Some("ignored"))
+
+    recorded.toList shouldBe List(
+      ResolutionOutcome.MissResolved,
+      ResolutionOutcome.HitMemory,
+      ResolutionOutcome.MissUnresolved,
+      ResolutionOutcome.HitStore)
+  }
+
+  it should "report an uncached miss on EVERY repeat, since hits-only never memoises it" in {
+    val recorded = scala.collection.mutable.ListBuffer.empty[String]
+    val cache = new WriteThroughResolutionCache(
+      new InMemoryResolutionStore, (o: String) => { recorded += o; () })
+
+    (1 to 3).foreach(_ => cache.getOrResolve("unresolvable")(None))
+
+    // Three chains run, three times nothing cached — the load the cache does not
+    // absorb, and the reason the counter separates this from `miss_resolved`.
+    recorded.toList shouldBe List.fill(3)(ResolutionOutcome.MissUnresolved)
+  }
+
+  "sourceOf" should "label a counter by the source its collection serves" in {
+    ResolutionOutcome.sourceOf("resolve_rt") shouldBe "rt"
+    ResolutionOutcome.sourceOf("resolve_filmweb") shouldBe "filmweb"
+  }
 }
