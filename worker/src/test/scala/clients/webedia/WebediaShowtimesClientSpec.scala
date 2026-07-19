@@ -25,6 +25,17 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     try src.mkString finally src.close()
   }
 
+  /** A real Filmstarts venue page (theater A0263, captured 2026-07-19). Carries
+   *  `data-showtimes-dates` = the 24 days with showtimes across Filmstarts' fixed
+   *  ~28-day window (2026-07-19 → 2026-08-15), gap days omitted. Read directly (not
+   *  via FakeHttpFetch's URL mapping) so the grid-fallback tests below still find
+   *  no venue page under `webedia-de`. Source URL:
+   *  https://www.filmstarts.de/kinoprogramm/kino/A0263/ */
+  private def venuePage: String = {
+    val src = Source.fromFile("test/resources/fixtures/webedia-de/theater-A0263-venue-page.html")
+    try src.mkString finally src.close()
+  }
+
   private val page = WebediaShowtimesClient.parsePage(fixture)
 
   "parsePage" should "read every film and the page count" in {
@@ -77,6 +88,65 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val paragraphs = synopsis.split("\n\n")
     paragraphs.length shouldBe 2
     all(paragraphs.toSeq) should not be empty
+  }
+
+  // ── date discovery off the venue page's data-showtimes-dates ──────────────
+  // The horizon lever: the venue page names exactly which days have showtimes
+  // across Filmstarts' fixed ~28-day booking window, so the scrape fetches those
+  // days (not a blind 7-day grid, and not every empty day out to 28).
+
+  "parseShowtimeDates" should "read the populated days off the venue page, skipping gap days" in {
+    val dates = WebediaShowtimesClient.parseShowtimeDates(venuePage)
+    dates.head shouldBe LocalDate.of(2026, 7, 19)
+    dates.last shouldBe LocalDate.of(2026, 8, 15)   // ~4 weeks out — well past a 7-day grid
+    dates.size shouldBe 24
+    dates shouldBe dates.sorted
+    // Days present in data-roller-dates (the full window) but with no showtimes
+    // are absent from data-showtimes-dates — so we never fetch them.
+    dates should contain noneOf (
+      LocalDate.of(2026, 7, 27), LocalDate.of(2026, 7, 28),
+      LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 11))
+  }
+
+  it should "return empty when the attribute is absent, so the caller falls back to the grid" in {
+    WebediaShowtimesClient.parseShowtimeDates("<html><body>no showtimes here</body></html>") shouldBe empty
+  }
+
+  "planChunks" should "discover the venue's populated days beyond the fixed 7-day grid" in {
+    val client = new WebediaShowtimesClient(
+      new ScriptedByUrl(url =>
+        if (url.contains("/kinoprogramm/kino/")) venuePage
+        else throw new java.io.IOException("planChunks must not fetch per-day pages")),
+      "www.filmstarts.de", "A0263", venue,
+      daysAhead = 6, today = LocalDate.of(2026, 7, 19))
+
+    val days = client.planChunks()
+    days.size shouldBe 24
+    days should contain("2026-08-15")        // reaches ~4 weeks, not today+6
+    days.count(_ > "2026-07-25") should be > 0
+    days should not contain "2026-07-27"     // gap day skipped
+    days shouldBe days.sorted
+  }
+
+  it should "cap the discovered window at today+MaxHorizonDays" in {
+    // today set early enough that the page's last dates sit past the horizon cap.
+    val today  = LocalDate.of(2026, 7, 10)
+    val capStr = today.plusDays(WebediaShowtimesClient.MaxHorizonDays.toLong).toString  // 2026-08-13
+    val client = new WebediaShowtimesClient(
+      new ScriptedByUrl(_ => venuePage),
+      "www.filmstarts.de", "A0263", venue,
+      daysAhead = 6, today = today)
+
+    val days = client.planChunks()
+    all(days) should be <= capStr          // ISO dates order lexicographically
+    days should contain("2026-08-13")      // exactly at the cap — kept
+    days should not contain "2026-08-15"   // two days past the cap — dropped
+  }
+
+  it should "fall back to the fixed today..today+daysAhead grid when the venue page can't be fetched" in {
+    val pageDown = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 500"))
+    clientOver(pageDown, daysAhead = 6).planChunks() shouldBe
+      (0 to 6).map(d => LocalDate.of(2026, 7, 11).plusDays(d.toLong).toString)
   }
 
   // ── fetch() through the real /_/showtimes URL (fixture-replayed) ──────────
@@ -135,11 +205,6 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     new WebediaShowtimesClient(
       new FakeHttpFetch("webedia-de"), "www.filmstarts.de", "A0263", venue,
       daysAhead = daysAhead, today = LocalDate.of(2026, 7, 11))
-
-  "planChunks" should "yield one chunk key per day across the window" in {
-    fakeClient(daysAhead = 6).planChunks() shouldBe
-      (0 to 6).map(d => LocalDate.of(2026, 7, 11).plusDays(d.toLong).toString)
-  }
 
   "fetchChunk" should "parse one day's page into that day's films" in {
     val films = fakeClient().fetchChunk("2026-07-11")

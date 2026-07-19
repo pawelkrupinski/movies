@@ -58,15 +58,44 @@ class WebediaShowtimesClient(
   // above is uniform across the family. Parameterize it when a second country lands.
   override def sourceUrl: Option[String] = Some(s"https://$host/kinoprogramm/kino/$theaterId/")
 
-  // Each of the venue's ~7 days is one chunk, run as its own `ScrapeChunk` task
-  // (see ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the
-  // task queue and the shared Filmstarts pace gate instead of bursting from a
-  // single task that parks a worker thread for ~7×1s. The in-process `fetch()`
-  // the trait composes (planChunks → fetchChunk → reduceChunks) is used only by
-  // the deterministic fixture harness + unit tests, where every day answers.
+  // Each populated day is one chunk, run as its own `ScrapeChunk` task (see
+  // ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the task
+  // queue and the shared Filmstarts pace gate instead of bursting from a single
+  // task that parks a worker thread for days×1s. The in-process `fetch()` the
+  // trait composes (planChunks → fetchChunk → reduceChunks) is used only by the
+  // deterministic fixture harness + unit tests.
 
-  /** One chunk key per day, today .. today+daysAhead. */
-  def planChunks(): Seq[String] = (0 to daysAhead).map(today.plusDays(_).toString)
+  /** The days to scrape. The venue page (`sourceUrl`) carries a
+   *  `data-showtimes-dates` attribute — the exact days that have screenings
+   *  inside Filmstarts' own fixed ~28-day booking window, gap days excluded
+   *  (verified empty in the per-day API). Reading it once lifts the horizon from
+   *  the old fixed 7-day grid to the site's full window WITHOUT firing a request
+   *  per empty day: the page names precisely which days to fetch. Data does exist
+   *  sparsely beyond that window, but it is unadvertised (no signal names those
+   *  days) and it rolls into the window — and so into this list — well before its
+   *  showtime, so a ~28-day horizon captures it in time without blind probing.
+   *
+   *  Falls back to the old `today .. today+daysAhead` grid when the venue page
+   *  can't be fetched or carries no parseable date list, so a page outage or a
+   *  markup change degrades to the prior 7-day behaviour rather than dropping the
+   *  venue. Bounded to `[today, today+MaxHorizonDays]` so a stray attribute date
+   *  can't balloon the chunk fan-out. */
+  def planChunks(): Seq[String] =
+    discoverShowtimeDates().getOrElse((0 to daysAhead).map(today.plusDays(_))).map(_.toString)
+
+  /** The populated days named by the venue page, bounded to the horizon, or
+   *  `None` when the page is unreachable / carries no usable date list (→ the
+   *  caller's grid fallback). The page fetch's failure is swallowed here on
+   *  purpose: unlike a per-day chunk (whose throw reschedules just that day),
+   *  a failed index page should not fail the whole venue when a safe default
+   *  exists. */
+  private def discoverShowtimeDates(): Option[Seq[LocalDate]] =
+    sourceUrl.flatMap { url =>
+      Try(http.get(url)).toOption
+        .map(parseShowtimeDates)
+        .map(_.filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong))))
+        .filter(_.nonEmpty)
+    }
 
   /** Fetch + parse ONE day into that day's films. A page-1 fetch failure THROWS
    *  so ONLY that day's chunk task reschedules (the per-day retry); the other
@@ -134,8 +163,28 @@ class WebediaShowtimesClient(
 
 object WebediaShowtimesClient {
 
+  /** Filmstarts' own booking calendar is a fixed 28-day window; cap the
+   *  discovered horizon a touch above it so an outlier date in the attribute
+   *  (or a future window bump) can't balloon the per-venue chunk fan-out. */
+  val MaxHorizonDays = 34
+
   def showtimesUrl(host: String, theaterId: String, date: LocalDate, page: Int): String =
     s"https://$host/_/showtimes/theater-$theaterId/d-$date/p-$page/"
+
+  private val ShowtimesDatesAttr = """data-showtimes-dates="([^"]*)"""".r
+  private val IsoDate            = """\d{4}-\d{2}-\d{2}""".r
+
+  /** The days a venue has showtimes on, read off the venue page's
+   *  `data-showtimes-dates="[&quot;2026-07-19&quot;,…]"` — an HTML-entity-escaped
+   *  JSON array of ISO dates spanning Filmstarts' fixed ~28-day window with gap
+   *  days omitted. The entity-escaping is irrelevant to a date regex, so pull the
+   *  ISO dates straight out of the attribute value; deduped and sorted. Empty when
+   *  the attribute is absent (older / changed markup) → the caller falls back to
+   *  the fixed grid. Pure + public so a spec feeds it a recorded page directly. */
+  def parseShowtimeDates(html: String): Seq[LocalDate] =
+    ShowtimesDatesAttr.findFirstMatchIn(html).map(_.group(1)).toSeq.flatMap { raw =>
+      IsoDate.findAllIn(raw).toSeq.flatMap(s => Try(LocalDate.parse(s)).toOption)
+    }.distinct.sortBy(_.toString)
 
   /** One parsed page: its films plus the response's total page count (so the
    *  caller knows whether to fetch p-2…). Pure so a spec can feed fixture bytes. */
