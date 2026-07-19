@@ -144,32 +144,42 @@ class MetascoreRatings(
   private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
-    val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.metacriticUrl.isDefined }
+    val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
     logger.info(s"Metascore refresh: starting tick over ${snapshot.size} cached row(s) " +
-                s"(${withUrl.size} with URL → score-only, ${missingUrl.size} without → URL discovery).")
+                s"($resolvable re-resolving their URL first).")
     val changed       = new AtomicInteger(0)
     val failed        = new AtomicInteger(0)
     val urlDiscovered = new AtomicInteger(0)
 
-    BoundedParallel.foreach("Metascore-refresh-score", withUrl, refreshConcurrency) { case (key, enrichment) =>
-      val url = enrichment.metacriticUrl.get
-      Try(metacritic.metascoreFor(url)) match {
-        case Success(fresh) if fresh != enrichment.metascore =>
-          logger.debug(s"Metascore refresh: ${key.cleanTitle} $url ${enrichment.metascore.getOrElse("—")} → ${fresh.getOrElse("—")}")
-          cache.putIfPresent(key, _.copy(metascore = fresh))
-          fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s.toString)))
-          changed.incrementAndGet()
-        case Success(_) => ()
-        case Failure(exception) =>
-          failed.incrementAndGet()
-          logger.debug(s"Metascore refresh: $url lookup failed: ${exception.getMessage}")
-      }
-    }
+    // ONE pass, two steps per row. It used to be two passes split on whether the
+    // row already had a URL, which made a stored URL permanently authoritative:
+    // the operator's button could only re-scrape the score off whatever was
+    // there, so a WRONG URL was never corrected and the run reported "0 changed"
+    // while films sat on another film's page.
+    //
+    // Both steps run, deliberately. Re-resolving ALONE would be a regression:
+    // a row whose re-resolution fails (transient, or MC genuinely has no page)
+    // would stop refreshing its score at all — which is what two specs caught.
+    BoundedParallel.foreach("Metascore-refresh", snapshot, refreshConcurrency) { case (key, enrichment) =>
+      // 1. Re-derive the URL when the row has a tmdbId to derive it from. A
+      //    better match replaces the stored one; a failure leaves it be.
+      if (enrichment.tmdbId.isDefined && resolveAndPersistUrl(key, enrichment).isDefined) urlDiscovered.incrementAndGet()
 
-    BoundedParallel.foreach("Metascore-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
-      resolveAndPersistUrl(key, enrichment).foreach { resolved =>
-        urlDiscovered.incrementAndGet()
-        settleScore(key, resolved).foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v)))
+      // 2. Refresh the score off whatever URL the row NOW holds — possibly the
+      //    one just re-resolved, possibly the pre-existing one.
+      val current = cache.get(key).getOrElse(enrichment)
+      current.metacriticUrl.foreach { url =>
+        Try(metacritic.metascoreFor(url)) match {
+          case Success(fresh) if fresh != current.metascore =>
+            logger.debug(s"Metascore refresh: ${key.cleanTitle} $url ${current.metascore.getOrElse("—")} → ${fresh.getOrElse("—")}")
+            cache.putIfPresent(key, _.copy(metascore = fresh))
+            fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s.toString)))
+            changed.incrementAndGet()
+          case Success(_) => ()
+          case Failure(exception) =>
+            failed.incrementAndGet()
+            logger.debug(s"Metascore refresh: $url lookup failed: ${exception.getMessage}")
+        }
       }
     }
 

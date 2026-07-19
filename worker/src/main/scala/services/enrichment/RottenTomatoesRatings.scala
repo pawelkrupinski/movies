@@ -110,32 +110,33 @@ class RottenTomatoesRatings(
   private[services] def refreshAll(): BulkRefreshResult = {
     val snapshot  = cache.entries
     val startedAt = System.currentTimeMillis()
-    val (withUrl, missingUrl) = snapshot.partition { case (_, e) => e.rottenTomatoesUrl.isDefined }
+    val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
     logger.info(s"RT refresh: starting tick over ${snapshot.size} cached row(s) " +
-                s"(${withUrl.size} with URL → score-only, ${missingUrl.size} without → URL discovery).")
+                s"($resolvable re-resolving their URL first).")
     val changed       = new AtomicInteger(0)
     val failed        = new AtomicInteger(0)
     val urlDiscovered = new AtomicInteger(0)
 
-    BoundedParallel.foreach("RT-refresh-score", withUrl, refreshConcurrency) { case (key, enrichment) =>
-      val url = enrichment.rottenTomatoesUrl.get
-      Try(rt.scoreFor(url)) match {
-        case Success(fresh) if fresh != enrichment.rottenTomatoes =>
-          logger.debug(s"RT refresh: ${key.cleanTitle} $url ${enrichment.rottenTomatoes.getOrElse("—")} → ${fresh.getOrElse("—")}")
-          cache.putIfPresent(key, _.copy(rottenTomatoes = fresh))
-          fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s"$s%")))
-          changed.incrementAndGet()
-        case Success(_) => ()
-        case Failure(exception) =>
-          failed.incrementAndGet()
-          logger.debug(s"RT refresh: $url lookup failed: ${exception.getMessage}")
-      }
-    }
+    // One pass, two steps per row — see the note in MetascoreRatings.refreshAll:
+    // a stored URL used to be authoritative, so the button could never correct a
+    // wrong one; and re-resolving ALONE would stop refreshing the score of any
+    // row whose re-resolution fails.
+    BoundedParallel.foreach("RT-refresh", snapshot, refreshConcurrency) { case (key, enrichment) =>
+      if (enrichment.tmdbId.isDefined && resolveAndPersistUrl(key, enrichment).isDefined) urlDiscovered.incrementAndGet()
 
-    BoundedParallel.foreach("RT-refresh-discover", missingUrl, refreshConcurrency) { case (key, enrichment) =>
-      resolveAndPersistUrl(key, enrichment).foreach { url =>
-        urlDiscovered.incrementAndGet()
-        cache.get(key).foreach(e => refreshScoreFromUrl(key, e, url).foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v))))
+      val current = cache.get(key).getOrElse(enrichment)
+      current.rottenTomatoesUrl.foreach { url =>
+        Try(rt.scoreFor(url)) match {
+          case Success(fresh) if fresh != current.rottenTomatoes =>
+            logger.debug(s"RT refresh: ${key.cleanTitle} $url ${current.rottenTomatoes.getOrElse("—")} → ${fresh.getOrElse("—")}")
+            cache.putIfPresent(key, _.copy(rottenTomatoes = fresh))
+            fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s"$s%")))
+            changed.incrementAndGet()
+          case Success(_) => ()
+          case Failure(exception) =>
+            failed.incrementAndGet()
+            logger.debug(s"RT refresh: $url lookup failed: ${exception.getMessage}")
+        }
       }
     }
 

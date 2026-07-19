@@ -693,7 +693,8 @@ class MovieService(
    *  flip the row to a different film when TMDB's title search lands on a
    *  more popular same-title hit, undoing earlier corrections (override or
    *  sister-row donation). Missing MC / RT / Filmweb URLs are recovered by
-   *  the respective `*Ratings.refreshAll` hourly walks, which do their own
+   *  the respective `*Ratings.refreshAll` walks — operator-triggered from the
+   *  /tasks buttons, NOT scheduled — which do their own
    *  URL discovery; missing IMDb ids are recovered by the `ImdbIdMissing`
    *  event fired from the TMDB stage at first resolution. Clears the negative
    *  cache so previously-failed `(title, year)` lookups get one fresh shot. This

@@ -43,6 +43,12 @@ trait ResolutionStore {
    *  comes straight back (prod: Nolan's "Odyseja" re-resolved to the memoised
    *  Cousteau-biopic Metacritic URL for the whole 24h TTL). */
   def removeForFilm(cleanTitle: String): Int
+
+  /** Forget EVERY memoised resolution for this source, returning how many were
+   *  dropped. Backs the operator's corpus-wide refresh button: without it the
+   *  walk re-derives from the same memoised answers it is meant to re-check, so
+   *  a wrong resolution survives the button entirely. */
+  def removeAll(): Int
 }
 
 object ResolutionStore {
@@ -71,6 +77,8 @@ class InMemoryResolutionStore(clock: Clock = Clock.systemUTC()) extends Resoluti
     doomed.foreach(entries.remove)
     doomed.size
   }
+
+  override def removeAll(): Int = { val n = entries.size; entries.clear(); n }
 }
 
 /**
@@ -146,6 +154,17 @@ class MongoResolutionStore(
       }
     }.recover { case exception =>
       logger.warn(s"Resolution forget failed for $collectionName/'$cleanTitle': ${exception.getMessage}"); 0
+    }.getOrElse(0)
+  }
+
+  override def removeAll(): Int = coll.fold(0) { c =>
+    Try {
+      val n = Await.result(c.countDocuments().head(), 10.seconds).toInt
+      Await.result(c.deleteMany(Filters.empty()).toFuture(), 30.seconds)
+      if (n > 0) logger.info(s"Resolution cache: forgot all $n $collectionName entr(ies) for an operator bulk refresh.")
+      n
+    }.recover { case exception =>
+      logger.warn(s"Resolution clear failed for $collectionName: ${exception.getMessage}"); 0
     }.getOrElse(0)
   }
 
