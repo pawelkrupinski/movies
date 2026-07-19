@@ -79,6 +79,25 @@ object PosterProxy {
     "multikino.pl"
   )
 
+  // The mirror image of SkipHosts: domains weserv itself refuses to fetch,
+  // rather than origins that refuse weserv. weserv answers these at its own
+  // edge with a hard 400 and never contacts the origin at all:
+  //   {"status":"error","code":400,"message":"Domain or TLD blocked by policy"}
+  //
+  // acsta.net is AlloCiné's image CDN, which is where every DE (Webedia)
+  // poster comes from — so this took out the poster on effectively every
+  // German film. The assets are fine: fetched directly they return
+  // 200 image/jpeg over HTTPS, so skipping the proxy costs us only the
+  // server-side resize, not correctness or mixed-content safety.
+  //
+  // Matched as a domain suffix, not an exact host: AlloCiné spreads posters
+  // over img1..imgN shards and per-country prefixes (de./fr./www.), all of
+  // which weserv blocks identically. An exact-host set would go stale the
+  // first time they add a shard.
+  private val SkipDomains = Set(
+    "acsta.net"
+  )
+
   /** Wrap a poster URL through weserv with width + format hints.
    *  Returns the original URL untouched when it's empty / null —
    *  callers shouldn't pass `None` in but the empty-string case can
@@ -98,8 +117,15 @@ object PosterProxy {
   def posterForCard(url: String): String =
     weserv(url, 440, 660, "jpg").getOrElse(url)
 
-  /** Build the weserv URL, or `None` for empty input / a [[SkipHosts]] origin
-   *  the caller should fetch directly. weserv accepts the URL with or without
+  /** True when `host` is, or sits under, a [[SkipDomains]] entry. The `.`
+   *  boundary is what stops a lookalike like `notacsta.net` matching
+   *  `acsta.net` on a bare `endsWith`. */
+  private def skipsDomain(host: String): Boolean =
+    SkipDomains.exists(domain => host == domain || host.endsWith(s".$domain"))
+
+  /** Build the weserv URL, or `None` for empty input / a [[SkipHosts]] or
+   *  [[SkipDomains]] origin the caller should fetch directly. weserv accepts
+   *  the URL with or without
    *  the scheme prefix; stripping it avoids double-encoding `://` and lets the
    *  proxy pick the scheme (HTTPS when available, HTTP for origins like
    *  kinobulgarska19.pl). */
@@ -107,7 +133,7 @@ object PosterProxy {
     if (url == null || url.isEmpty) return None
     val stripped = url.replaceFirst("^https?://", "")
     val host     = stripped.takeWhile(_ != '/').toLowerCase
-    if (SkipHosts.contains(host)) return None
+    if (SkipHosts.contains(host) || skipsDomain(host)) return None
     val encoded = URLEncoder.encode(stripped, "UTF-8")
     Some(s"https://images.weserv.nl/?url=$encoded&w=$w&h=$h&fit=cover&a=attention&output=$output")
   }

@@ -65,4 +65,42 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     val cc = "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7807S2R.jpg"
     PosterProxy.proxy(cc) should startWith ("https://images.weserv.nl/")
   }
+
+  // acsta.net is AlloCiné's image CDN — the poster origin behind the DE
+  // (Webedia) listings. weserv refuses the whole domain at its own edge:
+  //   GET images.weserv.nl/?url=de.web.img3.acsta.net%2F...
+  //     -> 400 {"status":"error","code":400,
+  //             "message":"Domain or TLD blocked by policy"}
+  // while the same asset fetched directly returns 200 image/jpeg. This is
+  // the inverse of the multikino case (there the *origin* blocks weserv;
+  // here *weserv* blocks the origin) but the remedy is identical: skip the
+  // proxy and let the browser fetch the origin, which is already HTTPS.
+  //
+  // Verified 2026-07-19 against prod /uptime, where `img: images.weserv.nl`
+  // sat red for ~2.5h on 26 distinct acsta URLs — i.e. every DE film whose
+  // poster came from AlloCiné rendered as a broken image.
+  it should "pass acsta.net URLs through unproxied (weserv blocks the domain by policy)" in {
+    val allocine = "https://de.web.img3.acsta.net/img/fe/d6/fed6aa938ed8c8469d6ebd7ce46f25b3.jpg"
+    PosterProxy.proxy(allocine) shouldBe allocine
+  }
+
+  // The block is domain-wide, not per-subdomain: AlloCiné round-robins
+  // posters across img1..imgN and per-country prefixes (de./fr./www.), and
+  // all of them 400 the same way. Match on the registrable domain so a new
+  // shard doesn't silently reintroduce the breakage.
+  it should "pass every acsta.net subdomain through unproxied" in {
+    Seq(
+      "https://de.web.img3.acsta.net/img/a/b/c.jpg",
+      "https://fr.web.img4.acsta.net/img/a/b/c.jpg",
+      "https://www.acsta.net/img/a/b/c.jpg"
+    ).foreach(url => PosterProxy.proxy(url) shouldBe url)
+  }
+
+  // Guard the suffix match against the classic "endsWith" hole — a
+  // lookalike domain that merely ends in the same letters must NOT be
+  // treated as acsta.net and must still be proxied.
+  it should "not mistake a lookalike domain for acsta.net" in {
+    val lookalike = "https://notacsta.net/img/a/b/c.jpg"
+    PosterProxy.proxy(lookalike) should startWith ("https://images.weserv.nl/")
+  }
 }
