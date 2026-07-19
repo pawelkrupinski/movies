@@ -92,7 +92,7 @@ class MetacriticClient(http: HttpFetch) {
    *  year vs Metacritic's later US date — "Picnic at Hanging Rock" is 1975 vs
    *  1979) while rejecting the decade-plus gaps that mark a different film. */
   def canonicalResolve(title: String, year: Option[Int] = None): Option[Resolved] =
-    candidateSlugs(title).iterator
+    candidateSlugs(title, year).iterator
       .flatMap { slug =>
         Try(http.get(s"$Site/movie/$slug")).toOption
           .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
@@ -100,10 +100,14 @@ class MetacriticClient(http: HttpFetch) {
       }
       .nextOption()
 
-  def candidateSlugs(title: String): Seq[String] = {
+  /** Slugs to probe, best-first. When the film's year is known the year-suffixed
+   *  variant of each form is tried BEFORE its bare form — see
+   *  [[MetacriticClient.yearSuffixedFirst]] for why that ordering is load-bearing. */
+  def candidateSlugs(title: String, year: Option[Int] = None): Seq[String] = {
     val primary = MetacriticClient.slugify(title)
     if (primary.isEmpty) Seq.empty
-    else primary +: MetacriticClient.dropLeadingArticle(primary, '-').toSeq
+    else MetacriticClient.yearSuffixedFirst(
+      primary +: MetacriticClient.dropLeadingArticle(primary, '-').toSeq, year, '-')
   }
 
   /** Scrape MC's HTML search page and pick the best `/movie/{slug}` link by
@@ -273,6 +277,23 @@ object MetacriticClient {
    *  BOTH known years beyond [[YearMatchTolerance]] returns false; a missing
    *  year on either side is treated as compatible (we never had grounds to
    *  reject). Shared decision for Metacritic and Rotten Tomatoes slug probes. */
+  /** Interleave `base` slug forms with their `<slug><sep><year>` variants, each
+   *  year-suffixed form immediately BEFORE its bare form. No year → unchanged.
+   *
+   *  Both Metacritic and Rotten Tomatoes disambiguate same-titled films with a
+   *  year suffix, and for a NEW film the bare slug is routinely the older
+   *  namesake: `/movie/the-odyssey` is Jerome Salle's Cousteau biopic while
+   *  Nolan's 2026 film is `/movie/the-odyssey-2026`. Probing bare-first stored
+   *  the wrong film — and the year guard could not catch it, because that page
+   *  serves `datePublished: "0000-00-00"`, which parses to no year at all and so
+   *  is "compatible" with everything. Trying the year-suffixed form first is what
+   *  actually separates them; the guard only rejects what it can disprove.
+   *
+   *  Shared by both clients (RT with '_', MC with '-') so the ordering rule has
+   *  one definition. */
+  def yearSuffixedFirst(base: Seq[String], year: Option[Int], separator: Char): Seq[String] =
+    year.fold(base)(y => base.flatMap(s => Seq(s"$s$separator$y", s)).distinct)
+
   def yearsCompatible(filmYear: Option[Int], pageYear: Option[Int]): Boolean =
     (filmYear, pageYear) match {
       case (Some(f), Some(p)) => math.abs(f - p) <= YearMatchTolerance
