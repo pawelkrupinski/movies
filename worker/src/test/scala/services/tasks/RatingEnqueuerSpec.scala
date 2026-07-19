@@ -58,6 +58,34 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
       .foreach(queue.waitingCount(_) shouldBe 1)
   }
 
+  // A forced re-resolve strips the row and re-resolves TMDB synchronously, but the
+  // imdbId is recovered ASYNCHRONOUSLY (`ImdbIdMissing` → `ImdbIdResolver`, which
+  // landed ~1s later for the "Odyseja" re-enrich). So at force time the row is
+  // IMDb-INELIGIBLE. Clearing the stamp only for eligible sources left IMDb on its
+  // pre-strip stamp + backoff level — the reaper then judged it fresh for hours
+  // while the row's imdbRating sat null. Forcing must reset the SCHEDULE for every
+  // source, and let eligibility decide only what can be enqueued right now.
+  it should "clear the freshness stamp of a not-yet-eligible source so it re-fetches as soon as its id lands" in {
+    val queue     = new InMemoryTaskQueue
+    val freshness = new InMemoryFreshnessStore
+    val enq       = new RatingEnqueuer(queue, freshness, new DueWindow(4.hours))
+    val key       = CacheKey("Film", None)
+    // TMDB-resolved, but the imdbId hasn't been recovered yet.
+    val row       = MovieRecord(tmdbId = Some(2))
+    Seq(FreshnessKind.ImdbRating, FreshnessKind.FilmwebRating, FreshnessKind.RtRating, FreshnessKind.McRating)
+      .foreach(k => freshness.markFresh(RatingTasks.dedupKey(k, key, row.tmdbId), k, now))
+
+    // Only the three tmdbId-gated sources can be enqueued now — IMDb has no id yet.
+    enq.enqueueDueFor(key, row, now, force = true) shouldBe 3
+    queue.waitingCount(TaskType.ImdbRating) shouldBe 0
+
+    // ...but IMDb's stamp is gone all the same, so the moment the id lands the
+    // ordinary cadence-gated pass enqueues it instead of waiting out the backoff.
+    freshness.lastFetchedAt(RatingTasks.dedupKey(FreshnessKind.ImdbRating, key, row.tmdbId)) shouldBe None
+    enq.enqueueDueFor(key, row.copy(imdbId = Some("tt1")), now) shouldBe 1
+    queue.waitingCount(TaskType.ImdbRating) shouldBe 1
+  }
+
   it should "NOT enqueue Filmweb in a non-Filmweb country (UK) — its handler is unwired there, so the task would re-release forever" in {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))

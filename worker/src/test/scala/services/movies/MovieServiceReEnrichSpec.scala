@@ -3,7 +3,7 @@ package services.movies
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
 
 import clients.TmdbClient
-import models.{MovieRecord, Source, SourceData, Tmdb}
+import models.{MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
@@ -171,5 +171,42 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val (_, record) = kicked.head
     record.tmdbId shouldBe Some(105)             // the resolved film
     record.imdbId shouldBe Some("tt0088763")     // the ids the rating sources gate + key on
+  }
+
+  // The resolution reports back the row RE-READ from the cache (it carries the
+  // strays `settleResolved` folded in, which the freshly-built record doesn't).
+  // That re-read must never be LESS resolved than what was just written: the whole
+  // downstream chain keys on the ids — `publishTmdbOutcome` decides whether to
+  // publish `ImdbIdMissing` on them, and the forced rating refresh derives its
+  // freshness dedup key (`…|tmdb:<id>`) and source eligibility from them. A
+  // re-read that came back id-less (the "Odyseja" re-enrich, prod 2026-07-19)
+  // therefore invalidated the wrong stamps and found no source eligible, so the
+  // stripped row's IMDb/RT scores were never re-fetched. Union the two so the
+  // reported record is at least as resolved as the record we persisted.
+  "resolvedView" should "backfill ids the cache re-read lost, keeping the re-read's folded data" in {
+    val resolved = MovieRecord(tmdbId = Some(105), imdbId = Some("tt0088763"))
+    val staleReRead = MovieRecord(data = Map((Multikino: Source) -> SourceData(title = Some("Odyseja"))))
+
+    val reported = MovieService.resolvedView(Some(staleReRead), resolved)
+
+    reported.tmdbId shouldBe Some(105)
+    reported.imdbId shouldBe Some("tt0088763")
+    // The re-read's own cinema slots survive — that's why we re-read at all.
+    reported.data.keys should contain(Multikino: Source)
+  }
+
+  it should "keep the cache re-read's ids when it has them (it is the canonical row)" in {
+    val resolved = MovieRecord(tmdbId = Some(105), imdbId = Some("tt0088763"))
+    val reRead   = MovieRecord(tmdbId = Some(105), imdbId = Some("tt0088763"),
+                               data = Map((Multikino: Source) -> SourceData(title = Some("Odyseja"))))
+
+    val reported = MovieService.resolvedView(Some(reRead), resolved)
+    reported shouldBe reRead
+  }
+
+  it should "fall back to the resolved record when the cache holds nothing" in {
+    val resolved = MovieRecord(tmdbId = Some(105))
+    val reported = MovieService.resolvedView(None, resolved)
+    reported shouldBe resolved
   }
 }

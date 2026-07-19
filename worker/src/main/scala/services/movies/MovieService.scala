@@ -524,7 +524,10 @@ class MovieService(
         // ±1-year / remake clustering is owned by `canonicalizeBySanitize` — run
         // by the staging fold and on every rehydrate).
         val finalKey = cache.settleResolved(writeKey, enr)
-        (finalKey, cache.get(finalKey).getOrElse(enr))
+        // Re-read so the reported record carries the strays `settleResolved` folded
+        // in — but never report a row LESS resolved than the one just persisted
+        // (see `resolvedView`).
+        (finalKey, MovieService.resolvedView(cache.get(finalKey), enr))
       }
     }
   }
@@ -1098,6 +1101,26 @@ class MovieService(
 }
 
 object MovieService {
+  /** What a completed resolution reports back to its callers: the row as re-read
+   *  from the cache (`cached`), backfilled from the record we just persisted
+   *  (`resolved`) for anything the re-read lacks.
+   *
+   *  The re-read is what carries the strays `settleResolved` folded in, so it stays
+   *  the canonical side. But it must never come back LESS resolved than what was
+   *  written: everything downstream keys on the ids — `publishTmdbOutcome` decides
+   *  on `imdbId` whether to publish `ImdbIdMissing`, and the forced rating refresh
+   *  derives BOTH its freshness dedup key (`…|tmdb:<id>`) and its per-source
+   *  eligibility from `tmdbId`/`imdbId`. An id-less re-read therefore invalidates the
+   *  wrong stamps and finds no source eligible, so a forced re-enrich strips the
+   *  row's scores and never re-fetches them (prod, "Odyseja", 2026-07-19 — the
+   *  re-read came back id-less for reasons not yet reproduced, which is exactly why
+   *  this is an invariant here rather than a fix at the presumed cause).
+   *
+   *  `union` keeps `cached`'s fields and fills only its gaps, so this is a no-op on
+   *  the healthy path. */
+  private[movies] def resolvedView(cached: Option[MovieRecord], resolved: MovieRecord): MovieRecord =
+    cached.fold(resolved)(MovieRecordMerge.union(_, resolved))
+
   // Stable documentId key for the cache + Mongo `_id`. Delegates to
   // `TitleNormalizer.sanitize`, which applies Arabic→Roman, strips display-
   // only decoration (anniversary/Cykl/wersja), folds " & " → " i " and the
