@@ -12,11 +12,13 @@
 #
 # --all-top fills each locale's listing dir with one four-shot block per city,
 # numbered end to end (city 1 → 1-4.png, city 2 → 5-8.png, …). Play shows at
-# most 8 phone shots, so N=2 is the practical ceiling.
+# most 8 phone shots, so N=2 is the practical ceiling. It drives one read-only
+# emulator per country in parallel (~countries× faster); EMULATORS=<k> caps that
+# (EMULATORS=1 = serial) for hosts that can't feed three emulators at once.
 #
-# When done it opens the shots in Preview (macOS). Env: CLEAN_FILM="…" for a
-# clean German detail (showtimes-de lags) · BUILD=1 force rebuild+install ·
-# AVD=<name> · NO_OPEN=1 skip the Preview.
+# When done it opens the shots in Preview (macOS). Env: EMULATORS=<k> parallel
+# emulator count · CLEAN_FILM="…" for a clean German detail (showtimes-de lags) ·
+# BUILD=1 force rebuild+install · AVD=<name> · NO_OPEN=1 skip the Preview.
 #
 set -euo pipefail
 
@@ -40,9 +42,16 @@ warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; [ -s "$NOISE" ] && tail -5 "$NOISE" >&2; exit 1; }
 cleanup() { rm -f "$NOISE"; }; trap cleanup EXIT
 
-adb()  { "$ADB" "$@"; }
+# Every device-touching call funnels through here, so honouring $SERIAL in one
+# place pins the WHOLE script to one emulator. Unset (the single-emulator paths)
+# it targets adb's sole device exactly as before; --all-top exports a per-worker
+# serial so each parallel country drives its own instance.
+adb()  { "$ADB" ${SERIAL:+-s "$SERIAL"} "$@"; }
 tap()  { adb shell input tap "$1" "$2" >>"$NOISE" 2>&1; }
-type_() { adb shell input text "$1" >>"$NOISE" 2>&1; }
+# `adb shell input text` splits on spaces and types only the first word unless
+# each space is sent as the literal escape `%s` — so multi-word cities ("West
+# Yorkshire", "Isle of Wight") need encoding, not the raw string.
+type_() { adb shell input text "${1// /%s}" >>"$NOISE" 2>&1; }
 back() { adb shell input keyevent 4 >>"$NOISE" 2>&1; }
 snap() { adb exec-out screencap -p > "$1"; }
 naps() { command sleep "$1"; }
@@ -64,6 +73,29 @@ country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land
 # needs no flag, and an un-split one just doesn't find it. This replaced a manual
 # SPLIT=1 env var, which --all-top could not have set correctly per-city anyway.
 showlist_label() { case "$1" in pl) echo "Pokaż repertuar";; uk) echo "Show listings";; de) echo "Programm anzeigen";; esac; }
+
+# ── parallel pool: one emulator per worker ────────────────────────────────────
+# --all-top can drive several read-only clones of the AVD at once, one per
+# country, cutting wall-clock roughly by the emulator count. These pure helpers
+# decide which instance and which countries each worker owns; the boot/install
+# machinery is further down.
+pool_port()   { echo "$((5554 + 2 * $1))"; }        # worker 0→5554, 1→5556, 2→5558
+pool_serial() { echo "emulator-$(pool_port "$1")"; }
+# Countries worker W handles when K workers share the list, round-robin: worker W
+# takes indices W, W+K, W+2K… So K≥#countries gives each its own worker, and a
+# smaller K packs the remainder onto earlier workers, run sequentially there.
+worker_slice() { # $1 country list, $2 K, $3 W
+  local list="$1" k="$2" w="$3" i=0 c
+  for c in $list; do [ $((i % k)) -eq "$w" ] && printf '%s ' "$c"; i=$((i + 1)); done
+}
+# Clamp a requested worker count to [1, #countries] — booting more emulators than
+# there are countries would leave the extras idle.
+effective_k() { # $1 requested, $2 country count
+  local req="$1" max="$2"
+  { [ "$req" -ge 1 ]; } 2>/dev/null || req=1
+  [ "$req" -le "$max" ] || req="$max"
+  echo "$req"
+}
 
 # kinowo_xl tap coordinates (px)
 X_ALL=1140;    Y_PILLS=164         # list: "All / Wszystkie / Alle" pill
@@ -197,6 +229,60 @@ for node in re.finditer(r"<node[^>]*>", sys.stdin.read()):
   tap ${point}
 }
 
+# The current text of the gate's search box (its only EditText), read back from
+# the accessibility tree.
+field_text() {
+  ui_xml | python3 -c '
+import re, sys
+for node in re.finditer(r"<node[^>]*>", sys.stdin.read()):
+    n = node.group(0)
+    if "android.widget.EditText" in n:
+        t = re.search(r" text=\"([^\"]*)\"", n)
+        print(t.group(1) if t else ""); break
+'
+}
+
+# The ASCII text to type into the city search so the app filters to $1. Several
+# constraints meet here: `adb shell input text` can't emit ł/ó/ü/… and mangles
+# spaces/&/commas; the app's search folds ONLY the nine Polish diacritics
+# (ą ć ę ł ń ó ś ż ź) and matches by SUBSTRING. So we apply that same Polish fold,
+# then type the single longest [a-z0-9] TOKEN of the result — which the substring
+# match still finds and which, being one alphanumeric word, dodges every character
+# input text can't send. Examples: "Kraków"→"krakow" (ó folds), "München"→"nchen"
+# (ü doesn't, so the tail after it), "West Yorkshire"→"yorkshire" (skips the
+# space), "Edinburgh & Lothians"→"edinburgh" (skips " & "). tap_text then selects
+# the row by its real name — it folds ü itself, via NFD — even when the token
+# matches several rows (the five "…Yorkshire" counties), since it matches in full.
+search_term() { # $1 city name
+  python3 -c '
+import sys, re
+polish = {"ą":"a", "ć":"c", "ę":"e", "ł":"l", "ń":"n", "ó":"o", "ś":"s", "ź":"z", "ż":"z"}
+folded = "".join(polish.get(c, c) for c in sys.argv[1].lower())
+tokens = re.findall(r"[a-z0-9]+", folded)
+print(max(tokens, key=len) if tokens else "")
+' "$1"
+}
+
+# Type $1 into the focused search box and CONFIRM it landed, retyping if it
+# didn't. `adb shell input text` silently drops and duplicates characters on a
+# CPU-starved emulator — three parallel instances once turned "Warszawa" into
+# "WWars", and the city then genuinely didn't exist, failing the row tap. Reading
+# the field back and clearing+retyping until it matches makes the run resilient to
+# that, at any emulator count. Returns nonzero if it never comes clean.
+type_field_verified() { # $1 text
+  local want="$1" got i j
+  for i in 1 2 3 4; do
+    got="$(field_text)"
+    [ "$got" = "$want" ] && return 0
+    if [ -n "$got" ]; then                               # wrong content — clear it first
+      adb shell input keyevent KEYCODE_MOVE_END >>"$NOISE" 2>&1
+      for ((j = 0; j < ${#got} + 2; j++)); do adb shell input keyevent 67 >>"$NOISE" 2>&1; done  # 67 = DEL
+    fi
+    naps 1; type_ "$want"; naps 2
+  done
+  [ "$(field_text)" = "$want" ]
+}
+
 # Poll a screencap until it's bigger than $2 bytes (a blank/near-black frame
 # compresses tiny; a rendered screen is 60 KB+, one with posters 250 KB+). This
 # replaces fixed sleeps so a slow cold-boot first launch doesn't yield blanks.
@@ -219,8 +305,11 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
   local wait=26; [ "$country" = de ] && wait=40      # de backend is slow
 
   say "$locale · $term"
-  ensure_emulator
-  ensure_app
+  # In pool mode the orchestrator has already booted this worker's emulator and
+  # installed the app on it, so skip both — and crucially skip ensure_emulator's
+  # kill-server/boot fallback, which under parallel workers would tear the adb
+  # server out from under the others.
+  [ -n "${POOL:-}" ] || { ensure_emulator; ensure_app; }
 
   step "opening app"
     adb shell pm clear "$PKG" >>"$NOISE" 2>&1
@@ -248,7 +337,10 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
 
   step "loading $term"
     tap_field                                            # gate: the city search box
-    naps 1; type_ "$term"; naps 2
+    naps 1
+    local typed; typed="$(search_term "$term")"          # ASCII the app's fold will match
+    type_field_verified "$typed" ||
+      die "the city search kept mangling '$typed' — the emulator is starved (try a lower EMULATORS)."
     # Tap the row NAMED $term rather than "whatever is first": on the wrong
     # country (or before the list loads) there is no such row, so this dies
     # instead of opening some other city — the Amberg failure above.
@@ -344,48 +436,155 @@ cmd_top() { # $1 country, $2 N — the ranking as a human-readable table
     while IFS=$'\t' read -r films slug name; do printf '  %4s  %-22s %s\n' "$films" "$slug" "$name"; done
 }
 
-cmd_all_top() { # $1 N — capture the top N cities of EVERY country into their listing dirs
+# Boot K read-only clones of the AVD on ports 5554, 5556, … Several instances can
+# only share one AVD image if EVERY one is -read-only AND the AVD's stale *.lock
+# files are gone first — a read-write instance (or a leftover lock from a crashed
+# one) makes the rest error out with "Another emulator instance is running". We
+# also stagger the launches: two started in the same instant race on acquiring
+# the multi-instance lock and both bail.
+boot_pool() { # $1 K
+  local k="$1" w port serial t
+  "$EMU" -list-avds 2>/dev/null | grep -qx "$AVD" || die "AVD '$AVD' not found. Create it (Android Studio) or pass AVD=<name>."
+  step "clearing emulators + locks"
+    adb kill-server >>"$NOISE" 2>&1 || true
+    pkill -f "qemu-system.*$AVD" 2>/dev/null || true
+    naps 3
+    rm -f "$HOME/.android/avd/$AVD.avd/"*.lock 2>/dev/null || true
+    "$ADB" start-server >>"$NOISE" 2>&1 || true
+  done_
+  for ((w = 0; w < k; w++)); do
+    port="$(pool_port "$w")"
+    step "booting $AVD :$port (read-only)"
+    nohup "$EMU" -avd "$AVD" -read-only -port "$port" -no-snapshot-load -no-boot-anim -netdelay none -netspeed full >>"$NOISE" 2>&1 &
+    naps 25                              # stagger so instances don't race the lock
+    done_
+  done
+  for ((w = 0; w < k; w++)); do
+    serial="$(pool_serial "$w")"
+    step "waiting $serial"
+    t=0
+    until [ "$(SERIAL="$serial" adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+      naps 5; t=$((t + 5)); [ $t -gt 420 ] && die "$serial didn't finish booting"
+    done
+    SERIAL="$serial" adb shell wm size reset >>"$NOISE" 2>&1 || true
+    done_
+  done
+}
+
+# Build the debug APK ONCE (progress on stderr, path on stdout) — the pool then
+# installs that one artifact on each emulator. Building per worker would run
+# several Gradle daemons at once, which the project bans; assembleDebug + N cheap
+# `adb install` is the correct shape.
+build_apk() {
+  step "building APK" >&2
+  ( cd "$REPO_ROOT/android" && { [ -f local.properties ] || echo "sdk.dir=$SDK" > local.properties; }
+    cd "$REPO_ROOT/android" && ./gradlew :app:assembleDebug ) >>"$NOISE" 2>&1 || die "gradle assembleDebug failed"
+  local apk="$REPO_ROOT/android/app/build/outputs/apk/debug/app-debug.apk"
+  [ -f "$apk" ] || die "APK not found at $apk"
+  done_ >&2
+  echo "$apk"
+}
+
+# One worker: capture its slice of countries on its own emulator, sequentially.
+# Runs inside a subshell with SERIAL + POOL exported, so every cmd_capture here
+# drives this worker's instance and skips the boot/install the orchestrator did.
+run_worker() { # $1 W, $2 K, $3 N
+  local w="$1" k="$2" n="$3" country locale dest stage first name
+  for country in $(worker_slice "$COUNTRIES" "$k" "$w"); do
+    locale="$(country_locale "$country")"
+    dest="$LISTINGS/$locale/graphics/phoneScreenshots"
+    # Read the ranked city names into an array BEFORE capturing any of them.
+    # cmd_capture's adb calls read stdin, so running it inside a
+    # `while read … < <(rank_cities …)` loop lets the first capture drain the
+    # process substitution — starving the loop and silently shooting only city 1
+    # at N≥2. Buffering the list first decouples it from cmd_capture's stdin.
+    local names=()
+    while IFS=$'\t' read -r _ _ name; do [ -n "$name" ] && names+=("$name"); done \
+      < <(rank_cities "$country" "$n" | tail -n +2)
+    # Stage the shots and swap them in only once every city of this country
+    # succeeds — a failed city aborts the worker, leaving the old listing whole
+    # rather than half-overwritten.
+    stage="$(mktemp -d)"; first=1
+    for name in "${names[@]}"; do
+      cmd_capture "$locale" "$name" "$stage" "$first"
+      first=$((first + 4))
+    done
+    mkdir -p "$dest"
+    rm -f "$dest"/*.png                  # a smaller N would otherwise strand the old tail
+    mv "$stage"/*.png "$dest"/; rmdir "$stage"
+    ok "$locale: top $n → $dest"
+  done
+}
+
+# Open every captured shot in one Preview, walking cities in ranked order via
+# shot_paths (which keeps 10.png after 9.png, not after 1.png).
+preview_all() { # $1 per_locale
+  local per="$1" country locale dest i f; local all=()
+  for country in $COUNTRIES; do
+    locale="$(country_locale "$country")"; dest="$LISTINGS/$locale/graphics/phoneScreenshots"
+    for ((i = 1; i <= per; i += 4)); do
+      while IFS= read -r f; do [ -f "$f" ] && all+=("$f"); done < <(shot_paths "$dest" "$i")
+    done
+  done
+  [ ${#all[@]} -gt 0 ] && command -v open >/dev/null 2>&1 && open -a Preview "${all[@]}" >>"$NOISE" 2>&1 || true
+}
+
+cmd_all_top() { # $1 N — capture the top N cities of EVERY country, one emulator per country
   local n="${1:-2}"
-  [ "$n" -ge 1 ] 2>/dev/null || die "--all-top wants a city count, e.g. --all-top 2"
+  { [ "$n" -ge 1 ]; } 2>/dev/null || die "--all-top wants a city count, e.g. --all-top 2"
   local per_locale=$((n * 4))
   [ "$per_locale" -le 8 ] ||
     warn "$n cities × 4 screens = $per_locale shots per locale, but Play publishes at most 8."
 
-  # We open one Preview over the whole set at the end, so the per-city pop-up is
-  # suppressed — but only honour that if the caller wanted a Preview at all.
+  local ncountries; ncountries=$(set -- $COUNTRIES; echo $#)
+  local k; k="$(effective_k "${EMULATORS:-$ncountries}" "$ncountries")"
+
+  # Suppress the per-city Preview pop-up; we open the whole set once at the end,
+  # but only if a Preview was wanted at all.
   local want_preview=1; [ -n "${NO_OPEN:-}" ] && want_preview=
   export NO_OPEN=1
-  local all=()
 
-  for country in $COUNTRIES; do
-    local locale dest stage first=1 i
-    locale="$(country_locale "$country")"
-    dest="$LISTINGS/$locale/graphics/phoneScreenshots"
-    say "$locale · top $n"
-    # Capture into a staging dir and swap it in only once every city of this
-    # country has succeeded. A city that dies aborts the run, and leaving the
-    # previous listing whole beats stripping it down to a half-set.
-    stage="$(mktemp -d)"
-    while IFS=$'\t' read -r _ _ name; do
-      [ -n "$name" ] || continue
-      cmd_capture "$locale" "$name" "$stage" "$first"
-      first=$((first + 4))
-    done < <(rank_cities "$country" "$n" | tail -n +2)
+  say "top $n × $ncountries countries on $k emulator(s)"
+  boot_pool "$k"
+  local apk; apk="$(build_apk)"
+  local w serial
+  for ((w = 0; w < k; w++)); do
+    serial="$(pool_serial "$w")"
+    step "installing app on $serial"
+    SERIAL="$serial" adb install -r "$apk" >>"$NOISE" 2>&1 || die "install failed on $serial"
+    done_
+  done
+  export POOL=1                          # workers: emulator + app already provisioned
 
-    mkdir -p "$dest"
-    rm -f "$dest"/*.png                 # a smaller N would otherwise strand the old tail
-    mv "$stage"/*.png "$dest"/; rmdir "$stage"
-    # Collect via shot_paths, not `ls`: it keeps 10.png after 9.png rather than
-    # after 1.png, so Preview walks the cities in ranked order.
-    for ((i = 1; i <= per_locale; i += 4)); do
-      while IFS= read -r f; do all+=("$f"); done < <(shot_paths "$dest" "$i")
-    done
-    ok "$locale: top $n → $dest/{1..$per_locale}.png"
+  # Launch one worker per emulator, each to its own log so parallel progress
+  # can't interleave into garbage; flush each log the moment its worker exits.
+  local pids=() logs=()
+  for ((w = 0; w < k; w++)); do
+    local log; log="$(mktemp)"; logs[$w]="$log"
+    ( SERIAL="$(pool_serial "$w")" NOISE="$(mktemp)" run_worker "$w" "$k" "$n" ) >"$log" 2>&1 &
+    pids[$w]="$!"
+    say "worker $w → $(pool_serial "$w") → $(worker_slice "$COUNTRIES" "$k" "$w")"
   done
 
-  if [ -n "$want_preview" ] && [ ${#all[@]} -gt 0 ] && command -v open >/dev/null 2>&1; then
-    open -a Preview "${all[@]}" >>"$NOISE" 2>&1 || true
-  fi
+  local remaining="$k" rc; local flushed=()
+  while [ "$remaining" -gt 0 ]; do
+    naps 5
+    for ((w = 0; w < k; w++)); do
+      [ -n "${flushed[$w]:-}" ] && continue
+      kill -0 "${pids[$w]}" 2>/dev/null && continue
+      rc=0; wait "${pids[$w]}" || rc=$?
+      printf '\n\033[36m▸ worker %s (%s)\033[0m\n' "$w" "$(pool_serial "$w")"
+      cat "${logs[$w]}"
+      [ "$rc" -ne 0 ] && warn "worker $w exited $rc"
+      flushed[$w]=1; remaining=$((remaining - 1))
+    done
+  done
+  rm -f "${logs[@]}"
+
+  # An `if`, not `A && B`: under `set -e` a bare `[ -z "$want_preview" ] && …`
+  # makes the whole function (and script) exit nonzero when NO_OPEN skips the
+  # Preview, reporting failure on a clean run.
+  if [ -n "$want_preview" ]; then preview_all "$per_locale"; fi
 }
 
 # Print the header block — every comment line after the shebang, up to the first
