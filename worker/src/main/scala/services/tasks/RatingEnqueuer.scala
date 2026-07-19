@@ -47,23 +47,33 @@ class RatingEnqueuer(
    *  `limit` lets the reaper honour its per-tick cap across rows; the newcomer path
    *  leaves it unbounded — one row enqueues at most the four sources.
    *
-   *  `force` re-fetches EVERY eligible source regardless of the adaptive cadence:
-   *  it drops the source's freshness stamps first, so a stamp that would otherwise
-   *  read "recently checked" no longer gates the enqueue. A (re)resolve uses this —
-   *  `resetToScrapedData` strips the row's scores, but the stamps survive, so
-   *  without forcing the reaper judges each source fresh and never re-fetches,
-   *  leaving the film rating-less. */
+   *  `force` re-fetches every source regardless of the adaptive cadence: it drops
+   *  EVERY source's freshness stamps first — including those the row isn't eligible
+   *  for yet — so a stamp that would otherwise read "recently checked" no longer
+   *  gates the enqueue. A (re)resolve uses this — `resetToScrapedData` strips the
+   *  row's scores, but the stamps survive, so without forcing the reaper judges each
+   *  source fresh and never re-fetches, leaving the film rating-less. Clearing even
+   *  the ineligible sources puts the row in the same schedule state as a film
+   *  resolving for the FIRST time (no stamps at all), which is the whole intent of a
+   *  forced re-enrich. */
   def enqueueDueFor(key: CacheKey, record: MovieRecord, now: Instant, limit: Int = Int.MaxValue, force: Boolean = false): Int = {
     var enqueued = 0
     val it = sources.iterator
     while (it.hasNext && enqueued < limit) {
-      val s = it.next()
+      val s         = it.next()
+      val dedupKey  = RatingTasks.dedupKey(s.kind, key, record.tmdbId)
+      val legacyKey = RatingTasks.dedupKey(s.kind, key)
+      // A forced refresh clears both stamps so the source reads as never-fetched
+      // and re-fetches now (the re-resolve strip healer). Done for EVERY source,
+      // not just the currently-eligible ones: a forced re-resolve strips the row
+      // and recovers its imdbId ASYNCHRONOUSLY (`ImdbIdMissing` → `ImdbIdResolver`),
+      // so IMDb is still ineligible here and would otherwise keep its pre-strip
+      // stamp — leaving the reaper to judge it fresh for hours while the stripped
+      // `imdbRating` sat null. Clearing the schedule is what "forced" means;
+      // eligibility below decides only what can be enqueued *now*, and a source
+      // whose id lands a moment later is picked up by the very next reaper tick.
+      if (force) { freshness.invalidate(dedupKey); freshness.invalidate(legacyKey) }
       if (s.eligible(record)) {
-        val dedupKey  = RatingTasks.dedupKey(s.kind, key, record.tmdbId)
-        val legacyKey = RatingTasks.dedupKey(s.kind, key)
-        // A forced refresh clears both stamps so the source reads as never-fetched
-        // and re-fetches now (the re-resolve strip healer).
-        if (force) { freshness.invalidate(dedupKey); freshness.invalidate(legacyKey) }
         // Honour a stamp left under the legacy title-based key so switching to
         // tmdbId-keyed freshness doesn't re-queue a row that's fresh under its old
         // key. (Drop the fallback once no legacy stamps remain — see EnrichmentReaper.)
