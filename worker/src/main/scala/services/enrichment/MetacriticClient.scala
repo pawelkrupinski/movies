@@ -172,7 +172,20 @@ class MetacriticClient(http: HttpFetch) {
     val normalizedQuery = MetacriticClient.foldDashes(query.toLowerCase.trim)
     if (hits.isEmpty || normalizedQuery.isEmpty) None
     else {
-      val exact = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+      // Year-guard the EXACT matches only. Same title + distant year means a
+      // different film (a namesake or remake) — that is how Welles' "The Trial"
+      // (1962) ended up on a 2023 page and Zulawski's "Possession" (1981) on a
+      // 2008 one. This search path is where a slug REJECTED by the year guard
+      // lands, so leaving it unguarded let the rejected film back in sideways.
+      //
+      // A MODIFIER-suffix hit ("I Vitelloni - Re-Release", "<title>: Restored")
+      // is the opposite case: it is explicitly the SAME film re-issued, so a
+      // large gap is EXPECTED — I Vitelloni is 1953 and its re-release entry
+      // 2024, 71 years apart and correct. Guarding those would reject every
+      // anniversary screening, so it deliberately stays unguarded.
+      val exact = hits
+        .filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+        .filter(h => MetacriticClient.yearsCompatible(year, h.year))
       val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
       val candidates =
         if (exact.nonEmpty) exact

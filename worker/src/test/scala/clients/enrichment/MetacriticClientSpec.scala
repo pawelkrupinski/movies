@@ -204,6 +204,51 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     c.candidateSlugs("The Odyssey") shouldBe Seq("the-odyssey", "odyssey")
   }
 
+  // Regression, from prod (2026-07-19): Welles' "The Trial" (1962) was stored as
+  // /movie/the-trial-el-juicio, a 2023 film — 61 years off. The slug probe DID
+  // reject it on year, but rejection falls through to the search scrape, which
+  // sorted candidates by year distance and then took the head regardless of how
+  // far away it was. So the year guard pushed work onto an unguarded route.
+  // Same shape put Zulawski's "Possession" (1981) on a 2008 page.
+  "search fallback" should "reject an exact-title hit whose year is beyond tolerance, not merely rank it last" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        else searchPage(Seq(("the-trial-el-juicio", "The Trial", 2023)))
+    })
+    c.urlFor("The Trial", year = Some(1962)) shouldBe None
+  }
+
+  it should "still accept an exact-title hit inside tolerance" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        else searchPage(Seq(("the-trial", "The Trial", 1963)))
+    })
+    c.urlFor("The Trial", year = Some(1962)) shouldBe
+      Some("https://www.metacritic.com/movie/the-trial")
+  }
+
+  it should "keep an undated hit — an unknown year is not grounds to reject" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        else searchPage(Seq(("some-film", "Some Film", 0)))
+    })
+    c.urlFor("Some Film", year = Some(2026)) shouldBe
+      Some("https://www.metacritic.com/movie/some-film")
+  }
+
+  it should "prefer the closest year among several compatible hits" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
+        else searchPage(Seq(("far", "Twins", 2035), ("near", "Twins", 2027)))
+    })
+    c.urlFor("Twins", year = Some(2026)) shouldBe
+      Some("https://www.metacritic.com/movie/near")
+  }
+
   "candidateSlugs" should "return empty when the title slugs to an empty string (CJK / Cyrillic only)" in {
     val c = new MetacriticClient(stub(Set.empty))
     c.candidateSlugs("")               shouldBe empty
@@ -272,6 +317,16 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   //     <p class="c-search-item__title">{title}</p>
   //     … release date string (e.g. "May 27, 2022") with year embedded …
   //   </a>
+
+  /** MC search-result cards in the real layout (see the note above). `year` of 0
+   *  emits a card with no date, the undated-hit case. */
+  private def searchPage(hits: Seq[(String, String, Int)]): String =
+    hits.map { case (slug, title, year) =>
+      val date = if (year == 0) "" else s"<span>July 22, $year</span>"
+      s"""<a href="/movie/$slug/" class="c-search-item search-item__content">
+         |  <p class="c-search-item__title">$title</p>$date
+         |</a>""".stripMargin
+    }.mkString("<html><body>", "\n", "</body></html>")
 
   private def loadFixture(path: String): String = {
     val stream = getClass.getResourceAsStream(path)
