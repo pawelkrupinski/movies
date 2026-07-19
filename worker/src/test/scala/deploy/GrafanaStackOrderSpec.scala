@@ -16,17 +16,18 @@ import org.scalatest.matchers.should.Matchers
  * `outcome="success"` series) re-floats the error bands, so this locks its
  * absence — a change with no visible compile or test consequence otherwise.
  *
- * It also guards the phase split: there are TWO such panels — one over all phases
- * and one filtered to `phase="scrape"` (cinema-site scraping only) — and the
- * scrape panel must actually carry that filter, or it silently duplicates the
- * all-phases panel.
+ * It also guards the phase split: the HTTP outcomes now live as TWO per-phase
+ * panels — `phase="scrape"` (cinema-site scraping) and `phase="enrich"` (the
+ * third-party metadata/rating/resolution APIs) — with NO combined all-phases
+ * panel. Each must actually carry its own `phase=` filter, or it silently
+ * duplicates the other.
  */
 class GrafanaStackOrderSpec extends AnyFlatSpec with Matchers {
 
   /** ASCII-only slices of the two panel titles — the provisioning JSON escapes
    *  non-ASCII (the em-dash is written `—`), so matching a literal one fails. */
-  private val AllPhasesTitleFragment = "error share, all phases (per country)"
   private val ScrapePhaseTitleFragment = "error share, scrape phase (per country)"
+  private val EnrichPhaseTitleFragment = "error share, enrich phase (per country)"
 
   private val dashboard = RepoFile.read("fly/grafana/provisioning/dashboards/worker-diagnostics.json")
 
@@ -46,22 +47,28 @@ class GrafanaStackOrderSpec extends AnyFlatSpec with Matchers {
   private def legendsOfPanelTitled(titleFragment: String): Seq[String] =
     """"legendFormat": "([^"]*)"""".r.findAllMatchIn(panelBlockTitled(titleFragment)).map(_.group(1)).toSeq
 
-  "the all-phases HTTP outcomes panel" should "stack only error bands, with no clean%/success baseline" in {
-    val legends = legendsOfPanelTitled(AllPhasesTitleFragment)
-    legends should contain ("{{outcome}}")
-    legends should not contain "clean %"
-    panelBlockTitled(AllPhasesTitleFragment) should not include "outcome=\\\"success\\\""
-    // The retired panel showed these same categories as a raw rate, with no
-    // denominator — one panel with the share is strictly more informative.
-    dashboard should not include "Scraper HTTP failures by category"
+  private def assertPhasePanel(titleFragment: String, phase: String): Unit = {
+    val block = panelBlockTitled(titleFragment)
+    legendsOfPanelTitled(titleFragment) should contain ("{{outcome}}")
+    legendsOfPanelTitled(titleFragment) should not contain "clean %"
+    // The whole point of a per-phase panel: it must isolate its own phase.
+    block should include (s"""phase=\\"$phase\\"""")
+    block should not include "outcome=\\\"success\\\""
   }
 
   "the scrape-phase HTTP outcomes panel" should "stack error bands filtered to phase=scrape, no clean% baseline" in {
-    val block = panelBlockTitled(ScrapePhaseTitleFragment)
-    legendsOfPanelTitled(ScrapePhaseTitleFragment) should contain ("{{outcome}}")
-    legendsOfPanelTitled(ScrapePhaseTitleFragment) should not contain "clean %"
-    // The whole point of the second panel: it must isolate the scrape phase.
-    block should include ("phase=\\\"scrape\\\"")
-    block should not include "outcome=\\\"success\\\""
+    assertPhasePanel(ScrapePhaseTitleFragment, "scrape")
+  }
+
+  "the enrich-phase HTTP outcomes panel" should "stack error bands filtered to phase=enrich, no clean% baseline" in {
+    assertPhasePanel(EnrichPhaseTitleFragment, "enrich")
+  }
+
+  "the HTTP outcomes panels" should "have no combined all-phases panel and not resurrect the retired raw-rate one" in {
+    // Dropping the all-phases panel is the point of this revision — its query
+    // summed over `phase` and blurred the two populations. Lock it out.
+    dashboard should not include "all phases (per country)"
+    // The even-earlier raw-rate failures panel stayed retired throughout.
+    dashboard should not include "Scraper HTTP failures by category"
   }
 }
