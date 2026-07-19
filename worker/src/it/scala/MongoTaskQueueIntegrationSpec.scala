@@ -50,6 +50,47 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0) shouldBe EnqueueResult.Duplicate
   }
 
+  // `countByState` is a single `$group` rather than a `countDocuments` per state,
+  // because it runs on the 60s heartbeat AND every /debug request and metrics
+  // scrape. Only real Mongo can prove the pipeline shape — the in-memory queue
+  // never executes it. The absent-when-zero contract matters: callers (and
+  // several unit specs) rely on a state with no rows being MISSING, not 0.
+  it should "count both states in one pass" in {
+    // Order matters: `drainUntil` claims tasks until it finds its target, so
+    // anything enqueued BEFORE it would be dragged to worked_on too. Enqueue the
+    // one to claim first, drain it, and only then add the row that must stay
+    // waiting.
+    val worked = s"scrape|it-count-worked-${System.nanoTime()}"
+    queue.enqueue(TaskType.ScrapeCinema, worked, submittedAt = t0)
+    val claimed = drainUntil(_.dedupKey == worked, "counter")
+    queue.enqueue(TaskType.ScrapeCinema, s"scrape|it-count-waiting-${System.nanoTime()}", submittedAt = t0)
+
+    val counts = queue.countByState()
+    counts.getOrElse(services.tasks.TaskState.Waiting, 0L) should be >= 1L
+    counts.getOrElse(services.tasks.TaskState.WorkedOn, 0L) should be >= 1L
+
+    queue.complete(claimed.id, "counter")
+  }
+
+  // The `$group` rewrite buckets whatever `state` value it finds, where the old
+  // per-state `countDocuments` could only ever answer about the states we named.
+  // Without the pipeline's `$match` this leaks an unrecognised state into the map,
+  // and /debug + the metrics export render it as a real queue state. Fails on a
+  // `$group` with no `$match`; passes on both the old and the guarded new version.
+  it should "never report a state outside the two the queue defines" in {
+    val doc = org.mongodb.scala.Document(
+      "_id" -> s"it-bogus-${System.nanoTime()}",
+      "dedupKey" -> s"bogus|${System.nanoTime()}",
+      "taskType" -> TaskType.ScrapeCinema.name,
+      "state" -> "not_a_real_state",
+      "active" -> false)
+    Await.result(db.getCollection(collName).insertOne(doc).toFuture(), 10.seconds)
+
+    queue.countByState().keySet should contain theSameElementsAs
+      queue.countByState().keySet.intersect(services.tasks.TaskState.all.toSet)
+    queue.countByState() should not contain key ("not_a_real_state")
+  }
+
   it should "claim the task once, carry its payload, and not hand it out twice" in {
     val key = s"imdb|it-claim-${System.nanoTime()}"
     queue.enqueue(TaskType.ImdbRating, key, Map("title" -> "Dune"), submittedAt = t0)

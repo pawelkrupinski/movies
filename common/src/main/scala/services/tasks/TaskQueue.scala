@@ -97,6 +97,11 @@ object HandlerOutcome {
 object TaskState {
   val Waiting  = "waiting"
   val WorkedOn = "worked_on"
+
+  /** Both states, for the queries that must bucket by state — `MongoTaskQueue`'s
+   *  `countByState` narrows to these so an unrecognised value can't surface as a
+   *  queue state. */
+  val all: Seq[String] = Seq(Waiting, WorkedOn)
 }
 
 /**

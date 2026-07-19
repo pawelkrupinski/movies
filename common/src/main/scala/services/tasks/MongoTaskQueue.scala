@@ -5,7 +5,7 @@ import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, OperationType}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription, documentToUntypedDocument}
 import org.mongodb.scala.bson.BsonString
-import org.mongodb.scala.model.{Aggregates, Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
+import org.mongodb.scala.model.{Accumulators, Aggregates, Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
 
 import play.api.Logging
 
@@ -187,13 +187,37 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }.getOrElse(0)
   }
 
+  /**
+   * One `$group` over the whole collection instead of a `countDocuments` per
+   * state. Runs on the 60s heartbeat AND on every `/debug` request and metrics
+   * scrape, so halving its round-trips is worth the aggregation.
+   *
+   * States with no documents stay ABSENT from the map rather than mapping to 0 —
+   * `$group` emits no bucket for them, which is the same contract the per-state
+   * version got from its `filter(_ > 0)`, and several specs assert on the empty
+   * map.
+   *
+   * The `$match` is what keeps the two versions equivalent, and is easy to drop
+   * by accident: asking for `countDocuments(state = waiting)` could only ever
+   * answer about the states we named, whereas `$group` buckets whatever value it
+   * finds — so without the filter a document carrying an unrecognised (or
+   * missing) `state` would surface as a new key and be rendered as a queue state
+   * on /debug and in the metrics export.
+   */
   override def countByState(): Map[String, Long] = coll match {
     case None => Map.empty
     case Some(c) =>
-      Seq(TaskState.Waiting, TaskState.WorkedOn).flatMap { state =>
-        Try(Await.result(c.countDocuments(Filters.eq("state", state)).toFuture(), 10.seconds)).toOption
-          .filter(_ > 0).map(state -> _)
-      }.toMap
+      val pipeline = Seq(
+        Aggregates.filter(Filters.in("state", TaskState.all*)),
+        Aggregates.group("$state", Accumulators.sum("n", 1)))
+      Try(Await.result(c.aggregate(pipeline).toFuture(), 10.seconds)).toOption.getOrElse(Seq.empty)
+        .flatMap { doc =>
+          for {
+            state <- doc.get("_id").filter(_.isString).map(_.asString().getValue)
+            count <- doc.get("n").filter(_.isNumber).map(_.asNumber().longValue())
+            if count > 0
+          } yield state -> count
+        }.toMap
   }
 
   // Counts via the {state, submittedAt} index prefix, then filters taskType over
