@@ -38,6 +38,11 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // The registered-once task-pipeline metric objects, shared across countries.
   val taskSeries: WorkerTaskMetrics.Series = new WorkerTaskMetrics.Series(poolSize, countryCodes, registry)
 
+  // Per-attempt outbound-HTTP outcome counter (kinowo_worker_http_total), one
+  // registered-once family with a leading `country` label; each wiring binds its
+  // own country's recorder into the innermost fetch decorator.
+  val httpMetrics: WorkerHttpMetrics = new WorkerHttpMetrics(countryCodes, registry)
+
   // Census gauges, each registered once with a leading `country` label; a
   // per-country sampler (built in the wiring) writes its own slice.
   val corpusGauge:    Gauge          = WorkerCorpusMetrics.gauge(registry)

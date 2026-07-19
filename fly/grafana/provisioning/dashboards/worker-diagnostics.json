@@ -500,6 +500,87 @@
           }
         }
       ]
+    },
+    {
+      "id": 9,
+      "title": "Scraper HTTP failures by category (per country)",
+      "description": "Rate of NON-success outbound HTTP attempts, by category. Every retry is one entry — a throttled cinema contributes each 429 retry separately. Fed by CountingHttpFetch at the wire, so it counts all worker HTTP; cinema scraping is ~10x the enrichment volume, so these lines are scraper-dominated (a TMDB/IMDb 429 also lands under http_429). Categories: http_429=rate limited, http_4xx/http_5xx=other status, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "stacking": {
+              "mode": "normal"
+            },
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"success\"}[5m]))",
+          "legendFormat": "{{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Worker HTTP clean-rate % (per country)",
+      "description": "Share of outbound HTTP attempts that succeeded (2xx) over all attempts incl. retries. 100% = no throttling or errors. This is the 'success rate' the Filmstarts pacing targets — 100% overnight, dips under German daytime load until the pace is wide enough.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum(rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "clean %",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
     }
   ]
 }
