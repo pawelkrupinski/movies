@@ -15,24 +15,46 @@ package tools
  */
 object HttpOutcome {
   val Success         = "success"
+  val Http400         = "http_400"          // malformed request / rejected query
+  val Http401         = "http_401"          // bad or missing API key (TMDB, OMDb)
+  val Http403         = "http_403"          // BLOCKED — Cloudflare, datacentre-IP ban
+  val Http404         = "http_404"          // not found — mostly slug probing, expected
+  val Http410         = "http_410"          // listing withdrawn
   val Http429         = "http_429"          // rate limited
-  val Http4xx         = "http_4xx"          // other client errors (400/403/404/…)
+  val Http4xx         = "http_4xx"          // the residual 4xx bucket (405/409/422/451/…)
   val Http5xx         = "http_5xx"          // server errors
   val Timeout         = "timeout"           // connect or read/request timeout
   val ConnectionError = "connection_error"  // refused / unknown host / reset / TLS
   val Other           = "other"             // anything unclassified (incl. 3xx that surfaced as an error)
 
+  /**
+   * The 4xx codes this workload produces often enough to be worth their own
+   * series; everything else in the 400-499 range folds into [[Http4xx]].
+   *
+   * The split exists because "4xx" lumps together two opposite meanings. A 404
+   * is usually the system working as designed — the RT/Metacritic resolvers
+   * probe up to 4 candidate slugs per title and the wrong ones 404 — so a large,
+   * steady 404 line is normal. A 403 is the opposite: a host refusing us
+   * (Cloudflare, a datacentre-IP ban), which is an outage in the making. Reading
+   * one aggregate line, a rising 403 is invisible behind the 404 noise floor.
+   *
+   * 429 sits here too so the whole 4xx range classifies through one lookup;
+   * it keeps its own long-standing label value.
+   */
+  private val Named4xx: Map[Int, String] =
+    Map(400 -> Http400, 401 -> Http401, 403 -> Http403, 404 -> Http404, 410 -> Http410, 429 -> Http429)
+
   /** Every outcome, for seeding the metric at 0 so no Grafana gap opens before a
    *  category first fires. */
-  val all: Seq[String] = Seq(Success, Http429, Http4xx, Http5xx, Timeout, ConnectionError, Other)
+  val all: Seq[String] =
+    Seq(Success, Http400, Http401, Http403, Http404, Http410, Http429, Http4xx, Http5xx, Timeout, ConnectionError, Other)
 
   /** Classify a thrown failure. Order matters: [[HttpStatusException]] carries a
    *  status; `HttpConnectTimeoutException` is a subtype of `HttpTimeoutException`
    *  (so the timeout case catches both); the connection-layer errors are all
    *  `IOException` subtypes, checked before the generic `IOException` fallback. */
   def classify(t: Throwable): String = t match {
-    case e: HttpStatusException if e.code == 429               => Http429
-    case e: HttpStatusException if e.code >= 400 && e.code < 500 => Http4xx
+    case e: HttpStatusException if e.code >= 400 && e.code < 500 => Named4xx.getOrElse(e.code, Http4xx)
     case e: HttpStatusException if e.code >= 500 && e.code < 600 => Http5xx
     case _: HttpStatusException                                => Other
     case _: java.net.http.HttpTimeoutException                => Timeout

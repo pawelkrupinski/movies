@@ -522,7 +522,7 @@
     {
       "id": 9,
       "title": "Scraper HTTP failures by category (per country)",
-      "description": "Rate of NON-success outbound HTTP attempts, by category. Every retry is one entry \u2014 a throttled cinema contributes each 429 retry separately. Fed by CountingHttpFetch at the wire, so it counts all worker HTTP; cinema scraping is ~10x the enrichment volume, so these lines are scraper-dominated (a TMDB/IMDb 429 also lands under http_429). Categories: http_429=rate limited, http_4xx/http_5xx=other status, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified.",
+      "description": "Rate of NON-success outbound HTTP attempts, by category, STACKED \u2014 band thickness is that category's share and the top of the stack is the total error rate. Every retry is one entry. The 4xx range is split by code because one bucket hid two opposite meanings: http_404 is mostly the RT/Metacritic resolvers probing up to 4 candidate slugs per title (working as designed, expect a large steady line), while http_403 is a host REFUSING us (Cloudflare, datacentre-IP ban) and any rise there is an outage forming. http_400/401/410 are the other codes this workload actually produces; improbable ones (409/422/451/\u2026) fold into the residual http_4xx. Categories: http_429=rate limited, http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -562,8 +562,8 @@
     },
     {
       "id": 10,
-      "title": "Worker HTTP clean-rate % (per country)",
-      "description": "Share of outbound HTTP attempts that succeeded (2xx) over all attempts incl. retries. 100% = no throttling or errors. This is the 'success rate' the Filmstarts pacing targets \u2014 100% overnight, dips under German daytime load until the pace is wide enough.",
+      "title": "Worker HTTP clean-rate % + error share by type (per country)",
+      "description": "What the attempts resolved to, as a share of ALL attempts incl. retries \u2014 stacked to 100%. The 'clean %' band is the success rate the Filmstarts pacing targets; every other band is one error category from the panel to the left, expressed as a percentage rather than a raw rate so it shares this panel's axis (a req/s series on a percent axis would need a second scale). Band thickness therefore reads directly as 'how much of the gap below 100% is this error'.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -582,8 +582,11 @@
           "max": 100,
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 12,
-            "spanNulls": 300000
+            "fillOpacity": 25,
+            "spanNulls": 300000,
+            "stacking": {
+              "mode": "normal"
+            }
           }
         },
         "overrides": []
@@ -593,6 +596,15 @@
           "refId": "A",
           "expr": "100 * sum(rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
           "legendFormat": "clean %",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"success\"}[5m])) / sum(rate(kinowo_worker_http_total{country=~\"$country\"}[5m]))",
+          "legendFormat": "{{outcome}}",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"

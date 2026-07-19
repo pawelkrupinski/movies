@@ -29,14 +29,39 @@ class CountingHttpFetchSpec extends AnyFlatSpec with Matchers {
     seen.toList shouldBe List(HttpOutcome.Success)
   }
 
-  it should "classify 429 distinctly from other 4xx" in {
-    val (fetch429, seen429) = recordingFetch(status(429))
-    a [HttpStatusException] should be thrownBy fetch429.get("u")
-    seen429.toList shouldBe List(HttpOutcome.Http429)
+  // The named codes each get their own series because they mean opposite things:
+  // a 404 is the RT/Metacritic slug probe working as designed, a 403 is a host
+  // refusing us. Aggregated as one `http_4xx` line, a rising 403 hides behind the
+  // 404 noise floor.
+  it should "give each probable 4xx code its own outcome" in {
+    val expected = Seq(
+      400 -> HttpOutcome.Http400,
+      401 -> HttpOutcome.Http401,
+      403 -> HttpOutcome.Http403,
+      404 -> HttpOutcome.Http404,
+      410 -> HttpOutcome.Http410,
+      429 -> HttpOutcome.Http429)
+    expected.foreach { case (code, outcome) =>
+      val (fetch, seen) = recordingFetch(status(code))
+      a [HttpStatusException] should be thrownBy fetch.get("u")
+      withClue(s"status $code: ") { seen.toList shouldBe List(outcome) }
+    }
+  }
 
-    val (fetch403, seen403) = recordingFetch(status(403))
-    a [HttpStatusException] should be thrownBy fetch403.get("u")
-    seen403.toList shouldBe List(HttpOutcome.Http4xx)
+  it should "fold an improbable 4xx into the residual bucket" in {
+    Seq(409, 422, 451).foreach { code =>
+      val (fetch, seen) = recordingFetch(status(code))
+      a [HttpStatusException] should be thrownBy fetch.get("u")
+      withClue(s"status $code: ") { seen.toList shouldBe List(HttpOutcome.Http4xx) }
+    }
+  }
+
+  // Seeding the Prometheus grid walks `all`; a label the classifier can emit but
+  // `all` omits would draw a Grafana line that pops in mid-chart.
+  it should "list every outcome it can classify in `all`" in {
+    val classified = Seq(400, 401, 403, 404, 410, 429, 409, 503)
+      .map(c => HttpOutcome.classify(new HttpStatusException(c, "GET", "u", None)))
+    classified.distinct.foreach(o => withClue(s"$o missing from all: ") { HttpOutcome.all should contain (o) })
   }
 
   it should "classify 5xx" in {
