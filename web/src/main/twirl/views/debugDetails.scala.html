@@ -1,7 +1,7 @@
 @import models.{Cinema, CinemaShowing, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb, Filmweb}
 @import services.movies.TitleNormalizer
 @import java.time.format.DateTimeFormatter
-@import java.time.{Duration, Instant, ZoneOffset}
+@import java.time.{Instant, ZoneOffset}
 @import services.attempts.{AttemptOutcome, SourceAttemptStatus}
 @(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
@@ -137,11 +137,7 @@
      failed fetch plus a multi-day backoff is why a film can sit rating-less
      without anything looking broken. --*@
 @stamp(i: Instant) = @{
-  val ago = Duration.between(i, Instant.now())
-  val rel = if(ago.toMinutes < 60) { s"${ago.toMinutes}m ago" }
-            else if(ago.toHours < 48) { s"${ago.toHours}h ago" }
-            else { s"${ago.toDays}d ago" }
-  s"${DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneOffset.UTC).format(i)} ($rel)"
+  s"${DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneOffset.UTC).format(i)} (${tools.RelativeTime.of(i)})"
 }
 
 <h4 class="enrichment-heading">Enrichment attempts</h4>
