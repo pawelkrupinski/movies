@@ -1,13 +1,12 @@
 package services.cinemas.uk
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -43,28 +42,53 @@ class FlicksClient(
   override val cinema: Cinema,
   daysAhead:  Int       = 6,
   today:      LocalDate = LocalDate.now(ZoneId.of("Europe/London"))
-) extends CinemaScraper {
+) extends ChunkedCinemaScraper {
 
   import FlicksClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/cinema/$cinemaSlug/")
 
-  def fetch(): Seq[CinemaMovie] = {
-    val dates = (0 to daysAhead).map(today.plusDays(_))
+  // Each of the venue's ~7 days is one chunk, run as its own `ScrapeChunk` task
+  // (see ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the
+  // task queue and the shared Flicks pace gate instead of bursting from a single
+  // task that parks a worker thread for ~7 back-to-back AJAX calls. The in-process
+  // `fetch()` the trait composes (planChunks → fetchChunk → reduceChunks) is used
+  // only by the deterministic fixture harness + unit tests, where every day answers.
 
-    // One sessions fragment per day, in parallel + tolerantly: a day whose
-    // request fails or won't parse contributes nothing rather than failing the
-    // whole venue (Flicks serves an empty fragment for days with no programme).
-    val byDate = ParallelDetailFetch.keyed(
-      "flicks-sessions", dates, 1.minute, maxConcurrent = 2
-    )(d => sessionsUrl(cinemaSlug, d)) { url =>
-      Try(http.get(url, AjaxHeaders)).toOption.toSeq.flatMap(html => parseDayForUrl(html, url))
-    }
-    val slots = dates.flatMap(d => byDate.getOrElse(d, Seq.empty))
+  /** One chunk key per day, today .. today+daysAhead. */
+  def planChunks(): Seq[String] = (0 to daysAhead).map(today.plusDays(_).toString)
 
-    // One row per film (grouped by its stable `/movie/<slug>`), showtimes across
-    // all days merged, deduped by (time, booking) and time-ordered.
+  /** Fetch + parse ONE day's sessions fragment into that day's films. The fetch
+   *  THROWS on failure so ONLY that day's chunk task reschedules (the per-day
+   *  retry); the other days are unaffected. A day that ANSWERS with an empty
+   *  fragment (no programme) is a valid empty result, not a failure. */
+  def fetchChunk(dateKey: String): Seq[CinemaMovie] = {
+    val date = LocalDate.parse(dateKey)
+    moviesFor(parseDay(http.get(sessionsUrl(cinemaSlug, date), AjaxHeaders), date))
+  }
+
+  /** Merge every day's films into the venue's listing: one row per film (grouped
+   *  by its stable `/movie/<slug>` `filmUrl`), showtimes unioned, deduped by
+   *  (time, booking) and time-ordered — the same grouping the monolithic scrape
+   *  used, so `reduceChunks ∘ fetchChunk ∘ planChunks` equals the old `fetch()`.
+   *  Overrides the identity default only to keep the exact (time, booking) dedup
+   *  key and the by-title final ordering. */
+  override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
+    chunks.toSeq.sortBy(_._1).flatMap(_._2)
+      .groupBy(m => m.filmUrl.getOrElse(m.movie.title))
+      .toSeq.sortBy(_._1)
+      .flatMap { case (_, group) =>
+        val showtimes = group.flatMap(_.showtimes)
+          .distinctBy(s => (s.dateTime, s.bookingUrl))
+          .sortBy(_.dateTime)
+        if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
+      }
+      .sortBy(_.movie.title)
+
+  /** Build one film row per stable `/movie/<slug>` from a day's session slots,
+   *  showtimes deduped by (time, booking) and time-ordered. */
+  private def moviesFor(slots: Seq[RawFlicksSlot]): Seq[CinemaMovie] =
     slots.groupBy(_.slug).toSeq.flatMap { case (_, group) =>
       val showtimes = group
         .map(s => Showtime(s.dateTime, s.booking, None, s.format))
@@ -85,11 +109,7 @@ class FlicksClient(
           externalIds = head.contentId.map("flicks" -> _).toMap
         ))
       }
-    }.sortBy(_.movie.title)
-  }
-
-  private def parseDayForUrl(html: String, url: String): Seq[RawFlicksSlot] =
-    dateOf(url).map(d => Try(parseDay(html, d)).getOrElse(Seq.empty)).getOrElse(Seq.empty)
+    }
 }
 
 object FlicksClient {
@@ -106,7 +126,6 @@ object FlicksClient {
 
   private val SlugPat    = """/movie/([^/?#]+)""".r
   private val DigitsPat  = """(\d+)""".r
-  private val DatePat    = """(\d{4}-\d{2}-\d{2})""".r
   private val OptTimePat = """(\d{1,2}):(\d{2}):\d{2}""".r
   private val AmPmPat    = """(?i)(\d{1,2}):(\d{2})\s*(am|pm)""".r
   private val ContentId  = """"content_id"\s*:\s*"(\d+)"""".r
@@ -181,7 +200,4 @@ object FlicksClient {
       val hour   = if (pm) hour12 + 12 else hour12
       Try(LocalTime.of(hour, minute)).toOption
     }
-
-  private def dateOf(url: String): Option[LocalDate] =
-    DatePat.findFirstIn(url).flatMap(s => Try(LocalDate.parse(s)).toOption)
 }

@@ -50,12 +50,24 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     slots.flatMap(_.format).toSet should contain("IMAX")
   }
 
-  // ── fetch() through the real sessions AJAX URL (fixture-replayed) ─────────
+  // ── chunked scrape: one chunk per day, one AJAX call each ─────────────────
+  private def client(daysAhead: Int) = new FlicksClient(
+    new FakeHttpFetch("flicks"), "odeon-cinema-norwich", OdeonNorwich,
+    daysAhead = daysAhead, today = LocalDate.of(2026, 7, 11))
+
+  "planChunks" should "enumerate one day key per day in the window" in {
+    client(daysAhead = 2).planChunks() shouldBe Seq("2026-07-11", "2026-07-12", "2026-07-13")
+  }
+
+  "fetchChunk" should "fetch + parse a single day's sessions fragment into films" in {
+    val movies = client(daysAhead = 0).fetchChunk("2026-07-11")
+    movies.map(_.movie.title) should contain("Minions & Monsters")
+    movies.map(_.filmUrl).flatten should contain(s"${FlicksClient.BaseUrl}/movie/minions-3/")
+  }
+
+  // ── fetch() (trait-composed planChunks → fetchChunk → reduceChunks) ───────
   "fetch" should "assemble films for the venue via the sessions endpoint" in {
-    val client = new FlicksClient(
-      new FakeHttpFetch("flicks"), "odeon-cinema-norwich", OdeonNorwich,
-      daysAhead = 0, today = LocalDate.of(2026, 7, 11))
-    val movies = client.fetch()
+    val movies = client(daysAhead = 0).fetch()
 
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)
