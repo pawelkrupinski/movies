@@ -90,4 +90,37 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     clock.advance(java.time.Duration.ofHours(2)) // now 25h old
     store.get("k") shouldBe None
   }
+
+  // The whole point of `forget`: after it, the next call must genuinely
+  // re-resolve. Clearing only the durable store would leave the stale value in
+  // the Caffeine layer in front of it, and the caller would never notice.
+  "forget" should "drop the memoised value from BOTH layers so the next call re-resolves" in {
+    val store = new InMemoryResolutionStore
+    val cache = new WriteThroughResolutionCache(store)
+    var resolves = 0
+    def resolveTo(v: String) = cache.getOrResolve("mc|theodyssey|odyseja|2026") { resolves += 1; Some(v) }
+
+    resolveTo("https://www.metacritic.com/movie/the-odyssey") shouldBe
+      Some("https://www.metacritic.com/movie/the-odyssey")
+    resolveTo("ignored — served from cache") shouldBe
+      Some("https://www.metacritic.com/movie/the-odyssey")
+    resolves shouldBe 1
+
+    cache.forget("Odyseja")
+
+    resolveTo("https://www.metacritic.com/movie/the-odyssey-2026") shouldBe
+      Some("https://www.metacritic.com/movie/the-odyssey-2026")
+    resolves shouldBe 2
+    store.get("mc|theodyssey|odyseja|2026") shouldBe
+      Some("https://www.metacritic.com/movie/the-odyssey-2026")
+  }
+
+  it should "leave other films' entries alone" in {
+    val cache = new WriteThroughResolutionCache(new InMemoryResolutionStore)
+    cache.getOrResolve("mc|thenorth|polnoc|2026")(Some("north")) shouldBe Some("north")
+    cache.forget("Odyseja")
+    var resolved = false
+    cache.getOrResolve("mc|thenorth|polnoc|2026") { resolved = true; Some("other") } shouldBe Some("north")
+    resolved shouldBe false
+  }
 }

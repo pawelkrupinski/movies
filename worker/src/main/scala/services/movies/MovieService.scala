@@ -80,6 +80,12 @@ class MovieService(
   // so the scores come back. Default no-op; production passes the shared
   // `RatingEnqueuer.enqueueDueFor(..., force = true)`.
   forceRatingRefresh: (CacheKey, MovieRecord) => Unit = (_, _) => (),
+  // Drop every memoised per-source resolution for a title (the `resolve_*`
+  // stores). The forced re-enrich calls this: `scrapedOnly` clears the row's
+  // ids/URLs, but without this the re-resolve REPLAYS those caches instead of
+  // re-probing, so a wrong answer returns immediately and survives the full 24h
+  // TTL — prod, "Odyseja" re-resolving to the memoised wrong Metacritic URL.
+  forgetResolutions: String => Unit = _ => (),
   // Fallback id-crosswalk resolvers, tried in `resolveTmdbId` ONLY after TMDB
   // title/director search AND `/find`-by-imdbId all miss on a tmdbId-less row.
   // Both turn the row's known imdbId into the EXACT tmdbId (Trakt's id-keyed
@@ -334,7 +340,17 @@ class MovieService(
     // to the cinema-reported year/titles instead of a stale resolved year that would
     // re-confirm the same wrong film (a self-locked row — e.g. "Plenerowe Pałacowe:
     // Parasite" stuck at the 1982 film under key …|1982 while the cinema reports 2019).
-    val key = if (force) resetToScrapedData(cache.keyOf(title, year)) else cache.keyOf(title, year)
+    val key = if (force) {
+      val rawKey = cache.keyOf(title, year)
+      // BEFORE the reset, and unconditionally on force — not inside
+      // `resetToScrapedData`, which no-ops when no row is cached yet. A stale
+      // memoised resolution outlives the row, so an operator forcing a re-enrich
+      // of an evicted/cold row would otherwise still replay it. One call covers
+      // the re-keyed form too: `rekey` requires a shared normalised cleanTitle,
+      // which is exactly what the resolution keys match on.
+      forgetResolutions(rawKey.cleanTitle)
+      resetToScrapedData(rawKey)
+    } else cache.keyOf(title, year)
     // Fall back to the cached row's accumulated hints when the caller brings
     // none — the operator `/debug` re-enrich enqueues only (title, year), so
     // without this its `directorWalk` would never fire (the inline operator

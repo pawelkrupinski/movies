@@ -173,6 +173,35 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     record.imdbId shouldBe Some("tt0088763")     // the ids the rating sources gate + key on
   }
 
+  // Without this the forced re-enrich is far less fresh than it looks: it clears
+  // the row's ids/URLs and then RE-DERIVES them from the memoised `resolve_*`
+  // answers, so a wrong resolution returns immediately and survives the whole 24h
+  // TTL. Prod: "Odyseja" kept re-resolving to the memoised Metacritic URL of a
+  // different film until the entry expired.
+  it should "forget the film's memoised resolutions, so the re-resolve re-probes instead of replaying" in {
+    val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val forgotten = scala.collection.mutable.ListBuffer.empty[String]
+    val service   = new MovieService(cache, new InProcessEventBus(), tmdb,
+      forgetResolutions = title => { forgotten += title; () })
+
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
+
+    forgotten shouldBe Seq("Powrót do przyszłości")
+  }
+
+  it should "NOT forget resolutions on a normal (unforced) resolve — the cache is there to be used" in {
+    val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val forgotten = scala.collection.mutable.ListBuffer.empty[String]
+    val service   = new MovieService(cache, new InProcessEventBus(), tmdb,
+      forgetResolutions = title => { forgotten += title; () })
+
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = false) shouldBe true
+
+    forgotten shouldBe empty
+  }
+
   // The resolution reports back the row RE-READ from the cache (it carries the
   // strays `settleResolved` folded in, which the freshly-built record doesn't).
   // That re-read must never be LESS resolved than what was just written: the whole

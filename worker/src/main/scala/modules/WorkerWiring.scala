@@ -471,6 +471,15 @@ class WorkerWiring(
   lazy val imdbRatings = new ImdbRatings(movieCache, imdbClient, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.ImdbRating),
     enrichmentLanguage = country.language)
   lazy val imdbIdCache: ResolutionCache = resolutionCache("resolve_imdb")
+  // Named (not inline) so the forced re-enrich can reach every one of them to
+  // forget a film's memoised resolutions — and so each is ONE instance rather
+  // than a fresh Caffeine per call site.
+  lazy val rtLinkCache: ResolutionCache      = resolutionCache("resolve_rt")
+  lazy val mcLinkCache: ResolutionCache      = resolutionCache("resolve_mc")
+  lazy val filmwebLinkCache: ResolutionCache = resolutionCache("resolve_filmweb")
+  /** Every per-source resolution cache — what a forced re-enrich clears. */
+  lazy val resolutionCaches: Seq[ResolutionCache] =
+    Seq(tmdbIdCache, imdbIdCache, rtLinkCache, mcLinkCache, filmwebLinkCache)
   lazy val wikidataClient = new WikidataClient(httoFetch)
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
@@ -480,11 +489,11 @@ class WorkerWiring(
     omdb = Env.get("OMDB_API_KEY").map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
     cinemeta = Some(new CinemetaClient(httoFetch)))
-  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, resolutionCache("resolve_rt"),
+  lazy val rottenTomatoesRatings = new RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient, rtLinkCache,
     cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating))
-  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, resolutionCache("resolve_mc"),
+  lazy val metascoreRatings = new MetascoreRatings(movieCache, tmdbClient, metacriticClient, mcLinkCache,
     cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating))
-  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, resolutionCache("resolve_filmweb"),
+  lazy val filmwebRatings = new FilmwebRatings(movieCache, tmdbClient, filmwebClient, filmwebLinkCache,
     onImdbIdMissing = (title, year, searchTitle) => eventBus.publish(ImdbIdMissing(title, year, searchTitle)),
     cadenceRecorder = BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.FilmwebRating))
   // OMDb IDENTIFIER backfill — feature-gated by the OMDB_API_KEY secret. `Some`
@@ -531,6 +540,7 @@ class WorkerWiring(
     // A (re)resolve forces every rating source due again — heals the scores a forced
     // re-resolve strips, which the cadence would otherwise keep from re-fetching.
     forceRatingRefresh = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now(), force = true); () },
+    forgetResolutions = cleanTitle => resolutionCaches.foreach(_.forget(cleanTitle)),
     traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same WikidataClient ImdbIdResolver uses — lets a tmdbId-less row with a
     // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.
