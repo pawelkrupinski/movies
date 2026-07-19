@@ -1,7 +1,7 @@
 @import models.{Cinema, CinemaShowing, MovieRecord, Showtime, Source, SourceData, Tmdb, Imdb, Filmweb}
 @import services.movies.TitleNormalizer
 @import java.time.format.DateTimeFormatter
-@import java.time.{Duration, Instant, ZoneOffset}
+@import java.time.{Instant, ZoneOffset}
 @import services.attempts.{AttemptOutcome, SourceAttemptStatus}
 @(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
@@ -131,35 +131,13 @@
   }
 }
 
-@if(e.data.isEmpty) {
-  <em class="miss">No source data yet for this row.</em>
-} else {
-  <div class="cinema-list">
-    @for((source, slot) <- e.cinemaSlots.sortBy { case (s, sd) => (Source.priorityOf(s), sd.title.getOrElse("")) }) {
-      @Source.cinemaOf(source).map { cinema =>
-        @perSourceSlot(
-          Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"),
-          source,
-          cinemaUrls.get(cinema.displayName))
-      }
-    }
-    @perSourceSlot("TMDB", Tmdb)
-    @perSourceSlot("IMDB", Imdb)
-    @perSourceSlot("Filmweb", Filmweb, e.filmwebUrl)
-  </div>
-}
-
 
 @*-- Per-source enrichment log: what each rating source's LAST fetch actually did,
      and when the adaptive cadence will let it run again. The pair matters: a
      failed fetch plus a multi-day backoff is why a film can sit rating-less
      without anything looking broken. --*@
 @stamp(i: Instant) = @{
-  val ago = Duration.between(i, Instant.now())
-  val rel = if(ago.toMinutes < 60) { s"${ago.toMinutes}m ago" }
-            else if(ago.toHours < 48) { s"${ago.toHours}h ago" }
-            else { s"${ago.toDays}d ago" }
-  s"${DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneOffset.UTC).format(i)} ($rel)"
+  s"${DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneOffset.UTC).format(i)} (${tools.RelativeTime.of(i)})"
 }
 
 <h4 class="enrichment-heading">Enrichment attempts</h4>
@@ -192,4 +170,23 @@
     }
     </tbody>
   </table>
+}
+
+
+@if(e.data.isEmpty) {
+  <em class="miss">No source data yet for this row.</em>
+} else {
+  <div class="cinema-list">
+    @for((source, slot) <- e.cinemaSlots.sortBy { case (s, sd) => (Source.priorityOf(s), sd.title.getOrElse("")) }) {
+      @Source.cinemaOf(source).map { cinema =>
+        @perSourceSlot(
+          Cinema.cityOf(cinema).fold(cinema.displayName)(city => s"${cinema.displayName} · $city"),
+          source,
+          cinemaUrls.get(cinema.displayName))
+      }
+    }
+    @perSourceSlot("TMDB", Tmdb)
+    @perSourceSlot("IMDB", Imdb)
+    @perSourceSlot("Filmweb", Filmweb, e.filmwebUrl)
+  </div>
 }
