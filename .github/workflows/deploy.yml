@@ -89,21 +89,20 @@ jobs:
                       toml: fly.worker.de.toml
                       bin: worker
                       artifact: stage-worker
-        # Serialize deploys PER TIER (all web apps in one lane, all workers in
-        # another) rather than per app. Per-app groups let every web app restart
-        # at the same moment, so a shared dependency that is merely SLOW takes
-        # the whole fleet down at once instead of one app: on 2026-07-18 all
-        # three web apps rolled simultaneously into an overloaded Mongo, none
-        # finished its boot probe inside Fly's health-check window, and every
-        # machine crash-looped. One lane per tier means the first app's failure
-        # is visible before the next one restarts, and at most one app is
-        # mid-restart when a dependency goes bad. Web and workers still deploy
-        # in parallel with each other — they don't share a failure mode.
-        # cancel-in-progress is false — a queued deploy still runs once the
-        # active one finishes, then the guard below decides whether to ship it.
-        concurrency:
-            group: fly-deploy-${{ matrix.bin }}
-            cancel-in-progress: false
+        # Every leg deploys in PARALLEL — no per-tier concurrency group. A group
+        # keyed on the tier (fly-deploy-web / fly-deploy-worker) looks like it
+        # serializes a tier, but GitHub keeps only ONE running + ONE pending job
+        # per group, so with 3 apps per tier (PL/UK/DE) the third is CANCELLED,
+        # not queued — one app silently missed every deploy (kinowo-worker-de and
+        # a web leg were dropped for days). The group was added after the
+        # 2026-07-18 Mongo thundering-herd (all web apps restarting into an
+        # overloaded Mongo, failing Fly's boot health-check, crash-looping), but
+        # the SAME commit (6915b3538) fixed that at the root: MongoConnection now
+        # starts DEGRADED and reconnects in the background instead of blocking
+        # boot on Mongo, so a simultaneous restart into a slow Mongo no longer
+        # crash-loops. If a tier ever outgrows parallel restarts, stagger it with
+        # `strategy.max-parallel` on a per-tier job — never a shared concurrency
+        # group, which caps at one pending and drops the rest. (DeployParallelismConfigSpec)
         steps:
             - uses: actions/checkout@v5
               with:
