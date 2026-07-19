@@ -107,6 +107,20 @@ class CitiesTest {
         assertEquals("poznan", Cities.DEFAULT.slug)
     }
 
+    // ── countryOf (deep-link → right deployment) ──────────────────
+
+    @Test
+    fun countryOfResolvesEachCitysCountry() {
+        assertEquals("pl", Cities.all.countryOf("poznan"))
+        assertEquals("uk", Cities.all.countryOf("london"))
+    }
+
+    @Test
+    fun countryOfIsNullForUnknownCity() {
+        assertNull(Cities.all.countryOf("berlin"))   // DE arrives via the live catalog, not the fallback
+        assertNull(Cities.all.countryOf("nope"))
+    }
+
     @Test
     fun listsAllFortyOnePolishCitiesInOrder() {
         assertEquals(

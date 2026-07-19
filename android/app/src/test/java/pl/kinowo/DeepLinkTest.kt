@@ -84,6 +84,20 @@ class DeepLinkTest {
         assertNull(DeepLink.parse("https://kinowo.fly.dev/poznan/film?title=")!!.filmTitle)
     }
 
+    @Test fun ukDeploymentHostOpensInApp() {
+        val dl = DeepLink.parse("https://showtimes-uk.fly.dev/london/film?title=Wicked")!!
+        assertEquals("london", dl.citySlug)
+        assertEquals("Wicked", dl.filmTitle)
+    }
+
+    @Test fun deDeploymentHostOpensInApp() {
+        // No German city ships in the compile-time `Cities.all` fallback (they
+        // arrive via the live catalog), so pass the slug set the ViewModel hands
+        // in at runtime (`countryCatalog.value.cities`) — as `handleDeepLink` does.
+        val dl = DeepLink.parse("https://showtimes-de.fly.dev/berlin/", setOf("berlin"))!!
+        assertEquals("berlin", dl.citySlug)
+    }
+
     // MARK: scalar filters
 
     @Test fun scalarFilters() {

@@ -42,6 +42,7 @@ import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
+import pl.kinowo.model.countryOf
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
 import pl.kinowo.model.FilmDetails
@@ -363,7 +364,19 @@ class KinowoViewModel(
      * confirm before navigating). Mirrors iOS `ContentView.consumeDeepLink`.
      */
     fun handleDeepLink(rawUrl: String) {
-        val link = DeepLink.parse(rawUrl) ?: return
+        // Parse against the LIVE catalog's slugs (like iOS `catalog.allSlugs`), so
+        // a city that ships only via `/api/catalog` — every German city — is
+        // recognised, not just the compile-time `Cities.all` roster.
+        val cities = countryCatalog.value.cities
+        val link = DeepLink.parse(rawUrl, cities.map { it.slug }.toSet()) ?: return
+        // A link on another country's deployment (showtimes-uk / showtimes-de) must
+        // switch the country too, or the linked city resolves against the wrong
+        // deployment's host. Unlike the manual switch (`setCountry`) we KEEP the
+        // linked city rather than clearing it. MainActivity recreates on the
+        // country change; the retained ViewModel keeps the coroutine + pending nav.
+        cities.countryOf(link.citySlug)?.let { code ->
+            if (code != selectedCountryCode.value) viewModelScope.launch { prefs.setCountryCode(code) }
+        }
         if (link.citySlug != selectedCity.value) setCity(link.citySlug)
         applyScalarFilters(link.filters)
         viewModelScope.launch {

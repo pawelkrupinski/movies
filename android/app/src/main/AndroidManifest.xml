@@ -32,15 +32,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kinowo" android:host="auth-done" />
             </intent-filter>
-            <!-- App Links: verified kinowo.fly.dev links (incl. the
+            <!-- App Links: verified links on every country deployment (incl. the
                  copy-to-clipboard filter links) open the app directly. Scoped to
                  /<city>/ and /<city>/film so OAuth (/auth/…) and API paths stay
-                 in the browser. autoVerify checks /.well-known/assetlinks.json. -->
+                 in the browser. autoVerify checks each host's
+                 /.well-known/assetlinks.json (all three serve the same file).
+                 Hosts mirror Country.all / DeepLink.WEB_HOSTS. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="kinowo.fly.dev" />
+                <data android:scheme="https" android:host="showtimes-uk.fly.dev" />
+                <data android:scheme="https" android:host="showtimes-de.fly.dev" />
                 <data android:pathPattern="/..*/" />
                 <data android:pathPattern="/..*/film" />
             </intent-filter>

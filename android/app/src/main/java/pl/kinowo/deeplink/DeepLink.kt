@@ -10,14 +10,17 @@ import java.net.URLDecoder
 /**
  * A parsed deep link into the app — the Android counterpart of iOS `DeepLink`.
  *
- * The grammar mirrors the web URLs one-for-one so the SAME `kinowo.fly.dev`
- * links open the app via App Links — including the copy-to-clipboard filter
- * links, whose query string decodes back into [DeepLinkFilters]. The `kinowo://`
- * custom scheme is accepted too (host = city slug).
+ * The grammar mirrors the web URLs one-for-one so the SAME links — on any
+ * country deployment (`kinowo.fly.dev`, `showtimes-uk.fly.dev`,
+ * `showtimes-de.fly.dev`) — open the app via App Links, including the
+ * copy-to-clipboard filter links, whose query string decodes back into
+ * [DeepLinkFilters]. The `kinowo://` custom scheme is accepted too (host = city
+ * slug).
  *
  *   https://kinowo.fly.dev/poznan/                       → city
  *   https://kinowo.fly.dev/poznan/?dim=2D&genre=Komedia   → city + filters
  *   https://kinowo.fly.dev/poznan/film?title=Oppenheimer  → city + film detail
+ *   https://showtimes-uk.fly.dev/london/                  → city (UK deployment)
  *   kinowo://poznan/                                      → city (custom scheme)
  *   kinowo://poznan/film?title=Oppenheimer                → film (custom scheme)
  *
@@ -32,7 +35,14 @@ data class DeepLink(
     val filters: DeepLinkFilters,
 ) {
     companion object {
-        private val WEB_HOSTS = setOf("kinowo.fly.dev", "www.kinowo.fly.dev")
+        // Every country deployment's host — a link on any of them opens the app.
+        // Mirrors the base-URL hosts of `Country.all` (PL/UK/DE); keep in sync
+        // when a country is added, alongside the AndroidManifest App Link filter.
+        private val WEB_HOSTS = setOf(
+            "kinowo.fly.dev", "www.kinowo.fly.dev",
+            "showtimes-uk.fly.dev",
+            "showtimes-de.fly.dev",
+        )
         /** Reserved custom-scheme host (the OAuth callback) — never a city. */
         private val RESERVED_SCHEME_HOSTS = setOf("auth-done")
 

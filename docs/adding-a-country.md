@@ -139,7 +139,38 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
   re-canonicalised the row and orphaned its showtimes until the next scrape
   (a 30-minute square wave on `kinowo_worker_showtimes`, 2026-07-18).
 
-## 6. Observability
+## 6. Deep links (mobile)
+
+The new `showtimes-<cc>.fly.dev` links should open the native apps — **Universal
+Links** on iOS, **App Links** on Android — not the browser. The AASA /
+`assetlinks.json` files are served identically on every deployment (same web
+binary, one app id `CQ4YC43YDM.dev.kinowo.Kinowo` / package `pl.kinowo`), so
+there is **no web change** — this is purely app-side. Add the new host in **four**
+places, mirroring the existing PL/UK/DE entries:
+
+1. **iOS entitlement** (`ios/Kinowo/Kinowo.entitlements`) — add
+   `applinks:showtimes-<cc>.fly.dev` (and a `webcredentials:` line to match).
+2. **iOS parser** (`ios/Kinowo/Models/DeepLink.swift`) — add the host to `webHosts`.
+3. **Android manifest** (`android/app/src/main/AndroidManifest.xml`) — add a
+   `<data android:scheme="https" android:host="showtimes-<cc>.fly.dev"/>` inside the
+   `autoVerify` App Link intent-filter.
+4. **Android parser** (`android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt`) —
+   add the host to `WEB_HOSTS`.
+
+Cross-country switching is automatic: both `handleDeepLink`s resolve the linked
+city's country from the live catalog (`countryOf`) and switch the deployment before
+loading, so a new country's cities — which arrive via `/api/catalog`, not the
+compile-time roster — just work once the seed/catalog includes them (phase 4
+regenerates the mobile catalog seeds).
+
+**Tests:** `DeepLinkTests`/`DeepLinkTest` (the host parses) + `CityTests`/`CitiesTest`
+(`countryOf`). The OS-level routing itself is only verifiable on a device/emulator
+(the app must be signed and the host's AASA/assetlinks reachable). iOS needs the
+**paid** Associated Domains entitlement (already wired); Android App Links
+additionally need the **Play App Signing** SHA-256 in `assetlinks.json` before a
+Play-installed build auto-verifies (see `web/src/main/resources/wellknown/README.md`).
+
+## 7. Observability
 
 `fly/grafana/victoria/scrape.yml` — add a `kinowo-worker-<cc>` target (its
 `kinowo_worker_*` series carry `country="<cc>"`) and a `showtimes-<cc>-web` target.
@@ -176,7 +207,7 @@ rules until 2026-07-18. `GrafanaCountryBlindAppMatcherSpec`
 `fly*.toml` files and fails CI if any `app=~"…"` matcher accepts one country's app
 of a role while rejecting another's, so this can't regress silently.
 
-## 7. Ship
+## 8. Ship
 
 Provision everything (phases 3–4) **before** merging, so the deploy legs have live
 targets. Merge to `main` → CI builds once and deploys every leg. Verify each new
