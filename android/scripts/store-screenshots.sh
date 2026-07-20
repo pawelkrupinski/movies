@@ -16,9 +16,10 @@
 # emulator per country in parallel (~countries× faster); EMULATORS=<k> caps that
 # (EMULATORS=1 = serial) for hosts that can't feed three emulators at once.
 #
-# When done it opens the shots in Preview (macOS). Env: EMULATORS=<k> parallel
-# emulator count · CLEAN_FILM="…" for a clean German detail (showtimes-de lags) ·
-# BUILD=1 force rebuild+install · AVD=<name> · NO_OPEN=1 skip the Preview.
+# When done it shuts down every emulator IT booted (a reused, already-running one
+# is left alone) and opens the shots in Preview (macOS). Env: EMULATORS=<k>
+# parallel emulator count · CLEAN_FILM="…" for a clean German detail (showtimes-de
+# lags) · BUILD=1 force rebuild+install · AVD=<name> · NO_OPEN=1 skip the Preview.
 #
 set -euo pipefail
 
@@ -32,6 +33,8 @@ AVD="${AVD:-kinowo_xl}"                         # Pixel 9 Pro XL 1344×2992 — 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LISTINGS="$REPO_ROOT/android/app/src/main/play/listings"
 NOISE="$(mktemp)"                               # adb / gradle / emulator chatter lands here
+BOOTED_EMULATORS=""                             # serials THIS run booted; shut down on exit
+MAIN_SHELL=1                                     # cleared in worker subshells so only the main shell shuts emulators down
 
 # ── clean output ──────────────────────────────────────────────────────────────
 say()  { printf '\033[36m▸\033[0m %s\n' "$*"; }
@@ -40,7 +43,7 @@ done_() { printf '\033[32m✓\033[0m\n'; }
 ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; [ -s "$NOISE" ] && tail -5 "$NOISE" >&2; exit 1; }
-cleanup() { rm -f "$NOISE"; }; trap cleanup EXIT
+cleanup() { [ -n "${MAIN_SHELL:-}" ] && stop_emulators; rm -f "$NOISE"; }; trap cleanup EXIT
 
 # Every device-touching call funnels through here, so honouring $SERIAL in one
 # place pins the WHOLE script to one emulator. Unset (the single-emulator paths)
@@ -55,6 +58,17 @@ type_() { adb shell input text "${1// /%s}" >>"$NOISE" 2>&1; }
 back() { adb shell input keyevent 4 >>"$NOISE" 2>&1; }
 snap() { adb exec-out screencap -p > "$1"; }
 naps() { command sleep "$1"; }
+
+# Ask every emulator this run booted (recorded in BOOTED_EMULATORS, by serial) to
+# exit cleanly. An emulator the developer already had running is never in that
+# list, so it survives — we only close what we opened. Called from the EXIT trap,
+# so it runs on a clean finish AND on a mid-run die().
+stop_emulators() {
+  local serial
+  for serial in ${BOOTED_EMULATORS:-}; do
+    SERIAL="$serial" adb emu kill >>"$NOISE" 2>&1 || true
+  done
+}
 
 COUNTRIES="pl uk de"                            # every country --all-top walks
 locale_country() { case "$1" in en-GB) echo uk;; pl-PL) echo pl;; de-DE) echo de;; *) echo "";; esac; }
@@ -126,6 +140,7 @@ ensure_emulator() {
     nohup "$EMU" -avd "$AVD" -no-snapshot-load -no-boot-anim -netdelay none -netspeed full >>"$NOISE" 2>&1 &
     local t=0
     until booted; do naps 3; t=$((t+3)); [ $t -gt 240 ] && die "emulator didn't finish booting"; done
+    BOOTED_EMULATORS="$(adb get-serialno 2>/dev/null | tr -d '\r')"   # so cleanup shuts it down
     done_
   fi
   adb shell wm size reset  >>"$NOISE" 2>&1 || true
@@ -453,7 +468,8 @@ boot_pool() { # $1 K
     "$ADB" start-server >>"$NOISE" 2>&1 || true
   done_
   for ((w = 0; w < k; w++)); do
-    port="$(pool_port "$w")"
+    port="$(pool_port "$w")"; serial="$(pool_serial "$w")"
+    BOOTED_EMULATORS="$BOOTED_EMULATORS $serial"   # record before waiting so a boot-wait die() still kills it
     step "booting $AVD :$port (read-only)"
     nohup "$EMU" -avd "$AVD" -read-only -port "$port" -no-snapshot-load -no-boot-anim -netdelay none -netspeed full >>"$NOISE" 2>&1 &
     naps 25                              # stagger so instances don't race the lock
@@ -561,7 +577,7 @@ cmd_all_top() { # $1 N — capture the top N cities of EVERY country, one emulat
   local pids=() logs=()
   for ((w = 0; w < k; w++)); do
     local log; log="$(mktemp)"; logs[$w]="$log"
-    ( SERIAL="$(pool_serial "$w")" NOISE="$(mktemp)" run_worker "$w" "$k" "$n" ) >"$log" 2>&1 &
+    ( MAIN_SHELL=; SERIAL="$(pool_serial "$w")" NOISE="$(mktemp)" run_worker "$w" "$k" "$n" ) >"$log" 2>&1 &
     pids[$w]="$!"
     say "worker $w → $(pool_serial "$w") → $(worker_slice "$COUNTRIES" "$k" "$w")"
   done

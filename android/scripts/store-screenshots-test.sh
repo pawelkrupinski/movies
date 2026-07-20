@@ -126,5 +126,23 @@ run_worker 0 1 2 </dev/null >/dev/null 2>&1 || true
 check "run_worker shoots all N cities (not just #1)" "CityOne:1 CityTwo:5" \
   "$(echo "$captured" | tr -s ' ' | sed 's/^ *//;s/ *$//')"
 
+# Cleanup closes ONLY the emulators this run booted, addressing each by its serial
+# via `adb emu kill` — a reused instance never enters BOOTED_EMULATORS, so a
+# developer's own emulator survives. Stub adb to record the SERIAL it targets; the
+# stub writes to its own file, unaffected by stop_emulators' stdout→NOISE redirect.
+_killcap="$(mktemp)"
+adb() { printf '%s: %s\n' "${SERIAL:-<none>}" "$*" >> "$_killcap"; }
+NOISE="$(mktemp)"
+BOOTED_EMULATORS="emulator-5554 emulator-5556"
+stop_emulators
+check "stop_emulators kills each booted serial" \
+  "emulator-5554: emu kill
+emulator-5556: emu kill" "$(cat "$_killcap")"
+: > "$_killcap"
+BOOTED_EMULATORS=""                               # nothing to kill → no adb call
+stop_emulators
+check "stop_emulators leaves reused emulators alone" "" "$(cat "$_killcap")"
+# Leave the list empty so the sourced script's EXIT trap kills nothing on test end.
+
 if [ "$fails" -eq 0 ]; then printf '\033[32m✓\033[0m all passed\n'; else printf '\033[31m✗\033[0m %s failed\n' "$fails"; fi
 exit $((fails > 0))
