@@ -45,6 +45,25 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     slept should contain (2000L)   // the gate paused ~Retry-After before the retry
   }
 
+  it should "honor a Retry-After longer than a minute (the default cap is 10min)" in {
+    // Flicks answers a 429 with Retry-After: 300-600s. The former 60s maxPause
+    // clamped that to 60s, so all 4 retries fell back inside the server's window
+    // and the venue-day was dropped. The default cap now honors the server's ask.
+    val (delegate, throttle, slept) = fixture()
+    delegate.queue(Tmdb, http429(Some(300.seconds)), () => "ok")
+    throttle.get(Tmdb) shouldBe "ok"
+    slept should contain (300000L)   // NOT clamped to 60000
+  }
+
+  it should "still cap an absurd Retry-After at the max pause" in {
+    // The cap is a guard against a hostile/fat-fingered Retry-After, not a routine
+    // limit — a 2h ask parks the host for the 10min ceiling, no longer.
+    val (delegate, throttle, slept) = fixture()
+    delegate.queue(Tmdb, http429(Some(2.hours)), () => "ok")
+    throttle.get(Tmdb) shouldBe "ok"
+    slept should contain (600000L)   // clamped to maxPause = 10min
+  }
+
   it should "pause a SUBSEQUENT call to the same host while its gate is active" in {
     val (delegate, throttle, slept) = fixture()
     delegate.queue(Tmdb, http429(Some(3.seconds)), () => "ok")

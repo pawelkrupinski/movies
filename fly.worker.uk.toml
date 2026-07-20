@@ -33,15 +33,17 @@ primary_region = 'arn'
   # Credit-throttle thresholds (ms of fly_instance_cpu_balance), same as kinowo-worker.
   KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
   KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
-  # Cinema-scrape freshness window. UK is the SLOW one (5h), not the fleet's 60min:
-  # the 843 Flicks venues each fan out one ScrapeChunk per advertised day of their
-  # full booking horizon (up to MaxHorizonDays=210, ~90-150 populated) — ~100k+ chunk
-  # tasks per cycle. Flicks is unpaced (no HostPolicies row), so unlike DE the binding
-  # constraint is queue DRAIN, not outbound 429s: the 4-worker pool needs ~260min to
-  # drain one cycle, so at 60min work enqueued ~4x faster than it drained and the task
-  # queue grew unboundedly (2026-07-20). 300min clears a sweep with headroom. See
-  # WorkerScrapeCadenceConfigSpec.
-  KINOWO_SCRAPE_FRESHNESS_MINUTES = '300'
+  # Cinema-scrape freshness window. UK is the SLOWEST in the fleet (7h), not the
+  # fleet's 60min: the 843 Flicks venues each fan out one ScrapeChunk per advertised
+  # day of their full booking horizon (up to MaxHorizonDays=210, ~90-150 populated)
+  # — ~100k requests per cycle onto ONE origin. Flicks is now PACED at 200ms
+  # (HostPolicies) to stop the 429s an unpaced fan-out drew, which serialises the
+  # sweep to ~333min — so like DE the pace and cadence are coupled: the pace sets
+  # the sweep length, this budget must exceed it, and WorkerScrapeCadenceConfigSpec
+  # locks the pair. 420min clears the ~333min paced sweep with headroom. (It was
+  # 300min while unpaced, drain-bound by the 4-worker pool; pacing is the new,
+  # slower bound.) Retune via KINOWO_FLICKS_PACE_MS + this value together.
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '420'
   # JVM sizing: Xms=Xmx=448m on the 1 GB box — the UK corpus is ~half the former
   # combined set that needed 480m, and 448 + ~290 MB non-heap ≈ 738 MB RSS leaves
   # ~220 MB free. All other flags (SerialGC, tightened caps, -UseTypeSpeculation +

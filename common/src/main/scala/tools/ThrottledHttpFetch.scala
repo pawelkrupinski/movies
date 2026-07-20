@@ -37,7 +37,13 @@ class ThrottledHttpFetch(
   delegate:     HttpFetch,
   maxAttempts:  Int            = 4,
   defaultPause: FiniteDuration = 5.seconds,
-  maxPause:     FiniteDuration = 60.seconds,
+  // The ceiling on how long a single 429 parks a host — a guard against a hostile
+  // or fat-fingered Retry-After pinning the fleet, NOT a routine cap. It sits above
+  // the slowest limiter we actually face: Flicks answers a 429 with Retry-After:
+  // 300-600s, and the old 60s clamp shrank that to 60s, so all `maxAttempts` retries
+  // fell back inside the server's window and the venue-day was dropped. 10min honors
+  // the server's full ask; hosts that send a small Retry-After (TMDB) are unaffected.
+  maxPause:     FiniteDuration = 10.minutes,
   jitterMillis: () => Long     = () => (scala.util.Random.nextDouble() * 250).toLong,
   now:          () => Instant  = () => Instant.now(),
   sleep:        Long => Unit   = Thread.sleep,

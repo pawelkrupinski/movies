@@ -120,6 +120,21 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     RateLimitedHttpFetch.configuredInterval(Unpaced) shouldBe None
   }
 
+  it should "pace Flicks (UK) so its 843-venue fan-out stops drawing 429s" in {
+    // 200ms (~5 req/s) serialises the UK sweep so the concurrent bursts that trip
+    // Flicks' limiter (Retry-After: 300-600s) never form. Coupled to the UK
+    // cadence; see the policy comment and WorkerScrapeCadenceConfigSpec.
+    RateLimitedHttpFetch.configuredInterval("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/") shouldBe Some(200.millis)
+  }
+
+  it should "let KINOWO_FLICKS_PACE_MS retune the Flicks pace without a restart" in {
+    val flicks = "https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/"
+    withProperty("KINOWO_FLICKS_PACE_MS", "350") {
+      RateLimitedHttpFetch.configuredInterval(flicks) shouldBe Some(350.millis)
+    }
+    RateLimitedHttpFetch.configuredInterval(flicks) shouldBe Some(200.millis)
+  }
+
   it should "let KINOWO_FILMSTARTS_PACE_MS retune the pace without a restart" in {
     // The point of the knob: Webedia publishes no rate limit, so the pace is
     // found empirically. Resolving per request means an /admin/config flip

@@ -65,17 +65,22 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     cadenceOf("fly.worker.toml") shouldBe Some("60")
   }
 
-  "the UK worker" should "scrape on a slow cadence its chunked full-horizon sweep can drain within" in {
-    // UK is even slower than DE (5h vs 3h) for a different reason. Its 843 Flicks
-    // venues each fan out one ScrapeChunk per advertised day of their full booking
-    // horizon (up to MaxHorizonDays=210, ~90-150 populated) — ~100k+ chunk tasks per
-    // cycle. Flicks is UNPACED (no HostPolicies row), so the DE-style pace invariant
-    // below doesn't bind here: the constraint is queue DRAIN, not 429s. The 4-worker
-    // pool needs ~260min to clear one cycle, so at the old 60min work enqueued ~4x
-    // faster than it drained and the task queue grew unboundedly (2026-07-20). 300min
-    // clears a sweep with headroom. Only real drain throughput could tighten this
-    // further, which a static test can't measure — so we lock the deployed value.
-    cadenceOf("fly.worker.uk.toml") shouldBe Some("300")
+  "the UK worker" should "scrape on a slow cadence its paced full-horizon sweep can drain within" in {
+    // UK is the fleet's slowest (7h vs DE's 3h). Its 843 Flicks venues each fan out
+    // one ScrapeChunk per advertised day of their full booking horizon (up to
+    // MaxHorizonDays=210, ~90-150 populated) — ~100k requests per cycle. Flicks is
+    // now PACED (200ms, HostPolicies) to stop the 429s an unpaced fan-out drew, so
+    // like DE the pace sets the sweep length (~333min) and the cadence must exceed
+    // it. 420min clears it with headroom. (It was 300min while unpaced and merely
+    // drain-bound by the 4-worker pool; the 200ms pace is the new, slower bound.)
+    cadenceOf("fly.worker.uk.toml") shouldBe Some("420")
+  }
+
+  it should "pace Flicks so the fan-out stops tripping its 429 limiter" in {
+    // The fact that changed: Flicks earned a HostPolicies pace row, coupling the
+    // cadence above to it exactly as DE's is to Filmstarts'. A dropped pace row
+    // would silently reopen the 429 bursts (panel-14) and the venue-day drops.
+    RateLimitedHttpFetch.configuredInterval("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/") should not be empty
   }
 
   "every worker toml" should "set the cadence explicitly rather than inheriting the code default" in {

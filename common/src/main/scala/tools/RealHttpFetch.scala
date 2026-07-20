@@ -374,6 +374,29 @@ object RealHttpFetch {
       minRequestInterval = Some(Duration.ofMillis(1000)),
       paceKnob           = Some("KINOWO_FILMSTARTS_PACE_MS"),
     ),
+
+    // Flicks (www.flicks.co.uk) — the UK's 843 venues, each fanning out one
+    // sessions request per advertised day of a months-long horizon (~100k requests
+    // per cycle) onto ONE origin. Like Filmstarts this was UNPACED, so the
+    // 4-worker pool's fan-out delivered those in bursts Flicks answered with 429 —
+    // panel-14 of kinowo-worker-diag showed a steady ~3-4% throttle spiking to
+    // ~100% (pace-report: "8 requests, 8 throttled, pace=unpaced"). Worse than
+    // Filmstarts', Flicks' limiter answers with Retry-After: 300-600s, so a burst
+    // costs whole venue-days: ThrottledHttpFetch's 4 retries all fell inside that
+    // window and the chunk was dropped (data loss + retry churn back onto the
+    // queue). The 429s were purely self-inflicted (no 403s → not a Fly-ASN block),
+    // so pacing the origin is the fix. 200ms (~5 req/s) is just under the ~6.4
+    // req/s the unpaced pool averaged, but — the point — it SERIALISES the fan-out
+    // so the concurrent bursts that trip the limiter never form. It lengthens the
+    // ~100k-request sweep to ~333min, so fly.worker.uk.toml's cadence moved to
+    // 420min in lockstep (the same pace↔cadence coupling DE has;
+    // WorkerScrapeCadenceConfigSpec locks both). KINOWO_FLICKS_PACE_MS retunes it
+    // live: if 200ms still throttles, step it down (and bump the cadence to match).
+    HostPolicy(
+      Set("flicks.co.uk"),
+      minRequestInterval = Some(Duration.ofMillis(200)),
+      paceKnob           = Some("KINOWO_FLICKS_PACE_MS"),
+    ),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
