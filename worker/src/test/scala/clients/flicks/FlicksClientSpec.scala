@@ -58,8 +58,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   /** A real Flicks programme page (Odeon Cinema Norwich, captured 2026-07-19).
    *  Carries 36 `data-date` day tabs, sparse (gap days omitted) and reaching to
    *  2026-12-13 (~5 months). Read directly (NOT via FakeHttpFetch's URL mapping)
-   *  so the fetch/fetchChunk tests below still find no programme page under
-   *  `flicks` and fall back to the fixed grid + the single recorded day. Source:
+   *  and fed to the discovery tests below. Source:
    *  https://www.flicks.co.uk/cinema/odeon-cinema-norwich/ */
   private def programmePage: String = {
     val src = Source.fromFile("test/resources/fixtures/flicks/odeon-cinema-norwich-programme.html")
@@ -76,17 +75,18 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     dates should contain noneOf (LocalDate.of(2026, 7, 27), LocalDate.of(2026, 7, 28))
   }
 
-  it should "return empty when no day tab is present, so the caller falls back to the grid" in {
+  it should "return empty when no day tab is present" in {
     FlicksClient.parseProgrammeDates("<html><body>no timetable here</body></html>") shouldBe empty
   }
+
+  private val NorwichProgrammeUrl = s"${FlicksClient.BaseUrl}/cinema/odeon-cinema-norwich/"
 
   "planChunks" should "discover the venue's advertised days far beyond the fixed 7-day grid" in {
     val client = new FlicksClient(
       new ScriptedByUrl(url =>
-        if (url.endsWith("/cinema/odeon-cinema-norwich/")) programmePage
+        if (url == NorwichProgrammeUrl) programmePage
         else throw new java.io.IOException("planChunks must not fetch per-day fragments")),
-      "odeon-cinema-norwich", OdeonNorwich,
-      daysAhead = 6, today = LocalDate.of(2026, 7, 19))
+      "odeon-cinema-norwich", OdeonNorwich, today = LocalDate.of(2026, 7, 19))
 
     val days = client.planChunks()
     days.size shouldBe 36
@@ -101,8 +101,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val capStr = today.plusDays(FlicksClient.MaxHorizonDays.toLong).toString  // 2026-11-27
     val client = new FlicksClient(
       new ScriptedByUrl(_ => programmePage),
-      "odeon-cinema-norwich", OdeonNorwich,
-      daysAhead = 6, today = today)
+      "odeon-cinema-norwich", OdeonNorwich, today = today)
 
     val days = client.planChunks()
     all(days) should be <= capStr          // ISO dates order lexicographically
@@ -111,34 +110,45 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     days should not contain "2026-12-13"
   }
 
-  it should "fall back to the fixed today..today+daysAhead grid when the programme page can't be fetched" in {
+  it should "THROW (failing the scrape) when the programme page can't be fetched" in {
+    // No fixed-grid fallback: an index-page failure fails the whole scrape, so
+    // recordCinemaScrape keeps last-known data rather than narrowing to a guess.
     val pageDown = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 500"))
-    new FlicksClient(pageDown, "odeon-cinema-norwich", OdeonNorwich,
-      daysAhead = 6, today = LocalDate.of(2026, 7, 11)).planChunks() shouldBe
-      (0 to 6).map(d => LocalDate.of(2026, 7, 11).plusDays(d.toLong).toString)
+    a[java.io.IOException] should be thrownBy
+      new FlicksClient(pageDown, "odeon-cinema-norwich", OdeonNorwich,
+        today = LocalDate.of(2026, 7, 11)).planChunks()
+  }
+
+  it should "THROW when the programme page lists no in-horizon day tab" in {
+    val noTabs = new ScriptedByUrl(_ => "<html><body>no timetable here</body></html>")
+    an[IllegalStateException] should be thrownBy
+      new FlicksClient(noTabs, "odeon-cinema-norwich", OdeonNorwich,
+        today = LocalDate.of(2026, 7, 11)).planChunks()
   }
 
   // ── chunked scrape: one chunk per day, one AJAX call each ─────────────────
-  // fetch()/fetchChunk here use FakeHttpFetch, which has no programme-page
-  // fixture (stored off its URL mapping, see `programmePage`), so planChunks
-  // falls back to the grid and only the single recorded day (2026-07-11) is hit.
-  private def client(daysAhead: Int) = new FlicksClient(
-    new FakeHttpFetch("flicks"), "odeon-cinema-norwich", OdeonNorwich,
-    daysAhead = daysAhead, today = LocalDate.of(2026, 7, 11))
+  // fetchChunk hits only the per-day sessions URL (the recorded 2026-07-11
+  // fragment); fetch() also needs a programme page, so it runs over a scripted
+  // page that lists exactly that one recorded day, with sessions delegated to
+  // the FakeHttpFetch corpus.
+  private val fake = new FakeHttpFetch("flicks")
 
-  "planChunks" should "fall back to the day grid when the page is unmapped (FakeHttpFetch)" in {
-    client(daysAhead = 2).planChunks() shouldBe Seq("2026-07-11", "2026-07-12", "2026-07-13")
-  }
+  private def programmeListing(days: String*) = new ScriptedByUrl(url =>
+    if (url == NorwichProgrammeUrl)
+      days.map(d => s"""<div class="timetable__day" data-date="$d"></div>""").mkString("\n")
+    else fake.get(url))
 
   "fetchChunk" should "fetch + parse a single day's sessions fragment into films" in {
-    val movies = client(daysAhead = 0).fetchChunk("2026-07-11")
+    val movies = new FlicksClient(fake, "odeon-cinema-norwich", OdeonNorwich,
+      today = LocalDate.of(2026, 7, 11)).fetchChunk("2026-07-11")
     movies.map(_.movie.title) should contain("Minions & Monsters")
     movies.map(_.filmUrl).flatten should contain(s"${FlicksClient.BaseUrl}/movie/minions-3/")
   }
 
   // ── fetch() (trait-composed planChunks → fetchChunk → reduceChunks) ───────
-  "fetch" should "assemble films for the venue via the sessions endpoint" in {
-    val movies = client(daysAhead = 0).fetch()
+  "fetch" should "assemble films for the venue via the programme + sessions endpoints" in {
+    val movies = new FlicksClient(programmeListing("2026-07-11"), "odeon-cinema-norwich",
+      OdeonNorwich, today = LocalDate.of(2026, 7, 11)).fetch()
 
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)

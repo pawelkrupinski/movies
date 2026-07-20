@@ -40,14 +40,15 @@ class FlicksClient(
   http:       HttpFetch,
   cinemaSlug: String,
   override val cinema: Cinema,
-  daysAhead:  Int       = 6,
   today:      LocalDate = LocalDate.now(ZoneId.of("Europe/London"))
 ) extends ChunkedCinemaScraper {
 
   import FlicksClient._
 
+  private val programmeUrl = s"$BaseUrl/cinema/$cinemaSlug/"
+
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(s"$BaseUrl/cinema/$cinemaSlug/")
+  override def sourceUrl: Option[String] = Some(programmeUrl)
 
   // Each populated day is one chunk, run as its own `ScrapeChunk` task (see
   // ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the task
@@ -56,36 +57,30 @@ class FlicksClient(
   // in-process `fetch()` the trait composes (planChunks → fetchChunk →
   // reduceChunks) is used only by the deterministic fixture harness + unit tests.
 
-  /** The days to scrape. The venue programme page (`sourceUrl`) renders one
-   *  `<div class="timetable__day" data-date="YYYY-MM-DD">` tab per day it has a
-   *  programme — the exact days with sessions, gap days excluded (a date absent
-   *  from the tab list returns an empty sessions fragment). The list is sparse
-   *  and reaches months out (Flicks advertises a venue's whole booking horizon,
-   *  not a fixed window), so reading it once lifts the scrape from the old fixed
-   *  7-day grid to the site's full advertised horizon WITHOUT firing a request
-   *  per empty day: the page names precisely which days to fetch.
+  /** The days to scrape, read off the venue programme page's
+   *  `<div class="timetable__day" data-date="YYYY-MM-DD">` day tabs — the exact
+   *  days with sessions, gap days excluded (a date absent from the tab list
+   *  returns an empty sessions fragment). The list is sparse and reaches months
+   *  out (Flicks advertises a venue's whole booking horizon, not a fixed window),
+   *  so reading it once gives the site's full advertised horizon WITHOUT firing a
+   *  request per empty day: the page names precisely which days to fetch. Bounded
+   *  to `[today, today+MaxHorizonDays]` so a stray attribute date can't balloon
+   *  the per-venue chunk fan-out.
    *
-   *  Falls back to the old `today .. today+daysAhead` grid when the programme
-   *  page can't be fetched or carries no parseable date list, so a page outage or
-   *  a markup change degrades to the prior 7-day behaviour rather than dropping
-   *  the venue. Bounded to `[today, today+MaxHorizonDays]` so a stray attribute
-   *  date can't balloon the per-venue chunk fan-out. */
-  def planChunks(): Seq[String] =
-    discoverProgrammeDates().getOrElse((0 to daysAhead).map(today.plusDays(_))).map(_.toString)
-
-  /** The days named by the venue programme page's `data-date` tabs, bounded to
-   *  the horizon, or `None` when the page is unreachable / carries no usable date
-   *  list (→ the caller's grid fallback). The page fetch's failure is swallowed
-   *  here on purpose: unlike a per-day chunk (whose throw reschedules just that
-   *  day), a failed index page should not fail the whole venue when a safe
-   *  default exists. */
-  private def discoverProgrammeDates(): Option[Seq[LocalDate]] =
-    sourceUrl.flatMap { url =>
-      Try(http.get(url)).toOption
-        .map(parseProgrammeDates)
-        .map(_.filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong))))
-        .filter(_.nonEmpty)
-    }
+   *  The programme page is the ONLY source of days — there is no fixed-grid
+   *  fallback. When the page can't be fetched (its `http.get` throws, propagating
+   *  here) or carries no in-horizon day tab, this throws: an index-page failure
+   *  fails the whole scrape (recorded as a normal scrape outcome by the planner),
+   *  which keeps the venue's last-known listing rather than silently narrowing it
+   *  to a guessed 7-day window that would drop every advertised far-out day. */
+  def planChunks(): Seq[String] = {
+    val dates = parseProgrammeDates(http.get(programmeUrl))
+      .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
+    if (dates.isEmpty)
+      throw new IllegalStateException(
+        s"Flicks programme page for '$cinemaSlug' listed no day tabs within the horizon")
+    dates.map(_.toString)
+  }
 
   /** Fetch + parse ONE day's sessions fragment into that day's films. The fetch
    *  THROWS on failure so ONLY that day's chunk task reschedules (the per-day
