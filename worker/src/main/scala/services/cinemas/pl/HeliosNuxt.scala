@@ -102,11 +102,21 @@ object HeliosNuxt {
   // POLSKA PREMIERA") would partial-strip (only the trailing version word drops),
   // leaving a worse title — so a "- 2D/DUB - Pokaz specjalny"-style label after
   // the format is left in place rather than risk that.
+  // Collapse the irregular internal whitespace Helios bakes into some raw titles
+  // ("Odyseja -  Salon Kultury Helios" — a DOUBLED space after the dash) to a
+  // single space FIRST: the "helios" strand/format tags are single-space literals
+  // ("- Salon Kultury Helios$"), so a doubled space slipped every one of them and
+  // the whole chain served the decorated title as its own row instead of merging
+  // onto the bare film. A double space is never meaningful in a film title, so
+  // this loses nothing.
   def cleanTitle(title: String): String = {
-    val cleaned = services.movies.TitleNormalizer.cinemaClean("helios", title)
+    val collapsed = InteriorWhitespace.replaceAllIn(title, " ")
+    val cleaned   = services.movies.TitleNormalizer.cinemaClean("helios", collapsed)
     if (FormatTail.findFirstMatchIn(cleaned).isDefined) FormatTail.replaceFirstIn(cleaned, "").trim
     else cleaned
   }
+
+  private val InteriorWhitespace = """ {2,}""".r
 
   private val FormatTail =
     """(?i)\s+[-–—|/]\s*(?:(?:2D|3D|IMAX|4DX|DUBBING|DUBB|DUB|NAPISY|NAP|LEKTOR|LEK)\b[\s/]*)+$""".r
