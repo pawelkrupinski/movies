@@ -2,7 +2,6 @@ package services.tasks
 
 import play.api.Logging
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson}
-import tools.PaceGateBackpressureException
 
 import java.time.Clock
 
@@ -40,12 +39,6 @@ class ScrapeChunkHandler(
           store.storeChunk(cinema, runId, key, CinemaMovieJson.encode(slice), clock.instant())
           Done
         } catch {
-          case e: PaceGateBackpressureException =>
-            // Not a failure: the host's pace gate is saturated, so defer this
-            // chunk to the reaper's backoff rather than block a worker on the
-            // backlog. Debug, not warn — a burst of these is the system working.
-            logger.debug(s"chunk '$key' for $cinema run $runId deferred: ${e.getMessage}")
-            Reschedule(Some(e.getMessage))
           case e: Exception =>
             logger.warn(s"chunk '$key' for $cinema run $runId failed: ${e.getMessage}")
             Reschedule(Some(e.getMessage))

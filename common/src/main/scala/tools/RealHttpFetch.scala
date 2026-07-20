@@ -306,14 +306,6 @@ object RealHttpFetch {
     requestTimeout: Duration = DefaultRequestTimeout,
     minRequestInterval: Option[Duration] = None,
     paceKnob: Option[String] = None,
-    // The ceiling on how long a request may BLOCK on this host's pace gate
-    // (`minRequestInterval` only sets the gap; a burst still queues behind it).
-    // `None` (the default) means block for the whole backlog, however long — the
-    // right behaviour for a synchronous sweep (Filmstarts). A QUEUED caller whose
-    // work reschedules cheaply (a UK Flicks ScrapeChunk) sets one so the gate
-    // sheds backlog past it via [[PaceGateBackpressureException]] instead of
-    // pinning a worker — see RateLimitedHttpFetch's paced().
-    maxGateWait: Option[Duration] = None,
   )
 
   /** The per-host policy table — the single place a host earns a non-default
@@ -404,16 +396,6 @@ object RealHttpFetch {
       Set("flicks.co.uk"),
       minRequestInterval = Some(Duration.ofMillis(200)),
       paceKnob           = Some("KINOWO_FLICKS_PACE_MS"),
-      // Cap the per-request gate wait. The reaper plans chunks in waves far
-      // faster than the 5 req/s gate drains, so without this a worker claimed a
-      // slot tens of seconds out and BLOCKED on it — the whole backlog counted
-      // as the ScrapeChunk's wall-clock, pinning task-duration p99 at the
-      // histogram ceiling in ~11-16min waves while completions stalled. 20s is
-      // well above the sub-second steady-state wait but far under both the old
-      // ~120s peaks and the 15min chunk-run stale timeout, so an over-backed gate
-      // now sheds the overflow to a reschedule (ScrapeChunkHandler) that the
-      // reaper's backoff spreads past the wave, instead of holding a worker.
-      maxGateWait        = Some(Duration.ofSeconds(20)),
     ),
   )
 
@@ -441,13 +423,6 @@ object RealHttpFetch {
    *  on the request path, and it only runs for the few hosts that are paced. */
   def requestIntervalFor(url: String): Option[Duration] =
     policyFor(url).flatMap(tunedInterval)
-
-  /** The cap on how long a request to `url`'s host may block on its pace gate
-   *  before the fetch sheds the backlog with a [[PaceGateBackpressureException]].
-   *  `None` for every host without a row naming one — the gate then blocks for
-   *  the whole backlog, the correct behaviour for a synchronous sweep. */
-  def maxGateWaitFor(url: String): Option[Duration] =
-    policyFor(url).flatMap(_.maxGateWait)
 
   /** A policy's live pace: its knob's current value if it names one, else the
    *  compiled-in default. `Env.positiveLong` ignores a non-positive or
