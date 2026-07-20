@@ -60,10 +60,22 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "the PL and UK workers" should "stay on the hourly cadence" in {
-    // Guards against a fleet-wide sweep of the DE value: the slowdown is DE-only.
-    cadenceOf("fly.worker.toml")    shouldBe Some("60")
-    cadenceOf("fly.worker.uk.toml") shouldBe Some("60")
+  "the PL worker" should "stay on the hourly cadence" in {
+    // Guards against a fleet-wide sweep of a slower value: PL's roster drains hourly.
+    cadenceOf("fly.worker.toml") shouldBe Some("60")
+  }
+
+  "the UK worker" should "scrape on a slow cadence its chunked full-horizon sweep can drain within" in {
+    // UK is even slower than DE (5h vs 3h) for a different reason. Its 843 Flicks
+    // venues each fan out one ScrapeChunk per advertised day of their full booking
+    // horizon (up to MaxHorizonDays=210, ~90-150 populated) — ~100k+ chunk tasks per
+    // cycle. Flicks is UNPACED (no HostPolicies row), so the DE-style pace invariant
+    // below doesn't bind here: the constraint is queue DRAIN, not 429s. The 4-worker
+    // pool needs ~260min to clear one cycle, so at the old 60min work enqueued ~4x
+    // faster than it drained and the task queue grew unboundedly (2026-07-20). 300min
+    // clears a sweep with headroom. Only real drain throughput could tighten this
+    // further, which a static test can't measure — so we lock the deployed value.
+    cadenceOf("fly.worker.uk.toml") shouldBe Some("300")
   }
 
   "every worker toml" should "set the cadence explicitly rather than inheriting the code default" in {
