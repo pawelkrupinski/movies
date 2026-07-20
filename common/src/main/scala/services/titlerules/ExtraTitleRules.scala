@@ -490,19 +490,33 @@ object ExtraTitleRules {
       "Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged."),
     // Trailing '– Premiera' release-announcement suffix, in every separator/case
     // shape ('– Premiera', '- Wielka Premiera', '| Polska Premiera', ': śląska
-    // premiera', '– premiera filmu'). A premiere IS the film, so unlike the
-    // przedpremiera strip — a distinct EARLIER screening deliberately kept as its
-    // own row (query-only `xtra-przedpremiera-suffix`) — this is CANONICAL: it
-    // rewrites the DISPLAY title AND the merge key, folding the premiere screening
-    // onto the base film's rated row (not just the enrichment query). Anchored on a
-    // separator so a bare-space 'Ostatnia Premiera' title survives, and `\bpremiera`
-    // (word boundary) so the przed-PREMIERA prefix inside 'przedpremiera' is never
-    // caught. Up to two optional adjective words absorb the qualifier ('Wielka',
-    // 'Polska', 'Uroczysta', the regional 'śląska/poznańska'); ordered before the
-    // trailing year/format strips so 'Film (2025) – Premiera' still folds its year.
+    // premiera', '– premiera filmu', '- Premiera Krajowa'). A premiere IS the film,
+    // so unlike the przedpremiera strip — a distinct EARLIER screening deliberately
+    // kept as its own row (query-only `xtra-przedpremiera-suffix`) — this is
+    // CANONICAL: it rewrites the DISPLAY title AND the merge key, folding the
+    // premiere screening onto the base film's rated row (not just the enrichment
+    // query). Anchored on a separator so a bare-space 'Ostatnia Premiera' title
+    // survives, and `\bpremiera` (word boundary) so the przed-PREMIERA prefix inside
+    // 'przedpremiera' is never caught. Up to two optional adjective words absorb a
+    // LEADING qualifier ('Wielka', 'Polska', 'Uroczysta', the regional
+    // 'śląska/poznańska'), and one optional word absorbs a TRAILING qualifier
+    // ('Premiera Krajowa/Ogólnopolska/Światowa', the older 'premiera filmu').
+    //
+    // A screen-format segment glued between the film and the premiere marker
+    // ('ODYSEJA - 2D napisy - Premiera Krajowa', Kino Hel Konin) is consumed by the
+    // optional format group: `FormatTags` peels format only from the very END of the
+    // title (its trailing loop stops at the first non-format word), so a format tag
+    // sitting BEHIND a non-format premiere marker is unreachable there and would
+    // otherwise strand the row on its own 'odyseja2dnapisy…' key. Matching it here —
+    // only when it directly precedes a premiere marker — folds that shape onto the
+    // base without turning canonical into a general format stripper (that stays
+    // FormatTags' job). Ordered before the trailing year/format strips so
+    // 'Film (2025) – Premiera' still folds its year.
     canon("xtra-canonical-premiera-suffix",
-      """(?iu){{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+filmu)?\s*$""", "",
-      "'<film> – [Wielka/Polska/śląska] Premiera [filmu]' release-announcement suffix — CANONICAL fold of the premiere screening onto the base film (display + merge key), not just the query. Excludes 'przedpremiera' (kept a separate row by the query-only suffix strip)."),
+      """(?iu)(?:{{SEP}}(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek)""" +
+        """(?:\s+(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek))*)?""" +
+        """{{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+\p{L}+)?\s*$""", "",
+      "'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — CANONICAL fold of the premiere screening onto the base film (display + merge key), not just the query. Also absorbs a format tag glued between the film and the premiere marker, which FormatTags (END-only peel) can't reach. Excludes 'przedpremiera' (kept a separate row by the query-only suffix strip)."),
     // The trailing screen-format/language rules — 2D/3D/dub/napisy/lektor in the
     // space·dash·slash·bracket shapes, plus the "(Dolby Atmos)"/"[2D]"/"(IMAX)"
     // sound-tag — moved to the shared `services.movies.FormatTags` and are applied

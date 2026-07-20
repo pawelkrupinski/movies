@@ -2195,7 +2195,7 @@ showings:
 
 === Dzień objawienia ===
 displayTitle:      Dzień objawienia
-cinemaTitles:      DZIEŃ OBJAWIENIA | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
+cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
 runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
@@ -2307,6 +2307,7 @@ cinemaScrapes:
   Kino Atlantic / Dzień objawienia / 2026
   Kino Awangarda 2 / Dzień objawienia / —
   Kino Bajka Kluczbork / Dzień Objawienia / —
+  Kino Hel / DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa / —
   Kino Iluzjon / Dzień objawienia / 2026
   Kino KDK / DZIEŃ OBJAWIENIA / —
   Kino Kalejdoskop / Dzień objawienia / —
@@ -2376,7 +2377,7 @@ showings:
 
 === Dzień objawienia ukraiński dubbing ===
 displayTitle:      Dzień objawienia ukraiński dubbing
-cinemaTitles:      DZIEŃ OBJAWIENIA | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
+cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
 runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
@@ -2485,6 +2486,7 @@ cinemaScrapes:
   Kino Atlantic / Dzień objawienia / 2026
   Kino Awangarda 2 / Dzień objawienia / —
   Kino Bajka Kluczbork / Dzień Objawienia / —
+  Kino Hel / DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa / —
   Kino Iluzjon / Dzień objawienia / 2026
   Kino KDK / DZIEŃ OBJAWIENIA / —
   Kino Kalejdoskop / Dzień objawienia / —
@@ -3179,7 +3181,7 @@ showings:
 
 === Gwiezdne wojny: Mandalorian i Grogu ===
 displayTitle:      Gwiezdne wojny: Mandalorian i Grogu
-cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
+cinemaTitles:      GWIEZDNE WOJNY : MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN I GROGU | GWIEZDNE WOJNY: MANDALORIAN i GROGU - 3D dubbing - Premiera Krajowa | Gwiezdne Wojny: Mandalorian i Grogu | Gwiezdne wojny : mandalorian i grogu | Gwiezdne wojny: Mandalorian i Grogu | Gwiezdne wojny: mandalorian i grogu | MANDALORIAN I GROGU | Mandalorian & Grogu | Mandalorian i Grogu | Mandalorian i grogu | Mandalorian i grogu | The Mandalorian and Grogu | The mandalorian and grogu | Мандалорець і Ґроґу
 runtimeMinutes:    132
 releaseYear:       2026
 countries:         USA
@@ -3288,6 +3290,7 @@ cinemaScrapes:
   Kino Echo / Gwiezdne wojny: Mandalorian i Grogu / —
   Kino GCK / Mandalorian i Grogu / —
   Kino Górnik / The Mandalorian and Grogu / —
+  Kino Hel / GWIEZDNE WOJNY: MANDALORIAN i GROGU - 3D dubbing - Premiera Krajowa / —
   Kino Ignacy / Mandalorian i grogu / —
   Kino KDK / GWIEZDNE WOJNY: MANDALORIAN I GROGU / —
   Kino Kalejdoskop / Mandalorian i grogu / —
@@ -8778,7 +8781,7 @@ showings:
 
 === Straszny film ===
 displayTitle:      Straszny film
-cinemaTitles:      STRASZNY FILM | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -8887,6 +8890,7 @@ cinemaScrapes:
   Kino Diana / Straszny film / —
   Kino GCK / Straszny film / —
   Kino Górnik / Straszny film / —
+  Kino Hel / STRASZNY FILM - 2D dubbing - Premiera Krajowa / —
   Kino Ignacy / Straszny film / —
   Kino Kalejdoskop / Straszny film / —
   Kino Kijów / Straszny film / —
@@ -8931,7 +8935,7 @@ showings:
 
 === Straszny film ukraiński dubbing ===
 displayTitle:      Straszny film ukraiński dubbing
-cinemaTitles:      STRASZNY FILM | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -9038,6 +9042,7 @@ cinemaScrapes:
   Kino Diana / Straszny film / —
   Kino GCK / Straszny film / —
   Kino Górnik / Straszny film / —
+  Kino Hel / STRASZNY FILM - 2D dubbing - Premiera Krajowa / —
   Kino Ignacy / Straszny film / —
   Kino Kalejdoskop / Straszny film / —
   Kino Kijów / Straszny film / —
@@ -10649,7 +10654,7 @@ showings:
 
 === Zawodowcy ===
 displayTitle:      Zawodowcy
-cinemaTitles:      ZAWODOWCY | Zawodowcy
+cinemaTitles:      ZAWODOWCY | ZAWODOWCY - 2D napisy - Premiera Krajowa | Zawodowcy
 runtimeMinutes:    97
 releaseYear:       2026
 countries:         Wielka Brytania, USA
@@ -10763,6 +10768,7 @@ cinemaScrapes:
   Kino Echo / ZAWODOWCY / —
   Kino Goplana / Zawodowcy / —
   Kino Głębocka 66 / Zawodowcy / —
+  Kino Hel / ZAWODOWCY - 2D napisy - Premiera Krajowa / —
   Kino Ignacy / Zawodowcy / —
   Kino Iluzjon / Zawodowcy / 2026
   Kino KDK / ZAWODOWCY / —

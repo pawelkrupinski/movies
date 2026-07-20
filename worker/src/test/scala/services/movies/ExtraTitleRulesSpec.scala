@@ -582,7 +582,11 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       "Zbrodnie przyszłości – Wielka Premiera" -> "Zbrodnie przyszłości",
       "Zbrodnie przyszłości | Polska premiera" -> "Zbrodnie przyszłości",
       "Zbrodnie przyszłości - śląska premiera" -> "Zbrodnie przyszłości",
-      "Zbrodnie przyszłości – premiera filmu"  -> "Zbrodnie przyszłości"
+      "Zbrodnie przyszłości – premiera filmu"  -> "Zbrodnie przyszłości",
+      // Qualifier AFTER 'Premiera' (national/world premiere), not just before it.
+      "Zbrodnie przyszłości - Premiera Krajowa"    -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości | Premiera Ogólnopolska" -> "Zbrodnie przyszłości",
+      "Zbrodnie przyszłości – premiera światowa"   -> "Zbrodnie przyszłości"
     )
     cases.foreach { case (variant, base) =>
       // The display title (canonical) drops the suffix …
@@ -614,6 +618,30 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     unharmed.foreach { t =>
       withClue(s"canonical('$t') unchanged: ")(withExtras.canonical(t) shouldBe t)
     }
+  }
+
+  // A screen-format tag glued BETWEEN the film and a premiere marker — the real
+  // "ODYSEJA - 2D napisy - Premiera Krajowa" (Kino Hel, Konin), which split off as
+  // its own `odyseja2dnapisypremierakrajowa` record because `FormatTags` peels
+  // format only from the END (it stops at the non-format "Krajowa") and canonical
+  // had no reach behind the premiere marker. The extended premiera rule now folds
+  // the whole tail so the row merges onto the base film.
+  it should "fold a format tag glued before a premiere marker onto the base film" in {
+    val cases = Seq(
+      "ODYSEJA - 2D napisy - Premiera Krajowa"           -> "Odyseja",
+      "Odyseja - 2D dubbing - Premiera"                 -> "Odyseja",
+      "Toy Story 5 | 3D napisy | Premiera Ogólnopolska" -> "Toy Story 5"
+    )
+    cases.foreach { case (variant, base) =>
+      withClue(s"foldKey('$variant') vs '$base': ")(
+        foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave the format+premiere tail unmerged" in {
+    withClue("seedOnly.foldKey should NOT yet fold the buried-format premiere row: ")(
+      foldKey(seedOnly, "ODYSEJA - 2D napisy - Premiera Krajowa") should not be
+        foldKey(seedOnly, "Odyseja"))
   }
 
   // "Niesamowite przygody skarpetek 3. Ale kosmos!" is TMDB-no-match, so nothing
