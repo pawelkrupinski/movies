@@ -37,13 +37,18 @@ class ThrottledHttpFetch(
   delegate:     HttpFetch,
   maxAttempts:  Int            = 4,
   defaultPause: FiniteDuration = 5.seconds,
-  // The ceiling on how long a single 429 parks a host — a guard against a hostile
-  // or fat-fingered Retry-After pinning the fleet, NOT a routine cap. It sits above
-  // the slowest limiter we actually face: Flicks answers a 429 with Retry-After:
-  // 300-600s, and the old 60s clamp shrank that to 60s, so all `maxAttempts` retries
-  // fell back inside the server's window and the venue-day was dropped. 10min honors
-  // the server's full ask; hosts that send a small Retry-After (TMDB) are unaffected.
-  maxPause:     FiniteDuration = 10.minutes,
+  // The ceiling on how long a single 429 parks a host. This pause is SHARED per
+  // host ("pausing all calls to it"), so it is NOT just the offending request's
+  // backoff — it freezes the whole fleet's calls to that host for its duration.
+  // A brief raise to 10min (to "honor" Flicks' Retry-After: 300-600s) backfired
+  // badly: with the 200ms pace keeping Flicks ~99% clean, a 429 is transient noise,
+  // yet each one froze ALL flicks.co.uk scraping for a full 10min, and a fresh 429
+  // landed within 1-3min of every resume — so UK scraping stalled on an ~11-14min
+  // cadence (ScrapeChunk task-duration pegged the 120s histogram ceiling, throughput
+  // collapsed). Since obeying the long ask neither prevents the next 429 nor is
+  // worth freezing everything for, cap at 60s: a real backoff that keeps the shared
+  // freeze short. TMDB and other small-Retry-After hosts sit well under it, unchanged.
+  maxPause:     FiniteDuration = 60.seconds,
   jitterMillis: () => Long     = () => (scala.util.Random.nextDouble() * 250).toLong,
   now:          () => Instant  = () => Instant.now(),
   sleep:        Long => Unit   = Thread.sleep,
