@@ -119,12 +119,18 @@ object TaskState {
  * multi-instance-safe) and [[InMemoryTaskQueue]] (tests / Mongo-less dev).
  */
 trait TaskQueue {
-  /** Add a waiting task unless one with `dedupKey` is already active. */
+  /** Add a waiting task unless one with `dedupKey` is already active. `notBefore`,
+   *  when set, holds the new task back from [[claim]] until that instant (the same
+   *  `nextEligibleAt` gate the transient-failure backoff uses) — so a caller can
+   *  enqueue a burst of tasks at staggered eligibility to spread claim pressure
+   *  (see [[services.tasks.ChunkScrapePlanner]]) instead of making them all
+   *  claimable at once. `None` = immediately claimable, the default. */
   def enqueue(
     taskType:    TaskType,
     dedupKey:    String,
     payload:     Map[String, String] = Map.empty,
-    submittedAt: Instant             = Instant.now()
+    submittedAt: Instant             = Instant.now(),
+    notBefore:   Option[Instant]     = None
   ): EnqueueResult
 
   /** Atomically lease the oldest *eligible* waiting task to `workerId` for

@@ -68,6 +68,21 @@ object ScrapeCadence {
    *  the spread. */
   val EnqueueSpreadSlices: Int = 4
 
+  /** Spread window for a chunked venue's `ScrapeChunk` fan-out
+   *  (`KINOWO_SCRAPE_CHUNK_SPREAD_MINUTES`). A chunked venue coming due enqueues one
+   *  `ScrapeChunk` per advertised day of its horizon — up to ~200 for a full-horizon
+   *  UK Flicks venue — which, enqueued all at one instant, becomes claimable in a
+   *  single burst that pins the whole worker pool under the strict oldest-first claim
+   *  and starves the evenly-enqueued rating refreshes behind it (head-of-line
+   *  blocking). Staggering each chunk's `nextEligibleAt` evenly across this window
+   *  bounds how many of a venue's chunks are claimable at once, so free workers fall
+   *  through to ratings between them — the chunk-level counterpart to the venue-level
+   *  spread [[ScrapeReaper]] already applies via [[DueWindow]] + `EnqueueSpreadSlices`.
+   *  Kept well under the chunk-run stale timeout ([[ChunkScrapePlanner.DefaultRunTimeout]],
+   *  15min) — the planner clamps it to a third of that — so every chunk still becomes
+   *  eligible AND drains before the run is abandoned to a partial reduce. */
+  val ChunkEnqueueSpread: FiniteDuration = 5.minutes
+
   /** Per-tick enqueue cap for the SECONDARY reapers (detail/rating/tmdb-retry)
    *  while throttled (`KINOWO_THROTTLED_ENQUEUE_PER_TICK`). Their TTLs are 4–6h, so
    *  even 3/tick drains the corpus many times over within a window — and quieting

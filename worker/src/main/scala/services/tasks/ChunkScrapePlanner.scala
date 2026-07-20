@@ -25,7 +25,16 @@ class ChunkScrapePlanner(
   queue:         TaskQueue,
   publishScrape: CinemaScraper => Unit,
   staleAfter:    FiniteDuration = ChunkScrapePlanner.DefaultRunTimeout,
-  clock:         Clock          = Clock.systemUTC()
+  clock:         Clock          = Clock.systemUTC(),
+  // Stagger this run's `ScrapeChunk` fan-out evenly across this window (chunk k of
+  // n becomes claimable at `+ chunkSpread·k/n`) instead of making all n claimable
+  // at once — so a big full-horizon venue can't monopolise the pool and starve the
+  // evenly-enqueued ratings (see [[services.tasks.ScrapeCadence.ChunkEnqueueSpread]]).
+  // Clamped to a third of `staleAfter` so every chunk still becomes eligible AND
+  // drains before the run is abandoned to a partial reduce. Default `Zero` disables
+  // the spread, leaving the flow tests that drive `plan()` + `drain(now)` directly
+  // (and the deterministic fixture harness) unaffected.
+  chunkSpread:   FiniteDuration = Duration.Zero
 ) extends Logging {
 
   def isChunked(cinema: String): Boolean = chunkScrapers.contains(cinema)
@@ -41,13 +50,26 @@ class ChunkScrapePlanner(
 
       if (keys.isEmpty) { publishEmpty(scraper); return 0 }
 
-      store.startRun(cinema, keys, clock.instant(), staleAfter) match {
+      val now = clock.instant()
+      store.startRun(cinema, keys, now, staleAfter) match {
         case None => 0 // a run is already active for this cinema
         case Some(runId) =>
-          val n = keys.count(k => queue.enqueue(TaskType.ScrapeChunk,
-            ChunkScrapeKeys.chunkDedup(cinema, runId, k),
-            ChunkScrapeKeys.chunkPayload(cinema, runId, k)) == EnqueueResult.Added)
-          logger.info(s"$cinema chunked scrape run $runId: enqueued $n/${keys.size} chunk task(s)")
+          // Stagger the fan-out's eligibility evenly across the (clamped) spread
+          // window so this venue's chunks don't all become claimable at once and
+          // monopolise the pool — see `chunkSpread`. `Zero` window → no offset.
+          val windowMillis = math.min(chunkSpread.toMillis, staleAfter.toMillis / 3)
+          val total        = keys.size
+          val n = keys.zipWithIndex.count { case (k, index) =>
+            val notBefore =
+              if (windowMillis > 0 && total > 1) Some(now.plusMillis(windowMillis * index / total))
+              else None
+            queue.enqueue(TaskType.ScrapeChunk,
+              ChunkScrapeKeys.chunkDedup(cinema, runId, k),
+              ChunkScrapeKeys.chunkPayload(cinema, runId, k),
+              submittedAt = now, notBefore = notBefore) == EnqueueResult.Added
+          }
+          logger.info(s"$cinema chunked scrape run $runId: enqueued $n/${keys.size} chunk task(s)" +
+            (if (windowMillis > 0 && total > 1) s", spread over ${windowMillis / 1000}s" else ""))
           n
       }
   }

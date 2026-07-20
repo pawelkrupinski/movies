@@ -783,7 +783,15 @@ class WorkerWiring(
   private val publishScrape: CinemaScraper => Unit =
     inner => { cinemaScrapeRunner.run(recordingScraper(inner, FallbackEligibility.eligible(inner))); () }
 
-  lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape)
+  // Stagger a chunked venue's ScrapeChunk fan-out across this window instead of making
+  // all ~200 (a full-horizon UK Flicks venue) claimable at once — otherwise the burst
+  // pins the pool under strict oldest-first claim and starves the evenly-enqueued rating
+  // refreshes behind it. Sized in ScrapeCadence; the planner clamps it under the run
+  // stale timeout. See ChunkScrapePlanner.chunkSpread.
+  def scrapeChunkSpreadMinutes: Long =
+    Env.positiveLong("KINOWO_SCRAPE_CHUNK_SPREAD_MINUTES", services.tasks.ScrapeCadence.ChunkEnqueueSpread.toMinutes)
+  lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
+    chunkSpread = scrapeChunkSpreadMinutes.minutes)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore)
   lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape, freshnessStore)
   lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue)

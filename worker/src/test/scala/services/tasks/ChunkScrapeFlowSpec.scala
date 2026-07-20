@@ -202,6 +202,35 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     h.published.head.map(_.movie.title) shouldBe Seq("X")
   }
 
+  it should "stagger a big fan-out's chunks across the spread window instead of all-claimable-at-once" in {
+    // Six chunks, a 6-minute spread → chunk k eligible at +1min·k. All six are
+    // enqueued up front, but only the first slice is claimable at T0; the rest are
+    // held back by `nextEligibleAt`, so a free worker falls through to other work
+    // (e.g. rating refreshes) between them instead of the queue handing out all six.
+    val queue   = new InMemoryTaskQueue
+    val store   = new InMemoryChunkScrapeStore
+    val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
+    val map     = Map(cinemaName -> (new FakeChunked(slices): ChunkedCinemaScraper))
+    val planner = new ChunkScrapePlanner(map, store, queue, _ => (), 30.minutes,
+      Clock.fixed(now, ZoneOffset.UTC), chunkSpread = 6.minutes)
+
+    planner.plan(cinemaName) shouldBe 6
+    queue.waitingCount(TaskType.ScrapeChunk) shouldBe 6 // all six enqueued...
+
+    // ...but claimable in staggered slices, not one burst. Claiming (without
+    // completing) leaves each claimed task worked_on, so re-claims can't double-count.
+    claimAllWaiting(queue, now) shouldBe 1                       // only the +0 slice
+    claimAllWaiting(queue, now.plusSeconds(6 * 60)) shouldBe 5   // the rest, once their window opens
+  }
+
+  /** Claim every currently-eligible waiting task at `at` (leaving them worked_on,
+   *  not completed), returning how many were claimable. */
+  private def claimAllWaiting(queue: InMemoryTaskQueue, at: Instant): Int = {
+    var n = 0
+    while (queue.claim("probe", 30.seconds, at).isDefined) n += 1
+    n
+  }
+
   it should "record the scrape's failure when chunk-plan enumeration throws" in {
     val h = new Harness(new FakeChunked(Map.empty, planThrows = true))
     h.planner.plan(cinemaName) shouldBe 0

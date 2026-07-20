@@ -14,9 +14,9 @@ class CachingTaskQueueSpec extends AnyFlatSpec with Matchers {
   /** Counts delegate enqueue calls so a cache-served repeat is observable. */
   private class CountingQueue extends InMemoryTaskQueue {
     var enqueueCalls = 0
-    override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant): EnqueueResult = {
+    override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult = {
       enqueueCalls += 1
-      super.enqueue(taskType, dedupKey, payload, submittedAt)
+      super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore)
     }
   }
 

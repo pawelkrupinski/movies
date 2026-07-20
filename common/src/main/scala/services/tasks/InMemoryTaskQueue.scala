@@ -35,7 +35,8 @@ class InMemoryTaskQueue extends TaskQueue {
     taskType:    TaskType,
     dedupKey:    String,
     payload:     Map[String, String],
-    submittedAt: Instant
+    submittedAt: Instant,
+    notBefore:   Option[Instant]
   ): EnqueueResult = {
     val result = lock.synchronized {
       // `complete` removes the row, so any row still present with this key is active.
@@ -43,7 +44,7 @@ class InMemoryTaskQueue extends TaskQueue {
       if (active) EnqueueResult.Duplicate
       else {
         val id = UUID.randomUUID().toString
-        rows.put(id, Row(id, taskType, dedupKey, payload, TaskState.Waiting, submittedAt, 0, None, None))
+        rows.put(id, Row(id, taskType, dedupKey, payload, TaskState.Waiting, submittedAt, 0, None, None, notBefore))
         EnqueueResult.Added
       }
     }

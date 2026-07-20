@@ -149,6 +149,29 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.monitor(500).active.map(_.dedupKey) should not contain workKey
   }
 
+  // The `notBefore` enqueue path — `setOnInsert("nextEligibleAt")` gated by the same
+  // `claim` filter the release-backoff uses. Only real Mongo proves the on-insert
+  // write + the eligibility query agree; it's what the chunk-scrape spread relies on.
+  it should "hold a task back from claim until its notBefore, then hand it out" in {
+    val key        = s"chunk|it-notbefore-${System.nanoTime()}"
+    val eligibleAt = Instant.now().plusSeconds(3600) // an hour out, so "now" is before it
+    queue.enqueue(TaskType.ScrapeChunk, key, submittedAt = t0, notBefore = Some(eligibleAt)) shouldBe EnqueueResult.Added
+    // Before its window opens the queue never hands this task out, even though it's
+    // the oldest by submittedAt — the nextEligibleAt gate excludes it.
+    claimableKeysAt(eligibleAt.minusSeconds(60)) should not contain key
+    // Once `now` reaches notBefore it becomes claimable.
+    claimableKeysAt(eligibleAt) should contain (key)
+  }
+
+  /** Every dedupKey the queue will hand out at `now` (drains the eligible set,
+   *  leasing each — harmless, the sentinel collection is dropped in afterAll). */
+  private def claimableKeysAt(now: Instant): Set[String] = {
+    val keys = scala.collection.mutable.Set.empty[String]
+    var next = queue.claim("nb-probe", 5.minutes, now)
+    while (next.isDefined) { keys += next.get.dedupKey; next = queue.claim("nb-probe", 5.minutes, now) }
+    keys.toSet
+  }
+
   // Claim repeatedly until the task matching `p` is handed out (other tests'
   // leftovers may be claimed first; harmless — they just lease and stay).
   private def drainUntil(p: services.tasks.Task => Boolean, worker: String, lease: FiniteDuration = 5.minutes) = {

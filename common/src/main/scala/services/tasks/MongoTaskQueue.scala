@@ -81,12 +81,17 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     taskType:    TaskType,
     dedupKey:    String,
     payload:     Map[String, String],
-    submittedAt: Instant
+    submittedAt: Instant,
+    notBefore:   Option[Instant]
   ): EnqueueResult = coll match {
     case None => EnqueueResult.Duplicate
     case Some(c) =>
       val filter = Filters.and(Filters.eq("dedupKey", dedupKey), Filters.eq("active", true))
-      val onInsert = Updates.combine(
+      // A `notBefore` holds the task back from `claim` until that instant — the same
+      // `nextEligibleAt` gate the release-backoff uses (see `claim`'s `eligible`).
+      val eligibility = notBefore.toSeq.map(t =>
+        Updates.setOnInsert("nextEligibleAt", new java.util.Date(t.toEpochMilli)))
+      val onInsert = Updates.combine((Seq(
         Updates.setOnInsert("_id", UUID.randomUUID().toString),
         Updates.setOnInsert("taskType", taskType.name),
         Updates.setOnInsert("dedupKey", dedupKey),
@@ -95,7 +100,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Updates.setOnInsert("active", true),
         Updates.setOnInsert("submittedAt", new java.util.Date(submittedAt.toEpochMilli)),
         Updates.setOnInsert("attempts", 0)
-      )
+      ) ++ eligibility)*)
       Try {
         val res = Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
         if (res.getUpsertedId != null) EnqueueResult.Added else EnqueueResult.Duplicate

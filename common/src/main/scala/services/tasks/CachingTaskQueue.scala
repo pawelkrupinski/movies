@@ -40,10 +40,10 @@ class CachingTaskQueue(
   private val idToKey: Cache[String, String] =
     Caffeine.newBuilder().expireAfterWrite(10L, TimeUnit.MINUTES).maximumSize(maxKeys).build()
 
-  override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant): EnqueueResult =
+  override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult =
     if (active.getIfPresent(dedupKey) != null) EnqueueResult.Duplicate // known-active: skip the Mongo round-trip
     else {
-      val result = delegate.enqueue(taskType, dedupKey, payload, submittedAt)
+      val result = delegate.enqueue(taskType, dedupKey, payload, submittedAt, notBefore)
       // Cache whether we ADDED it or found it already active in Mongo — either way a
       // re-enqueue before completion is a no-op we can now serve locally.
       active.put(dedupKey, java.lang.Boolean.TRUE)
