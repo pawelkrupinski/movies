@@ -947,6 +947,44 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     emissions.get() shouldBe 0
   }
 
+  // ── Partial-scrape guard: a degraded response must not prune still-playing films ──
+  //
+  // The empty-scrape guard only catches a TOTAL failure. A response that comes
+  // back NON-EMPTY but collapses to a small fraction of what the cinema holds is
+  // almost always a degraded fetch (a Cloudflare/session subset, a parser that
+  // recovered only some rows), not a real overnight schedule change — cinemas
+  // don't shed most of their catalogue between two ticks. Without a guard the
+  // per-cinema prune deletes every slot the partial tick failed to mention, and
+  // the film flickers off the site until the next healthy tick re-adds it
+  // (Multikino, behind Cloudflare + a session wall, is the recurring victim).
+
+  private def multiFilmScrape(n: Int): Seq[CinemaMovie] =
+    (1 to n).map(i => cinemaMovie(s"Film $i", Multikino, showtimes = Seq(showtime("2027-06-08T18:00"))))
+
+  private def multikinoSlot(cache: CaffeineMovieCache, title: String): Option[SourceData] =
+    cache.get(cache.keyOf(title, Some(2026))).flatMap(_.cinemaShowings.collectFirst { case (Multikino, sd) => sd })
+
+  it should "keep a cinema's other slots when a scrape collapses to a fraction of what it holds (a partial/degraded response)" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, multiFilmScrape(10))
+    (1 to 10).foreach(i => withClue(s"Film $i established: ")(multikinoSlot(cache, s"Film $i") should not be None))
+    // Next tick: a degraded response with a SINGLE film — well below half the ten
+    // known slots. Treated as partial: the present film is refreshed, but the nine
+    // it merely failed to mention are NOT pruned.
+    cache.recordCinemaScrape(Multikino, Seq(multiFilmScrape(10).head))
+    (1 to 10).foreach(i => withClue(s"Film $i must survive a partial scrape: ")(multikinoSlot(cache, s"Film $i") should not be None))
+  }
+
+  it should "still prune a slot the cinema genuinely stopped listing when the scrape only shrinks slightly" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, multiFilmScrape(10))
+    // Nine of ten remain — a plausible real change, above the partial-response
+    // floor — so the prune runs and the one dropped film's slot is removed.
+    cache.recordCinemaScrape(Multikino, multiFilmScrape(10).tail)
+    multikinoSlot(cache, "Film 1") shouldBe None
+    multikinoSlot(cache, "Film 2") should not be None
+  }
+
   it should "carry a slot's detail fields (director/cast/runtime) forward when a later scrape's listing omits them (no strip, no churn)" in {
     val repo  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repo)

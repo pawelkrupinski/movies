@@ -198,6 +198,16 @@ class CaffeineMovieCache(
   private val negative: Cache[CacheKey, java.lang.Boolean] =
     Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).build()
 
+  // Partial-scrape guard thresholds (see `recordCinemaScrape`'s prune): a tick
+  // that returns fewer than `PruneFloorRatio` of the cinema's currently-held
+  // slots — and only when it already holds at least `MinSlotsForShrinkGuard`, so a
+  // small venue's ±1 swings never trip it — is treated as a degraded fetch and
+  // skips the prune. Half is a wide margin: cinemas don't shed most of their
+  // catalogue between two ticks, but a partial Cloudflare/session response can
+  // return a handful of a full board's rows.
+  private val MinSlotsForShrinkGuard = 8
+  private val PruneFloorRatio        = 0.5
+
   // Fires the cold-mirror sync at most once, on the FIRST scrape (see
   // `recordCinemaScrape`). One-shot so the sync can't re-trigger at an
   // arrival-order-dependent later scrape — the mirror only goes cold at boot, and a
@@ -931,6 +941,17 @@ class CaffeineMovieCache(
         }
 
     import scala.jdk.CollectionConverters._
+    // Partial-scrape guard: count the cinema's slots held BEFORE this tick's writes,
+    // then decide whether the fresh batch is implausibly small (a degraded fetch).
+    // If so, the prune below is skipped — the films this tick failed to mention keep
+    // their slots until a healthy tick, instead of flickering off the site. Generic
+    // across cinemas; Multikino (Cloudflare + session wall) is the recurring victim.
+    val knownCinemaSlots = positive.asMap().asScala.values.iterator
+      .flatMap(_.data.keysIterator)
+      .count(s => Source.cinemaOf(s).contains(cinema))
+    val scrapeLooksPartial =
+      knownCinemaSlots >= MinSlotsForShrinkGuard &&
+      deduped.size < knownCinemaSlots * PruneFloorRatio
     // When `staging` is wired, divert a genuinely-NEW film (its `sanitize(title)`
     // group is absent from `movies`) to the staging sink to incubate; a film
     // already known to `movies` keeps the direct path. Snapshot the known
@@ -1122,8 +1143,13 @@ class CaffeineMovieCache(
     // can move a row to a year-keyed sibling — carrying our just-written slot along.
     // Slot-identity tracking survives that move because `cache.rekey` preserves the
     // SourceData reference verbatim.
+    // …BUT skip the prune entirely when this tick looks like a partial/degraded
+    // scrape (see `scrapeLooksPartial`): deleting slots a broken fetch merely
+    // failed to list is what makes a still-playing film flicker off the site. A
+    // healthy tick (full board) prunes normally, dropping whatever genuinely
+    // stopped screening.
     val touchedSlots: Set[SourceData] = resolved.iterator.map(_._2).toSet
-    positive.asMap().asScala.iterator
+    if (!scrapeLooksPartial) positive.asMap().asScala.iterator
       .flatMap { case (k, e) =>
         val staleKeys = e.data.iterator.collect {
           case (s, sd) if Source.cinemaOf(s).contains(cinema) && !touchedSlots.contains(sd) => s
@@ -1150,8 +1176,9 @@ class CaffeineMovieCache(
     // Prune (staging): drop this cinema's staging rows it no longer lists this
     // tick — the staging analogue of the movies prune. A row that graduated to
     // `movies` was deleted by the folder (so it's absent from `priorStagingRows`);
-    // one that simply stopped screening is removed here.
-    staging.foreach { s =>
+    // one that simply stopped screening is removed here. Skipped on a partial
+    // scrape for the same reason as the movies prune above.
+    if (!scrapeLooksPartial) staging.foreach { s =>
       (priorStagingRows.keySet -- divertedSanitized).foreach { stale =>
         s.deleteRow(priorStagingRows(stale))
       }
