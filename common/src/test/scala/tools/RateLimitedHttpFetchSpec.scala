@@ -156,6 +156,54 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  private val Flicks = "https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/"
+
+  "the gate's maxGateWait" should
+    "shed a request once the backlog exceeds the host's cap, without reaching the wire" in {
+    // A queued caller (a UK ScrapeChunk) must NOT block a worker for the whole
+    // backlog: past the cap the fetch throws so the caller reschedules instead.
+    val delegate = new CountingFetch
+    val paced = new RateLimitedHttpFetch(
+      delegate,
+      intervalFor = _ => Some(30.seconds),
+      maxWaitFor  = _ => Some(20.seconds),
+      now         = () => Instant.EPOCH,   // fixed clock: the backlog never drains
+      sleep       = _ => ()                // don't actually wait out the pace
+    )
+    paced.get(Flicks)   // backlog 0  -> slot EPOCH+30s
+    paced.get(Flicks)   // backlog 0  -> slot EPOCH+60s (pending wait now 30s > 20s)
+    a [PaceGateBackpressureException] should be thrownBy paced.get(Flicks)
+    delegate.calls shouldBe 2   // the shed request never hit the delegate
+
+    // Shedding must not advance the slot (no phantom claim), so it keeps shedding
+    // while backed up rather than letting one through per rejection.
+    a [PaceGateBackpressureException] should be thrownBy paced.get(Flicks)
+    delegate.calls shouldBe 2
+  }
+
+  it should "block out the whole backlog (never shed) for a host that names no cap" in {
+    // The default: a synchronous sweep (Filmstarts) has nowhere to reschedule to,
+    // so it must wait the pace out — the pre-cap behaviour, unchanged.
+    val delegate = new CountingFetch
+    val slept    = mutable.ListBuffer.empty[Long]
+    val paced = new RateLimitedHttpFetch(
+      delegate,
+      intervalFor = _ => Some(30.seconds),
+      maxWaitFor  = _ => None,
+      now         = () => Instant.EPOCH,
+      sleep       = ms => { slept += ms; () }
+    )
+    paced.get(Paced); paced.get(Paced); paced.get(Paced)
+    delegate.calls shouldBe 3               // all proceed — none shed
+    slept.max should be >= 60000L           // the 3rd blocked out the full backlog
+  }
+
+  it should "read Flicks' cap (and Filmstarts' absence of one) off the HostPolicies table" in {
+    RateLimitedHttpFetch.configuredMaxWait(Flicks)  shouldBe Some(20.seconds)
+    RateLimitedHttpFetch.configuredMaxWait(Paced)   shouldBe None   // Filmstarts: uncapped sweep
+    RateLimitedHttpFetch.configuredMaxWait(Unpaced) shouldBe None
+  }
+
   /** Env reads system properties as well as the process env, so a property is
    *  how a test drives a knob. Cleared in `finally` to avoid cross-test leakage. */
   private def withProperty[A](key: String, value: String)(body: => A): A =

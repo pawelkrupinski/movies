@@ -35,6 +35,7 @@ import scala.concurrent.duration._
 class RateLimitedHttpFetch(
   delegate:    HttpFetch,
   intervalFor: String => Option[FiniteDuration] = RateLimitedHttpFetch.configuredInterval,
+  maxWaitFor:  String => Option[FiniteDuration] = RateLimitedHttpFetch.configuredMaxWait,
   now:         () => Instant = () => Instant.now(),
   sleep:       Long => Unit  = Thread.sleep
 ) extends HttpFetch with Logging {
@@ -52,6 +53,19 @@ class RateLimitedHttpFetch(
       interval <- intervalFor(url)
       host     <- hostOf(url)
     } {
+      // Backpressure: if the gate is ALREADY backed up beyond this host's cap,
+      // don't claim a slot — a queued caller should reschedule rather than block
+      // a worker for the whole backlog. Peeked, not part of the atomic claim, so
+      // a rejected request leaves nextSlot untouched (no phantom slot burning
+      // gate capacity); the tiny peek/claim race is benign for a statistical pace.
+      maxWaitFor(url).foreach { cap =>
+        val pendingWaitMs = Option(nextSlot.get(host))
+          .map(slot => java.time.Duration.between(now(), slot).toMillis - interval.toMillis)
+          .getOrElse(0L)
+        if (pendingWaitMs > cap.toMillis)
+          throw new PaceGateBackpressureException(host, pendingWaitMs, cap.toMillis)
+      }
+
       val claimed = nextSlot.compute(host, (_, previous) => {
         val earliest = now()
         val slot =
@@ -93,4 +107,10 @@ object RateLimitedHttpFetch {
    *  other host override — never an if-branch here. */
   def configuredInterval(url: String): Option[FiniteDuration] =
     RealHttpFetch.requestIntervalFor(url).map(_.toMillis.millis)
+
+  /** The gate-wait cap for `url`'s host, read off the same per-host policy table
+   *  ([[RealHttpFetch.HostPolicies]]) — a paced host that reschedules cheaply
+   *  names one so its gate sheds backlog instead of blocking a worker. */
+  def configuredMaxWait(url: String): Option[FiniteDuration] =
+    RealHttpFetch.maxGateWaitFor(url).map(_.toMillis.millis)
 }
