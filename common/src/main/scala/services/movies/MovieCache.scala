@@ -1149,15 +1149,21 @@ class CaffeineMovieCache(
     // healthy tick (full board) prunes normally, dropping whatever genuinely
     // stopped screening.
     val touchedSlots: Set[SourceData] = resolved.iterator.map(_._2).toSet
-    if (!scrapeLooksPartial) positive.asMap().asScala.iterator
-      .flatMap { case (k, e) =>
-        val staleKeys = e.data.iterator.collect {
-          case (s, sd) if Source.cinemaOf(s).contains(cinema) && !touchedSlots.contains(sd) => s
-        }.toSet
-        if (staleKeys.nonEmpty) Iterator.single(k -> staleKeys) else Iterator.empty
-      }
-      .toList
-      .foreach { case (k, staleKeys) =>
+    if (scrapeLooksPartial)
+      // The guard skipped the prune — log the decision (and what it spared) so a
+      // degraded-tick episode is on the record even though nothing was removed.
+      RemovalAudit.scrapePruneSkipped(cinema.displayName, batchFilms = deduped.size,
+        knownSlots = knownCinemaSlots, reason = "partial-scrape-guard")
+    else {
+      val toPrune = positive.asMap().asScala.iterator
+        .flatMap { case (k, e) =>
+          val staleKeys = e.data.iterator.collect {
+            case (s, sd) if Source.cinemaOf(s).contains(cinema) && !touchedSlots.contains(sd) => s
+          }.toSet
+          if (staleKeys.nonEmpty) Iterator.single(k -> staleKeys) else Iterator.empty
+        }
+        .toList
+      toPrune.foreach { case (k, staleKeys) =>
         // Drop only the stale slot keys, under the per-title lock, via `putIfPresent`
         // so a concurrent sibling-slot write isn't clobbered. Before dropping, retain
         // each dropped slot's synopsis (longest-seen, keyed by its source) so the
@@ -1172,6 +1178,13 @@ class CaffeineMovieCache(
             retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
         })
       }
+      // The batch signal the served-films sawtooth needed: which cinema dropped how
+      // many slots off how many still-known films this tick.
+      RemovalAudit.scrapePruned(cinema.displayName, films = toPrune.size,
+        slots = toPrune.iterator.map(_._2.size).sum,
+        sampleFilmIds = toPrune.map { case (k, _) => s"${k.cleanTitle} (${k.year.getOrElse("—")})" },
+        reason = "scrape-prune")
+    }
 
     // Prune (staging): drop this cinema's staging rows it no longer lists this
     // tick — the staging analogue of the movies prune. A row that graduated to
@@ -1464,7 +1477,14 @@ class CaffeineMovieCache(
     import scala.jdk.CollectionConverters._
     positive.asMap().keySet().asScala
       .find(k => StoredMovieRecord.idFor(k.cleanTitle, k.year) == id)
-      .foreach { k => positive.invalidate(k); touch() }
+      .foreach { k =>
+        positive.invalidate(k)
+        // An out-of-band Mongo delete arriving via the change stream — the mirror
+        // of a fold/UnscreenedCleanup/re-key removal another writer made. The only
+        // signal that a cache row vanished for a reason NOT originating on this node.
+        RemovalAudit.filmRemoved("cache.applyDelete", id, reason = "change-stream-delete")
+        touch()
+      }
   }
 
   def start(): Unit = {

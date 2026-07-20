@@ -504,8 +504,9 @@ class MongoMovieRepository(
     )
     Try {
       val result = Await.result(c.deleteMany(filter).toFuture(), 10.seconds)
-      if (result.getDeletedCount > 1)
-        logger.info(s"MovieRepository.delete($title, $year) removed ${result.getDeletedCount} document(s).")
+      if (result.getDeletedCount > 0)
+        RemovalAudit.filmRemoved("movies.delete", documentId(title, year),
+          reason = if (result.getDeletedCount > 1) s"title+year (${result.getDeletedCount} docs)" else "title+year")
       screenings.foreach(_.deleteFilm(documentId(title, year)))
       ()
     }.recover {
@@ -515,7 +516,8 @@ class MongoMovieRepository(
 
   def deleteById(id: String): Unit = coll.foreach { c =>
     Try {
-      Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
+      val deleted = Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds).getDeletedCount
+      if (deleted > 0) RemovalAudit.filmRemoved("movies.deleteById", id, reason = "orphan-id-reap")
       screenings.foreach(_.deleteFilm(id))
       ()
     }.recover {

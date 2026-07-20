@@ -310,7 +310,10 @@ class MongoScreeningsRepository(
         ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
       }
       val dropStale = DeleteManyModel[StoredScreeningsDto](ScreeningsRepository.staleSlotsFilter(filmId, slots.keySet))
-      Await.result(c.bulkWrite(upserts :+ dropStale, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)
+      val result    = Await.result(c.bulkWrite(upserts :+ dropStale, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)
+      if (result.getDeletedCount > 0)
+        RemovalAudit.screeningsCleared("screenings.replaceFilm", filmId, result.getDeletedCount.toInt,
+          whole = slots.isEmpty, reason = "stale-slot-prune")
     }.recover { case e => logger.warn(s"ScreeningsRepository.replaceFilm($filmId) failed: ${e.getMessage}") }
   }
 
@@ -320,13 +323,16 @@ class MongoScreeningsRepository(
   }
 
   def deleteSlot(filmId: String, slotKey: String): Unit = coll.foreach { c =>
-    Try(deleteOne(c, filmId, slotKey))
+    Try { deleteOne(c, filmId, slotKey); RemovalAudit.slotRemoved("screenings.deleteSlot", filmId, slotKey, "slot-deleted") }
       .recover { case e => logger.warn(s"ScreeningsRepository.deleteSlot($filmId,$slotKey) failed: ${e.getMessage}") }
   }
 
   def deleteFilm(filmId: String): Unit = coll.foreach { c =>
-    Try(Await.result(c.deleteMany(Filters.eq("filmId", filmId)).toFuture(), 10.seconds))
-      .recover { case e => logger.warn(s"ScreeningsRepository.deleteFilm($filmId) failed: ${e.getMessage}") }
+    Try {
+      val deleted = Await.result(c.deleteMany(Filters.eq("filmId", filmId)).toFuture(), 10.seconds).getDeletedCount
+      if (deleted > 0)
+        RemovalAudit.screeningsCleared("screenings.deleteFilm", filmId, deleted.toInt, whole = true, reason = "film-deleted")
+    }.recover { case e => logger.warn(s"ScreeningsRepository.deleteFilm($filmId) failed: ${e.getMessage}") }
   }
 
   private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, st: Seq[Showtime]): Unit = {

@@ -39,8 +39,11 @@ class UnscreenedCleanup(cache: MovieCache) extends Stoppable with Logging {
    *  can invoke a one-shot pass; the daily scheduler calls the same method. */
   def removeUnscreened(): Int = {
     val orphans = cache.entries.collect { case (k, e) if e.cinemaData.isEmpty => k }
-    if (orphans.nonEmpty)
+    if (orphans.nonEmpty) {
       logger.info(s"Unscreened-row cleanup: dropping ${orphans.size} row(s) with no current screenings.")
+      services.movies.RemovalAudit.filmsRemoved("unscreened-cleanup",
+        orphans.map(k => s"${k.cleanTitle} (${k.year.getOrElse("—")})"), reason = "no-current-screenings")
+    }
     orphans.foreach(cache.invalidate)
     orphans.size
   }

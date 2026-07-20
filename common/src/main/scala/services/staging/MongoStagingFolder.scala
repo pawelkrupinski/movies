@@ -126,6 +126,11 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
         await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k.cleanTitle, k.year))).toFuture()))
       plan.stagingDeletes.foreach(r =>
         await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()))
+      // These `movies` deletes bypass MovieRepository.delete (direct in-txn deleteOne),
+      // so audit them here — the fold losers a group merge removes from the corpus.
+      if (plan.moviesDeletes.nonEmpty)
+        services.movies.RemovalAudit.filmsRemoved("staging-fold",
+          plan.moviesDeletes.map(k => s"${k.cleanTitle} (${k.year.getOrElse("—")})"), reason = s"folded-into='$sanitize'")
       logger.info(s"Folded staging group '$sanitize': ${stagingRows.size} row(s) → ${plan.moviesUpserts.size} movies row(s).")
       plan.newPromotions
     }

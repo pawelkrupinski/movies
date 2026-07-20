@@ -964,6 +964,21 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   private def multikinoSlot(cache: CaffeineMovieCache, title: String): Option[SourceData] =
     cache.get(cache.keyOf(title, Some(2026))).flatMap(_.cinemaShowings.collectFirst { case (Multikino, sd) => sd })
 
+  // Capture the RemovalAudit logger's output for the duration of `body`. Inlined
+  // rather than shared with RemovalAuditSpec: that lives in `common` test, this in
+  // `worker` test, and the common↔testkit dependency direction leaves no shared
+  // test-util location without a cycle.
+  private def captureRemovalAudit(body: => Unit): Seq[ch.qos.logback.classic.spi.ILoggingEvent] = {
+    val lg  = org.slf4j.LoggerFactory.getLogger(RemovalAudit.LoggerName).asInstanceOf[ch.qos.logback.classic.Logger]
+    val app = new ch.qos.logback.core.read.ListAppender[ch.qos.logback.classic.spi.ILoggingEvent]()
+    app.start()
+    val prev = lg.getLevel
+    lg.setLevel(ch.qos.logback.classic.Level.DEBUG)
+    lg.addAppender(app)
+    try { body; import scala.jdk.CollectionConverters._; app.list.asScala.toSeq }
+    finally { lg.detachAppender(app); lg.setLevel(prev) }
+  }
+
   it should "keep a cinema's other slots when a scrape collapses to a fraction of what it holds (a partial/degraded response)" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
     cache.recordCinemaScrape(Multikino, multiFilmScrape(10))
@@ -971,8 +986,11 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // Next tick: a degraded response with a SINGLE film — well below half the ten
     // known slots. Treated as partial: the present film is refreshed, but the nine
     // it merely failed to mention are NOT pruned.
-    cache.recordCinemaScrape(Multikino, Seq(multiFilmScrape(10).head))
+    val events = captureRemovalAudit(cache.recordCinemaScrape(Multikino, Seq(multiFilmScrape(10).head)))
     (1 to 10).foreach(i => withClue(s"Film $i must survive a partial scrape: ")(multikinoSlot(cache, s"Film $i") should not be None))
+    // …and the skipped-prune decision is audited so the degraded tick is on the record.
+    withClue("guard skip must be audited: ")(
+      events.exists(e => e.getFormattedMessage.contains("SKIPPED") && e.getFormattedMessage.contains("Multikino")) shouldBe true)
   }
 
   it should "still prune a slot the cinema genuinely stopped listing when the scrape only shrinks slightly" in {
@@ -980,9 +998,12 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, multiFilmScrape(10))
     // Nine of ten remain — a plausible real change, above the partial-response
     // floor — so the prune runs and the one dropped film's slot is removed.
-    cache.recordCinemaScrape(Multikino, multiFilmScrape(10).tail)
+    val events = captureRemovalAudit(cache.recordCinemaScrape(Multikino, multiFilmScrape(10).tail))
     multikinoSlot(cache, "Film 1") shouldBe None
     multikinoSlot(cache, "Film 2") should not be None
+    // …and the prune is audited with the cinema + slot count.
+    withClue("prune must be audited: ")(
+      events.exists(e => e.getFormattedMessage.contains("pruned") && e.getFormattedMessage.contains("Multikino")) shouldBe true)
   }
 
   it should "still prune below the small-venue floor even on a severe drop — the guard only protects boards big enough for the shrink to be implausible" in {

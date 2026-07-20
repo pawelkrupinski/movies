@@ -170,7 +170,14 @@ class ReadModelProjector(
     val deletes = previous.keysIterator.filterNot(nextById.contains).toSeq
     deletes.foreach(writer.deleteScreening)
     if (upserted > 0)        metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
-    if (deletes.nonEmpty)    metrics.recordWrite(Target.Screening, Op.Delete, deletes.size)
+    if (deletes.nonEmpty) {
+      metrics.recordWrite(Target.Screening, Op.Delete, deletes.size)
+      // A card kept but some of its screening slots trimmed — routine reprojection
+      // churn (DEBUG), but it's how a film can drop out of "served tomorrow" without
+      // its whole card being deleted, so the audit covers it too.
+      services.movies.RemovalAudit.screeningsCleared("read-model.diff", filmId, deletes.size,
+        whole = nextById.isEmpty, reason = "reproject-trim")
+    }
     if (nextById.isEmpty) lastScreenings.remove(filmId) else lastScreenings.update(filmId, nextById.view.mapValues(_.##).toMap)
     upserted + deletes.size
   }
@@ -182,6 +189,10 @@ class ReadModelProjector(
     writer.deleteMovie(filmId)
     val screeningIds = lastScreenings.getOrElse(filmId, Map.empty).keys.toSeq
     screeningIds.foreach(writer.deleteScreening)
+    // The point a film actually leaves the served site (web_movies + its
+    // web_screenings). During a "cards vanish" episode this names every dropped
+    // filmId, one INFO line each — the read-model half of the removal audit.
+    services.movies.RemovalAudit.cardRemoved(filmId, screeningIds.size, reason = "reconcile-prune")
     metrics.recordWrite(Target.Movie, Op.Delete, 1)
     if (screeningIds.nonEmpty) metrics.recordWrite(Target.Screening, Op.Delete, screeningIds.size)
     metrics.recordFilmPruned(1)
