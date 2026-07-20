@@ -985,6 +985,17 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     multikinoSlot(cache, "Film 2") should not be None
   }
 
+  it should "still prune below the small-venue floor even on a severe drop — the guard only protects boards big enough for the shrink to be implausible" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    // Four films — under MinSlotsForShrinkGuard, so the shrink guard never engages:
+    // a small venue really can go from four films to one between ticks, so a big
+    // proportional drop there is a real schedule change and MUST prune, not linger.
+    cache.recordCinemaScrape(Multikino, multiFilmScrape(4))
+    cache.recordCinemaScrape(Multikino, Seq(multiFilmScrape(4).head))
+    multikinoSlot(cache, "Film 1") should not be None
+    multikinoSlot(cache, "Film 2") shouldBe None
+  }
+
   it should "carry a slot's detail fields (director/cast/runtime) forward when a later scrape's listing omits them (no strip, no churn)" in {
     val repo  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repo)
