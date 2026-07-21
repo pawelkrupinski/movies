@@ -539,7 +539,7 @@ case object KinoFregata extends Cinema("Fregata", "Fregata")   // Lębork — fi
 // jelenia-gora
 case object KinoWawel extends Cinema("Kino Wawel", "Wawel")   // Lubań — filmweb 1721
 // przemysl
-case object KinoCentrum3DPrzemysl extends Cinema("Centrum 3D Przemyśl", "Centrum 3D")   // Przemyśl — filmweb 1786
+case object KinoCentrum3DPrzemysl extends Cinema("Centrum 3D Przemyśl", "Centrum 3D")   // Przemyśl — ck.przemysl.pl (was filmweb 1786, went empty)
 case object KinoIkar extends Cinema("Kino Ikar", "Ikar")   // Jarosław — filmweb 1707
 case object KinoNaBiegunach extends Cinema("Kino Na Biegunach", "Na Biegunach")   // Jarosław — filmweb 2172
 case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — bilety.sdksanok.pl

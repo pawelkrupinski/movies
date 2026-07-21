@@ -368,7 +368,7 @@ class CinemaScraperCatalog(
     "nowy-sacz" -> Seq(new EkobiletClient(http, "kino-jaworzyna", KinoJaworzyna, today), new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/limanowski-dom-kultury-1368", KinoKlaps)),
     "slupsk" -> Seq(new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/leborskie-centrum-kultury-kino-fregata-1683", KinoFregata)),
     "jelenia-gora" -> Seq(new Bilety24OrganizerClient(http, "https://www.bilety24.pl/kino/organizator/kino-wawel-w-lubaniu-1489", KinoWawel)),
-    "przemysl" -> Seq(new FilmwebShowtimesClient(http, 1786, KinoCentrum3DPrzemysl, today = today), new MsiClient(http, "https://kinoikar.mok-jar.pl", KinoIkar, today), new MsiClient(http, "https://jaroslaw.kinonabiegunach.pl", KinoNaBiegunach, today), new KinoSDKSanokClient(http, KinoSDK, today)),
+    "przemysl" -> Seq(new KinoCentrum3DPrzemyslClient(http, KinoCentrum3DPrzemysl), new MsiClient(http, "https://kinoikar.mok-jar.pl", KinoIkar, today), new MsiClient(http, "https://jaroslaw.kinonabiegunach.pl", KinoNaBiegunach, today), new KinoSDKSanokClient(http, KinoSDK, today)),
   )
 
   // ── United Kingdom (Flicks) ──────────────────────────────────────────────

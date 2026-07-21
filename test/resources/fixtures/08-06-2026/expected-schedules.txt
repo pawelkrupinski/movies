@@ -1024,7 +1024,7 @@ showings:
 
 === Cinema Italia Oggi: O czym sobie nie mówimy ===
 displayTitle:      Cinema Italia Oggi: O czym sobie nie mówimy
-cinemaTitles:      Cinema Italia Oggi: O czym sobie nie mówimy | O czym sobie nie mówimy
+cinemaTitles:      Cinema Italia Oggi: O czym sobie nie mówimy | O CZYM SOBIE NIE MÓWIMY | O czym sobie nie mówimy
 runtimeMinutes:    115
 releaseYear:       2026
 countries:         Włochy
@@ -1045,6 +1045,7 @@ filmwebUrl:        https://www.filmweb.pl/film/O+czym+sobie+nie+m%C3%B3wimy-2026
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14633-cinema-italia-oggi-o-czym-sobie-nie-mowimy/
 cinemaScrapes:
+  Centrum 3D Przemyśl / O CZYM SOBIE NIE MÓWIMY / —
   Kino Muranów / O czym sobie nie mówimy / 2025
   Kino Pałacowe / Cinema Italia Oggi: O czym sobie nie mówimy / 2025
   Kino Pod Baranami / O czym sobie nie mówimy / —
@@ -1129,6 +1130,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-101025
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14634-cinema-italia-oggi-takie-jest-zycie/
 cinemaScrapes:
+  Centrum 3D Przemyśl / TAKIE JEST ŻYCIE / —
   Dolnośląskie Centrum Filmowe / Takie jest życie / 2025
   Forum / Takie jest życie / —
   Gdyńskie Centrum Filmowe / Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE / —
@@ -2020,6 +2022,7 @@ cinemaScrapes:
   Baszta / Drzewo magii / —
   Bałtyk / Drzewo magii / —
   Centrum / Drzewo magii / —
+  Centrum 3D Przemyśl / DRZEWO MAGII / —
   Cinema City / — / —
   Cinema City Arkadia / Drzewo magii / 2025
   Cinema City Bemowo / Drzewo magii / 2025
@@ -4693,7 +4696,6 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/michael/7785s2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/michael-4308
 cinemaScrapes:
-  Centrum 3D Przemyśl / Michael / 2026
   Cinema City / — / —
   Cinema City Arkadia / Michael / 2026
   Cinema City Bemowo / Michael / 2026
@@ -5107,6 +5109,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/minionki-i-straszydla/8023d2r
   Helios Posnania = https://helios.pl/poznan/kino-helios/filmy/minionki-i-straszydla-4421
 cinemaScrapes:
+  Centrum 3D Przemyśl / MINIONKI I STRASZYDŁA / —
   Cinema City / — / —
   Cinema City Arkadia / Minionki i straszydła ukraiński dubbing / 2026
   Cinema City Bemowo / Minionki i straszydła / 2026
@@ -5240,6 +5243,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Minionki+i+straszyd%C5%82a-2026-1
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/minionki-i-straszydla-ukrainski-dubbing/8023d2r1
 cinemaScrapes:
+  Centrum 3D Przemyśl / MINIONKI I STRASZYDŁA / —
   Cinema City / — / —
   Cinema City Arkadia / Minionki i straszydła ukraiński dubbing / 2026
   Cinema City Bemowo / Minionki i straszydła / 2026
@@ -8728,7 +8732,6 @@ cinemaFilmUrls:
   Cinema City Kinepolis = https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/sprawiedliwosc-owiec/7956d2r
 cinemaScrapes:
-  Centrum 3D Przemyśl / Sprawiedliwość owiec / 2026
   Cinema City / — / —
   Cinema City Arkadia / Sprawiedliwość owiec / 2026
   Cinema City Bemowo / Sprawiedliwość owiec / 2026
@@ -9408,6 +9411,7 @@ cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/takie-jest-zycie/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14532-takie-jest-zycie-przedpremiera-i-spotkanie-woko-fi/
 cinemaScrapes:
+  Centrum 3D Przemyśl / TAKIE JEST ŻYCIE / —
   Dolnośląskie Centrum Filmowe / Takie jest życie / 2025
   Forum / Takie jest życie / —
   Gdyńskie Centrum Filmowe / Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE / —
@@ -9720,6 +9724,7 @@ cinemaScrapes:
   Bajka / Toy story 5 / —
   Bałtyk / Toy Story 5 / —
   Centrum / Toy Story 5 / —
+  Centrum 3D Przemyśl / TOY STORY 5 / —
   Chemik / Toy story 5 / —
   Cinema City / — / —
   Cinema City Arkadia / Toy Story 5 ukraiński dubbing / 2026
@@ -9885,6 +9890,7 @@ cinemaScrapes:
   Bajka / Toy story 5 / —
   Bałtyk / Toy Story 5 / —
   Centrum / Toy Story 5 / —
+  Centrum 3D Przemyśl / TOY STORY 5 / —
   Chemik / Toy story 5 / —
   Cinema City / — / —
   Cinema City Arkadia / Toy Story 5 ukraiński dubbing / 2026
@@ -10578,6 +10584,7 @@ filmwebUrl:        https://www.filmweb.pl/film/Zaproszenie-2026-10109168
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14519-zaproszenie-przedpremiera/
 cinemaScrapes:
+  Centrum 3D Przemyśl / ZAPROSZENIE / —
   Dolnośląskie Centrum Filmowe / Zaproszenie / 2026
   Kino Bajka / Zaproszenie / —
   Kino Pałacowe / Zaproszenie / 2026

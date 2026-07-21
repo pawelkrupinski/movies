@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<!-- Trimmed fixture: the `.ic_eventlist` IcAgenda container from
+     https://ck.przemysl.pl/kino-centrum/repertuar (recorded 2026-07-21).
+     Surrounding site chrome/menus/scripts dropped — the parser selects only
+     `div.ic-event-div` / `div.iceventlist-title a`, which live in this block. -->
+<html lang="pl"><head><meta charset="utf-8"><title>Repertuar - Centrum 3D</title></head>
+<body><div class="ic_eventlist"><div class="ic-section ic-group">
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					28				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1027-robin-hood-koniec-legendy/2026-07-28-15-00">
+					ROBIN HOOD: KONIEC LEGENDY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Legenda była kłamstwem. Hugh Jackman, Jodie Comer, Bill Skarsgård w mrocznej opowieści o odkupieniu.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					28				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1028-drzewo-magii-dubbing/2026-07-28-17-30">
+					DRZEWO MAGII dubbing				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Polly i Tim wraz z trójką dzieci to współczesna rodzina, która staje przed koniecznością</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					28				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1027-robin-hood-koniec-legendy/2026-07-28-19-45">
+					ROBIN HOOD: KONIEC LEGENDY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Legenda była kłamstwem. Hugh Jackman, Jodie Comer, Bill Skarsgård w mrocznej opowieści o odkupieniu.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					29				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1027-robin-hood-koniec-legendy/2026-07-29-15-00">
+					ROBIN HOOD: KONIEC LEGENDY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Legenda była kłamstwem. Hugh Jackman, Jodie Comer, Bill Skarsgård w mrocznej opowieści o odkupieniu.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					29				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1027-robin-hood-koniec-legendy/2026-07-29-19-45">
+					ROBIN HOOD: KONIEC LEGENDY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Legenda była kłamstwem. Hugh Jackman, Jodie Comer, Bill Skarsgård w mrocznej opowieści o odkupieniu.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					30				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1027-robin-hood-koniec-legendy/2026-07-30-15-00">
+					ROBIN HOOD: KONIEC LEGENDY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Legenda była kłamstwem. Hugh Jackman, Jodie Comer, Bill Skarsgård w mrocznej opowieści o odkupieniu.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					30				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1028-drzewo-magii-dubbing/2026-07-30-17-30">
+					DRZEWO MAGII dubbing				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Polly i Tim wraz z trójką dzieci to współczesna rodzina, która staje przed koniecznością</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					30				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1027-robin-hood-koniec-legendy/2026-07-30-19-45">
+					ROBIN HOOD: KONIEC LEGENDY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Legenda była kłamstwem. Hugh Jackman, Jodie Comer, Bill Skarsgård w mrocznej opowieści o odkupieniu.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					31				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1041-toy-story-5/2026-07-31-15-15">
+					TOY STORY 5				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					31				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-07-31-17-30">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					31				</div>
+				<div class="ic-month">
+					Lip				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-07-31-19-45">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					01				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1041-toy-story-5/2026-08-01-15-15">
+					TOY STORY 5				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					01				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-01-17-30">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					01				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-01-19-45">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					02				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1041-toy-story-5/2026-08-02-15-15">
+					TOY STORY 5				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					02				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-02-17-30">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					02				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-02-19-45">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					04				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1041-toy-story-5/2026-08-04-15-15">
+					TOY STORY 5				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					04				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1022-niesamowita-historia-mumbo-jumbo-dubbing/2026-08-04-16-00">
+					NIESAMOWITA HISTORIA MUMBO JUMBO dubbing				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i> Malutki hipopotam Mumbo Jumbo magicznie urósł do gigantycznych rozmiarów. Teraz musi wyruszyć w niebezpieczną podróż, aby odnaleźć Babę Jagę, która ma moce pozwalające na przywrócenie</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					04				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-04-17-30">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					04				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-04-19-45">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					05				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1041-toy-story-5/2026-08-05-15-15">
+					TOY STORY 5				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					05				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-05-17-30">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					05				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-05-19-45">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					06				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1041-toy-story-5/2026-08-06-15-15">
+					TOY STORY 5				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					06				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-06-17-30">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					06				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1042-zaproszenie/2026-08-06-19-45">
+					ZAPROSZENIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny.</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					07				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-07-15-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					07				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-07-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					07				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1044-o-czym-sobie-nie-mowimy/2026-08-07-19-30">
+					O CZYM SOBIE NIE MÓWIMY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Carlo i Elisa mieszkają w Rzymie, tworząc z pozoru udany związek. On jest profesorem filozofii na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					08				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-08-15-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					08				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-08-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					08				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1044-o-czym-sobie-nie-mowimy/2026-08-08-19-30">
+					O CZYM SOBIE NIE MÓWIMY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Carlo i Elisa mieszkają w Rzymie, tworząc z pozoru udany związek. On jest profesorem filozofii na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					09				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-09-15-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					09				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-09-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					09				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1044-o-czym-sobie-nie-mowimy/2026-08-09-19-30">
+					O CZYM SOBIE NIE MÓWIMY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Carlo i Elisa mieszkają w Rzymie, tworząc z pozoru udany związek. On jest profesorem filozofii na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					11				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-11-15-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					11				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-11-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					11				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1044-o-czym-sobie-nie-mowimy/2026-08-11-19-30">
+					O CZYM SOBIE NIE MÓWIMY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Carlo i Elisa mieszkają w Rzymie, tworząc z pozoru udany związek. On jest profesorem filozofii na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					12				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-12-15-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					12				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-12-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					12				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1044-o-czym-sobie-nie-mowimy/2026-08-12-19-30">
+					O CZYM SOBIE NIE MÓWIMY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Carlo i Elisa mieszkają w Rzymie, tworząc z pozoru udany związek. On jest profesorem filozofii na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					13				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-13-15-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					13				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-13-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					13				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1044-o-czym-sobie-nie-mowimy/2026-08-13-19-30">
+					O CZYM SOBIE NIE MÓWIMY				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Carlo i Elisa mieszkają w Rzymie, tworząc z pozoru udany związek. On jest profesorem filozofii na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					14				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1045-takie-jest-zycie/2026-08-14-15-00">
+					TAKIE JEST ŻYCIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>TAKIE JEST ŻYCIE to inspirowana prawdziwymi wydarzeniami poruszająca historia, która rozgrywa się na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					14				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-14-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					14				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1045-takie-jest-zycie/2026-08-14-19-30">
+					TAKIE JEST ŻYCIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>TAKIE JEST ŻYCIE to inspirowana prawdziwymi wydarzeniami poruszająca historia, która rozgrywa się na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					16				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1045-takie-jest-zycie/2026-08-16-15-00">
+					TAKIE JEST ŻYCIE				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>TAKIE JEST ŻYCIE to inspirowana prawdziwymi wydarzeniami poruszająca historia, która rozgrywa się na</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+
+<div class="default_eventlist ic-col ic-col4">
+	<div class="ic-event-div">
+
+				<div class="ic-date-img-box">
+			<div class="ic-date-div" style="background: #000000; color: white;">
+				<div class="ic-day">
+					16				</div>
+				<div class="ic-month">
+					Sie				</div>
+			</div>
+		</div>
+
+		<div class="ic-block">
+
+						
+						<div class="iceventlist-title ic-block">
+				<a href="/component/icagenda/1043-minionki-i-straszydla/2026-08-16-17-30">
+					MINIONKI I STRASZYDŁA				</a>
+			</div>
+
+		</div>
+
+		
+							<span class="iceventlist-desc">
+				<i>Po światowym sukcesie najzabawniejszej komedii lata 2024 roku, „Gru i Minionki: pod przykrywką”, studio Illumination rozszerza swój radosny animowany świat o nowy, pełen szaleństw rozdział w</i> 			</span>
+		
+				
+				
+	</div>
+	<hr>
+</div>
+
+</div></div></body></html>
