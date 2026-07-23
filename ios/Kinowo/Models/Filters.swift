@@ -132,6 +132,23 @@ enum ActiveFilters {
     }
 }
 
+/// Whether the per-card cinema label carries any information. It doesn't when
+/// the listing can only ever name one cinema — the city holds a single cinema,
+/// or the Filtry sheet's "Kina" axis has been narrowed to one — so the label is
+/// suppressed as noise in that case.
+///
+/// Deliberately keyed on the cinemas the user *could* see (the city's set minus
+/// their exclusions), never on the cinemas that happen to be on screen right
+/// now: late in the day, or under a search, the remaining screenings often all
+/// land at one cinema, and a label that vanishes for that reason reads as a bug
+/// rather than as tidiness. Being independent of the day also keeps every page
+/// of the day pager consistent with the others.
+enum CinemaLabelVisibility {
+    static func showsLabels(cityCinemas: [String], disabledCinemas: Set<String>) -> Bool {
+        cityCinemas.filter { !disabledCinemas.contains($0) }.count > 1
+    }
+}
+
 /// One cinema's slice of a filtered film list: every film that plays at
 /// this cinema, with each film's `showings` restricted to this cinema's
 /// dates and slots. Drives the Kina tab's cinema-grouped layout —
@@ -438,6 +455,23 @@ extension Sequence where Element == Film {
     /// the listing (it just left the repertoire).
     func fullFilm(for film: Film) -> Film {
         first { $0.title == film.title } ?? film
+    }
+
+    /// Every cinema named anywhere in this film list, de-duplicated and
+    /// ordered by its short pill label. Fed the whole loaded repertoire it is
+    /// the city's cinema set — which is what drives the cinema pill row, the
+    /// `?cinema=` deep link's web-compat write, and `CinemaLabelVisibility`.
+    func allCinemas() -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for film in self {
+            for day in film.showings {
+                for cinema in day.cinemas where seen.insert(cinema.cinema).inserted {
+                    out.append(cinema.cinema)
+                }
+            }
+        }
+        return out.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }
     }
 
     /// Pivot the (cross-cinema) film list into per-cinema sections. The

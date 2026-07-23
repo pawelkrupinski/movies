@@ -476,18 +476,7 @@ struct ContentView: View {
     // Sorted, de-duplicated cinema names that appear at least once somewhere in
     // `store.films`, ordered by their short pill label. Drives the cinema pill
     // bar and scopes the `?cinema=` deep-link's web-compat write.
-    private var allCinemas: [String] {
-        var seen = Set<String>()
-        var out: [String] = []
-        for film in store.films {
-            for day in film.showings {
-                for c in day.cinemas where seen.insert(c.cinema).inserted {
-                    out.append(c.cinema)
-                }
-            }
-        }
-        return out.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }
-    }
+    private var allCinemas: [String] { store.films.allCinemas() }
 
     /// Count how often each value (country / genre / director / actor)
     /// appears across the loaded films, sorted by descending frequency then
@@ -541,24 +530,14 @@ struct ContentView: View {
         .sorted(by: sortOption)
     }
 
-    /// Distinct cinemas that actually appear in the currently filtered film
-    /// list (after the Filtry sheet's "Kina" exclusions). When this is ≤ 1
-    /// — the filter has been narrowed to a single cinema, or the city only
-    /// has one — the per-card cinema label is redundant, so it's suppressed.
-    private var visibleCinemaCount: Int {
-        var seen = Set<String>()
-        for film in films(for: dateFilter) {
-            for day in film.showings {
-                for c in day.cinemas { seen.insert(c.cinema) }
-            }
-        }
-        return seen.count
+    /// Show the per-card cinema label unless the city itself — or the Filtry
+    /// sheet's "Kina" exclusions — leaves only one cinema to name. See
+    /// `CinemaLabelVisibility` for why this is keyed on the cinemas the user
+    /// could see rather than on the ones currently on screen.
+    private var showCinemaHeaders: Bool {
+        CinemaLabelVisibility.showsLabels(cityCinemas: allCinemas,
+                                          disabledCinemas: prefs.disabledCinemas)
     }
-
-    /// Show the per-card cinema label only when more than one cinema is in
-    /// view; a single-cinema listing names the cinema everywhere identically,
-    /// so the label is just noise.
-    private var showCinemaHeaders: Bool { visibleCinemaCount > 1 }
 
     /// Flash the given day label in the middle of the screen for ~0.7 s,
     /// then fade it out over 0.2 s. Cancels any previous fade-out task so
