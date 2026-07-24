@@ -284,10 +284,6 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                             ) { day, state, columnModifier ->
                                 val visible =
                                     viewModel.filmsFor(day, films, hidden, disabledCinemas)
-                                // Suppress the per-card cinema label when the
-                                // repertoire on show narrows to a single cinema —
-                                // it's the same name on every card.
-                                val showCinemaHeaders = distinctCinemaCount(visible) > 1
                                 // The mirror lands the new day at the SAME scroll the
                                 // user was at; ScrollToTopOnChange then eases that up to
                                 // the top — so a swipe reads as "land where I was, then
@@ -295,11 +291,16 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
                                 // selectDayKeepingTopFlat, so this is a no-op there and
                                 // doesn't jump.
                                 if (day == viewModel.dateFilter) ScrollToTopOnChange(state, viewModel.dateFilter)
+                                // The per-card cinema label is always shown on the
+                                // main listing — even when the filter narrows to one
+                                // cinema. Only the grouped-by-cinema section view
+                                // (CinemaGrid, below) suppresses it, since its
+                                // section header already names the cinema.
                                 FilmsGrid(
                                     films = visible,
                                     state = state,
                                     bottomInset = gridBottomInset,
-                                    showCinemaHeaders = showCinemaHeaders,
+                                    showCinemaHeaders = true,
                                     onOpen = onOpenFilm,
                                     onHide = { viewModel.hide(it) },
                                     modifier = columnModifier,
@@ -580,15 +581,6 @@ private fun DatePill(label: String, selected: Boolean, wide: Boolean, modifier: 
             color = Color.White,
         )
     }
-}
-
-// Distinct cinema names anywhere in the currently-shown films. Drives whether
-// the per-card cinema label is worth showing: with a single cinema on screen
-// it's the same name on every card, so it's suppressed as redundant.
-private fun distinctCinemaCount(films: List<Film>): Int {
-    val seen = HashSet<String>()
-    for (film in films) for (day in film.showings) for (c in day.cinemas) seen.add(c.cinema)
-    return seen.size
 }
 
 // Vertical room the floating search pill occupies at the bottom of the
