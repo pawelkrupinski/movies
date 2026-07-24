@@ -16,9 +16,18 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
 
   "Catalog.json" should "list every deployed country, keyed by the server country code" in {
     val j = Catalog.json
-    j should include("""{"code":"pl","name":"Polska","baseUrl":"https://kinowo.fly.dev","language":"pl","brand":"Kinowo"}""")
-    j should include("""{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes-uk.fly.dev","language":"en","brand":"Showtimes"}""")
-    j should include("""{"code":"de","name":"Deutschland","baseUrl":"https://showtimes-de.fly.dev","language":"de","brand":"Showtimes"}""")
+    j should include("""{"code":"pl","name":"Polska","baseUrl":"https://kinowo.fly.dev","language":"pl","brand":"Kinowo","timezone":"Europe/Warsaw"}""")
+    j should include("""{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes-uk.fly.dev","language":"en","brand":"Showtimes","timezone":"Europe/London"}""")
+    j should include("""{"code":"de","name":"Deutschland","baseUrl":"https://showtimes-de.fly.dev","language":"de","brand":"Showtimes","timezone":"Europe/Berlin"}""")
+  }
+
+  it should "carry each deployed country's local IANA timezone" in {
+    val j = Catalog.json
+    // The field the mobile apps read to prune past showtimes on local
+    // wall-clock — a London show disappears on Europe/London, not Warsaw.
+    j should include(""""code":"uk"""")
+    j should include(""""timezone":"Europe/London"""")
+    j should include(""""timezone":"Europe/Berlin"""")
   }
 
   it should "carry each city with its owning country's code" in {

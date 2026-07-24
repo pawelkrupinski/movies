@@ -30,7 +30,15 @@ object Catalog {
    */
   val json: String = {
     val countries = Country.switchable
-      .map(c => s"""{"code":"${c.code}","name":"${c.displayName}","baseUrl":"${c.webUrl.get}","language":"${c.language.getLanguage}","brand":"${c.brandName}"}""")
+      .map { c =>
+        // The country's IANA zone, so the mobile apps prune past showtimes
+        // against local wall-clock (a London show disappears on Europe/London,
+        // not Warsaw). Every city within a country shares one zone, so the
+        // first city's is representative; `Europe/Warsaw` is a safe default for
+        // the (currently impossible) city-less country.
+        val timezone = c.cities.headOption.map(_.zoneId.getId).getOrElse("Europe/Warsaw")
+        s"""{"code":"${c.code}","name":"${c.displayName}","baseUrl":"${c.webUrl.get}","language":"${c.language.getLanguage}","brand":"${c.brandName}","timezone":"$timezone"}"""
+      }
       .mkString("[", ",", "]")
     val cities = Country.switchable
       .flatMap(c => c.cities.map(city =>
