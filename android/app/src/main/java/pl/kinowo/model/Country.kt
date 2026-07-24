@@ -1,5 +1,12 @@
 package pl.kinowo.model
 
+import java.time.ZoneId
+
+/** Historical default zone, and the fallback for a country whose catalog entry
+ *  carries no timezone (an older seed, or a future country the server hasn't
+ *  tagged). */
+private val WARSAW_ZONE: ZoneId = ZoneId.of("Europe/Warsaw")
+
 /**
  * A country the app can serve. Each country is its own web deployment
  * ([baseUrl]) serving its own localized `/{city}/api/repertoire` +
@@ -22,6 +29,11 @@ data class Country(
     val baseUrl: String,
     /** BCP-47 primary language subtag forced as the app locale when selected. */
     val languageTag: String,
+    /** The country's local IANA zone (e.g. `Europe/London`), from the catalog's
+     *  per-country `timezone`. Past-showtime pruning and the Dziś/Jutro day
+     *  buckets reason in this zone, so a London show disappears on London time,
+     *  not Warsaw. Defaults to Warsaw when the source omits it. */
+    val zoneId: ZoneId = WARSAW_ZONE,
 ) {
     companion object {
         /** Compile-time FALLBACK registry, used only until the bundled/fetched
@@ -34,18 +46,21 @@ data class Country(
                 displayName = "Polska",
                 baseUrl = "https://kinowo.fly.dev",
                 languageTag = "pl",
+                zoneId = ZoneId.of("Europe/Warsaw"),
             ),
             Country(
                 code = "uk",
                 displayName = "United Kingdom",
                 baseUrl = "https://showtimes-uk.fly.dev",
                 languageTag = "en",
+                zoneId = ZoneId.of("Europe/London"),
             ),
             Country(
                 code = "de",
                 displayName = "Deutschland",
                 baseUrl = "https://showtimes-de.fly.dev",
                 languageTag = "de",
+                zoneId = ZoneId.of("Europe/Berlin"),
             ),
         )
 
@@ -83,6 +98,16 @@ data class CountryDto(
     val name: String,
     val baseUrl: String,
     val language: String,
+    /** IANA zone id, e.g. `Europe/London`. Nullable so an older bundled seed (or
+     *  a server predating the field) still decodes — it then falls back to
+     *  Warsaw, exactly the pre-fix behaviour. */
+    val timezone: String? = null,
 ) {
-    fun toCountry(): Country = Country(code = code, displayName = name, baseUrl = baseUrl, languageTag = language)
+    fun toCountry(): Country = Country(
+        code = code,
+        displayName = name,
+        baseUrl = baseUrl,
+        languageTag = language,
+        zoneId = timezone?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: WARSAW_ZONE,
+    )
 }

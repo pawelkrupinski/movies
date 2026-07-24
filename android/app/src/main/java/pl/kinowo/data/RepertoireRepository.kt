@@ -3,11 +3,13 @@ package pl.kinowo.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import pl.kinowo.filter.WARSAW
 import pl.kinowo.filter.prunedPastShowings
 import pl.kinowo.model.Film
 import pl.kinowo.net.RepertoireApi
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 
 /**
  * Owns the repertoire payload + its freshness bookkeeping — the Android
@@ -78,9 +80,11 @@ class RepertoireRepository(
     }
 
     /** Local-only: drop screenings now in the past and re-sort cinemas by
-     *  earliest remaining slot. Cheap to run on resume between fetches. */
-    fun pruneStaleShowings(now: Instant = Instant.now()) {
-        val pruned = _films.value.prunedPastShowings(now)
+     *  earliest remaining slot. Cheap to run on resume between fetches. [zone]
+     *  is the selected country's local zone so a London show drops on London
+     *  time, not Warsaw. */
+    fun pruneStaleShowings(now: Instant = Instant.now(), zone: ZoneId = WARSAW) {
+        val pruned = _films.value.prunedPastShowings(now, zone)
         if (pruned != _films.value) _films.value = pruned
     }
 }

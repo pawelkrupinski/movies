@@ -45,6 +45,7 @@ import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.countryOf
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
+import pl.kinowo.model.withCode
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaFilterSection
 import pl.kinowo.filter.CinemaSection
@@ -222,7 +223,18 @@ class KinowoViewModel(
             excludedGenres = excludedGenres,
             excludedDirectors = excludedDirectors,
             excludedCast = excludedCast,
+            zone = currentZone(),
         ).sortedFor(sortBy)
+
+    /** The selected country's local zone — the live catalog entry when present,
+     *  else the compile-time registry. Drives timezone-correct pruning and the
+     *  Dziś/Jutro day buckets (a London show disappears on London time). */
+    private fun currentZone(): java.time.ZoneId {
+        val code = selectedCountryCode.value
+        val country = countryCatalog.value.countries.withCode(Country.normalizeCode(code))
+            ?: Country.byCode(code)
+        return country.zoneId
+    }
 
     /** Distinct cinema names anywhere in the payload, sorted by pill name. */
     fun allCinemas(all: List<Film>): List<String> {
@@ -257,7 +269,7 @@ class KinowoViewModel(
     fun start() {
         repository.loadCachedData()
         detailsRepository.loadCachedData()
-        repository.pruneStaleShowings()
+        repository.pruneStaleShowings(zone = currentZone())
         // Revalidate the country/city catalog on cold open (conditional GET; a
         // 304 costs only headers). Non-blocking — the UI renders from the
         // seeded/persisted catalog meanwhile.
@@ -298,7 +310,7 @@ class KinowoViewModel(
     }
 
     fun onResume() {
-        repository.pruneStaleShowings()
+        repository.pruneStaleShowings(zone = currentZone())
         // Revalidate the catalog on each foreground (city-independent, so before
         // the early return below when no city is chosen yet).
         viewModelScope.launch { catalogRepository.reload() }

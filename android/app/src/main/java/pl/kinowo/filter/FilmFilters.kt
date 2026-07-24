@@ -4,6 +4,7 @@ import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import java.time.Instant
+import java.time.ZoneId
 
 /**
  * One cinema's slice of a filtered film list — every film that plays there,
@@ -161,11 +162,11 @@ data class CinemaSection(val cinema: String, val films: List<Film>) {
  * running this locally on foreground keeps cached data fresh as wall-clock
  * advances without a round-trip.
  */
-fun List<Film>.prunedPastShowings(now: Instant = Instant.now()): List<Film> =
+fun List<Film>.prunedPastShowings(now: Instant = Instant.now(), zone: ZoneId = WARSAW): List<Film> =
     mapNotNull { film ->
         val days = film.showings.mapNotNull { day ->
             val kept = day.cinemas.mapNotNull { cg ->
-                val future = cg.showtimes.filter { ShowtimeClock.isFuture(it, day.date, now) }
+                val future = cg.showtimes.filter { ShowtimeClock.isFuture(it, day.date, now, zone) }
                 if (future.isEmpty()) null
                 else cg.copy(showtimes = future)
             }
@@ -203,6 +204,7 @@ fun List<Film>.filteredFor(
     excludedDirectors: Set<String> = emptySet(),
     excludedCast: Set<String> = emptySet(),
     now: Instant = Instant.now(),
+    zone: ZoneId = WARSAW,
 ): List<Film> {
     val trimmedQuery = query.trim().lowercase()
     return mapNotNull { film ->
@@ -221,7 +223,7 @@ fun List<Film>.filteredFor(
             return@mapNotNull null
 
         val days = film.showings.mapNotNull { day ->
-            if (!date.matches(day.date, now)) return@mapNotNull null
+            if (!date.matches(day.date, now, zone)) return@mapNotNull null
             val cinemas = day.cinemas.mapNotNull { cg ->
                 if (cg.cinema in disabledCinemas) return@mapNotNull null
                 val times = if (format.isEmpty) cg.showtimes

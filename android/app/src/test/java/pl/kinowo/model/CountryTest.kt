@@ -2,6 +2,7 @@ package pl.kinowo.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.ZoneId
 
 /**
  * Pins the static country registry: Poland is the default (current prod base
@@ -47,5 +48,27 @@ class CountryTest {
     fun everyCountryHasADistinctCodeAndBaseUrl() {
         assertEquals(Country.all.size, Country.all.map { it.code }.toSet().size)
         assertEquals(Country.all.size, Country.all.map { it.baseUrl }.toSet().size)
+    }
+
+    @Test
+    fun eachCountryCarriesItsLocalZone() {
+        // Drives timezone-correct pruning — a London show disappears on London
+        // time, a Berlin one on Berlin time, not a hardcoded Warsaw.
+        assertEquals(ZoneId.of("Europe/Warsaw"), Country.byCode("pl").zoneId)
+        assertEquals(ZoneId.of("Europe/London"), Country.byCode("uk").zoneId)
+        assertEquals(ZoneId.of("Europe/Berlin"), Country.byCode("de").zoneId)
+    }
+
+    @Test
+    fun countryDtoDecodesTimezoneWithWarsawFallback() {
+        assertEquals(
+            ZoneId.of("Europe/London"),
+            CountryDto("uk", "United Kingdom", "https://showtimes-uk.fly.dev", "en", "Europe/London").toCountry().zoneId,
+        )
+        // An older seed / a server predating the field: no timezone → Warsaw.
+        assertEquals(
+            ZoneId.of("Europe/Warsaw"),
+            CountryDto("pl", "Polska", "https://kinowo.fly.dev", "pl", null).toCountry().zoneId,
+        )
     }
 }

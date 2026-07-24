@@ -10,11 +10,14 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** The only timezone the app (and the server it talks to) reasons about. */
+/** The app's historical default zone — the default for the pruning and day-bucket
+ *  helpers, kept so every existing PL-only call site (and its tests) behaves
+ *  exactly as before without passing a zone. UK/DE call sites thread the selected
+ *  country's zone in explicitly. */
 internal val WARSAW: ZoneId = ZoneId.of("Europe/Warsaw")
 
 private val ISO_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-private val WARSAW_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+private val WALL_CLOCK_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
 /**
  * Date axis of the Filtry bar. Dated options first (Dziś / Jutro / 7 dni),
@@ -36,7 +39,10 @@ private val WARSAW_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("y
  * site by `DateFilter.labelText()` (see `ui/common/FilterLabels.kt`).
  */
 sealed interface DateFilter {
-    fun matches(date: String, now: Instant = Instant.now()): Boolean
+    /** Whether `date` falls in this filter's window, judged in [zone] — the
+     *  selected country's local zone, so near midnight a UK user sees the London
+     *  day, not the Warsaw one. */
+    fun matches(date: String, now: Instant = Instant.now(), zone: ZoneId = WARSAW): Boolean
 
     enum class Kind : DateFilter {
         TODAY,
@@ -44,8 +50,8 @@ sealed interface DateFilter {
         WEEK,
         ANYTIME;
 
-        override fun matches(date: String, now: Instant): Boolean {
-            val todayDate = LocalDate.ofInstant(now, WARSAW)
+        override fun matches(date: String, now: Instant, zone: ZoneId): Boolean {
+            val todayDate = LocalDate.ofInstant(now, zone)
             return when (this) {
                 ANYTIME -> true
                 TODAY -> date == todayDate.format(ISO_DATE)
@@ -60,7 +66,7 @@ sealed interface DateFilter {
     }
 
     data class Specific(val date: String) : DateFilter {
-        override fun matches(date: String, now: Instant): Boolean = date == this.date
+        override fun matches(date: String, now: Instant, zone: ZoneId): Boolean = date == this.date
     }
 
     companion object {
@@ -71,7 +77,7 @@ sealed interface DateFilter {
 
         // Dated options first, catch-all rightmost.
         val presets: List<DateFilter> get() = listOf(Kind.TODAY, Kind.TOMORROW, Kind.WEEK, Kind.ANYTIME)
-        fun iso(now: Instant): String = LocalDate.ofInstant(now, WARSAW).format(ISO_DATE)
+        fun iso(now: Instant, zone: ZoneId = WARSAW): String = LocalDate.ofInstant(now, zone).format(ISO_DATE)
     }
 }
 
@@ -142,17 +148,19 @@ data class FormatFilter(
 }
 
 /**
- * Combines a screening's date + time into a wall-clock moment in Warsaw, so
- * `prunedPastShowings` and any future caller share one notion of "is this
- * slot still future" and "what minute does this cinema's earliest slot start".
+ * Combines a screening's date + time into a wall-clock moment in the cinema's
+ * local [zone][ZoneId] — Warsaw for a Polish city, Europe/London for a UK one,
+ * matching the zone the server prunes against — so `prunedPastShowings` and any
+ * future caller share one notion of "is this slot still future" and "what minute
+ * does this cinema's earliest slot start".
  */
 object ShowtimeClock {
-    /** A slot is "future" if its wall-clock dateTime is strictly after
-     *  `now - 30min` (a screening that started 25 min ago is still live).
+    /** A slot is "future" if its wall-clock dateTime (read in [zone]) is strictly
+     *  after `now - 30min` (a screening that started 25 min ago is still live).
      *  Unparseable times are kept — never silently drop a badge we can't
      *  reason about. */
-    fun isFuture(slot: Showtime, date: String, now: Instant = Instant.now()): Boolean {
-        val dt = warsawInstant(date, slot.time) ?: return true
+    fun isFuture(slot: Showtime, date: String, now: Instant = Instant.now(), zone: ZoneId = WARSAW): Boolean {
+        val dt = wallClockInstant(date, slot.time, zone) ?: return true
         return dt.isAfter(now.minusSeconds(30 * 60))
     }
 
@@ -166,8 +174,8 @@ object ShowtimeClock {
         return if (parts.size == 2) parts[0] * 60 + parts[1] else null
     }
 
-    private fun warsawInstant(date: String, time: String): Instant? = try {
-        LocalDateTime.parse("$date $time", WARSAW_DATE_TIME).atZone(WARSAW).toInstant()
+    private fun wallClockInstant(date: String, time: String, zone: ZoneId): Instant? = try {
+        LocalDateTime.parse("$date $time", WALL_CLOCK_DATE_TIME).atZone(zone).toInstant()
     } catch (_: Exception) {
         null
     }
