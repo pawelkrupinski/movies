@@ -5,8 +5,11 @@
    already disagreeing with itself about what has lapsed. *@
 @(films: Seq[FilmSchedule], devMode: Boolean, renderedAt: java.time.LocalDateTime)(implicit city: models.City, messages: play.api.i18n.Messages)
 @* The Filmy view-root. Rendered inside `#view-pager` (the day carousel
-   viewport) on the full repertoire page. *@
-<main id="view-root" data-view="films">
+   viewport) on the full repertoire page.
+
+   `data-next-day` is the next midnight on the CITY's clock — when the page
+   retires itself and reloads into the new day. See the expiry block below. *@
+<main id="view-root" data-view="films" data-next-day="@{renderedAt.toLocalDate.plusDays(1).atStartOfDay(city.zoneId).toInstant.toEpochMilli}">
 <div class="container-fluid py-4 px-4">
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">@messages("empty.repertoire")</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
@@ -452,26 +455,57 @@
 
   function refreshExpiry() { pruneExpiredShowtimes(); scheduleExpiryPrune(); }
 
+  // ── Midnight day rollover ─────────────────────────────────────────────────
+  //
+  // Expiry empties the page out slot by slot; midnight refills it. "Today" is
+  // baked into the server render — the day pills, the `date-filter` default,
+  // the bounds `dateBounds()` hands `applyFilters` — and the next day's
+  // showings were never sent for a film that only plays tomorrow. Re-deriving
+  // all of that in place would be a second, divergent copy of what the server
+  // already does, so the page simply reloads into the new day (picking up
+  // whatever the scrapers added since, for free).
+  //
+  // Midnight is the CITY's, not the visitor's: `#view-root[data-next-day]` is
+  // resolved server-side in `city.zoneId`, which also gets the DST-shifted days
+  // right (`atStartOfDay` on a midnight that doesn't exist).
+  let _dayTimer = null;
+
+  function scheduleDayRollover() {
+    clearTimeout(_dayTimer);
+    _dayTimer = null;
+    const remaining = parseInt(document.getElementById('view-root').dataset.nextDay, 10) - showtimeNow();
+    // The reload can't bounce: the fresh render derives its own midnight from
+    // its own clock, so `remaining` comes back a full day. (It only reaches
+    // here already lapsed on a tab restored from the far side of midnight.)
+    if (remaining <= 0) { location.reload(); return; }
+    // A beat past midnight, so the timer can't fire a hair early and reschedule
+    // itself; the day cap keeps a long-open page's delay inside setTimeout's.
+    _dayTimer = setTimeout(scheduleDayRollover, Math.min(remaining + 250, 86400000));
+  }
+
+  function onClockMoved() { scheduleDayRollover(); refreshExpiry(); }
+
   // Runs at parse time — ahead of the deferred shared.js — so a page restored
   // from the bfcache or the HTTP cache is already pruned before it's indexed.
-  refreshExpiry();
+  onClockMoved();
   // Background tabs get their timers throttled, and a discarded one loses them
   // outright, so re-check whenever the page comes back to the user.
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') refreshExpiry();
+    if (document.visibilityState === 'visible') onClockMoved();
   });
-  window.addEventListener('pageshow', function (event) { if (event.persisted) refreshExpiry(); });
+  window.addEventListener('pageshow', function (event) { if (event.persisted) onClockMoved(); });
 
   // Entry points shared.js drives at boot (`bootView`).
   window.buildIndex         = buildIndex;
   window.applyFilters       = applyFilters;
   window.hideOneFilm        = hideOneFilm;
   window.applyFiltersForDay = applyFiltersForDay;
-  // Expiry drives itself; these are exposed so the page tests can move the
-  // clock under it (`showtimeNow`) and re-arm it after they do.
+  // Expiry and the midnight rollover drive themselves; these are exposed so the
+  // page tests can move the clock under them (`showtimeNow`) and re-arm after.
   window.showtimeNow           = showtimeNow;
   window.pruneExpiredShowtimes = pruneExpiredShowtimes;
   window.scheduleExpiryPrune   = scheduleExpiryPrune;
+  window.scheduleDayRollover   = scheduleDayRollover;
   })();
 </script>
 }

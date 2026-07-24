@@ -3265,6 +3265,48 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Midnight day rollover ─────────────────────────────────────────────────
+  //
+  // "Today" is baked into the render — the day pills, the default date filter,
+  // the bounds `applyFilters` compares against. Once the city's clock crosses
+  // midnight the whole page is a day behind, so it reloads itself rather than
+  // trying to re-derive each of those in place. `#view-root[data-next-day]`
+  // carries that instant, which is what lets this test bring it forward.
+
+  "the city's midnight" should "reload the page so the listing rolls over to the next day" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      // A marker on the current document instance: a real reload discards it.
+      page.eval(
+        "window.__preRollover = true; " +
+        "document.getElementById('view-root').dataset.nextDay = String(showtimeNow() + 300); " +
+        "scheduleDayRollover()")
+      page.evalBool("window.__preRollover === true") shouldBe true
+
+      Thread.sleep(1500L)   // rollover fires at ~550ms, then the navigation
+      page.waitFor("document.readyState === 'complete'", timeoutMs = 5000)
+      page.evalBool("window.__preRollover === undefined") shouldBe true
+      // The reloaded page is a working listing again — and, since its own
+      // midnight is a day out, it settles rather than reloading on a loop.
+      page.evalInt("document.querySelectorAll('.badge-time').length") should be > 0
+      Thread.sleep(800L)
+      page.evalBool("document.readyState === 'complete'") shouldBe true
+      page.eval("window.__postRollover = true")
+      Thread.sleep(800L)
+      page.evalBool("window.__postRollover === true") shouldBe true
+    }
+  }
+
+  it should "be scheduled from the city's clock, not the visitor's" in {
+    onPath("/") { page =>
+      // Poznań renders against a pinned 2026-06-08T00:00 local, so the next
+      // rollover is exactly 24h of page-uptime later — whatever timezone the
+      // browser running this test happens to be in.
+      page.evalInt("Math.round((Number(document.getElementById('view-root').dataset.nextDay) - showtimeNow()) / 60000)")
+        .toDouble shouldBe (24 * 60.0 +- 2.0)
+    }
+  }
+
   // ── helpers ──────────────────────────────────────────────────────────────
 
   private def clearLocalStorage(page: CdpPage): Unit =

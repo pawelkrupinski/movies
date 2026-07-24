@@ -358,7 +358,7 @@
 <div id="view-pager">
   <div id="day-track">
 
-<main id="view-root" data-view="films">
+<main id="view-root" data-view="films" data-next-day="1780956000000">
 <div class="container-fluid py-4 px-4">
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">Brak repertuaru.</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
@@ -50618,11 +50618,20 @@ if (next === Infinity) return;
 _expiryTimer = setTimeout(refreshExpiry, Math.min(next - now + 250, 86400000));
 }
 function refreshExpiry() { pruneExpiredShowtimes(); scheduleExpiryPrune(); }
-refreshExpiry();
+let _dayTimer = null;
+function scheduleDayRollover() {
+clearTimeout(_dayTimer);
+_dayTimer = null;
+const remaining = parseInt(document.getElementById('view-root').dataset.nextDay, 10) - showtimeNow();
+if (remaining <= 0) { location.reload(); return; }
+_dayTimer = setTimeout(scheduleDayRollover, Math.min(remaining + 250, 86400000));
+}
+function onClockMoved() { scheduleDayRollover(); refreshExpiry(); }
+onClockMoved();
 document.addEventListener('visibilitychange', function () {
-if (document.visibilityState === 'visible') refreshExpiry();
+if (document.visibilityState === 'visible') onClockMoved();
 });
-window.addEventListener('pageshow', function (event) { if (event.persisted) refreshExpiry(); });
+window.addEventListener('pageshow', function (event) { if (event.persisted) onClockMoved(); });
 window.buildIndex = buildIndex;
 window.applyFilters = applyFilters;
 window.hideOneFilm = hideOneFilm;
@@ -50630,6 +50639,7 @@ window.applyFiltersForDay = applyFiltersForDay;
 window.showtimeNow = showtimeNow;
 window.pruneExpiredShowtimes = pruneExpiredShowtimes;
 window.scheduleExpiryPrune = scheduleExpiryPrune;
+window.scheduleDayRollover = scheduleDayRollover;
 })();</script>
 
 
