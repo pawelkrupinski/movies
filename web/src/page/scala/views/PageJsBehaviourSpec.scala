@@ -79,7 +79,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
-        currentUser = anon, oauthProviders = noOauth
+        currentUser = anon, oauthProviders = noOauth, renderedAt = now
       ).body
 
       // `/film?title=…` mirrors the `MovieController.film` action: look
@@ -116,7 +116,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       val loggedInHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
-        currentUser = Some(testUser), oauthProviders = noOauth
+        currentUser = Some(testUser), oauthProviders = noOauth, renderedAt = now
       ).body
       // Static server-side state: one hidden film. response.json() parses the body
       // regardless of content-type, so serving it via the HTML route map is fine.
@@ -3175,6 +3175,93 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       click("button.step:first-child")
       click("button.step:first-child")
       sliderValue should be < up
+    }
+  }
+
+  // ── Expiring showtimes ────────────────────────────────────────────────────
+  //
+  // The rendered page is a snapshot. The server drops everything already past
+  // at render time, but a tab left open through the evening keeps listing
+  // screenings that have since started — so the view prunes them itself as
+  // their moment passes. `showtimeNow()` is the page's clock (the server's
+  // render instant carried forward by elapsed browser time), which is what
+  // lets these tests place an expiry a few hundred ms out.
+
+  "an expired showtime" should "be removed from the DOM, not merely hidden" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val before = page.evalInt("document.querySelectorAll('.badge-time').length")
+      before should be > 0
+
+      page.evalInt(
+        "document.querySelector('.badge-time').dataset.expires = String(showtimeNow() - 1); " +
+        "pruneExpiredShowtimes()") shouldBe 1
+      page.evalInt("document.querySelectorAll('.badge-time').length") shouldBe (before - 1)
+    }
+  }
+
+  it should "take its cinema-group, date-group and film card with it when it was the last one" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val cardsBefore = page.evalInt("document.querySelectorAll('#film-grid .col[data-title]').length")
+      cardsBefore should be > 1
+
+      // Expire every slot of the first card, then prune: the card itself goes,
+      // and no childless cinema-group / date-group is left behind anywhere.
+      page.evalBool(
+        "(() => {" +
+        "  const col = document.querySelector('#film-grid .col[data-title]');" +
+        "  const title = col.dataset.title;" +
+        "  col.querySelectorAll('.badge-time').forEach(b => b.dataset.expires = String(showtimeNow() - 1));" +
+        "  pruneExpiredShowtimes();" +
+        "  return ![...document.querySelectorAll('#film-grid .col[data-title]')].some(c => c.dataset.title === title);" +
+        "})()") shouldBe true
+      page.evalInt("document.querySelectorAll('#film-grid .col[data-title]').length") shouldBe (cardsBefore - 1)
+      page.evalBool("[...document.querySelectorAll('.cinema-group')].every(g => g.querySelector('.badge-time'))") shouldBe true
+      page.evalBool("[...document.querySelectorAll('.date-group')].every(g => g.querySelector('.badge-time'))") shouldBe true
+    }
+  }
+
+  it should "leave the empty state showing once every film has lapsed" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      page.eval(
+        "document.querySelectorAll('.badge-time').forEach(b => b.dataset.expires = String(showtimeNow() - 1)); " +
+        "pruneExpiredShowtimes()")
+      page.evalInt("document.querySelectorAll('#film-grid .col[data-title]').length") shouldBe 0
+      page.evalBool("document.getElementById('no-films').style.display !== 'none'") shouldBe true
+    }
+  }
+
+  it should "go on its own, at the moment it lapses, with no user interaction" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val before = page.evalInt("document.querySelectorAll('.badge-time').length")
+
+      // Re-arm the clock with one slot lapsing shortly: nothing is pruned yet,
+      // and nothing but the scheduled timer runs between here and the assert.
+      page.eval(
+        "document.querySelector('.badge-time').dataset.expires = String(showtimeNow() + 300); " +
+        "scheduleExpiryPrune()")
+      page.evalInt("document.querySelectorAll('.badge-time').length") shouldBe before
+
+      page.waitFor(s"document.querySelectorAll('.badge-time').length === ${before - 1}", timeoutMs = 4000)
+    }
+  }
+
+  // The guard that keeps expiry anchored to the SERVER's clock: the fixture
+  // corpus is rendered against a pinned June-2026 `now`, so a prune reading the
+  // visitor's wall clock would wipe the whole grid the moment the page loaded.
+  it should "prune nothing on a freshly rendered page, whatever the visitor's clock says" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      page.evalInt("document.querySelectorAll('.badge-time').length") should be > 0
+      page.evalInt("pruneExpiredShowtimes()") shouldBe 0
     }
   }
 

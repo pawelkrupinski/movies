@@ -63,7 +63,7 @@ object MobileScreenshots {
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
-        currentUser    = anon, oauthProviders = noOauth
+        currentUser    = anon, oauthProviders = noOauth, renderedAt = now
       ).body
 
       // Pick a well-populated film from the fixture corpus — Diabeł ubiera

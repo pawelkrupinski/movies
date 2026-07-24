@@ -76,7 +76,7 @@ object FixtureServerMain {
     def indexPageFor(c: City): String = {
       implicit val ci: City = c
       views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
-        currentUser = anon, oauthProviders = noOauth).body
+        currentUser = anon, oauthProviders = noOauth, renderedAt = now).body
     }
     def filmyPageFor(c: City): String = {
       implicit val ci: City = c

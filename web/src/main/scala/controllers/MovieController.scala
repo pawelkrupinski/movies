@@ -404,11 +404,15 @@ class MovieController( cc: ControllerComponents,
   }
 
   private def renderIndexHtml(city: City, request: RequestHeader, user: Option[models.User])(implicit c: City): play.twirl.api.Html = {
-    val schedules = movieControllerService.toSchedules(city)
+    // One clock for both the filtering and the page's own expiry countdown —
+    // `_repertoireView` counts forward from `renderedAt`, so it has to be the
+    // instant the schedules were actually pruned at.
+    val now       = LocalDateTime.now(city.zoneId)
+    val schedules = movieControllerService.toSchedules(city, now)
     val meta = FilterDescription.forIndex(city, request.queryString, schedules)
     views.html.repertoire(
       schedules, city.cinemaDisplayNames, city.cinemaPillMap,
-      devMode, user, oauthProviders,
+      devMode, user, oauthProviders, renderedAt = now,
       pageTitle       = meta.title,
       pageDescription = meta.description,
       pageUrl         = PageMeta.canonicalUrl(request),

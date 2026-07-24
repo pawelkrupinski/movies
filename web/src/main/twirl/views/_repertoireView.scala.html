@@ -1,5 +1,9 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], devMode: Boolean)(implicit city: models.City, messages: play.api.i18n.Messages)
+@* `renderedAt` is the clock these schedules were filtered by — the anchor the
+   client-side showtime expiry counts forward from. Must be the SAME instant
+   passed to `MovieControllerService.toSchedules`, or the page starts life
+   already disagreeing with itself about what has lapsed. *@
+@(films: Seq[FilmSchedule], devMode: Boolean, renderedAt: java.time.LocalDateTime)(implicit city: models.City, messages: play.api.i18n.Messages)
 @* The Filmy view-root. Rendered inside `#view-pager` (the day carousel
    viewport) on the full repertoire page. *@
 <main id="view-root" data-view="films">
@@ -368,11 +372,106 @@
     gridEl.appendChild(frag);
   }
 
+  // ── Expiring showtimes ────────────────────────────────────────────────────
+  //
+  // The page is a snapshot: the server dropped everything already past when it
+  // rendered, but a tab left open through the evening keeps listing screenings
+  // that have since started. Every `.badge-time` carries `data-expires` — the
+  // epoch millis at which it stops counting as upcoming (start + the 30-min
+  // `models.Showtime.Grace` window), resolved in the city's timezone.
+  //
+  // The reference clock is the SERVER's render instant carried forward by the
+  // browser's elapsed time — deliberately NOT `Date.now()` on its own. A
+  // visitor's clock can be arbitrarily wrong, and the page-test fixtures render
+  // against a pinned June-2026 `now`, which absolute wall time would expire
+  // wholesale the moment the page loaded. The cost is that a body re-served
+  // from the HTTP cache anchors on its ORIGINAL render and so under-prunes by
+  // the cache age — the safe direction, and never staler than the SSR it
+  // shipped with.
+  const RENDERED_AT = @{renderedAt.atZone(city.zoneId).toInstant.toEpochMilli};
+  const BOOT_AT     = Date.now();
+
+  function showtimeNow() { return RENDERED_AT + (Date.now() - BOOT_AT); }
+
+  // Lapsed slots are REMOVED, not hidden: `applyFilters` decides visibility from
+  // the filter state alone, and would happily show a `display:none` badge again
+  // on the next pass. Taking them out of the DOM keeps expiry out of the filter
+  // cascade entirely. Returns how many went.
+  function removeExpired(nowMs) {
+    let removed = 0;
+    for (const badge of document.querySelectorAll('.badge-time[data-expires]')) {
+      if (parseInt(badge.dataset.expires, 10) <= nowMs) { badge.remove(); removed++; }
+    }
+    if (removed === 0) return 0;
+    // Cascade upwards: a cinema with no slots left, a day with no cinemas, and
+    // finally a film with nothing left to show all go with their last child.
+    for (const cinemaGroup of document.querySelectorAll('.cinema-group[data-cinema]'))
+      if (!cinemaGroup.querySelector('.badge-time')) cinemaGroup.remove();
+    for (const group of document.querySelectorAll('.date-group[data-date]'))
+      if (!group.querySelector('.badge-time')) group.remove();
+    for (const col of document.querySelectorAll('#film-grid .col[data-title]'))
+      if (!col.querySelector('.badge-time')) col.remove();
+    return removed;
+  }
+
+  function pruneExpiredShowtimes() {
+    const removed = removeExpired(showtimeNow());
+    // Before shared.js's deferred boot there's no INDEX — and none of the
+    // shared.js helpers `applyFilters` calls exist yet either. `bootView` will
+    // index and filter the already-pruned DOM itself a moment later.
+    if (removed > 0 && INDEX) {
+      // Cards dropped out of the middle of the grid, so the last applied order
+      // no longer indexes anything; force the sort to rebuild rather than
+      // mistake the shorter list for a subsequence of the old one.
+      _prevVisibleOrder = [];
+      buildIndex();
+      applyFilters();
+    }
+    return removed;
+  }
+
+  let _expiryTimer = null;
+
+  // Wake exactly when the next slot lapses rather than polling — plus a beat, so
+  // a timer that fires a millisecond early can't re-arm itself in a tight loop.
+  function scheduleExpiryPrune() {
+    clearTimeout(_expiryTimer);
+    _expiryTimer = null;
+    const now = showtimeNow();
+    let next = Infinity;
+    for (const badge of document.querySelectorAll('.badge-time[data-expires]')) {
+      const at = parseInt(badge.dataset.expires, 10);
+      if (at > now && at < next) next = at;
+    }
+    if (next === Infinity) return;   // nothing left that can expire
+    // Cap the wait at a day: a page open that long re-checks anyway, and a
+    // stray far-future value can't overflow setTimeout's 32-bit delay (which
+    // would fire it immediately, forever).
+    _expiryTimer = setTimeout(refreshExpiry, Math.min(next - now + 250, 86400000));
+  }
+
+  function refreshExpiry() { pruneExpiredShowtimes(); scheduleExpiryPrune(); }
+
+  // Runs at parse time — ahead of the deferred shared.js — so a page restored
+  // from the bfcache or the HTTP cache is already pruned before it's indexed.
+  refreshExpiry();
+  // Background tabs get their timers throttled, and a discarded one loses them
+  // outright, so re-check whenever the page comes back to the user.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') refreshExpiry();
+  });
+  window.addEventListener('pageshow', function (event) { if (event.persisted) refreshExpiry(); });
+
   // Entry points shared.js drives at boot (`bootView`).
   window.buildIndex         = buildIndex;
   window.applyFilters       = applyFilters;
   window.hideOneFilm        = hideOneFilm;
   window.applyFiltersForDay = applyFiltersForDay;
+  // Expiry drives itself; these are exposed so the page tests can move the
+  // clock under it (`showtimeNow`) and re-arm it after they do.
+  window.showtimeNow           = showtimeNow;
+  window.pruneExpiredShowtimes = pruneExpiredShowtimes;
+  window.scheduleExpiryPrune   = scheduleExpiryPrune;
   })();
 </script>
 }

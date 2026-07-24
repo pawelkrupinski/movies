@@ -17,6 +17,7 @@ class RepertoirePreviewMetaSpec extends AnyFlatSpec with Matchers {
     views.html.repertoire(
       films = Nil, allCinemas = Nil, cinemaPills = Map.empty,
       devMode = false, currentUser = None, oauthProviders = Set.empty,
+      renderedAt = java.time.LocalDateTime.of(2026, 6, 8, 0, 0),
     ).body
   }
 

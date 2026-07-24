@@ -37,7 +37,13 @@
               val roomAttr   = slot.room.map(r => s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""").getOrElse("")
               val fmtAttr    = slot.format.mkString(" ")
               val time       = slot.dateTime.toLocalTime.toString
-              val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-time="$time""""
+              // The instant this slot stops counting as upcoming (start + the
+              // `Showtime.Grace` window the server filters by), resolved in the
+              // CITY's timezone so a visitor abroad still expires it on the
+              // cinema's clock. `_repertoireView` prunes lapsed slots out of a
+              // long-open page; see the expiry block there.
+              val expiresAt  = slot.dateTime.plus(models.Showtime.Grace).atZone(city.zoneId).toInstant.toEpochMilli
+              val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-time="$time" data-expires="$expiresAt""""
               val body       = s"$time$fmtBadge"
               val tag        = slot.bookingUrl match {
                 case Some(url) => s"""<a href="${play.twirl.api.HtmlFormat.escape(url)}" class="badge-time" target="_blank"$attrs>$body</a>"""

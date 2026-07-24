@@ -48,7 +48,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   "the / page (repertoire view)" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(
       service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
-      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders, renderedAt = now
     ).body
     assertSnapshot(snapshotDirectory.resolve("expected-index.html"), html)
   }
@@ -58,7 +58,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   "the Wrocław index" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(
       service.toSchedules(models.Wroclaw, now), models.Wroclaw.cinemaDisplayNames, models.Wroclaw.cinemaPillMap,
-      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders, renderedAt = now
     )(models.Wroclaw, summon[play.api.i18n.Messages]).body
     assertSnapshot(snapshotDirectory.resolve("expected-wroclaw-index.html"), html)
   }
@@ -66,7 +66,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   "the Warszawa index" should "render the same HTML as the checked-in snapshot" in {
     val html = views.html.repertoire(
       service.toSchedules(models.Warszawa, now), models.Warszawa.cinemaDisplayNames, models.Warszawa.cinemaPillMap,
-      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders, renderedAt = now
     )(models.Warszawa, summon[play.api.i18n.Messages]).body
     assertSnapshot(snapshotDirectory.resolve("expected-warszawa-index.html"), html)
   }
@@ -87,7 +87,7 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   "the navbar country switcher" should "render #country-select with each deployed country's host, current one selected" in {
     val html = views.html.repertoire(
       service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
-      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
+      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders, renderedAt = now
     ).body
 
     html should include ("""id="country-select"""")
