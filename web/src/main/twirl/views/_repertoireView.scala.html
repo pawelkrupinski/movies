@@ -109,13 +109,6 @@
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
     const disabled  = new Set(getDisabledCinemas());
-    // When the cinema filter is narrowed to a single cinema (or the city only
-    // has one), every card's cinema sub-header repeats the same name — pure
-    // noise. Toggle a grid-level class that hides `.cinema-label` via CSS, and
-    // feed the same flag into truncation so its line accounting matches.
-    const singleCinema  = ALL_CINEMAS.filter(c => !disabled.has(c)).length <= 1;
-    const gridEl        = document.getElementById('film-grid');
-    if (gridEl) gridEl.classList.toggle('single-cinema', singleCinema);
     const fmtTokens     = getFormatFilter();
     const hasFmt        = fmtTokens.length > 0;
     const fromMin       = getFromMinutes();
@@ -211,7 +204,9 @@
     }
 
     sortByEarliestVisible(earlyMap);
-    truncateAllShowings(!singleCinema);
+    // Cinema labels are always shown, so truncation always accounts for the
+    // per-cinema header line.
+    truncateAllShowings(true);
     updateEmptyState(visibleCount);
   }
 
@@ -277,8 +272,6 @@
     const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
     const hidden    = new Set(getHidden());
     const disabled  = new Set(getDisabledCinemas());
-    const singleCinema  = ALL_CINEMAS.filter(c => !disabled.has(c)).length <= 1;
-    gridEl.classList.toggle('single-cinema', singleCinema);
     const fmtTokens     = getFormatFilter();
     const hasFmt        = fmtTokens.length > 0;
     const fromMin       = getFromMinutes();

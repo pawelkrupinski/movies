@@ -2287,21 +2287,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── Single-cinema label suppression ─────────────────────────────────────────
+  // ── Cinema label always shown ────────────────────────────────────────────────
   //
-  // `applyFilters()` tags `#film-grid` with class `single-cinema` when at most
-  // one of this city's enabled cinemas remains (ALL_CINEMAS minus the in-city
-  // `disabledCinemas`); CSS then hides every per-card `.cinema-label`. With
-  // multiple cinemas enabled the labels stay visible and the class is absent.
+  // The per-card `.cinema-label` is shown on the listing regardless of how many
+  // cinemas are enabled — even after the cinema filter is narrowed to a single
+  // cinema. (The grouped-by-cinema section view, which names the cinema in its
+  // own header, is the only place the label is suppressed.)
 
-  "the single-cinema label toggle" should "show cinema labels with multiple cinemas and hide them when only one remains" in {
+  "the cinema label" should "stay visible even when the filter narrows to a single cinema" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
 
-      // Baseline: multiple cinemas enabled — the grid carries no
-      // `single-cinema` class and at least one `.cinema-label` is visible.
+      // Baseline: multiple cinemas enabled — at least one `.cinema-label` visible.
       page.evalBool("ALL_CINEMAS.length > 1") shouldBe true
-      page.evalBool("document.getElementById('film-grid').classList.contains('single-cinema')") shouldBe false
       page.evalBool(
         "[...document.querySelectorAll('.cinema-label')].some(element => element.offsetParent !== null)"
       ) shouldBe true
@@ -2311,12 +2309,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.slice(1))); applyFilters()"
       )
 
-      page.evalBool("document.getElementById('film-grid').classList.contains('single-cinema')") shouldBe true
-      // Every `.cinema-label` is now hidden (display:none → offsetParent null).
+      // The label is STILL visible — no `single-cinema` suppression any more.
+      page.evalBool("document.getElementById('film-grid').classList.contains('single-cinema')") shouldBe false
       page.evalBool(
         "(() => { const labels = [...document.querySelectorAll('.cinema-label')];" +
-        "  return labels.length > 0 && labels.every(element =>" +
-        "    element.offsetParent === null || getComputedStyle(element).display === 'none'); })()"
+        "  return labels.length > 0 && labels.some(element =>" +
+        "    element.offsetParent !== null && getComputedStyle(element).display !== 'none'); })()"
       ) shouldBe true
     }
   }

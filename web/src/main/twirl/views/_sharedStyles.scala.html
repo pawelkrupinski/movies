@@ -1112,10 +1112,6 @@
   .cinema-label { font-size: .65rem; color: #66aadd; margin-bottom: var(--gap-cinema-pills, .1rem); margin-top: var(--gap-cinema-top, .3rem); }
   .cinema-label-link { color: #66aadd; text-decoration: none; }
   .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
-  /* With the cinema filter narrowed to a single cinema (or a one-cinema city),
-     every card repeats the same cinema name — `applyFilters` adds
-     `.single-cinema` to the grid and we drop the now-redundant labels. */
-  #film-grid.single-cinema .cinema-label { display: none; }
   /* The per-cinema label above each card's pill row rides the shared
      `--mobile-scale` so it tracks the card text on narrow phones. */
   @@media (max-width: 575px) {

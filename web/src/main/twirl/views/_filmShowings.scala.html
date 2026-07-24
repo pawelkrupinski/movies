@@ -6,9 +6,8 @@
 
    The cinema sub-header names each cinema (and links to its page for the film
    when available); per-cinema common format tokens are stripped from each
-   slot's badge. On the listing the label is hidden via the grid's
-   `.single-cinema` class (see `_sharedStyles`) once the cinema filter is down
-   to one — there it would just repeat the same name on every card.
+   slot's badge. The label is always shown on the listing — even when the
+   cinema filter is narrowed to one cinema.
 *@
 @defining(
   film.showings.flatMap(_._2)
