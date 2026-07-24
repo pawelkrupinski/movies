@@ -32,6 +32,100 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-24
+
+**18 cinemas were 3-scrape-white** (real buckets ~12:30–15:30 UTC / 14:30–17:30
+Warsaw, newest bucket overall 15:30 UTC — actively scraping, every venue's three
+white buckets within ~1h of the newest, not a boot artifact). **No code change
+shipped — every white venue is genuinely film-dormant, on a known break, or a
+standing needs-human.** Both venues NEW to the white set were probed live and
+resolve to dormant at the data layer (no fixable parser bug). Discovery method
+unchanged (`/uptime` auth-gated): a mongosh replay of `UptimeController`'s
+predicate over prod `uptimeBuckets` via the running `flyctl proxy` on
+`127.0.0.1:27017` — per service, last 3 non-empty buckets all `status==zero`
+(`successes==0 && failures==0 && zeroes>0`), excluding `|enrichment` /
+the 6 enrichment sources / `img:*`.
+
+**Set changes vs 2026-07-21 (was 18):**
+- **RECOVERED / fell off the white set:** **Centrum 3D Przemyśl** — my 2026-07-21
+  fix (`fixed` @0f74f76d0, own-site `KinoCentrum3DPrzemyslClient`) worked
+  end-to-end; no longer 3-white. And **Teatr Ziemi Rybnickiej** (was
+  intentionally-dormant) — off the white set.
+- **NEW this run (both probed live, both dormant):** **Cyfrowe Kino** and
+  **Kino ŚDK** — see below.
+- **Carried over (16, all still white):** ADA Kino Studyjne, DKF Politechnika,
+  Kino CK Lublin, Kino Chatka Żaka, Kino Krapkowice, Kino Kuźnica, Kino nad Wartą,
+  Kino PDK, Kino Sfinks (needs-human), Kino Świt, Kino Warszawa (Przeworsk),
+  Kino Wisła Brzeszcze, Kino Zamek (needs-human), Kozienicki Dom Kultury, Patria,
+  Studio (Opole). Batch-probed live this run — every one still genuinely
+  film-dormant or on a known break; no parser recovered-but-broke.
+
+**Out-of-scope heads-up (RED, not white — fetch failure, different mode):**
+**Wybrzeże** was 3-scrape-**failing** (red), same as 2026-07-21:
+`SSLHandshakeException (certificate_expired) … PKIX path validation failed` for
+`bilety.rck.kolobrzeg.pl`, then `CircuitOpenException: circuit open`. The venue's
+TLS certificate has expired at the source; the breaker correctly surfaces it red
+(not white). Not a white target. **needs-human** if it doesn't self-resolve (the
+cinema must renew its cert) — flagged for the next run / a human.
+
+### Cyfrowe Kino (Środa Śląska) — `intentionally-dormant`
+- Client: `CyfroweKinoClient` @ `dksrodaslaska.pl/aktualny-repertuar/` (own-site
+  WordPress "amy-movie" theme; migrated off Filmweb 2313 previously). Live: HTTP
+  **200** (38.7 KB, no redirect). The naive grep sees 4 `amy-movie-item` / 4
+  `st-item`, but those are all inside the theme's `<style>` CSS — after stripping
+  `<style>`/`<script>` the real DOM has the list container
+  `<div class="amy-movie-items"></div>` **empty**, zero `div.amy-movie-item`
+  children, and no film title / date / poster anywhere. No client-side loader
+  either: the only `admin-ajax.php` / `wp-json` refs are generic WP oembed
+  boilerplate (`wp-json/wp/v2/pages/141`, oembed) — no amy-movie repertoire ajax
+  action. So the venue's own site currently lists **no films**; the parser
+  (`select("div.amy-movie-item")`) correctly returns empty. Small Dom-Kultury
+  cinema, summer-dormant. Re-check next run.
+
+### Kino ŚDK (Świebodzin) — `intentionally-dormant`
+- Client: `MsiClient` @ `https://bilety.kino.swiebodzin.pl:4433` (Świebodziński
+  Dom Kultury MSI portal). Both month pages (2026-07, 2026-08) return HTTP **200**
+  with **0** `div.movies-movie__single` (the JS-shell). Verified past the render
+  layer via the portal's own data endpoint
+  `/MSI/mvc/pl/Repertoire/GetShortEventsWithFilters?date=2026-07` (and `…08`):
+  both return `{"repertoireEvents":[],"dates":[]}` (55 bytes) — **genuinely empty
+  at the data layer**, not a fetch failure (so the MSI total-outage guard added
+  2026-07-11 correctly leaves it white, not red). No test-backable fix; venue
+  film-dormant for the summer. Re-check next run.
+
+### Kino Sfinks (Kraków, Nowa Huta) — `needs-human` (unchanged since 2026-07-11)
+- Client: `KinoSfinksClient` @ `kinosfinks.okn.edu.pl/wydarzenia-harmonogram.html`.
+  Live this run: still empty ("Brak wydarzeń" / `.empty-results`, no
+  `table.widok_listy tr[onclick]`) AND still on the drifted markup. Zero screening
+  rows anywhere ⇒ no populated row shape to sample ⇒ a new parser still can't be
+  written or test-backed blind. **needs-human — re-check once the venue
+  repopulates its calendar**, then rebuild the parser against the new (populated)
+  row shape (treat `.empty-results` as zero screenings, not a parse failure).
+
+### Kino Zamek (Szczecin) — `needs-human` (unchanged festival filter-gap)
+- Client: `KinoZamekClient`. The `zamek.szczecin.pl/wydarzenia/kino/` listing still
+  yields only festival/banner slugs, no individual film-title slugs, so the
+  per-title→slug prefix match filters every MSI film out. Same standing product
+  call as 2026-06-28…07-21 — likely self-resolves when normal repertoire resumes
+  and individual film slugs return.
+
+**Carried-over dormant (14, batch-probed live this run — all still
+`intentionally-dormant`):** ADA Kino Studyjne (`"events":[]` + "Brak wydarzeń", 0
+`ScreeningEvent`), DKF Politechnika (Filmweb 1645 `[]` for 2026-07-25/26 —
+summer/academic break), Kino CK Lublin (0 `Kup bilet - Film:`, only theatre/
+concert programme), Kino Chatka Żaka ("Brak wydarzeń"), Kino Krapkowice (summer
+break → **31 Jul**, still in window), Kino Kuźnica (header-only
+`table.tbl_repertoire`), Kino nad Wartą (0 `Film:` anchors), Kino PDK (0
+`ScreeningEvent`), Kino Świt ("Brak nadchodzących seansów filmowych"), Kino
+Warszawa Przeworsk (MSI `repertoireEvents:[]` 07/08), Kino Wisła Brzeszcze (0
+`Film:`, 39 Koncert + 8 Spektakl), Kozienicki Dom Kultury (MSI
+`repertoireEvents:[]` 07/08), Patria ("Brak filmu" every slot), Studio Opole
+(`kino-studio.html` soft-404, `kino-studio-przerwa.html` live → break to
+**3 Sept**). Each parser correct; each venue genuinely un-programmed or within its
+known break window.
+
+---
+
 ## 2026-07-21
 
 **18 cinemas were 3-scrape-white** (real buckets ~08:15–11:15 UTC / 10:15–13:15
