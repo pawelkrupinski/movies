@@ -1,5 +1,13 @@
 import Foundation
 
+extension TimeZone {
+    /// The app's historical default zone — the default for the pruning and
+    /// day-bucket helpers below, kept so every existing PL-only call site (and
+    /// its tests) behaves exactly as before without passing a zone. UK/DE call
+    /// sites thread the selected country's zone in explicitly.
+    static let warsaw = TimeZone(identifier: "Europe/Warsaw") ?? .current
+}
+
 enum DateFilter: Hashable {
     case anytime
     case today
@@ -22,39 +30,37 @@ enum DateFilter: Hashable {
         }
     }
 
-    func matches(date dateString: String, now: Date = Date()) -> Bool {
+    /// Whether a screening `dateString` falls in this filter's window, judged in
+    /// `zone` — the selected country's local zone. "Today"/"tomorrow" are the
+    /// calendar days in that zone, so near midnight a UK user sees the London
+    /// day, not the Warsaw one.
+    func matches(date dateString: String, now: Date = Date(), zone: TimeZone = .warsaw) -> Bool {
         switch self {
         case .anytime:
             return true
         case .today:
-            return dateString == DateFilter.iso(now)
+            return dateString == DateFilter.iso(now, zone: zone)
         case .tomorrow:
-            return dateString == DateFilter.iso(now.addingTimeInterval(86_400))
+            return dateString == DateFilter.iso(now.addingTimeInterval(86_400), zone: zone)
         case .week:
-            let today = DateFilter.iso(now)
-            let in7   = DateFilter.iso(now.addingTimeInterval(7 * 86_400))
+            let today = DateFilter.iso(now, zone: zone)
+            let in7   = DateFilter.iso(now.addingTimeInterval(7 * 86_400), zone: zone)
             return dateString >= today && dateString <= in7
         case .specific(let d):
             return dateString == d
         }
     }
 
-    private static let warsawCalendar: Calendar = {
+    /// `now`'s calendar date (`yyyy-MM-dd`) in `zone`. Uses a local `Calendar`
+    /// (a value type, so thread-safe) rather than a shared `DateFormatter`; the
+    /// explicit Gregorian calendar + `%02d` formatting keep the output locale-
+    /// and zone-independent apart from the day boundary `zone` defines.
+    static func iso(_ date: Date, zone: TimeZone = .warsaw) -> String {
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: "Europe/Warsaw") ?? .current
-        return cal
-    }()
-
-    private static let isoFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = warsawCalendar
-        formatter.timeZone = warsawCalendar.timeZone
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-
-    static func iso(_ date: Date) -> String { isoFormatter.string(from: date) }
+        cal.timeZone = zone
+        let c = cal.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    }
 }
 
 /// Mirrors the web's Filtry dropdown: per-axis format tokens (Wymiar /
@@ -346,12 +352,12 @@ extension Sequence where Element == Film {
     /// fetched payload is already pruned. Calling this locally on app
     /// foreground keeps the cached data fresh as wall-clock advances
     /// without a round-trip.
-    func prunedPastShowings(now: Date = Date()) -> [Film] {
+    func prunedPastShowings(now: Date = Date(), zone: TimeZone = .warsaw) -> [Film] {
         return self.compactMap { film in
             let days: [DayShowings] = film.showings.compactMap { day in
                 let kept: [CinemaShowings] = day.cinemas.compactMap { cg in
                     let future = cg.showtimes.filter {
-                        ShowtimeClock.isFuture($0, on: day.date, now: now)
+                        ShowtimeClock.isFuture($0, on: day.date, now: now, zone: zone)
                     }
                     guard !future.isEmpty else { return nil }
                     return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: future)
@@ -404,7 +410,8 @@ extension Sequence where Element == Film {
         excludedGenres: Set<String> = [],
         excludedDirectors: Set<String> = [],
         excludedCast: Set<String> = [],
-        now: Date = Date()
+        now: Date = Date(),
+        zone: TimeZone = .warsaw
     ) -> [Film] {
         let films = Array(self)
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -416,7 +423,7 @@ extension Sequence where Element == Film {
             if !excludedDirectors.isEmpty && !film.directors.isEmpty && Set(film.directors).isSubset(of: excludedDirectors) { return nil }
             if !excludedCast.isEmpty && !film.cast.isEmpty && Set(film.cast).isSubset(of: excludedCast) { return nil }
             let days: [DayShowings] = film.showings.compactMap { day in
-                if !date.matches(date: day.date, now: now) { return nil }
+                if !date.matches(date: day.date, now: now, zone: zone) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
                     if disabledCinemas.contains(cg.cinema) { return nil }
                     let times = format.isEmpty
@@ -524,22 +531,23 @@ extension Sequence where Element == Film {
 }
 
 /// Combines a screening's `YYYY-MM-DD` date and `HH:MM` time into a
-/// wall-clock moment in Europe/Warsaw — the timezone the web emits
-/// against and the only one the rest of the app reasons about. Pulled
-/// out so `prunedPastShowings` and any future caller (detail screen,
-/// notifications) share one implementation of "is this slot still in
-/// the future" and "what minute does this cinema's earliest slot start".
+/// wall-clock moment in the cinema's local zone — Europe/Warsaw for a
+/// Polish city, Europe/London for a UK one — matching the zone the web
+/// prunes against (`City.zoneId`). Pulled out so `prunedPastShowings`
+/// and any future caller (detail screen, notifications) share one
+/// implementation of "is this slot still in the future" and "what minute
+/// does this cinema's earliest slot start".
 enum ShowtimeClock {
 
     /// Match the web's `isAfter(now.minusMinutes(30))` — a slot is
-    /// "future" if its wall-clock dateTime is strictly after
-    /// `now - 30min`. A screening that started 25 min ago is still
+    /// "future" if its wall-clock dateTime (read in `zone`) is strictly
+    /// after `now - 30min`. A screening that started 25 min ago is still
     /// considered live; one that started 31 min ago is dropped. Slots
     /// whose `time` doesn't parse are kept (don't silently drop badges
     /// we can't reason about — same defensive stance as
     /// `FormatFilter.matches`).
-    static func isFuture(_ slot: Showtime, on date: String, now: Date = Date()) -> Bool {
-        guard let dt = warsawDate(date: date, time: slot.time) else { return true }
+    static func isFuture(_ slot: Showtime, on date: String, now: Date = Date(), zone: TimeZone = .warsaw) -> Bool {
+        guard let dt = wallClockDate(date: date, time: slot.time, zone: zone) else { return true }
         return dt > now.addingTimeInterval(-30 * 60)
     }
 
@@ -560,22 +568,19 @@ enum ShowtimeClock {
         return parts[0] * 60 + parts[1]
     }
 
-    private static let warsawCalendar: Calendar = {
+    /// The instant of `date`+`time` read as wall-clock in `zone`. A local
+    /// `Calendar` (value type → thread-safe, unlike a shared `DateFormatter`)
+    /// with manual `Int` parsing; returns nil on a malformed date/time so the
+    /// caller can keep an unparseable slot rather than mis-drop it.
+    private static func wallClockDate(date: String, time: String, zone: TimeZone) -> Date? {
+        let d = date.split(separator: "-").compactMap { Int($0) }
+        let t = time.split(separator: ":").compactMap { Int($0) }
+        guard d.count == 3, t.count == 2 else { return nil }
         var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: "Europe/Warsaw") ?? .current
-        return cal
-    }()
-
-    private static let warsawFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = warsawCalendar
-        formatter.timeZone = warsawCalendar.timeZone
-        formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter
-    }()
-
-    private static func warsawDate(date: String, time: String) -> Date? {
-        warsawFormatter.date(from: "\(date) \(time)")
+        cal.timeZone = zone
+        var comps = DateComponents()
+        comps.year = d[0]; comps.month = d[1]; comps.day = d[2]
+        comps.hour = t[0]; comps.minute = t[1]
+        return cal.date(from: comps)
     }
 }

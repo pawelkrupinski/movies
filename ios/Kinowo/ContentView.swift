@@ -525,7 +525,8 @@ struct ContentView: View {
             excludedCountries: excludedCountries,
             excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
-            excludedCast: excludedCast
+            excludedCast: excludedCast,
+            zone: prefs.selectedCountry.timeZone
         )
         .sorted(by: sortOption)
     }

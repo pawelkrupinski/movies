@@ -20,6 +20,11 @@ final class RepertoireStore: ObservableObject {
     private var base: URL
     private var url: URL
     private var citySlug: String
+    /// The current deployment's local zone, so the on-foreground re-prune drops
+    /// past showtimes on the city's wall-clock (London on Europe/London, not
+    /// Warsaw). Set from the selected country in `use(country:)`; defaults to
+    /// Warsaw for the Poland-default init.
+    private var timeZone: TimeZone = .warsaw
     private let session: URLSession
     private var lastReloadedAt: Date?
     /// The city `catalog` was fetched for, so a static catalog isn't re-fetched
@@ -46,6 +51,9 @@ final class RepertoireStore: ObservableObject {
     /// the new deployment the fetch simply comes back empty until the user picks
     /// a city the new country serves.
     func use(country: Country) {
+        // Always adopt the country's zone (even if the URL is unchanged) so the
+        // re-prune reasons in the right wall-clock.
+        timeZone = country.timeZone
         let next = City.apiURL(base: country.baseURL, slug: citySlug, endpoint: "repertoire")
         guard next != url else { return }
         base = country.baseURL
@@ -158,7 +166,7 @@ final class RepertoireStore: ObservableObject {
     }
 
     func pruneStaleShowings(now: Date = Date()) {
-        let pruned = films.prunedPastShowings(now: now)
+        let pruned = films.prunedPastShowings(now: now, zone: timeZone)
         if pruned != films { films = pruned }
     }
 
@@ -171,7 +179,7 @@ final class RepertoireStore: ObservableObject {
     /// network, no disk cache) can't wipe the whole poster cache.
     func reconcilePostersIfNeeded(now: Date = Date()) async {
         guard !films.isEmpty else { return }
-        let today = DateFilter.iso(now)
+        let today = DateFilter.iso(now, zone: timeZone)
         let defaults = UserDefaults.standard
         guard defaults.string(forKey: Self.posterPurgeDayKey) != today else { return }
         let keepURLs = films.flatMap { film -> [URL] in
