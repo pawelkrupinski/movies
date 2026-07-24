@@ -417,8 +417,10 @@ struct ContentView: View {
             // than stranding the user mid-scroll on the day they swiped to.
             TabView(selection: $dateFilter) {
                 ForEach(DateFilter.presets, id: \.self) { preset in
+                    // The per-card cinema label is always shown on the main
+                    // listing (FilmGridView defaults `showCinemaHeaders` true);
+                    // only the grouped-by-cinema section view suppresses it.
                     FilmGridView(films: films(for: preset),
-                                 showCinemaHeaders: showCinemaHeaders,
                                  scrollResetToken: AnyHashable(dateFilter))
                         .refreshable { await store.reload() }
                         .tag(preset)
@@ -529,15 +531,6 @@ struct ContentView: View {
             zone: prefs.selectedCountry.timeZone
         )
         .sorted(by: sortOption)
-    }
-
-    /// Show the per-card cinema label unless the city itself — or the Filtry
-    /// sheet's "Kina" exclusions — leaves only one cinema to name. See
-    /// `CinemaLabelVisibility` for why this is keyed on the cinemas the user
-    /// could see rather than on the ones currently on screen.
-    private var showCinemaHeaders: Bool {
-        CinemaLabelVisibility.showsLabels(cityCinemas: allCinemas,
-                                          disabledCinemas: prefs.disabledCinemas)
     }
 
     /// Flash the given day label in the middle of the screen for ~0.7 s,

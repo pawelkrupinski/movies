@@ -72,6 +72,20 @@ final class CardsVisibleUITests: XCTestCase {
             "On-screen card exists but is not hittable (frame \(frame)) — covered or zero-size")
     }
 
+    /// The per-card cinema label is shown on the main listing even when only one
+    /// cinema is in view. The warm fixture is a single-cinema city ("Kino"), which
+    /// is exactly the case the old code suppressed the label for — so its presence
+    /// here is the regression guard for "always show the cinema label".
+    func testCinemaLabelShownEvenWithASingleCinema() throws {
+        XCTAssertTrue(
+            anyCard().waitForExistence(timeout: 30),
+            "Grid never mounted — no film card in the tree at all")
+        XCTAssertTrue(
+            app.staticTexts["Kino"].firstMatch.waitForExistence(timeout: 10),
+            "The cinema label 'Kino' was not rendered — a single-cinema listing "
+            + "is suppressing the per-card cinema label")
+    }
+
     // MARK: - Helpers
 
     private func allCards() -> [XCUIElement] {
