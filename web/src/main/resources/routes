@@ -14,7 +14,10 @@ GET     /.well-known/assetlinks.json             controllers.WellKnownController
 # ── Repertoire (city-scoped: /:city/…) ─────────────────────────────────────────
 GET     /:city/                     controllers.MovieController.index(city: String)
 GET     /:city/film                 controllers.MovieController.film(city: String, title: String)
+# og-image MUST stay above the :slug route — Play matches top-down, so the
+# wildcard would otherwise swallow "og-image" as a film slug.
 GET     /:city/film/og-image        controllers.MovieController.ogImage(city: String, title: String)
+GET     /:city/film/:slug           controllers.MovieController.filmBySlug(city: String, slug: String)
 GET     /:city/og-image             controllers.MovieController.cityOgImage(city: String)
 GET     /:city/filmy                controllers.MovieController.browse(city: String, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
 GET     /:city/plan                 controllers.PlanController.plan(city: String)

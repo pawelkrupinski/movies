@@ -10,7 +10,7 @@ import java.util.Base64
 
 /**
  * Screenshot generator for the mobile-scale refactor. Loads each
- * navbar-bearing fixture page (`/`, `/film?title=…`) in a
+ * navbar-bearing fixture page (`/`, `/film/{slug}`) in a
  * real headless Chrome, resizes the viewport through every entry in
  * `Viewports`, and writes one PNG per (page, width) pair to
  * `page/screenshots/<slug>-<width>px.png`.
@@ -78,8 +78,7 @@ object MobileScreenshots {
       val filmHtml: String = views.html.film(
         filmSchedule, "http://test.local/film", "", devMode = false
       ).body
-      val filmQuery = "/film?title=" +
-        java.net.URLEncoder.encode(filmTitle, "UTF-8")
+      val filmQuery = "/film/" + tools.Slugify(filmTitle)
 
       val server = new TestHttpServer({
         case "/"     => indexHtml

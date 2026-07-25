@@ -67,21 +67,23 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     xml should include(s"<loc>$Origin/wroclaw/plan</loc>")
   }
 
-  it should "emit a %20-encoded film deep-link per distinct title in the city" in {
+  it should "emit a slug film deep-link per distinct title in the city" in {
     val xml = SitemapBuilder.build(Origin, entries)
-    xml should include(s"<loc>$Origin/poznan/film?title=Belle</loc>")
-    // Spaces encode as %20 (RFC 3986) and `:` as %3A, never `+`, matching FilmHref.
-    xml should include(s"<loc>$Origin/poznan/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga</loc>")
-    xml should not include "+druga"
+    xml should include(s"<loc>$Origin/poznan/film/belle</loc>")
+    // The slug carries no percent-escapes at all — diacritics and punctuation
+    // fold rather than encode, so a `<loc>` needs no XML escaping either.
+    xml should include(s"<loc>$Origin/poznan/film/diuna-czesc-druga</loc>")
+    xml should not include "title="
+    xml should not include "%"
   }
 
   it should "de-duplicate titles within a city and sort them deterministically" in {
     val dupes = Seq(Poznan -> Seq(film("Zorro", Multikino), film("Amelia", Helios), film("Zorro", Helios)))
     val xml   = SitemapBuilder.build(Origin, dupes)
     // "Zorro" appears once despite two screenings…
-    count(xml, s"<loc>$Origin/poznan/film?title=Zorro</loc>") shouldBe 1
+    count(xml, s"<loc>$Origin/poznan/film/zorro</loc>") shouldBe 1
     // …and Amelia sorts before Zorro (stable output across read-model orderings).
-    xml.indexOf("title=Amelia") should be < xml.indexOf("title=Zorro")
+    xml.indexOf("/film/amelia") should be < xml.indexOf("/film/zorro")
   }
 
   it should "stamp the read-model-derived URLs with lastmod when supplied" in {

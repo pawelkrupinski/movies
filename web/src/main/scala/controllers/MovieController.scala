@@ -27,7 +27,7 @@ case class ApiRatings(
   filmweb: Option[Double], filmwebURL: Option[String]
 )
 case class ApiFilm(
-  title: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
+  title: String, slug: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
   runtimeMinutes: Option[Int], releaseYear: Option[Int], genres: Seq[String],
   ratings: ApiRatings,
   countries: Seq[String], directors: Seq[String], cast: Seq[String],
@@ -93,6 +93,11 @@ object ApiFilm {
     val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
     ApiFilm(
       title            = fs.movie.title,
+      // The film's canonical path segment on the web (`/{city}/film/{slug}`).
+      // Served rather than derived client-side: the fold handles Polish and
+      // German diacritics, ß, and Cyrillic, and a Swift copy plus a Kotlin copy
+      // would be two more places for it to drift from `tools.Slugify`.
+      slug             = tools.Slugify(fs.movie.title),
       posterURL        = fs.posterUrl,
       fallbackPosterURLs = resolved.fallbackPosterUrls,
       runtimeMinutes   = fs.movie.runtimeMinutes,
@@ -242,6 +247,25 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
       .orElse(knownMovieFallback(city, title, decoded))
   }
 
+  /** Resolve the canonical `/{city}/film/{slug}` address. Slugs are lossy and
+   *  irreversible, so the only way back to a film is to re-slug what the city is
+   *  showing and compare — cheap, since `toSchedules` is a warm in-memory join.
+   *
+   *  Two distinct titles CAN fold onto one slug ("Rocky II" and "Rocky 2" both
+   *  give `rocky-2`). `toSchedules` orders by earliest showtime, which shifts
+   *  through the day, so picking the head would make the same URL resolve to
+   *  different films at different hours. Tie-break on the title instead: stable
+   *  for as long as both films are showing. */
+  def filmBySlug(city: City, slug: String): Option[FilmSchedule] =
+    toSchedules(city).filter(s => tools.Slugify(s.movie.title) == slug).minByOption(_.movie.title)
+      .orElse {
+        readModelFallback(
+          city,
+          readModel.allMovies().filter(m => tools.Slugify(m.title) == slug).minByOption(_.title),
+          reference = s"slug='$slug'"
+        )
+      }
+
   /** Resilience for film deep-links: a title the read model KNOWS but that has no
    *  live schedule in this city right now must not 404 a shared/bookmarked link.
    *  The common cause is a sub-second window while the worker re-projects or
@@ -259,12 +283,19 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
       val needle = normalizeTitle(t)
       readModel.allMovies().find(m => normalizeTitle(m.title) == needle)
     }
-    byTitle(title).orElse(decoded.flatMap(byTitle)).map { resolved =>
-      logger.warn(s"film deep-link served from the read model without a live ${city.slug} schedule " +
-        s"(reprojection/rekey gap or ended run): title='$title' filmId=${resolved._id}")
-      filmSchedule(resolved, cinemaFilmUrls = Seq.empty, showings = Seq.empty, city)
-    }
+    readModelFallback(city, byTitle(title).orElse(decoded.flatMap(byTitle)), reference = s"title='$title'")
   }
+
+  /** Shared tail of both deep-link resolvers (by title and by slug): render the
+   *  read model's copy of the movie with no showings, and log that a link would
+   *  otherwise have broken. `reference` names whichever key the caller looked up,
+   *  so the log line stays actionable. */
+  private def readModelFallback(city: City, resolved: Option[ResolvedMovie], reference: String): Option[FilmSchedule] =
+    resolved.map { movie =>
+      logger.warn(s"film deep-link served from the read model without a live ${city.slug} schedule " +
+        s"(reprojection/rekey gap or ended run): $reference filmId=${movie._id}")
+      filmSchedule(movie, cinemaFilmUrls = Seq.empty, showings = Seq.empty, city)
+    }
 
   private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
 }
@@ -725,23 +756,45 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
+  /** The canonical film page, addressed by slug. */
+  def filmBySlug(city: String, slug: String): Action[AnyContent] = Action { request =>
+    withCity(city) { implicit c =>
+      movieControllerService.filmBySlug(c, slug) match {
+        case Some(schedule) => renderFilm(schedule, request)
+        case None           => NotFound(s"Film not found: $slug")
+      }
+    }
+  }
+
+  /** The pre-slug `?title=…` address. Kept routable indefinitely — it is what
+   *  every link minted before the switch carries, including the ~10k URLs the
+   *  old sitemap put in search indexes and the share links installed app builds
+   *  still generate — but answered with a 301 so crawlers consolidate on the
+   *  slug and users land on the canonical address. */
   def film(city: String, title: String): Action[AnyContent] = Action { request =>
     withCity(city) { implicit c =>
       movieControllerService.film(c, title) match {
-        case Some(schedule) =>
-          // `request.uri` would carry the raw inbound title-encoding; use the
-          // canonical FilmHref form instead so the og:url matches the link the
-          // page exposes elsewhere. Scheme/host come from PageMeta so the
-          // X-Forwarded-* workaround (Play 3.0's `request.secure` ignores the
-          // `trustedProxies` knob on this Fly setup) is in one place.
-          val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
-          val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
-          val user = currentUser(request)
-          Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, user, oauthProviders))
-            .withCookies(cityCookie(c))
-        case None => NotFound(s"Film not found: $title")
+        // A title with no usable slug has no other address to offer, so it
+        // renders here rather than 301-ing to itself.
+        case Some(schedule) if FilmHref.slugOf(schedule.movie.title).isDefined =>
+          MovedPermanently(FilmHref(schedule.movie.title))
+        case Some(schedule) => renderFilm(schedule, request)
+        case None           => NotFound(s"Film not found: $title")
       }
     }
+  }
+
+  private def renderFilm(schedule: FilmSchedule, request: Request[AnyContent])(implicit c: City): Result = {
+    // `request.uri` would carry the raw inbound encoding; use the canonical
+    // FilmHref form instead so the og:url matches the link the page exposes
+    // elsewhere. Scheme/host come from PageMeta so the X-Forwarded-* workaround
+    // (Play 3.0's `request.secure` ignores the `trustedProxies` knob on this Fly
+    // setup) is in one place.
+    val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
+    val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
+    val user = currentUser(request)
+    Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, user, oauthProviders))
+      .withCookies(cityCookie(c))
   }
 
   /** The 1200×630 Open Graph share card (PNG) for a film — what `og:image` /

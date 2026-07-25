@@ -25,8 +25,8 @@ class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
 
   "debug view" should "link a Wrocław-only film into /wroclaw/film, not the page's own city" in {
     val html = views.html.debug(Seq(wroclawOnly)).body
-    html should include ("""href="/wroclaw/film?title=Belle"""")
-    html should not include """href="/poznan/film?title=Belle""""
+    html should include ("""href="/wroclaw/film/belle"""")
+    html should not include """href="/poznan/film/belle""""
   }
 
   it should "render a per-row re-enrich button posting the row's ResolveTmdb enqueue" in {

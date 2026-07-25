@@ -51,7 +51,7 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers {
   }
 
   "the film page" should "self-canonicalise to its own deep-link" in {
-    val html = contentAsString(controller().film("poznan", "Testowy Film")(req("/poznan/film?title=Testowy%20Film")))
-    canonicalOf(html) shouldBe Some("https://kinowo.fly.dev/poznan/film?title=Testowy%20Film")
+    val html = contentAsString(controller().filmBySlug("poznan", "testowy-film")(req("/poznan/film/testowy-film")))
+    canonicalOf(html) shouldBe Some("https://kinowo.fly.dev/poznan/film/testowy-film")
   }
 }

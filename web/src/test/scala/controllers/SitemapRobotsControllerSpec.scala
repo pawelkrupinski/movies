@@ -69,7 +69,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("<loc>https://kinowo.fly.dev/</loc>")
     body should include("<loc>https://kinowo.fly.dev/poznan/</loc>")
     body should include("<loc>https://kinowo.fly.dev/poznan/plan</loc>")
-    body should include("<loc>https://kinowo.fly.dev/poznan/film?title=Testowy%20Film</loc>")
+    body should include("<loc>https://kinowo.fly.dev/poznan/film/testowy-film</loc>")
   }
 
   it should "scope to this deployment's country, not the global City.all" in {

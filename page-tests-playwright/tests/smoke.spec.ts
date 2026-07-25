@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleTitle, getVisibleTitles, setDateFilter, waitForCards } from './helpers';
+import { firstVisibleSlug, firstVisibleTitle, getVisibleTitles, setDateFilter, waitForCards } from './helpers';
 
 // Broad-strokes liveness check against kinowo.fly.dev. The home page
 // 200s with at least one visible card, the date filter narrows the
@@ -49,7 +49,9 @@ test.describe('kinowo.fly.dev smoke', { tag: '@agnostic' }, () => {
     // poster-proxy images + the trailer iframe, which can stall the full
     // timeout on a contended runner. The status + server-rendered title we
     // assert on are present at DCL.
-    const resp = await page.goto(`/poznan/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
+    const slug = await firstVisibleSlug(page);
+    expect(slug).toBeTruthy();
+    const resp = await page.goto(`/poznan/film/${slug}`, { waitUntil: 'domcontentloaded' });
     expect(resp?.status()).toBe(200);
     // Don't pin to a specific element — view templates evolve. The
     // contract is just "the film's title shows up on its detail page".

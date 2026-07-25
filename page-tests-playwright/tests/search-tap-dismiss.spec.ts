@@ -54,7 +54,7 @@ test.describe('search-pill tap-away on mobile portrait', () => {
     await expect(image).toBeVisible();
     await image.tap();
 
-    await page.waitForURL(/\/film\?title=/, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
     const params = new URLSearchParams(new URL(page.url()).search);
     expect(params.get('title')).toBe(title);
   });

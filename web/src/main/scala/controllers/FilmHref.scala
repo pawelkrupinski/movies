@@ -6,11 +6,21 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import scala.annotation.targetName
 
-/** Build the `/{city}/film?title=…` URL used to deep-link a single film page
+/** Build the `/{city}/film/{slug}` URL used to deep-link a single film page
  *  from anywhere in the app — the main repertoire list, per-cinema page, debug
- *  view, og:url meta tag in the film page itself. Centralised here so the
- *  encoding rule lives in one place; previously inlined in three templates
- *  with `URLEncoder.encode(title, "UTF-8")` repeated verbatim.
+ *  view, og:url meta tag in the film page itself, sitemap. Centralised here so
+ *  the addressing rule lives in one place; previously inlined in three
+ *  templates with `URLEncoder.encode(title, "UTF-8")` repeated verbatim.
+ *
+ *  The slug is the canonical address. The older `?title=…` query form ([[legacy]])
+ *  is still routed — old links, shared URLs, and installed app builds carry it —
+ *  but `MovieController.film` answers it with a 301 to the slug so search
+ *  engines consolidate on one address per film.
+ *
+ *  Slugs are lossy, so they are resolved by RE-SLUGGING the titles a city is
+ *  showing and comparing (`MovieControllerService.filmBySlug`), never by
+ *  reversing the fold. Two distinct titles can therefore share one slug; the
+ *  resolver breaks that tie deterministically.
  *
  *  The city comes in implicitly so call sites in city-scoped templates (which
  *  carry an implicit `City`) read `FilmHref(title)` unchanged. The explicit
@@ -22,12 +32,26 @@ object FilmHref {
 
   @targetName("applyForCity")
   def apply(title: String, city: City): String =
+    slugOf(title).fold(legacy(title, city))(slug => s"/${city.slug}/film/$slug")
+
+  /** The title's URL slug, or `None` when it folds to nothing addressable (a
+   *  title that is entirely punctuation, or in a script the fold doesn't cover).
+   *  Callers that must not emit an empty path segment branch on this — the
+   *  legacy redirect in particular, which would otherwise 301 to itself. */
+  def slugOf(title: String): Option[String] = Option(tools.Slugify(title)).filter(_.nonEmpty)
+
+  /** The pre-slug query form. Still served (301 → the slug address) so links
+   *  minted before the switch keep resolving, and still the only address for a
+   *  title with no usable slug. */
+  def legacy(title: String, city: City): String =
     s"/${city.slug}/film?title=${encodeTitle(title)}"
 
   /** The server-rendered Open Graph card image (1200×630 PNG) for a film,
-   *  emitted as `og:image` / `twitter:image`. Same city-scoped, `%20`-encoded
-   *  form as [[apply]] so Facebook's scraper follows it — only the path
-   *  segment differs. */
+   *  emitted as `og:image` / `twitter:image`. Stays on the `%20`-encoded query
+   *  form rather than following the page to a slug: the card is an asset, not
+   *  an indexable page, so it gains nothing from a readable address, and
+   *  keeping the URL stable means the previews Facebook and friends have
+   *  already cached don't all miss at once. */
   def ogImage(title: String)(implicit city: City): String =
     s"/${city.slug}/film/og-image?title=${encodeTitle(title)}"
 

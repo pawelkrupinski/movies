@@ -148,6 +148,22 @@ export async function measureGridRatio(page: Page): Promise<number> {
   });
 }
 
+/** Display title of the first genuinely-visible card. */
+export async function firstVisibleTitle(page: Page): Promise<string | null> {
+  return firstVisibleCardField(page, 'title');
+}
+
+/**
+ * The same card's `data-slug` — the server's own `Slugify` output, and the path
+ * segment of its canonical `/{city}/film/{slug}` address. Read from the DOM
+ * rather than re-implementing the fold in TypeScript: the fold handles Polish
+ * and German diacritics, ß, and Cyrillic, and a second copy of those rules
+ * would drift from the Scala one.
+ */
+export async function firstVisibleSlug(page: Page): Promise<string | null> {
+  return firstVisibleCardField(page, 'slug');
+}
+
 /**
  * First card whose inline `style.display` isn't `none` AND whose
  * `<img>` is still visible (i.e. the `onerror` fallback chain didn't
@@ -155,15 +171,15 @@ export async function measureGridRatio(page: Page): Promise<number> {
  * hidden ones, so `querySelector` lands on a hidden one — explicitly
  * walking + checking is engine-agnostic.
  */
-export async function firstVisibleTitle(page: Page): Promise<string | null> {
-  return page.evaluate(() => {
+async function firstVisibleCardField(page: Page, field: 'title' | 'slug'): Promise<string | null> {
+  return page.evaluate((key) => {
     const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
     for (const c of cols) {
       if (c.style.display === 'none') continue;
       const img = c.querySelector<HTMLImageElement>('.poster-wrap > a img');
       if (!img || img.style.display === 'none') continue;
-      return c.dataset.title ?? null;
+      return c.dataset[key] ?? null;
     }
     return null;
-  });
+  }, field);
 }

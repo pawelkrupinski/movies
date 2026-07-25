@@ -350,8 +350,13 @@ test.describe('plan posters fold', { tag: '@agnostic' }, () => {
     const first = titles[0];
     await selectMovies(page, [first]);
 
+    // The plan's schedule blocks are built in JS from titles alone, so they
+    // look the slug up from the rendered plan card's `data-slug` rather than
+    // re-implementing the fold.
+    const slug = await page.locator(`.plan-card-col[data-title="${first}"]`).getAttribute('data-slug');
+    expect(slug).toBeTruthy();
     const link = page.locator('a.plan-movie-title', { hasText: first });
-    await expect(link).toHaveAttribute('href', '/poznan/film?title=' + encodeURIComponent(first));
+    await expect(link).toHaveAttribute('href', `/poznan/film/${slug}`);
   });
 
 });

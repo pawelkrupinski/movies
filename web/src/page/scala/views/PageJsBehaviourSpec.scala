@@ -82,19 +82,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         currentUser = anon, oauthProviders = noOauth, renderedAt = now
       ).body
 
-      // `/film?title=…` mirrors the `MovieController.film` action: look
-      // the title up in the fixture corpus and render the per-film
-      // page. Used by the layout-sweep tests to drive /film through
-      // every phone viewport.
-      def renderFilm(title: String): String = {
-        val target = URLDecoder.decode(title, "UTF-8")
-        schedules.find(_.movie.title == target) match {
+      // `/film/{slug}` mirrors the `MovieController.filmBySlug` action: re-slug
+      // the fixture corpus's titles, match, and render the per-film page. Used
+      // by the layout-sweep tests to drive /film through every phone viewport,
+      // and by the card-tap tests, which navigate to whatever `data-slug` the
+      // card carries.
+      def renderFilm(slug: String): String =
+        schedules.find(s => tools.Slugify(s.movie.title) == slug) match {
           case Some(s) =>
-            views.html.film(s, s"http://test.local/film?title=$title",
+            views.html.film(s, s"http://test.local/film/$slug",
               ogDescription = "", devMode = false).body
           case None    => "<html><body>Film not found</body></html>"
         }
-      }
       // `/plan` is static for the fixture corpus — the poster picker +
       // "Twoje filmy" plan. Drives the Filmy-section fold behaviour
       // (collapse on header click, expand on a click anywhere while
@@ -192,8 +191,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // — the real Play routes do too, and the day-selector ↔ URL tests
           // need to boot the page with the parameter already in `location.search`.
           case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
-          case p if sub(p).startsWith("/film?title=") =>
-            renderFilm(sub(p).stripPrefix("/film?title="))
+          case p if sub(p).startsWith("/film/") =>
+            renderFilm(sub(p).stripPrefix("/film/"))
           case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
           case p if sub(p) == "/li"           => loggedInHtml
           case p if p == "/api/me/state"      => userStateJson
@@ -231,7 +230,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  the test cleanly when Chrome wasn't located in beforeAll. */
   private def onPath(path: String)(body: CdpPage => Any): Unit =
     chrome match {
-      // `path` is an in-city sub-path ("/", "/film?title=…"); pages
+      // `path` is an in-city sub-path ("/", "/film/{slug}"); pages
       // live under `/{city}/…`, so prepend the city prefix.
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
@@ -1020,8 +1019,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // both desktop and mobile widths. Catches CSS leaks like _sharedStyles'
   // aspect-ratio box rules collapsing the poster to zero height.
 
-  private val filmTarget = "/film?title=" + java.net.URLEncoder.encode(
-    "Diabeł ubiera się u Prady 2", "UTF-8")
+  private val filmTarget = "/film/" + tools.Slugify("Diabeł ubiera się u Prady 2")
 
   // Elements that must be visible on the /film page. Each pair is
   // (label for diagnostics, CSS selector). The selector must match at
@@ -1088,8 +1086,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     // Pick a film known to exist in the fixture corpus and to have a
     // long-ish title (so the assertion exercises real text rendering,
     // not the empty-fixture trivial case).
-    val target = "/film?title=" + java.net.URLEncoder.encode(
-      "Diabeł ubiera się u Prady 2", "UTF-8")
+    val target = "/film/" + tools.Slugify("Diabeł ubiera się u Prady 2")
     onPath(target) { page =>
       pinDeterministicFont(page)
       val overflows: Seq[(Int, Int)] = MobileViewports.map { w =>
@@ -1273,16 +1270,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     "        ?.querySelector('.card .poster-wrap > a'))()"
 
   "the card poster link" should
-    "navigate to /film on the first click" in {
+    "navigate to the film's slug path on the first click" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
-      val title = page.evalString(
-        s"$firstCardPosterLink.closest('[data-title]').dataset.title"
+      val slug = page.evalString(
+        s"$firstCardPosterLink.closest('[data-title]').dataset.slug"
       )
+      slug should not be empty
       page.eval(s"$firstCardPosterLink.click()")
-      page.waitFor(s"location.pathname === '$cityPrefix/film'", timeoutMs = 5000)
-      java.net.URLDecoder.decode(page.evalString("location.search"), "UTF-8") shouldBe
-        ("?title=" + title)
+      page.waitFor(s"location.pathname === '$cityPrefix/film/$slug'", timeoutMs = 5000)
+      // The whole point of the slug: the address carries no query string at all.
+      page.evalString("location.search") shouldBe ""
     }
   }
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleTitle, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
+import { firstVisibleSlug, firstVisibleTitle, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
-// `/poznan/film?title=...` detail page. Walks from a card on `/` to its
+// `/poznan/film/{slug}` detail page. Walks from a card on `/` to its
 // detail screen and asserts the page's content blocks render +
 // trailer interaction works.
 
@@ -12,13 +12,15 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
     await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
     const title = await firstVisibleTitle(page);
+    const slug  = await firstVisibleSlug(page);
     expect(title).toBeTruthy();
+    expect(slug).toBeTruthy();
     // `waitUntil: 'domcontentloaded'` for the same reason `gotoAndWaitForCards`
     // does it: the detail page's content blocks + inline boot scripts are all
     // present at DCL, but the default `'load'` wait blocks `goto` on the poster
     // proxy images (and any trailer iframe). On a contended CI runner that
     // image-load stall eats the whole 30s budget and times the navigation out.
-    await page.goto(`/poznan/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/poznan/film/${slug}`, { waitUntil: 'domcontentloaded' });
     return title!;
   }
 
@@ -109,8 +111,8 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
       const filmHref = await page.evaluate(() => {
         const col = document.querySelector('[data-title]');
         if (!col) return null;
-        const title = (col as HTMLElement).dataset.title;
-        return title ? `/poznan/film?title=${encodeURIComponent(title)}` : null;
+        const slug = (col as HTMLElement).dataset.slug;
+        return slug ? `/poznan/film/${slug}` : null;
       });
       expect(filmHref).not.toBeNull();
       await Promise.all([

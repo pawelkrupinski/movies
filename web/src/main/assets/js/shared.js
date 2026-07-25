@@ -658,7 +658,14 @@
     const card = e.target.closest('.card');
     if (card) {
       const col = card.closest('.col[data-title]');
-      if (col) window.location.href = CITY_BASE + '/film?title=' + encodeURIComponent(col.dataset.title);
+      // `data-slug` is the server's own `Slugify` output, so card-tap lands on
+      // the canonical address directly instead of bouncing through the legacy
+      // query form's 301. Re-implementing the fold in JS would just give the
+      // rule a second place to drift. Falls back to the query form for a title
+      // that folds to nothing (the server renders that one in place).
+      if (col) window.location.href = col.dataset.slug
+        ? CITY_BASE + '/film/' + col.dataset.slug
+        : CITY_BASE + '/film?title=' + encodeURIComponent(col.dataset.title);
     }
   });
 

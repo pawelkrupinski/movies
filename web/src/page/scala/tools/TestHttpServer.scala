@@ -39,11 +39,12 @@ class TestHttpServer(
       try {
         val path = exception.getRequestURI.getPath
         val rawQ = exception.getRequestURI.getRawQuery
-        // Routes match on the path-plus-query (`/film?title=…` carries
-        // its identity in the query string, not the path). Existing
-        // path-only routes (`/`, `/plan`) don't ever come through with a
-        // query attached, so they keep matching on the bare path —
-        // `routeKey` is the path verbatim when there's no query at all.
+        // Routes match on the path-plus-query, because several tests boot a
+        // page with a parameter already in `location.search` (`/?date=tomorrow`)
+        // and the route has to see it. Path-only routes (`/`, `/plan`,
+        // `/film/{slug}`) don't come through with a query attached, so they keep
+        // matching on the bare path — `routeKey` is the path verbatim when
+        // there's no query at all.
         val routeKey = if (rawQ == null) path else s"$path?$rawQ"
         // `/assets/*` is served from the web app's assets directory on disk
         // (`web/src/main/assets/*`, the same source Play's Assets controller

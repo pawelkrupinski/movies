@@ -16,7 +16,7 @@
    The `.hide-btn` reuses shared.js's hide flow (the click handler
    reads `.closest('[data-title]')`, which lands on this `.col`).
 *@
-<div class="col plan-card-col" data-title="@movie.title" data-countries="@movie.countries.mkString("|")"@if(director.nonEmpty){ data-director="@director.mkString(", ")"}@if(cast.nonEmpty){ data-cast="@cast.mkString(", ")"}>
+<div class="col plan-card-col" data-title="@movie.title" data-slug="@tools.Slugify(movie.title)" data-countries="@movie.countries.mkString("|")"@if(director.nonEmpty){ data-director="@director.mkString(", ")"}@if(cast.nonEmpty){ data-cast="@cast.mkString(", ")"}>
   <div class="plan-card" data-title="@movie.title">
     <div class="poster-wrap">
       <button type="button" class="hide-btn" title="@messages("card.hide")">✕</button>

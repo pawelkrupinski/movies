@@ -39,7 +39,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     // `domcontentloaded`: the `/film` page's `load` event is gated on
     // poster-proxy images + the trailer iframe and can stall a contended
     // runner; the URL we assert on flips at navigation commit.
-    await page.waitForURL(/\/film\?title=/, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
     // URLSearchParams handles both `+` (form-style space encoding, what
     // Play's `routes` reverse-router emits for spaces) and `%20`. A
     // plain `decodeURIComponent(url.search).contains(title)` would
@@ -59,7 +59,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     await image.tap();
     // `domcontentloaded`: the inline boot scripts run at DCL, so the JS-error
     // assertion doesn't need the poster/iframe `load` that can stall a runner.
-    await page.waitForURL(/\/film\?title=/, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
 
     // film.scala.html's inline `toggleFavMovie` + `playTrailer` blocks
     // run on DOMContentLoaded — a syntax error or undefined reference

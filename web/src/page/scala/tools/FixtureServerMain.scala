@@ -6,7 +6,6 @@ import controllers.{ApiFilm, ApiFilmDetails}
 import models.City
 import play.api.libs.json.Json
 
-import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.time.LocalDateTime
@@ -87,12 +86,13 @@ object FixtureServerMain {
       views.html.plan(controllers.PlanController.viewData(c, schedulesFor(c)),
         c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, currentUser = anon, oauthProviders = noOauth).body
     }
-    def filmPageFor(c: City, title: String): String = {
+    // Mirrors `MovieController.filmBySlug`: re-slug the corpus's titles and
+    // match, since the slug fold is lossy and can't be reversed.
+    def filmPageFor(c: City, slug: String): String = {
       implicit val ci: City = c
-      val target = URLDecoder.decode(title, "UTF-8")
-      schedulesFor(c).find(_.movie.title == target) match {
+      schedulesFor(c).find(s => tools.Slugify(s.movie.title) == slug) match {
         case Some(s) =>
-          views.html.film(s, s"http://test.local/${c.slug}/film?title=$title",
+          views.html.film(s, s"http://test.local/${c.slug}/film/$slug",
             ogDescription = "", devMode = false).body
         case None    => "<html><body>Film not found</body></html>"
       }
@@ -124,8 +124,8 @@ object FixtureServerMain {
                      (s.contains("kraj=") || s.contains("rezyser=") || s.contains("aktor=")) => filmyPageFor(c)
           case s if s.startsWith("/filmy?")                => indexPageFor(c)
           case s if s == "/plan" || s.startsWith("/plan?") => planPageFor(c)
-          case s if s.startsWith("/film?title=") =>
-            filmPageFor(c, s.stripPrefix("/film?title="))
+          case s if s.startsWith("/film/") =>
+            filmPageFor(c, s.stripPrefix("/film/"))
         }
     }
 

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { firstVisibleTitle, waitForCards } from './helpers';
+import { firstVisibleSlug, waitForCards } from './helpers';
 
 // axe-core mechanical accessibility audit. Catches ~30-57% of WCAG
 // issues without manual review — colour contrast, missing alt text,
@@ -56,12 +56,12 @@ test.describe('axe-core WCAG audit', () => {
   test('film detail page has no axe violations', async ({ page }) => {
     await page.goto('/poznan/');
     await waitForCards(page);
-    const title = await firstVisibleTitle(page);
-    expect(title).toBeTruthy();
+    const slug = await firstVisibleSlug(page);
+    expect(slug).toBeTruthy();
     // `domcontentloaded`: the axe scan runs against the server-rendered
     // DOM, which is complete at DCL — no need to block on the poster-proxy
     // images / trailer iframe whose `load` can stall a contended runner.
-    await page.goto(`/poznan/film?title=${encodeURIComponent(title!)}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/poznan/film/${slug}`, { waitUntil: 'domcontentloaded' });
     const result = await new AxeBuilder({ page })
       .withTags([...WCAG_TAGS])
       // Known-failing rule on the current site CSS: `.badge-fmt` (ATMOS

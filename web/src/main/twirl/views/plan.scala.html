@@ -644,16 +644,29 @@
   // shorter-run movies the user picked alongside them.
   const PLAN_OPTIONS_LIMIT = 8;
 
+  // Canonical /{city}/film/{slug} link for a movie the scheduler knows only by
+  // title. The slug comes off the rendered plan card's `data-slug`, which is the
+  // server's own `Slugify` output — porting that fold to JS would give the rule
+  // a second place to drift. Built lazily so it can't race the card markup, and
+  // falls back to the legacy query form (which 301s) for anything unmapped.
+  let SLUG_BY_TITLE = null;
+  function filmHref(movie) {
+    if (!SLUG_BY_TITLE) SLUG_BY_TITLE = new Map(
+      [...document.querySelectorAll('.plan-card-col[data-slug]')].map(col => [col.dataset.title, col.dataset.slug])
+    );
+    const slug = SLUG_BY_TITLE.get(movie);
+    return slug
+      ? '/' + CURRENT_CITY + '/film/' + slug
+      : '/' + CURRENT_CITY + '/film?title=' + encodeURIComponent(movie);
+  }
+
   function renderPlanMovieBlock(movie, candidates) {
     const block = document.createElement('div');
     block.className = 'plan-movie';
 
-    // `encodeURIComponent` matches `FilmHref`'s output (it uses %20 for
-    // spaces, not +, so the URL round-trips through FB's crawler the
-    // same way every other film link does).
     const title = document.createElement('a');
     title.className = 'plan-movie-title';
-    title.href = '/' + CURRENT_CITY + '/film?title=' + encodeURIComponent(movie);
+    title.href = filmHref(movie);
     title.textContent = movie;
     block.appendChild(title);
 
