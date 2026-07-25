@@ -85,6 +85,17 @@ if you move the repo.**
   so a team-namespace change to it doesn't break the launch step.
 - **Android** needs release signing creds (`keystore.properties` or
   `KINOWO_RELEASE_*`), same as `runOnDevice` from the shell.
+- **Android over WiFi** works with no extra setup in the panel: on the phone
+  enable Settings → Developer options → Wireless debugging, then pair this
+  machine once (`adb pair <ip>:<pairing-port> <6-digit-code>`, ports from the
+  Wireless debugging screen) and `adb connect <ip>:<port>` (`adb mdns services`
+  lists the connect port — it differs from the pairing one). Pairing is
+  remembered, so later sessions only need `adb connect`. Note that a phone still
+  carrying the **Play** build refuses the local install (different signing key
+  ⇒ `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, which `runOnDevice` recovers from by
+  uninstalling — that CLEARS the app's data; a lower local versionCode gives
+  `INSTALL_FAILED_VERSION_DOWNGRADE`, fixed with
+  `KINOWO_VERSION_CODE=<play+1>`).
 
 ## Tests
 

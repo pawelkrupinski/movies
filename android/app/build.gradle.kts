@@ -601,12 +601,24 @@ tasks.register("debugOnEmulator") {
 // ── Physical-device run (releaseFast / non-debug) ────────────────────────────
 // `./gradlew runOnDevice` — build the signed `releaseFast` APK (the public,
 // tuning-free `release` but with R8 minification OFF so it builds fast — NOT
-// the debug build the emulator tasks use), install it on a cable-connected
-// phone, and launch it. Prod `release` stays minified; this is just for a quick
+// the debug build the emulator tasks use), install it on an attached phone —
+// USB or WiFi, see below — and launch it. Prod `release` stays minified; this is just for a quick
 // on-device smoke test. Needs release signing (a gitignored `keystore.properties`
 // or the KINOWO_RELEASE_* env vars), the same creds Play uses — an unsigned
 // build can't be installed. Targets the one physical device by default; with
 // more than one attached, pick it with `-Pserial=<serial>` (emulators ignored).
+//
+// WiFi works with no extra flags: on the phone enable Settings → Developer
+// options → Wireless debugging, pair this machine once with
+// `adb pair <ip>:<pairing-port> <6-digit-code>`, then `adb connect <ip>:<port>`
+// (the ports differ; `adb mdns services` lists the connect one). The pairing is
+// remembered, so later sessions only need `adb connect`.
+//
+// Caveat: a phone carrying a Play-installed build refuses a local install as
+// INSTALL_FAILED_VERSION_DOWNGRADE, because the local default versionCode is 1
+// and Play's is higher (`-d` can't force it — that only works for debuggable
+// builds). Pass a versionCode above the installed one:
+// `KINOWO_VERSION_CODE=<play+1> ./gradlew runOnDevice`.
 //
 // We `adb install` the assembled APK ourselves rather than depend on AGP's
 // `installRelease`, so we can (a) install only to the chosen device and (b)
@@ -616,7 +628,7 @@ tasks.register("debugOnEmulator") {
 // uninstalling the old copy and reinstalling.
 tasks.register("runOnDevice") {
     group = "device"
-    description = "Install the signed, unminified release build (releaseFast) on a cable-connected device and launch it. Pick a device with -Pserial=<serial>."
+    description = "Install the signed, unminified release build (releaseFast) on an attached device (USB or WiFi) and launch it. Pick a device with -Pserial=<serial>."
     // Only build the APK when it can be signed; otherwise the doLast below
     // explains the missing-signing case instead of installing an unsigned APK.
     if (hasReleaseSigning) dependsOn("assembleReleaseFast")
@@ -644,17 +656,28 @@ tasks.register("runOnDevice") {
         )
 
         // Connected, ready devices that aren't emulators — `runOnDevice` is the
-        // cable-attached-phone counterpart to the emulator tasks.
+        // physical-phone counterpart to the emulator tasks. Works over USB or
+        // over WiFi (`adb pair` + `adb connect`); adb doesn't distinguish.
         val ready = sh(adb, "devices").lines().drop(1)
             .filter { it.endsWith("\tdevice") }
             .map { it.substringBefore("\t") }
         val physical = ready.filter { !it.startsWith("emulator-") }
-        val serial = serialOverride ?: physical.singleOrNull() ?: throw GradleException(
-            if (physical.isEmpty())
-                "No cable-connected device found (adb sees: ${ready.joinToString(", ").ifEmpty { "nothing" }}). " +
-                    "Enable USB debugging and accept the on-device prompt."
+        // A WiFi phone is listed TWICE: once as `host:port` and once as its mDNS
+        // service name (`adb-<serial>-<suffix>._adb-tls-connect._tcp`). One phone,
+        // two transports — so `singleOrNull()` would refuse to pick. Prefer the
+        // `host:port` form and drop the mDNS aliases; keep the aliases only when
+        // there's no addressable form at all (mDNS auto-connect with no explicit
+        // `adb connect`), so a WiFi-only device still resolves.
+        val addressable = physical.filterNot { it.contains("._tcp") }
+        val candidates = addressable.ifEmpty { physical }
+        val serial = serialOverride ?: candidates.singleOrNull() ?: throw GradleException(
+            if (candidates.isEmpty())
+                "No physical device found (adb sees: ${ready.joinToString(", ").ifEmpty { "nothing" }}). " +
+                    "Over USB: enable USB debugging and accept the on-device prompt. " +
+                    "Over WiFi: enable Wireless debugging, then `adb pair <ip>:<pairing-port> <code>` " +
+                    "and `adb connect <ip>:<port>`."
             else
-                "More than one device attached (${physical.joinToString(", ")}). Pick one with -Pserial=<serial>."
+                "More than one device attached (${candidates.joinToString(", ")}). Pick one with -Pserial=<serial>."
         )
 
         val apk = apkDir.listFiles { f -> f.isFile && f.extension == "apk" }?.firstOrNull()

@@ -140,7 +140,27 @@ FAKE
   printf '#!/bin/sh\n[ "$1" = devices ] && printf "List of devices attached\\nONLY\\tdevice\\n"\n' > "$fake"
   out="$(DEVPANEL_ADB="$fake" android_serial 2>/dev/null)"
   [[ "$out" == "ONLY" ]] && echo "  ok   single device" || { echo "  FAIL single out=$out"; exit 9; }
-  rm -f "$fake" /tmp/dp-asel
+
+  # Verbatim shape of a WiFi-attached phone: adb lists it twice, as `host:port`
+  # and as its mDNS service name. One phone over two transports — picking it must
+  # yield the addressable form and must NOT warn about "multiple devices".
+  cat > "$fake" <<'FAKE'
+#!/bin/sh
+[ "$1" = devices ] && printf 'List of devices attached\n192.168.2.137:33045\tdevice\nadb-RFCX10WHEPX-6hSyIx._adb-tls-connect._tcp\tdevice\n'
+FAKE
+  out="$(DEVPANEL_ADB="$fake" android_serial 2>/tmp/dp-wifi)"
+  [[ "$out" == "192.168.2.137:33045" ]] && ! grep -q "multiple devices" /tmp/dp-wifi \
+    && echo "  ok   WiFi mDNS alias isn't counted as a second device" \
+    || { echo "  FAIL wifi out=$out note=$(cat /tmp/dp-wifi)"; exit 9; }
+
+  # mDNS auto-connect without an explicit `adb connect`: the alias is the only
+  # transport there is, so it must still resolve rather than drop to empty.
+  printf '#!/bin/sh\n[ "$1" = devices ] && printf "List of devices attached\\nadb-XYZ._adb-tls-connect._tcp\\tdevice\\n"\n' > "$fake"
+  out="$(DEVPANEL_ADB="$fake" android_serial 2>/dev/null)"
+  [[ "$out" == "adb-XYZ._adb-tls-connect._tcp" ]] \
+    && echo "  ok   falls back to the mDNS alias when it's the only transport" \
+    || { echo "  FAIL alias-only out=$out"; exit 9; }
+  rm -f "$fake" /tmp/dp-asel /tmp/dp-wifi
   out="$(DEVPANEL_ANDROID_SERIAL=ZZZ android_serial 2>/dev/null)"
   [[ "$out" == "ZZZ" ]] && echo "  ok   honours DEVPANEL_ANDROID_SERIAL" || { echo "  FAIL override out=$out"; exit 9; }
 ) || fails=$((fails + 1))

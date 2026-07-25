@@ -135,12 +135,22 @@ resolve_adb() {
 # android_serial — echo the device serial to target. $DEVPANEL_ANDROID_SERIAL
 # wins; else the single attached device; else the first of several (with a note
 # to stderr so you can override). Empty if adb/no device.
+#
+# A WiFi-attached phone is listed TWICE by `adb devices`: once as `host:port` and
+# once as its mDNS service name (`adb-<serial>-<suffix>._adb-tls-connect._tcp`).
+# That's one phone over two transports, so we prefer the addressable `host:port`
+# form and drop the mDNS aliases — otherwise a single wireless device looks like
+# two and we'd emit the "multiple devices" note for no reason. The aliases are
+# kept only when there's no addressable form at all (mDNS auto-connect without an
+# explicit `adb connect`), so a WiFi-only device still resolves.
 android_serial() {
   [[ -n "${DEVPANEL_ANDROID_SERIAL:-}" ]] && { echo "$DEVPANEL_ANDROID_SERIAL"; return 0; }
   local adb; adb="$(resolve_adb)"
   command -v "$adb" >/dev/null 2>&1 || return 0
-  local serials n
+  local serials n addressable
   serials="$("$adb" devices 2>/dev/null | awk '$2=="device"{print $1}')"
+  addressable="$(printf '%s\n' "$serials" | grep -v '\._tcp$' || true)"
+  [[ -n "${addressable//[[:space:]]/}" ]] && serials="$addressable"
   n="$(printf '%s\n' "$serials" | grep -c .)"
   if [[ "$n" -gt 1 ]]; then
     echo "  multiple devices attached: $(echo $serials) — using the first; set DEVPANEL_ANDROID_SERIAL to pick" >&2
