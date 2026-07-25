@@ -178,7 +178,8 @@ android_device_state() {
 
 # wait_for_android_unlock [serial]
 #
-# Block until the (optionally serial-pinned) cabled Android device is authorized
+# Block until the (optionally serial-pinned) attached Android device — USB or
+# WiFi — is authorized
 # AND its keyguard is dismissed. First waits for the device to reach adb's
 # "device" state: a plugged-in phone that hasn't had its "Allow USB debugging"
 # prompt accepted sits in "unauthorized" (and "offline" while reconnecting), and
@@ -213,12 +214,26 @@ wait_for_android_unlock() {
     sleep 2
   done
 
+  # Pin ONE transport before shelling in. `adb shell` without -s refuses to pick
+  # when several are attached — and a WiFi phone is attached twice (host:port plus
+  # its mDNS alias) — so it writes "more than one device" to stderr and returns
+  # empty. That used to abort the whole deploy here: with the caller's `set -e`,
+  # a failed command substitution kills the script mid-wait, silently (stderr is
+  # swallowed below), never reaching the assume-unlocked branch. android_serial
+  # applies the same host:port-over-alias preference the Gradle task does.
+  [[ -z "$serial" ]] && serial="$(android_serial 2>/dev/null)"
   local s=""; [[ -n "$serial" ]] && s="-s $serial"   # serials have no spaces
   local announced= win lock
   while :; do
-    win="$("$adb" $s shell dumpsys window 2>/dev/null)"
-    lock="$(printf '%s' "$win" | grep -oE 'mDreamingLockscreen=(true|false)' | head -1)"
-    [[ -z "$lock" ]] && lock="$(printf '%s' "$win" | grep -oE 'mKeyguardShowing=(true|false)' | head -1)"
+    # `|| true` so an adb hiccup degrades to "assume unlocked" (below) as
+    # documented, rather than aborting a `set -e` caller.
+    win="$("$adb" $s shell dumpsys window 2>/dev/null || true)"
+    # `|| true` on both: a non-matching grep exits 1, which under the caller's
+    # `set -euo pipefail` fails the assignment and aborts the deploy. Not finding
+    # a flag is normal — phones expose one name or the other (this S24 reports
+    # only mKeyguardShowing), and neither means "assume unlocked" per below.
+    lock="$(printf '%s' "$win" | grep -oE 'mDreamingLockscreen=(true|false)' | head -1 || true)"
+    [[ -z "$lock" ]] && lock="$(printf '%s' "$win" | grep -oE 'mKeyguardShowing=(true|false)' | head -1 || true)"
     case "$lock" in
       *=false|"") [[ -n "$announced" ]] && echo "  unlocked."; return 0 ;;
     esac

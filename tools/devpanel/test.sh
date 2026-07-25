@@ -94,6 +94,34 @@ echo "▶ android unlock wait (adb resolution)"
   [[ $rc -eq 0 ]] && echo "  ok   proceeds when device reports unlocked" || { echo "  FAIL unlocked rc=$rc out=$out"; exit 9; }
 ) || fails=$((fails + 1))
 
+echo "▶ android unlock wait with a WiFi device (two transports)"
+(
+  SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
+  # A WiFi phone is attached twice (host:port + its mDNS alias), and real adb
+  # REFUSES a bare `adb shell` then: "more than one device/emulator", empty
+  # stdout, non-zero exit. Under the caller's `set -e` (deploy-android.sh has
+  # `set -euo pipefail`) that killed the deploy inside the keyguard wait, with no
+  # output at all — the failure mode this fake reproduces. Must pin -s and pass.
+  fake="$(mktemp)"
+  cat > "$fake" <<'FAKE'
+#!/bin/sh
+case "$1" in
+  devices) printf 'List of devices attached\n192.168.2.137:33045\tdevice\nadb-RFCX10WHEPX-6hSyIx._adb-tls-connect._tcp\tdevice\n' ;;
+  -s)      shift 2; [ "$1" = shell ] && echo "mKeyguardShowing=false" ;;
+  shell)   echo "adb: more than one device/emulator" >&2; exit 1 ;;
+esac
+FAKE
+  chmod +x "$fake"
+  out="$(DEVPANEL_ADB="$fake" bash -c "set -euo pipefail
+    SCRIPT_DIR='$SCRIPTS'; source '$SCRIPTS/lib.sh'
+    wait_for_android_unlock
+    echo REACHED-DISPATCH" 2>&1)"; rc=$?
+  rm -f "$fake"
+  [[ $rc -eq 0 && "$out" == *REACHED-DISPATCH* ]] \
+    && echo "  ok   survives the unlock wait with two transports attached" \
+    || { echo "  FAIL wifi-unlock rc=$rc out=$out"; exit 9; }
+) || fails=$((fails + 1))
+
 echo "▶ android unauthorized device (no silent hang)"
 (
   SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"
