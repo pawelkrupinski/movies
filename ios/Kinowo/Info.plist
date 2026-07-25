@@ -2,11 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
+	<!-- Export compliance, declared up front so every upload doesn't stop on
+	     App Store Connect's encryption question. The app speaks standard
+	     HTTPS/TLS and nothing else — exempt. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- No NSAppTransportSecurity block on purpose: every URL the app itself
+	     loads is https, and the two places cleartext could turn up are outside
+	     ATS anyway (booking links open in Safari, trailers run in a WKWebView).
+	     A blanket NSAllowsArbitraryLoads only earns an App Review question; if
+	     a cleartext host ever becomes necessary, scope it with
+	     NSExceptionDomains. Guarded by AppStoreInfoPlistTests. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Używamy lokalizacji, aby wybrać najbliższe miasto z repertuarem.</string>
 	<!-- Custom-scheme deep links (kinowo://<city>/…). Universal Links use the
