@@ -54,10 +54,11 @@ object SitemapBuilder {
     sb.toString
   }
 
-  // `FilmHref` already %-encodes the title, so a `<loc>` won't contain a raw
-  // space; but it can still hold characters XML requires escaped inside an
-  // element (`&` chief among them, were a film URL ever to carry two params).
-  // Escaping defensively keeps the document well-formed for every title.
+  // Film URLs are slugs (`a-z0-9-`) and city URLs are slugs too, so in practice
+  // nothing reaching here needs escaping. The one exception is a title that
+  // folds to an empty slug, where `FilmHref` falls back to the `?title=` query
+  // form — %-encoded, so still free of raw `&` or spaces. Escaping anyway keeps
+  // the document well-formed no matter what a future URL shape carries.
   private def escape(s: String): String =
     s.replace("&", "&amp;")
       .replace("<", "&lt;")

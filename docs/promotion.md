@@ -22,7 +22,7 @@ them into repeat app users.
    city+film URLs the sitemap now exposes actually get crawled.
 2. **Bing Webmaster Tools** — same drill (Bing also feeds DuckDuckGo + ChatGPT
    search). One-time sitemap submit.
-3. **Rich Results Test** — paste a live `/{city}/film?title=…` URL into
+3. **Rich Results Test** — paste a live `/{city}/film/{slug}` URL into
    <https://search.google.com/test/rich-results> and confirm the Movie,
    ScreeningEvent and Breadcrumb JSON-LD parse with no errors. Fix any warnings.
 4. **Validate the sitemap + robots** — `curl https://kinowo.fly.dev/robots.txt`

@@ -102,7 +102,8 @@ rehydrates its in-memory cache from Mongo via 4-way parallel cursors
 ### Useful local endpoints (city-scoped routes take a `:city` slug, e.g. `poznan`)
 
 - `/` — landing page; `/:city/` — main repertoire view
-- `/:city/film?title=...` — single-film detail page
+- `/:city/film/:slug` — single-film detail page (the older
+  `/:city/film?title=...` form still resolves, 301-ing onto the slug)
 - `/:city/filmy` — browse / filter the full film catalogue
 - `/:city/plan` — pick movies + cinemas + rooms, get an availability summary
 - `/:city/api/repertoire`, `/:city/api/details` — the JSON feeds the mobile apps read
