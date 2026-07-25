@@ -121,7 +121,7 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
         // the trailer iframe, which can stall the full 30s on a contended
         // runner. The back-link markup we assert on is server-rendered, so DCL
         // is all we need.
-        page.waitForURL((u) => new URL(u).pathname === '/poznan/film', { waitUntil: 'domcontentloaded' }),
+        page.waitForURL((u) => new URL(u).pathname.startsWith('/poznan/film/'), { waitUntil: 'domcontentloaded' }),
         page.evaluate((href) => { window.location.href = href; }, filmHref!),
       ]);
 

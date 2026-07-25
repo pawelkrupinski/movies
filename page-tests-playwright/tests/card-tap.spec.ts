@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleTitle, pinDateFilterAnytime } from './helpers';
+import { firstVisibleSlug, firstVisibleTitle, pinDateFilterAnytime } from './helpers';
 
 // Single-tap card navigation — tapping a poster or title link goes
 // straight to the /film detail page on every browser. Icons (★, ✕)
@@ -31,6 +31,11 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
   test('tap on a card poster image navigates to /film', async ({ page }) => {
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
+    // Read the card's own `data-slug` (the server's `Slugify` output) while
+    // the listing is still on screen — after the tap there are no cards left
+    // to read it from. Beats re-deriving the fold in TypeScript.
+    const slug = await firstVisibleSlug(page);
+    expect(slug).toBeTruthy();
 
     const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
     await expect(image).toBeVisible();
@@ -40,12 +45,9 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     // poster-proxy images + the trailer iframe and can stall a contended
     // runner; the URL we assert on flips at navigation commit.
     await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
-    // URLSearchParams handles both `+` (form-style space encoding, what
-    // Play's `routes` reverse-router emits for spaces) and `%20`. A
-    // plain `decodeURIComponent(url.search).contains(title)` would
-    // silently fail for any film title containing a space.
-    const params = new URLSearchParams(new URL(page.url()).search);
-    expect(params.get('title')).toBe(title);
+    // The film's identity is the path's last segment now, not a query param.
+    expect(new URL(page.url()).pathname).toBe(`/poznan/film/${slug}`);
+    expect(new URL(page.url()).search).toBe('');
   });
 
   test('detail page renders without a JS error', async ({ page }) => {

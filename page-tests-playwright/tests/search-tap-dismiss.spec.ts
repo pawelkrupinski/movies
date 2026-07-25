@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pinDateFilterAnytime, firstVisibleTitle } from './helpers';
+import { pinDateFilterAnytime, firstVisibleSlug, firstVisibleTitle } from './helpers';
 
 // Mobile portrait: the search field is a floating pill at the bottom of the
 // screen, so when its keyboard is up the cards sit right behind it. The first
@@ -49,13 +49,16 @@ test.describe('search-pill tap-away on mobile portrait', () => {
   test('a tap on a card with search NOT focused still navigates to /film', async ({ page }) => {
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
+    // Captured before the tap — the film page has no cards to read it from.
+    const slug = await firstVisibleSlug(page);
+    expect(slug).toBeTruthy();
 
     const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
     await expect(image).toBeVisible();
     await image.tap();
 
     await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
-    const params = new URLSearchParams(new URL(page.url()).search);
-    expect(params.get('title')).toBe(title);
+    // The film's identity is the path's last segment now, not a query param.
+    expect(new URL(page.url()).pathname).toBe(`/poznan/film/${slug}`);
   });
 });
