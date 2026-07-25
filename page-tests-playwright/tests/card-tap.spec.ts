@@ -7,9 +7,14 @@ import { firstVisibleSlug, firstVisibleTitle, pinDateFilterAnytime } from './hel
 
 test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page }, testInfo) => {
+    // Gate on the capability the test actually needs, not just the engine
+    // name: `webkit-desktop` is Desktop Safari, which starts with "webkit" but
+    // has no `hasTouch`, so `image.tap()` throws "The page does not support
+    // tap" there. The iPhone-emulation projects inherit touch from
+    // `devices['iPhone 13']`.
     test.skip(
-      !testInfo.project.name.startsWith('webkit'),
-      'webkit (iPhone emulation) projects only',
+      !testInfo.project.name.startsWith('webkit') || !testInfo.project.use.hasTouch,
+      'webkit projects with touch (iPhone emulation) only',
     );
     await page.goto('/poznan/');
     await pinDateFilterAnytime(page);
