@@ -1,0 +1,98 @@
+@()
+@*
+  German privacy policy — a full translation of `privacyPl`, added so the German
+  deployment and the de-DE store listings have a policy in their own language
+  instead of falling back to English.
+
+  Supervisory authority is left as "the competent authority" rather than naming
+  one: in Germany that depends on the controller's residence, and the
+  controller here is in Poland. A change to any one language needs the same
+  change in the other two.
+*@
+@_legalPage(lang = "de", heading = "Datenschutzerklärung", contactLabel = "Kontakt",
+            updated = Some("Zuletzt aktualisiert: 25. Juli 2026")) {
+  <p>
+    Diese Erklärung beschreibt, welche personenbezogenen Daten die App
+    <strong>@models.Country.fromEnv.brandName</strong> (Kinoprogramm, im Web sowie als
+    Android- und iOS-App verfügbar) verarbeitet, zu welchem Zweck und auf
+    welcher Grundlage, und welche Rechte Ihnen dabei zustehen.
+  </p>
+
+  <h2>1. Verantwortlicher</h2>
+  <p>
+    Verantwortlicher im Sinne der DSGVO ist <strong>Paweł Krupiński</strong>,
+    der Entwickler der App. Bei Fragen zum Datenschutz erreichen Sie ihn unter
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>.
+  </p>
+
+  <h2>2. Welche Daten wir verarbeiten</h2>
+  <p>Die Nutzung der App ohne Anmeldung <strong>erfordert keinerlei personenbezogene Daten</strong>. Nach der Anmeldung verarbeiten wir:</p>
+  <ul>
+    <li><strong>Anmeldedaten von Facebook, Google oder Apple</strong> — Ihre Nutzerkennung beim jeweiligen Anbieter, Ihre E-Mail-Adresse (sofern Sie sie freigeben), Ihren Vor- und Nachnamen als Anzeigename sowie die URL Ihres Profilbilds.</li>
+    <li><strong>Kontoeinstellungen</strong> — Ihre Einstellungen in der App, also die Liste ausgeblendeter Filme und deaktivierter Kinos, synchronisiert über Ihre Geräte hinweg.</li>
+    <li><strong>Technisch notwendige Cookies</strong> — ein signiertes Sitzungscookie, das Sie angemeldet hält. Wir verwenden keine Cookies für Tracking oder Werbung.</li>
+  </ul>
+  <p class="muted">
+    Die mobilen Apps können auf Ihren Standort zugreifen, um Ihnen die nächste
+    Stadt vorzuschlagen. Der Standort wird ausschließlich auf Ihrem Gerät
+    verarbeitet — er wird weder an uns übertragen noch gespeichert.
+  </p>
+  <p class="muted">
+    Angaben zu Spielzeiten, Bewertungen und Filmbeschreibungen stammen aus
+    öffentlichen Drittquellen (u. a. TMDB, Filmweb, IMDb) und sind keine
+    personenbezogenen Daten unserer Nutzerinnen und Nutzer.
+  </p>
+
+  <h2>3. Zweck und Rechtsgrundlage</h2>
+  <ul>
+    <li><strong>Authentifizierung und Kontoführung</strong> sowie Synchronisierung Ihrer Einstellungen zwischen Geräten — erforderlich zur Erbringung der Leistung, Art. 6 Abs. 1 lit. b DSGVO.</li>
+    <li><strong>Sicherheit und ordnungsgemäßer Betrieb</strong> der App — unser berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO.</li>
+  </ul>
+
+  <h2>4. Empfänger der Daten</h2>
+  <p>
+    <strong>Wir verkaufen keine personenbezogenen Daten</strong> und geben sie
+    nicht zu Werbezwecken an Dritte weiter. Eine Verarbeitung erfolgt nur durch
+    die Dienstleister, die den Betrieb der App technisch ermöglichen, und zwar
+    in unserem Auftrag:
+  </p>
+  <ul>
+    <li><strong>Anmeldedienste</strong> — Meta (Facebook), Google und Apple, von denen die Anmeldedaten stammen, gemäß deren eigenen Datenschutzerklärungen.</li>
+    <li><strong>Infrastrukturanbieter</strong> — das Hosting der App und die Datenbank, in der Ihr Konto gespeichert ist.</li>
+  </ul>
+
+  <h2>5. Speicherdauer</h2>
+  <p>
+    Wir speichern Ihre Kontodaten so lange, wie Sie die App nutzen. Nach der
+    Löschung des Kontos werden alle damit verbundenen Daten dauerhaft entfernt
+    (siehe Abschnitt 7).
+  </p>
+
+  <h2>6. Ihre Rechte</h2>
+  <p>Nach der DSGVO haben Sie das Recht auf:</p>
+  <ul>
+    <li>Auskunft über Ihre Daten und Erhalt einer Kopie,</li>
+    <li>Berichtigung unrichtiger Daten,</li>
+    <li>Löschung Ihrer Daten („Recht auf Vergessenwerden"),</li>
+    <li>Einschränkung der Verarbeitung,</li>
+    <li>Datenübertragbarkeit,</li>
+    <li>Widerspruch gegen die Verarbeitung,</li>
+    <li>Beschwerde bei der zuständigen Datenschutzaufsichtsbehörde.</li>
+  </ul>
+
+  <h2>7. Löschung Ihrer Daten</h2>
+  <p>
+    Sie können Ihr Konto samt aller Daten jederzeit direkt in der App löschen —
+    wählen Sie dazu in den Kontoeinstellungen die Option zum Löschen des
+    Kontos. Dabei werden Ihr Profil und Ihre gespeicherten Einstellungen
+    dauerhaft entfernt. Sie können die Löschung auch per E-Mail an
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a> verlangen.
+  </p>
+
+  <h2>8. Änderungen dieser Erklärung</h2>
+  <p>
+    Diese Erklärung kann mit der Weiterentwicklung der App aktualisiert werden.
+    Die jeweils aktuelle Fassung ist stets unter dieser Adresse abrufbar; das
+    Datum der letzten Aktualisierung steht oben auf der Seite.
+  </p>
+}

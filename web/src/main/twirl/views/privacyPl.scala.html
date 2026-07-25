@@ -1,0 +1,95 @@
+@()
+@*
+  Polish privacy policy — the original text, now rendered inside `_legalPage`.
+  The English and German versions (`privacyEn` / `privacyDe`) are translations
+  of THIS document: any change here needs the same change there, or the three
+  fall out of step and the store listings point at different promises.
+*@
+@_legalPage(lang = "pl", heading = "Polityka prywatności", contactLabel = "Kontakt",
+            updated = Some("Ostatnia aktualizacja: 25 lipca 2026")) {
+  <p>
+    Niniejsza polityka opisuje, jakie dane osobowe przetwarza aplikacja
+    <strong>@models.Country.fromEnv.brandName</strong> (repertuar kin, dostępna w sieci oraz
+    jako aplikacja na Androida i iOS), w jakim celu i na jakich zasadach,
+    a także jakie prawa przysługują Ci w związku z tym przetwarzaniem.
+  </p>
+
+  <h2>1. Administrator danych</h2>
+  <p>
+    Administratorem danych osobowych jest <strong>Paweł Krupiński</strong>,
+    twórca aplikacji. W sprawach dotyczących prywatności i ochrony
+    danych możesz skontaktować się pod adresem
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>.
+  </p>
+
+  <h2>2. Jakie dane przetwarzamy</h2>
+  <p>Korzystanie z aplikacji bez logowania <strong>nie wymaga podania żadnych danych osobowych</strong>. Po zalogowaniu przetwarzamy:</p>
+  <ul>
+    <li><strong>Dane z logowania przez Facebook, Google lub Apple</strong> — identyfikator użytkownika u dostawcy, adres e-mail (jeśli go udostępnisz), imię i nazwisko w postaci nazwy wyświetlanej oraz adres URL zdjęcia profilowego.</li>
+    <li><strong>Ustawienia konta</strong> — Twoje preferencje w aplikacji, czyli lista ukrytych filmów i wyłączonych kin, synchronizowane między urządzeniami.</li>
+    <li><strong>Niezbędne pliki cookie</strong> — podpisany cookie sesyjny, który utrzymuje Cię zalogowanego. Nie używamy plików cookie do śledzenia ani reklam.</li>
+  </ul>
+  <p class="muted">
+    Aplikacje mobilne mogą poprosić o dostęp do lokalizacji, aby zaproponować
+    najbliższe miasto. Lokalizacja jest przetwarzana wyłącznie na Twoim
+    urządzeniu i nie jest nam przesyłana ani zapisywana.
+  </p>
+  <p class="muted">
+    Dane o repertuarze, ocenach i opisach filmów pochodzą z publicznych źródeł
+    zewnętrznych (m.in. TMDB, Filmweb, IMDb) i nie są danymi osobowymi
+    naszych użytkowników.
+  </p>
+
+  <h2>3. Cel i podstawa prawna przetwarzania</h2>
+  <ul>
+    <li><strong>Uwierzytelnianie i prowadzenie konta</strong> oraz synchronizacja Twoich ustawień między urządzeniami — podstawą jest niezbędność do świadczenia usługi, czyli art. 6 ust. 1 lit. b RODO.</li>
+    <li><strong>Zapewnienie bezpieczeństwa i poprawnego działania</strong> aplikacji — podstawą jest nasz prawnie uzasadniony interes, czyli art. 6 ust. 1 lit. f RODO.</li>
+  </ul>
+
+  <h2>4. Komu udostępniamy dane</h2>
+  <p>
+    <strong>Nie sprzedajemy danych osobowych</strong> i nie udostępniamy ich
+    podmiotom trzecim w celach marketingowych. Dane mogą być przetwarzane
+    wyłącznie przez podmioty, które technicznie umożliwiają działanie
+    aplikacji, działające na nasze zlecenie:
+  </p>
+  <ul>
+    <li><strong>Dostawcy logowania</strong> — Meta (Facebook), Google oraz Apple, z których pochodzą dane logowania, zgodnie z ich własnymi politykami prywatności.</li>
+    <li><strong>Dostawcy infrastruktury</strong> — hosting aplikacji oraz baza danych, w której przechowywane jest Twoje konto.</li>
+  </ul>
+
+  <h2>5. Jak długo przechowujemy dane</h2>
+  <p>
+    Dane konta przechowujemy tak długo, jak długo korzystasz z aplikacji.
+    Po usunięciu konta wszystkie powiązane z nim dane są trwale usuwane
+    (patrz sekcja 7).
+  </p>
+
+  <h2>6. Twoje prawa</h2>
+  <p>Zgodnie z RODO przysługuje Ci prawo do:</p>
+  <ul>
+    <li>dostępu do swoich danych oraz otrzymania ich kopii,</li>
+    <li>sprostowania (poprawienia) danych,</li>
+    <li>usunięcia danych („prawo do bycia zapomnianym"),</li>
+    <li>ograniczenia przetwarzania,</li>
+    <li>przenoszenia danych,</li>
+    <li>wniesienia sprzeciwu wobec przetwarzania,</li>
+    <li>wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych (PUODO).</li>
+  </ul>
+
+  <h2>7. Usunięcie danych</h2>
+  <p>
+    Możesz w każdej chwili usunąć swoje konto wraz ze wszystkimi danymi
+    bezpośrednio w aplikacji — w ustawieniach konta wybierz opcję usunięcia
+    konta. Operacja ta trwale kasuje Twój profil oraz zapisane ustawienia.
+    Możesz też poprosić o usunięcie danych, pisząc na adres
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>.
+  </p>
+
+  <h2>8. Zmiany polityki</h2>
+  <p>
+    Polityka może być aktualizowana wraz z rozwojem aplikacji. Aktualna wersja
+    jest zawsze dostępna pod tym adresem, a data ostatniej aktualizacji
+    widnieje na górze strony.
+  </p>
+}

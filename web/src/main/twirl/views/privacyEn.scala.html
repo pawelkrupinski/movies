@@ -1,64 +1,96 @@
 @()
 @*
-  English privacy-policy STUB for non-Polish deployments. The full policy prose
-  currently exists only in Polish (`privacy.scala.html`); translating the whole
-  legal text is out of scope for the i18n migration. Until it is translated this
-  page states that plainly and links to the Polish version + the contact address.
-  TODO(i18n): replace this stub with a fully translated privacy policy before a
-  non-Polish country goes live.
+  English privacy policy — a full translation of `privacyPl`, no longer the stub
+  that told readers the real text was Polish-only. The App Store and Play
+  listings for the English locale point their privacy URL here, and neither
+  store accepts "the policy is in another language" as a policy.
+
+  The supervisory authority named is the UK's ICO, since English is what the UK
+  deployment serves; the substance is otherwise identical to the Polish text.
+  A change to any one language needs the same change in the other two.
 *@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
-  @_favicon()
-  <title>Privacy policy — @models.Country.fromEnv.brandName</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      color: #1c2230; background: #f4f5f8; padding: 32px 20px 80px;
-    }
-    main { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 14px;
-           padding: 40px 36px; box-shadow: 0 1px 3px rgba(11,15,58,.08); }
-    header { border-bottom: 1px solid #e7e9f0; padding-bottom: 22px; margin-bottom: 28px; }
-    .brand { font-size: 15px; font-weight: 700; color: #0B0F3A; letter-spacing: .2px; }
-    h1 { font-size: 26px; font-weight: 700; color: #0B0F3A; margin-top: 6px; }
-    p { margin-bottom: 12px; }
-    a { color: #c1121f; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    strong { color: #0B0F3A; }
-    .muted { color: #6b7280; font-size: 14px; }
-    footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e7e9f0;
-             color: #6b7280; font-size: 13px; }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <div class="brand">🎬 @models.Country.fromEnv.brandName</div>
-      <h1>Privacy policy</h1>
-    </header>
+@_legalPage(lang = "en", heading = "Privacy policy", contactLabel = "Contact",
+            updated = Some("Last updated: 25 July 2026")) {
+  <p>
+    This policy explains what personal data <strong>@models.Country.fromEnv.brandName</strong>
+    (cinema listings, available on the web and as an Android and iOS app)
+    processes, for what purpose and on what basis, and what rights you have in
+    relation to that processing.
+  </p>
 
-    <p>
-      <strong>@models.Country.fromEnv.brandName</strong> processes only the personal data needed to sign you
-      in and remember your preferences (hidden films and disabled cinemas). We do
-      not sell your data or use it for advertising.
-    </p>
+  <h2>1. Data controller</h2>
+  <p>
+    The data controller is <strong>Paweł Krupiński</strong>, the author of the
+    app. For any question about privacy or data protection, write to
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>.
+  </p>
 
-    <p class="muted">
-      The full privacy policy is currently available in Polish only —
-      <a href="/polityka-prywatnosci">read it here</a>. For any question about how
-      your data is handled, email
-      <a href="mailto:pawel.krupinski@@gmail.com">pawel.krupinski@@gmail.com</a>.
-    </p>
+  <h2>2. What data we process</h2>
+  <p>Using the app without signing in <strong>requires no personal data at all</strong>. Once you sign in, we process:</p>
+  <ul>
+    <li><strong>Sign-in data from Facebook, Google or Apple</strong> — your user identifier at that provider, your email address (if you share it), your first and last name as a display name, and the URL of your profile picture.</li>
+    <li><strong>Account settings</strong> — your preferences in the app, namely the list of hidden films and disabled cinemas, synchronised across your devices.</li>
+    <li><strong>Strictly necessary cookies</strong> — a signed session cookie that keeps you signed in. We do not use cookies for tracking or advertising.</li>
+  </ul>
+  <p class="muted">
+    The mobile apps may ask for access to your location in order to suggest the
+    nearest city. Your location is used on the device only — it is never sent
+    to us and never stored.
+  </p>
+  <p class="muted">
+    Listings, ratings and film descriptions come from public third-party sources
+    (TMDB, Filmweb, IMDb and others) and are not our users' personal data.
+  </p>
 
-    <footer>
-      @models.Country.fromEnv.brandName · Contact:
-      <a href="mailto:pawel.krupinski@@gmail.com">pawel.krupinski@@gmail.com</a>
-    </footer>
-  </main>
-</body>
-</html>
+  <h2>3. Purpose and legal basis</h2>
+  <ul>
+    <li><strong>Authenticating you and running your account</strong>, and synchronising your settings across devices — necessary to provide the service you asked for: Article 6(1)(b) UK GDPR / GDPR.</li>
+    <li><strong>Keeping the app secure and working correctly</strong> — our legitimate interest: Article 6(1)(f) UK GDPR / GDPR.</li>
+  </ul>
+
+  <h2>4. Who we share data with</h2>
+  <p>
+    <strong>We do not sell personal data</strong> and we do not share it with
+    third parties for marketing. It is processed only by the providers that
+    technically make the app work, acting on our instructions:
+  </p>
+  <ul>
+    <li><strong>Sign-in providers</strong> — Meta (Facebook), Google and Apple, who supply the sign-in data, under their own privacy policies.</li>
+    <li><strong>Infrastructure providers</strong> — the app hosting and the database your account is stored in.</li>
+  </ul>
+
+  <h2>5. How long we keep data</h2>
+  <p>
+    We keep your account data for as long as you use the app. When the account
+    is deleted, everything associated with it is permanently erased (see
+    section 7).
+  </p>
+
+  <h2>6. Your rights</h2>
+  <p>Under the UK GDPR and the GDPR you have the right to:</p>
+  <ul>
+    <li>access your data and receive a copy of it,</li>
+    <li>have inaccurate data corrected,</li>
+    <li>have your data erased (the "right to be forgotten"),</li>
+    <li>restrict processing,</li>
+    <li>data portability,</li>
+    <li>object to processing,</li>
+    <li>lodge a complaint with a supervisory authority — the Information Commissioner's Office (ICO) in the United Kingdom, or your national authority in the EU.</li>
+  </ul>
+
+  <h2>7. Deleting your data</h2>
+  <p>
+    You can delete your account and everything stored with it at any time from
+    inside the app — choose the delete-account option in your account settings.
+    That permanently erases your profile and your saved preferences. You can
+    also ask us to delete your data by writing to
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>.
+  </p>
+
+  <h2>8. Changes to this policy</h2>
+  <p>
+    This policy may be updated as the app develops. The current version is
+    always available at this address, and the date it was last updated appears
+    at the top of the page.
+  </p>
+}

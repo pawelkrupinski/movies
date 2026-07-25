@@ -2,15 +2,42 @@ package controllers
 
 import play.api.mvc._
 
-// Static legal pages (privacy policy, and later the Facebook-required data
-// deletion instructions). No dependencies beyond the rendered Twirl views, so
-// the content lives entirely in app/views and this controller just serves it.
+// Static legal pages: the privacy policy and the Facebook-required data
+// deletion instructions. No dependencies beyond the rendered Twirl views, so
+// the content lives entirely in the templates and this controller just picks
+// one.
 class LegalController(cc: ControllerComponents) extends AbstractController(cc) {
 
-  // Poland renders the full Polish policy; other countries get the English stub
-  // (the full legal prose is only translated for Polish — see `privacyEn`).
-  def privacy: Action[AnyContent] = Action {
-    if (models.Country.fromEnv.language.getLanguage == "pl") Ok(views.html.privacy())
-    else Ok(views.html.privacyEn())
+  /** `/privacy-policy?lang=pl|en|de` — the language comes from the LINK, not
+   *  from the deployment. Each store listing (App Store and Play, three locales
+   *  each) registers its own privacy URL, and all of them resolve against
+   *  whichever deployment serves that country, so a German listing has to be
+   *  able to get German prose out of a Polish-configured host.
+   *
+   *  An unknown or absent `lang` falls back to the deployment's own language
+   *  rather than 404ing: a bare `/privacy-policy` is what someone typing the
+   *  URL — or an old link — will hit.
+   */
+  def privacy(lang: Option[String]): Action[AnyContent] = Action {
+    Ok(policy(lang.map(_.trim.toLowerCase)
+                  .filter(published.contains)
+                  .getOrElse(models.Country.fromEnv.language.getLanguage)))
+  }
+
+  /** The policy used to live at `/polityka-prywatnosci`, a URL that is
+   *  registered in Meta's app dashboard and already sits in links in the wild.
+   *  Redirect it rather than keeping two paths for one document. */
+  def privacyLegacyPath: Action[AnyContent] = Action {
+    MovedPermanently(routes.LegalController.privacy(None).url)
+  }
+
+  private val published = Set("pl", "en", "de")
+
+  private def policy(language: String): play.twirl.api.Html = language match {
+    case "pl" => views.html.privacyPl()
+    case "de" => views.html.privacyDe()
+    // English doubles as the fallback for a deployment whose language we don't
+    // publish a policy in yet.
+    case _    => views.html.privacyEn()
   }
 }

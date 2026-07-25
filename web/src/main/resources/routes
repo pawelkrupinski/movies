@@ -126,10 +126,15 @@ GET     /tasks/data                 controllers.TasksController.data()
 POST    /tasks/run/:job             controllers.TasksController.run(job: String)
 
 # ── Legal ─────────────────────────────────────────────────────────────────────
-# Public privacy policy (Polish). Required by Meta/Facebook before the Login
-# app can leave Development mode; the URL goes in the dashboard's Privacy
-# Policy field.
-GET     /polityka-prywatnosci       controllers.LegalController.privacy
+# Public privacy policy. Required by Meta/Facebook before the Login app can
+# leave Development mode (the URL goes in the dashboard's Privacy Policy
+# field), and by both app stores, which register one URL per listing locale.
+# `lang` picks the language of the DOCUMENT — the store listings link
+# ?lang=pl|en|de — and falls back to the deployment's own language when absent.
+GET     /privacy-policy             controllers.LegalController.privacy(lang: Option[String])
+# The pre-i18n Polish-named path, still live in Meta's dashboard and in links
+# already published. 301s onto the route above.
+GET     /polityka-prywatnosci       controllers.LegalController.privacyLegacyPath
 
 # ── Facebook data deletion (Meta callback) ──────────────────────────────────
 # Meta POSTs a signed_request here when a user removes the app from their
