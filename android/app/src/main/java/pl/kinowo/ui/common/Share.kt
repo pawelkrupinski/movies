@@ -22,24 +22,28 @@ val LocalCitySlug = compositionLocalOf { "" }
 /**
  * Canonical public URL for a film's page — the Android counterpart of the
  * server's `controllers.FilmHref`. The film page is city-scoped
- * (`/<city>/film?title=…`); a city-less `/film?title=…` has no server route and
- * 404s, so the slug of the city the sharer is browsing is required. Mirrors the
- * server's RFC 3986 title encoding (spaces → `%20`, not the form `+`) via the
- * same `URLEncoder` + replace, so a link shared from the app is byte-identical
- * to one copied off the website. The slug is already URL-safe (lowercase ASCII
- * + hyphens), so only the title is encoded. Pure JVM (no Android APIs) so it's
- * unit-testable directly.
+ * (`/<city>/film/<slug>`); a city-less path has no server route and 404s, so the
+ * slug of the city the sharer is browsing is required.
+ *
+ * `filmSlug` is whatever `/api/repertoire` served for the film, deliberately NOT
+ * recomputed here: the server's fold covers Polish and German diacritics, ß, and
+ * Cyrillic, and a Kotlin reimplementation would be a second copy of those rules,
+ * free to drift into links that 404. When it's absent (an older server), the
+ * legacy query form is emitted instead — the server still answers it and 301s it
+ * onto the slug. Pure JVM (no Android APIs) so it's unit-testable directly.
  */
-fun filmShareUrl(citySlug: String, title: String): String =
-    "https://kinowo.fly.dev/$citySlug/film?title=" + URLEncoder.encode(title, "UTF-8").replace("+", "%20")
+fun filmShareUrl(citySlug: String, title: String, filmSlug: String? = null): String =
+    if (!filmSlug.isNullOrEmpty()) "https://kinowo.fly.dev/$citySlug/film/$filmSlug"
+    else "https://kinowo.fly.dev/$citySlug/film?title=" +
+        URLEncoder.encode(title, "UTF-8").replace("+", "%20")
 
 /** Open the system share sheet for a film's public link. Backs the Share
  *  action in `DetailScreen`'s top bar. */
-fun shareFilm(context: Context, citySlug: String, title: String) {
+fun shareFilm(context: Context, citySlug: String, title: String, filmSlug: String? = null) {
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_SUBJECT, title)
-        putExtra(Intent.EXTRA_TEXT, filmShareUrl(citySlug, title))
+        putExtra(Intent.EXTRA_TEXT, filmShareUrl(citySlug, title, filmSlug))
     }
     context.startActivity(Intent.createChooser(send, null))
 }
@@ -48,9 +52,9 @@ fun shareFilm(context: Context, citySlug: String, title: String) {
  *  `FilmCard`. Android 13+ shows its own clipboard confirmation chip, so we
  *  stay quiet there to avoid double feedback; on ≤ 12 there's no system
  *  confirmation, so a short toast fills the gap. */
-fun copyFilmLink(context: Context, citySlug: String, title: String) {
+fun copyFilmLink(context: Context, citySlug: String, title: String, filmSlug: String? = null) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText(title, filmShareUrl(citySlug, title)))
+    clipboard.setPrimaryClip(ClipData.newPlainText(title, filmShareUrl(citySlug, title, filmSlug)))
     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
         Toast.makeText(context, context.getString(R.string.link_copied), Toast.LENGTH_SHORT).show()
     }

@@ -99,8 +99,8 @@ fun FilmCard(
             ShareMenu(
                 expanded = menuExpanded,
                 onDismiss = { menuExpanded = false },
-                onShare = { shareFilm(context, citySlug, film.title) },
-                onCopy = { copyFilmLink(context, citySlug, film.title) },
+                onShare = { shareFilm(context, citySlug, film.title, film.slug) },
+                onCopy = { copyFilmLink(context, citySlug, film.title, film.slug) },
             )
             // The poster owns the long-press → share menu (Udostępnij / Skopiuj
             // link), mirroring iOS `FilmCardView`, where the `.contextMenu` now

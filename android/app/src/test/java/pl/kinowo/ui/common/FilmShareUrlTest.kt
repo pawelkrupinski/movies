@@ -5,13 +5,43 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 
 /**
- * `filmShareUrl` must mirror the server's `controllers.FilmHref`: the
- * city-scoped path `/<city>/film?title=…` (a city-less `/film?title=…` has no
- * server route and 404s), and the same encoding so a link shared from the app
- * is byte-identical to one copied off the website — spaces as `%20` (never the
- * form `+`), and every reserved character or Polish diacritic percent-encoded.
+ * `filmShareUrl` must mirror the server's `controllers.FilmHref`, so a link
+ * shared from the app is byte-identical to one copied off the website. That is
+ * now the city-scoped slug path `/<city>/film/<slug>`; the legacy `?title=`
+ * form stays for films the server sent no slug for, and must keep its exact
+ * encoding — spaces as `%20` (never the form `+`), reserved characters and
+ * Polish diacritics percent-encoded.
  */
 class FilmShareUrlTest {
+
+    @Test
+    fun `prefers the server-supplied slug`() {
+        assertEquals(
+            "https://kinowo.fly.dev/wroclaw/film/diuna-czesc-druga",
+            filmShareUrl("wroclaw", "Diuna: Część druga", "diuna-czesc-druga"),
+        )
+    }
+
+    @Test
+    fun `slug link carries no query string or escapes`() {
+        val url = filmShareUrl("warszawa", "Lilo & Stitch", "lilo-stitch")
+        assertFalse(url.contains("?"))
+        assertFalse(url.contains("%"))
+    }
+
+    @Test
+    fun `falls back to the query form when the server sent no slug`() {
+        // An older server leaves `slug` null; the query form still resolves
+        // server-side (301 onto the slug address).
+        assertEquals(
+            "https://kinowo.fly.dev/poznan/film?title=Oppenheimer",
+            filmShareUrl("poznan", "Oppenheimer", null),
+        )
+        assertEquals(
+            "https://kinowo.fly.dev/poznan/film?title=Oppenheimer",
+            filmShareUrl("poznan", "Oppenheimer", ""),
+        )
+    }
 
     @Test
     fun `plain ascii title is left intact`() {

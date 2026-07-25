@@ -95,7 +95,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                     // a user would copy from the website's address bar.
                     if (film != null) {
                         val context = LocalContext.current
-                        IconButton(onClick = { shareFilm(context, citySlug, film.title) }) {
+                        IconButton(onClick = { shareFilm(context, citySlug, film.title, film.slug) }) {
                             Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
                         }
                     }

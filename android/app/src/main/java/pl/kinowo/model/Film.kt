@@ -16,6 +16,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Film(
     val title: String,
+    /** The film's canonical path segment on the web (`/{city}/film/{slug}`),
+     *  served by `/api/repertoire`. Null when talking to a server that predates
+     *  the field — `filmShareUrl` then falls back to the legacy `?title=` form,
+     *  which the server still answers (with a 301). */
+    val slug: String? = null,
     val posterURL: String? = null,
     /** Alternative poster URLs in source-priority order, tried in turn when
      *  `posterURL` fails to load (cinema CDNs intermittently 403/404). */

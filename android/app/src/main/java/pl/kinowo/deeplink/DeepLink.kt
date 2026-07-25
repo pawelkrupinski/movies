@@ -29,9 +29,14 @@ import java.net.URLDecoder
  */
 data class DeepLink(
     val citySlug: String,
-    /** Set for `/:city/film?title=…`; the title is the film's identity, matched
-     *  against the loaded repertoire once it arrives. */
+    /** Set for the legacy `/:city/film?title=…` form; the title is the film's
+     *  identity, matched against the loaded repertoire once it arrives. Links
+     *  minted before the slug switch — and by app builds still in the wild —
+     *  carry this, so it stays supported. */
     val filmTitle: String?,
+    /** Set for the canonical `/:city/film/{slug}` form, matched against the
+     *  `slug` each film carries from `/api/repertoire`. */
+    val filmSlug: String? = null,
     val filters: DeepLinkFilters,
 ) {
     companion object {
@@ -100,11 +105,16 @@ data class DeepLink(
             if (city !in knownCitySlugs) return null
 
             val query = parseQuery(rawQuery)
-            val filmTitle = if (trailing.firstOrNull() == "film") {
+            val isFilm = trailing.firstOrNull() == "film"
+            // `/film/{slug}` is the canonical form, `/film?title=…` the legacy
+            // one. Both are parsed: a link shared from an older app build, or
+            // saved from the web before the switch, must still open the film.
+            val filmSlug = if (isFilm) trailing.getOrNull(1)?.takeIf { it.isNotEmpty() } else null
+            val filmTitle = if (isFilm) {
                 query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
             } else null
 
-            return DeepLink(city, filmTitle, DeepLinkFilters.from(query))
+            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query))
         }
 
         private fun pathSegments(rawPath: String?): List<String> =

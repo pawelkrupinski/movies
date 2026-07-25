@@ -425,15 +425,16 @@ class KinowoViewModel(
         f.disabledCinemas(cityCinemas.toSet())?.let { disabledHere ->
             setDisabledCinemas((disabledCinemas.value - cityCinemas.toSet()) + disabledHere)
         }
-        // Match the film the way the web's MovieController.film does — by
-        // normalized title (Arabic→Roman fold), NOT byte-for-byte — so a deep
-        // link to a numbered sequel ("…Prady 2") finds the stored "…Prady II".
-        // Navigate with the FOUND film's real title so the detail route (which
-        // looks the film up by exact title) resolves it. A film that left the
-        // listing just no-ops, like iOS.
-        link.filmTitle?.let { title ->
-            loaded.firstOrNull { DeepLinkTitle.matches(it.title, title) }?.let { pendingFilmNav = it.title }
-        }
+        // A slug link resolves exactly — the server minted both sides from the
+        // same fold. A legacy `?title=` link matches the way the web's
+        // MovieController.film does: by normalized title (Arabic→Roman fold),
+        // NOT byte-for-byte, so a link to a numbered sequel ("…Prady 2") finds
+        // the stored "…Prady II". Either way we navigate with the FOUND film's
+        // real title, since the detail route looks films up by exact title. A
+        // film that left the listing just no-ops, like iOS.
+        val target = link.filmSlug?.let { slug -> loaded.firstOrNull { it.slug == slug } }
+            ?: link.filmTitle?.let { title -> loaded.firstOrNull { DeepLinkTitle.matches(it.title, title) } }
+        target?.let { pendingFilmNav = it.title }
     }
 
     /** Persist the chosen city. `start()`'s `selectedCity` collector picks up

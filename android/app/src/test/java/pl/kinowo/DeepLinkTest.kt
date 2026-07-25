@@ -27,10 +27,33 @@ class DeepLinkTest {
         assertTrue(dl.filters.isEmpty)
     }
 
+    @Test fun filmDetailSlugLink() {
+        // The canonical form the site and the app both mint now.
+        val dl = DeepLink.parse("https://kinowo.fly.dev/warszawa/film/oppenheimer")!!
+        assertEquals("warszawa", dl.citySlug)
+        assertEquals("oppenheimer", dl.filmSlug)
+        assertNull(dl.filmTitle)
+    }
+
+    @Test fun filmDetailSlugLinkOnTheCustomScheme() {
+        val dl = DeepLink.parse("kinowo://poznan/film/diuna-czesc-druga")!!
+        assertEquals("poznan", dl.citySlug)
+        assertEquals("diuna-czesc-druga", dl.filmSlug)
+    }
+
+    @Test fun bareFilmPathIsNeitherSlugNorTitle() {
+        val dl = DeepLink.parse("https://kinowo.fly.dev/warszawa/film")!!
+        assertNull(dl.filmSlug)
+        assertNull(dl.filmTitle)
+    }
+
     @Test fun filmDetailLink() {
+        // The legacy form: still parsed, because links shared before the switch
+        // — and by app builds still in the wild — carry it.
         val dl = DeepLink.parse("https://kinowo.fly.dev/warszawa/film?title=Oppenheimer")!!
         assertEquals("warszawa", dl.citySlug)
         assertEquals("Oppenheimer", dl.filmTitle)
+        assertNull(dl.filmSlug)
     }
 
     @Test fun filmDetailDecodesEncodedTitle() {
