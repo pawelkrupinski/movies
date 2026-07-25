@@ -460,6 +460,14 @@ class MovieController( cc: ControllerComponents,
   // blocking them would break every share preview. We only fence off the
   // operational / API / auth noise that has no business in a search index, and
   // advertise the sitemap so crawlers discover every city + film URL.
+  //
+  // `/{city}/filmy` — the browse facets — is fenced off too, for crawl budget
+  // rather than secrecy: a city listing links ~480 of them off its genre pills,
+  // each one a thin filtered slice of a corpus the film deep-links already
+  // cover. Crawling them costs a young domain's budget several hundred fetches
+  // per city and returns nothing indexable, so `SitemapBuilder` omits them and
+  // this keeps a crawler from finding them anyway. The film pages carrying the
+  // actual long-tail stay crawlable.
   def robotsTxt: Action[AnyContent] = Action { request =>
     val body =
       s"""User-agent: *
@@ -471,6 +479,7 @@ class MovieController( cc: ControllerComponents,
          |Disallow: /auth/
          |Disallow: /*/api/
          |Disallow: /*/debug/
+         |Disallow: /*/filmy
          |
          |Sitemap: ${PageMeta.origin(request)}/sitemap.xml
          |""".stripMargin

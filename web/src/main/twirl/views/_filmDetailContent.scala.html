@@ -47,7 +47,7 @@
       @if(film.cinemaFilmUrls.nonEmpty) {
         <div style="margin-top: .5rem;">
           @for((cinema, url) <- film.cinemaFilmUrls) {
-            <a href="@url" target="_blank" class="cinema-link">@cinema.displayName ↗</a>
+            <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-link">@cinema.displayName ↗</a>
           }
         </div>
       }

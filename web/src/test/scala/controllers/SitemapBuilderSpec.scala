@@ -48,10 +48,15 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     xml      should include("</urlset>")
   }
 
-  it should "emit the landing page once with top priority" in {
+  it should "emit the landing page exactly once" in {
     val xml = SitemapBuilder.build(Origin, entries)
     count(xml, s"<loc>$Origin/</loc>") shouldBe 1
-    xml should include("<priority>1.0</priority>")
+  }
+
+  it should "omit changefreq and priority — Google ignores both" in {
+    val xml = SitemapBuilder.build(Origin, entries, lastmod = Some("2026-06-28"))
+    xml should not include "<changefreq>"
+    xml should not include "<priority>"
   }
 
   it should "emit a listing + plan URL for each city" in {
@@ -79,10 +84,18 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     xml.indexOf("title=Amelia") should be < xml.indexOf("title=Zorro")
   }
 
-  it should "stamp every URL with lastmod when supplied" in {
+  it should "stamp the read-model-derived URLs with lastmod when supplied" in {
     val xml = SitemapBuilder.build(Origin, entries, lastmod = Some("2026-06-28"))
     xml should include("<lastmod>2026-06-28</lastmod>")
     xml should not include "<lastmod></lastmod>"
+    // Every city listing, plan and film URL regenerates with the read model…
+    count(xml, "<lastmod>2026-06-28</lastmod>") shouldBe (xml.split("<url>").length - 2)
+  }
+
+  it should "leave the landing page unstamped — it is a static city list" in {
+    val landing = SitemapBuilder.build(Origin, entries, lastmod = Some("2026-06-28"))
+      .linesIterator.find(_.contains(s"<loc>$Origin/</loc>")).getOrElse("")
+    landing should not include "<lastmod>"
   }
 
   it should "omit lastmod entirely when not supplied" in {

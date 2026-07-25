@@ -48,6 +48,17 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should not include "og-image"
   }
 
+  it should "fence off the browse facets, which the sitemap deliberately omits" in {
+    val body = contentAsString(controller().robotsTxt(req("/robots.txt")))
+    body should include("Disallow: /*/filmy")
+  }
+
+  it should "keep the film deep-links crawlable — they carry the long tail" in {
+    val body = contentAsString(controller().robotsTxt(req("/robots.txt")))
+    body should not include "Disallow: /*/film\n"
+    body should not include "Disallow: /*/film?"
+  }
+
   "sitemap.xml" should "enumerate the landing, the city, its plan, and live films" in {
     val res = controller().sitemap(req("/sitemap.xml"))
     status(res)      shouldBe OK

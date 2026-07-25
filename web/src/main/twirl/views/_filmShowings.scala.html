@@ -8,6 +8,11 @@
    when available); per-cinema common format tokens are stripped from each
    slot's badge. The label is always shown on the listing — even when the
    cinema filter is narrowed to one cinema.
+
+   Both outbound shapes here — the cinema's page for the film, and each slot's
+   booking deep-link — carry `rel="nofollow noopener"`. A city listing renders
+   thousands of them (one per showtime); they're plumbing, not endorsements, and
+   `noopener` was missing from links that already opened in a new tab.
 *@
 @defining(
   film.showings.flatMap(_._2)
@@ -25,7 +30,7 @@
       <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
         <div class="cinema-label">
           @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
-            case Some((_, url)) => { <a href="@url" target="_blank" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
+            case Some((_, url)) => { <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
             case None           => { @cinemaShowtimes.cinema.displayName }
           }
         </div>
@@ -46,7 +51,7 @@
               val attrs      = s"""$roomAttr data-format="${play.twirl.api.HtmlFormat.escape(fmtAttr)}" data-time="$time" data-expires="$expiresAt""""
               val body       = s"$time$fmtBadge"
               val tag        = slot.bookingUrl match {
-                case Some(url) => s"""<a href="${play.twirl.api.HtmlFormat.escape(url)}" class="badge-time" target="_blank"$attrs>$body</a>"""
+                case Some(url) => s"""<a href="${play.twirl.api.HtmlFormat.escape(url)}" class="badge-time" target="_blank" rel="nofollow noopener"$attrs>$body</a>"""
                 case None      => s"""<span class="badge-time"$attrs>$body</span>"""
               }
               Html(tag)

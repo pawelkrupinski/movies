@@ -11,24 +11,28 @@
    The click-through URLs are pre-resolved on the read-model doc, so this
    partial renders them verbatim (no per-call href computation). Wrapped
    in `Option` purely so the live pages — which always carry ratings —
-   emit byte-identical markup to before the read-model split. *@
+   emit byte-identical markup to before the read-model split.
+
+   All four are `rel="nofollow noopener"`: four outbound links per card ×
+   hundreds of cards is the bulk of a listing's link graph, and none of them
+   is an editorial endorsement worth passing crawl equity for. *@
 @ratings.map { e =>
   <div class="ratings">
     @e.imdb.map { r =>
-      <a href="@e.imdbUrl" target="_blank" rel="noopener" class="rating-imdb" title="IMDb">
+      <a href="@e.imdbUrl" target="_blank" rel="nofollow noopener" class="rating-imdb" title="IMDb">
         <span class="rating-imdb-label">IMDb</span><span class="rating-imdb-value">@{f"$r%.1f"}</span>
       </a>
     }
     @e.metascore.map { m =>
-      <a href="@e.metacriticUrl" target="_blank" rel="noopener" class="rating-meta" title="Metacritic">@m</a>
+      <a href="@e.metacriticUrl" target="_blank" rel="nofollow noopener" class="rating-meta" title="Metacritic">@m</a>
     }
     @e.rottenTomatoes.map { rt =>
-      <a href="@e.rottenTomatoesUrl" target="_blank" rel="noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
+      <a href="@e.rottenTomatoesUrl" target="_blank" rel="nofollow noopener" class="rating-rt @if(rt >= 60) {fresh} else {rotten}" title="Rotten Tomatoes">
         <span class="rating-rt-label">RT</span><span class="rating-rt-value">@rt%</span>
       </a>
     }
     @e.filmweb.map { r =>
-      <a href="@e.filmwebUrl" target="_blank" rel="noopener" class="rating-fw" title="Filmweb">
+      <a href="@e.filmwebUrl" target="_blank" rel="nofollow noopener" class="rating-fw" title="Filmweb">
         <span class="rating-fw-label">FW</span><span class="rating-fw-value">@{f"$r%.1f"}</span>
       </a>
     }

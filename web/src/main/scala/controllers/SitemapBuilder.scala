@@ -10,32 +10,43 @@ import models.City
  *  Deliberately omits the `/{city}/filmy?...` browse-facet pages: they're thin
  *  filtered slices of the same corpus and would multiply the URL count without
  *  adding indexable content. The film deep-links carry the actual long-tail.
+ *  (`robots.txt` disallows the facets outright, so a crawler that finds them
+ *  through the genre pills doesn't spend budget there either.)
+ *
+ *  Carries no `<changefreq>` or `<priority>`: Google ignores both outright, and
+ *  emitting them on every URL only made the file read as machine-filler. What
+ *  IS kept is `<lastmod>` — but only on the URLs it's true for (see `build`).
  */
 object SitemapBuilder {
 
   /** @param origin  scheme + host, no trailing slash (`https://kinowo.fly.dev`)
    *  @param entries each city paired with the films it's currently showing
-   *  @param lastmod optional W3C date stamp applied to every URL (read-model mtime) */
+   *  @param lastmod the read model's mtime as a W3C date, stamped on the URLs
+   *                 whose body IS the read model — the city listings, plans and
+   *                 film pages, all of which re-render on every projection. The
+   *                 landing is left unstamped: it's a static city list that a
+   *                 projection doesn't touch, and Google discards the lastmod
+   *                 signal site-wide once it catches URLs claiming changes they
+   *                 didn't make. */
   def build(origin: String, entries: Seq[(City, Seq[FilmSchedule])], lastmod: Option[String] = None): String = {
     val sb = new StringBuilder
     sb.append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
     sb.append("""<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">""").append('\n')
 
-    def url(loc: String, changefreq: String, priority: String): Unit = {
+    def url(loc: String, stamped: Boolean = true): Unit = {
       sb.append("  <url><loc>").append(escape(origin + loc)).append("</loc>")
-      lastmod.foreach(m => sb.append("<lastmod>").append(m).append("</lastmod>"))
-      sb.append("<changefreq>").append(changefreq).append("</changefreq>")
-      sb.append("<priority>").append(priority).append("</priority></url>\n")
+      if (stamped) lastmod.foreach(m => sb.append("<lastmod>").append(m).append("</lastmod>"))
+      sb.append("</url>\n")
     }
 
-    url("/", "daily", "1.0")
+    url("/", stamped = false)
     entries.foreach { case (city, films) =>
-      url(s"/${city.slug}/", "daily", "0.8")
-      url(s"/${city.slug}/plan", "daily", "0.7")
+      url(s"/${city.slug}/")
+      url(s"/${city.slug}/plan")
       // Distinct + sorted so the file is deterministic (stable across requests
       // and testable) regardless of the read model's iteration order.
       films.map(_.movie.title).distinct.sorted.foreach { title =>
-        url(FilmHref(title, city), "daily", "0.6")
+        url(FilmHref(title, city))
       }
     }
 
