@@ -23,4 +23,15 @@ class TitleRuleKeySpec extends AnyFlatSpec with Matchers {
     TitleRuleKey.of("Kino na Boku")     shouldBe "bok"
     TitleRuleKey.of("Kino Głębocka 66") shouldBe "bok"
   }
+
+  it should "key ß-carrying German venues on the frozen fold, not the URL one" in {
+    // Rule keys are a FROZEN key space — rules are persisted against them. The
+    // shared slugger's URL policy maps ß→ss (so film permalinks read
+    // "grosse-freiheit" not "groe-freiheit"), which would silently re-key the
+    // 15 German venues whose display name carries one and orphan their rules.
+    // These assertions pin the pre-extraction bytes.
+    TitleRuleKey.of("Kino Weißhaus")     shouldBe "kino-wei-haus"
+    TitleRuleKey.of("Filmpalast Meißen") shouldBe "filmpalast-mei-en"
+    tools.Slugify("Kino Weißhaus")       shouldBe "kino-weisshaus"   // the URL policy, for contrast
+  }
 }

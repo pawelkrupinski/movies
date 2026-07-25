@@ -2,8 +2,6 @@ package services.titlerules
 
 import models.Cinema
 
-import java.util.Locale
-
 /** Maps a `Cinema` to the per-client rule key its title-cleanup rules live under.
  *
  *  Per the "per client" model: a chain (Cinema City, Helios, Multikino) is one
@@ -27,10 +25,8 @@ object TitleRuleKey {
     else if (displayName.startsWith("Helios")) "helios"
     else if (displayName.startsWith("Multikino")) "multikino"
     else if (bokVenues.contains(displayName)) "bok"
-    else slug(displayName)
-
-  private def slug(s: String): String =
-    tools.TextNormalization.deburr(s).toLowerCase(Locale.ROOT)
-      .replaceAll("[^a-z0-9]+", "-")
-      .replaceAll("(^-|-$)", "")
+    // `stable`, never `Slugify.apply`: rules are persisted against this key, so
+    // the URL policy's extra folds (ß→ss) would orphan every German venue whose
+    // name carries one. See `tools.Slugify`.
+    else tools.Slugify.stable(displayName)
 }
