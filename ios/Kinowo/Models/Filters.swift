@@ -354,6 +354,7 @@ extension Sequence where Element == Film {
             if days.isEmpty { return nil }
             return Film(
                 title: film.title,
+                slug: film.slug,
                 posterURL: film.posterURL,
                 fallbackPosterURLs: film.fallbackPosterURLs,
                 runtimeMinutes: film.runtimeMinutes,
@@ -421,6 +422,7 @@ extension Sequence where Element == Film {
             if days.isEmpty { return nil }
             return Film(
                 title: film.title,
+                slug: film.slug,
                 posterURL: film.posterURL,
                 fallbackPosterURLs: film.fallbackPosterURLs,
                 runtimeMinutes: film.runtimeMinutes,
@@ -494,6 +496,7 @@ extension Sequence where Element == Film {
                 guard !days.isEmpty else { continue }
                 perCinema[cinema, default: []].append(Film(
                     title: film.title,
+                    slug: film.slug,
                     posterURL: film.posterURL,
                     fallbackPosterURLs: film.fallbackPosterURLs,
                     runtimeMinutes: film.runtimeMinutes,

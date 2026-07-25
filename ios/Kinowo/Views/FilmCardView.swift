@@ -27,11 +27,11 @@ struct FilmCardView: View {
             PosterView(film: film)
                 .contextMenu {
                     if let citySlug = prefs.selectedCity {
-                        ShareLink(item: FilmShareLink.url(forTitle: film.title, citySlug: citySlug), subject: Text(film.title)) {
+                        ShareLink(item: FilmShareLink.url(for: film, citySlug: citySlug), subject: Text(film.title)) {
                             Label("Udostępnij", systemImage: "square.and.arrow.up")
                         }
                         Button {
-                            UIPasteboard.general.string = FilmShareLink.url(forTitle: film.title, citySlug: citySlug).absoluteString
+                            UIPasteboard.general.string = FilmShareLink.url(for: film, citySlug: citySlug).absoluteString
                         } label: {
                             Label("Skopiuj link", systemImage: "link")
                         }

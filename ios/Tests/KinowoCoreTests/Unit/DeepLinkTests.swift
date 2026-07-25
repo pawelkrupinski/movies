@@ -21,10 +21,34 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertTrue(dl?.filters.isEmpty ?? false)
     }
 
+    func testFilmDetailSlugLink() {
+        // The canonical form the site and the app both mint now.
+        let dl = parse("https://kinowo.fly.dev/warszawa/film/oppenheimer")
+        XCTAssertEqual(dl?.citySlug, "warszawa")
+        XCTAssertEqual(dl?.filmSlug, "oppenheimer")
+        XCTAssertNil(dl?.filmTitle)
+    }
+
+    func testFilmDetailSlugLinkOnTheCustomScheme() {
+        let dl = parse("kinowo://poznan/film/diuna-czesc-druga")
+        XCTAssertEqual(dl?.citySlug, "poznan")
+        XCTAssertEqual(dl?.filmSlug, "diuna-czesc-druga")
+    }
+
     func testFilmDetailLink() {
+        // The legacy form: still parsed, because links shared before the switch
+        // — and by app builds still in the wild — carry it.
         let dl = parse("https://kinowo.fly.dev/warszawa/film?title=Oppenheimer")
         XCTAssertEqual(dl?.citySlug, "warszawa")
         XCTAssertEqual(dl?.filmTitle, "Oppenheimer")
+        XCTAssertNil(dl?.filmSlug)
+    }
+
+    func testBareFilmPathIsNeitherSlugNorTitle() {
+        let dl = parse("https://kinowo.fly.dev/warszawa/film")
+        XCTAssertEqual(dl?.citySlug, "warszawa")
+        XCTAssertNil(dl?.filmSlug)
+        XCTAssertNil(dl?.filmTitle)
     }
 
     func testFilmDetailDecodesEncodedTitle() {

@@ -83,6 +83,9 @@ enum HTMLParser {
         let showings = ShowingsParser.parseShowings(in: chunk)
         return Film(
             title: title.htmlDecoded(),
+            // This legacy HTML path carries no slug attribute; share links for a
+            // film parsed here fall back to the query form.
+            slug: nil,
             posterURL: poster,
             fallbackPosterURLs: fallbacks,
             runtimeMinutes: runtime,

@@ -3,6 +3,15 @@ import Foundation
 struct Film: Identifiable, Hashable, Codable {
     var id: String { title }
     let title: String
+    /// The film's canonical path segment on the web (`/{city}/film/{slug}`),
+    /// served by `/api/repertoire`. Optional so a build talking to a server
+    /// that predates the field still decodes — `FilmShareLink` falls back to
+    /// the legacy `?title=` form, which the server still answers (with a 301).
+    ///
+    /// `var` with a default purely so the synthesized memberwise init keeps the
+    /// argument optional — the many fixture `Film(…)` constructions across the
+    /// test suites don't care about slugs and shouldn't have to name one.
+    var slug: String? = nil
     let posterURL: URL?
     /// Chain of alternative poster URLs to try when `posterURL` fails.
     /// Server-side `_movieCard` ships them in source-priority order
@@ -144,13 +153,18 @@ struct Showtime: Hashable, Identifiable, Codable {
     }
 }
 
-/// Canonical public URL for a film's `/film?title=…` page — the iOS
+/// Canonical public URL for a film's `/{city}/film/{slug}` page — the iOS
 /// counterpart of the server's `controllers.FilmHref`. Backs the Share
 /// button on `FilmDetailView` and the long-press "Skopiuj link" on
-/// `FilmCardView`. Mirrors `FilmHref`'s RFC 3986 encoding (spaces → `%20`,
-/// not the form `+`) so a link shared from the app is byte-identical to one
-/// copied off the website and round-trips through link-preview scrapers and
-/// the web router alike.
+/// `FilmCardView`, so a link shared from the app is byte-identical to one
+/// copied off the website.
+///
+/// The slug is whatever `/api/repertoire` served for the film — deliberately
+/// NOT recomputed here. The server's fold covers Polish and German diacritics,
+/// ß, and Cyrillic; a Swift reimplementation would be a second copy of those
+/// rules, free to drift into links that 404. When it's absent (an older
+/// server), the legacy `?title=` form is emitted instead; the server still
+/// answers that form and 301s it onto the slug.
 ///
 /// The host is hardcoded rather than reusing `kinowoBaseURL` because that
 /// constant lives in the Combine-only `Auth` layer, which `KinowoCore`
@@ -167,11 +181,26 @@ enum FilmShareLink {
         return set
     }()
 
-    /// The film page is city-scoped (`/<city>/film?title=…`), so the link must
-    /// carry the slug of the city the sharer is browsing — a city-less
+    /// The canonical link for a film, given the slug `/api/repertoire` served
+    /// for it. Both segments are already URL-safe (lowercase ASCII + hyphens),
+    /// so nothing needs encoding.
+    static func url(forSlug slug: String, citySlug: String) -> URL {
+        URL(string: "https://kinowo.fly.dev/\(citySlug)/film/\(slug)")!
+    }
+
+    /// The film's link, preferring its canonical slug address and falling back
+    /// to the legacy query form for a film the server didn't send a slug for.
+    static func url(for film: Film, citySlug: String) -> URL {
+        if let slug = film.slug, !slug.isEmpty {
+            return url(forSlug: slug, citySlug: citySlug)
+        }
+        return url(forTitle: film.title, citySlug: citySlug)
+    }
+
+    /// The pre-slug form. The film page is city-scoped, so the link must carry
+    /// the slug of the city the sharer is browsing — a city-less
     /// `/film?title=…` has no server route and 404s. `citySlug` is already
-    /// URL-safe (lowercase ASCII + hyphens, e.g. `bielsko-biala`), so only the
-    /// title needs encoding.
+    /// URL-safe, so only the title needs encoding.
     static func url(forTitle title: String, citySlug: String) -> URL {
         let encoded = title.addingPercentEncoding(withAllowedCharacters: titleAllowed) ?? title
         // Safe to force-unwrap: `encoded` and `citySlug` contain only URL-safe

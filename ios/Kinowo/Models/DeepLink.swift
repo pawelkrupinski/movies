@@ -12,17 +12,23 @@ import Foundation
 ///
 ///   https://kinowo.fly.dev/poznan/                     → city
 ///   https://kinowo.fly.dev/poznan/?dim=2D&genre=Komedia → city + filters
-///   https://kinowo.fly.dev/poznan/film?title=Oppenheimer → city + film detail
+///   https://kinowo.fly.dev/poznan/film/oppenheimer      → city + film detail
+///   https://kinowo.fly.dev/poznan/film?title=Oppenheimer → the same, legacy form
 ///   https://showtimes-uk.fly.dev/london/                → city (UK deployment)
 ///   kinowo://poznan/                                    → city (custom scheme)
-///   kinowo://poznan/film?title=Oppenheimer              → film (custom scheme)
+///   kinowo://poznan/film/oppenheimer                    → film (custom scheme)
 ///
 /// Pure Foundation so it lives in `KinowoCore` and is unit-tested on Linux CI.
 struct DeepLink: Equatable {
     let citySlug: String
-    /// Set for `/:city/film?title=…`; the title is the film's identity (its
-    /// `id`), matched against the loaded repertoire once it arrives.
+    /// Set for the legacy `/:city/film?title=…` form; the title is the film's
+    /// identity (its `id`), matched against the loaded repertoire once it
+    /// arrives. Links minted before the slug switch — and by app builds still
+    /// in the wild — carry this, so it stays supported.
     let filmTitle: String?
+    /// Set for the canonical `/:city/film/{slug}` form, matched against the
+    /// `slug` each film carries from `/api/repertoire`.
+    let filmSlug: String?
     let filters: DeepLinkFilters
 
     /// Every country deployment's host — a link on any of them opens the app.
@@ -70,13 +76,19 @@ struct DeepLink: Equatable {
 
         guard knownCitySlugs.contains(city) else { return nil }
 
-        let filmTitle: String? = trailing.first == "film"
+        let isFilm = trailing.first == "film"
+        // `/film/{slug}` is the canonical form; `/film?title=…` the legacy one.
+        // Both are parsed: a link shared from an older app build, or one saved
+        // from the web before the switch, must still open the right film.
+        let filmSlug: String? = isFilm ? trailing.dropFirst().first : nil
+        let filmTitle: String? = isFilm
             ? components.queryItems?.first(where: { $0.name == "title" })?.value
             : nil
 
         return DeepLink(
             citySlug: city,
             filmTitle: filmTitle.flatMap { $0.isEmpty ? nil : $0 },
+            filmSlug: filmSlug.flatMap { $0.isEmpty ? nil : $0 },
             filters: DeepLinkFilters(queryItems: components.queryItems ?? [])
         )
     }

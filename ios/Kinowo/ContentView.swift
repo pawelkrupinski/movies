@@ -387,8 +387,15 @@ struct ContentView: View {
         // (Arabic→Roman fold) so a link to "…Prady 2" finds the stored
         // "…Prady II" — not byte-for-byte. A title not in the repertoire (left
         // the listing) just no-ops.
-        if let title = link.filmTitle,
-           let film = store.films.first(where: { DeepLinkTitle.matches($0.title, title) }) {
+        // A slug link resolves exactly (the server minted both sides from the
+        // same fold); a legacy `?title=` link still falls back to the normalized
+        // title match.
+        let target = link.filmSlug.flatMap { slug in
+            store.films.first(where: { $0.slug == slug })
+        } ?? link.filmTitle.flatMap { title in
+            store.films.first(where: { DeepLinkTitle.matches($0.title, title) })
+        }
+        if let film = target {
             navPath = [film]
         }
     }
