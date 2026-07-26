@@ -13,6 +13,14 @@
 #   ios/scripts/store-screenshots.sh --country-top uk 10     # top 10 cities of ONE country
 #   ios/scripts/store-screenshots.sh --country-top de 5 6    # de ranks 6-10 only
 #
+# A leading DEVICE FLAG narrows the run to one class; it goes in front of any of
+# the commands above, and on its own means "just this device":
+#
+#   ios/scripts/store-screenshots.sh --iphone  --all-top 2       # 6.9" phone only
+#   ios/scripts/store-screenshots.sh --ipad-13 --all-top 2       # 13" iPad only
+#   ios/scripts/store-screenshots.sh --ipad-11 --country-top uk 5  # 11" iPad only
+#   ios/scripts/store-screenshots.sh --ipad-13 pl-PL "Poznan"    # one city, one device
+#
 # --top only PRINTS the ranking; --all-top and --country-top capture. Use
 # --country-top to top up a single locale without re-shooting the other two.
 #
@@ -30,11 +38,9 @@
 # nobody noticed.
 #
 # The 11" iPad is available but OPT-IN, since Apple derives it from the 13":
-#
-#   SHOT_CLASSES=tablet-11-screenshots ios/scripts/store-screenshots.sh --all-top 2
-#
-# Worth asking for when the derived image would mislead — the listing lays out
-# four columns at 11" and five at 13", so a squeezed 13" shows the wrong grid.
+# ask for it with --ipad-11. Worth doing when the derived image would mislead —
+# the listing lays out four columns at 11" and five at 13", so a squeezed 13"
+# shows the wrong grid.
 #
 # Shots land in a candidates/ scratchpad INSIDE the published dir, one per class
 # (ios/store/listings/<locale>/graphics/<class>/candidates/, gitignored) and every
@@ -121,6 +127,20 @@ device_for_class() {
     tablet-screenshots)    echo "$IOS_TABLET";;
     tablet-11-screenshots) echo "$IOS_TABLET_11";;
     *)                     echo "$IOS_PHONE";;
+  esac
+}
+
+# The class a leading --iphone / --ipad-13 / --ipad-11 narrows the run to, or
+# empty for anything else — which is how the dispatch tells a device flag from a
+# command. Named by DEVICE rather than by class, because at the prompt you know
+# which screen you are trying to reshoot, not which gradle-play-publisher
+# directory it lands in. Every class has a flag: a class reachable only by
+# spelling out SHOT_CLASSES is one that stops getting shot.
+class_for_flag() { # $1 argument → class, or empty when it isn't a device flag
+  case "$1" in
+    --iphone)  echo phone-screenshots;;
+    --ipad-13) echo tablet-screenshots;;
+    --ipad-11) echo tablet-11-screenshots;;
   esac
 }
 
@@ -432,6 +452,12 @@ usage() { usage_of "${BASH_SOURCE[0]}"; }
 # Dispatch only when executed — store-screenshots-test.sh sources this file to
 # exercise the pure helpers, and must not trigger a capture by doing so.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  # A leading device flag narrows the run to ONE class, in front of whatever
+  # command follows. SHOT_CLASSES still works and is what a script should set;
+  # this is the version you can type without remembering the class names.
+  _narrowed="$(class_for_flag "${1:-}")"
+  [ -n "$_narrowed" ] && { SHOT_CLASSES="$_narrowed"; shift; }
+
   case "${1:-}" in
     # Only the capture paths take the lock: --top just prints a ranking and is
     # safe to run beside anything.

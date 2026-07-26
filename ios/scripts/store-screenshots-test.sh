@@ -74,6 +74,27 @@ check "the optional 11-inch iPad stays out of the default" "0" \
   "$(_shot_classes_list | grep -cx 'tablet-11-screenshots')"
 check "asking for the 11-inch still works" "tablet-11-screenshots" \
   "$(SHOT_CLASSES=tablet-11-screenshots bash -c 'source "$1" >/dev/null 2>&1; echo "$SHOT_CLASSES"' _ "$HERE/store-screenshots.sh")"
+
+# ── narrowing to one device ───────────────────────────────────────────────────
+# Named by device, not by class: at the prompt you know which screen you want to
+# reshoot, not which gradle-play-publisher directory it lands in.
+check "--iphone narrows to the phone"   "phone-screenshots"     "$(class_for_flag --iphone)"
+check "--ipad-13 narrows to the 13-inch" "tablet-screenshots"    "$(class_for_flag --ipad-13)"
+check "--ipad-11 narrows to the 11-inch" "tablet-11-screenshots" "$(class_for_flag --ipad-11)"
+# Empty is how the dispatch tells a device flag from a command — a command that
+# mapped to a class would be swallowed as a flag and never run.
+check "a command is not a device flag" "" "$(class_for_flag --all-top)"
+check "a locale is not a device flag"  "" "$(class_for_flag pl-PL)"
+check "no argument is not a device flag" "" "$(class_for_flag "")"
+# Every class needs a flag. One reachable only by spelling out SHOT_CLASSES is
+# the state the iPad was in before it went stale on all three listings.
+for _c in phone-screenshots tablet-screenshots tablet-11-screenshots; do
+  _found=""
+  for _f in --iphone --ipad-13 --ipad-11; do
+    [ "$(class_for_flag "$_f")" = "$_c" ] && _found="$_f"
+  done
+  check "$_c is reachable by a flag" "1" "$([ -n "$_found" ] && echo 1 || echo 0)"
+done
 # Back-compat: the documented SHOT_CLASS=tablet-screenshots invocation must still
 # mean ONE pass, not "both, starting with the tablet".
 check "an explicit SHOT_CLASS still pins a single pass" "tablet-screenshots" \
@@ -220,6 +241,12 @@ check "usage documents --country-top" "1" "$(usage | grep -q -- '--country-top' 
 check "usage documents the start rank" "1" "$(usage | grep -q -- '--all-top 2 4' && echo 1 || echo 0)"
 check "usage documents the candidates pile" "1" "$(usage | grep -q 'candidates/' && echo 1 || echo 0)"
 check "usage documents SHOT_CLASSES" "1" "$(usage | grep -q 'SHOT_CLASSES' && echo 1 || echo 0)"
+check "usage documents every device flag" "3" \
+  "$(usage | grep -oE '\-\-(iphone|ipad-13|ipad-11)' | sort -u | wc -l | tr -d ' ')"
+# The flag has to be consumed BEFORE the command case, or --iphone --all-top
+# falls through to the positional branch and is read as a locale.
+check "the dispatch narrows before it dispatches" "1" \
+  "$(grep -c 'class_for_flag "\${1:-}"' "$HERE/store-screenshots.sh")"
 check "usage says the iPad is shot too" "1" "$(usage | grep -qi 'IPAD' && echo 1 || echo 0)"
 # The dispatch wiring itself: every CAPTURE path must go through for_each_class or
 # the iPad pass silently stops happening. Dispatch only runs when the script is
