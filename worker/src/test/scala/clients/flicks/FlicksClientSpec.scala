@@ -119,11 +119,36 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
         today = LocalDate.of(2026, 7, 11)).planChunks()
   }
 
-  it should "THROW when the programme page lists no in-horizon day tab" in {
-    val noTabs = new ScriptedByUrl(_ => "<html><body>no timetable here</body></html>")
+  it should "THROW when the programme page carries no timetable block at all" in {
+    // No timetable container => not the page we think we're parsing (markup drift,
+    // an error page, a redirect). That IS a failure: throwing keeps last-known data.
+    val noTimetable = new ScriptedByUrl(_ => "<html><body>no timetable here</body></html>")
     an[IllegalStateException] should be thrownBy
-      new FlicksClient(noTabs, "odeon-cinema-norwich", OdeonNorwich,
+      new FlicksClient(noTimetable, "odeon-cinema-norwich", OdeonNorwich,
         today = LocalDate.of(2026, 7, 11)).planChunks()
+  }
+
+  /** A real Flicks programme page for a venue with NOTHING on (Woolton Picture
+   *  House, captured 2026-07-27 via the residential proxy). Carries the
+   *  `timetable timetable--cinema` container like any other venue page, but zero
+   *  `timetable__day` tabs inside it. Source:
+   *  https://www.flicks.co.uk/cinema/woolton-picture-house/ */
+  private def emptyProgrammePage: String = {
+    val src = Source.fromFile("test/resources/fixtures/flicks/woolton-picture-house-programme-empty.html")
+    try src.mkString finally src.close()
+  }
+
+  // A venue that simply has no screenings on is EXPECTED DATA, not an outage: the
+  // page renders fine, the timetable block is there, it just holds no days. Five
+  // UK venues sat permanently red on /uptime for this (2026-07-26) because it threw.
+  // Germany already draws the line here — WebediaShowtimesClient throws only when
+  // the dates ATTRIBUTE is missing, and returns empty when it's present-but-empty.
+  // Empty is safe: MovieCache.recordCinemaScrape bails on an empty result, so the
+  // venue keeps its last-known listing either way.
+  it should "return empty (not throw) when the timetable block is present but holds no day tabs" in {
+    val emptyVenue = new ScriptedByUrl(_ => emptyProgrammePage)
+    new FlicksClient(emptyVenue, "woolton-picture-house", OdeonNorwich,
+      today = LocalDate.of(2026, 7, 27)).planChunks() shouldBe empty
   }
 
   // ── chunked scrape: one chunk per day, one AJAX call each ─────────────────

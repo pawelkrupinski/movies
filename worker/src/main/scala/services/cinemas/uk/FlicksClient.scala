@@ -69,16 +69,28 @@ class FlicksClient(
    *
    *  The programme page is the ONLY source of days — there is no fixed-grid
    *  fallback. When the page can't be fetched (its `http.get` throws, propagating
-   *  here) or carries no in-horizon day tab, this throws: an index-page failure
-   *  fails the whole scrape (recorded as a normal scrape outcome by the planner),
-   *  which keeps the venue's last-known listing rather than silently narrowing it
-   *  to a guessed 7-day window that would drop every advertised far-out day. */
+   *  here) this throws: an index-page failure fails the whole scrape (recorded as
+   *  a normal scrape outcome by the planner), which keeps the venue's last-known
+   *  listing rather than silently narrowing it to a guessed 7-day window that
+   *  would drop every advertised far-out day.
+   *
+   *  A page that fetched fine but names no day is split in two, the same line
+   *  [[WebediaShowtimesClient]] draws for Germany:
+   *   - NO timetable block at all → we aren't parsing the page we think we are
+   *     (markup drift, an error page, a redirect). A FAILURE, so it throws.
+   *   - timetable block present, no day tabs in it → the venue simply has
+   *     nothing on. EXPECTED DATA, so it returns empty: the planner records that
+   *     as a successful scrape of an empty repertoire, and
+   *     `MovieCache.recordCinemaScrape` bails on an empty result so the venue
+   *     keeps its last-known listing regardless. Throwing here instead left five
+   *     UK venues permanently red on /uptime (2026-07-26). */
   def planChunks(): Seq[String] = {
-    val dates = parseProgrammeDates(http.get(programmeUrl))
+    val html  = http.get(programmeUrl)
+    val dates = parseProgrammeDates(html)
       .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
-    if (dates.isEmpty)
+    if (dates.isEmpty && !hasTimetable(html))
       throw new IllegalStateException(
-        s"Flicks programme page for '$cinemaSlug' listed no day tabs within the horizon")
+        s"Flicks programme page for '$cinemaSlug' carried no timetable block")
     dates.map(_.toString)
   }
 
@@ -147,6 +159,11 @@ object FlicksClient {
   val MaxHorizonDays = 210
 
   private val DataDate = """data-date="(\d{4}-\d{2}-\d{2})"""".r
+  // The venue programme page's day-tab container. Rendered on EVERY venue page,
+  // including one with nothing on (verified 2026-07-27 across venues both with
+  // and without listings), so its absence — not the absence of day tabs — is what
+  // marks a page we failed to parse. See `planChunks`.
+  private val TimetableBlock = """class="timetable timetable--cinema"""".r
 
   /** The days a venue has a programme on, read off the programme page's
    *  `<div class="timetable__day" data-date="YYYY-MM-DD">` day tabs — a sparse,
@@ -159,6 +176,10 @@ object FlicksClient {
     DataDate.findAllMatchIn(html).map(_.group(1)).toSeq
       .flatMap(s => Try(LocalDate.parse(s)).toOption)
       .distinct.sortBy(_.toString)
+
+  /** Whether the page carries the venue day-tab container — i.e. it really is a
+   *  Flicks programme page, whether or not the venue has anything on. */
+  def hasTimetable(html: String): Boolean = TimetableBlock.findFirstIn(html).isDefined
 
   // Flicks 403s a non-browser fetch and only serves the sessions fragment (rather
   // than the full page) when this header is set; RealHttpFetch already sends a
