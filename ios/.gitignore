@@ -11,3 +11,10 @@ Package.resolved
 
 # macOS noise.
 .DS_Store
+
+# App Store listing graphics, laid out like the Android side
+# (store/listings/<locale>/graphics/<class>/) so one promote-by-hand habit works
+# for both stores. The candidates/ scratchpad is where store-screenshots.sh
+# APPENDS every run's raw captures; you promote the keepers up one level into
+# phone-screenshots/ (or tablet-screenshots/), and only those are committed.
+store/listings/*/graphics/*/candidates/
