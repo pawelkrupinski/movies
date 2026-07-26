@@ -38,14 +38,16 @@ check "uk area-picker label" "Show listings"     "$(showlist_label uk)"
 check "pl area-picker label" "Pokaż repertuar"   "$(showlist_label pl)"
 check "de area-picker label" "Programm anzeigen" "$(showlist_label de)"
 
-# Blocks of four, end to end: city 1 → 1-4, city 2 → 5-8.
-check "first city block"  "/d/1.png /d/2.png /d/3.png /d/4.png" "$(shot_paths /d 1 | tr '\n' ' ' | sed 's/ $//')"
-check "second city block" "/d/5.png /d/6.png /d/7.png /d/8.png" "$(shot_paths /d 5 | tr '\n' ' ' | sed 's/ $//')"
+# Blocks of four, end to end, zero-padded: city 1 → 001-004, city 2 → 005-008.
+check "first city block"  "/d/001.png /d/002.png /d/003.png /d/004.png" "$(shot_paths /d 1 | tr '\n' ' ' | sed 's/ $//')"
+check "second city block" "/d/005.png /d/006.png /d/007.png /d/008.png" "$(shot_paths /d 5 | tr '\n' ' ' | sed 's/ $//')"
 check "blocks do not overlap" "" \
   "$(comm -12 <(shot_paths /d 1 | sort) <(shot_paths /d 5 | sort))"
-# Past 9 the numbering must stay numeric, not lexical — this is why the Preview
-# list is built from shot_paths rather than `ls`.
-check "third city block" "/d/9.png /d/10.png /d/11.png /d/12.png" "$(shot_paths /d 9 | tr '\n' ' ' | sed 's/ $//')"
+# Zero-padding is what makes lexical order == numeric order past 9, so a plain
+# glob or `ls` presents the blocks in capture order rather than 1, 10, 11, 2…
+check "third city block" "/d/009.png /d/010.png /d/011.png /d/012.png" "$(shot_paths /d 9 | tr '\n' ' ' | sed 's/ $//')"
+check "padding makes lexical order match numeric" "/d/009.png /d/010.png /d/011.png /d/012.png" \
+  "$(shot_paths /d 9 | sort | tr '\n' ' ' | sed 's/ $//')"
 
 # ── where shots land, and what Play actually publishes ───────────────────────
 # gradle-play-publisher includes exactly `/listings/*/graphics/<dirName>/*`, and
@@ -88,15 +90,24 @@ check ".gitignore no longer names the API field" "" \
 _shots="$(mktemp -d)"
 check "empty dir starts at 1"   "1" "$(next_shot_number "$_shots")"
 check "missing dir starts at 1" "1" "$(next_shot_number "$_shots/nope")"
-touch "$_shots"/1.png "$_shots"/2.png "$_shots"/3.png "$_shots"/4.png
+touch "$_shots"/001.png "$_shots"/002.png "$_shots"/003.png "$_shots"/004.png
 check "a four-shot block continues at 5" "5" "$(next_shot_number "$_shots")"
+# 008 and 009 are the ones that bite: bash reads a leading-zero literal as OCTAL,
+# and 8/9 are not octal digits, so an unguarded $((n)) aborts the whole script
+# with "value too great for base". `10#` is what keeps this working.
+touch "$_shots"/008.png "$_shots"/009.png
+check "leading zeros are base 10, not octal" "10" "$(next_shot_number "$_shots")"
 # The bug a lexical `ls | tail -1` would introduce: 10 sorts before 9, so the next
 # run would start at 10 and overwrite an existing shot.
-touch "$_shots"/9.png "$_shots"/10.png
+touch "$_shots"/010.png
 check "10 counts above 9 (numeric, not lexical)" "11" "$(next_shot_number "$_shots")"
+# Unpadded names from before the rename must still count, or the first run after
+# upgrading would restart at 1 and overwrite them.
+touch "$_shots"/12.png
+check "legacy unpadded names still count" "13" "$(next_shot_number "$_shots")"
 # Promoted/renamed strays must not derail the count.
 touch "$_shots"/keep.png "$_shots"/2b.png
-check "non-numeric names are ignored" "11" "$(next_shot_number "$_shots")"
+check "non-numeric names are ignored" "13" "$(next_shot_number "$_shots")"
 
 # Parallel pool: ports and serials. A wrong offset would boot two workers onto
 # one instance (they'd fight over the AVD) or leave gaps adb never sees.
@@ -203,14 +214,38 @@ check "run_worker forwards the start rank" "zz 2 4" "$(cat "$_rankcap")"
 # run must start at 5. Previously run_worker `rm -f`'d the directory first, so a
 # second run destroyed the first one's shots.
 mkdir -p "$(candidates_dir xx-XX)"
-touch "$(candidates_dir xx-XX)"/1.png "$(candidates_dir xx-XX)"/2.png \
-      "$(candidates_dir xx-XX)"/3.png "$(candidates_dir xx-XX)"/4.png
+touch "$(candidates_dir xx-XX)"/001.png "$(candidates_dir xx-XX)"/002.png \
+      "$(candidates_dir xx-XX)"/003.png "$(candidates_dir xx-XX)"/004.png
 captured=""
 run_worker 0 1 2 1 </dev/null >/dev/null 2>&1 || true
 check "run_worker appends after existing candidates" "CityOne:5 CityTwo:9" \
   "$(echo "$captured" | tr -s ' ' | sed 's/^ *//;s/ *$//')"
 check "run_worker leaves the earlier shots alone" "4" \
   "$(ls "$(candidates_dir xx-XX)"/*.png 2>/dev/null | wc -l | tr -d ' ')"
+
+# ── the closing Preview shows THIS run's shots, not the whole pile ────────────
+# Runs append, so "open everything in candidates/" would reopen every shot ever
+# taken — after three --all-top 2 runs that is ~72 images, mostly rejects. The
+# baseline captured before the run is what narrows it back down.
+check "baselines record where each locale ends" "xx-XX:5" "$(baselines)"
+check "baseline_for reads a locale out"      "5" "$(baseline_for "xx-XX:5 yy-YY:9" xx-XX)"
+check "baseline_for reads the second"        "9" "$(baseline_for "xx-XX:5 yy-YY:9" yy-YY)"
+# An untouched locale defaults to 1 — showing everything beats showing nothing.
+check "baseline_for defaults to 1"           "1" "$(baseline_for "xx-XX:5" zz-ZZ)"
+
+# `command -v` finds shell functions, so stubbing `open` intercepts the real one.
+_opencap="$(mktemp)"
+open() { printf '%s\n' "$@" >> "$_opencap"; }
+touch "$(candidates_dir xx-XX)"/005.png "$(candidates_dir xx-XX)"/006.png
+preview_all "xx-XX:5"
+check "Preview opens only shots added since the baseline" \
+  "$(candidates_dir xx-XX)/005.png
+$(candidates_dir xx-XX)/006.png" "$(grep -Ev '^(-a|Preview)$' "$_opencap")"
+: > "$_opencap"
+preview_all "xx-XX:99"        # nothing new → nothing to open
+check "Preview stays shut when the run added nothing" "" \
+  "$(grep -Ev '^(-a|Preview)$' "$_opencap")"
+unset -f open
 
 # Cleanup closes ONLY the emulators this run booted, addressing each by its serial
 # via `adb emu kill` — a reused instance never enters BOOTED_EMULATORS, so a

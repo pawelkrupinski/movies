@@ -23,8 +23,9 @@
 # into phone-screenshots/ — that is what gradle-play-publisher publishes, and
 # Play shows at most 8 phone shots.
 #
-# --all-top writes one four-shot block per city, numbered end to end (city 1 →
-# 1-4.png, city 2 → 5-8.png, …). It drives one read-only emulator per country in
+# --all-top writes one four-shot block per city, numbered end to end and ZERO-PADDED
+# to three digits (city 1 → 001-004.png, city 2 → 005-008.png, …) so they sort the
+# same lexically and numerically. It drives one read-only emulator per country in
 # parallel (~countries× faster); EMULATORS=<k> caps that (EMULATORS=1 = serial)
 # for hosts that can't feed three emulators at once. The city RANKING itself is
 # fetched concurrently too, so --top returns in about one request's time.
@@ -135,8 +136,12 @@ X_SEARCH_FILM=694; Y_SEARCH_FILM=2800  # list: "Search films" field
 # its output) and --all-top (listing what to open in Preview) need this mapping,
 # so it lives in one place: city N of a run starts at 4N+1 and the blocks sit end
 # to end in the listing dir.
+# Zero-padded to three digits so LEXICAL order matches NUMERIC order: 010 sorts
+# after 009, where 10 sorted after 1. That matters beyond tidiness — anything
+# globbing the dir (a file browser, GPP's own upload ordering, `ls`) would
+# otherwise present the shots in the wrong sequence.
 shot_paths() { # $1 dir, $2 number of the first file
-  local n; for n in 0 1 2 3; do printf '%s/%s.png\n' "$1" "$(($2 + n))"; done
+  local n; for n in 0 1 2 3; do printf '%s/%03d.png\n' "$1" "$(($2 + n))"; done
 }
 
 # Where a run's shots land: a candidates/ scratchpad INSIDE the published dir.
@@ -159,6 +164,9 @@ next_shot_number() { # $1 dir
     [ -e "$f" ] || continue                    # no match → the glob itself
     n="${f##*/}"; n="${n%.png}"
     case "$n" in ''|*[!0-9]*) continue;; esac  # ignore promoted/renamed strays
+    # `10#` forces base 10: bash reads a leading-zero literal as OCTAL, so a
+    # zero-padded 008/009 would abort the script with "value too great for base".
+    n=$((10#$n))
     [ "$n" -gt "$last" ] && last="$n"
   done
   echo "$((last + 1))"
@@ -443,7 +451,7 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
   while IFS= read -r out; do shots+=("$out"); done < <(shot_paths "$dest" "$first")
   for out in "${shots[@]}"; do pad_playsafe "$stage/$n.png" "$out"; n=$((n + 1)); done
   rm -rf "$stage"
-  ok "wrote $dest/{$first..$((first + 3))}.png"
+  ok "$(printf 'wrote %s/{%03d..%03d}.png' "$dest" "$first" "$((first + 3))")"
 
   # Open the four shots in Preview to eyeball them (macOS). NO_OPEN=1 to skip —
   # which is how --all-top suppresses the per-city pop-up so it can open the whole
@@ -588,18 +596,40 @@ run_worker() { # $1 W, $2 K, $3 N, $4 OFFSET
   done
 }
 
-# Open everything sitting in the candidates dirs in one Preview — the whole pile,
-# not just this run's block, because choosing which shots to promote means seeing
-# them side by side with the earlier candidates. Counting up to next_shot_number
-# keeps the order numeric (10.png after 9.png, not after 1.png), which a glob
-# would not.
-preview_all() {
-  local country locale dest last i f; local all=()
+# Where each locale's candidates dir ENDS before a run — "pl-PL:5 en-GB:1 de-DE:9".
+# Captured up front so the Preview at the end can show just this run's shots. Now
+# that runs append, "everything in the dir" is the wrong set: after three
+# --all-top 2 runs it would be ~72 images, most of them ones you already rejected.
+baselines() {
+  local country locale out=""
+  for country in $COUNTRIES; do
+    locale="$(country_locale "$country")"
+    out="$out $locale:$(next_shot_number "$(candidates_dir "$locale")")"
+  done
+  echo "${out# }"
+}
+
+# A locale's baseline out of that string, defaulting to 1 for a locale the run
+# didn't touch — so a missing entry shows everything rather than nothing.
+baseline_for() { # $1 baselines, $2 locale
+  local pair
+  for pair in $1; do
+    case "$pair" in "$2":*) echo "${pair#*:}"; return;; esac
+  done
+  echo 1
+}
+
+# Open THIS RUN's shots in one Preview: everything each locale gained since its
+# baseline. Counting the range keeps the order numeric (10.png after 9.png, not
+# after 1.png), which a glob would not.
+preview_all() { # $1 baselines captured before the run
+  local country locale dest first last i f; local all=()
   for country in $COUNTRIES; do
     locale="$(country_locale "$country")"; dest="$(candidates_dir "$locale")"
+    first="$(baseline_for "$1" "$locale")"
     last=$(( $(next_shot_number "$dest") - 1 ))
-    for ((i = 1; i <= last; i++)); do
-      f="$dest/$i.png"; [ -f "$f" ] && all+=("$f")
+    for ((i = first; i <= last; i++)); do
+      f="$(printf '%s/%03d.png' "$dest" "$i")"; [ -f "$f" ] && all+=("$f")
     done
   done
   [ ${#all[@]} -gt 0 ] && command -v open >/dev/null 2>&1 && open -a Preview "${all[@]}" >>"$NOISE" 2>&1 || true
@@ -623,6 +653,10 @@ cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country, one emu
   # but only if a Preview was wanted at all.
   local want_preview=1; [ -n "${NO_OPEN:-}" ] && want_preview=
   export NO_OPEN=1
+
+  # Snapshot where each candidates dir ends BEFORE anything is captured, so the
+  # closing Preview can show only what this run added.
+  local before; before="$(baselines)"
 
   say "$n cities from rank $off × $ncountries countries on $k emulator(s)"
   boot_pool "$k"
@@ -664,7 +698,7 @@ cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country, one emu
   # An `if`, not `A && B`: under `set -e` a bare `[ -z "$want_preview" ] && …`
   # makes the whole function (and script) exit nonzero when NO_OPEN skips the
   # Preview, reporting failure on a clean run.
-  if [ -n "$want_preview" ]; then preview_all; fi
+  if [ -n "$want_preview" ]; then preview_all "$before"; fi
 }
 
 # Print the header block — every comment line after the shebang, up to the first
