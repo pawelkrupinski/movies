@@ -35,6 +35,13 @@ play-credentials.json
 # store-screenshots-test.sh guards that.
 app/src/main/play/listings/*/graphics/*
 !app/src/main/play/listings/*/graphics/phone-screenshots/
+# Feature graphics ARE committed: they are generated per LANGUAGE (brand, tagline
+# and that locale's own screenshot), so they differ and want reviewing as diffs.
+!app/src/main/play/listings/*/graphics/feature-graphic/
+# The per-locale icon dirs stay ignored on purpose — they are copies that
+# store-graphics.sh fans out from the ONE tracked master at
+# app/src/main/play/graphics/icon/. Committing three byte-identical icons is how
+# they drift.
 # …but not the capture scratchpad inside it. store-screenshots.sh appends every
 # run's shots to candidates/ so nothing is overwritten; you promote the keepers
 # up one level by hand. GPP's include pattern is single-segment (`…/*`), so this
