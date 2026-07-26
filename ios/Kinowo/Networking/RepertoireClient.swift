@@ -88,7 +88,7 @@ final class RepertoireStore: ObservableObject {
             films = RepertoireStore.uiTestFixture
             return
         }
-        if films.isEmpty, let cached = RepertoireCache.load() {
+        if films.isEmpty, let cached = RepertoireCache.load(deployment: base, city: citySlug) {
             films = cached
         }
     }
@@ -110,7 +110,7 @@ final class RepertoireStore: ObservableObject {
             var request = URLRequest(url: url)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = RepertoireCache.lastModified(forCity: citySlug) {
+            if let lm = RepertoireCache.lastModified(deployment: base, city: citySlug) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
             }
             let (data, response) = try await session.data(for: request)
@@ -118,8 +118,17 @@ final class RepertoireStore: ObservableObject {
                 throw URLError(.badServerResponse)
             }
             if http.statusCode == 304 {
-                // `films` already holds this city's data (the conditional header
-                // is city-bound), so mark it loaded for the deep-link gate.
+                // 304 says the CACHED body is current — which is only the same
+                // thing as "`films` is current" if the cache was actually read
+                // into it. On a cold launch the disk read happens before the
+                // deep link re-points the store, so it can be skipped for the
+                // wrong city and leave `films` empty; taking 304 at face value
+                // then strands an empty grid on a city that has a full listing.
+                // Hydrate from the entry the conditional header spoke for.
+                if let cached = RepertoireCache.bodyForNotModified(
+                    callerIsEmpty: films.isEmpty, deployment: base, city: citySlug) {
+                    self.films = cached
+                }
                 self.loadedCitySlug = citySlug
                 self.lastReloadedAt = now
                 return
@@ -134,7 +143,8 @@ final class RepertoireStore: ObservableObject {
             let lm = http.value(forHTTPHeaderField: "Last-Modified")
             let filmsCopy = decoded
             let city = citySlug
-            Task.detached { RepertoireCache.save(filmsCopy, city: city, lastModified: lm) }
+            let deployment = base
+            Task.detached { RepertoireCache.save(filmsCopy, deployment: deployment, city: city, lastModified: lm) }
         } catch {
             self.error = error
         }

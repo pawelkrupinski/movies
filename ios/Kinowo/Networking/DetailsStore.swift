@@ -58,7 +58,7 @@ final class DetailsStore: ObservableObject {
     func details(for title: String) -> FilmDetails? { byTitle[title] }
 
     func loadCachedData() {
-        if byTitle.isEmpty, let cached = DetailsCache.load() {
+        if byTitle.isEmpty, let cached = DetailsCache.load(deployment: base, city: citySlug) {
             byTitle = cached.keyedByTitle()
         }
     }
@@ -68,7 +68,7 @@ final class DetailsStore: ObservableObject {
             var request = URLRequest(url: url)
             request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
-            if let lm = DetailsCache.lastModified(forCity: citySlug) {
+            if let lm = DetailsCache.lastModified(deployment: base, city: citySlug) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")
             }
             let (data, response) = try await session.data(for: request)
@@ -76,6 +76,12 @@ final class DetailsStore: ObservableObject {
                 throw URLError(.badServerResponse)
             }
             if http.statusCode == 304 {
+                // As in `RepertoireStore.reload`: 304 vouches for the CACHED
+                // body, so read it in when the in-memory map missed it.
+                if let cached = DetailsCache.bodyForNotModified(
+                    callerIsEmpty: byTitle.isEmpty, deployment: base, city: citySlug) {
+                    self.byTitle = cached.keyedByTitle()
+                }
                 self.lastReloadedAt = now
                 return
             }
@@ -88,7 +94,8 @@ final class DetailsStore: ObservableObject {
             let lm = http.value(forHTTPHeaderField: "Last-Modified")
             let copy = decoded
             let city = citySlug
-            Task.detached { DetailsCache.save(copy, city: city, lastModified: lm) }
+            let deployment = base
+            Task.detached { DetailsCache.save(copy, deployment: deployment, city: city, lastModified: lm) }
         } catch {
             // Details are non-essential — the listing still renders the
             // film without synopsis/trailers. Swallow the error rather
