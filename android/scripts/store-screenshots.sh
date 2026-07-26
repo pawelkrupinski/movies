@@ -60,17 +60,16 @@ ACT="pl.kinowo.MainActivity"
 AVD="${AVD:-kinowo_xl}"                         # Pixel 9 Pro XL 1344×2992 — coords assume this
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LISTINGS="$REPO_ROOT/android/app/src/main/play/listings"
+SHOT_CLASS="phone-screenshots"                  # gradle-play-publisher's ImageType.dirName
+# Countries, ranking, split-city lookup, candidates/ numbering and the --top
+# table are shared with ios/scripts/store-screenshots.sh — only the emulator pool
+# and the tap-driving below are Android's own.
+# shellcheck source=../../scripts/store-screenshots-common.sh
+source "$REPO_ROOT/scripts/store-screenshots-common.sh"
 NOISE="$(mktemp)"                               # adb / gradle / emulator chatter lands here
 BOOTED_EMULATORS=""                             # serials THIS run booted; shut down on exit
 MAIN_SHELL=1                                     # cleared in worker subshells so only the main shell shuts emulators down
 
-# ── clean output ──────────────────────────────────────────────────────────────
-say()  { printf '\033[36m▸\033[0m %s\n' "$*"; }
-step() { printf '  %s… ' "$*"; }
-done_() { printf '\033[32m✓\033[0m\n'; }
-ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
-warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; [ -s "$NOISE" ] && tail -5 "$NOISE" >&2; exit 1; }
 cleanup() { [ -n "${MAIN_SHELL:-}" ] && stop_emulators; rm -f "$NOISE"; }; trap cleanup EXIT
 
 # Every device-touching call funnels through here, so honouring $SERIAL in one
@@ -98,47 +97,14 @@ stop_emulators() {
   done
 }
 
-COUNTRIES="pl uk de"                            # every country --all-top walks
-locale_country() { case "$1" in en-GB) echo uk;; pl-PL) echo pl;; de-DE) echo de;; *) echo "";; esac; }
-country_locale() { case "$1" in pl) echo pl-PL;; uk) echo en-GB;; de) echo de-DE;; *) echo "";; esac; }
-# The pill labels are ENDONYMS from the catalog — identical in every locale, so
-# they double as the tap target (see tap_text) regardless of the app's language.
-country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; esac; }
-country_base()   { case "$1" in pl) echo "https://kinowo.fly.dev";; uk) echo "https://showtimes-uk.fly.dev";; de) echo "https://showtimes-de.fly.dev";; *) echo "";; esac; }
-# The gate's "Country" header, which IS localized — picking a country forces that
-# country's language, so seeing this label is proof the switch actually landed.
-country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; esac; }
-# The area picker's confirm button (`areapicker_confirm`), shown only by SPLIT
-# cities — a city is split iff its `/<slug>/api/cinemas` `areas` is non-empty,
-# which today is London alone (5 areas). `city_area_count` asks the backend which
-# it is, so the run adapts per city with no flag and no name list; this replaced a
-# manual SPLIT=1 env var that --all-top could not have set correctly per-city.
-# Every area arrives pre-ticked, so tapping this label straight away keeps the
-# flat default rather than filtering anything out.
-showlist_label() { case "$1" in pl) echo "Pokaż repertuar";; uk) echo "Show listings";; de) echo "Programm anzeigen";; esac; }
 
 # ── parallel pool: one emulator per worker ────────────────────────────────────
 # --all-top can drive several read-only clones of the AVD at once, one per
-# country, cutting wall-clock roughly by the emulator count. These pure helpers
-# decide which instance and which countries each worker owns; the boot/install
-# machinery is further down.
+# country, cutting wall-clock roughly by the emulator count. These two name the
+# INSTANCE a worker owns; which countries it owns is worker_slice/effective_k in
+# the shared lib, and the boot/install machinery is further down.
 pool_port()   { echo "$((5554 + 2 * $1))"; }        # worker 0→5554, 1→5556, 2→5558
 pool_serial() { echo "emulator-$(pool_port "$1")"; }
-# Countries worker W handles when K workers share the list, round-robin: worker W
-# takes indices W, W+K, W+2K… So K≥#countries gives each its own worker, and a
-# smaller K packs the remainder onto earlier workers, run sequentially there.
-worker_slice() { # $1 country list, $2 K, $3 W
-  local list="$1" k="$2" w="$3" i=0 c
-  for c in $list; do [ $((i % k)) -eq "$w" ] && printf '%s ' "$c"; i=$((i + 1)); done
-}
-# Clamp a requested worker count to [1, #countries] — booting more emulators than
-# there are countries would leave the extras idle.
-effective_k() { # $1 requested, $2 country count
-  local req="$1" max="$2"
-  { [ "$req" -ge 1 ]; } 2>/dev/null || req=1
-  [ "$req" -le "$max" ] || req="$max"
-  echo "$req"
-}
 
 # kinowo_xl tap coordinates (px)
 X_ALL=1140;    Y_PILLS=164         # list: "All / Wszystkie / Alle" pill
@@ -147,45 +113,6 @@ X_FILM=250;    Y_FILM=1275         # list: first film → detail
 X_CINEMA=180;  Y_CINEMA=682        # Filtry: cinema section header
 X_SEARCH_FILM=694; Y_SEARCH_FILM=2800  # list: "Search films" field
 
-# The four files one capture writes, in screen order. Both the capture (naming
-# its output) and --all-top (listing what to open in Preview) need this mapping,
-# so it lives in one place: city N of a run starts at 4N+1 and the blocks sit end
-# to end in the listing dir.
-# Zero-padded to three digits so LEXICAL order matches NUMERIC order: 010 sorts
-# after 009, where 10 sorted after 1. That matters beyond tidiness — anything
-# globbing the dir (a file browser, GPP's own upload ordering, `ls`) would
-# otherwise present the shots in the wrong sequence.
-shot_paths() { # $1 dir, $2 number of the first file
-  local n; for n in 0 1 2 3; do printf '%s/%03d.png\n' "$1" "$(($2 + n))"; done
-}
-
-# Where a run's shots land: a candidates/ scratchpad INSIDE the published dir.
-# Captures are raw material — a blank list, a German detail that hadn't enriched,
-# a city that turned out dull — so they must never land straight on what Play
-# serves. Promoting is a deliberate `mv` up one level. Safe by construction:
-# gradle-play-publisher includes `/listings/*/graphics/<dirName>/*`, a SINGLE
-# path segment, so nothing nested in candidates/ can be published by accident.
-candidates_dir() { # $1 locale
-  echo "$LISTINGS/$1/graphics/phone-screenshots/candidates"
-}
-
-# The number a fresh block starts at: one past the highest N.png already in $1,
-# or 1 when the dir is empty or missing. This is what makes runs APPEND instead
-# of overwrite. Compared numerically, not lexically — a dir holding 9 and 10
-# must continue at 11, and `ls | tail -1` would say 10.
-next_shot_number() { # $1 dir
-  local f n last=0
-  for f in "$1"/*.png; do
-    [ -e "$f" ] || continue                    # no match → the glob itself
-    n="${f##*/}"; n="${n%.png}"
-    case "$n" in ''|*[!0-9]*) continue;; esac  # ignore promoted/renamed strays
-    # `10#` forces base 10: bash reads a leading-zero literal as OCTAL, so a
-    # zero-padded 008/009 would abort the script with "value too great for base".
-    n=$((10#$n))
-    [ "$n" -gt "$last" ] && last="$n"
-  done
-  echo "$((last + 1))"
-}
 
 # ── self-setup ────────────────────────────────────────────────────────────────
 booted() { [ "$(adb get-state 2>/dev/null)" = "device" ] &&
@@ -372,36 +299,6 @@ wait_frame() { # $1 timeout-secs, $2 min-bytes
   rm -f "$f"; return 1
 }
 
-# How many AREAS the app will offer for this city. Non-zero means it is a SPLIT
-# city and opens the first-visit area picker over the listing. `/api/catalog`
-# resolves whatever the caller typed (name or slug, diacritics or not) to a slug;
-# the split itself lives in `/<slug>/api/cinemas`, which is the very endpoint the
-# app reads (KinowoApi.fetchCinemas → CinemaCatalog.isSplit). London is 5 today
-# (Central/North/East/South/West); Manchester and Poznań are 0.
-#
-# Asking the backend beats hardcoding "London": a city that becomes split needs no
-# change here, one that stops being split stops paying for the wait, and every
-# country is covered without a per-country list. Prints -1 if the lookup fails,
-# which the caller treats as "might be split" rather than guessing either way.
-city_area_count() { # $1 country, $2 city name or slug
-  BASE="$(country_base "$1")" CITY="$2" python3 - <<'PY'
-import os, json, urllib.request, unicodedata
-def fold(s):
-    s = s.replace("ł", "l").replace("Ł", "L")
-    return "".join(c for c in unicodedata.normalize("NFD", s)
-                   if not unicodedata.combining(c)).casefold()
-def get(url):
-    with urllib.request.urlopen(url, timeout=30) as r: return json.loads(r.read())
-base, want = os.environ["BASE"], fold(os.environ["CITY"])
-try:
-    slug = next((c["slug"] for c in get(f"{base}/api/catalog")["cities"]
-                 if want in (fold(c["name"]), fold(c["slug"]))), None)
-    print(len(get(f"{base}/{slug}/api/cinemas").get("areas") or []) if slug else -1)
-except Exception:
-    print(-1)
-PY
-}
-
 # Clear the first-visit AREA PICKER when this city has one. A split city opens it
 # OVER the listing with every area pre-ticked, so confirming immediately keeps the
 # flat default — but until it is gone every coordinate tap below lands on the
@@ -535,56 +432,6 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
   fi
 }
 
-# Rank a country's cities by live film count. Prints the city total on the first
-# line, then N × "films<TAB>slug<TAB>name", best first — a shape both the human
-# --top table and --all-top's capture loop read, so the ranking exists once.
-# OFFSET is a 1-based rank to start the slice at, so (N=2, OFFSET=4) returns the
-# 4th and 5th best. Every city is counted either way — the ranking has to be
-# complete before it can be sliced — but the fetch is concurrent, so the whole
-# ranking costs about one request's wall-clock rather than one per city.
-rank_cities() { # $1 country, $2 N, $3 optional 1-based start rank
-  local country="$1" n="$2" off="${3:-1}" base; base="$(country_base "$country")"
-  [ -n "$base" ] || die "unknown country '$country' (use pl | uk | de)"
-  BASE="$base" COUNTRY="$country" TOPN="$n" OFFSET="$off" python3 - <<'PY'
-import os, json, time, urllib.request, concurrent.futures as cf
-base, country, n = os.environ["BASE"], os.environ["COUNTRY"], int(os.environ["TOPN"])
-off = int(os.environ.get("OFFSET", "1"))
-def get(url, t=30, tries=3):
-    for i in range(tries):
-        try:
-            with urllib.request.urlopen(url, timeout=t) as r: return r.read()
-        except Exception:
-            if i == tries - 1: raise
-            time.sleep(1.5)
-cities = [c for c in json.loads(get(f"{base}/api/catalog"))["cities"] if c.get("country") == country]
-def count(c):
-    try:
-        d = json.loads(get(f"{base}/{c['slug']}/api/repertoire"))
-        return (len(d) if isinstance(d, list) else len(d.get("films", [])), c["slug"], c["name"])
-    except Exception:
-        return (-1, c["slug"], c["name"])
-with cf.ThreadPoolExecutor(max_workers=8) as ex:
-    rows = sorted(ex.map(count, cities), reverse=True)
-print(len(cities))
-for films, slug, name in rows[off - 1: off - 1 + n]:
-    print(f"{films}\t{slug}\t{name}")
-PY
-}
-
-cmd_top() { # $1 country, $2 N, $3 optional 1-based start rank — a readable table
-  local country="$1" n="${2:-10}" off="${3:-1}" ranked
-  { [ "$off" -ge 1 ]; } 2>/dev/null || die "--top's start rank is 1-based, e.g. --top uk 5 11"
-  ranked="$(rank_cities "$country" "$n" "$off")"
-  printf '%s %s cities from rank %s by live film count (%s total):\n' \
-    "$n" "$country" "$off" "$(printf '%s\n' "$ranked" | head -1)"
-  # Number each row with its ABSOLUTE rank, not 1..N — with an offset in play,
-  # "4." is the whole point and a bare list would hide which slice you got.
-  printf '%s\n' "$ranked" | tail -n +2 | { rank="$off"
-    while IFS=$'\t' read -r films slug name; do
-      printf '  %3s. %4s  %-22s %s\n' "$rank" "$films" "$slug" "$name"; rank=$((rank + 1))
-    done; }
-}
-
 # Boot K read-only clones of the AVD on ports 5554, 5556, … Several instances can
 # only share one AVD image if EVERY one is -read-only AND the AVD's stale *.lock
 # files are gone first — a read-write instance (or a leftover lock from a crashed
@@ -679,29 +526,6 @@ run_worker() { # $1 W, $2 K, $3 N, $4 OFFSET
     else ok "$locale: $shot/${#names[@]} cities from rank $off → $dest"
     fi
   done
-}
-
-# Where each locale's candidates dir ENDS before a run — "pl-PL:5 en-GB:1 de-DE:9".
-# Captured up front so the Preview at the end can show just this run's shots. Now
-# that runs append, "everything in the dir" is the wrong set: after three
-# --all-top 2 runs it would be ~72 images, most of them ones you already rejected.
-baselines() {
-  local country locale out=""
-  for country in $COUNTRIES; do
-    locale="$(country_locale "$country")"
-    out="$out $locale:$(next_shot_number "$(candidates_dir "$locale")")"
-  done
-  echo "${out# }"
-}
-
-# A locale's baseline out of that string, defaulting to 1 for a locale the run
-# didn't touch — so a missing entry shows everything rather than nothing.
-baseline_for() { # $1 baselines, $2 locale
-  local pair
-  for pair in $1; do
-    case "$pair" in "$2":*) echo "${pair#*:}"; return;; esac
-  done
-  echo 1
 }
 
 # Open THIS RUN's shots in one Preview: everything each locale gained since its
@@ -803,7 +627,7 @@ cmd_country_top() { # $1 country, $2 N, $3 optional 1-based start rank
 # line that isn't one. Reading the block rather than a fixed line range means
 # growing the docs can't silently truncate --help. Keyed to BASH_SOURCE, not $0,
 # so it still reads THIS file when the test sources it.
-usage() { awk 'NR > 2 && /^#/ { sub(/^#+ ?/, ""); print; next } NR > 2 { exit }' "${BASH_SOURCE[0]}"; }
+usage() { usage_of "${BASH_SOURCE[0]}"; }
 
 # Dispatch only when executed — store-screenshots-test.sh sources this file to
 # exercise the pure helpers, and must not trigger a capture by doing so.
