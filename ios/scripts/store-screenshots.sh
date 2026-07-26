@@ -100,9 +100,13 @@ BUNDLE="dev.kinowo.Kinowo"
 SETTLE="${SETTLE:-6}"
 DERIVED="${TMPDIR:-/tmp}/kinowo-shots-dd"
 APP="$DERIVED/Build/Products/Debug-iphonesimulator/Kinowo.app"
+# The built executable, not the bundle dir: it is rewritten by every real build,
+# so it is the honest "when was this app made" stamp for the staleness check.
+APP_BINARY="$APP/Kinowo"
 NOISE="$(mktemp)"                       # xcodebuild / simctl chatter lands here
 BOOTED_DEVICES=""                       # udids THIS run booted; shut down on exit
 MAIN_SHELL=1                            # cleared in worker subshells
+CAPTURE_COUNTRY=""                      # the country the current city belongs to
 
 # App Store Connect REQUIRES the largest phone (6.9") and, for an iPad-enabled
 # app, the 13" iPad; it derives the smaller sizes from those. The 11" iPad is
@@ -180,10 +184,31 @@ ensure_device() { # $1 device name → echoes the udid
   echo "$udid"
 }
 
+# Whether the cached app has to be rebuilt: it's missing, BUILD=1 forces it, or
+# something under ios/ has changed since it was built.
+#
+# The mtime check is the whole point. The early return exists so a multi-class,
+# multi-city run builds ONCE — not so a derived-data dir from a previous day can
+# keep shipping a binary that predates the change under test. That is not
+# hypothetical: a cache built before the iOS UI was translated went on shooting
+# POLISH screens for German and British cities for hours after the translations
+# landed, and the screenshots looked plausible enough to be committed.
+#
+# `store` is pruned because the driver writes its own screenshots there mid-run,
+# which would otherwise mark the app stale after the very first city; the build
+# dirs are pruned because they're outputs, not sources.
+app_is_stale() {
+  [ -n "${BUILD:-}" ] && return 0
+  [ -x "$APP_BINARY" ] || return 0
+  find "$REPO_ROOT/ios" \
+    \( -name build -o -name .build -o -name target -o -name store -o -name DerivedData \) -prune -o \
+    -type f -newer "$APP_BINARY" -print -quit 2>/dev/null | grep -q .
+}
+
 # Debug, not Release: the KINOWO_UITEST_DEEPLINK hook that drives these screens is
 # `#if DEBUG`. Same SwiftUI, same pixels — only the hooks differ.
 build_app() {
-  [ -d "$APP" ] && [ -z "${BUILD:-}" ] && return 0
+  app_is_stale || return 0
   step "building Kinowo (Debug, simulator)"
     xcodebuild -project "$REPO_ROOT/ios/Kinowo.xcodeproj" -scheme Kinowo \
       -configuration Debug -sdk iphonesimulator -derivedDataPath "$DERIVED" \
@@ -219,14 +244,38 @@ install_app() { # $1 udid
 # loaded. Passed via `env` rather than an inline assignment because the app tests
 # for the KEY's presence: an inline `VAR=` would set it to empty on every OTHER
 # screen, which reads as present and would open the sheet over all five.
+# The launch arguments that pin the UI language to $1's, or nothing for a country
+# we don't know.
+#
+# The app forces the SELECTED COUNTRY's language rather than following the
+# device, and iOS fixes the bundle's localization at PROCESS START. A country
+# that arrives with the deep link therefore lands after the first frame: the
+# root's `.environment(\.locale)` re-localizes SwiftUI `Text`, but anything
+# resolved through `String(localized:)` — the date pills, the detail screen's
+# meta captions — stays in the language the process booted in. Shot 001 of a
+# fresh install came out with Polish pills over a German listing that way.
+#
+# These land in UserDefaults' ARGUMENT domain, which outranks anything persisted
+# on the simulator, so the process boots in the right language and every screen
+# is shot in one. Same three arguments KinowoUITests/LocalizationUITests sets,
+# for exactly the same reason — see its `FixtureLaunch` note.
+language_args() { # $1 country
+  local language; language="$(country_language "$1")"
+  [ -n "$language" ] || return 0
+  printf '%s\n' -selectedCountryCode "$1" -AppleLanguages "($language)" -AppleLocale "$language"
+}
+
 shoot() { # $1 udid, $2 slug, $3 deep-link url, $4 output file, $5 non-empty → Filtry sheet
-  local udid="$1" slug="$2" url="$3" out="$4" filters="${5:-}"
+  local udid="$1" slug="$2" url="$3" out="$4" filters="${5:-}" line
   xcrun simctl terminate "$udid" "$BUNDLE" >>"$NOISE" 2>&1 || true
   local -a hooks=("SIMCTL_CHILD_KINOWO_UITEST_DEEPLINK=$url")
   [ -n "$filters" ] && hooks+=("SIMCTL_CHILD_KINOWO_UITEST_OPEN_FILTERS=1")
+  local -a language=()
+  while IFS= read -r line; do language+=("$line"); done < <(language_args "$CAPTURE_COUNTRY")
   env "${hooks[@]}" \
     xcrun simctl launch "$udid" "$BUNDLE" \
-      -areaPickerSeenCities "(\"$slug\")" >>"$NOISE" 2>&1 || return 1
+      -areaPickerSeenCities "(\"$slug\")" \
+      ${language[@]+"${language[@]}"} >>"$NOISE" 2>&1 || return 1
   naps "$SETTLE"
   xcrun simctl io "$udid" screenshot "$out" >>"$NOISE" 2>&1 || return 1
   [ -s "$out" ] || return 1
@@ -260,6 +309,10 @@ cmd_capture() { # $1 locale, $2 city, $3 optional outdir, $4 optional first numb
   local locale="$1" term="$2" outdir="${3:-}" first="${4:-}"
   local country; country="$(locale_country "$locale")"
   [ -n "$country" ] || die "unknown locale '$locale' (use en-GB | pl-PL | de-DE)"
+  # Every shot of this city is launched in this country's language — a capture is
+  # single-country by construction, so `shoot` reads it here rather than carrying
+  # a seventh positional argument through the loop.
+  CAPTURE_COUNTRY="$country"
   local dest="${outdir:-$(candidates_dir "$locale")}"
   mkdir -p "$dest"
   # Append: unless a caller pinned the block, start one past whatever is there.

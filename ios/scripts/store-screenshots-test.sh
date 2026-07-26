@@ -128,6 +128,51 @@ check "a city's block is five files" \
 check "the next city starts past it" "/d/006.png" "$(shot_paths /d 6 | sed -n 1p)"
 check "blocks never overlap" "" "$(comm -12 <(shot_paths /d 1 | sort) <(shot_paths /d 6 | sort))"
 
+# ── the UI language is pinned at launch ───────────────────────────────────────
+# The app forces the selected country's language and iOS fixes the bundle's
+# localization at process start, so a country arriving with the deep link lands
+# too late for `String(localized:)`. These arguments go in UserDefaults' ARGUMENT
+# domain, which outranks anything persisted, so the process boots in the right
+# language — without them shot 001 of a fresh install came out with Polish pills
+# over a German listing.
+check "German launches are pinned to German" \
+  "-selectedCountryCode de -AppleLanguages (de) -AppleLocale de" \
+  "$(language_args de | tr '\n' ' ' | sed 's/ $//')"
+check "British launches are pinned to English, not en-GB" \
+  "-selectedCountryCode uk -AppleLanguages (en) -AppleLocale en" \
+  "$(language_args uk | tr '\n' ' ' | sed 's/ $//')"
+check "Polish launches are pinned too, never left to the default" \
+  "-selectedCountryCode pl -AppleLanguages (pl) -AppleLocale pl" \
+  "$(language_args pl | tr '\n' ' ' | sed 's/ $//')"
+# The UI language is the BUNDLE's (en), not the store locale's (en-GB) — passing
+# the store locale would leave the bundle on its fallback.
+check "the language is the bundle's, not the store locale's" "en" "$(country_language uk)"
+check "an unknown country pins nothing rather than guessing" "" "$(language_args fr)"
+
+# ── a stale build is never reused ─────────────────────────────────────────────
+# The early return in build_app exists so a multi-city run builds once. It must
+# NOT let a derived-data dir outlive the sources: one built before the iOS UI was
+# translated kept shooting Polish screens for German cities for hours.
+_stale_root="$(mktemp -d)"; mkdir -p "$_stale_root/ios/Kinowo" "$_stale_root/app"
+_saved_root="$REPO_ROOT"; _saved_bin="$APP_BINARY"
+REPO_ROOT="$_stale_root"; APP_BINARY="$_stale_root/app/Kinowo"
+check "a missing app is stale" "0" "$( app_is_stale; echo $? )"
+touch "$APP_BINARY"; chmod +x "$APP_BINARY"
+touch -t 202601010000 "$_stale_root/ios/Kinowo/Old.swift"
+check "an app newer than every source is reused" "1" "$( app_is_stale; echo $? )"
+touch "$_stale_root/ios/Kinowo/Edited.swift"          # now newer than the app
+check "a source edited since the build makes it stale" "0" "$( app_is_stale; echo $? )"
+# The driver writes screenshots under ios/store DURING a run; counting those
+# would rebuild after every city.
+touch "$APP_BINARY"; mkdir -p "$_stale_root/ios/store/listings"
+touch "$_stale_root/ios/store/listings/001.png"
+check "screenshots the run just wrote don't count" "1" "$( app_is_stale; echo $? )"
+# Build outputs are outputs, not sources.
+mkdir -p "$_stale_root/ios/build"; touch "$_stale_root/ios/build/artifact.o"
+check "build outputs don't count either" "1" "$( app_is_stale; echo $? )"
+check "BUILD=1 still forces a rebuild" "0" "$( BUILD=1 app_is_stale; echo $? )"
+REPO_ROOT="$_saved_root"; APP_BINARY="$_saved_bin"; rm -rf "$_stale_root"
+
 # ── --country-top ─────────────────────────────────────────────────────────────
 # Before the stubs below: this needs the REAL country_locale to reject a bad code.
 _alltopargs=""

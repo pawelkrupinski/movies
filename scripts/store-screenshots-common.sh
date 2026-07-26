@@ -66,6 +66,10 @@ release_lock() { [ -n "$LOCK_DIR" ] && rm -rf "$LOCK_DIR"; LOCK_DIR=""; }
 COUNTRIES="${COUNTRIES:-pl uk de}"
 locale_country() { case "$1" in en-GB) echo uk;; pl-PL) echo pl;; de-DE) echo de;; *) echo "";; esac; }
 country_locale() { case "$1" in pl) echo pl-PL;; uk) echo en-GB;; de) echo de-DE;; *) echo "";; esac; }
+# The UI language a country forces, mirroring `Country.languageCode` in the apps.
+# NOT derived from the locale: the store locale is the listing's (en-GB), the UI
+# language is the bundle's (en), and only the second is what a launch pins.
+country_language() { case "$1" in pl) echo pl;; uk) echo en;; de) echo de;; *) echo "";; esac; }
 # ENDONYMS from the catalog — identical in every locale, so they double as a tap
 # target regardless of the app's language.
 country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; esac; }
