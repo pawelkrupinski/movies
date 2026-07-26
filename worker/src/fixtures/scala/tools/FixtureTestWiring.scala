@@ -68,6 +68,11 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // the fixture rather than hitting real Zyte (CI sets ZYTE_API_KEY).
   override lazy val zyteFetch: HttpFetch = httoFetch
 
+  // Same single override point for the Flicks seam (every UK venue): replay the
+  // fixture rather than egressing through the Decodo residential proxy, which a
+  // developer with KINOWO_PROXY_* in .env.local would otherwise do.
+  override lazy val flicksFetch: HttpFetch = httoFetch
+
   /** Record EVERY cinema first, THEN publish all the create events — load-bearing
    *  for a deterministic single-pass snapshot, not arbitrary scaffolding.
    *  Production publishes `MovieDetailsComplete` INLINE as each cinema lands and

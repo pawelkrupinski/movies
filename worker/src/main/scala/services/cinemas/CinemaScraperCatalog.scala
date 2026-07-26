@@ -32,6 +32,11 @@ import scala.concurrent.duration._
  *                  through. `WorkerWiring` routes it through Zyte; the diagnostic
  *                  ctor defaults it to `ZyteFallback.fetchFor(http)`, and the
  *                  fixture wiring overrides it back to `http`.
+ *   - `flicksFetch` — Decodo residential egress for www.flicks.co.uk, which
+ *                  Cloudflare 403s from our Fly datacenter IP. Flicks is the
+ *                  ONLY UK source, so this seam carries all ~843 UK venues; a
+ *                  direct fetch blacks out the whole country (2026-07-26). The
+ *                  diagnostic ctor + fixture wiring default it back to `http`.
  *   - `today`    — the date Helios bakes into its REST URLs.
  *
  * Returns RAW scrapers. `WorkerWiring` wraps each in a `RetryingCinemaScraper`
@@ -50,7 +55,10 @@ class CinemaScraperCatalog(
   // Zyte residential egress for venues whose firewall blocks both our Fly IP and
   // the Decodo proxy (see the ctor doc). No primary-ctor default — Scala can't
   // reference `http` here — so the secondary ctor and WorkerWiring supply it.
-  zyteFetch: HttpFetch
+  zyteFetch: HttpFetch,
+  // Residential-proxy egress for flicks.co.uk — every UK venue (see the ctor
+  // doc). Same no-default reason as `zyteFetch`.
+  flicksFetch: HttpFetch
 ) {
 
   /** Diagnostic ctor: the Zyte-routed fetches (Multikino's API, biletyna's venue
@@ -61,7 +69,10 @@ class CinemaScraperCatalog(
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
     this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today,
-      (h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http))
+      (h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http),
+      // No residential proxy outside WorkerWiring — a diagnostic runs from a
+      // developer's own (unblocked) IP, so plain `http` is the right default.
+      flicksFetch = http)
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
   // chain's locations, so each chain shares ONE CachingDetailFetch: a film's
@@ -372,8 +383,11 @@ class CinemaScraperCatalog(
   )
 
   // ── United Kingdom (Flicks) ──────────────────────────────────────────────
+  // Through `flicksFetch`, NOT `http`: Cloudflare 403s our Fly egress IP on
+  // flicks.co.uk, and Flicks is the only UK source, so a direct fetch takes out
+  // every UK venue at once (it did, 2026-07-26).
   private def flicks(slug: String, cinema: Cinema): FlicksClient =
-    new FlicksClient(http, slug, cinema, today = today)
+    new FlicksClient(flicksFetch, slug, cinema, today = today)
   private val londonScrapers: Seq[CinemaScraper] = Seq(
     flicks("act-one-acton", ActOneActon),
     flicks("arthouse-crouch-end", ArthouseCrouchEnd),

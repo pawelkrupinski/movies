@@ -1,12 +1,13 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, Cinema, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort}
+import models.{AdaKinoStudyjne, Cinema, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort, OdeonNorwich}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.CinemaScraperCatalog
-import _root_.tools.CachingDetailFetch
+import services.cinemas.uk.FlicksClient
+import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 
 import java.time.LocalDate
 import scala.concurrent.duration._
@@ -20,6 +21,8 @@ import scala.concurrent.duration._
  *   - bilety.ck105.koszalin.pl (Kino Kryterium) times out our IP AND every Decodo
  *     proxy IP at the TCP layer → fetches through `zyteFetch` (Zyte's
  *     true-residential network in prod, the one egress that reaches it).
+ *   - www.flicks.co.uk 403s our IP behind Cloudflare → every UK venue fetches
+ *     through `flicksFetch` (the Decodo residential proxy in prod).
  * Each seam's fixture-less `http` makes a leaked fetch throw / come back empty,
  * so a refactor that re-buries the fetch on `http` is caught here. (CI also sets
  * ZYTE_API_KEY, so a leak onto `http` would route biletyna through real Zyte.)
@@ -35,11 +38,12 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
    *  fixture-less `http` by default); a cinema that leaks onto the wrong seam
    *  throws / returns empty. */
   private def catalog(biletyna: String = "does-not-exist",
-                      zyte:     String = "does-not-exist"): CinemaScraperCatalog =
+                      zyte:     String = "does-not-exist",
+                      flicks:   HttpFetch = http): CinemaScraperCatalog =
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = new FakeHttpFetch(zyte)
+      zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks
     )
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {
@@ -80,6 +84,27 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val movies  = scraper.fetch()  // reads the kino-kryterium fixture via zyteFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoKryterium)
+  }
+
+  // www.flicks.co.uk sits behind Cloudflare and 403s our Fly datacenter egress IP
+  // (proven 2026-07-26 from kinowo-worker-uk: the identical GET + UA returns 403
+  // from Fly and 200 from a residential IP), which took ALL 843 UK venues down at
+  // once — Flicks is the only UK source. So every Flicks venue must fetch through
+  // `flicksFetch` (the Decodo residential proxy in prod), never the shared `http`.
+  // The fixture-less `http` makes a leak throw here. The programme page lists the
+  // one recorded day so the chunked scrape lands on the captured sessions fragment.
+  it should "route UK Flicks venues through the injected residential-proxy seam, not the shared http" in {
+    val sessions  = new FakeHttpFetch("flicks")
+    val programme = s"${FlicksClient.BaseUrl}/cinema/odeon-cinema-norwich/"
+    val flicks = new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url == programme) """<div class="timetable__day" data-date="2026-07-11"></div>"""
+        else sessions.get(url)
+    }
+    val scraper = catalog(flicks = flicks).all.find(_.cinema == OdeonNorwich).value
+    val movies  = scraper.fetch()  // reads the flicks fixture via flicksFetch
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)
   }
 
   // KinoPort lost its gcsw.pl/kino/ programme alias in a 2026-06 site rebuild

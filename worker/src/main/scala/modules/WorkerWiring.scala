@@ -223,6 +223,14 @@ class WorkerWiring(
   lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httoFetch)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
   lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
+  // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26
+  // from kinowo-worker-uk: the identical GET returns 403 from Fly, 200 from a
+  // residential IP; every Decodo pool IP returns 200 too). Flicks is the ONLY UK
+  // source, so the block took all ~843 UK venues red at once. Residential proxy
+  // primary, DIRECT fallback — no Zyte leg: flicks is a plain Cloudflare
+  // IP-reputation block that the proxy clears, so paying Zyte per request across
+  // 843 venues would buy nothing the proxy doesn't already give.
+  lazy val flicksFetch: HttpFetch = proxyPrimary(httoFetch)
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
     httoFetch, multikinoFetch, biletynaFetch, heliosToday,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
@@ -232,7 +240,8 @@ class WorkerWiring(
     // every Decodo proxy IP at the TCP layer, so a direct scrape came back empty
     // → a permanent white /uptime bar. Only Zyte's true-residential network
     // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
-    zyteFetch = zyteFetch)
+    zyteFetch = zyteFetch,
+    flicksFetch = flicksFetch)
 
   // This country's own cities — the default scrape set. A country wiring only
   // ever scrapes its own cities (never another country's), so the default is
