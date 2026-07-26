@@ -38,8 +38,15 @@ final class LocalizationUITests: XCTestCase {
             "-AppleLanguages", "(pl)",
             "-AppleLocale", "pl",
         ]
+        // Launched, deliberately NOT terminated. `KinowoApp.init` persists the
+        // Polish defaults during startup, so the reset has already landed by the
+        // time `launch()` returns — terminating afterwards bought nothing and
+        // cost the whole suite its result: XCTest saw the app die outside a
+        // test's own lifecycle, logged "Restarting after unexpected exit", and
+        // marked the run FAILED with an empty "Failing tests:" list even though
+        // all six passed. Leaving it running is harmless; the next test's
+        // `launch()` replaces it.
         reset.launch()
-        reset.terminate()
     }
 
     func testPolandRendersPolishCaptions() throws {
