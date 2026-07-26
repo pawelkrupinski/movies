@@ -26,5 +26,18 @@ play-credentials.json
 # they're generated deterministically from the emulator (English UK + Polish) and
 # reviewed as diffs, so `publishReleaseListing` pushes them from the repo. The
 # listing TEXT (title/short/full descriptions) is committed under app/src/main/play/.
+#
+# The directory name is dictated by gradle-play-publisher: it publishes exactly
+# `/listings/*/graphics/<ImageType.dirName>/*`, and for phone shots that dirName
+# is the kebab-case `phone-screenshots` (`phoneScreenshots` is the Play API's
+# FIELD name, which GPP never looks for on disk). A dir named anything else is
+# silently skipped, so this negation must track ImageType.dirName exactly —
+# store-screenshots-test.sh guards that.
 app/src/main/play/listings/*/graphics/*
-!app/src/main/play/listings/*/graphics/phoneScreenshots/
+!app/src/main/play/listings/*/graphics/phone-screenshots/
+# …but not the capture scratchpad inside it. store-screenshots.sh appends every
+# run's shots to candidates/ so nothing is overwritten; you promote the keepers
+# up one level by hand. GPP's include pattern is single-segment (`…/*`), so this
+# subdir is invisible to the publisher either way — ignoring it just keeps the
+# raw pile out of git.
+app/src/main/play/listings/*/graphics/phone-screenshots/candidates/

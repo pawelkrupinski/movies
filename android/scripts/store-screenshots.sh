@@ -5,16 +5,29 @@
 # screens per city and pads them to a Play-safe ratio. One build makes pl/en/de
 # shots: picking a country in the gate forces that locale + backend.
 #
-#   android/scripts/store-screenshots.sh en-GB "Birmingham"      # → repo listing dir
+#   android/scripts/store-screenshots.sh en-GB "Birmingham"      # → candidates dir
 #   android/scripts/store-screenshots.sh pl-PL "Poznan" /tmp/x   # → a scratch dir
 #   android/scripts/store-screenshots.sh --top uk 10             # biggest cities by film count
+#   android/scripts/store-screenshots.sh --top uk 5 11           # ranks 11-15 instead of 1-5
 #   android/scripts/store-screenshots.sh --all-top 2             # top 2 cities of EVERY country
+#   android/scripts/store-screenshots.sh --all-top 2 4           # 2 cities from rank 4, every country
 #
-# --all-top fills each locale's listing dir with one four-shot block per city,
-# numbered end to end (city 1 → 1-4.png, city 2 → 5-8.png, …). Play shows at
-# most 8 phone shots, so N=2 is the practical ceiling. It drives one read-only
-# emulator per country in parallel (~countries× faster); EMULATORS=<k> caps that
-# (EMULATORS=1 = serial) for hosts that can't feed three emulators at once.
+# Both --top and --all-top take an optional 1-based START RANK after the count,
+# so "--all-top 2 4" means "two cities beginning at the 4th best" — that is how
+# you shoot the runners-up without re-shooting the cities you already have.
+#
+# Shots land in a candidates/ scratchpad INSIDE the published dir
+# (…/graphics/phone-screenshots/candidates/, gitignored), and every run APPENDS:
+# the next block starts one past the highest number already there, so a second
+# run never overwrites the first. Pick the keepers and move them up one level
+# into phone-screenshots/ — that is what gradle-play-publisher publishes, and
+# Play shows at most 8 phone shots.
+#
+# --all-top writes one four-shot block per city, numbered end to end (city 1 →
+# 1-4.png, city 2 → 5-8.png, …). It drives one read-only emulator per country in
+# parallel (~countries× faster); EMULATORS=<k> caps that (EMULATORS=1 = serial)
+# for hosts that can't feed three emulators at once. The city RANKING itself is
+# fetched concurrently too, so --top returns in about one request's time.
 #
 # When done it shuts down every emulator IT booted (a reused, already-running one
 # is left alone) and opens the shots in Preview (macOS). Env: EMULATORS=<k>
@@ -124,6 +137,31 @@ X_SEARCH_FILM=694; Y_SEARCH_FILM=2800  # list: "Search films" field
 # to end in the listing dir.
 shot_paths() { # $1 dir, $2 number of the first file
   local n; for n in 0 1 2 3; do printf '%s/%s.png\n' "$1" "$(($2 + n))"; done
+}
+
+# Where a run's shots land: a candidates/ scratchpad INSIDE the published dir.
+# Captures are raw material — a blank list, a German detail that hadn't enriched,
+# a city that turned out dull — so they must never land straight on what Play
+# serves. Promoting is a deliberate `mv` up one level. Safe by construction:
+# gradle-play-publisher includes `/listings/*/graphics/<dirName>/*`, a SINGLE
+# path segment, so nothing nested in candidates/ can be published by accident.
+candidates_dir() { # $1 locale
+  echo "$LISTINGS/$1/graphics/phone-screenshots/candidates"
+}
+
+# The number a fresh block starts at: one past the highest N.png already in $1,
+# or 1 when the dir is empty or missing. This is what makes runs APPEND instead
+# of overwrite. Compared numerically, not lexically — a dir holding 9 and 10
+# must continue at 11, and `ls | tail -1` would say 10.
+next_shot_number() { # $1 dir
+  local f n last=0
+  for f in "$1"/*.png; do
+    [ -e "$f" ] || continue                    # no match → the glob itself
+    n="${f##*/}"; n="${n%.png}"
+    case "$n" in ''|*[!0-9]*) continue;; esac  # ignore promoted/renamed strays
+    [ "$n" -gt "$last" ] && last="$n"
+  done
+  echo "$((last + 1))"
 }
 
 # ── self-setup ────────────────────────────────────────────────────────────────
@@ -312,10 +350,14 @@ wait_frame() { # $1 timeout-secs, $2 min-bytes
 }
 
 cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional first file number
-  local locale="$1" term="$2" outdir="${3:-}" first="${4:-1}"
+  local locale="$1" term="$2" outdir="${3:-}" first="${4:-}"
   local country; country="$(locale_country "$locale")"
   [ -n "$country" ] || die "unknown locale '$locale' (use en-GB | pl-PL | de-DE)"
-  local dest="${outdir:-$LISTINGS/$locale/graphics/phoneScreenshots}"
+  local dest="${outdir:-$(candidates_dir "$locale")}"
+  mkdir -p "$dest"
+  # Append: unless a caller pinned the block (--all-top numbers its cities), start
+  # one past whatever is already there so a re-run adds to the pile.
+  [ -n "$first" ] || first="$(next_shot_number "$dest")"
   local stage; stage="$(mktemp -d)"
   local wait=26; [ "$country" = de ] && wait=40      # de backend is slow
 
@@ -397,7 +439,6 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
     back; naps 1
   done_
 
-  mkdir -p "$dest"
   local n=1 out; local -a shots=()
   while IFS= read -r out; do shots+=("$out"); done < <(shot_paths "$dest" "$first")
   for out in "${shots[@]}"; do pad_playsafe "$stage/$n.png" "$out"; n=$((n + 1)); done
@@ -415,12 +456,17 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
 # Rank a country's cities by live film count. Prints the city total on the first
 # line, then N × "films<TAB>slug<TAB>name", best first — a shape both the human
 # --top table and --all-top's capture loop read, so the ranking exists once.
-rank_cities() { # $1 country, $2 N
-  local country="$1" n="$2" base; base="$(country_base "$country")"
+# OFFSET is a 1-based rank to start the slice at, so (N=2, OFFSET=4) returns the
+# 4th and 5th best. Every city is counted either way — the ranking has to be
+# complete before it can be sliced — but the fetch is concurrent, so the whole
+# ranking costs about one request's wall-clock rather than one per city.
+rank_cities() { # $1 country, $2 N, $3 optional 1-based start rank
+  local country="$1" n="$2" off="${3:-1}" base; base="$(country_base "$country")"
   [ -n "$base" ] || die "unknown country '$country' (use pl | uk | de)"
-  BASE="$base" COUNTRY="$country" TOPN="$n" python3 - <<'PY'
+  BASE="$base" COUNTRY="$country" TOPN="$n" OFFSET="$off" python3 - <<'PY'
 import os, json, time, urllib.request, concurrent.futures as cf
 base, country, n = os.environ["BASE"], os.environ["COUNTRY"], int(os.environ["TOPN"])
+off = int(os.environ.get("OFFSET", "1"))
 def get(url, t=30, tries=3):
     for i in range(tries):
         try:
@@ -438,17 +484,23 @@ def count(c):
 with cf.ThreadPoolExecutor(max_workers=8) as ex:
     rows = sorted(ex.map(count, cities), reverse=True)
 print(len(cities))
-for films, slug, name in rows[:n]:
+for films, slug, name in rows[off - 1: off - 1 + n]:
     print(f"{films}\t{slug}\t{name}")
 PY
 }
 
-cmd_top() { # $1 country, $2 N — the ranking as a human-readable table
-  local country="$1" n="${2:-10}" ranked
-  ranked="$(rank_cities "$country" "$n")"
-  printf 'top %s %s cities by live film count (%s total):\n' "$n" "$country" "$(printf '%s\n' "$ranked" | head -1)"
-  printf '%s\n' "$ranked" | tail -n +2 |
-    while IFS=$'\t' read -r films slug name; do printf '  %4s  %-22s %s\n' "$films" "$slug" "$name"; done
+cmd_top() { # $1 country, $2 N, $3 optional 1-based start rank — a readable table
+  local country="$1" n="${2:-10}" off="${3:-1}" ranked
+  { [ "$off" -ge 1 ]; } 2>/dev/null || die "--top's start rank is 1-based, e.g. --top uk 5 11"
+  ranked="$(rank_cities "$country" "$n" "$off")"
+  printf '%s %s cities from rank %s by live film count (%s total):\n' \
+    "$n" "$country" "$off" "$(printf '%s\n' "$ranked" | head -1)"
+  # Number each row with its ABSOLUTE rank, not 1..N — with an offset in play,
+  # "4." is the whole point and a bare list would hide which slice you got.
+  printf '%s\n' "$ranked" | tail -n +2 | { rank="$off"
+    while IFS=$'\t' read -r films slug name; do
+      printf '  %3s. %4s  %-22s %s\n' "$rank" "$films" "$slug" "$name"; rank=$((rank + 1))
+    done; }
 }
 
 # Boot K read-only clones of the AVD on ports 5554, 5556, … Several instances can
@@ -504,11 +556,11 @@ build_apk() {
 # One worker: capture its slice of countries on its own emulator, sequentially.
 # Runs inside a subshell with SERIAL + POOL exported, so every cmd_capture here
 # drives this worker's instance and skips the boot/install the orchestrator did.
-run_worker() { # $1 W, $2 K, $3 N
-  local w="$1" k="$2" n="$3" country locale dest stage first name
+run_worker() { # $1 W, $2 K, $3 N, $4 OFFSET
+  local w="$1" k="$2" n="$3" off="${4:-1}" country locale dest stage first name
   for country in $(worker_slice "$COUNTRIES" "$k" "$w"); do
     locale="$(country_locale "$country")"
-    dest="$LISTINGS/$locale/graphics/phoneScreenshots"
+    dest="$(candidates_dir "$locale")"
     # Read the ranked city names into an array BEFORE capturing any of them.
     # cmd_capture's adb calls read stdin, so running it inside a
     # `while read … < <(rank_cities …)` loop lets the first capture drain the
@@ -516,41 +568,53 @@ run_worker() { # $1 W, $2 K, $3 N
     # at N≥2. Buffering the list first decouples it from cmd_capture's stdin.
     local names=()
     while IFS=$'\t' read -r _ _ name; do [ -n "$name" ] && names+=("$name"); done \
-      < <(rank_cities "$country" "$n" | tail -n +2)
+      < <(rank_cities "$country" "$n" "$off" | tail -n +2)
     # Stage the shots and swap them in only once every city of this country
-    # succeeds — a failed city aborts the worker, leaving the old listing whole
-    # rather than half-overwritten.
-    stage="$(mktemp -d)"; first=1
+    # succeeds — a failed city aborts the worker, leaving the candidates pile
+    # whole rather than half-written.
+    stage="$(mktemp -d)"
+    mkdir -p "$dest"
+    # Number the staged blocks from where candidates/ already ends, so this run
+    # lands AFTER the previous one instead of on top of it. Read once, up front:
+    # the whole country's blocks are contiguous, and re-reading per city would
+    # collide with nothing (the dir only changes at the mv below) but read worse.
+    first="$(next_shot_number "$dest")"
     for name in "${names[@]}"; do
       cmd_capture "$locale" "$name" "$stage" "$first"
       first=$((first + 4))
     done
-    mkdir -p "$dest"
-    rm -f "$dest"/*.png                  # a smaller N would otherwise strand the old tail
     mv "$stage"/*.png "$dest"/; rmdir "$stage"
-    ok "$locale: top $n → $dest"
+    ok "$locale: $n cities from rank $off → $dest"
   done
 }
 
-# Open every captured shot in one Preview, walking cities in ranked order via
-# shot_paths (which keeps 10.png after 9.png, not after 1.png).
-preview_all() { # $1 per_locale
-  local per="$1" country locale dest i f; local all=()
+# Open everything sitting in the candidates dirs in one Preview — the whole pile,
+# not just this run's block, because choosing which shots to promote means seeing
+# them side by side with the earlier candidates. Counting up to next_shot_number
+# keeps the order numeric (10.png after 9.png, not after 1.png), which a glob
+# would not.
+preview_all() {
+  local country locale dest last i f; local all=()
   for country in $COUNTRIES; do
-    locale="$(country_locale "$country")"; dest="$LISTINGS/$locale/graphics/phoneScreenshots"
-    for ((i = 1; i <= per; i += 4)); do
-      while IFS= read -r f; do [ -f "$f" ] && all+=("$f"); done < <(shot_paths "$dest" "$i")
+    locale="$(country_locale "$country")"; dest="$(candidates_dir "$locale")"
+    last=$(( $(next_shot_number "$dest") - 1 ))
+    for ((i = 1; i <= last; i++)); do
+      f="$dest/$i.png"; [ -f "$f" ] && all+=("$f")
     done
   done
   [ ${#all[@]} -gt 0 ] && command -v open >/dev/null 2>&1 && open -a Preview "${all[@]}" >>"$NOISE" 2>&1 || true
 }
 
-cmd_all_top() { # $1 N — capture the top N cities of EVERY country, one emulator per country
-  local n="${1:-2}"
+cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country, one emulator per country
+  local n="${1:-2}" off="${2:-1}"
   { [ "$n" -ge 1 ]; } 2>/dev/null || die "--all-top wants a city count, e.g. --all-top 2"
+  { [ "$off" -ge 1 ]; } 2>/dev/null ||
+    die "--all-top's start rank is 1-based, e.g. --all-top 2 4 (2 cities from the 4th)"
   local per_locale=$((n * 4))
+  # Only a warning, and only about what you'd PUBLISH: candidates/ is a pile you
+  # pick from, so shooting more than 8 there is a normal thing to want.
   [ "$per_locale" -le 8 ] ||
-    warn "$n cities × 4 screens = $per_locale shots per locale, but Play publishes at most 8."
+    warn "$n cities × 4 screens = $per_locale shots per locale; Play publishes at most 8 of them."
 
   local ncountries; ncountries=$(set -- $COUNTRIES; echo $#)
   local k; k="$(effective_k "${EMULATORS:-$ncountries}" "$ncountries")"
@@ -560,7 +624,7 @@ cmd_all_top() { # $1 N — capture the top N cities of EVERY country, one emulat
   local want_preview=1; [ -n "${NO_OPEN:-}" ] && want_preview=
   export NO_OPEN=1
 
-  say "top $n × $ncountries countries on $k emulator(s)"
+  say "$n cities from rank $off × $ncountries countries on $k emulator(s)"
   boot_pool "$k"
   local apk; apk="$(build_apk)"
   local w serial
@@ -577,7 +641,7 @@ cmd_all_top() { # $1 N — capture the top N cities of EVERY country, one emulat
   local pids=() logs=()
   for ((w = 0; w < k; w++)); do
     local log; log="$(mktemp)"; logs[$w]="$log"
-    ( MAIN_SHELL=; SERIAL="$(pool_serial "$w")" NOISE="$(mktemp)" run_worker "$w" "$k" "$n" ) >"$log" 2>&1 &
+    ( MAIN_SHELL=; SERIAL="$(pool_serial "$w")" NOISE="$(mktemp)" run_worker "$w" "$k" "$n" "$off" ) >"$log" 2>&1 &
     pids[$w]="$!"
     say "worker $w → $(pool_serial "$w") → $(worker_slice "$COUNTRIES" "$k" "$w")"
   done
@@ -600,7 +664,7 @@ cmd_all_top() { # $1 N — capture the top N cities of EVERY country, one emulat
   # An `if`, not `A && B`: under `set -e` a bare `[ -z "$want_preview" ] && …`
   # makes the whole function (and script) exit nonzero when NO_OPEN skips the
   # Preview, reporting failure on a clean run.
-  if [ -n "$want_preview" ]; then preview_all "$per_locale"; fi
+  if [ -n "$want_preview" ]; then preview_all; fi
 }
 
 # Print the header block — every comment line after the shebang, up to the first

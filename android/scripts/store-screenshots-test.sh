@@ -47,6 +47,57 @@ check "blocks do not overlap" "" \
 # list is built from shot_paths rather than `ls`.
 check "third city block" "/d/9.png /d/10.png /d/11.png /d/12.png" "$(shot_paths /d 9 | tr '\n' ' ' | sed 's/ $//')"
 
+# ── where shots land, and what Play actually publishes ───────────────────────
+# gradle-play-publisher includes exactly `/listings/*/graphics/<dirName>/*`, and
+# for phone shots ImageType.dirName is the KEBAB-CASE `phone-screenshots`. The
+# camelCase `phoneScreenshots` is the Play API's field name and is never looked
+# for on disk — a dir named that is silently skipped, which is precisely how the
+# German listing came to ship with no screenshots while four PNGs sat in the repo.
+check "captures live under the GPP dir" \
+  "$LISTINGS/de-DE/graphics/phone-screenshots/candidates" "$(candidates_dir de-DE)"
+# …and one segment deeper than the include pattern reaches, so raw captures can
+# never be published by accident.
+check "candidates is nested below the published dir" "candidates" \
+  "$(basename "$(candidates_dir pl-PL)")"
+
+# Every graphics dir in the repo must be a name GPP actually reads. This is the
+# check that catches the whole class of bug: a typo, a camelCase slip, or a new
+# asset type filed under an invented name all publish nothing, silently.
+GPP_DIRNAMES="icon feature-graphic phone-screenshots tablet-screenshots large-tablet-screenshots tv-banner tv-screenshots wear-screenshots"
+unknown=""
+for d in "$LISTINGS"/*/graphics/*/; do
+  [ -d "$d" ] || continue
+  base="$(basename "$d")"
+  case " $GPP_DIRNAMES " in *" $base "*) ;; *) unknown="$unknown $base";; esac
+done
+check "every graphics dir is a GPP ImageType.dirName" "" "$(echo $unknown)"
+
+# The .gitignore blanket-ignores graphics/* and re-includes just the published
+# screenshots dir, so the negation has to spell the SAME name — get it wrong and
+# the shots stop being committed, and therefore stop publishing, with no error.
+IGNORE="$HERE/../.gitignore"
+check ".gitignore un-ignores the GPP dir" "1" \
+  "$(grep -qxF '!app/src/main/play/listings/*/graphics/phone-screenshots/' "$IGNORE" && echo 1 || echo 0)"
+check ".gitignore keeps candidates out of git" "1" \
+  "$(grep -qxF 'app/src/main/play/listings/*/graphics/phone-screenshots/candidates/' "$IGNORE" && echo 1 || echo 0)"
+check ".gitignore no longer names the API field" "" \
+  "$(grep -vE '^[[:space:]]*#' "$IGNORE" | grep -n 'phoneScreenshots' || true)"
+
+# next_shot_number is what makes runs APPEND rather than overwrite: it reports the
+# number a fresh block starts at.
+_shots="$(mktemp -d)"
+check "empty dir starts at 1"   "1" "$(next_shot_number "$_shots")"
+check "missing dir starts at 1" "1" "$(next_shot_number "$_shots/nope")"
+touch "$_shots"/1.png "$_shots"/2.png "$_shots"/3.png "$_shots"/4.png
+check "a four-shot block continues at 5" "5" "$(next_shot_number "$_shots")"
+# The bug a lexical `ls | tail -1` would introduce: 10 sorts before 9, so the next
+# run would start at 10 and overwrite an existing shot.
+touch "$_shots"/9.png "$_shots"/10.png
+check "10 counts above 9 (numeric, not lexical)" "11" "$(next_shot_number "$_shots")"
+# Promoted/renamed strays must not derail the count.
+touch "$_shots"/keep.png "$_shots"/2b.png
+check "non-numeric names are ignored" "11" "$(next_shot_number "$_shots")"
+
 # Parallel pool: ports and serials. A wrong offset would boot two workers onto
 # one instance (they'd fight over the AVD) or leave gaps adb never sees.
 check "worker 0 port"   "5554" "$(pool_port 0)"
@@ -98,6 +149,7 @@ check "search plain ASCII" "manchester" "$(search_term "Manchester")"
 # the env vars on the last line both have to survive, which a fixed line range
 # stopped doing the moment the docs got longer.
 check "usage documents --all-top" "1" "$(usage | grep -q -- '--all-top' && echo 1 || echo 0)"
+check "usage documents the start rank" "1" "$(usage | grep -q -- '--all-top 2 4' && echo 1 || echo 0)"
 check "usage documents EMULATORS"  "1" "$(usage | grep -q 'EMULATORS' && echo 1 || echo 0)"
 check "usage reaches the last header line" "1" "$(usage | grep -q 'NO_OPEN' && echo 1 || echo 0)"
 check "usage stops at the code" "" "$(usage | grep 'set -euo' || true)"
@@ -111,20 +163,54 @@ NOISE="$(mktemp)"
 type_ "Toy Story 5"
 check "type_ encodes spaces as %s" "shell input text Toy%sStory%s5" "$(cat "$_adbcap")"
 
+# The optional START RANK must reach the ranking, or --top/--all-top silently
+# re-shoot cities 1..N — the exact thing the option exists to avoid.
+# Captured to a FILE, not a variable: cmd_top reads the ranking through `$( … )`
+# and run_worker through `< <( … )`, both of which run the stub in a subshell
+# where an assignment would die with it.
+_rankcap="$(mktemp)"
+rank_cities() { printf '%s' "$*" > "$_rankcap"; printf '99\n7\tone\tCityOne\n'; }
+cmd_top uk 5 11 >/dev/null
+check "--top forwards the start rank"      "uk 5 11" "$(cat "$_rankcap")"
+cmd_top uk 5 >/dev/null
+check "--top defaults the start rank to 1" "uk 5 1"  "$(cat "$_rankcap")"
+# The table numbers rows by ABSOLUTE rank — with an offset in play a bare 1..N
+# list would hide which slice you actually got.
+check "--top numbers rows by absolute rank" "1" "$(cmd_top uk 1 11 | grep -c '^ *11\.')"
+
 # Regression — the N=2 city drop. run_worker must shoot EVERY ranked city, not
 # just the first. The bug: a `while read … < <(rank_cities …)` loop whose body
 # (cmd_capture → adb) reads stdin, draining the process substitution so the first
 # capture eats the rest of the list — one city shot at N≥2, silently. Here
 # cmd_capture is stubbed to record its (name:firstfile) args AND consume stdin
 # the way adb does; both cities must still fire, at file offsets 1 and 5.
+#
+# LISTINGS is repointed at a temp dir first: run_worker mkdir -p's its
+# destination, and with the repo path it used to leave a stray xx-XX/ listing
+# behind on every test run.
+LISTINGS="$(mktemp -d)"
 captured=""
 cmd_capture()    { captured="$captured ${2}:${4}"; cat >/dev/null 2>&1; }   # $2 name, $4 first
-rank_cities()    { printf 'countline\n9\tone\tCityOne\n8\ttwo\tCityTwo\n'; } # count + 2 cities
+rank_cities()    { printf '%s' "$*" > "$_rankcap"; printf 'countline\n9\tone\tCityOne\n8\ttwo\tCityTwo\n'; }
 country_locale() { echo "xx-XX"; }
 COUNTRIES="zz"                                    # worker_slice "zz" 1 0 → "zz"
-run_worker 0 1 2 </dev/null >/dev/null 2>&1 || true
+run_worker 0 1 2 4 </dev/null >/dev/null 2>&1 || true
 check "run_worker shoots all N cities (not just #1)" "CityOne:1 CityTwo:5" \
   "$(echo "$captured" | tr -s ' ' | sed 's/^ *//;s/ *$//')"
+check "run_worker forwards the start rank" "zz 2 4" "$(cat "$_rankcap")"
+
+# Append, not overwrite: with a four-shot block already in candidates/, the next
+# run must start at 5. Previously run_worker `rm -f`'d the directory first, so a
+# second run destroyed the first one's shots.
+mkdir -p "$(candidates_dir xx-XX)"
+touch "$(candidates_dir xx-XX)"/1.png "$(candidates_dir xx-XX)"/2.png \
+      "$(candidates_dir xx-XX)"/3.png "$(candidates_dir xx-XX)"/4.png
+captured=""
+run_worker 0 1 2 1 </dev/null >/dev/null 2>&1 || true
+check "run_worker appends after existing candidates" "CityOne:5 CityTwo:9" \
+  "$(echo "$captured" | tr -s ' ' | sed 's/^ *//;s/ *$//')"
+check "run_worker leaves the earlier shots alone" "4" \
+  "$(ls "$(candidates_dir xx-XX)"/*.png 2>/dev/null | wc -l | tr -d ' ')"
 
 # Cleanup closes ONLY the emulators this run booted, addressing each by its serial
 # via `adb emu kill` — a reused instance never enters BOOTED_EMULATORS, so a
