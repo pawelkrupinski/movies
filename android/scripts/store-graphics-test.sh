@@ -59,9 +59,12 @@ check "and still carries the brand"              "1" "$(printf '%s' "$_no_shot" 
 # The icon is language-neutral, so it lives once and is copied. Committing three
 # byte-identical copies is how they drift.
 check "the shared icon is where the script expects" "1" "$([ -f "$SHARED_ICON" ] && echo 1 || echo 0)"
-check "it sits above the per-locale listings"       "graphics" \
-  "$(basename "$(dirname "$(dirname "$SHARED_ICON")")")"
 check "it is NOT inside a locale dir" "0" "$(printf '%s' "$SHARED_ICON" | grep -c '/listings/')"
+# And not inside the play/ tree at all: gradle-play-publisher VALIDATES that whole
+# directory and fails the build on any path it does not recognise, so a shared
+# master parked in there breaks every publish ("Unknown Play resource file").
+check "it is outside gradle-play-publisher's tree" "0" \
+  "$(printf '%s' "$SHARED_ICON" | grep -c 'src/main/play/')"
 
 IGNORE="$HERE/../.gitignore"
 check ".gitignore commits the feature graphics" "1" \

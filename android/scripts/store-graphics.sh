@@ -8,7 +8,7 @@
 #
 # Play keys both assets per LANGUAGE, but only one of them actually differs by
 # language. The icon is identical everywhere, so it lives ONCE at
-# app/src/main/play/graphics/icon/1.png and is copied into each
+# android/store/icon/1.png and is copied into each
 # listings/<locale>/graphics/icon/ at generation time — the copies are gitignored
 # derivatives, the master is the tracked original. Keeping three byte-identical
 # icons under version control was the alternative, and they drift.
@@ -27,7 +27,11 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LISTINGS="$REPO_ROOT/android/app/src/main/play/listings"
-SHARED_ICON="$REPO_ROOT/android/app/src/main/play/graphics/icon/1.png"
+# Deliberately OUTSIDE app/src/main/play: gradle-play-publisher validates that
+# whole tree and fails the build on any path it does not recognise ("Unknown Play
+# resource file"), so the shared master cannot live inside it. android/store/
+# mirrors ios/store/ instead.
+SHARED_ICON="$REPO_ROOT/android/store/icon/1.png"
 # shellcheck source=../../scripts/store-screenshots-common.sh
 source "$REPO_ROOT/scripts/store-screenshots-common.sh"
 
