@@ -43,6 +43,11 @@ enum A11y {
         /// The close button on the full-screen cover (always an accessibility
         /// element, so it's the reliable existence probe for the cover).
         static let closeButton = "filmdetail.poster.close"
+        /// One pill in the external-links row under the rating badges. Shared
+        /// by every pill so a test can count the row; the cinema names also
+        /// appear as links further down in the showings list, which is why the
+        /// row can't be addressed by label.
+        static let cinemaLink  = "filmdetail.cinemaLink"
     }
 
     /// The Filtry sheet's "Kina" section — the cinema filter.

@@ -176,9 +176,14 @@ struct FilmDetailView: View {
         let links = cinemaLinkList
         if !links.isEmpty {
             FlowLayout(spacing: 6, lineSpacing: 6) {
-                ForEach(links, id: \.url) { link in
+                // Identified by the whole link, not by `\.url` alone: a URL
+                // shared by several cinemas gave every row the same identity,
+                // and SwiftUI drew the first row once per duplicate (all 72
+                // London pills read "Act One Cinema Acton"). `cinemaLinks()`
+                // now collapses shared URLs, so this is belt-and-braces.
+                ForEach(links, id: \.self) { link in
                     Link(destination: link.url) {
-                        Text("\(link.cinema) ↗")
+                        Text("\(link.label) ↗")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(Color.kinowoLinkAccent)
                             .padding(.horizontal, 10)
@@ -189,6 +194,7 @@ struct FilmDetailView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier(A11y.FilmDetail.cinemaLink)
                 }
             }
             .padding(.top, 2)

@@ -253,12 +253,29 @@ extension RepertoireStore {
         DayShowings(
             date: DateFilter.iso(Date().addingTimeInterval(Double(offsetDays) * 86_400)),
             label: label,
-            cinemas: [
-                CinemaShowings(
-                    cinema: "Kino", cinemaURL: nil,
-                    showtimes: [Showtime(time: "23:59", format: "2D", room: nil, bookingURL: nil)]
-                )
-            ]
+            cinemas: fixtureCinemas
         )
+    }
+
+    /// The fixture day's cinemas. Normally one URL-less cinema, which keeps
+    /// every card the same height for the layout suites.
+    ///
+    /// `KINOWO_UITEST_SHARED_CINEMA_URL=1` swaps in the shape a real listing
+    /// has and this one didn't: two venues of one chain behind a SINGLE
+    /// per-film URL, plus a cinema with a URL of its own.
+    /// CinemaLinkRowUITests drives the detail screen's link row with it.
+    private static var fixtureCinemas: [CinemaShowings] {
+        let slot = [Showtime(time: "23:59", format: "2D", room: nil, bookingURL: nil)]
+        guard ProcessInfo.processInfo.environment["KINOWO_UITEST_SHARED_CINEMA_URL"] == "1" else {
+            return [CinemaShowings(cinema: "Kino", cinemaURL: nil, showtimes: slot)]
+        }
+        let chain = URL(string: "https://www.multikino.example/filmy/fixture")
+        return [
+            CinemaShowings(cinema: "Multikino Alfa", cinemaURL: chain, showtimes: slot),
+            CinemaShowings(cinema: "Multikino Beta", cinemaURL: chain, showtimes: slot),
+            CinemaShowings(cinema: "Kino Solo",
+                           cinemaURL: URL(string: "https://kinosolo.example/film"),
+                           showtimes: slot),
+        ]
     }
 }
