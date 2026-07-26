@@ -471,11 +471,13 @@ revive_pool_device() {
     done
     adb shell wm size reset >>"$NOISE" 2>&1 || true
   done_
-  # Record it (once) so cleanup still shuts down what we booted.
-  case " ${BOOTED_EMULATORS:-} " in
-    *" $SERIAL "*) ;;
-    *) BOOTED_EMULATORS="${BOOTED_EMULATORS:-} $SERIAL";;
-  esac
+  # Deliberately NOT recorded in BOOTED_EMULATORS here. This runs inside the
+  # per-city `( cmd_capture … )` subshell, so any assignment would be discarded the
+  # moment the city ends — and it would be redundant anyway: boot_pool already
+  # recorded this serial in the MAIN shell before the first boot, and a revived
+  # instance reuses the same serial, so cleanup's `adb -s $SERIAL emu kill` still
+  # covers it. (An earlier version did assign here, with a test that passed only
+  # because it called this function outside the subshell.)
   if [ -n "${POOL_APK:-}" ]; then
     step "re-installing app on $SERIAL"
       adb install -r "$POOL_APK" >>"$NOISE" 2>&1 || die "re-install failed on $SERIAL"

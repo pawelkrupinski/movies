@@ -138,13 +138,17 @@ check "on the port its SERIAL already names"      "1" "$(grep -c '^boot 5556$' "
 # A read-only instance boots from the pristine AVD image, so the app is gone.
 check "the app is re-installed after the reboot"  "1" \
   "$(grep -c 'install -r /tmp/app-debug.apk' "$_adbcap2")"
-# It must join the shutdown list or the revived instance would outlive the run.
-check "the revived emulator is shut down at the end" "1" \
-  "$(printf '%s' "$BOOTED_EMULATORS" | grep -c 'emulator-5556')"
-# Recorded once, not once per revive — a duplicate would make cleanup kill twice.
-_polls=0; revive_pool_device >/dev/null 2>&1
-check "it is recorded once, not per revive" "1" \
-  "$(printf '%s\n' $BOOTED_EMULATORS | grep -c '^emulator-5556$')"
+# Shutting the revived instance down is boot_pool's business, not this function's:
+# the revive runs inside the per-city subshell, where an assignment to
+# BOOTED_EMULATORS would be thrown away. What must hold is that boot_pool records
+# every pool serial in the MAIN shell UP FRONT, so cleanup covers a revived
+# instance too (same serial). Asserting it here rather than in the revive is the
+# difference between a test that describes production and one that only describes
+# how the test called it.
+check "boot_pool records each serial before booting it" "1" \
+  "$(grep -c 'BOOTED_EMULATORS="\$BOOTED_EMULATORS \$serial"' "$HERE/store-screenshots.sh")"
+check "the revive does not try to record it itself" "0" \
+  "$(sed -n '/^revive_pool_device/,/^}/p' "$HERE/store-screenshots.sh" | grep -c 'BOOTED_EMULATORS=')"
 # …and the capture path must actually call it. Without this the checks above pass
 # while nothing invokes the revive, which is exactly the gap that let the original
 # bug through.
