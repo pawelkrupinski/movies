@@ -1,7 +1,7 @@
 package services.tasks
 
 import play.api.Logging
-import services.freshness.{Freshness, FreshnessKind, FreshnessStore}
+import services.freshness.{Freshness, FreshnessStore}
 import models.Cinema
 import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
 
@@ -19,10 +19,11 @@ import java.time.Clock
  * regardless of whether scraping is queue-driven or the legacy loop.
  *
  * A scrape failure is swallowed and reported as `Done` rather than `Reschedule`:
- * because we don't mark the cinema fresh on failure, the reaper re-enqueues it on
- * its next tick — so retries happen at the reaper's cadence (minutes), not the
- * worker's tight poll loop. This matches the old continuous-loop behaviour, where
- * a failed scrape simply waited for the next pass.
+ * for the first few attempts the cinema is left un-stamped, so the reaper
+ * re-enqueues it on its next tick — retries happen at the reaper's cadence
+ * (minutes), not the worker's tight poll loop. Past that budget
+ * [[ScrapeFreshnessPolicy]] parks it on the normal window so a permanently broken
+ * venue can't camp at the head of every tick and starve healthy cinemas.
  */
 class ScrapeCinemaHandler(
   scrapersByKey: Map[String, CinemaScraper],
@@ -30,10 +31,16 @@ class ScrapeCinemaHandler(
   freshness:     FreshnessStore,
   dueWindow:     DueWindow = new DueWindow(Freshness.defaultScrapeTtl),
   clock:         Clock = Clock.systemUTC(),
-  chunkPlanner:  Option[ChunkScrapePlanner] = None
+  chunkPlanner:  Option[ChunkScrapePlanner] = None,
+  // Production passes the SHARED policy, so a venue's failure streak is counted once
+  // however it happens to be scraped. None → a private one over this handler's own
+  // store/clock, which is the same rule, just not shared with the chunked path.
+  scrapeFreshness: Option[ScrapeFreshnessPolicy] = None
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
+
+  private val outcome = scrapeFreshness.getOrElse(new ScrapeFreshnessPolicy(freshness, clock = clock))
 
   override val taskType: TaskType = TaskType.ScrapeCinema
 
@@ -45,10 +52,12 @@ class ScrapeCinemaHandler(
     chunkPlanner.filter(_.isChunked(cinemaName)) match {
       case Some(planner) =>
         // Chunked cinema: fan out into ScrapeChunk tasks (or no-op if a run is
-        // already active). Freshness is marked by the terminal reduce, not here —
-        // the run doc is the per-cinema mutex, so a duplicate ScrapeCinema while a
-        // run is in flight just no-ops. A plan throw can't escape (it records the
-        // outcome itself), but guard anyway so the queue never reschedules.
+        // already active). Freshness is marked by whichever step TERMINATES the
+        // scrape — the reduce on success, the planner itself on an empty or failed
+        // plan — not here. The run doc is the per-cinema mutex, so a duplicate
+        // ScrapeCinema while a run is in flight just no-ops. A plan throw can't
+        // escape (it records the outcome itself), but guard anyway so the queue
+        // never reschedules.
         try { val _ = planner.plan(cinemaName) }
         catch { case e: Exception => logger.error(s"chunked plan for $cinemaName threw", e) }
         return Done
@@ -65,7 +74,7 @@ class ScrapeCinemaHandler(
         val t0     = System.currentTimeMillis()
         try {
           runner.run(scraper)
-          freshness.markFresh(key, FreshnessKind.CinemaScrape)
+          outcome.succeeded(key)
           Done
         } catch {
           case e: Exception =>
@@ -74,7 +83,9 @@ class ScrapeCinemaHandler(
               logger.warn(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms: ${e.getMessage}")
             else
               logger.error(s"Failed to refresh ${cinema.displayName} after ${elapsed}ms", e)
-            // Not marked fresh → the reaper re-enqueues on its next tick.
+            // Left stale → the reaper re-enqueues on its next tick, until the retry
+            // budget is spent and the policy parks it on the normal window instead.
+            outcome.failed(key)
             Done
         }
     }

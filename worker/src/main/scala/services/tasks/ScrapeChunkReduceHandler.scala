@@ -1,7 +1,6 @@
 package services.tasks
 
 import play.api.Logging
-import services.freshness.{FreshnessKind, FreshnessStore}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, PreScrapedCinemaScraper}
 
 import java.time.Clock
@@ -12,8 +11,10 @@ import java.time.Clock
  * listing through the same recording/fallback path a normal scrape uses
  * (`publishScrape` = `CinemaScrapeRunner.run` ∘ the uptime/Filmweb-fallback
  * decorator) — so uptime classification, the fallback, cache write-through and
- * `MovieDetailsComplete` events are all reused unchanged. Freshness is marked
- * only here, on the terminal success.
+ * `MovieDetailsComplete` events are all reused unchanged. Freshness is marked here
+ * for the terminal SUCCESS; a plan that never gets this far (empty or failed) is
+ * stamped by [[ChunkScrapePlanner]] against the same [[ScrapeFreshnessPolicy]], so
+ * every chunked outcome advances the due schedule by one shared rule.
  *
  *  - `Skipped` when the run is no longer active (superseded), so an overlapping
  *    run can't double-publish.
@@ -27,8 +28,9 @@ class ScrapeChunkReduceHandler(
   chunkScrapers: Map[String, ChunkedCinemaScraper],
   store:         ChunkScrapeStore,
   publishScrape: CinemaScraper => Unit,
-  freshness:     FreshnessStore,
-  clock:         Clock = Clock.systemUTC()
+  // Shares the plain/planner path's rule (and failure streak) — see the class doc.
+  scrapeFreshness: ScrapeFreshnessPolicy,
+  clock:           Clock = Clock.systemUTC()
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 
@@ -48,7 +50,7 @@ class ScrapeChunkReduceHandler(
         val movies = scraper.reduceChunks(stored)
         try {
           publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, () => movies))
-          freshness.markFresh(ScrapeCinemaHandler.dedupKey(scraper.cinema), FreshnessKind.CinemaScrape)
+          scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema))
           store.completeRun(cinema, runId)
           val expected = run.get.expectedKeys.toSet
           val missing  = expected.diff(stored.keySet)

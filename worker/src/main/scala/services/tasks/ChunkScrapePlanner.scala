@@ -18,12 +18,24 @@ import scala.concurrent.duration._
  * rather than starting an empty run. If a run is already active for the cinema,
  * planning is a no-op (one run at a time) — duplicate `ScrapeCinema` tasks are
  * harmless.
+ *
+ * Both of those early exits bypass the terminal reduce, so they must record the
+ * outcome against the cinema's due schedule THEMSELVES via
+ * [[ScrapeFreshnessPolicy]] — an empty plan is a successful scrape of an empty
+ * repertoire and stamps freshness like any other. Omitting that was the German
+ * outage: a venue advertising zero showtime days never got stamped, so it read as
+ * never-fetched, sorted to the front of every [[ScrapeReaper]] tick, and ~40 of
+ * them ate the entire per-tick budget for days while ~1000 working cinemas were
+ * never enqueued at all.
  */
 class ChunkScrapePlanner(
   chunkScrapers: Map[String, ChunkedCinemaScraper],
   store:         ChunkScrapeStore,
   queue:         TaskQueue,
   publishScrape: CinemaScraper => Unit,
+  // Records the terminal outcome of a plan that never reaches the reduce (empty or
+  // failed), so such a cinema still advances its due schedule.
+  scrapeFreshness: ScrapeFreshnessPolicy,
   staleAfter:    FiniteDuration = ChunkScrapePlanner.DefaultRunTimeout,
   clock:         Clock          = Clock.systemUTC(),
   // Stagger this run's `ScrapeChunk` fan-out evenly across this window (chunk k of
@@ -74,14 +86,20 @@ class ChunkScrapePlanner(
       }
   }
 
-  private def publishEmpty(scraper: ChunkedCinemaScraper): Unit =
+  /** A venue that advertised no days in the horizon: a clean parse of an empty
+   *  repertoire, so it counts as a SUCCESSFUL scrape and advances the due schedule.
+   *  (Uptime still records it white — empty is visible, just not overdue.) */
+  private def publishEmpty(scraper: ChunkedCinemaScraper): Unit = {
     try publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, () => Seq.empty))
     catch { case _: Exception => () }
+    scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema))
+  }
 
   private def publishFailure(scraper: ChunkedCinemaScraper, e: Exception): Unit = {
     logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: ${e.getMessage}")
     try publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, () => throw e))
     catch { case _: Exception => () }
+    scrapeFreshness.failed(ScrapeCinemaHandler.dedupKey(scraper.cinema))
   }
 }
 

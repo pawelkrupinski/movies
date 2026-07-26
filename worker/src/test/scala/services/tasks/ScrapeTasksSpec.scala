@@ -73,6 +73,51 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe false
   }
 
+  // Starvation regression (prod 2026-07-24 → 07-27, kinowo_de + kinowo_uk). A cinema
+  // that never marks fresh has `lastFetchedAt = None`, and the reaper orders the due
+  // set oldest-first with never-fetched AHEAD of every timestamp — so a permanently
+  // broken venue sorts to the front of every tick and eats the per-tick cap forever,
+  // while healthy cinemas behind it are never enqueued at all. Germany ran ~40 such
+  // venues against a cap of 40 and scraped none of its other ~1000 cinemas for days.
+  // After `immediateRetries` fast retries the failing cinema is parked on the normal
+  // window, so the healthy ones behind it finally get their turn.
+  it should "stop a permanently failing cinema from monopolising the per-tick cap and starving healthy cinemas" in {
+    val now     = Instant.parse("2026-07-26T12:00:00Z")
+    val broken  = new FakeScraper(Multikino, throw new RuntimeException("HTTP 404 for GET https://x"))
+    val healthy = new FakeScraper(KinoApollo, movieAt(KinoApollo))
+    val fresh   = new InMemoryFreshnessStore
+    val queue   = new InMemoryTaskQueue
+    // The prod shape: the healthy cinema was scraped at some point (an old stamp,
+    // long past due), the broken one NEVER succeeded so it has no stamp at all —
+    // and never-fetched sorts ahead of every timestamp in the reaper's oldest-first
+    // order. Cap of 1 makes the contention explicit: one cinema wins each tick.
+    fresh.markFresh(ScrapeCinemaHandler.dedupKey(KinoApollo), FreshnessKind.CinemaScrape, now.minusSeconds(10 * 86400))
+    val clock   = Clock.fixed(now, ZoneOffset.UTC)
+    val reaper  = new ScrapeReaper(Seq(broken, healthy), queue, fresh, maxEnqueuePerTick = 1, clock = clock)
+    val handler = new ScrapeCinemaHandler(
+      Seq(broken, healthy).map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> (s: CinemaScraper)).toMap,
+      freshRunner(), fresh, new DueWindow(60.minutes), clock)
+
+    // Each round: the reaper enqueues one cinema, the worker runs it to completion.
+    def round(): Unit = {
+      reaper.tick()
+      var next = queue.claim("w", 1.minute)
+      while (next.isDefined) {
+        handler.handle(next.get)
+        queue.complete(next.get.id, "w")
+        next = queue.claim("w", 1.minute)
+      }
+    }
+
+    // The broken cinema wins the first rounds — that fast retry is deliberate, for
+    // transients — but its budget runs out, so the healthy cinema behind it is no
+    // longer starved. Before the fix `healthy.fetchCount` stayed 0 for ANY number
+    // of ticks: that is precisely the German/UK outage.
+    (1 to 5).foreach(_ => round())
+    broken.fetchCount should be >= 3
+    healthy.fetchCount should be >= 1
+  }
+
   it should "scrape (not skip) a cinema the reaper deems due even when its last scrape was inside the rolling TTL" in {
     // Regression: the reaper enqueues on a phase-window boundary; the handler must
     // re-gate on the SAME DueWindow, not a rolling freshness TTL. A cinema scraped

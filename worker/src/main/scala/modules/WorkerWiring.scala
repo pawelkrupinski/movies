@@ -799,10 +799,17 @@ class WorkerWiring(
   // stale timeout. See ChunkScrapePlanner.chunkSpread.
   def scrapeChunkSpreadMinutes: Long =
     Env.positiveLong("KINOWO_SCRAPE_CHUNK_SPREAD_MINUTES", services.tasks.ScrapeCadence.ChunkEnqueueSpread.toMinutes)
+  // ONE policy across every scrape path (plain, chunked plan, chunked reduce) so a
+  // venue's failure streak is counted once and every terminal outcome advances the
+  // due schedule by the same rule. See ScrapeFreshnessPolicy for why a broken venue
+  // MUST eventually be stamped: un-stamped venues sort first in the reaper's
+  // oldest-first order and otherwise camp on the whole per-tick budget forever.
+  lazy val scrapeFreshnessPolicy    = new services.tasks.ScrapeFreshnessPolicy(freshnessStore)
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
-    chunkSpread = scrapeChunkSpreadMinutes.minutes)
+    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpreadMinutes.minutes)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore)
-  lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape, freshnessStore)
+  lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape,
+    scrapeFreshnessPolicy)
   lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue)
   lazy val chunkScrapeReaper        = new ChunkScrapeReaper(chunkScrapeStore, taskQueue, chunkScrapeCoordinator,
     runStore = scheduledRunStore)
@@ -814,7 +821,7 @@ class WorkerWiring(
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
     cinemaScrapeRunner, freshnessStore, scrapeDueWindow,
-    chunkPlanner = Some(chunkScrapePlanner)
+    chunkPlanner = Some(chunkScrapePlanner), scrapeFreshness = Some(scrapeFreshnessPolicy)
   )
   // Shared detail refresh schedule. Its period is the DetailEnrich TTL (6h,
   // `Freshness.ttlFor`); the SAME instance backs the reaper (enqueue gate) and the

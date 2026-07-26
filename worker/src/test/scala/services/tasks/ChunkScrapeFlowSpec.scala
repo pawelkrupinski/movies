@@ -50,9 +50,10 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
     val publishScrape: CinemaScraper => Unit = s => { published += scala.util.Try(s.fetch()).getOrElse(Seq.empty); () }
     private val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
-    val planner = new ChunkScrapePlanner(map, store, queue, publishScrape, stale, clock)
+    val policy  = new ScrapeFreshnessPolicy(freshness, clock = clock)
+    val planner = new ChunkScrapePlanner(map, store, queue, publishScrape, policy, stale, clock)
     val chunkH  = new ScrapeChunkHandler(map, store, clock)
-    val reduceH = new ScrapeChunkReduceHandler(map, store, publishScrape, freshness, clock)
+    val reduceH = new ScrapeChunkReduceHandler(map, store, publishScrape, policy, clock)
     val coord   = new ChunkScrapeCoordinator(store, queue)
     def reaper(c: Clock) = new ChunkScrapeReaper(store, queue, coord, staleAfter = stale, clock = c)
 
@@ -160,9 +161,10 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     val scraper = new FakeChunked(Map("a" -> Seq(film("X", 25)), "b" -> Seq(film("Y", 25))))
     val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
     val clk = Clock.fixed(now, ZoneOffset.UTC)
-    val planner = new ChunkScrapePlanner(map, store, queue, publish, stale, clk)
+    val policy  = new ScrapeFreshnessPolicy(freshness, clock = clk)
+    val planner = new ChunkScrapePlanner(map, store, queue, publish, policy, stale, clk)
     val chunkH  = new ScrapeChunkHandler(map, store, clk)
-    val reduceH = new ScrapeChunkReduceHandler(map, store, publish, freshness, clk)
+    val reduceH = new ScrapeChunkReduceHandler(map, store, publish, policy, clk)
     val coordA  = new ChunkScrapeCoordinator(store, queue) // instance A
     val coordB  = new ChunkScrapeCoordinator(store, queue) // instance B
 
@@ -189,6 +191,38 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     store.activeRun(cinemaName) shouldBe None
   }
 
+  // The German outage (prod 2026-07-24 → 07-27). A Filmstarts venue that advertises
+  // no showtime days at all — a small/seasonal house with nothing on — plans zero
+  // chunks, so it never reaches the reduce that stamps freshness. Un-stamped means
+  // `lastFetchedAt = None`, which sorts AHEAD of every timestamp in the ScrapeReaper's
+  // oldest-first order, so ~40 such venues held the entire per-tick cap (40) every
+  // minute for days and Germany's ~1000 working cinemas were never enqueued once.
+  // An empty repertoire is a SUCCESSFUL scrape and must advance the due schedule.
+  it should "mark a chunked cinema fresh when its plan is legitimately empty, so it waits its normal window" in {
+    val h   = new Harness(new FakeChunked(Map.empty))
+    val key = ScrapeCinemaHandler.dedupKey(cinema)
+
+    h.planner.plan(cinemaName) shouldBe 0
+    h.published should have size 1     // still published (and recorded white on /uptime)
+    h.published.head shouldBe empty
+    h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
+  }
+
+  // A plan that THROWS keeps the fast-retry behaviour a transient 5xx needs — but
+  // only for the retry budget, after which it is parked on the normal window. This
+  // is the UK half of the same outage: ~40 venues 404ing on every tick forever.
+  it should "retry a failed plan at tick cadence for the budget, then park it on the normal window" in {
+    val h   = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), planThrows = true))
+    val key = ScrapeCinemaHandler.dedupKey(cinema)
+
+    h.planner.plan(cinemaName) shouldBe 0
+    h.freshness.lastFetchedAt(key) shouldBe None   // still due next tick — maybe transient
+    h.planner.plan(cinemaName) shouldBe 0
+    h.freshness.lastFetchedAt(key) shouldBe None
+    h.planner.plan(cinemaName) shouldBe 0          // past the 2-retry budget
+    h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
+  }
+
   it should "re-process a chunk whose worker instance crashed mid-run (lease expiry)" in {
     val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25)))))
     h.planner.plan(cinemaName)
@@ -211,7 +245,8 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     val store   = new InMemoryChunkScrapeStore
     val slices  = (0 until 6).map(i => f"2026-06-${25 + i}%02d" -> Seq(film("F", 25 + i))).toMap
     val map     = Map(cinemaName -> (new FakeChunked(slices): ChunkedCinemaScraper))
-    val planner = new ChunkScrapePlanner(map, store, queue, _ => (), 30.minutes,
+    val planner = new ChunkScrapePlanner(map, store, queue, _ => (),
+      new ScrapeFreshnessPolicy(new InMemoryFreshnessStore), 30.minutes,
       Clock.fixed(now, ZoneOffset.UTC), chunkSpread = 6.minutes)
 
     planner.plan(cinemaName) shouldBe 6
