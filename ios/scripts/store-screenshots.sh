@@ -16,10 +16,10 @@
 # A leading DEVICE FLAG narrows the run to one class; it goes in front of any of
 # the commands above, and on its own means "just this device":
 #
-#   ios/scripts/store-screenshots.sh --iphone  --all-top 2       # 6.9" phone only
-#   ios/scripts/store-screenshots.sh --ipad-13 --all-top 2       # 13" iPad only
+#   ios/scripts/store-screenshots.sh --iphone --all-top 2          # 6.9" phone only
+#   ios/scripts/store-screenshots.sh --ipad-13 --all-top 2         # 13" iPad only
 #   ios/scripts/store-screenshots.sh --ipad-11 --country-top uk 5  # 11" iPad only
-#   ios/scripts/store-screenshots.sh --ipad-13 pl-PL "Poznan"    # one city, one device
+#   ios/scripts/store-screenshots.sh --ipad-13 pl-PL "Poznan"      # one city, one device
 #
 # --top only PRINTS the ranking; --all-top and --country-top capture. Use
 # --country-top to top up a single locale without re-shooting the other two.
