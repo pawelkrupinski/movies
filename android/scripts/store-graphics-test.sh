@@ -28,12 +28,23 @@ printf '\033[36m▸\033[0m store-graphics helpers\n'
 check "pl brand is Kinowo"     "Kinowo"    "$(brand_of pl-PL)"
 check "uk brand is Showtimes"  "Showtimes" "$(brand_of en-GB)"
 check "de brand is Showtimes"  "Showtimes" "$(brand_of de-DE)"
-# The tagline is the short description verbatim, newline stripped — a trailing
-# newline in the HTML is harmless, but it makes the assertions below unreadable.
-check "de tagline is the German short description" \
-  "$(tr -d '\n' < "$LISTINGS/de-DE/short-description.txt")" "$(tagline_of de-DE)"
-check "tagline carries no newline" "1" \
-  "$([ "$(tagline_of en-GB | wc -l | tr -d ' ')" = "0" ] && echo 1 || echo 0)"
+# The tagline is the SHORT translated line, not short-description.txt: that is the
+# store blurb, and in English and German it spends its 80 characters listing rating
+# sources, which reads as a paragraph on a card.
+check "pl tagline" "Repertuar kin w Twoim mieście" "$(tagline_of pl-PL)"
+check "de tagline" "Kinoprogramm in deiner Stadt"  "$(tagline_of de-DE)"
+check "en tagline" "Cinema listings in your city"  "$(tagline_of en-GB)"
+check "the tagline is NOT the store blurb" "0" \
+  "$([ "$(tagline_of de-DE)" = "$(tr -d '\n' < "$LISTINGS/de-DE/short-description.txt")" ] && echo 1 || echo 0)"
+
+# Drift guard: these are the same three strings the web share-cards use. Two copies
+# of a translation is exactly the sort of thing that diverges silently, so each one
+# must still appear verbatim in OgCardGenerator.homeTagline.
+OGCARD="$HERE/../../web/src/page/scala/tools/OgCardGenerator.scala"
+for l in pl-PL de-DE en-GB; do
+  check "$l tagline still matches OgCardGenerator" "1" \
+    "$(grep -qF "\"$(tagline_of $l)\"" "$OGCARD" && echo 1 || echo 0)"
+done
 
 # ── the card is per-language ─────────────────────────────────────────────────
 # The whole point of generating one per locale: German copy on the German card.
@@ -54,6 +65,23 @@ _no_shot="$(feature_html en-GB "data:image/png;base64,AA" "")"
 check "with a screenshot the card shows a phone" "1" "$(printf '%s' "$_de"      | grep -c 'class="phone"')"
 check "without one it still renders"             "0" "$(printf '%s' "$_no_shot" | grep -c 'class="phone"')"
 check "and still carries the brand"              "1" "$(printf '%s' "$_no_shot" | grep -c '<h1>Showtimes</h1>')"
+
+# ── the pills are the app's, with real values ────────────────────────────────
+# Bare source names read as a legend; the app shows ratings, so the card does too.
+# These are the values the old Polish card carried, now on every language.
+for want in 'class="l">IMDb</span><span class="v">7.9' 'class="pill solid">81' \
+            'class="l">RT</span><span class="v">91%' 'class="l">FW</span><span class="v">7.4'; do
+  check "the card shows ${want##*>}" "1" "$(printf '%s' "$_de" | grep -cF "$want")"
+done
+# …and in the app's own colours, not an approximation. Each hex must still be the
+# one Theme.kt defines, or the pills quietly stop matching the product.
+THEME="$HERE/../app/src/main/java/pl/kinowo/ui/theme/Theme.kt"
+for pair in "ImdbYellow:$IMDB" "MetaGood:$META_GOOD" "RtFresh:$RT_FRESH" \
+            "FwOrange:$FW_ORANGE" "FwOrangeLight:$FW_LIGHT" "CardElevated:$ELEVATED"; do
+  name="${pair%%:*}"; hex="${pair#*:}"
+  check "$name is still ${hex}" "1" \
+    "$(grep -qi "val $name = Color(0xFF${hex#\#})" "$THEME" && echo 1 || echo 0)"
+done
 
 # ── one icon, fanned out ─────────────────────────────────────────────────────
 # The icon is language-neutral, so it lives once and is copied. Committing three
