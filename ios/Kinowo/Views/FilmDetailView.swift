@@ -165,7 +165,7 @@ struct FilmDetailView: View {
             .fill(Color.kinowoPanel)
             .aspectRatio(PosterMetrics.aspectRatio, contentMode: .fit)
             .overlay(
-                Text("Brak plakatu")
+                Text("poster.missing")
                     .font(.system(size: 12)).italic()
                     .foregroundColor(.secondary)
             )
@@ -242,7 +242,7 @@ struct FilmDetailView: View {
     private var trailersSection: some View {
         if let trailers = filmDetails?.trailerURLs, !trailers.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("ZWIASTUNY")
+                Text("filmdetail.trailers")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                     .tracking(0.6)
@@ -268,7 +268,7 @@ struct FilmDetailView: View {
             // web's playTrailer behaviour: clear src + hide frame).
             playingTrailerIndex = active ? nil : index
         } label: {
-            Text("Zwiastun \(index + 1)")
+            Text(String(format: String(localized: "filmdetail.trailer_number"), index + 1))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(active ? Color(red: 0.10, green: 0.10, blue: 0.18) : Color.kinowoLinkAccent)
                 .padding(.horizontal, 12)
@@ -288,7 +288,7 @@ struct FilmDetailView: View {
     private var showingsSection: some View {
         if !film.showings.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Seanse")
+                Text("filmdetail.showings")
                     .font(.system(size: style.showingsHeaderFontSize, weight: .semibold))
                     .foregroundColor(.white)
                 // We were handed the full, all-days film (ContentView's

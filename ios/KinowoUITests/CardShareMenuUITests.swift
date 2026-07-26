@@ -56,10 +56,11 @@ final class CardShareMenuUITests: XCTestCase {
 
     // MARK: - helpers
 
-    /// The "Udostępnij" entry of the card's `.contextMenu`, surfaced as a button
-    /// while the menu is open.
+    /// The share entry of the card's `.contextMenu`, surfaced as a button while
+    /// the menu is open. Addressed by identifier, not label — the label is
+    /// translated, so a literal would only match a Polish-locale simulator.
     private func shareMenuItem() -> XCUIElement {
-        app.buttons["Udostępnij"]
+        app.buttons[A11y.FilmCard.share]
     }
 
     private func firstFilmCard() -> XCUIElement {

@@ -25,7 +25,7 @@ struct CinemaFilterSectionView: View {
 
     var body: some View {
         if !catalog.cinemas.isEmpty {
-            Section(header: Text("Kina"), footer: footer) {
+            Section(header: Text("filtersheet.cinemas"), footer: footer) {
                 let all = section.allCheck
                 checkboxRow(
                     check: all,

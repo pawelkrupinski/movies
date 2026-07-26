@@ -35,12 +35,9 @@ final class RepertoireLaunchUITests: XCTestCase {
 
         let emptyById = app.otherElements[A11y.EmptyState.repertoire]
         let errorById = app.otherElements[A11y.EmptyState.error]
-        let emptyByText = app.staticTexts["Brak repertuaru."]
-        let errorByText = app.staticTexts["Nie udało się pobrać repertuaru."]
 
         let predicate = NSPredicate { _, _ in
             emptyById.exists || errorById.exists
-                || emptyByText.exists || errorByText.exists
         }
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed)

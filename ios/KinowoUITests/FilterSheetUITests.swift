@@ -50,17 +50,16 @@ final class FilterSheetUITests: XCTestCase {
     }
 
     private func filtryButton(_ app: XCUIApplication) -> XCUIElement {
-        let byId = app.buttons[A11y.TopBar.filtryButton]
-        if byId.exists { return byId }
-        return app.buttons["Filtry"]
+        app.buttons[A11y.TopBar.filtryButton]
     }
 
     private func sheetMarker(_ app: XCUIApplication) -> XCUIElement {
-        // "Wymiar" reliably appears inside the Filtry Form — it's not
-        // used anywhere else in the app, so its presence is proof the
-        // sheet rendered. Identifier-based lookup is unreliable on the
-        // NavigationStack container in some iOS versions.
-        app.staticTexts["Wymiar"]
+        // The Wymiar/Dimension section header reliably appears inside the
+        // Filtry Form — nothing else in the app carries this identifier, so
+        // its presence is proof the sheet rendered. Identifier-based lookup
+        // on the NavigationStack container itself is unreliable on some iOS
+        // versions, which is why we mark a header rather than the root.
+        app.staticTexts[A11y.FiltersSheet.dimensionSection]
     }
 
     private func doneButton(_ app: XCUIApplication) -> XCUIElement {

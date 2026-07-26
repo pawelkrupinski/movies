@@ -26,24 +26,48 @@
       }
     },
     "CFBundleName" : {
-      "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
+      "comment" : "Bundle name. Follows CFBundleDisplayName: the neutral brand \"Showtimes\" everywhere except Polish, which keeps the coinage \"Kinowo\".",
+      "extractionState" : "manual",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showtimes"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
+            "value" : "Showtimes"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
             "value" : "Kinowo"
           }
         }
       }
     },
     "NSLocationWhenInUseUsageDescription" : {
-      "comment" : "Privacy - Location When In Use Usage Description",
-      "extractionState" : "extracted_with_value",
+      "comment" : "Shown in the system prompt asking for location, which we use only to preselect the nearest city.",
+      "extractionState" : "manual",
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wir verwenden deinen Standort, um die nächste Stadt mit Spielzeiten auszuwählen."
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
+            "value" : "We use your location to pick the nearest city with showtimes."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
             "value" : "Używamy lokalizacji, aby wybrać najbliższe miasto z repertuarem."
           }
         }

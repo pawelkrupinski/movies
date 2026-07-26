@@ -480,6 +480,8 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(A11y.EmptyState.error)
     }
 
     // Sorted, de-duplicated cinema names that appear at least once somewhere in

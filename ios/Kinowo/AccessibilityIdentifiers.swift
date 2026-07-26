@@ -1,11 +1,11 @@
 import Foundation
 
 /// Canonical catalogue of accessibility identifiers the UI tests look up.
-/// Production views currently do not set these — XCUITests fall back to
-/// Polish label text via the per-test `*Element(_:)` helpers. As the
-/// wiring agent (or app dev) attaches `.accessibilityIdentifier(...)`
-/// to the matching views, the identifier path becomes the preferred
-/// lookup and the label fallback can be retired.
+/// Every identifier below is attached to its view in production, and the
+/// tests address elements only this way. The label-text fallbacks they used
+/// to carry are gone on purpose: the UI is localized (pl / en / de), so a
+/// Polish literal would only ever match a Polish-locale simulator. Anything
+/// a test needs to find gets an identifier here rather than a label match.
 enum A11y {
     enum TopBar {
         static let filtryButton     = "topbar.filtry"
@@ -25,6 +25,13 @@ enum A11y {
 
     enum FilmGrid {
         static let cell = "filmgrid.cell"
+    }
+
+    /// The long-press context menu on a card's poster. Both entries are
+    /// translated, so tests must address them by identifier rather than label.
+    enum FilmCard {
+        static let share    = "filmcard.share"
+        static let copyLink = "filmcard.copyLink"
     }
 
     /// Per-film detail screen.

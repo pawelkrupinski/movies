@@ -9,7 +9,7 @@ struct ShowingsView: View {
     /// `showCinemaHeaders` flag, which `_cinemaCards` flips to false.
     var showCinemaHeaders: Bool = true
     /// When true, showtimes beyond `maxVisibleLines` are truncated and
-    /// a "… +N seansów" label appears at the bottom. Tapping the card
+    /// a "… +N showtimes" label appears at the bottom. Tapping the card
     /// navigates to the film detail page (the whole card is a
     /// NavigationLink), matching the web's "więcej" behavior.
     var truncatable: Bool = false
@@ -171,7 +171,13 @@ struct ShowingsView: View {
         HStack(spacing: 4) {
             Image(systemName: "ellipsis")
                 .font(.system(size: 9, weight: .semibold))
-            Text("+\(hiddenShowtimes) \(showtimeNoun(hiddenShowtimes))")
+            // Pluralised by the string catalog rather than in code: Polish
+            // needs one/few/many where English and German need only one/other,
+            // and CLDR already knows every such rule. `localizedStringWithFormat`
+            // is what picks the variation for `hiddenShowtimes`.
+            Text(String.localizedStringWithFormat(
+                NSLocalizedString("showings.more_showtimes", comment: ""),
+                hiddenShowtimes))
                 .font(.system(size: 11, weight: .medium))
         }
         .foregroundColor(.kinowoCinemaLabel)
@@ -181,16 +187,6 @@ struct ShowingsView: View {
         .padding(.top, 6)
     }
 
-    /// Polish plural for "seans". 1 → seans, 2–4 (excluding 12–14) →
-    /// seanse, else (0, 5+, 11–14, 25–30 …) → seansów. Standard
-    /// last-two-digits rule.
-    private func showtimeNoun(_ count: Int) -> String {
-        if count == 1 { return "seans" }
-        let mod10 = count % 10
-        let mod100 = count % 100
-        if mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) { return "seanse" }
-        return "seansów"
-    }
 }
 
 private struct ShowtimeBadge: View {
@@ -283,7 +279,7 @@ private struct ShowtimeBadge: View {
                 } onPressingChanged: { pressing in
                     if !pressing { holding = false }
                 }
-                .accessibilityHint("Przytrzymaj, aby zobaczyć salę: \(room)")
+                .accessibilityHint(String(format: String(localized: "showings.room_hint"), room))
         } else if let url = showtime.bookingURL {
             Link(destination: url) { pill }
                 .buttonStyle(.plain)

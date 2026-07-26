@@ -15,20 +15,14 @@ enum DateFilter: Hashable {
     case week
     case specific(String) // YYYY-MM-DD
 
-    // Dated options first (Dziś / Jutro / Tydzień), with the catch-all
-    // `Kiedykolwiek` pushed to the rightmost slot so the bar reads as
+    // Dated options first (today / tomorrow / this week), with the catch-all
+    // "anytime" pushed to the rightmost slot so the bar reads as
     // "narrow → broad" left-to-right.
+    //
+    // The user-facing captions live in `DateFilter.label` over in
+    // `Views/FiltersBar.swift`: they read the string catalog, which is an
+    // app-target resource `KinowoCore` deliberately doesn't ship.
     static let presets: [DateFilter] = [.today, .tomorrow, .week, .anytime]
-
-    var label: String {
-        switch self {
-        case .anytime:        return "Wszystkie"
-        case .today:          return "Dziś"
-        case .tomorrow:       return "Jutro"
-        case .week:           return "7 dni"
-        case .specific(let d): return d
-        }
-    }
 
     /// Whether a screening `dateString` falls in this filter's window, judged in
     /// `zone` — the selected country's local zone. "Today"/"tomorrow" are the
@@ -289,16 +283,11 @@ struct CinemaSection: Identifiable, Hashable {
 /// `earliest` keeps the server's earliest-showtime order (the default);
 /// `rating` orders by weighted rating, descending. Both are offered in the
 /// iOS Filtry sheet.
+/// The user-facing captions live in `SortOption.label` over in
+/// `Views/FiltersBar.swift`, alongside `DateFilter`'s — see the note there.
 enum SortOption: String, CaseIterable, Hashable {
     case earliest
     case rating
-
-    var label: String {
-        switch self {
-        case .earliest: return "Najbliższy seans"
-        case .rating:   return "Ocena"
-        }
-    }
 }
 
 extension Sequence where Element == Film {

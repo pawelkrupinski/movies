@@ -21,20 +21,22 @@ struct FilmCardView: View {
             // in the same subtree and the context menu wins. Scoping it to the
             // poster leaves the pills free. iOS has no address bar to copy from,
             // so this menu is where the canonical `/<city>/film?title=…` URL
-            // surfaces — Udostępnij opens the system sheet, Skopiuj link drops it
+            // surfaces — the share item opens the system sheet, copy-link drops it
             // on the pasteboard. The menu only appears once a city is selected
             // (always true behind the city gate), since the link is city-scoped.
             PosterView(film: film)
                 .contextMenu {
                     if let citySlug = prefs.selectedCity {
                         ShareLink(item: FilmShareLink.url(for: film, citySlug: citySlug), subject: Text(film.title)) {
-                            Label("Udostępnij", systemImage: "square.and.arrow.up")
+                            Label("filmcard.share", systemImage: "square.and.arrow.up")
                         }
+                        .accessibilityIdentifier(A11y.FilmCard.share)
                         Button {
                             UIPasteboard.general.string = FilmShareLink.url(for: film, citySlug: citySlug).absoluteString
                         } label: {
-                            Label("Skopiuj link", systemImage: "link")
+                            Label("filmcard.copy_link", systemImage: "link")
                         }
+                        .accessibilityIdentifier(A11y.FilmCard.copyLink)
                     }
                 }
             VStack(alignment: .leading, spacing: spacing.sectionSpacing) {
@@ -183,7 +185,7 @@ private struct PosterView: View {
         Rectangle()
             .fill(Color(red: 0.16, green: 0.16, blue: 0.24))
             .overlay(
-                Text("Brak plakatu")
+                Text("poster.missing")
                     .font(.system(size: 12)).italic()
                     .foregroundColor(.secondary)
             )

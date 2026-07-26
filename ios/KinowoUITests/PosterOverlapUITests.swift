@@ -104,8 +104,8 @@ final class PosterOverlapUITests: XCTestCase {
     }
 
     private func anytimePill() -> XCUIElement {
-        let button = app.buttons["Wszystkie"].firstMatch
-        return button.exists ? button : app.staticTexts["Wszystkie"].firstMatch
+        let button = app.buttons[A11y.TopBar.datePillAnytime].firstMatch
+        return button.exists ? button : app.staticTexts[A11y.TopBar.datePillAnytime].firstMatch
     }
 
     private func firstFilmCard() -> XCUIElement {

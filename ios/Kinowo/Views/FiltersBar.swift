@@ -1,6 +1,35 @@
 import SwiftUI
 import UIKit
 
+// Display captions for the two filter enums. They live here, in the app
+// target, rather than beside the enums in `Models/Filters.swift`: those
+// compile into `KinowoCore`, which deliberately ships no localized bundle
+// (see the `Localizable.xcstrings` exclude in Package.swift), so
+// `String(localized:)` there would resolve to the bare key under
+// `swift test`. `String` rather than `LocalizedStringKey` because
+// `DatePillsRow` measures each caption's rendered width to decide whether
+// the four pills fit at a uniform size.
+extension DateFilter {
+    var label: String {
+        switch self {
+        case .anytime:         return String(localized: "datefilter.anytime")
+        case .today:           return String(localized: "datefilter.today")
+        case .tomorrow:        return String(localized: "datefilter.tomorrow")
+        case .week:            return String(localized: "datefilter.week")
+        case .specific(let d): return d
+        }
+    }
+}
+
+extension SortOption {
+    var label: String {
+        switch self {
+        case .earliest: return String(localized: "sort.earliest")
+        case .rating:   return String(localized: "sort.rating")
+        }
+    }
+}
+
 // Top safe-area inset: 🎬 brand mark + four date-filter pills + (on wide
 // screens) the search field + Filtry button on the right. Built as a plain
 // HStack instead of SwiftUI `ToolbarItem`s because the native nav bar
@@ -33,7 +62,7 @@ struct TopBar: View {
         // pills → search/Filtry — reads as the same width as the
         // gaps between the four pills.
         HStack(spacing: 6 * scale) {
-            Text("🎬")
+            Text(verbatim: "🎬")
                 .font(.system(size: 24 * scale))
             DatePillsRow(dateFilter: $dateFilter, scale: scale)
                 .frame(maxWidth: .infinity)
@@ -66,7 +95,7 @@ struct TopBar: View {
             // button by its accessibility label — give it both a label
             // and an identifier. The label is also useful for
             // VoiceOver users in production.
-            .accessibilityLabel("Filtry")
+            .accessibilityLabel("filtersheet.title")
             .accessibilityIdentifier(A11y.TopBar.filtryButton)
         }
         .padding(.horizontal, 10 * scale)
@@ -104,8 +133,8 @@ struct TopBar: View {
 
 }
 
-// The four date pills (Dziś / Jutro / 7 dni / Wszystkie). When the row is wide
-// enough to hold four copies of the widest pill (Wszystkie) plus the gaps, all
+// The four date pills (today / tomorrow / 7 days / anytime). When the row is
+// wide enough to hold four copies of the widest pill plus the gaps, all
 // four render at one uniform width — `.frame(maxWidth: .infinity)` splits the
 // row equally. When it isn't, they drop to their intrinsic widths via
 // `.fixedSize` so every label still fits — fitting all the text beats a uniform
@@ -224,7 +253,7 @@ struct SearchFieldContent: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: iconSize))
                 .foregroundStyle(.secondary)
-            TextField("Szukaj filmu", text: $search)
+            TextField("search.placeholder", text: $search)
                 .font(font)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -301,8 +330,9 @@ struct SearchBar: View {
     }()
 }
 
-// Floating label that names the day the user just swiped to (Dziś / Jutro
-// / 7 dni / Wszystkie). Shown on every day-swipe; fades out after ~0.7 s.
+// Floating label that names the day the user just swiped to — the same
+// caption as the matching date pill. Shown on every day-swipe; fades out
+// after ~0.7 s.
 // Positioned by the caller via `.overlay` so it sits centre-screen.
 struct DayLabelOverlay: View {
     let text: String
@@ -331,7 +361,7 @@ struct SwipeHintOverlay: View {
         VStack(spacing: 8) {
             Image(systemName: "hand.draw")
                 .font(.system(size: 32, weight: .regular))
-            Text("Przesuń, aby zmienić dzień")
+            Text("swipehint.label")
                 .font(.system(size: 15, weight: .medium))
         }
         .foregroundStyle(.primary)
@@ -375,8 +405,8 @@ private struct GlassyPillBackground: ViewModifier {
     }
 }
 
-// Filtry sheet — mirrors the web's Filtry dropdown: Wymiar / Wersja radios,
-// Tylko IMAX toggle, and Od godziny lower-bound (plus sort, hidden films,
+// Filtry sheet — mirrors the web's Filtry dropdown: dimension / version radios,
+// an IMAX-only toggle, and a from-hour lower bound (plus sort, hidden films,
 // cinemas, name filters, city, account). Format/from-hour are ephemeral session
 // state owned by ContentView; the cinema picks persist in `UserPreferences`.
 struct FiltersSheet: View {
@@ -411,8 +441,8 @@ struct FiltersSheet: View {
                 // Sortowanie leads the sheet (above Ukryte filmy, matching
                 // Android). Mirrors the web's `#sort-by` dropdown: earliest
                 // showtime (default) or weighted rating.
-                Section("Sortowanie") {
-                    Picker("Sortuj", selection: $sortOption) {
+                Section("filtersheet.sort_section") {
+                    Picker("filtersheet.sort_picker", selection: $sortOption) {
                         ForEach(SortOption.allCases, id: \.self) { option in
                             Text(option.label).tag(option)
                         }
@@ -429,7 +459,7 @@ struct FiltersSheet: View {
                             HiddenFilmsList(prefs: prefs)
                         } label: {
                             HStack {
-                                Text("Ukryte filmy")
+                                Text("filtersheet.hidden_films")
                                 Spacer()
                                 Text("\(prefs.hiddenFilms.count)")
                                     .foregroundStyle(.secondary)
@@ -442,42 +472,46 @@ struct FiltersSheet: View {
                 // Sits above the name filters, mirroring the web's Filtry order.
                 CinemaFilterSectionView(catalog: store.catalog, prefs: prefs)
 
-                NameFilterSection(title: "Kraj produkcji", allEntries: allCountries, excluded: $excludedCountries)
-                NameFilterSection(title: "Gatunek",        allEntries: allGenres,    excluded: $excludedGenres)
-                NameFilterSection(title: "Reżyseria",      allEntries: allDirectors, excluded: $excludedDirectors)
-                NameFilterSection(title: "Obsada",         allEntries: allCast,      excluded: $excludedCast)
+                NameFilterSection(title: "filtersheet.country_of_production", allEntries: allCountries, excluded: $excludedCountries)
+                NameFilterSection(title: "filtersheet.genre",                allEntries: allGenres,    excluded: $excludedGenres)
+                NameFilterSection(title: "filtersheet.director",             allEntries: allDirectors, excluded: $excludedDirectors)
+                NameFilterSection(title: "filtersheet.cast",                 allEntries: allCast,      excluded: $excludedCast)
 
-                Section("Wymiar") {
-                    Picker("Wymiar", selection: $formatFilter.dimension) {
-                        Text("Wszystkie").tag("")
-                        Text("2D").tag("2D")
-                        Text("3D").tag("3D")
+                Section(header: Text("filtersheet.dimension")
+                    .accessibilityIdentifier(A11y.FiltersSheet.dimensionSection)) {
+                    Picker("filtersheet.dimension", selection: $formatFilter.dimension) {
+                        Text("filtersheet.all").tag("")
+                        Text(verbatim: "2D").tag("2D")
+                        Text(verbatim: "3D").tag("3D")
                     }
                     .pickerStyle(.segmented)
                 }
 
-                Section("Wersja") {
-                    Picker("Wersja", selection: $formatFilter.language) {
-                        Text("Wszystkie").tag("")
-                        Text("Napisy").tag("NAP")
-                        Text("Dubbing").tag("DUB")
+                Section(header: Text("filtersheet.version")
+                    .accessibilityIdentifier(A11y.FiltersSheet.versionSection)) {
+                    Picker("filtersheet.version", selection: $formatFilter.language) {
+                        Text("filtersheet.all").tag("")
+                        Text("filtersheet.subtitles").tag("NAP")
+                        Text("filtersheet.dubbing").tag("DUB")
                     }
                     .pickerStyle(.segmented)
                 }
 
                 Section {
-                    Toggle("Tylko IMAX", isOn: $formatFilter.imax)
+                    Toggle("filtersheet.imax_only", isOn: $formatFilter.imax)
+                        .accessibilityIdentifier(A11y.FiltersSheet.imaxToggle)
                 }
 
-                Section("Od godziny") {
-                    Picker("Godzina", selection: $formatFilter.fromHour) {
-                        Text("Dowolna").tag(-1)
+                Section(header: Text("filtersheet.from_hour")
+                    .accessibilityIdentifier(A11y.FiltersSheet.fromHourSection)) {
+                    Picker("filtersheet.hour", selection: $formatFilter.fromHour) {
+                        Text("filtersheet.any_hour").tag(-1)
                         ForEach(0..<24, id: \.self) { h in
                             Text(String(format: "%02d", h)).tag(h)
                         }
                     }
                     if formatFilter.fromHour >= 0 {
-                        Picker("Minuta", selection: $formatFilter.fromMinute) {
+                        Picker("filtersheet.minute", selection: $formatFilter.fromMinute) {
                             ForEach([0, 15, 30, 45], id: \.self) { m in
                                 Text(String(format: "%02d", m)).tag(m)
                             }
@@ -498,9 +532,10 @@ struct FiltersSheet: View {
                         excludedCast = []
                         dismiss()
                     } label: {
-                        Text("Wyczyść")
+                        Text("filtersheet.clear")
                             .frame(maxWidth: .infinity)
                     }
+                    .accessibilityIdentifier(A11y.FiltersSheet.clearButton)
                 }
 
                 // ── Kraj ─────────────────────────────────────────
@@ -536,8 +571,8 @@ struct FiltersSheet: View {
                 // repertoire the app shows. Changing it re-points both
                 // stores at the new `/{slug}/api/…` path and persists the
                 // choice. The picker lists the SELECTED country's cities.
-                Section("Miasto") {
-                    Picker("Miasto", selection: Binding(
+                Section("filtersheet.city") {
+                    Picker("filtersheet.city", selection: Binding(
                         get: { prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug },
                         set: { slug in
                             prefs.setCity(slug)
@@ -553,25 +588,25 @@ struct FiltersSheet: View {
 
                 // ── Account ──────────────────────────────────────
                 if let user = authService.user {
-                    Section("Konto") {
+                    Section("filtersheet.account") {
                         HStack {
                             Image(systemName: providerIcon(user.provider))
                             Text(user.displayName ?? user.email ?? user.provider)
                         }
-                        Button("Wyloguj") {
+                        Button("filtersheet.sign_out") {
                             showSignOutConfirm = true
                         }
                         .confirmationDialog(
-                            "Wylogować się?",
+                            "filtersheet.sign_out_confirm",
                             isPresented: $showSignOutConfirm,
                             titleVisibility: .visible
                         ) {
-                            Button("Wyloguj", role: .destructive) {
+                            Button("filtersheet.sign_out", role: .destructive) {
                                 Task { await authService.signOut() }
                             }
-                            Button("Anuluj", role: .cancel) {}
+                            Button("filtersheet.cancel", role: .cancel) {}
                         }
-                        Button("Usuń konto", role: .destructive) {
+                        Button("filtersheet.delete_account", role: .destructive) {
                             Task {
                                 await authService.deleteAccount()
                                 prefs.unhideAll()
@@ -581,12 +616,12 @@ struct FiltersSheet: View {
                     }
                     .id(accountAnchor)
                 } else {
-                    Section("Zaloguj się") {
+                    Section("filtersheet.sign_in") {
                         Button { Task { await authService.signInWithGoogle() } } label: {
-                            Label("Zaloguj przez Google", systemImage: "g.circle.fill")
+                            Label("filtersheet.sign_in_google", systemImage: "g.circle.fill")
                         }
                         Button { Task { await authService.signInWithFacebook() } } label: {
-                            Label("Zaloguj przez Facebook", systemImage: "f.circle.fill")
+                            Label("filtersheet.sign_in_facebook", systemImage: "f.circle.fill")
                         }
                     }
                     .id(accountAnchor)
@@ -600,11 +635,11 @@ struct FiltersSheet: View {
                     withAnimation { proxy.scrollTo(accountAnchor, anchor: .bottom) }
                 }
             }
-            .navigationTitle("Filtry")
+            .navigationTitle("filtersheet.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Gotowe") { dismiss() }
+                    Button("filtersheet.done") { dismiss() }
                         .accessibilityIdentifier(A11y.FiltersSheet.doneButton)
                 }
             }
@@ -624,7 +659,7 @@ struct FiltersSheet: View {
 }
 
 // Pushed from Filtry's "Ukryte filmy" row. Lists every hidden title with
-// a per-row Pokaż button and a Pokaż wszystkie destructive bulk action.
+// a per-row show button and a destructive show-all bulk action.
 // When the set drains to empty, pop back to Filtry automatically — there
 // is nothing left to manage and the row itself would also have disappeared
 // from the parent screen.
@@ -649,13 +684,13 @@ struct HiddenFilmsList: View {
                 Button(role: .destructive) {
                     withAnimation { prefs.unhideAll() }
                 } label: {
-                    Text("Pokaż wszystkie")
+                    Text("hiddenfilms.show_all")
                         .frame(maxWidth: .infinity)
                 }
             }
         }
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Szukaj filmu")
-        .navigationTitle("Ukryte filmy")
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("search.placeholder"))
+        .navigationTitle("filtersheet.hidden_films")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: prefs.hiddenFilms) { new in
             if new.isEmpty { dismiss() }
@@ -668,7 +703,7 @@ struct HiddenFilmsList: View {
 /// user has excluded anything. Renders nothing when there are no entries
 /// to filter, so the four call sites stay declarative one-liners.
 struct NameFilterSection: View {
-    let title: String
+    let title: LocalizedStringKey
     let allEntries: [(name: String, count: Int)]
     @Binding var excluded: Set<String>
 
@@ -693,7 +728,7 @@ struct NameFilterSection: View {
 }
 
 struct NameFilterList: View {
-    let title: String
+    let title: LocalizedStringKey
     let allEntries: [(name: String, count: Int)]
     @Binding var excluded: Set<String>
 
@@ -702,7 +737,7 @@ struct NameFilterList: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Wszystkie", isOn: Binding(
+                Toggle("filtersheet.all", isOn: Binding(
                     get: { excluded.isEmpty },
                     set: { on in
                         excluded = on ? [] : allNames
@@ -741,7 +776,7 @@ private struct HiddenFilmRow: View {
         HStack {
             Text(title).lineLimit(1)
             Spacer()
-            Button("Pokaż") {
+            Button("hiddenfilms.show") {
                 withAnimation { prefs.unhide(title) }
             }
             .buttonStyle(.bordered)

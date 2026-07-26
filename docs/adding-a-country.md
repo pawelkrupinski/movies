@@ -118,8 +118,21 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 - **iOS** (`ios/`): add a `<lang>` localization to every key in
   `Localizable.xcstrings` + `InfoPlist.xcstrings`; add `<lang>` to `knownRegions`
   in `project.pbxproj`; add a `Country(code:"<cc>", languageCode:"<lang>")`
-  fallback-seed entry (locale is country-forced). Migrate hardcoded SwiftUI
-  literals into the catalog first if you want them localized.
+  fallback-seed entry (locale is country-forced). Then add a case to
+  `KinowoUITests/LocalizationUITests` — it launches the app per country and
+  asserts what actually rendered, which is the only layer that catches a key
+  you forgot to translate. Three traps worth knowing:
+    - Xcode's extractor only sees `LocalizedStringKey` positions. A caption
+      passed as a `String` (a view's `let title: String`, `Text(someString)`)
+      is invisible to it and will silently stay untranslated — type such
+      parameters as `LocalizedStringKey`.
+    - `KinowoCore` deliberately excludes the catalog, so `String(localized:)`
+      in a file that compiles into it resolves to the bare key. Display
+      captions belong in the app target (see `DateFilter.label`).
+    - Plurals go in the catalog as `variations.plural` read through
+      `String.localizedStringWithFormat`, not as hand-written `if count ==`
+      rules — Polish needs one/few/many where English and German need two
+      forms (see `showings.more_showtimes`).
 - **Android** (`android/`): `res/values-<lang>/strings.xml` mirroring the base
   keys; a `Country(code="<cc>", languageTag="<lang>")` seed entry.
 - **Google Play** (`android/app/src/main/play/listings/<locale>/`): `title.txt`

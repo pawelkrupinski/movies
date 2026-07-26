@@ -38,9 +38,11 @@ private struct EmptyRepertoireView: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "film").font(.largeTitle).foregroundStyle(.secondary)
-            Text("Brak repertuaru.").foregroundStyle(.secondary)
+            Text("grid.empty").foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(A11y.EmptyState.repertoire)
     }
 }
 
