@@ -23,6 +23,43 @@ die()   { printf '\033[31m✗\033[0m %s\n' "$*" >&2
           exit 1; }
 naps()  { command sleep "$1"; }
 
+# ── one run at a time ─────────────────────────────────────────────────────────
+# These drivers are actively hostile to a second concurrent run of themselves, and
+# used to say nothing about it. The Android pool opens by doing `adb kill-server`,
+# `pkill -f qemu-system.*$AVD` and deleting the AVD's lock files, and both drivers
+# allocate device slots from the same end — so run two at once and the second
+# kills the first's devices, pulls the adb server out from under it, and then both
+# drive the same instance, sending each other's taps and `pm clear`s into one app.
+# Observed live: 3 emulators, one showing "System isn't responding" every 5s, one
+# country's shots landing while another's silently stopped.
+#
+# A directory is the lock: mkdir is atomic on POSIX, unlike test-then-touch, and
+# macOS has no flock(1). The holder's pid goes inside so a lock left by a killed
+# run can be told from a live one and cleared instead of blocking forever.
+LOCK_ROOT="${LOCK_ROOT:-${TMPDIR:-/tmp}}"
+LOCK_DIR=""
+
+acquire_lock() { # $1 resource name (the device set this driver owns)
+  local dir="$LOCK_ROOT/kinowo-screenshots-$1.lock" holder
+  if mkdir "$dir" 2>/dev/null; then
+    LOCK_DIR="$dir"; echo "$$" > "$dir/pid"; return 0
+  fi
+  holder="$(cat "$dir/pid" 2>/dev/null || true)"
+  if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+    die "another store-screenshots run (pid $holder) is already driving the $1 devices.
+   Two runs sabotage each other — wait for it, or stop it first:  kill $holder"
+  fi
+  # No live holder: a previous run was killed before it could release.
+  warn "clearing a stale $1 lock left by pid ${holder:-unknown}"
+  rm -rf "$dir"
+  mkdir "$dir" 2>/dev/null || die "could not take the $1 lock at $dir"
+  LOCK_DIR="$dir"; echo "$$" > "$dir/pid"
+}
+
+# Released from the EXIT trap, and only by the shell that took it — worker
+# subshells clear MAIN_SHELL precisely so they don't tidy up the parent's things.
+release_lock() { [ -n "$LOCK_DIR" ] && rm -rf "$LOCK_DIR"; LOCK_DIR=""; }
+
 # ── countries ─────────────────────────────────────────────────────────────────
 # Every country --all-top walks. A country is one deployment + one locale + one
 # UI language, so this list is the single place a new country is added.

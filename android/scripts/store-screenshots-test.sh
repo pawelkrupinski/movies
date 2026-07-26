@@ -109,6 +109,113 @@ check "legacy unpadded names still count" "13" "$(next_shot_number "$_shots")"
 touch "$_shots"/keep.png "$_shots"/2b.png
 check "non-numeric names are ignored" "13" "$(next_shot_number "$_shots")"
 
+# ── a closed emulator is brought back ────────────────────────────────────────
+# Closing an emulator window mid-run used to cost every REMAINING city of that
+# country: adb had nothing to talk to, so each capture died in turn. The worker now
+# re-boots its own instance on the SAME port, so $SERIAL keeps addressing it.
+_bootcap="$(mktemp)"; _adbcap2="$(mktemp)"
+boot_readonly() { printf 'boot %s\n' "$1" >> "$_bootcap"; }
+adb()  { printf '%s\n' "$*" >> "$_adbcap2"; }
+naps() { :; }
+NOISE="$(mktemp)"
+SERIAL="emulator-5556"
+BOOTED_EMULATORS=""
+POOL_APK="/tmp/app-debug.apk"
+
+# Alive: nothing to do — a healthy emulator must not be rebooted between cities.
+booted() { return 0; }
+: > "$_bootcap"
+revive_pool_device
+check "a live emulator is left alone" "" "$(cat "$_bootcap")"
+
+# Dead, then alive on the next poll: re-boot on the port taken from the SERIAL.
+_polls=0
+booted() { _polls=$((_polls + 1)); [ "$_polls" -gt 1 ]; }
+: > "$_bootcap"; : > "$_adbcap2"
+revive_pool_device >/dev/null 2>&1
+check "a closed emulator is re-booted"            "boot 5556" "$(cat "$_bootcap")"
+check "on the port its SERIAL already names"      "1" "$(grep -c '^boot 5556$' "$_bootcap")"
+# A read-only instance boots from the pristine AVD image, so the app is gone.
+check "the app is re-installed after the reboot"  "1" \
+  "$(grep -c 'install -r /tmp/app-debug.apk' "$_adbcap2")"
+# It must join the shutdown list or the revived instance would outlive the run.
+check "the revived emulator is shut down at the end" "1" \
+  "$(printf '%s' "$BOOTED_EMULATORS" | grep -c 'emulator-5556')"
+# Recorded once, not once per revive — a duplicate would make cleanup kill twice.
+_polls=0; revive_pool_device >/dev/null 2>&1
+check "it is recorded once, not per revive" "1" \
+  "$(printf '%s\n' $BOOTED_EMULATORS | grep -c '^emulator-5556$')"
+# …and the capture path must actually call it. Without this the checks above pass
+# while nothing invokes the revive, which is exactly the gap that let the original
+# bug through.
+check "the capture path revives its pool device" "1" \
+  "$(grep -c 'then revive_pool_device; else ensure_emulator' "$HERE/store-screenshots.sh")"
+unset -f booted boot_readonly adb naps
+POOL_APK=""
+
+# ── one run at a time ─────────────────────────────────────────────────────────
+# Two concurrent runs sabotage each other: the pool opens with `adb kill-server`,
+# `pkill -f qemu-system.*$AVD` and lock-file deletion, and both allocate ports from
+# 5554 up, so the second kills the first's emulators and then both drive the same
+# instance. Observed live as a "System isn't responding" dialog cycling every 5s.
+# The lock is a DIRECTORY because mkdir is atomic (test-then-touch races) and macOS
+# has no flock(1).
+LOCK_ROOT="$(mktemp -d)"
+acquire_lock testres
+check "the first run takes the lock" "1" "$([ -d "$LOCK_ROOT/kinowo-screenshots-testres.lock" ] && echo 1 || echo 0)"
+check "it records its own pid"       "$$" "$(cat "$LOCK_ROOT/kinowo-screenshots-testres.lock/pid")"
+
+# A second run, while the holder is ALIVE, must refuse — and name the pid so the
+# operator can act instead of guessing.
+_second="$( ( acquire_lock testres ) 2>&1 || true )"
+check "a second run is refused"        "1" "$(printf '%s' "$_second" | grep -c "already driving")"
+check "the refusal names the holder"   "1" "$(printf '%s' "$_second" | grep -c "pid $$")"
+check "a refused run exits nonzero"    "1" "$( ( acquire_lock testres ) >/dev/null 2>&1; echo $? )"
+
+# Releasing lets the next run in.
+release_lock
+check "release frees the lock" "0" "$([ -d "$LOCK_ROOT/kinowo-screenshots-testres.lock" ] && echo 1 || echo 0)"
+acquire_lock testres
+check "the next run can take it" "1" "$([ -d "$LOCK_ROOT/kinowo-screenshots-testres.lock" ] && echo 1 || echo 0)"
+release_lock
+
+# A lock left behind by a KILLED run must not block forever — a dead pid is
+# cleared and taken over, or every crash would need a manual rm.
+mkdir -p "$LOCK_ROOT/kinowo-screenshots-testres.lock"
+echo 999999 > "$LOCK_ROOT/kinowo-screenshots-testres.lock/pid"   # no such process
+_stale="$( acquire_lock testres 2>&1 || true )"
+check "a stale lock is taken over"     "$$" "$(cat "$LOCK_ROOT/kinowo-screenshots-testres.lock/pid")"
+check "and taking it over is reported" "1"  "$(printf '%s' "$_stale" | grep -c 'stale')"
+release_lock
+
+# Two separate PROCESSES — the case that actually bites. The in-process checks
+# above share a shell, so they say nothing about cross-process behaviour. Note what
+# this does NOT prove: the two starts are a second apart, so a non-atomic
+# test-then-create would pass it too — a genuinely simultaneous race is not
+# reproducible from a shell test. mkdir is used because it IS atomic; this check
+# covers the exclusion, not the atomicity. The holder is killed rather than
+# released, which also leaves the stale lock the next check clears.
+COMMON="$HERE/../../scripts/store-screenshots-common.sh"
+LOCK_ROOT="$LOCK_ROOT" bash -c "source '$COMMON'; acquire_lock proc; sleep 5" >/dev/null 2>&1 &
+_holder=$!
+sleep 1                                            # let it take the lock
+check "a second PROCESS is refused while one holds it" "1" \
+  "$(LOCK_ROOT="$LOCK_ROOT" bash -c "source '$COMMON'; acquire_lock proc" >/dev/null 2>&1; echo $?)"
+check "the holder is still alive (it was not clobbered)" "0" \
+  "$(kill -0 $_holder 2>/dev/null; echo $?)"
+kill $_holder 2>/dev/null || true; wait $_holder 2>/dev/null || true
+# The killed holder left its lock behind; a fresh process must clear and take it.
+check "the next process clears the killed holder's lock" "0" \
+  "$(LOCK_ROOT="$LOCK_ROOT" bash -c "source '$COMMON'; acquire_lock proc" >/dev/null 2>&1; echo $?)"
+rm -rf "$LOCK_ROOT/kinowo-screenshots-proc.lock"
+
+# --top is a read-only ranking and must NOT be gated, or checking the list while a
+# capture runs would fail for no reason.
+check "--top does not take the lock" "0" \
+  "$(grep -c 'acquire_lock.*cmd_top' "$HERE/store-screenshots.sh")"
+check "every capture path does"      "3" \
+  "$(grep -c 'acquire_lock android' "$HERE/store-screenshots.sh")"
+
 # Parallel pool: ports and serials. A wrong offset would boot two workers onto
 # one instance (they'd fight over the AVD) or leave gaps adb never sees.
 check "worker 0 port"   "5554" "$(pool_port 0)"
@@ -162,6 +269,8 @@ check "search plain ASCII" "manchester" "$(search_term "Manchester")"
 check "usage documents --all-top" "1" "$(usage | grep -q -- '--all-top' && echo 1 || echo 0)"
 check "usage documents the start rank" "1" "$(usage | grep -q -- '--all-top 2 4' && echo 1 || echo 0)"
 check "usage documents --country-top" "1" "$(usage | grep -q -- '--country-top' && echo 1 || echo 0)"
+check "usage documents the one-run-at-a-time rule" "1" "$(usage | grep -qi 'ONE capture run at a time' && echo 1 || echo 0)"
+check "usage documents the emulator revive" "1" "$(usage | grep -qi 're-boots it on the same port' && echo 1 || echo 0)"
 check "usage documents skipping a bad city" "1" "$(usage | grep -qi 'SKIPPED, not fatal' && echo 1 || echo 0)"
 check "usage documents EMULATORS"  "1" "$(usage | grep -q 'EMULATORS' && echo 1 || echo 0)"
 check "usage reaches the last header line" "1" "$(usage | grep -q 'NO_OPEN' && echo 1 || echo 0)"

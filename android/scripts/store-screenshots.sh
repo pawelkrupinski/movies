@@ -44,6 +44,14 @@
 # for hosts that can't feed three emulators at once. The city RANKING itself is
 # fetched concurrently too, so --top returns in about one request's time.
 #
+# Only ONE capture run at a time: a second one is refused with the holder's pid
+# rather than allowed to fight over the AVD, ports and adb server (it used to kill
+# the first run's emulators and then drive the same instance). --top is exempt.
+#
+# If an emulator disappears mid-run — you closed the window, or the system killed
+# it — the worker re-boots it on the same port and re-installs the app, then carries
+# on with the next city instead of losing the rest of that country.
+#
 # When done it shuts down every emulator IT booted (a reused, already-running one
 # is left alone) and opens the shots in Preview (macOS). Env: EMULATORS=<k>
 # parallel emulator count · CLEAN_FILM="…" for a clean German detail (showtimes-de
@@ -70,7 +78,8 @@ NOISE="$(mktemp)"                               # adb / gradle / emulator chatte
 BOOTED_EMULATORS=""                             # serials THIS run booted; shut down on exit
 MAIN_SHELL=1                                     # cleared in worker subshells so only the main shell shuts emulators down
 
-cleanup() { [ -n "${MAIN_SHELL:-}" ] && stop_emulators; rm -f "$NOISE"; }; trap cleanup EXIT
+cleanup() { [ -n "${MAIN_SHELL:-}" ] && { stop_emulators; release_lock; }; rm -f "$NOISE"; }
+trap cleanup EXIT
 
 # Every device-touching call funnels through here, so honouring $SERIAL in one
 # place pins the WHOLE script to one emulator. Unset (the single-emulator paths)
@@ -350,7 +359,9 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
   # installed the app on it, so skip both — and crucially skip ensure_emulator's
   # kill-server/boot fallback, which under parallel workers would tear the adb
   # server out from under the others.
-  [ -n "${POOL:-}" ] || { ensure_emulator; ensure_app; }
+  # Outside the pool, ensure_emulator already re-boots a closed emulator; inside it,
+  # revive_pool_device does the same for this worker's own instance.
+  if [ -n "${POOL:-}" ]; then revive_pool_device; else ensure_emulator; ensure_app; fi
 
   step "opening app"
     adb shell pm clear "$PKG" >>"$NOISE" 2>&1
@@ -432,6 +443,46 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
   fi
 }
 
+# Launch ONE read-only clone on $1. Read-only is what lets several instances share
+# a single AVD image; -no-snapshot-load stops them fighting over a snapshot. Both
+# the initial pool boot and the mid-run revive go through here.
+boot_readonly() { # $1 port
+  nohup "$EMU" -avd "$AVD" -read-only -port "$1" -no-snapshot-load -no-boot-anim \
+    -netdelay none -netspeed full >>"$NOISE" 2>&1 &
+}
+
+# Bring this worker's emulator back if it is gone. A developer closing an emulator
+# window mid-run (or the system killing one under memory pressure) used to cost
+# every REMAINING city of that country: adb has nothing to talk to, so each capture
+# died in turn. Re-booting on the SAME port means $SERIAL keeps addressing it, so
+# the worker carries on where it was.
+#
+# The app has to be re-installed: a -read-only instance boots from the pristine AVD
+# image, so whatever we installed before is not there any more.
+revive_pool_device() {
+  if booted; then return 0; fi
+  local port="${SERIAL##*-}" t=0
+  warn "$SERIAL is gone (closed or killed) — bringing it back"
+  step "re-booting $AVD :$port (read-only)"
+    boot_readonly "$port"
+    until booted; do
+      naps 5; t=$((t + 5))
+      [ "$t" -gt 420 ] && die "$SERIAL never came back after being closed"
+    done
+    adb shell wm size reset >>"$NOISE" 2>&1 || true
+  done_
+  # Record it (once) so cleanup still shuts down what we booted.
+  case " ${BOOTED_EMULATORS:-} " in
+    *" $SERIAL "*) ;;
+    *) BOOTED_EMULATORS="${BOOTED_EMULATORS:-} $SERIAL";;
+  esac
+  if [ -n "${POOL_APK:-}" ]; then
+    step "re-installing app on $SERIAL"
+      adb install -r "$POOL_APK" >>"$NOISE" 2>&1 || die "re-install failed on $SERIAL"
+    done_
+  fi
+}
+
 # Boot K read-only clones of the AVD on ports 5554, 5556, … Several instances can
 # only share one AVD image if EVERY one is -read-only AND the AVD's stale *.lock
 # files are gone first — a read-write instance (or a leftover lock from a crashed
@@ -452,7 +503,7 @@ boot_pool() { # $1 K
     port="$(pool_port "$w")"; serial="$(pool_serial "$w")"
     BOOTED_EMULATORS="$BOOTED_EMULATORS $serial"   # record before waiting so a boot-wait die() still kills it
     step "booting $AVD :$port (read-only)"
-    nohup "$EMU" -avd "$AVD" -read-only -port "$port" -no-snapshot-load -no-boot-anim -netdelay none -netspeed full >>"$NOISE" 2>&1 &
+    boot_readonly "$port"
     naps 25                              # stagger so instances don't race the lock
     done_
   done
@@ -570,6 +621,7 @@ cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country, one emu
   say "$n cities from rank $off × $ncountries countries on $k emulator(s)"
   boot_pool "$k"
   local apk; apk="$(build_apk)"
+  export POOL_APK="$apk"                 # revive_pool_device re-installs from this
   local w serial
   for ((w = 0; w < k; w++)); do
     serial="$(pool_serial "$w")"
@@ -633,10 +685,12 @@ usage() { usage_of "${BASH_SOURCE[0]}"; }
 # exercise the pure helpers, and must not trigger a capture by doing so.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   case "${1:-}" in
+    # Only the capture paths take the lock: --top just prints a ranking and is
+    # safe to run beside anything.
     --top)         shift; cmd_top "$@";;
-    --all-top)     shift; cmd_all_top "$@";;
-    --country-top) shift; cmd_country_top "$@";;
+    --all-top)     shift; acquire_lock android; cmd_all_top "$@";;
+    --country-top) shift; acquire_lock android; cmd_country_top "$@";;
     -h|--help|"") usage;;
-    *)            cmd_capture "$@";;
+    *)            acquire_lock android; cmd_capture "$@";;
   esac
 fi

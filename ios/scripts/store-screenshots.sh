@@ -39,6 +39,9 @@
 # One build covers all three locales: the city's country drives both the backend
 # and the UI language, so pl-PL shoots Polish, en-GB English, de-DE German.
 #
+# Only ONE capture run at a time: a second is refused with the holder's pid rather
+# than letting two runs fight over the same simulators. --top is exempt.
+#
 # Env: IOS_PHONE / IOS_TABLET pick the devices · SHOT_CLASS=tablet-screenshots to
 # shoot the iPad instead · SETTLE=<s> per-screen wait (posters come off the
 # network) · BUILD=1 force a rebuild · NO_OPEN=1 skip the Preview.
@@ -69,7 +72,7 @@ IOS_PHONE="${IOS_PHONE:-iPhone 17 Pro Max}"
 IOS_TABLET="${IOS_TABLET:-iPad Pro 13-inch (M5)}"
 device_for_class() { case "$1" in tablet-screenshots) echo "$IOS_TABLET";; *) echo "$IOS_PHONE";; esac; }
 
-cleanup() { [ -n "${MAIN_SHELL:-}" ] && shutdown_devices; rm -f "$NOISE"; }
+cleanup() { [ -n "${MAIN_SHELL:-}" ] && { shutdown_devices; release_lock; }; rm -f "$NOISE"; }
 trap cleanup EXIT
 
 # Shut down only what this run booted — a simulator the developer already had open
@@ -299,10 +302,12 @@ usage() { usage_of "${BASH_SOURCE[0]}"; }
 # exercise the pure helpers, and must not trigger a capture by doing so.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   case "${1:-}" in
+    # Only the capture paths take the lock: --top just prints a ranking and is
+    # safe to run beside anything.
     --top)         shift; cmd_top "$@";;
-    --all-top)     shift; cmd_all_top "$@";;
-    --country-top) shift; cmd_country_top "$@";;
+    --all-top)     shift; acquire_lock ios; cmd_all_top "$@";;
+    --country-top) shift; acquire_lock ios; cmd_country_top "$@";;
     -h|--help|"")  usage;;
-    *)             cmd_capture "$@";;
+    *)             acquire_lock ios; cmd_capture "$@";;
   esac
 fi
