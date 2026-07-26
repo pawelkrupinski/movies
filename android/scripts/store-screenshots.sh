@@ -11,10 +11,19 @@
 #   android/scripts/store-screenshots.sh --top uk 5 11           # ranks 11-15 instead of 1-5
 #   android/scripts/store-screenshots.sh --all-top 2             # top 2 cities of EVERY country
 #   android/scripts/store-screenshots.sh --all-top 2 4           # 2 cities from rank 4, every country
+#   android/scripts/store-screenshots.sh --country-top uk 10     # top 10 cities of ONE country
+#   android/scripts/store-screenshots.sh --country-top de 5 6    # de ranks 6-10 only
 #
-# Both --top and --all-top take an optional 1-based START RANK after the count,
-# so "--all-top 2 4" means "two cities beginning at the 4th best" — that is how
-# you shoot the runners-up without re-shooting the cities you already have.
+# --top only PRINTS the ranking; --all-top and --country-top capture. Use
+# --country-top to top up a single locale without re-shooting the other two.
+#
+# All three take an optional 1-based START RANK after the count, so
+# "--all-top 2 4" means "two cities beginning at the 4th best" — that is how you
+# shoot the runners-up without re-shooting the cities you already have.
+#
+# A city that fails (blank list, a search the emulator mangled, a stray tap) is
+# SKIPPED, not fatal: the rest of the country still gets shot and the summary says
+# which ones were lost, so "--all-top 10" no longer risks losing ten cities to one.
 #
 # Shots land in a candidates/ scratchpad INSIDE the published dir
 # (…/graphics/phone-screenshots/candidates/, gitignored), and every run APPENDS:
@@ -565,7 +574,7 @@ build_apk() {
 # Runs inside a subshell with SERIAL + POOL exported, so every cmd_capture here
 # drives this worker's instance and skips the boot/install the orchestrator did.
 run_worker() { # $1 W, $2 K, $3 N, $4 OFFSET
-  local w="$1" k="$2" n="$3" off="${4:-1}" country locale dest stage first name
+  local w="$1" k="$2" n="$3" off="${4:-1}" country locale dest name shot failed nfail
   for country in $(worker_slice "$COUNTRIES" "$k" "$w"); do
     locale="$(country_locale "$country")"
     dest="$(candidates_dir "$locale")"
@@ -577,22 +586,33 @@ run_worker() { # $1 W, $2 K, $3 N, $4 OFFSET
     local names=()
     while IFS=$'\t' read -r _ _ name; do [ -n "$name" ] && names+=("$name"); done \
       < <(rank_cities "$country" "$n" "$off" | tail -n +2)
-    # Stage the shots and swap them in only once every city of this country
-    # succeeds — a failed city aborts the worker, leaving the candidates pile
-    # whole rather than half-written.
-    stage="$(mktemp -d)"
     mkdir -p "$dest"
-    # Number the staged blocks from where candidates/ already ends, so this run
-    # lands AFTER the previous one instead of on top of it. Read once, up front:
-    # the whole country's blocks are contiguous, and re-reading per city would
-    # collide with nothing (the dir only changes at the mv below) but read worse.
-    first="$(next_shot_number "$dest")"
+    # Capture city by city, each one landing in candidates/ the moment it works,
+    # and a failure costing only that city. cmd_capture ends in die() (an exit)
+    # for any of a dozen ordinary reasons — a blank list, a mangled city search,
+    # a stray tap — so it runs in a SUBSHELL: the exit stops the city, not the
+    # worker. It used to stage the whole country and swap at the end, which meant
+    # one bad city out of ten threw away the other nine; at --all-top 10 that
+    # reliably wiped every country whose deepest cities are flaky. There is no
+    # live listing to protect any more (candidates/ is a scratchpad), so
+    # partial-and-reported beats all-or-nothing.
+    failed=""; nfail=0
     for name in "${names[@]}"; do
-      cmd_capture "$locale" "$name" "$stage" "$first"
-      first=$((first + 4))
+      # No explicit first-file number: cmd_capture appends from next_shot_number,
+      # so skipped cities leave no gap in the numbering.
+      if ( cmd_capture "$locale" "$name" ) </dev/null; then :
+      else
+        # Counted, not word-split: "West Yorkshire" and "Edinburgh & Lothians"
+        # would each read as two failures.
+        nfail=$((nfail + 1)); failed="$failed, $name"
+        warn "$locale: $name failed — skipping it"
+      fi
     done
-    mv "$stage"/*.png "$dest"/; rmdir "$stage"
-    ok "$locale: $n cities from rank $off → $dest"
+    shot=$(( ${#names[@]} - nfail ))
+    [ "$nfail" -eq 0 ] || warn "$locale: failed on${failed#,}"
+    if [ "$shot" -eq 0 ]; then warn "$locale: NOTHING captured — all ${#names[@]} cities failed"
+    else ok "$locale: $shot/${#names[@]} cities from rank $off → $dest"
+    fi
   done
 }
 
@@ -701,6 +721,19 @@ cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country, one emu
   if [ -n "$want_preview" ]; then preview_all "$before"; fi
 }
 
+# --all-top scoped to ONE country. Rather than a second capture loop, it narrows
+# the country list the pool machinery already walks: one country → ncountries 1 →
+# effective_k 1 → a single emulator, one worker, same append/skip/Preview
+# behaviour. Use it to top up one locale (a country whose deep cities failed, or a
+# new country) without re-shooting the other two.
+cmd_country_top() { # $1 country, $2 N, $3 optional 1-based start rank
+  local country="${1:-}"
+  [ -n "$country" ] && [ -n "$(country_locale "$country")" ] ||
+    die "--country-top wants a country: --country-top uk 10 (or --country-top uk 10 4)"
+  COUNTRIES="$country"
+  cmd_all_top "${2:-2}" "${3:-1}"
+}
+
 # Print the header block — every comment line after the shebang, up to the first
 # line that isn't one. Reading the block rather than a fixed line range means
 # growing the docs can't silently truncate --help. Keyed to BASH_SOURCE, not $0,
@@ -711,8 +744,9 @@ usage() { awk 'NR > 2 && /^#/ { sub(/^#+ ?/, ""); print; next } NR > 2 { exit }'
 # exercise the pure helpers, and must not trigger a capture by doing so.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   case "${1:-}" in
-    --top)        shift; cmd_top "$@";;
-    --all-top)    shift; cmd_all_top "$@";;
+    --top)         shift; cmd_top "$@";;
+    --all-top)     shift; cmd_all_top "$@";;
+    --country-top) shift; cmd_country_top "$@";;
     -h|--help|"") usage;;
     *)            cmd_capture "$@";;
   esac

@@ -161,6 +161,8 @@ check "search plain ASCII" "manchester" "$(search_term "Manchester")"
 # stopped doing the moment the docs got longer.
 check "usage documents --all-top" "1" "$(usage | grep -q -- '--all-top' && echo 1 || echo 0)"
 check "usage documents the start rank" "1" "$(usage | grep -q -- '--all-top 2 4' && echo 1 || echo 0)"
+check "usage documents --country-top" "1" "$(usage | grep -q -- '--country-top' && echo 1 || echo 0)"
+check "usage documents skipping a bad city" "1" "$(usage | grep -qi 'SKIPPED, not fatal' && echo 1 || echo 0)"
 check "usage documents EMULATORS"  "1" "$(usage | grep -q 'EMULATORS' && echo 1 || echo 0)"
 check "usage reaches the last header line" "1" "$(usage | grep -q 'NO_OPEN' && echo 1 || echo 0)"
 check "usage stops at the code" "" "$(usage | grep 'set -euo' || true)"
@@ -189,44 +191,84 @@ check "--top defaults the start rank to 1" "uk 5 1"  "$(cat "$_rankcap")"
 # list would hide which slice you actually got.
 check "--top numbers rows by absolute rank" "1" "$(cmd_top uk 1 11 | grep -c '^ *11\.')"
 
+# --country-top is --all-top scoped to one country: it narrows the country list the
+# pool machinery already walks rather than duplicating the capture loop, so one
+# country means one emulator and identical append/skip/Preview behaviour.
+_saved_countries="$COUNTRIES"
+_alltopargs=""
+cmd_all_top() { _alltopargs="$*"; }
+cmd_country_top de 7 3
+check "--country-top narrows the country list"     "de"  "$COUNTRIES"
+check "--country-top forwards count + start rank"  "7 3" "$_alltopargs"
+cmd_country_top pl 4
+check "--country-top defaults the start rank to 1" "4 1" "$_alltopargs"
+# A typo'd country must stop, not silently shoot nothing — country_locale returns
+# empty for it, which would otherwise become a listing dir called "".
+check "--country-top rejects an unknown country" "1" \
+  "$( ( cmd_country_top fr 2 ) >/dev/null 2>&1; echo $? )"
+check "--country-top rejects a missing country"  "1" \
+  "$( ( cmd_country_top ) >/dev/null 2>&1; echo $? )"
+COUNTRIES="$_saved_countries"
+
 # Regression — the N=2 city drop. run_worker must shoot EVERY ranked city, not
 # just the first. The bug: a `while read … < <(rank_cities …)` loop whose body
 # (cmd_capture → adb) reads stdin, draining the process substitution so the first
-# capture eats the rest of the list — one city shot at N≥2, silently. Here
-# cmd_capture is stubbed to record its (name:firstfile) args AND consume stdin
-# the way adb does; both cities must still fire, at file offsets 1 and 5.
+# capture eats the rest of the list — one city shot at N≥2, silently.
+#
+# Recorded to FILES, not variables: run_worker now runs each cmd_capture in a
+# subshell (so a city's die() can't kill the worker), and an assignment inside
+# that subshell would vanish with it.
 #
 # LISTINGS is repointed at a temp dir first: run_worker mkdir -p's its
 # destination, and with the repo path it used to leave a stray xx-XX/ listing
 # behind on every test run.
 LISTINGS="$(mktemp -d)"
-captured=""
-cmd_capture()    { captured="$captured ${2}:${4}"; cat >/dev/null 2>&1; }   # $2 name, $4 first
-rank_cities()    { printf '%s' "$*" > "$_rankcap"; printf 'countline\n9\tone\tCityOne\n8\ttwo\tCityTwo\n'; }
+_capcap="$(mktemp)"; _argcap="$(mktemp)"
+cmd_capture() { # $2 city name, $4 first-file number
+  printf '%s\n' "$2" >> "$_capcap"; printf '%s\n' "${4:-<none>}" >> "$_argcap"
+  case "$2" in BadCity) exit 1;; esac      # `exit`, like the real die()
+}
+rank_cities()    { printf '%s' "$*" > "$_rankcap"
+                   printf 'countline\n9\ta\tCityOne\n8\tb\tBadCity\n7\tc\tCityThree\n'; }
 country_locale() { echo "xx-XX"; }
 COUNTRIES="zz"                                    # worker_slice "zz" 1 0 → "zz"
-run_worker 0 1 2 4 </dev/null >/dev/null 2>&1 || true
-check "run_worker shoots all N cities (not just #1)" "CityOne:1 CityTwo:5" \
-  "$(echo "$captured" | tr -s ' ' | sed 's/^ *//;s/ *$//')"
-check "run_worker forwards the start rank" "zz 2 4" "$(cat "$_rankcap")"
+_out="$(run_worker 0 1 3 4 </dev/null 2>&1 || true)"
+check "run_worker shoots every ranked city (not just #1)" "CityOne BadCity CityThree" \
+  "$(tr '\n' ' ' < "$_capcap" | sed 's/ $//')"
+check "run_worker forwards the start rank" "zz 3 4" "$(cat "$_rankcap")"
 
-# Append, not overwrite: with a four-shot block already in candidates/, the next
-# run must start at 5. Previously run_worker `rm -f`'d the directory first, so a
-# second run destroyed the first one's shots.
-mkdir -p "$(candidates_dir xx-XX)"
-touch "$(candidates_dir xx-XX)"/001.png "$(candidates_dir xx-XX)"/002.png \
-      "$(candidates_dir xx-XX)"/003.png "$(candidates_dir xx-XX)"/004.png
-captured=""
-run_worker 0 1 2 1 </dev/null >/dev/null 2>&1 || true
-check "run_worker appends after existing candidates" "CityOne:5 CityTwo:9" \
-  "$(echo "$captured" | tr -s ' ' | sed 's/^ *//;s/ *$//')"
-check "run_worker leaves the earlier shots alone" "4" \
-  "$(ls "$(candidates_dir xx-XX)"/*.png 2>/dev/null | wc -l | tr -d ' ')"
+# One bad city must not cost the rest of the country. cmd_capture ends in die()
+# for a dozen ordinary reasons — blank list, mangled city search, stray tap — and
+# run_worker used to stage the whole country and swap only at the end, so a single
+# failure discarded every city already shot. At --all-top 10 that reliably wiped
+# whole countries: 10/10 for Poland, 0 for the UK and Germany.
+check "a failed city does not stop the ones after it" "1" \
+  "$(grep -c '^CityThree$' "$_capcap" || true)"
+check "the tally counts only what landed" "1" \
+  "$(printf '%s' "$_out" | grep -c '2/3 cities')"
+check "the failed city is named" "1" \
+  "$(printf '%s' "$_out" | grep -c 'failed on BadCity')"
+# Numbering is cmd_capture's job now (it appends from next_shot_number), so
+# run_worker must NOT pin a first-file number — pinning one would reopen the
+# overwrite bug whenever a city was skipped.
+check "run_worker leaves numbering to cmd_capture" "<none> <none> <none>" \
+  "$(tr '\n' ' ' < "$_argcap" | sed 's/ $//')"
+
+# Every city failing is worth saying out loud rather than reporting a cheerful 0.
+: > "$_capcap"
+cmd_capture() { printf '%s\n' "$2" >> "$_capcap"; exit 1; }
+_allbad="$(run_worker 0 1 3 1 </dev/null 2>&1 || true)"
+check "all cities failing is reported, not glossed over" "1" \
+  "$(printf '%s' "$_allbad" | grep -c 'NOTHING captured')"
+check "it still tried every city" "3" "$(wc -l < "$_capcap" | tr -d ' ')"
 
 # ── the closing Preview shows THIS run's shots, not the whole pile ────────────
 # Runs append, so "open everything in candidates/" would reopen every shot ever
 # taken — after three --all-top 2 runs that is ~72 images, mostly rejects. The
 # baseline captured before the run is what narrows it back down.
+mkdir -p "$(candidates_dir xx-XX)"
+touch "$(candidates_dir xx-XX)"/001.png "$(candidates_dir xx-XX)"/002.png \
+      "$(candidates_dir xx-XX)"/003.png "$(candidates_dir xx-XX)"/004.png
 check "baselines record where each locale ends" "xx-XX:5" "$(baselines)"
 check "baseline_for reads a locale out"      "5" "$(baseline_for "xx-XX:5 yy-YY:9" xx-XX)"
 check "baseline_for reads the second"        "9" "$(baseline_for "xx-XX:5 yy-YY:9" yy-YY)"
