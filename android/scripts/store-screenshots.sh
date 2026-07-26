@@ -25,6 +25,11 @@
 # SKIPPED, not fatal: the rest of the country still gets shot and the summary says
 # which ones were lost, so "--all-top 10" no longer risks losing ten cities to one.
 #
+# SPLIT cities (London: Central/North/East/South/West) open a first-visit AREA
+# PICKER over the listing. The script asks the backend which cities are split
+# (/<slug>/api/cinemas → areas) and confirms the dialog — all areas arrive
+# pre-ticked, so that keeps the flat default. Flat cities skip the wait entirely.
+#
 # Shots land in a candidates/ scratchpad INSIDE the published dir
 # (…/graphics/phone-screenshots/candidates/, gitignored), and every run APPENDS:
 # the next block starts one past the highest number already there, so a second
@@ -104,11 +109,12 @@ country_base()   { case "$1" in pl) echo "https://kinowo.fly.dev";; uk) echo "ht
 # country's language, so seeing this label is proof the switch actually landed.
 country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; esac; }
 # The area picker's confirm button (`areapicker_confirm`), shown only by SPLIT
-# cities — a city is split iff its catalog `areas` is non-empty, which today is
-# London alone. We look for this label after picking a city instead of being told
-# "this one is split" up front, so the run adapts on its own: a newly-split city
-# needs no flag, and an un-split one just doesn't find it. This replaced a manual
-# SPLIT=1 env var, which --all-top could not have set correctly per-city anyway.
+# cities — a city is split iff its `/<slug>/api/cinemas` `areas` is non-empty,
+# which today is London alone (5 areas). `city_area_count` asks the backend which
+# it is, so the run adapts per city with no flag and no name list; this replaced a
+# manual SPLIT=1 env var that --all-top could not have set correctly per-city.
+# Every area arrives pre-ticked, so tapping this label straight away keeps the
+# flat default rather than filtering anything out.
 showlist_label() { case "$1" in pl) echo "Pokaż repertuar";; uk) echo "Show listings";; de) echo "Programm anzeigen";; esac; }
 
 # ── parallel pool: one emulator per worker ────────────────────────────────────
@@ -366,6 +372,70 @@ wait_frame() { # $1 timeout-secs, $2 min-bytes
   rm -f "$f"; return 1
 }
 
+# How many AREAS the app will offer for this city. Non-zero means it is a SPLIT
+# city and opens the first-visit area picker over the listing. `/api/catalog`
+# resolves whatever the caller typed (name or slug, diacritics or not) to a slug;
+# the split itself lives in `/<slug>/api/cinemas`, which is the very endpoint the
+# app reads (KinowoApi.fetchCinemas → CinemaCatalog.isSplit). London is 5 today
+# (Central/North/East/South/West); Manchester and Poznań are 0.
+#
+# Asking the backend beats hardcoding "London": a city that becomes split needs no
+# change here, one that stops being split stops paying for the wait, and every
+# country is covered without a per-country list. Prints -1 if the lookup fails,
+# which the caller treats as "might be split" rather than guessing either way.
+city_area_count() { # $1 country, $2 city name or slug
+  BASE="$(country_base "$1")" CITY="$2" python3 - <<'PY'
+import os, json, urllib.request, unicodedata
+def fold(s):
+    s = s.replace("ł", "l").replace("Ł", "L")
+    return "".join(c for c in unicodedata.normalize("NFD", s)
+                   if not unicodedata.combining(c)).casefold()
+def get(url):
+    with urllib.request.urlopen(url, timeout=30) as r: return json.loads(r.read())
+base, want = os.environ["BASE"], fold(os.environ["CITY"])
+try:
+    slug = next((c["slug"] for c in get(f"{base}/api/catalog")["cities"]
+                 if want in (fold(c["name"]), fold(c["slug"]))), None)
+    print(len(get(f"{base}/{slug}/api/cinemas").get("areas") or []) if slug else -1)
+except Exception:
+    print(-1)
+PY
+}
+
+# Clear the first-visit AREA PICKER when this city has one. A split city opens it
+# OVER the listing with every area pre-ticked, so confirming immediately keeps the
+# flat default — but until it is gone every coordinate tap below lands on the
+# dialog, which is how a split city captured the picker as screenshot 1 instead of
+# the repertoire. It used to be probed blind with a 12s look-in, which every flat
+# city paid and which London lost whenever its (largest, slowest) listing took
+# longer than that to render.
+dismiss_area_picker() { # $1 country, $2 city, $3 timeout secs
+  local country="$1" term="$2" limit="$3" areas label point
+  areas="$(city_area_count "$country" "$term")"
+  [ "$areas" = "0" ] && return 0                # flat city: no dialog, no wait
+  label="$(showlist_label "$country")"
+  point="$(wait_text "$label" "$limit" || true)"
+  if [ -z "$point" ]; then
+    # A city the backend says IS split must show the picker. Missing it means we
+    # are looking at some other screen, and every capture below would be wrong —
+    # so fail this city (the worker skips it) instead of shooting the wrong thing.
+    if [ "$areas" -gt 0 ] 2>/dev/null; then
+      die "$term is split into $areas areas but its picker never appeared — refusing to capture the wrong screen."
+    fi
+    return 0                                    # count unknown (-1): carry on as before
+  fi
+  tap ${point}; naps 3
+  # Confirm it actually closed. A tap that misses leaves the dialog up and every
+  # later coordinate tap hits it, silently — so retry once, then give up loudly.
+  if ui_xml | node_center "$label" | grep -q .; then
+    tap ${point}; naps 3
+    if ui_xml | node_center "$label" | grep -q .; then
+      die "$term's area picker would not dismiss — '$label' is still on screen after two taps."
+    fi
+  fi
+  return 0
+}
+
 cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional first file number
   local locale="$1" term="$2" outdir="${3:-}" first="${4:-}"
   local country; country="$(locale_country "$locale")"
@@ -420,12 +490,7 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
     # instead of opening some other city — the Amberg failure above.
     tap_text "$term" 60
     wait_frame 50 60000 || true                          # list / area dialog chrome up
-    # Split cities (London) land on the area picker rather than the list. Give its
-    # confirm button a short look-in: present → tap through it, absent → this city
-    # isn't split and we're already on the list. Short timeout because every
-    # un-split city pays it.
-    local showlist; showlist="$(wait_text "$(showlist_label "$country")" 12 || true)"
-    [ -n "$showlist" ] && { tap ${showlist}; naps 3; }
+    dismiss_area_picker "$country" "$term" "$wait"
     in_app || die "app fell out of foreground — a stray tap opened a browser."
     # Everything below taps by coordinate, which is only safe once we are off the
     # gate — the list's "All dates" spot sits on the gate's Deutschland pill, so a

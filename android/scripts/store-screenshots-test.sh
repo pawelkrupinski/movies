@@ -210,6 +210,57 @@ check "--country-top rejects a missing country"  "1" \
   "$( ( cmd_country_top ) >/dev/null 2>&1; echo $? )"
 COUNTRIES="$_saved_countries"
 
+# ── the first-visit area picker (London and any future split city) ────────────
+# A split city opens a dialog OVER the listing with all areas pre-ticked. Until it
+# is dismissed every coordinate tap lands on the dialog, so this used to capture
+# the picker as screenshot 1. Whether to expect one comes from the backend
+# (/<slug>/api/cinemas → areas), not a hardcoded city name.
+_tapcap="$(mktemp)"; _waitcap="$(mktemp)"
+tap()  { printf 'tap %s\n' "$*" >> "$_tapcap"; }
+naps() { :; }
+wait_text() { printf '%s\n' "$1" >> "$_waitcap"; echo "500 900"; }
+ui_xml()    { :; }                               # dialog already gone
+
+# A flat city must not wait for a dialog that is never coming — the old blind
+# 12s probe was paid by every single city.
+city_area_count() { echo 0; }
+: > "$_tapcap"; : > "$_waitcap"
+dismiss_area_picker uk Manchester 30
+check "a flat city never waits for a picker" "" "$(cat "$_waitcap")"
+check "a flat city taps nothing"             "" "$(cat "$_tapcap")"
+
+# A split city taps its confirm button, found by the LOCALIZED label.
+city_area_count() { echo 5; }
+: > "$_tapcap"; : > "$_waitcap"
+dismiss_area_picker uk London 30
+check "a split city waits for the localized confirm" "Show listings" "$(cat "$_waitcap")"
+check "a split city taps confirm"                   "tap 500 900"   "$(cat "$_tapcap")"
+: > "$_tapcap"; : > "$_waitcap"
+dismiss_area_picker de Berlin 30
+check "the German label is used for de" "Programm anzeigen" "$(cat "$_waitcap")"
+
+# Split per the backend but no picker on screen = we are on the wrong screen, and
+# capturing would silently produce the wrong shots. Must fail the city loudly.
+wait_text() { return 1; }
+check "a split city with no picker fails loudly" "1" \
+  "$( ( dismiss_area_picker uk London 1 ) >/dev/null 2>&1; echo $? )"
+# …but an unreachable backend (-1) must NOT fail the city: unknown is not "split".
+city_area_count() { echo -1; }
+check "an unreachable catalog does not fail the city" "0" \
+  "$( ( dismiss_area_picker uk London 1 ) >/dev/null 2>&1; echo $? )"
+
+# A confirm tap that misses leaves the dialog up; retry once, then fail rather
+# than shoot the dialog. node_center is REAL here — ui_xml feeds it a node that
+# still reads the confirm label, so the "still up" detection is genuine.
+city_area_count() { echo 5; }
+wait_text() { echo "500 900"; }
+ui_xml() { echo '<node text="Show listings" bounds="[400,880][600,920]" />'; }
+: > "$_tapcap"
+check "a picker that will not dismiss fails loudly" "1" \
+  "$( ( dismiss_area_picker uk London 1 ) >/dev/null 2>&1; echo $? )"
+check "it retried the tap before giving up" "2" "$(grep -c '^tap ' "$_tapcap")"
+unset -f tap naps wait_text ui_xml city_area_count
+
 # Regression — the N=2 city drop. run_worker must shoot EVERY ranked city, not
 # just the first. The bug: a `while read … < <(rank_cities …)` loop whose body
 # (cmd_capture → adb) reads stdin, draining the process substitution so the first
