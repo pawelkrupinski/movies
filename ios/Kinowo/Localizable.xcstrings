@@ -1,468 +1,632 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "areapicker.confirm": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show listings"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pokaż repertuar"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Programm anzeigen"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "(%lld)" : {
+
+    },
+    "%@ ↗" : {
+
+    },
+    "%@ tuning" : {
+
+    },
+    "%lld" : {
+
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
           }
         }
       }
     },
-    "areapicker.subtitle": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show cinemas only in the areas you pick. You can change this anytime."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit ändern."
+    "+%lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "+%1$lld %2$@"
           }
         }
       }
     },
-    "areapicker.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose your areas"
+    "🎬" : {
+
+    },
+    "2D" : {
+
+    },
+    "3D" : {
+
+    },
+    "Anuluj" : {
+
+    },
+    "areapicker.confirm" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Programm anzeigen"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wybierz okolice"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show listings"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wähle deine Regionen"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokaż repertuar"
           }
         }
       }
     },
-    "cinemafilter.all_cinemas": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All cinemas"
+    "areapicker.subtitle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit ändern."
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wszystkie kina"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show cinemas only in the areas you pick. You can change this anytime."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle Kinos"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić."
           }
         }
       }
     },
-    "cinemafilter.count": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$d of %2$d cinemas"
+    "areapicker.title" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle deine Regionen"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$d z %2$d kin"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose your areas"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$d von %2$d Kinos"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz okolice"
           }
         }
       }
     },
-    "citygate.choose_other": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose another city"
+    "Brak plakatu" : {
+
+    },
+    "Brak repertuaru." : {
+
+    },
+    "cinemafilter.all_cinemas" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Kinos"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wybierz inne miasto"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All cinemas"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Andere Stadt wählen"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wszystkie kina"
           }
         }
       }
     },
-    "citygate.choose_title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose a city"
+    "cinemafilter.count" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d von %2$d Kinos"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wybierz miasto"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d of %2$d cinemas"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stadt wählen"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$d z %2$d kin"
           }
         }
       }
     },
-    "citygate.nav_title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "City"
+    "citygate.choose_other" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Andere Stadt wählen"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Miasto"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose another city"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stadt"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz inne miasto"
           }
         }
       }
     },
-    "citygate.near_label": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Looks like you’re near"
+    "citygate.choose_title" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stadt wählen"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wygląda na to, że jesteś w pobliżu miasta"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a city"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sieht aus, als wärst du in der Nähe von"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wybierz miasto"
           }
         }
       }
     },
-    "citygate.no_match": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No city named “%@”."
+    "citygate.nav_title" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stadt"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brak miasta o nazwie „%@”."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "City"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Stadt namens „%@“."
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miasto"
           }
         }
       }
     },
-    "citygate.resolving": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Finding your nearest city…"
+    "citygate.near_label" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sieht aus, als wärst du in der Nähe von"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ustalamy najbliższe miasto…"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looks like you’re near"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine nächste Stadt wird ermittelt…"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wygląda na to, że jesteś w pobliżu miasta"
           }
         }
       }
     },
-    "citygate.search_hint": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Search for a city"
+    "citygate.no_match" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Stadt namens „%@“."
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Szukaj miasta"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No city named “%@”."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nach einer Stadt suchen"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak miasta o nazwie „%@”."
           }
         }
       }
     },
-    "citygate.show_repertoire": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show showtimes — %@"
+    "citygate.resolving" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine nächste Stadt wird ermittelt…"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pokaż repertuar — %@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finding your nearest city…"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spielzeiten anzeigen — %@"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ustalamy najbliższe miasto…"
           }
         }
       }
     },
-    "content.error": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn’t load showtimes."
+    "citygate.search_hint" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach einer Stadt suchen"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie udało się pobrać repertuaru."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search for a city"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spielzeiten konnten nicht geladen werden."
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Szukaj miasta"
           }
         }
       }
     },
-    "content.loading": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loading showtimes…"
+    "citygate.show_repertoire" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spielzeiten anzeigen — %@"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ładowanie repertuaru…"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show showtimes — %@"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spielzeiten werden geladen…"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokaż repertuar — %@"
           }
         }
       }
     },
-    "content.retry": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try again"
+    "content.error" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spielzeiten konnten nicht geladen werden."
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spróbuj ponownie"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t load showtimes."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erneut versuchen"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie udało się pobrać repertuaru."
           }
         }
       }
     },
-    "country.label": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Country"
+    "content.loading" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spielzeiten werden geladen…"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kraj"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading showtimes…"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Land"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ładowanie repertuaru…"
           }
         }
       }
     },
-    "switch.confirm": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Switch"
+    "content.retry" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut versuchen"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przełącz"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wechseln"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spróbuj ponownie"
           }
         }
       }
     },
-    "switch.nearer_title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "You’re closer to %@"
+    "country.label" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Jesteś bliżej miasta %@"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Country"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Du bist näher an %@"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kraj"
           }
         }
       }
     },
-    "switch.not_now": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Not now"
+    "Dowolna" : {
+
+    },
+    "Dubbing" : {
+
+    },
+    "Filtry" : {
+
+    },
+    "Godzina" : {
+
+    },
+    "Gotowe" : {
+
+    },
+    "Kina" : {
+
+    },
+    "Konto" : {
+
+    },
+    "Kopiuj" : {
+
+    },
+    "Miasto" : {
+
+    },
+    "Minuta" : {
+
+    },
+    "Napisy" : {
+
+    },
+    "Od godziny" : {
+
+    },
+    "Pokaż" : {
+
+    },
+    "Pokaż wszystkie" : {
+
+    },
+    "Przesuń, aby zmienić dzień" : {
+
+    },
+    "Przytrzymaj, aby zobaczyć salę: %@" : {
+
+    },
+    "Reset" : {
+
+    },
+    "Seanse" : {
+
+    },
+    "Skopiowano" : {
+
+    },
+    "Skopiuj link" : {
+
+    },
+    "Sortowanie" : {
+
+    },
+    "Sortuj" : {
+
+    },
+    "switch.confirm" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wechseln"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nie teraz"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Jetzt nicht"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przełącz"
           }
         }
       }
     },
-    "switch.question": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Switch showtimes to %@?"
+    "switch.nearer_title" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du bist näher an %@"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przełączyć repertuar na %@?"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You’re closer to %@"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spielzeiten zu %@ wechseln?"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jesteś bliżej miasta %@"
           }
         }
       }
+    },
+    "switch.not_now" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt nicht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not now"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie teraz"
+          }
+        }
+      }
+    },
+    "switch.question" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spielzeiten zu %@ wechseln?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch showtimes to %@?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przełączyć repertuar na %@?"
+          }
+        }
+      }
+    },
+    "Szukaj filmu" : {
+
+    },
+    "Tylko IMAX" : {
+
+    },
+    "Udostępnij" : {
+
+    },
+    "Ukryte filmy" : {
+
+    },
+    "Usuń konto" : {
+
+    },
+    "Wersja" : {
+
+    },
+    "Wszystkie" : {
+
+    },
+    "Wyczyść" : {
+
+    },
+    "Wylogować się?" : {
+
+    },
+    "Wyloguj" : {
+
+    },
+    "Wymiar" : {
+
+    },
+    "Zaloguj przez Facebook" : {
+
+    },
+    "Zaloguj przez Google" : {
+
+    },
+    "Zaloguj się" : {
+
+    },
+    "Zwiastun %lld" : {
+
+    },
+    "ZWIASTUNY" : {
+
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

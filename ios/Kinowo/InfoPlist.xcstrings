@@ -1,30 +1,54 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "CFBundleDisplayName": {
-      "comment": "Home-screen app name. English (source, and any non-Polish locale) is the neutral brand \"Showtimes\"; Polish keeps the coinage \"Kinowo\".",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Showtimes"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Home-screen app name. English (source, and any non-Polish locale) is the neutral brand \"Showtimes\"; Polish keeps the coinage \"Kinowo\".",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showtimes"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kinowo"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showtimes"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Showtimes"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kinowo"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kinowo"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Privacy - Location When In Use Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Używamy lokalizacji, aby wybrać najbliższe miasto z repertuarem."
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
