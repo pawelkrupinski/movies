@@ -63,6 +63,28 @@ final class LocalizationUITests: XCTestCase {
                           filtersButton: "Filter")
     }
 
+    // MARK: - detail screen
+    //
+    // Its meta-block captions are passed to `metaBlock` as a `String` (it
+    // uppercases them), so Xcode's extractor never saw them and they stayed
+    // Polish in every locale long after the rest of the UI was translated.
+    // These cover the same trap on the screen where it actually bit.
+
+    func testPolandRendersPolishDetailCaptions() throws {
+        launchDetail(country: "pl", language: "pl")
+        assertDetailReads(["REŻYSERIA", "OBSADA", "KRAJ(E) PRODUKCJI"])
+    }
+
+    func testUnitedKingdomRendersEnglishDetailCaptions() throws {
+        launchDetail(country: "uk", language: "en")
+        assertDetailReads(["DIRECTOR", "CAST", "COUNTRIES"])
+    }
+
+    func testGermanyRendersGermanDetailCaptions() throws {
+        launchDetail(country: "de", language: "de")
+        assertDetailReads(["REGIE", "BESETZUNG", "LÄNDER"])
+    }
+
     // MARK: - helpers
 
     /// The app doesn't follow the device language: it forces the selected
@@ -79,7 +101,16 @@ final class LocalizationUITests: XCTestCase {
     /// start. Setting both here (they land in `UserDefaults`' argument domain,
     /// which outranks anything persisted on the simulator) gets one consistent
     /// language on the first launch, with no relaunch dance.
-    private func launch(country: String, language: String) {
+    ///
+    /// The city is cleared and forced rather than inherited. A `uk` or `de` run
+    /// has no city persisted, so without this the app stops at the gate and the
+    /// top bar never renders — which made these tests quietly dependent on some
+    /// earlier suite having picked a city first, and fail whenever they ran
+    /// first on a fresh simulator. The offline fixture repertoire comes along
+    /// for the same reason: no dependence on real network timing, or on the
+    /// live listing being non-empty late at night.
+    private func launch(country: String, language: String,
+                        file: StaticString = #filePath, line: UInt = #line) {
         app = XCUIApplication()
         app.launchArguments += [
             "-UITests", "1",
@@ -87,7 +118,39 @@ final class LocalizationUITests: XCTestCase {
             "-AppleLanguages", "(\(language))",
             "-AppleLocale", language,
         ]
+        app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1"
+        app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
+        app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
         app.launch()
+
+        let confirm = app.buttons[A11y.CityGate.confirmButton]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 15),
+                      "City-confirm screen never showed", file: file, line: line)
+        confirm.tap()
+    }
+
+    /// As `launch`, then opens the first film's detail screen.
+    private func launchDetail(country: String, language: String,
+                              file: StaticString = #filePath, line: UInt = #line) {
+        launch(country: country, language: language, file: file, line: line)
+
+        let card = app.descendants(matching: .any)
+            .matching(identifier: A11y.FilmGrid.cell).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 30),
+                      "Grid never appeared", file: file, line: line)
+        // Tap the poster region: the rating links and showtime chips hold their
+        // own hit areas, so a centre tap can miss the NavigationLink.
+        card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18)).tap()
+    }
+
+    /// Meta-block captions render uppercased, so `expected` is uppercase too.
+    private func assertDetailReads(_ expected: [String],
+                                   file: StaticString = #filePath, line: UInt = #line) {
+        for caption in expected {
+            XCTAssertTrue(app.staticTexts[caption].waitForExistence(timeout: 10),
+                          "Detail screen is missing the \(caption) meta block",
+                          file: file, line: line)
+        }
     }
 
     private func assertTopBarReads(

@@ -219,8 +219,11 @@ extension RepertoireStore {
                 genres: ["Dramat"],
                 ratings: .empty,
                 countries: ["Polska"],
-                directors: [],
-                cast: [],
+                // Non-empty so the detail screen's director / cast meta blocks
+                // actually render — `metaBlock` omits a block whose value is
+                // empty, and LocalizationUITests asserts on their captions.
+                directors: ["Jan Kowalski"],
+                cast: ["Anna Nowak", "Piotr Wiśniewski"],
                 // Today AND tomorrow, so the carousel's neighbour day is
                 // populated too: a swipe can commit to a day that actually has
                 // cards, so the "did the next day's cards land on screen" path is

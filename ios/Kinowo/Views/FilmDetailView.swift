@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Per-film detail screen — iOS counterpart of `/film?title=…`. Mirrors
 /// the web layout: poster on the left of the header row, title +
-/// ratings + cinema-link buttons on the right, then Opis / Reżyseria /
-/// Obsada / Zwiastuny meta blocks, then a `Seanse` section with the
+/// ratings + cinema-link buttons on the right, then synopsis / director /
+/// cast / trailer meta blocks, then a showtimes section with the
 /// full day-by-day showings tree.
 ///
 /// Everything is built from data already in hand: the listing `Film`
@@ -195,24 +195,33 @@ struct FilmDetailView: View {
         }
     }
 
-    // MARK: – Opis / Reżyseria / Obsada
+    // MARK: – synopsis / director / cast / countries
 
     @ViewBuilder
     private var metaBlocks: some View {
         // Director / cast come straight off the listing `Film`, so they
-        // render immediately. Opis (synopsis) comes from the details
-        // map — it's simply absent until `/api/details` lands, or for
-        // films the backend has no synopsis for.
+        // render immediately. The synopsis comes from the details map —
+        // it's simply absent until `/api/details` lands, or for films the
+        // backend has no synopsis for.
+        //
+        // `String(localized:)` rather than a `LocalizedStringKey` because
+        // `metaBlock` uppercases the caption before rendering it, and the
+        // key type carries no text to uppercase. Wording is deliberately
+        // identical to Android's `meta_*` strings.
         VStack(alignment: .leading, spacing: style.metaBlockSpacing) {
-            metaBlock(label: "Opis",      value: filmDetails?.synopsis, markdown: true)
-            metaBlock(label: "Reżyseria", value: joined(film.directors))
-            metaBlock(label: "Obsada",    value: joined(film.cast))
-            metaBlock(label: "Kraj(e) produkcji", value: joined(film.countries))
+            metaBlock(label: String(localized: "filmdetail.meta_synopsis"),
+                      value: filmDetails?.synopsis, markdown: true)
+            metaBlock(label: String(localized: "filmdetail.meta_director"),
+                      value: joined(film.directors))
+            metaBlock(label: String(localized: "filmdetail.meta_cast"),
+                      value: joined(film.cast))
+            metaBlock(label: String(localized: "filmdetail.meta_countries"),
+                      value: joined(film.countries))
         }
     }
 
     /// `nil` for an empty list so `metaBlock` omits the whole section
-    /// (matches the web, which doesn't render an empty Reżyseria/Obsada).
+    /// (matches the web, which doesn't render an empty director/cast block).
     private func joined(_ values: [String]) -> String? {
         values.isEmpty ? nil : values.joined(separator: ", ")
     }
@@ -497,6 +506,6 @@ private struct TrailerEmbedView: UIViewRepresentable {
 #else
 private struct TrailerEmbedView: View {
     let url: URL
-    var body: some View { Link("Otwórz zwiastun", destination: url) }
+    var body: some View { Link("filmdetail.open_trailer", destination: url) }
 }
 #endif

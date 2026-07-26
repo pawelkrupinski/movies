@@ -536,6 +536,126 @@
         }
       }
     },
+    "filmdetail.meta_cast" : {
+      "comment" : "Detail-screen meta block header for the cast. Rendered uppercased. Mirrors Android's meta_cast.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Besetzung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cast"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obsada"
+          }
+        }
+      }
+    },
+    "filmdetail.meta_countries" : {
+      "comment" : "Detail-screen meta block header for the country/countries of production. Rendered uppercased. Mirrors Android's meta_countries.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Länder"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Countries"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kraj(e) produkcji"
+          }
+        }
+      }
+    },
+    "filmdetail.meta_director" : {
+      "comment" : "Detail-screen meta block header for the director(s). Rendered uppercased. Mirrors Android's meta_director.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regie"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Director"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reżyseria"
+          }
+        }
+      }
+    },
+    "filmdetail.meta_synopsis" : {
+      "comment" : "Detail-screen meta block header for the plot summary. Rendered uppercased. Mirrors Android's meta_synopsis.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschreibung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synopsis"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opis"
+          }
+        }
+      }
+    },
+    "filmdetail.open_trailer" : {
+      "comment" : "Fallback link opening a trailer externally, used where WebKit isn't available to embed it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trailer öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open trailer"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz zwiastun"
+          }
+        }
+      }
+    },
     "filmdetail.showings" : {
       "comment" : "Section header above the per-day, per-cinema screening list.",
       "extractionState" : "manual",
