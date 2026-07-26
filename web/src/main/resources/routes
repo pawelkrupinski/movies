@@ -34,6 +34,10 @@ GET     /:city/api/cinemas          controllers.MovieController.apiCinemas(city:
 # Global country + city catalog (unprefixed, country-agnostic). Mobile apps fetch
 # this on each open with If-None-Match; an unchanged catalog answers 304.
 GET     /api/catalog                controllers.CatalogController.catalog()
+# Which client versions still get service, and where to send the ones that don't.
+# Same shape as the catalog above: static per deploy, ETag'd, country-agnostic —
+# the apps ask whichever host they are already pointed at.
+GET     /api/client-support         controllers.ClientSupportController.clientSupport()
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 # Top-level, not city-scoped: the debug table is the *global* corpus (every

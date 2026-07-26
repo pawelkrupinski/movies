@@ -38,6 +38,20 @@ val playCredentialsFile: File? =
         .let { rootProject.file(it) }
         .takeIf { it.exists() }
 
+// ── the one shared mobile version ─────────────────────────────────────────────
+// /mobile-version.txt is the single source of truth for BOTH stores. Read here so
+// a release never has to remember to edit Gradle as well; the iOS project is
+// synced from the same file by scripts/mobile-release.sh.
+val mobileVersion: String =
+    rootProject.file("../mobile-version.txt").readText().trim()
+
+// major*10000 + minor*100 + patch — monotonic for any sane version, and readable
+// back (10400 → 1.4.0). Missing components count as 0, so "1.0" is 10000.
+val mobileVersionCode: Int = mobileVersion.split(".")
+    .map { it.toIntOrNull() ?: 0 }
+    .let { (it + listOf(0, 0, 0)).take(3) }
+    .let { (major, minor, patch) -> major * 10000 + minor * 100 + patch }
+
 android {
     namespace = "pl.kinowo"
     compileSdk = 37
@@ -61,11 +75,16 @@ android {
         applicationId = "net.pawel.kinowo"
         minSdk = 26
         targetSdk = 37
+        // The marketing version comes from ONE file both stores read, so a release
+        // shows the same number on Play and the App Store instead of two numbers
+        // that drift the first time someone bumps one and forgets the other.
+        // scripts/mobile-release.sh writes it; store-versions-test.sh guards it.
+        versionName = mobileVersion
         // Play rejects re-uploading a versionCode, so CI passes a strictly
         // increasing one (the workflow run number) via KINOWO_VERSION_CODE.
-        // Local builds fall back to 1.
-        versionCode = System.getenv("KINOWO_VERSION_CODE")?.toIntOrNull() ?: 1
-        versionName = "1.0"
+        // Locally it is DERIVED from the same marketing version (1.4.0 → 10400),
+        // which keeps a local build's code ordered the same way the versions are.
+        versionCode = System.getenv("KINOWO_VERSION_CODE")?.toIntOrNull() ?: mobileVersionCode
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
