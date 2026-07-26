@@ -92,12 +92,17 @@ candidates_dir() { # $1 locale
   echo "$LISTINGS/$1/graphics/$SHOT_CLASS/candidates"
 }
 
-# The four files one capture writes, in screen order. Zero-padded to three digits
+# How many files one city's capture writes. The two drivers differ — Android
+# shoots four screens, iOS five (it adds the Filtry sheet) — so a driver that
+# isn't on four sets this before sourcing, exactly like SHOT_CLASS.
+SHOTS_PER_CITY="${SHOTS_PER_CITY:-4}"
+
+# The files one capture writes, in screen order. Zero-padded to three digits
 # so LEXICAL order matches NUMERIC order: 010 sorts after 009, where 10 sorted
 # after 1. That matters beyond tidiness — anything globbing the directory (a file
 # browser, `ls`, an uploader's ordering) would otherwise present them wrongly.
 shot_paths() { # $1 dir, $2 number of the first file
-  local n; for n in 0 1 2 3; do printf '%s/%03d.png\n' "$1" "$(($2 + n))"; done
+  local n; for ((n = 0; n < SHOTS_PER_CITY; n++)); do printf '%s/%03d.png\n' "$1" "$(($2 + n))"; done
 }
 
 # The number a fresh block starts at: one past the highest N.png already in $1,

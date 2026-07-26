@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Generate App Store screenshots for the Kinowo / Showtimes iOS app. Just run it —
-# it builds once, boots the simulator, drives the four store screens per city and
+# it builds once, boots the simulator, drives the five store screens per city and
 # writes them out per locale.
 #
 #   ios/scripts/store-screenshots.sh en-GB "Birmingham"      # → candidates dir
@@ -25,14 +25,16 @@
 #
 # Shots land in a candidates/ scratchpad INSIDE the published dir
 # (ios/store/listings/<locale>/graphics/phone-screenshots/candidates/, gitignored)
-# and every run APPENDS, zero-padded to three digits (city 1 → 001-004.png, city 2
-# → 005-008.png, …). Pick the keepers and move them up one level into
+# and every run APPENDS, zero-padded to three digits (city 1 → 001-005.png, city 2
+# → 006-010.png, …). Pick the keepers and move them up one level into
 # phone-screenshots/ — that is what goes to App Store Connect. The layout mirrors
 # the Android side exactly, so one promote-by-hand habit works for both stores.
 #
 # Screens are reached by DEEP LINK (`kinowo://<slug>`, `…/film?title=…`), never by
 # tapping coordinates: the same script then works on a 4" phone and a 13" iPad
-# with no per-device tap map. That also makes SPLIT cities (London) a non-issue —
+# with no per-device tap map. The Filtry sheet is the one exception — it is app
+# state rather than a URL, so it rides a launch hook instead, still no taps.
+# That also makes SPLIT cities (London) a non-issue —
 # rather than dismissing the area sheet the way the Android driver must, the
 # launch pre-seeds `areaPickerSeenCities` so it never opens.
 #
@@ -53,6 +55,9 @@ LISTINGS="$REPO_ROOT/ios/store/listings"
 # Same directory vocabulary as Android (gradle-play-publisher's ImageType.dirName)
 # so both stores are laid out identically: phone-screenshots / tablet-screenshots.
 SHOT_CLASS="${SHOT_CLASS:-phone-screenshots}"
+# Five screens a city, one more than Android: the same four plus the Filtry
+# sheet. Set before sourcing so the shared numbering hands out blocks of five.
+SHOTS_PER_CITY=5
 # Countries, ranking, split-city lookup, candidates/ numbering and the --top table
 # are shared with android/scripts/store-screenshots.sh.
 # shellcheck source=../../scripts/store-screenshots-common.sh
@@ -150,10 +155,18 @@ install_app() { # $1 udid
 # Suppressing it is the iOS counterpart of the Android driver tapping the picker's
 # confirm button — and since every area is pre-selected either way, both keep the
 # flat default rather than filtering cinemas out of the shot.
-shoot() { # $1 udid, $2 slug, $3 deep-link url, $4 output file
-  local udid="$1" slug="$2" url="$3" out="$4"
+#
+# The Filtry sheet is the one screen with no link route — it's app state, not a
+# web URL — so a non-empty $5 asks the app to open it once the listing has
+# loaded. Passed via `env` rather than an inline assignment because the app tests
+# for the KEY's presence: an inline `VAR=` would set it to empty on every OTHER
+# screen, which reads as present and would open the sheet over all five.
+shoot() { # $1 udid, $2 slug, $3 deep-link url, $4 output file, $5 non-empty → Filtry sheet
+  local udid="$1" slug="$2" url="$3" out="$4" filters="${5:-}"
   xcrun simctl terminate "$udid" "$BUNDLE" >>"$NOISE" 2>&1 || true
-  SIMCTL_CHILD_KINOWO_UITEST_DEEPLINK="$url" \
+  local -a hooks=("SIMCTL_CHILD_KINOWO_UITEST_DEEPLINK=$url")
+  [ -n "$filters" ] && hooks+=("SIMCTL_CHILD_KINOWO_UITEST_OPEN_FILTERS=1")
+  env "${hooks[@]}" \
     xcrun simctl launch "$udid" "$BUNDLE" \
       -areaPickerSeenCities "(\"$slug\")" >>"$NOISE" 2>&1 || return 1
   naps "$SETTLE"
@@ -161,17 +174,23 @@ shoot() { # $1 udid, $2 slug, $3 deep-link url, $4 output file
   [ -s "$out" ] || return 1
 }
 
-# The four deep links one capture walks, in screen order: listing, listing sorted
-# by rating, a film detail, and another day. The detail's film is whatever the live
-# listing puts first — the same film the user sees on top, so it is never a stale
-# hardcoded title. With no film available the listing repeats rather than leaving a
-# gap in the numbering.
+# The five links one capture walks, in screen order: listing, listing sorted by
+# rating, a film detail, another day, and the plain listing once more — that last
+# one is the Filtry screen, which `shoot` opens the sheet over (see above), so it
+# needs the listing behind it and no filters of its own. The detail's film is
+# whatever the live listing puts first — the same film the user sees on top, so it
+# is never a stale hardcoded title. With no film available the listing repeats
+# rather than leaving a gap in the numbering.
 capture_urls() { # $1 slug, $2 url-encoded film title (may be empty)
   local base="kinowo://$1"
   printf '%s\n' "$base" "$base?sort=rating"
   if [ -n "$2" ]; then printf '%s\n' "$base/film?title=$2"; else printf '%s\n' "$base"; fi
-  printf '%s\n' "$base?date=tomorrow"
+  printf '%s\n' "$base?date=tomorrow" "$base"
 }
+
+# Which screen (0-based) the Filtry sheet rides on: the last one capture_urls
+# emits. Named rather than inlined so the loop and its tests agree on one answer.
+filters_screen_index() { echo "$((SHOTS_PER_CITY - 1))"; }
 
 first_film() { # $1 country, $2 slug — url-encoded title of the first listed film
   curl -fsS --max-time 20 "$(country_base "$1")/$2/api/repertoire" 2>/dev/null \
@@ -203,16 +222,17 @@ cmd_capture() { # $1 locale, $2 city, $3 optional outdir, $4 optional first numb
   while IFS= read -r line; do urls+=("$line"); done < <(capture_urls "$slug" "$film")
   while IFS= read -r line; do shots+=("$line"); done < <(shot_paths "$dest" "$first")
 
-  step "capturing 4 screens"
-    local i=0
+  step "capturing $SHOTS_PER_CITY screens"
+    local i=0 filters; local last; last="$(filters_screen_index)"
     for line in "${shots[@]}"; do
-      shoot "$udid" "$slug" "${urls[$i]}" "$line" ||
+      filters=""; [ "$i" -eq "$last" ] && filters=1
+      shoot "$udid" "$slug" "${urls[$i]}" "$line" "$filters" ||
         die "$term: screen $((i + 1)) never rendered — the simulator may be starved."
       i=$((i + 1))
     done
   done_
   xcrun simctl terminate "$udid" "$BUNDLE" >>"$NOISE" 2>&1 || true
-  ok "$(printf 'wrote %s/{%03d..%03d}.png' "$dest" "$first" "$((first + 3))")"
+  ok "$(printf 'wrote %s/{%03d..%03d}.png' "$dest" "$first" "$((first + SHOTS_PER_CITY - 1))")"
 
   if [ -z "${NO_OPEN:-}" ] && command -v open >/dev/null 2>&1; then
     open -a Preview "${shots[@]}" >>"$NOISE" 2>&1 || true

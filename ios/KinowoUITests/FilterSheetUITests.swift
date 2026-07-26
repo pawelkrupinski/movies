@@ -3,14 +3,20 @@ import XCTest
 final class FilterSheetUITests: XCTestCase {
     var app: XCUIApplication!
 
+    /// Deliberately does NOT launch: two of the tests below need a launch of
+    /// their own (one with the Filtry hook set, one without), and relaunching an
+    /// already-launched app just to change its environment doubles every run.
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
-        app.launch()
+    }
 
-        let card = firstFilmCard(app)
-        XCTAssertTrue(card.waitForExistence(timeout: 30), "Grid never appeared")
+    /// The grid, reached deterministically — see `FixtureLaunch`.
+    private func launchIntoGrid(_ environment: [String: String] = [:],
+                                file: StaticString = #filePath, line: UInt = #line) {
+        FixtureLaunch.intoGrid(app, environment: environment, file: file, line: line)
+        XCTAssertTrue(FixtureLaunch.firstFilmCard(app).waitForExistence(timeout: 30),
+                      "Grid never appeared", file: file, line: line)
     }
 
     override func tearDownWithError() throws {
@@ -27,6 +33,7 @@ final class FilterSheetUITests: XCTestCase {
         // CI doesn't grind on it.
         try XCTSkipIf(true, "Filtry button a11y tree needs flattening — see TODO")
 
+        launchIntoGrid()
         filtryButton(app).tap()
         let wymiar = sheetMarker(app)
         XCTAssertTrue(wymiar.waitForExistence(timeout: 5),
@@ -36,6 +43,7 @@ final class FilterSheetUITests: XCTestCase {
     func testClosingFiltrySheet() throws {
         try XCTSkipIf(true, "Filtry button a11y tree needs flattening — see testOpeningFiltrySheet")
 
+        launchIntoGrid()
         filtryButton(app).tap()
         let marker = sheetMarker(app)
         XCTAssertTrue(marker.waitForExistence(timeout: 5))
@@ -47,6 +55,28 @@ final class FilterSheetUITests: XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed,
                        "Filtry sheet did not close")
+    }
+
+    /// The store-screenshot driver shoots the Filtry sheet, and it can neither
+    /// tap (`simctl` has no tap primitive) nor deep-link to it (the sheet is app
+    /// state, not a web URL) — so it opens the sheet with the
+    /// `KINOWO_UITEST_OPEN_FILTERS` launch hook. This pins that hook, and as a
+    /// side effect covers the sheet at all: it reaches it without the button tap
+    /// the two tests above are still skipped on.
+    func testLaunchHookOpensFiltrySheet() throws {
+        launchIntoGrid(["KINOWO_UITEST_OPEN_FILTERS": "1"])
+
+        XCTAssertTrue(sheetMarker(app).waitForExistence(timeout: 10),
+                      "Filtry sheet did not open from the launch hook")
+    }
+
+    /// Without the hook the app must come up on the plain listing — otherwise
+    /// the driver's other four screens would all be shot behind the sheet.
+    func testTheSheetStaysShutWithoutTheHook() throws {
+        launchIntoGrid()
+
+        XCTAssertFalse(sheetMarker(app).waitForExistence(timeout: 3),
+                       "Filtry sheet opened on a launch that never asked for it")
     }
 
     private func filtryButton(_ app: XCUIApplication) -> XCUIElement {
@@ -65,12 +95,6 @@ final class FilterSheetUITests: XCTestCase {
     private func doneButton(_ app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)
             .matching(identifier: A11y.FiltersSheet.doneButton)
-            .firstMatch
-    }
-
-    private func firstFilmCard(_ app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)
-            .matching(identifier: A11y.FilmGrid.cell)
             .firstMatch
     }
 }

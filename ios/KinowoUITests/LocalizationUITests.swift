@@ -98,35 +98,15 @@ final class LocalizationUITests: XCTestCase {
     ///
     /// `KinowoApp.init` normally derives the second from the first, but only
     /// for the *next* launch — iOS fixes the bundle's localization at process
-    /// start. Setting both here (they land in `UserDefaults`' argument domain,
-    /// which outranks anything persisted on the simulator) gets one consistent
-    /// language on the first launch, with no relaunch dance.
-    ///
-    /// The city is cleared and forced rather than inherited. A `uk` or `de` run
-    /// has no city persisted, so without this the app stops at the gate and the
-    /// top bar never renders — which made these tests quietly dependent on some
-    /// earlier suite having picked a city first, and fail whenever they ran
-    /// first on a fresh simulator. The offline fixture repertoire comes along
-    /// for the same reason: no dependence on real network timing, or on the
-    /// live listing being non-empty late at night.
+    /// start. `FixtureLaunch` sets both, so one consistent language lands on
+    /// the first launch with no relaunch dance; it also forces the city and
+    /// serves the offline fixture, which is what makes these reproducible on a
+    /// fresh simulator. See `FixtureLaunch` for the full reasoning.
     private func launch(country: String, language: String,
                         file: StaticString = #filePath, line: UInt = #line) {
         app = XCUIApplication()
-        app.launchArguments += [
-            "-UITests", "1",
-            "-selectedCountryCode", country,
-            "-AppleLanguages", "(\(language))",
-            "-AppleLocale", language,
-        ]
-        app.launchEnvironment["KINOWO_UITEST_FIXTURE"] = "1"
-        app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
-        app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
-        app.launch()
-
-        let confirm = app.buttons[A11y.CityGate.confirmButton]
-        XCTAssertTrue(confirm.waitForExistence(timeout: 15),
-                      "City-confirm screen never showed", file: file, line: line)
-        confirm.tap()
+        FixtureLaunch.intoGrid(app, country: country, language: language,
+                               file: file, line: line)
     }
 
     /// As `launch`, then opens the first film's detail screen.
@@ -134,8 +114,7 @@ final class LocalizationUITests: XCTestCase {
                               file: StaticString = #filePath, line: UInt = #line) {
         launch(country: country, language: language, file: file, line: line)
 
-        let card = app.descendants(matching: .any)
-            .matching(identifier: A11y.FilmGrid.cell).firstMatch
+        let card = FixtureLaunch.firstFilmCard(app)
         XCTAssertTrue(card.waitForExistence(timeout: 30),
                       "Grid never appeared", file: file, line: line)
         // Tap the poster region: the rating links and showtime chips hold their

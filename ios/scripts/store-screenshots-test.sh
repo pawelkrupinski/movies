@@ -46,21 +46,36 @@ SHOT_CLASS="$_saved_class"
 check "phones are the default class" "$IOS_PHONE" "$(device_for_class phone-screenshots)"
 check "an unknown class falls back to the phone" "$IOS_PHONE" "$(device_for_class whatever)"
 
-# ── the four deep links ───────────────────────────────────────────────────────
+# ── the five deep links ───────────────────────────────────────────────────────
 # Screens are reached by deep link, not taps, which is what lets one script serve
-# every device size. Order is the store order: listing, rating, detail, next day.
-check "four screens, in order" \
-  "kinowo://london kinowo://london?sort=rating kinowo://london/film?title=Dune kinowo://london?date=tomorrow" \
+# every device size. Order is the store order: listing, rating, detail, next day,
+# Filtry.
+check "five screens, in order" \
+  "kinowo://london kinowo://london?sort=rating kinowo://london/film?title=Dune kinowo://london?date=tomorrow kinowo://london" \
   "$(capture_urls london Dune | tr '\n' ' ' | sed 's/ $//')"
 # The title arrives already url-encoded from first_film; it must be passed through
 # untouched or a film with a space or & breaks the link.
 check "an encoded title is passed through verbatim" \
   "kinowo://poznan/film?title=Toy%20Story%205" \
   "$(capture_urls poznan 'Toy%20Story%205' | sed -n 3p)"
-# No film (an empty listing, or the API down) must still yield FOUR urls, or the
+# No film (an empty listing, or the API down) must still yield FIVE urls, or the
 # capture loop would index past the end and leave a hole in the numbering.
-check "a missing film still yields four screens" "4" "$(capture_urls london '' | wc -l | tr -d ' ')"
+check "a missing film still yields five screens" "5" "$(capture_urls london '' | wc -l | tr -d ' ')"
 check "a missing film repeats the listing" "kinowo://london" "$(capture_urls london '' | sed -n 3p)"
+
+# ── the Filtry screen ─────────────────────────────────────────────────────────
+# It is the LAST screen, and it rides the plain listing url: the sheet opens over
+# the listing, so a url carrying a sort or a date would show through behind it.
+check "iOS shoots five screens a city" "5" "$SHOTS_PER_CITY"
+check "Filtry is the last screen"      "4" "$(filters_screen_index)"
+check "Filtry rides the plain listing" "kinowo://london" "$(capture_urls london Dune | sed -n 5p)"
+# The numbering must follow, or a second city would overwrite the first's Filtry
+# shot — the shared helper hands out blocks of SHOTS_PER_CITY, not a fixed four.
+check "a city's block is five files" \
+  "/d/001.png /d/002.png /d/003.png /d/004.png /d/005.png" \
+  "$(shot_paths /d 1 | tr '\n' ' ' | sed 's/ $//')"
+check "the next city starts past it" "/d/006.png" "$(shot_paths /d 6 | sed -n 1p)"
+check "blocks never overlap" "" "$(comm -12 <(shot_paths /d 1 | sort) <(shot_paths /d 6 | sort))"
 
 # ── --country-top ─────────────────────────────────────────────────────────────
 # Before the stubs below: this needs the REAL country_locale to reject a bad code.

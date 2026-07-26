@@ -254,7 +254,10 @@ struct ContentView: View {
         // Cold start: the first non-empty `store.films` is the first
         // repertoire load completing.
         .onChange(of: store.films.isEmpty) { isEmpty in
-            if !isEmpty { maybeShowSwipeHint() }
+            if !isEmpty {
+                maybeShowSwipeHint()
+                openFiltersIfRequested()
+            }
         }
         // A parked link's film push + multi-value filters land once the TARGET
         // city's repertoire is the loaded one — not merely when films turn
@@ -327,6 +330,22 @@ struct ContentView: View {
     /// `KinowoApp.onOpenURL`; here we land its filters and film. Scalar filters
     /// apply immediately; the film push and multi-value (country/genre/…/cinema)
     /// filters need the TARGET city's loaded repertoire, so they park in
+    /// Open the Filtry sheet on launch when `KINOWO_UITEST_OPEN_FILTERS` is set,
+    /// so the store-screenshot driver can capture it. Every other screen it
+    /// shoots is reached by deep link, but the sheet has no link route — it is
+    /// app state, not a web URL — and `simctl` cannot tap, so a launch hook is
+    /// the only way in (the same shape as `KINOWO_UITEST_DEEPLINK`).
+    ///
+    /// Called once the first repertoire load lands, because the sheet's
+    /// sections are built from the loaded films: opened any earlier it would
+    /// render with empty genre / country / cast lists.
+    private func openFiltersIfRequested() {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["KINOWO_UITEST_OPEN_FILTERS"] != nil else { return }
+        showFilters = true
+        #endif
+    }
+
     /// `pendingDeepLink` until `store.loadedCitySlug` matches.
     private func consumeDeepLink(_ link: DeepLink) {
         deepLink.pending = nil
