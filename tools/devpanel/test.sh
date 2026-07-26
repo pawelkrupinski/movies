@@ -211,6 +211,41 @@ FAKE
     && echo "  ok   announces the app will launch on unlock" || { echo "  FAIL rc=$rc out=$out"; exit 9; }
 ) || fails=$((fails + 1))
 
+echo "▶ ios unlock retry under the caller's set -e"
+(
+  # deploy-ios.sh runs `set -euo pipefail`, and errexit fires on a plain
+  # assignment whose command substitution fails — so the FIRST locked launch
+  # killed the deploy inside ios_run_unlocked, silently: the "▶ …launch" header
+  # printed, then nothing, no retry and no 🔒 hint. Same trap the Android
+  # keyguard wait documents. Must survive the lock error and reach dispatch.
+  cnt="$(mktemp)"; echo 0 > "$cnt"
+  fake="$(mktemp)"
+  cat > "$fake" <<FAKE
+#!/bin/sh
+n=\$(( \$(cat "$cnt") + 1 )); echo \$n > "$cnt"
+[ "\$n" -eq 1 ] && { echo "BSErrorCodeDescription = Locked"; exit 1; }
+echo "Launched application"; exit 0
+FAKE
+  chmod +x "$fake"
+  out="$(bash -c "set -euo pipefail
+    SCRIPT_DIR='$SCRIPTS'; source '$SCRIPTS/lib.sh'
+    ios_run_unlocked '$fake'
+    echo REACHED-DISPATCH" 2>&1)"; rc=$?   # ~2s: one lock retry
+  rm -f "$fake" "$cnt"
+  [[ $rc -eq 0 && "$out" == *REACHED-DISPATCH* ]] \
+    && echo "  ok   retries the locked launch instead of aborting the deploy" \
+    || { echo "  FAIL set-e abort rc=$rc out=$out"; exit 9; }
+
+  # A genuine (non-lock) failure must still abort, not spin forever.
+  fake="$(mktemp)"
+  printf '#!/bin/sh\necho "error: Signing for \\"Kinowo\\" requires a development team."; exit 70\n' > "$fake"
+  chmod +x "$fake"
+  out="$(SCRIPT_DIR="$SCRIPTS"; source "$SCRIPTS/lib.sh"; ios_run_unlocked "$fake" 2>&1)"; rc=$?
+  rm -f "$fake"
+  [[ $rc -eq 70 ]] && echo "  ok   propagates a non-lock failure's exit code" \
+    || { echo "  FAIL non-lock rc=$rc out=$out"; exit 9; }
+) || fails=$((fails + 1))
+
 echo "▶ runDevPanel.sh"
 contains "runDevPanel → calls build.sh" "tools/devpanel/build.sh" "$(cat "$ROOT/runDevPanel.sh")"
 

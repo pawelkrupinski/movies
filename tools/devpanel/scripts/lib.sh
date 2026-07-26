@@ -294,7 +294,12 @@ ios_run_unlocked() {
   local announced= out rc
   while :; do
     printf '\n\033[1m▶ %s\033[0m\n' "$*"
-    out="$("$@" 2>&1)"; rc=$?
+    # `&& rc=0 || rc=$?`, not a bare assignment: an assignment carries its
+    # command substitution's exit status, so under the caller's `set -e`
+    # (deploy-ios.sh has `set -euo pipefail`) the FIRST locked launch killed the
+    # whole deploy right here — after the ▶ header, before any output — instead
+    # of entering the retry below. Same trap wait_for_android_unlock documents.
+    out="$("$@" 2>&1)" && rc=0 || rc=$?
     printf '%s\n' "$out"
     [[ $rc -eq 0 ]] && { [[ -n "$announced" ]] && echo "  unlocked."; return 0; }
     if ios_is_lock_error "$out"; then
