@@ -58,7 +58,7 @@ check "an unknown class falls back to the phone" "$IOS_PHONE" "$(device_for_clas
 # App Store Connect REQUIRES an iPad set while TARGETED_DEVICE_FAMILY includes
 # iPad. Shooting only phones is what left three stale, empty iPad sets on the
 # live listings, so the iPad is not opt-in.
-check "every class is shot by default" "phone-screenshots tablet-screenshots tablet-11-screenshots" "$SHOT_CLASSES"
+check "the two required classes are the default" "phone-screenshots tablet-screenshots" "$SHOT_CLASSES"
 check "the phone goes first" "phone-screenshots" "$(set -- $SHOT_CLASSES; echo "$1")"
 # Both store-mandatory sizes must be in the default, or a submission blocks on a
 # set nobody shot. Matched as whole words — "tablet-screenshots" is a substring of
@@ -68,8 +68,12 @@ check "the required 6.9 phone is in the default" "1" \
   "$(_shot_classes_list | grep -cx 'phone-screenshots')"
 check "the required 13-inch iPad is in the default" "1" \
   "$(_shot_classes_list | grep -cx 'tablet-screenshots')"
-check "the optional 11-inch iPad rides along" "1" \
+# Apple derives the 11" from the 13", so it is not worth a third of every run.
+# Opt-in, but it must still WORK when asked for — hence the device mapping above.
+check "the optional 11-inch iPad stays out of the default" "0" \
   "$(_shot_classes_list | grep -cx 'tablet-11-screenshots')"
+check "asking for the 11-inch still works" "tablet-11-screenshots" \
+  "$(SHOT_CLASSES=tablet-11-screenshots bash -c 'source "$1" >/dev/null 2>&1; echo "$SHOT_CLASSES"' _ "$HERE/store-screenshots.sh")"
 # Back-compat: the documented SHOT_CLASS=tablet-screenshots invocation must still
 # mean ONE pass, not "both, starting with the tablet".
 check "an explicit SHOT_CLASS still pins a single pass" "tablet-screenshots" \
@@ -84,12 +88,14 @@ _saved_class="$SHOT_CLASS"; _passes=""
 _record_pass() { _passes="$_passes $SHOT_CLASS($(basename "$(dirname "$(candidates_dir pl-PL)")")):$*"; }
 for_each_class _record_pass topcities 2 >/dev/null
 check "each class gets its own pass, in order, with its own dir" \
-  "phone-screenshots(phone-screenshots):topcities 2 tablet-screenshots(tablet-screenshots):topcities 2 tablet-11-screenshots(tablet-11-screenshots):topcities 2" \
+  "phone-screenshots(phone-screenshots):topcities 2 tablet-screenshots(tablet-screenshots):topcities 2" \
   "${_passes# }"
-SHOT_CLASSES="tablet-screenshots"; _passes=""
+# The opt-in class is not special-cased anywhere — asked for, it is just another
+# pass with its own dir.
+SHOT_CLASSES="tablet-11-screenshots"; _passes=""
 for_each_class _record_pass solo >/dev/null
-check "one class means one pass" "tablet-screenshots(tablet-screenshots):solo" "${_passes# }"
-SHOT_CLASSES="phone-screenshots tablet-screenshots tablet-11-screenshots"; SHOT_CLASS="$_saved_class"
+check "the opt-in class is an ordinary pass" "tablet-11-screenshots(tablet-11-screenshots):solo" "${_passes# }"
+SHOT_CLASSES="phone-screenshots tablet-screenshots"; SHOT_CLASS="$_saved_class"
 
 # ── the five deep links ───────────────────────────────────────────────────────
 # Screens are reached by deep link, not taps, which is what lets one script serve

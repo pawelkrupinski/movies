@@ -23,14 +23,18 @@
 # A city that fails is SKIPPED, not fatal: the rest of the country still gets shot
 # and the summary says which ones were lost.
 #
-# Every run shoots THREE classes by default, a full pass each: 6.9" phone, 13"
-# iPad, 11" iPad. App Store Connect requires an iPad set from any app whose
-# TARGETED_DEVICE_FAMILY includes iPad, and ours does; shooting phones alone is
-# how the first submission ended up with three stale, empty iPad sets nobody
-# noticed. Only the 6.9" and the 13" are strictly required — Apple derives the
-# rest — but a derived shot is just the 13" squeezed, and the listing lays out
-# a different column count at 11", so it is shot for real. SHOT_CLASSES /
-# SHOT_CLASS narrow it back when that is what you want.
+# Every run shoots the two classes the store REQUIRES, a full pass each: the
+# 6.9" phone and the 13" iPad. App Store Connect requires an iPad set from any
+# app whose TARGETED_DEVICE_FAMILY includes iPad, and ours does; shooting phones
+# alone is how the first submission ended up with three stale, empty iPad sets
+# nobody noticed.
+#
+# The 11" iPad is available but OPT-IN, since Apple derives it from the 13":
+#
+#   SHOT_CLASSES=tablet-11-screenshots ios/scripts/store-screenshots.sh --all-top 2
+#
+# Worth asking for when the derived image would mislead — the listing lays out
+# four columns at 11" and five at 13", so a squeezed 13" shows the wrong grid.
 #
 # Shots land in a candidates/ scratchpad INSIDE the published dir, one per class
 # (ios/store/listings/<locale>/graphics/<class>/candidates/, gitignored) and every
@@ -55,10 +59,10 @@
 # than letting two runs fight over the same simulators. --top is exempt.
 #
 # Env: IOS_PHONE / IOS_TABLET / IOS_TABLET_11 pick the devices · SHOT_CLASSES
-# names the passes ("phone-screenshots tablet-screenshots tablet-11-screenshots"
-# by default; SHOT_CLASS=<one> still pins a single pass) · SETTLE=<s> per-screen
-# wait (posters come off the network) · BUILD=1 force a rebuild · NO_OPEN=1 skip
-# the Preview.
+# names the passes ("phone-screenshots tablet-screenshots" by default; add
+# tablet-11-screenshots for the 11" iPad; SHOT_CLASS=<one> still pins a single
+# pass) · SETTLE=<s> per-screen wait (posters come off the network) · BUILD=1
+# force a rebuild · NO_OPEN=1 skip the Preview.
 #
 set -euo pipefail
 
@@ -67,14 +71,23 @@ LISTINGS="$REPO_ROOT/ios/store/listings"
 # Same directory vocabulary as Android (gradle-play-publisher's ImageType.dirName)
 # so both stores are laid out identically: phone-screenshots / tablet-screenshots.
 #
-# Every class by DEFAULT — 6.9" phone, 13" iPad, 11" iPad. App Store Connect
-# requires an iPad set from any app whose TARGETED_DEVICE_FAMILY includes iPad —
-# ours does — so shooting only phones leaves a mandatory set to go stale
+# The two REQUIRED classes by default — 6.9" phone and 13" iPad. App Store
+# Connect requires an iPad set from any app whose TARGETED_DEVICE_FAMILY includes
+# iPad — ours does — so shooting only phones leaves a mandatory set to go stale
 # silently, which is exactly what happened to the first submission's listings.
+#
+# `tablet-11-screenshots` is deliberately NOT in the default: Apple derives the
+# 11" iPad from the 13", so it is optional, and shooting it costs a third of the
+# run for a set the store will fill in anyway. Ask for it when you want the real
+# thing rather than a squeezed 13" (the listing lays out four columns at 11",
+# five at 13"):
+#
+#   SHOT_CLASSES=tablet-11-screenshots ios/scripts/store-screenshots.sh --all-top 2
+#
 # `SHOT_CLASSES` names the passes; `SHOT_CLASS` is whichever one is being shot
 # right now, and is what `candidates_dir` reads. Setting SHOT_CLASS alone still
 # pins a single-class run, so `SHOT_CLASS=tablet-screenshots …` keeps working.
-SHOT_CLASSES="${SHOT_CLASSES:-${SHOT_CLASS:-phone-screenshots tablet-screenshots tablet-11-screenshots}}"
+SHOT_CLASSES="${SHOT_CLASSES:-${SHOT_CLASS:-phone-screenshots tablet-screenshots}}"
 # Five screens a city, one more than Android: the same four plus the Filtry
 # sheet. Set before sourcing so the shared numbering hands out blocks of five.
 SHOTS_PER_CITY=5
