@@ -7,40 +7,30 @@ exercises, run **at least one** of those layers locally as part of
 the same task — before reporting the work as done. The list of
 layers and which kinds of changes they catch:
 
-- **`sbt testUnit`** (every module's unit specs in one run; or
-  `sbt web/Test/test` / `worker/Test/test` / `common/Test/test` /
-  `testkit/Test/test` / `e2e/Test/test` to scope to one module) —
-  unit specs for controllers, services, enrichment, clients, models.
-  Any change under `web/src/main/`, `worker/src/main/`, or
-  `common/src/main/` that isn't pure view markup should run this.
-- **`sbt itAll`** (or `sbt web/IntegrationTest/test` /
-  `worker/IntegrationTest/test`) — `*/src/it/scala/` specs that wire
-  fakes + the real cache/repository. Required for any change to enrichment
-  pipelines, cache layering, the read-model projection, or anything
-  that crosses the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam.
-- **`sbt web/PageTest/test`** — `web/src/page/scala/views/PageJsBehaviourSpec`
-  drives real Chrome over CDP against Twirl-rendered fixtures. Run on any
-  change to `web/src/main/assets/js/`, the inline `<script>` blocks in
-  `web/src/main/twirl/views/repertoire.scala.html` /
-  `_repertoireView.scala.html`, or the rendered HTML shape those JS
-  blocks read.
-- **`cd page-tests-playwright && npx playwright test [--project …]`**
-  — Playwright suite covering mobile + desktop × Chromium / WebKit /
-  Firefox / Edge. Required for visible UX changes — card-tap, pill
-  rows, gestures, the empty / loading states. `--project`
-  narrows to one engine; the default `--list` shows which exist.
-- **iOS LocalServer (`sbt 'web/PageTest/runMain tools.FixtureServerMain
-  <port-file>'` in one shell, `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
-  <port-file>) swift test --package-path ios --filter LocalServer`
-  in another)** — exercises the real iOS listing parser against the live
-  fixture-server render. Required for any change to either side of
-  that contract: server-side template/HTML shape or iOS `HTMLParser`.
-  (The detail screen no longer parses HTML — it reads the `/api/details`
-  JSON — so detail changes are covered by the unit suites, not here.)
-- **`swift test --package-path ios`** — iOS unit / integration
-  suites without the live server. Quicker; required for any change
-  to iOS model / parser logic regardless of whether you also need
-  LocalServer.
+- **`sbt testUnit`** — unit specs for controllers, services,
+  enrichment, clients, models. Any change under `web/src/main/`,
+  `worker/src/main/`, or `common/src/main/` that isn't pure view markup.
+- **`sbt itAll`** — `*/src/it/scala/` specs wiring fakes + the real
+  cache/repository. Required for any change to enrichment pipelines,
+  cache layering, the read-model projection, or anything that crosses
+  the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam.
+- **`sbt web/PageTest/test`** — real Chrome over CDP against
+  Twirl-rendered fixtures. Required for any change to
+  `web/src/main/assets/js/`, the inline `<script>` blocks in the
+  repertoire templates, or the rendered HTML shape those blocks read.
+- **Playwright** (`page-tests-playwright`) — mobile + desktop ×
+  Chromium / WebKit / Firefox / Edge. Required for visible UX changes —
+  card-tap, pill rows, gestures, the empty / loading states.
+- **iOS LocalServer** — the real iOS listing parser against a live
+  fixture-server render. Required for any change to either side of that
+  contract: server-side template/HTML shape or iOS `HTMLParser`.
+- **`swift test --package-path ios`** — iOS unit / integration suites
+  without the live server. Required for any change to iOS model /
+  parser logic regardless of whether you also need LocalServer.
+
+Exact commands, the module-scoping variants, and the `testOnly` / `-z`
+narrowing that cuts a run from minutes to seconds are in the
+`test-layers` skill.
 
 You should run **all** the layers that match the change. Run them
 **in parallel** when there are no dependencies (separate `Bash`
@@ -55,120 +45,36 @@ CI is the safety net, not the test plan. Pushing and waiting for
 CI to catch something is the wrong shape; pushing once the relevant
 layers are green locally is the right shape.
 
-## Regenerate page snapshots when the rendered HTML changes
+## Regenerate the snapshots your change shifts
 
-`PageSnapshotSpec` (`web/src/page/scala/views/PageSnapshotSpec.scala`)
-diffs the rendered HTML for `/` (per city: Poznań, Wrocław, Warszawa)
-and `/plan` against checked-in expected files under
-`test/resources/fixtures/08-06-2026/`. Any change that alters the HTML a
-Twirl template emits — new or changed attributes on an element,
-added/removed markup, reordered output, changed inline JS — will break
-the snapshot comparison. (Comments inside inline `<style>`/`<script>`
-blocks are stripped by `tools.Minify` at render time, so editing those
-does NOT shift the snapshot; HTML `<!-- -->` comments do survive.)
+Two checked-in snapshot layers guard this repo, and a change that
+shifts either one is not committable until the snapshot is regenerated
+and committed alongside it:
 
-When your change intentionally alters the rendered HTML:
+- **`expected-*.html`** — the rendered HTML for `/` (per city: Poznań,
+  Wrocław, Warszawa) and `/plan`, diffed by `PageSnapshotSpec`. Shifts
+  on any Twirl template, markup, `data-*`/CSS-class, `PosterProxy`, or
+  inline-JS change. (Comments inside inline `<style>`/`<script>` are
+  stripped by `tools.Minify`, so those don't shift it; HTML `<!-- -->`
+  comments do.)
+- **`read-model-snapshot.json`** — the pipeline's projected output,
+  guarded by `FilmScheduleEndToEndSpec`. Shifts on any cinema scraper,
+  enrichment, `TitleNormalizer`, staging-fold, `ReadModelProjector`,
+  model-field, or raw-fixture change — and a pipeline change usually
+  shifts the rendered HTML too, so regenerate both.
 
-1. Delete the stale expected file(s):
-   ```
-   rm test/resources/fixtures/08-06-2026/expected-index.html
-   rm test/resources/fixtures/08-06-2026/expected-wroclaw-index.html
-   rm test/resources/fixtures/08-06-2026/expected-warszawa-index.html
-   rm test/resources/fixtures/08-06-2026/expected-plan.html
-   ```
-   Delete only the pages your change affects. When in doubt, delete
-   all four — they regenerate in seconds.
-
-2. Run the snapshot spec:
-   ```
-   sbt 'web/PageTest/testOnly views.PageSnapshotSpec'
-   ```
-   The spec writes the missing file(s) and fails with
-   "Snapshot didn't exist — wrote …". This is expected.
-
-3. Re-run to confirm the new snapshot is stable:
-   ```
-   sbt 'web/PageTest/testOnly views.PageSnapshotSpec'
-   ```
-   All tests should pass. If they don't, the rendering is
-   non-deterministic — investigate before committing.
-
-4. Commit the regenerated snapshot(s) alongside the production change
-   that caused them. Don't commit snapshots in a separate commit —
-   they're part of the same logical change.
-
-Changes that typically require regeneration: Twirl template edits
-(`web/src/main/twirl/views/*.scala.html`), `PosterProxy` output changes, model
-fields that surface in the view, CSS class or `data-*` attribute
-changes on rendered elements, inline `onerror`/`onclick` handler
-changes.
-
-## Regenerate the read-model snapshot when the PIPELINE changes
-
-The page-test servers no longer recompute the ~110s fixture corpus pipeline on
-every boot. `FixtureServerMain` (the Playwright + mobile fixture server) and the
-in-JVM `PageSnapshotSpec` / `PageJsBehaviourSpec` LOAD a checked-in projected
-read model — `test/resources/fixtures/08-06-2026/read-model-snapshot.json` — via
-`FixtureTestWiring.bootFromSnapshotOrPipeline` (see
-`worker/src/test/scala/tools/ReadModelSnapshot.scala`). The snapshot is the
-deterministic output of `bootStartup` (scrape → enrich → stage → fold →
-project), captured once instead of ~15× across the page-test runners.
-
-There are now TWO snapshot layers, regenerated for DIFFERENT changes:
-
-- **`read-model-snapshot.json`** — the pipeline's OUTPUT (what `web_movies` /
-  `web_screenings` hold). Regenerate when you change anything that alters that
-  output: a cinema scraper, the enrichment pipeline, `TitleNormalizer` rules,
-  the staging fold, `ReadModelProjector`/`ReadModelProjection`, model fields, or
-  the raw fixture files under `08-06-2026/`. A render-only Twirl/CSS change does
-  NOT touch it.
-- **`expected-*.html`** — the RENDERED output (above). A pipeline change usually
-  shifts BOTH (the new read model renders differently), so regenerate the HTML
-  too; a render-only change shifts only the HTML.
-
-The guard is `FilmScheduleEndToEndSpec` ("...match the checked-in read-model
-snapshot..."), which boots the REAL pipeline and diffs it against the file —
-so a stale snapshot fails CI loudly (in the `e2e (rest)` shard) with the exact
-regenerate command. To regenerate after an intentional change:
-
-```
-rm test/resources/fixtures/08-06-2026/read-model-snapshot.json
-sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # writes it, fails "didn't exist"
-sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # re-run: must pass (stable)
-```
-
-Then regenerate the `expected-*.html` per the section above if rendering shifted,
-and commit all of them together with the production change. Consumers fall back
-to the full pipeline boot when the file is absent, so a forgotten regen is slow,
-never wrong — but the guard still fails until you commit the fresh snapshot.
+The regenerate commands (delete → run the spec → re-run to confirm
+stability) are in the `regenerate-snapshots` skill.
 
 ## Parallelize scripts, but don't get rate-limited
 
-Long-running scripts that hit external services (TMDB, IMDb, Filmweb,
-Metacritic, RT, OMDb, Cinemeta, Mongo, scraped cinema sites) should run
-per-row work in parallel — serial loops of hundreds of HTTP round-trips
-are unacceptably slow when 90% of the time is network wait.
-
-Default to a fixed-thread pool of **5–10 concurrent workers** for scripts
-hitting a single API. Stay well under each service's limit:
-
-- TMDB: ~50 req/s — 10 workers is fine.
-- IMDb / Cinemeta / RT / Metacritic: undocumented; assume a few hundred
-  per minute. 5–10 workers fine; back off on any 429/503.
-- Filmweb: undocumented; 5 workers comfortable, more risks soft-blocks.
-- OMDb (free tier): 1000 req/day — sequential is fine; the limit is
-  daily, not per-second.
-
-On HTTP 429 / 503 / `Request limit reached!`, halve concurrency and add
-a small sleep between retries. Don't push harder — the host is telling
-you to stop.
-
-For Mongo, parallelism doesn't matter much (the driver pools
-connections); use the default unless the script does CPU work between
-queries.
-
-Always print throughput at the end (`done in 12.3s, ~8 req/s`) so the
-next run can be tuned.
+Scripts that hit external services (TMDB, IMDb, Filmweb, Metacritic,
+RT, OMDb, Cinemeta, scraped cinema sites) run per-row work in
+parallel — serial loops of hundreds of HTTP round-trips are
+unacceptably slow when 90% of the time is network wait. Default to a
+fixed pool of 5–10 concurrent workers, halve concurrency on any
+429/503, and print throughput at the end. Per-service limits are in
+the `external-api-rate-limits` skill.
 
 ## Always add tests for new or changed functionality
 
@@ -233,35 +139,12 @@ that wire fakes/in-memory implementations.
 
 ### Record fixtures for external-service clients
 
-For clients that hit a real external API (TMDB, IMDb, Cinemeta, OMDb,
-Filmweb, Metacritic, RT, scraped cinema sites), strongly consider
-capturing a real response as a fixture on disk and writing a test that
-replays it through the client. Live HTTP in tests is flaky and slow;
-hand-written mock JSON drifts from reality and hides parser bugs the
-real payload would catch.
-
-When to record a fixture:
-
-- Adding a new client, or a new endpoint on an existing client.
-- Changing how a response is parsed (new field, changed shape,
-  tightened validation).
-- Hitting a real-world payload that exposed a parser bug — capture that
-  exact payload so the bug can't regress.
-
-How:
-
-- Save the raw response under
-  `test/resources/fixtures/<service>/<case>.<ext>`. Trim noise (huge
-  image arrays, tracking ids) only if it doesn't affect parsing.
-- Load from disk and feed the parser/decoder directly, OR stub the HTTP
-  layer to return the bytes. No network in tests.
-- Name after the scenario (`tmdb_movie_with_no_release_date.json`,
-  `rt_404_page.html`), not the date or ticket number.
-- For large fixtures, leave a one-line comment in the test pointing to
-  the URL/query that produced it.
-
-If the response is trivial or the client is a thin pass-through, write
-a smaller unit test instead — but don't skip testing the client.
+Clients that hit a real external API (TMDB, IMDb, Cinemeta, OMDb,
+Filmweb, Metacritic, RT, scraped cinema sites) get a real captured
+response replayed from disk — never live HTTP in tests, never
+hand-written mock JSON, which drifts from reality and hides the parser
+bugs a real payload would catch. The `record-client-fixtures` skill
+covers when to record one and where fixtures live.
 
 ## Never leave uncommitted changes stranded — and don't work in the root checkout
 
@@ -279,6 +162,14 @@ being pruned away.
 
 Rules:
 
+- **No PRs, and NEVER push the feature branch.** The only ref that
+  ever reaches origin is `main`. The flow is: rebase your worktree
+  branch onto `origin/main` → all relevant layers green → ff-merge into
+  `main` → push `main` → delete the worktree and its branch. Before
+  typing `git push` or `gh pr create`, run
+  `git rev-parse --abbrev-ref HEAD`; if it isn't `main`, you are about
+  to violate this rule. (Breached twice — 2026-07-02 and 2026-07-19 —
+  each costing a close-PR + delete-remote-branch cleanup.)
 - **Do your work in your own worktree, never in the root/`main`
   checkout.** `git worktree add -b <branch> <path> origin/main`. The
   root checkout is for orchestration/inspection only — never edit
@@ -360,8 +251,8 @@ Stop and ask only when something can't be undone cheaply:
   anything already on origin). Always ask.
 - Destructive ops with no easy backout: dropping a Mongo collection,
   truncating a table, deleting branches, `rm -rf` outside `target/`.
-  (Killing live Fly machines is NOT in this bucket — see "Short prod
-  downtime is fine" below.)
+  (Killing a live Fly *worker* machine is NOT in this bucket — see
+  "Worker downtime is fine" below.)
 - Committing files that might carry secrets (`.env.local`, credentials,
   API keys). Stage by explicit path; flag and ask before staging
   anything that smells like a secret.
@@ -373,21 +264,29 @@ manual `flyctl deploy` to roll prod back to a known-good image during
 an incident — just do it. If a push triggers CI and CI fails, fix
 forward in the next commit; don't undo the push.
 
-### Short prod downtime is fine
+### Worker downtime is fine — keep the web tier answering
 
-Brief downtime in prod — up to ~15 minutes — is acceptable if it gets
-the change done sooner. Don't dance around clone-swap orchestrations,
-blue/green cutovers, or per-machine canary stages just to keep
-`kinowo.fly.dev` answering 200s the whole time. For a hobby-traffic
-app, the cost of "page 404s for two minutes while a new machine boots"
-is virtually nothing; the cost of building a zero-downtime sequence is
-real engineering time the user would rather you spend elsewhere.
+**Workers** (`kinowo-worker`, `kinowo-worker-de`, `kinowo-worker-uk`)
+can go fully down without ceremony. They scrape, enrich, and project on
+a cadence; a gap just delays the next cycle and the read model keeps
+serving what's already projected. When moving a machine, swapping a
+process, or redeploying after a config change — just `destroy` and
+`create` (or equivalent). Watch CI for the deploy to roll,
+sanity-check, move on. Up to ~15 minutes of worker downtime is in the
+"everything else, just do it" bucket above.
 
-Concretely: when moving a Fly machine, swapping a process under live
-traffic, redeploying after a config change, or similar prod-touching
-lifecycle ops — just `destroy` and `create` (or equivalent). Watch CI
-for the deploy to roll, sanity-check, move on. Downtime under 15 min
-is in the "everything else" bucket above.
+**The web / read tier (`kinowo.fly.dev`) is different — don't bring it
+completely down if there's any way not to.** It's the only part users
+see, and a page that 404s is the failure they notice. Prefer a rolling
+deploy that keeps at least one machine serving; when moving or resizing
+machines, create the replacement *before* destroying the old one.
+
+This is not a licence to build elaborate zero-downtime orchestration
+for the web tier either. A brief 5xx window as a rolling deploy passes
+through is fine, and so is a genuinely unavoidable short full outage —
+a region move, a machine the platform won't let you duplicate. When
+that happens keep it short, and say out loud afterwards that the tier
+was fully down rather than letting it pass unmentioned.
 
 This is about LIFECYCLE — destroying machines, restarting processes,
 brief 5xx windows during a redeploy. Destructive *data* ops (dropping a
@@ -544,144 +443,42 @@ before deciding to iterate.
 
 ## Follow SOLID — especially depend on interfaces, not implementations
 
-The SOLID principles are the design baseline. Each gets its own section
-below — short rationale, the smells that signal a violation, and how it
-lands in this codebase.
+The SOLID principles are the design baseline. What follows is how each
+one lands *in this codebase*; the general definitions are assumed.
 
-### S — Single Responsibility
-
-> A class should have one, and only one, reason to change.
-
-A class's "responsibility" is *who* asks for it to change. If two
-concerns (or stakeholders, or upstream services) can independently
-force the class to change, that's two responsibilities — split. The
-flip side is cohesion: things that change together live together.
-
-Smells:
-
-- Can't describe the class without saying "and." `Cache` — fine.
-  `CacheAndPersistentStoreAndEventPublisher` — three classes.
-- Generic noun in the name (`Manager`, `Handler`, `Util`, `Helper`,
-  `Processor`) — almost always catch-alls.
-- A small bugfix in one feature touches lots of unrelated methods.
-- Many private helpers that no two callers share.
-
-In this codebase: `ImdbIdResolver` recovers a missing IMDb id;
-`ImdbRatings` refreshes the rating. Two reasons to change (suggestion
-endpoint vs GraphQL rating API) → two classes. `MovieCache`,
-`MovieService`, `ScrapeReaper` each change for reasons the others
-don't care about.
-
-### O — Open / Closed
-
-> Software entities should be open for extension, but closed for
-> modification.
-
-Adding a new variant of an existing concept shouldn't require editing
-the existing code — *extend* (new subtype, strategy, plugin) without
-reopening the closed file. In practice: polymorphism instead of
-`switch` / `if-else-on-type`.
-
-Smells:
-
-- A `match`/`switch` on a sealed family that grows by one case per new
-  variant, touching every site that matches. Move the per-variant
-  logic onto the variant.
-- A core class that takes a config flag and forks behaviour inside.
-  Move the fork into a strategy.
-- Adding a new feature requires editing 5 files, none of which is the
-  new feature's own file.
-
-In this codebase: adding a cinema is a new `CinemaXClient` fitting the
-existing scrape contract — `ScrapeReaper` doesn't change. Adding a
-rating source is a new `*Ratings` class subscribing to the existing
-`TmdbResolved` / `ImdbIdMissing` bus events — bus, cache, and service
-don't change.
-
-### L — Liskov Substitution
-
-> Subtypes must be substitutable for their base types without breaking
-> the program. (Barbara Liskov, 1987.)
-
-A subtype must honour the **behavioural** contract of its supertype,
-not just the type signatures:
-
-- **Preconditions can't be strengthened.** If the base accepts any
-  String, the subtype can't require a non-empty one.
-- **Postconditions can't be weakened.** If the base returns non-null,
-  the subtype can't return null.
-- **Invariants preserved.** If the base guarantees thread-safety, the
-  subtype can't drop it.
-- **History constraint.** A subtype can't introduce mutation the base
-  didn't permit (immutable base, mutable subtype via the base
-  reference).
-
-Smells:
-
-- Override throws `UnsupportedOperationException` or
-  `NotImplementedError`. The subtype isn't actually a subtype.
-- The `Square extends Rectangle` shape — setting width and height
-  independently works on Rectangle and breaks on Square.
-- Callers have to know the concrete type
-  (`if (repository.isInstanceOf[InMemoryMovieRepository])`). Abstraction is leaking.
-
-In this codebase: `InMemoryMovieRepository` honours `MovieRepository`'s
-write-through contract — `upsert` updates the store, `delete` removes
-from it, `findAll` returns current contents. A caller using the
-`MovieRepository` reference can't tell the difference.
-
-### I — Interface Segregation
-
-> Clients should not be forced to depend on methods they do not use.
-
-Prefer many small, focused interfaces over one general-purpose "god
-trait". A consumer that only reads shouldn't compile against the write
-API. A test fake that needs two methods shouldn't have to stub fifteen.
-
-Smells:
-
-- A trait with 20+ methods and most callers using 2–3 each.
-- Test fakes with many `???` / "should not be called" stubs because the
-  interface is wider than the test exercises.
-- Methods marked "callers should ignore this" or "only the X impl uses
-  this".
-
-In this codebase: keep `MovieRepository` to the persistence contract
-(`findAll`, `upsert`, `updateIfPresent`, `delete`, `enabled`, `close`).
-Don't bolt on enrichment, scheduling, or display. A new caller that
-needs only reads gets a `MovieRepositoryReader` sub-trait.
-
-### D — Dependency Inversion
-
-> High-level modules should not depend on low-level modules. Both
-> should depend on abstractions. Abstractions should not depend on
-> details — details should depend on abstractions.
-
-**This is the load-bearing principle for this codebase.** Every
-non-trivial collaboration is wired in `AppLoader` (the composition
-root); everything else sees only abstractions through constructor
-parameters. `MovieService` doesn't know whether `MovieRepository` is talking
-to Mongo, an in-memory map, or a flat file — it knows the trait.
-
-Smells:
-
-- High-level class imports a concrete low-level class directly
-  (`import services.movies.MongoMovieRepository` from inside `MovieService`).
-- Constructors take concrete classes instead of traits.
-- Tests have to stand up real infrastructure (Mongo, HTTP server,
-  filesystem) because there's no abstraction to swap.
-- "I need a feature flag to toggle behaviour X" — usually a missing
-  abstraction; introduce a trait with two implementations and pick at
-  the composition root.
-
-Related:
-
-- **Inversion of Control.** Accept collaborators, don't construct them
-  inside. `class FilmwebRatings(cache: MovieCache, client: FilmwebClient)`,
-  not `class FilmwebRatings() { val cache = new MovieCache(); ... }`.
-- **The Dependency Rule** (Clean Architecture). Source dependencies
-  point inward, toward higher-level policy. Domain doesn't import
-  infrastructure; infrastructure imports domain.
+- **Single Responsibility.** `ImdbIdResolver` recovers a missing IMDb
+  id; `ImdbRatings` refreshes the rating. Two reasons to change
+  (suggestion endpoint vs GraphQL rating API) → two classes.
+  `MovieCache`, `MovieService`, `ScrapeReaper` each change for reasons
+  the others don't care about. Treat `Manager`/`Handler`/`Util`/
+  `Helper`/`Processor` names as a smell — they're almost always
+  catch-alls.
+- **Open / Closed.** Adding a cinema is a new `CinemaXClient` fitting
+  the existing scrape contract — `ScrapeReaper` doesn't change. Adding
+  a rating source is a new `*Ratings` class subscribing to the existing
+  `TmdbResolved` / `ImdbIdMissing` bus events — bus, cache, and service
+  don't change.
+- **Liskov Substitution.** `InMemoryMovieRepository` honours
+  `MovieRepository`'s write-through contract — `upsert` updates the
+  store, `delete` removes from it, `findAll` returns current contents.
+  A caller holding the `MovieRepository` reference can't tell the
+  difference, and never needs `isInstanceOf` to find out.
+- **Interface Segregation.** Keep `MovieRepository` to the persistence
+  contract (`findAll`, `upsert`, `updateIfPresent`, `delete`,
+  `enabled`, `close`). Don't bolt on enrichment, scheduling, or
+  display. A new caller that needs only reads gets a
+  `MovieRepositoryReader` sub-trait.
+- **Dependency Inversion — the load-bearing one here.** Every
+  non-trivial collaboration is wired in `AppLoader` (the composition
+  root); everything else sees only abstractions through constructor
+  parameters. `MovieService` doesn't know whether `MovieRepository` is
+  talking to Mongo, an in-memory map, or a flat file — it knows the
+  trait. Accept collaborators, don't construct them inside:
+  `class FilmwebRatings(cache: MovieCache, client: FilmwebClient)`, not
+  `class FilmwebRatings() { val cache = new MovieCache(); ... }`. If
+  you reach for a feature flag to toggle behaviour X, you're usually
+  missing an abstraction — introduce a trait with two implementations
+  and pick at the composition root.
 
 Constructors and method parameters take the **abstraction**, never a
 concrete class. Production code never references a test subclass
@@ -708,124 +505,14 @@ When in doubt: would a future reader of the class name guess what it
 
 ## Share business logic between real and fake implementations
 
-When a trait has both a real and a fake/test implementation, draw the
-trait so the business logic lives in **shared** code, not duplicated
-across implementations. The two should differ only at the
-infrastructure boundary — where data is stored, which HTTP backend is
-called, what clock ticks — never in their understanding of the rules.
+When a trait has both a real and a fake/test implementation, the
+business logic lives in **shared** code, not duplicated across
+implementations. The two differ only at the infrastructure boundary —
+where data is stored, which HTTP backend is called, what clock ticks —
+never in their understanding of the rules. A fake that re-implements
+logic the real class has is worse than no fake: it lets tests pass
+while real code is broken (or vice versa).
 
-Whenever you reach for a new fake (`FakeFooClient`, `StubFooService`,
-`InMemoryFoo…`), first ask whether the logic you're about to copy
-belongs above the trait. If the fake needs to re-implement the same
-merge rule, the same write-through ordering, the same "don't publish
-on no-op" filter, that logic is on the wrong side of the seam.
-
-How to push it up:
-
-- **Split the trait into two layers.** The outer concrete class owns
-  the business logic; it depends on an inner trait that's a narrow
-  infrastructure boundary. Only the inner trait gets a fake. Example:
-  `MovieCache` (concrete — Caffeine, write-through, event publishing)
-  depends on `MovieRepository` (trait — Mongo or in-memory). Tests inject
-  `InMemoryMovieRepository` and get the real cache semantics for free.
-- **Default methods on the trait.** `trait Foo { def primitive(): X;
-  final def derived(): Y = ... }`. Real and fake implement primitives;
-  derived behaviour is shared by construction.
-- **Extract a helper / pure function** both impls call.
-
-Treat the refactor as part of the change that introduces the fake —
-not a follow-up. A fake that re-implements logic the real class has is
-worse than no fake: it lets tests pass while real code is broken (or
-vice versa).
-
-Signs you've drawn the seam in the wrong place:
-
-- The fake has its own copy of a sort/merge/filter rule the real impl
-  also has.
-- A behaviour change to the real impl forces a parallel change to the
-  fake to keep tests green.
-- The fake's body is longer than "store this, return that" — it's
-  actually deciding things.
-- Two tests against the fake disagree about the rule because each
-  patched it differently.
-
-Done right, a fake is boring: a `HashMap`, a fixed list of HTTP
-responses, a `Clock.fixed(...)`. The business logic sits above and is
-exercised end-to-end with the real outer class.
-
-## Quota-saving patterns (general, not task-specific)
-
-The conversation history of this project has burned non-trivial
-tokens on patterns I keep falling into. Avoid them.
-
-### Run the narrowest test scope you can
-
-`sbt web/PageTest/test` runs the page specs in ~30 s. `sbt 'web/PageTest/testOnly
-views.PageJsBehaviourSpec -- -z "card poster link"'` runs 4 in ~6 s.
-When iterating on one test, use `testOnly` + the `-z` substring
-filter. Same for the main `sbt testUnit` — there are hundreds of unit
-specs; `testOnly` to the spec under change cuts a full run from
-minutes to seconds.
-
-### Background long waits, don't poll-loop in the foreground
-
-`gh run watch` and the until-loops that poll `gh run list` every
-30 s burn tool-call turns. Spawn the wait with `run_in_background:
-true` and a sensible `until` condition; the harness notifies you
-when it completes. Free turns for actual work in the meantime.
-
-Same for `sleep` + screenshot loops against the simulator: spawn,
-do other work, the notification tells you when the screenshot
-landed.
-
-### Pre-resize screenshots before reading them
-
-A raw simulator screenshot is 1080 × 2400 (or worse on bigger
-devices) and costs a lot per Read. `sips -Z 720 src.png --out
-small.png` resizes to a width readable by the model in one quick
-glance. Use the small one for routine inspection; reach for the
-full-res only when you specifically need to see fine pixel detail.
-
-### Batch independent tool calls in one message
-
-A single Tool-call block can hold many tool calls; they run in
-parallel. `git status`, `git diff`, and `git log --oneline -3`
-have no dependencies on each other — fire them together. Same for
-reads of unrelated files, parallel curls, parallel grep + read
-chains. Sequential message-per-call is the worst case.
-
-### Don't re-read files after Edit / Write
-
-The harness tracks file state. If `Edit` or `Write` returned
-success, the file is in the state you asked for. Re-Reading "to
-verify" costs a round trip and tells you nothing the tool result
-didn't already.
-
-### Delegate broad codebase exploration to the Explore subagent
-
-More than 3 `grep` or `find` calls in a row searching for the
-same concept ("where is X used", "how does Y wire together")
-costs main-context tokens. Spawn an Explore subagent with the
-question and let it report back. The subagent reads the relevant
-files in its own context window; main-thread only pays for the
-question + answer.
-
-The same applies to read-only investigations: "look up the live
-CSS to confirm Z" — Explore, not main.
-
-### Iterate via the test, not by hand
-
-When a test fails, fix the test then re-run. Don't manually
-inspect via 10 ad-hoc tool calls — print state from the test
-itself (`info(...)`, `withClue(...)`, or a JS `evaluate` block in
-Playwright) so the test log carries the diagnostic. One
-test-run / commit cycle is cheaper than a debugging cascade.
-
-If the test passes locally and fails on CI, suspect environment
-difference first (Chrome version, runner OS) before treating it
-as test flakiness — see [[feedback-ci-chrome-version-drift]].
-
-### Don't poll harness-tracked work
-
-`run_in_background: true` already notifies on completion. Sleeping
-+ polling on top of it doubles the cost. Trust the notification.
+Before writing any `Fake*` / `Stub*` / `InMemory*`, read the
+`writing-fakes` skill — how to push logic above the seam, and the
+signs you've drawn the seam in the wrong place.
