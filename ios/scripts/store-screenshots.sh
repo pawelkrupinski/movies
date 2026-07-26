@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
 # Generate App Store screenshots for the Kinowo / Showtimes iOS app. Just run it —
-# it builds once, boots the simulator, drives the five store screens per city and
-# writes them out per locale.
+# it builds once, boots the simulators, drives the five store screens per city and
+# writes them out per locale, for the PHONE and the IPAD.
 #
 #   ios/scripts/store-screenshots.sh en-GB "Birmingham"      # → candidates dir
-#   ios/scripts/store-screenshots.sh pl-PL "Poznan" /tmp/x   # → a scratch dir
+#   ios/scripts/store-screenshots.sh pl-PL "Poznan" /tmp/x   # → a scratch dir (both passes append)
 #   ios/scripts/store-screenshots.sh --top uk 10             # biggest cities by film count
 #   ios/scripts/store-screenshots.sh --top uk 5 11           # ranks 11-15 instead of 1-5
 #   ios/scripts/store-screenshots.sh --all-top 2             # top 2 cities of EVERY country
@@ -23,12 +23,20 @@
 # A city that fails is SKIPPED, not fatal: the rest of the country still gets shot
 # and the summary says which ones were lost.
 #
-# Shots land in a candidates/ scratchpad INSIDE the published dir
-# (ios/store/listings/<locale>/graphics/phone-screenshots/candidates/, gitignored)
-# and every run APPENDS, zero-padded to three digits (city 1 → 001-005.png, city 2
-# → 006-010.png, …). Pick the keepers and move them up one level into
-# phone-screenshots/ — that is what goes to App Store Connect. The layout mirrors
-# the Android side exactly, so one promote-by-hand habit works for both stores.
+# Every run shoots BOTH classes by default — a full pass on the phone, then a full
+# pass on the iPad. App Store Connect requires an iPad set from any app whose
+# TARGETED_DEVICE_FAMILY includes iPad, and ours does; shooting phones alone is
+# how the first submission ended up with three stale, empty iPad sets nobody
+# noticed. SHOT_CLASSES / SHOT_CLASS narrow it back to one when that is what you
+# want.
+#
+# Shots land in a candidates/ scratchpad INSIDE the published dir, one per class
+# (ios/store/listings/<locale>/graphics/{phone,tablet}-screenshots/candidates/,
+# gitignored) and every run APPENDS, zero-padded to three digits (city 1 →
+# 001-005.png, city 2 → 006-010.png, …). Pick the keepers and move them up one
+# level into phone-screenshots/ or tablet-screenshots/ — that is what goes to App
+# Store Connect. The layout mirrors the Android side exactly, so one
+# promote-by-hand habit works for both stores.
 #
 # Screens are reached by DEEP LINK (`kinowo://<slug>`, `…/film?title=…`), never by
 # tapping coordinates: the same script then works on a 4" phone and a 13" iPad
@@ -44,9 +52,10 @@
 # Only ONE capture run at a time: a second is refused with the holder's pid rather
 # than letting two runs fight over the same simulators. --top is exempt.
 #
-# Env: IOS_PHONE / IOS_TABLET pick the devices · SHOT_CLASS=tablet-screenshots to
-# shoot the iPad instead · SETTLE=<s> per-screen wait (posters come off the
-# network) · BUILD=1 force a rebuild · NO_OPEN=1 skip the Preview.
+# Env: IOS_PHONE / IOS_TABLET pick the devices · SHOT_CLASSES="phone-screenshots
+# tablet-screenshots" names the passes (both by default; SHOT_CLASS=<one> still
+# pins a single pass) · SETTLE=<s> per-screen wait (posters come off the network)
+# · BUILD=1 force a rebuild · NO_OPEN=1 skip the Preview.
 #
 set -euo pipefail
 
@@ -54,7 +63,15 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LISTINGS="$REPO_ROOT/ios/store/listings"
 # Same directory vocabulary as Android (gradle-play-publisher's ImageType.dirName)
 # so both stores are laid out identically: phone-screenshots / tablet-screenshots.
-SHOT_CLASS="${SHOT_CLASS:-phone-screenshots}"
+#
+# Both classes by DEFAULT. App Store Connect requires an iPad set from any app
+# whose TARGETED_DEVICE_FAMILY includes iPad — ours does — so shooting only
+# phones leaves a mandatory set to go stale silently, which is exactly what
+# happened to the first submission's listings. `SHOT_CLASSES` names the passes;
+# `SHOT_CLASS` is whichever one is being shot right now, and is what
+# `candidates_dir` reads. Setting SHOT_CLASS alone still pins a single-class run,
+# so the older `SHOT_CLASS=tablet-screenshots …` invocation keeps working.
+SHOT_CLASSES="${SHOT_CLASSES:-${SHOT_CLASS:-phone-screenshots tablet-screenshots}}"
 # Five screens a city, one more than Android: the same four plus the Filtry
 # sheet. Set before sourcing so the shared numbering hands out blocks of five.
 SHOTS_PER_CITY=5
@@ -76,6 +93,21 @@ MAIN_SHELL=1                            # cleared in worker subshells
 IOS_PHONE="${IOS_PHONE:-iPhone 17 Pro Max}"
 IOS_TABLET="${IOS_TABLET:-iPad Pro 13-inch (M5)}"
 device_for_class() { case "$1" in tablet-screenshots) echo "$IOS_TABLET";; *) echo "$IOS_PHONE";; esac; }
+
+# Run a capture command once per class — a full, ordinary single-class pass each
+# time, rather than threading a second class through the city loop. Each pass is
+# therefore exactly the run that has always worked: its own devices, its own
+# candidates dir, its own numbering and Preview. The build is shared (build_app
+# returns early once the app exists) and ensure_device reuses whatever is already
+# booted, so the second pass costs one simulator boot, not a rebuild.
+for_each_class() { # $1.. command + args to run per class
+  local class
+  for class in $SHOT_CLASSES; do
+    SHOT_CLASS="$class"
+    say "▪ $SHOT_CLASS on $(device_for_class "$SHOT_CLASS")"
+    "$@"
+  done
+}
 
 cleanup() { [ -n "${MAIN_SHELL:-}" ] && { shutdown_devices; release_lock; }; rm -f "$NOISE"; }
 trap cleanup EXIT
@@ -300,7 +332,7 @@ cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country
   local want_preview=1; [ -n "${NO_OPEN:-}" ] && want_preview=
   export NO_OPEN=1                       # suppress the per-city pop-up
 
-  say "$n cities from rank $off × $ncountries countries on $(device_for_class "$SHOT_CLASS")"
+  say "$n cities from rank $off × $ncountries countries"   # for_each_class named the device
   build_app
   run_worker 0 1 "$n" "$off"             # one worker: a device type boots only once
 
@@ -325,9 +357,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     # Only the capture paths take the lock: --top just prints a ranking and is
     # safe to run beside anything.
     --top)         shift; cmd_top "$@";;
-    --all-top)     shift; acquire_lock ios; cmd_all_top "$@";;
-    --country-top) shift; acquire_lock ios; cmd_country_top "$@";;
+    --all-top)     shift; acquire_lock ios; for_each_class cmd_all_top "$@";;
+    --country-top) shift; acquire_lock ios; for_each_class cmd_country_top "$@";;
     -h|--help|"")  usage;;
-    *)             acquire_lock ios; cmd_capture "$@";;
+    *)             acquire_lock ios; for_each_class cmd_capture "$@";;
   esac
 fi

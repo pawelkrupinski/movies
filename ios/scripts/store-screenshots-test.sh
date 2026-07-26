@@ -46,6 +46,33 @@ SHOT_CLASS="$_saved_class"
 check "phones are the default class" "$IOS_PHONE" "$(device_for_class phone-screenshots)"
 check "an unknown class falls back to the phone" "$IOS_PHONE" "$(device_for_class whatever)"
 
+# ── both classes, every run ───────────────────────────────────────────────────
+# App Store Connect REQUIRES an iPad set while TARGETED_DEVICE_FAMILY includes
+# iPad. Shooting only phones is what left three stale, empty iPad sets on the
+# live listings, so the iPad is not opt-in.
+check "both classes are shot by default" "phone-screenshots tablet-screenshots" "$SHOT_CLASSES"
+check "the phone goes first" "phone-screenshots" "$(set -- $SHOT_CLASSES; echo "$1")"
+# Back-compat: the documented SHOT_CLASS=tablet-screenshots invocation must still
+# mean ONE pass, not "both, starting with the tablet".
+check "an explicit SHOT_CLASS still pins a single pass" "tablet-screenshots" \
+  "$(SHOT_CLASS=tablet-screenshots bash -c 'source "$1" >/dev/null 2>&1; echo "$SHOT_CLASSES"' _ "$HERE/store-screenshots.sh")"
+check "SHOT_CLASSES overrides both" "phone-screenshots" \
+  "$(SHOT_CLASSES=phone-screenshots bash -c 'source "$1" >/dev/null 2>&1; echo "$SHOT_CLASSES"' _ "$HERE/store-screenshots.sh")"
+
+# for_each_class runs the WHOLE command once per class — a full ordinary pass
+# each time — with SHOT_CLASS pointing at the one being shot, which is what makes
+# candidates_dir land in the right place without any other function knowing.
+_saved_class="$SHOT_CLASS"; _passes=""
+_record_pass() { _passes="$_passes $SHOT_CLASS($(basename "$(dirname "$(candidates_dir pl-PL)")")):$*"; }
+for_each_class _record_pass topcities 2 >/dev/null
+check "each class gets its own pass, in order, with its own dir" \
+  "phone-screenshots(phone-screenshots):topcities 2 tablet-screenshots(tablet-screenshots):topcities 2" \
+  "${_passes# }"
+SHOT_CLASSES="tablet-screenshots"; _passes=""
+for_each_class _record_pass solo >/dev/null
+check "one class means one pass" "tablet-screenshots(tablet-screenshots):solo" "${_passes# }"
+SHOT_CLASSES="phone-screenshots tablet-screenshots"; SHOT_CLASS="$_saved_class"
+
 # ── the five deep links ───────────────────────────────────────────────────────
 # Screens are reached by deep link, not taps, which is what lets one script serve
 # every device size. Order is the store order: listing, rating, detail, next day,
@@ -123,6 +150,16 @@ check "it still tried every city"           "3" "$(wc -l < "$_capcap" | tr -d ' 
 check "usage documents --country-top" "1" "$(usage | grep -q -- '--country-top' && echo 1 || echo 0)"
 check "usage documents the start rank" "1" "$(usage | grep -q -- '--all-top 2 4' && echo 1 || echo 0)"
 check "usage documents the candidates pile" "1" "$(usage | grep -q 'candidates/' && echo 1 || echo 0)"
+check "usage documents SHOT_CLASSES" "1" "$(usage | grep -q 'SHOT_CLASSES' && echo 1 || echo 0)"
+check "usage says the iPad is shot too" "1" "$(usage | grep -qi 'IPAD' && echo 1 || echo 0)"
+# The dispatch wiring itself: every CAPTURE path must go through for_each_class or
+# the iPad pass silently stops happening. Dispatch only runs when the script is
+# EXECUTED, so it can't be called from here — this reads the source instead, which
+# is crude but guards the one line whose loss would be invisible.
+check "all three capture paths run per class" "3" \
+  "$(grep -c 'for_each_class cmd_' "$HERE/store-screenshots.sh")"
+check "--top stays exempt (it only prints)" "1" \
+  "$(grep -c 'shift; cmd_top' "$HERE/store-screenshots.sh")"
 check "usage reaches the last header line" "1" "$(usage | grep -q 'NO_OPEN' && echo 1 || echo 0)"
 check "usage stops at the code" "" "$(usage | grep 'set -euo' || true)"
 
