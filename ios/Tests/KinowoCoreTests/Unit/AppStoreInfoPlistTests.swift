@@ -1,22 +1,13 @@
 import XCTest
 
 /// App Store submission requirements that live in the app target's `Info.plist`
-/// rather than in code. `KinowoCore` ships no bundle of its own (it's the
-/// Foundation-only slice of the app), so these read the file straight out of the
-/// repo — the artifact `xcodebuild` copies into `Kinowo.app`.
+/// rather than in code. Read off disk via `AppSources` — the artifacts
+/// `xcodebuild` copies into `Kinowo.app`. The privacy manifest, the other
+/// store-facing file, is covered by `AppStorePrivacyManifestTests`.
 final class AppStoreInfoPlistTests: XCTestCase {
 
     private func infoPlist() throws -> [String: Any] {
-        // Tests/KinowoCoreTests/Unit/<this file> → ios/ → Kinowo/Info.plist
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // Unit
-            .deletingLastPathComponent()   // KinowoCoreTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // ios
-            .appendingPathComponent("Kinowo/Info.plist")
-        let data = try Data(contentsOf: url)
-        let parsed = try PropertyListSerialization.propertyList(from: data, format: nil)
-        return try XCTUnwrap(parsed as? [String: Any], "Info.plist is not a dictionary")
+        try AppSources.plist("Kinowo/Info.plist")
     }
 
     /// Without this key every upload stops on App Store Connect's export-
@@ -33,11 +24,7 @@ final class AppStoreInfoPlistTests: XCTestCase {
     /// dropping the `2` is a decision, not a tidy-up. It also commits us to the
     /// 13" iPad screenshot set App Store Connect requires for an iPad app.
     func testShipsForIPhoneAndIPad() throws {
-        let project = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Kinowo.xcodeproj/project.pbxproj")
-        let pbxproj = try String(contentsOf: project, encoding: .utf8)
+        let pbxproj = try AppSources.projectFile()
         XCTAssertTrue(pbxproj.contains("TARGETED_DEVICE_FAMILY = \"1,2\""),
                       "the app ships for iPad too — see the 13\" screenshot set in App Store Connect")
         XCTAssertFalse(pbxproj.contains("TARGETED_DEVICE_FAMILY = \"1\";"),

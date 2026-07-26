@@ -17,6 +17,7 @@
 		DD00000000000000000E03 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E03 /* Localizable.xcstrings */; };
 		DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E04 /* InfoPlist.xcstrings */; };
 		DD00000000000000000E05 /* catalog-seed.json in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E05 /* catalog-seed.json */; };
+		DD00000000000000000E08 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E08 /* PrivacyInfo.xcprivacy */; };
 		DD00000000000000000005 /* Film.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000005 /* Film.swift */; };
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
 		DD00000000000000000261 /* CinemaCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000261 /* CinemaCatalog.swift */; };
@@ -120,6 +121,7 @@
 		CC00000000000000000E03 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000E04 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000E05 /* catalog-seed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "catalog-seed.json"; sourceTree = "<group>"; };
+		CC00000000000000000E08 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		CC00000000000000000005 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
 		CC00000000000000000261 /* CinemaCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaCatalog.swift; sourceTree = "<group>"; };
@@ -246,6 +248,7 @@
 				CC00000000000000000E03 /* Localizable.xcstrings */,
 				CC00000000000000000E04 /* InfoPlist.xcstrings */,
 				CC00000000000000000E05 /* catalog-seed.json */,
+				CC00000000000000000E08 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Kinowo;
 			sourceTree = "<group>";
@@ -472,6 +475,7 @@
 				DD00000000000000000E03 /* Localizable.xcstrings in Resources */,
 				DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */,
 				DD00000000000000000E05 /* catalog-seed.json in Resources */,
+				DD00000000000000000E08 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

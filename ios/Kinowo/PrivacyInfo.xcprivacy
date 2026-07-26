@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Apple's privacy manifest. Two independent jobs, both required at upload:
+
+  1. NSPrivacyAccessedAPITypes — "required reason" APIs. Using one without
+     declaring a reason earns an ITMS-91053 notice from App Store Connect.
+  2. NSPrivacyCollectedDataTypes — what actually leaves the device. This must
+     agree with the App Privacy answers in App Store Connect; the two are
+     checked against each other.
+
+  Guarded by AppStorePrivacyManifestTests, which re-derives (1) from the source
+  so adding a new required-reason API without declaring it fails the build's
+  test lane rather than a week later in an Apple email.
+-->
+<plist version="1.0">
+<dict>
+	<!-- No ad networks, no analytics SDKs, no IDFA. Nothing here follows a user
+	     across other companies' apps or sites, which is what "tracking" means. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<!-- Sign-in is OPTIONAL — the whole app works signed out. These three
+		     exist only once a user chooses Apple/Google/Facebook sign-in. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeEmailAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- The hidden-films and excluded-cinemas lists StateSyncService pushes
+		     so the picks follow the account across devices. Signed out they
+		     never leave UserDefaults. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Location is deliberately ABSENT. LocationCityResolver takes a
+		     kilometre-accuracy fix and hands it to CatalogStore.nearestWithin100km,
+		     which matches it against the catalog already on the device. No
+		     coordinate is ever put in a request, so it is not "collected" —
+		     keep it that way, or this entry has to come back. -->
+	</array>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!-- UserPreferences, CountrySelection, CatalogCache, RepertoireClient and
+		     KinowoApp all persist through UserDefaults. CA92.1 = "access info
+		     from the app itself", which is the whole of our use: nothing is read
+		     from an app group or another app's suite. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
