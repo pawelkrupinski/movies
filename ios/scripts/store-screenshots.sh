@@ -23,19 +23,21 @@
 # A city that fails is SKIPPED, not fatal: the rest of the country still gets shot
 # and the summary says which ones were lost.
 #
-# Every run shoots BOTH classes by default — a full pass on the phone, then a full
-# pass on the iPad. App Store Connect requires an iPad set from any app whose
+# Every run shoots THREE classes by default, a full pass each: 6.9" phone, 13"
+# iPad, 11" iPad. App Store Connect requires an iPad set from any app whose
 # TARGETED_DEVICE_FAMILY includes iPad, and ours does; shooting phones alone is
 # how the first submission ended up with three stale, empty iPad sets nobody
-# noticed. SHOT_CLASSES / SHOT_CLASS narrow it back to one when that is what you
-# want.
+# noticed. Only the 6.9" and the 13" are strictly required — Apple derives the
+# rest — but a derived shot is just the 13" squeezed, and the listing lays out
+# a different column count at 11", so it is shot for real. SHOT_CLASSES /
+# SHOT_CLASS narrow it back when that is what you want.
 #
 # Shots land in a candidates/ scratchpad INSIDE the published dir, one per class
-# (ios/store/listings/<locale>/graphics/{phone,tablet}-screenshots/candidates/,
-# gitignored) and every run APPENDS, zero-padded to three digits (city 1 →
-# 001-005.png, city 2 → 006-010.png, …). Pick the keepers and move them up one
-# level into phone-screenshots/ or tablet-screenshots/ — that is what goes to App
-# Store Connect. The layout mirrors the Android side exactly, so one
+# (ios/store/listings/<locale>/graphics/<class>/candidates/, gitignored) and every
+# run APPENDS, zero-padded to three digits (city 1 → 001-005.png, city 2 →
+# 006-010.png, …). Pick the keepers and move them up one level into
+# phone-screenshots/, tablet-screenshots/ or tablet-11-screenshots/ — that is what
+# goes to App Store Connect. The layout mirrors the Android side exactly, so one
 # promote-by-hand habit works for both stores.
 #
 # Screens are reached by DEEP LINK (`kinowo://<slug>`, `…/film?title=…`), never by
@@ -52,10 +54,11 @@
 # Only ONE capture run at a time: a second is refused with the holder's pid rather
 # than letting two runs fight over the same simulators. --top is exempt.
 #
-# Env: IOS_PHONE / IOS_TABLET pick the devices · SHOT_CLASSES="phone-screenshots
-# tablet-screenshots" names the passes (both by default; SHOT_CLASS=<one> still
-# pins a single pass) · SETTLE=<s> per-screen wait (posters come off the network)
-# · BUILD=1 force a rebuild · NO_OPEN=1 skip the Preview.
+# Env: IOS_PHONE / IOS_TABLET / IOS_TABLET_11 pick the devices · SHOT_CLASSES
+# names the passes ("phone-screenshots tablet-screenshots tablet-11-screenshots"
+# by default; SHOT_CLASS=<one> still pins a single pass) · SETTLE=<s> per-screen
+# wait (posters come off the network) · BUILD=1 force a rebuild · NO_OPEN=1 skip
+# the Preview.
 #
 set -euo pipefail
 
@@ -64,14 +67,14 @@ LISTINGS="$REPO_ROOT/ios/store/listings"
 # Same directory vocabulary as Android (gradle-play-publisher's ImageType.dirName)
 # so both stores are laid out identically: phone-screenshots / tablet-screenshots.
 #
-# Both classes by DEFAULT. App Store Connect requires an iPad set from any app
-# whose TARGETED_DEVICE_FAMILY includes iPad — ours does — so shooting only
-# phones leaves a mandatory set to go stale silently, which is exactly what
-# happened to the first submission's listings. `SHOT_CLASSES` names the passes;
-# `SHOT_CLASS` is whichever one is being shot right now, and is what
-# `candidates_dir` reads. Setting SHOT_CLASS alone still pins a single-class run,
-# so the older `SHOT_CLASS=tablet-screenshots …` invocation keeps working.
-SHOT_CLASSES="${SHOT_CLASSES:-${SHOT_CLASS:-phone-screenshots tablet-screenshots}}"
+# Every class by DEFAULT — 6.9" phone, 13" iPad, 11" iPad. App Store Connect
+# requires an iPad set from any app whose TARGETED_DEVICE_FAMILY includes iPad —
+# ours does — so shooting only phones leaves a mandatory set to go stale
+# silently, which is exactly what happened to the first submission's listings.
+# `SHOT_CLASSES` names the passes; `SHOT_CLASS` is whichever one is being shot
+# right now, and is what `candidates_dir` reads. Setting SHOT_CLASS alone still
+# pins a single-class run, so `SHOT_CLASS=tablet-screenshots …` keeps working.
+SHOT_CLASSES="${SHOT_CLASSES:-${SHOT_CLASS:-phone-screenshots tablet-screenshots tablet-11-screenshots}}"
 # Five screens a city, one more than Android: the same four plus the Filtry
 # sheet. Set before sourcing so the shared numbering hands out blocks of five.
 SHOTS_PER_CITY=5
@@ -88,11 +91,21 @@ NOISE="$(mktemp)"                       # xcodebuild / simctl chatter lands here
 BOOTED_DEVICES=""                       # udids THIS run booted; shut down on exit
 MAIN_SHELL=1                            # cleared in worker subshells
 
-# Apple only requires the largest phone and the largest tablet; every smaller size
-# is derived from those, so one device per class is the whole matrix.
+# App Store Connect REQUIRES the largest phone (6.9") and, for an iPad-enabled
+# app, the 13" iPad; it derives the smaller sizes from those. The 11" iPad is
+# therefore optional — but a derived shot is the 13" layout squeezed, and the
+# listing lays out a different number of columns at that width, so we shoot it
+# for real rather than let Apple guess.
 IOS_PHONE="${IOS_PHONE:-iPhone 17 Pro Max}"
 IOS_TABLET="${IOS_TABLET:-iPad Pro 13-inch (M5)}"
-device_for_class() { case "$1" in tablet-screenshots) echo "$IOS_TABLET";; *) echo "$IOS_PHONE";; esac; }
+IOS_TABLET_11="${IOS_TABLET_11:-iPad Pro 11-inch (M5)}"
+device_for_class() {
+  case "$1" in
+    tablet-screenshots)    echo "$IOS_TABLET";;
+    tablet-11-screenshots) echo "$IOS_TABLET_11";;
+    *)                     echo "$IOS_PHONE";;
+  esac
+}
 
 # Run a capture command once per class — a full, ordinary single-class pass each
 # time, rather than threading a second class through the city loop. Each pass is
