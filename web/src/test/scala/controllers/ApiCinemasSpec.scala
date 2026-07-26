@@ -16,7 +16,7 @@ import java.time.LocalDateTime
  */
 class ApiCinemasSpec extends AnyFlatSpec with Matchers {
 
-  private def controller(): MovieController = {
+  private def controller(servingCountry: models.Country = models.Country.default): MovieController = {
     val now = LocalDateTime.now()
     val record = MovieRecord(
       imdbId = Some("tt999"),
@@ -28,7 +28,7 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
         Tmdb -> SourceData()
       )
     )
-    TestMovieController.build(Seq(("Test Film", None, record)))._1
+    TestMovieController.build(Seq(("Test Film", None, record)), servingCountry = servingCountry)._1
   }
 
   "apiCinemas for a flat city" should "list every venue and an empty areas array" in {
@@ -40,7 +40,9 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
   }
 
   "apiCinemas for London (split)" should "return the five compass areas partitioning the cinema list" in {
-    val result = controller().apiCinemas("london")(FakeRequest())
+    // London is only ours on the UK deployment — a Poland host 404s it now,
+    // so this states which country's host it is testing.
+    val result = controller(models.Country.UnitedKingdom).apiCinemas("london")(FakeRequest())
     status(result) shouldBe OK
     val json  = Json.parse(contentAsString(result))
     val cinemas = (json \ "cinemas").as[Seq[String]]

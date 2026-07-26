@@ -30,6 +30,10 @@ object TestMovieController {
     // the collaborators above; a spec exercising the Dev country switch injects a
     // multi-country `DebugCountries` instead.
     debugCountries: Option[DebugCountries] = None,
+    // Which country's host this controller pretends to be. Defaults to Poland,
+    // matching an unset KINOWO_COUNTRY; a spec exercising another country's
+    // deployment passes it here rather than mutating the shared process env.
+    servingCountry: models.Country = models.Country.default,
   ): (MovieController, WebReadModel) = {
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
@@ -54,6 +58,7 @@ object TestMovieController {
       ogCardService          = new tools.OgCardService((_: String) => None),
       cityOgCardService      = new tools.CityOgCardService((_: String) => None),
       cinemaSourceUrls       = () => cinemaSourceUrls,
+      servingCountry         = servingCountry,
     )
     (ctrl, readModel)
   }

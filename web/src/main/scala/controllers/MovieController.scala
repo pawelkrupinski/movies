@@ -339,6 +339,12 @@ class MovieController( cc: ControllerComponents,
                        // snapshot. Evaluated per request so it tracks live retags;
                        // used only by the /debug table to link cinema names.
                        cinemaSourceUrls: () => Map[String, String] = () => Map.empty,
+                       // The ONE country this deployment serves — which cities are
+                       // ours (`withCity`) and which the sitemap advertises. Injected
+                       // rather than read from `Country.fromEnv` at each use so a spec
+                       // can exercise a non-Polish host by passing one, instead of
+                       // mutating the process-global env that parallel suites share.
+                       servingCountry: models.Country = models.Country.fromEnv,
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
 
   // Read the session's `userId` (set by `AuthController.callback`) and
@@ -404,8 +410,26 @@ class MovieController( cc: ControllerComponents,
   // Resolve the `/{city}/…` slug; 404 on an unknown city. Every city-scoped
   // handler wraps its body in this so resolution + not-found behaviour lives
   // in one place.
+  /** Resolve a city slug against THIS deployment's country, 404ing anything else.
+   *
+   *  Resolving is not enough on its own: `City.bySlug` searches the global
+   *  `City.all` (the union across every country), so Berlin resolves on the
+   *  Poland host too — it is a real city, just not a Polish one. Serving it 200
+   *  with an empty body is worse than a 404, because an empty listing is
+   *  indistinguishable from a genuine "nothing on today": a client caches it
+   *  along with the `Last-Modified` this deployment stamps, and the German
+   *  deployment then answers that timestamp with a 304, leaving the client
+   *  stranded on an empty listing for a city that has a full one. That is how a
+   *  cross-country deep link came up as "no screenings" in the iOS app.
+   *
+   *  Same scope `sitemap` applies, for the same reason — a `KINOWO_COUNTRY=pl`
+   *  host owns Poland's cities and nothing else. Note this is a COUNTRY scope,
+   *  not a data one: a Polish city with no films today still renders (and still
+   *  answers `[]`), because "we don't serve this city" and "this city is quiet
+   *  tonight" are different answers.
+   */
   private def withCity(slug: String)(f: City => Result): Result =
-    City.bySlug(slug) match {
+    City.bySlug(slug).filter(servingCountry.cities.contains) match {
       case Some(c) => f(c)
       case None    => NotFound(s"Nieznane miasto: $slug")
     }
@@ -528,7 +552,7 @@ class MovieController( cc: ControllerComponents,
     // (those pages render empty on this host, so crawling them is pure waste). Each
     // country's own deployment sitemaps its own cities. Same scope the landing +
     // navbar use (`Country.fromEnv`).
-    val entries = models.Country.fromEnv.cities.map(c => c -> movieControllerService.toSchedules(c))
+    val entries = servingCountry.cities.map(c => c -> movieControllerService.toSchedules(c))
     val lastmod = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
       .format(readModel.lastModified.atOffset(java.time.ZoneOffset.UTC))
     val body = SitemapBuilder.build(PageMeta.origin(request), entries, lastmod = Some(lastmod))
