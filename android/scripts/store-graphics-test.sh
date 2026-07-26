@@ -58,6 +58,10 @@ check "and not the English one"                    "0" \
 # of any other size is rejected at upload.
 check "the canvas is Play's 1024×500" "1" \
   "$(printf '%s' "$_de" | grep -c 'width:1024px; height:500px')"
+# The tagline is a single line — wrapped, it read as a paragraph rather than a
+# strapline. Guarded because it is one CSS property away from silently wrapping.
+check "the tagline never wraps" "1" "$(printf '%s' "$_de" | grep -c 'white-space:nowrap')"
+check "and is not width-capped into wrapping" "0" "$(printf '%s' "$_de" | grep -c 'p  {.*max-width')"
 
 # The phone is optional: a locale with no screenshots yet must still render a card
 # rather than blocking the whole generation.

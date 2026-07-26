@@ -98,7 +98,10 @@ feature_html() { # $1 locale, $2 icon data-uri, $3 screenshot data-uri (may be e
   .row { display:flex; align-items:center; gap:18px; margin-bottom:22px; }
   .icon { width:92px; height:92px; border-radius:21px; box-shadow:0 10px 30px rgba(0,0,0,.55); }
   h1 { font-size:62px; font-weight:700; letter-spacing:-1.5px; line-height:1; }
-  p  { font-size:30px; line-height:1.3; color:rgba(255,255,255,.82); max-width:17ch; }
+  /* One line, always. The copy column is ~650px wide and the longest tagline
+     ("Repertuar kin w Twoim mieście", 29 chars) sets ~435px at this size, so
+     nowrap cannot clip — but keep that headroom in mind before lengthening one. */
+  p  { font-size:30px; line-height:1.3; color:rgba(255,255,255,.82); white-space:nowrap; }
   /* The app's LabelValuePill, at card scale: a bold label chip on the source's
      colour, then the value on CardElevated in that same colour. Same 3dp-ish
      corner, same label-Black / value-SemiBold weights. */
