@@ -834,6 +834,74 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+      # ---- A country's SLOT VOLUME collapsed (films flat, showtimes gone) ---
+      # The two rules above count distinct FILMS, and are structurally blind to
+      # a chain dropping every evening slot of every film it carries: the card
+      # stays, the schedule empties, neither rule moves. kinowo_worker_showtimes
+      # is the volume complement — upcoming single dated slots the source corpus
+      # would serve, per country and city, sampled through the real projection
+      # path. This rule is what makes that panel page.
+      #
+      # 2026-07-27: the UK fell 152,315 -> ~56,000 upcoming slots in six hours
+      # (London 22,066 -> 9,956) while its corpus held flat at ~9,013 rows and
+      # its film count barely moved. The swing rule above was live and silent
+      # the whole time, because its baseline is avg_over_time(...[1h]) — over a
+      # multi-hour bleed the reference falls with the metric and the ratio never
+      # trips. The fix is a baseline LONGER than the incident.
+      #
+      # max_over_time (not avg) is the baseline on purpose: the gauge is
+      # published on partial corpus scans too (see WorkerShowtimesMetrics —
+      # publish() ignores scanComplete), so a truncated pass reads LOW and never
+      # high. The peak of the window is therefore the trustworthy sample, and an
+      # averaged baseline would be dragged down by exactly that noise.
+      #
+      # Per country, never fleet-wide: the UK's 63% loss was only a 27% dent in
+      # sum(kinowo_worker_showtimes) because PL and DE were healthy. Backtested
+      # over the 7 days to 2026-07-27 (~1,000 country-samples, including the DE
+      # scrape starvation and the PL/DE overnight refills): the ratio never went
+      # below 0.6 for any healthy country (DE floor 0.707, PL floor 0.796) and
+      # went below only for the UK, only during the incident (floor 0.09) — so
+      # 0.6 has real margin on both sides. `for: 30m` rides out the re-climb
+      # after a worker restart, which walks the gauge back up from a cold scan.
+      - uid: kinowo-showtime-volume-collapsed
+        title: Showtime volume collapsed (country)
+        condition: C
+        for: 30m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.country }} is serving under 60% of its 6h peak showtime volume'
+          description: 'sum by (country) (kinowo_worker_showtimes) for "{{ $labels.country }}" has been below 60% of its own 6h peak for 30m — upcoming showtimes are disappearing without whole films disappearing with them, so the film-count alerts stay green. Check the "total upcoming showtimes served" panel on the Fly-health dashboard scoped to this country, compare kinowo_worker_corpus_movies (flat corpus + falling slots = the slots are being lost in projection/storage, not in scraping), and check the worker''s removal audit for scrape-prune / reproject-trim bursts. See project_uk_slot_volume_collapse.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (country) (kinowo_worker_showtimes) / clamp_min(max_over_time(sum by (country) (kinowo_worker_showtimes)[6h:10m]), 1)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [0.6] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
   # ---- Worker CPU-credit throttle CONTROL (drives the worker's /throttle) -----
   # NOT a page. The worker runs credit-starved by design; this rule is the
   # external "credit logic" for its self-heal backoff. When kinowo-worker's

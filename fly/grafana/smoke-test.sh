@@ -16,7 +16,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMG="$(grep '^FROM ' "$DIR/Dockerfile" | tail -1 | awk '{print $2}')"
 NAME="kinowo-grafana-smoke"
 PORT="${SMOKE_PORT:-3999}"
-EXPECTED_RULES=21
+EXPECTED_RULES=22
 
 # Mount a FRESH copy, not the source tree directly: Docker Desktop's macOS
 # bind-mount cache can keep serving a file's pre-edit bytes after you edit it,
@@ -93,6 +93,14 @@ assert "memory-pressure-psi rule provisioned" \
 assert "residential-proxy-failing rule provisioned with 0.5 ratio threshold" \
   "api/v1/provisioning/alert-rules" \
   "any(r['uid']=='kinowo-residential-proxy-failing' and any(c['model']['conditions'][0]['evaluator']['params']==[0.5] for c in r['data'] if c['refId']=='C') for r in d)"
+
+# The slot-volume alert has to keep BOTH halves of what makes it see what the
+# film-count rules can't: a per-country aggregation (a fleet-wide sum buries one
+# country's collapse) and a baseline longer than the bleed (a 1h reference falls
+# with the metric and never trips). Guards against a regression to either.
+assert "showtime-volume-collapsed rule is per country over a 6h peak baseline" \
+  "api/v1/provisioning/alert-rules" \
+  "any(r['uid']=='kinowo-showtime-volume-collapsed' and any('by (country)' in c['model'].get('expr','') and 'max_over_time' in c['model'].get('expr','') and '[6h:' in c['model'].get('expr','') for c in r['data']) for r in d)"
 
 # The worker-throttle control gate must read a SMOOTHED balance, not the raw
 # instantaneous gauge, and debounce with `for: 1m` — otherwise a single spurious
