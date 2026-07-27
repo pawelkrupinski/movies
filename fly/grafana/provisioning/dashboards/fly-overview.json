@@ -413,7 +413,7 @@
     {
       "id": 40,
       "title": "Worker — change-stream UPDATE field kinds (per min)",
-      "description": "For UPDATE events, which field kind changed: source_data = a cinema slot (scrape write), rating, identity = tmdb/imdb id + resolution, updated_at_only = a no-op touching only updatedAt (redundant-write canary — should stay ~0).",
+      "description": "For UPDATE events, which field kind changed: source_data = a cinema slot (scrape write, incl. slots stored in movie_slots — those carry a slotsUpdatedAt marker), rating, identity = tmdb/imdb id + resolution, updated_at_only = a no-op touching only updatedAt (redundant-write canary — should stay ~0).",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 149 },

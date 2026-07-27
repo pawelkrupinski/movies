@@ -13,7 +13,10 @@ package services.movies
  *    its url), `identity` (tmdb/imdb id + resolution lifecycle), or
  *    `updated_at_only` — a write that touched nothing but `updatedAt`. The last
  *    is a REDUNDANT-WRITE CANARY: after the empty-patch guard it should stay ~0,
- *    so a climbing rate flags a caller re-introducing no-op writes.
+ *    so a climbing rate flags a caller re-introducing no-op writes. A slot change
+ *    counts as `source_data` even though the slots now live in `movie_slots`: the
+ *    write carries a `slotsUpdatedAt` marker so it stays distinguishable from a
+ *    genuine no-op, which is the only thing keeping the canary useful.
  *
  * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]];
  * the web and unit tests use [[ChangeStreamMetrics.noop]]. Mirrors
@@ -63,7 +66,11 @@ object ChangeStreamMetrics {
     else {
       val topLevel = nonMeta.map(_.takeWhile(_ != '.'))
       val kinds = Set.newBuilder[String]
-      if (topLevel.contains("sourceData")) kinds += Kind.SourceData
+      // `slotsUpdatedAt` is a slot change whose slots live in `movie_slots` — the same
+      // KIND of change as a `sourceData` write, just stored elsewhere. Classifying it
+      // here is what stops the split turning every scrape into `updated_at_only` and
+      // retiring the redundant-write canary by drowning it.
+      if (topLevel.contains("sourceData") || topLevel.contains("slotsUpdatedAt")) kinds += Kind.SourceData
       if (topLevel.exists(RatingFields))   kinds += Kind.Rating
       if (topLevel.exists(IdentityFields)) kinds += Kind.Identity
       val result = kinds.result()

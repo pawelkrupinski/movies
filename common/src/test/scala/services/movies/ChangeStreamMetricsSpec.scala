@@ -49,4 +49,18 @@ class ChangeStreamMetricsSpec extends AnyFlatSpec with Matchers {
     ChangeStreamMetrics.normalizeOp("delete")     shouldBe ChangeStreamMetrics.Op.Delete
     ChangeStreamMetrics.normalizeOp("invalidate") shouldBe ChangeStreamMetrics.Op.Other
   }
+
+  // The slot split moved cinema slots out of `movies`, so a slot change reaches the
+  // stream as a bare `updatedAt` bump plus a `slotsUpdatedAt` marker. Without counting
+  // that marker, every scrape would classify as `updated_at_only` — burying the
+  // redundant-write canary in legitimate traffic and zeroing `source_data`.
+  it should "count a slotsUpdatedAt write as source_data, not as the no-op canary" in {
+    ChangeStreamMetrics.updateKinds(Set("updatedAt", "slotsUpdatedAt")) shouldBe
+      Set(ChangeStreamMetrics.Kind.SourceData)
+  }
+
+  it should "still report a bare updatedAt write as the no-op canary" in {
+    ChangeStreamMetrics.updateKinds(Set("updatedAt")) shouldBe
+      Set(ChangeStreamMetrics.Kind.UpdatedAtOnly)
+  }
 }

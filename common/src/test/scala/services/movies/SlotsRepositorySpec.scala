@@ -106,17 +106,6 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
     r.findAll().keySet shouldBe Set("f2")
   }
 
-  it should "ring watchers only on a genuine change" in {
-    val r    = repo
-    val rung = scala.collection.mutable.ArrayBuffer.empty[String]
-    r.watch(rung += _)
-    r.upsertSlot("f1", "a", sd("A"))
-    r.upsertSlot("f1", "a", sd("A"))       // identical — no ring
-    r.upsertSlot("f1", "a", sd("A2"))
-    r.deleteSlot("f1", "zzz")              // absent — no ring
-    rung.toSeq shouldBe Seq("f1", "f1")
-  }
-
   "the composite id" should "survive a filmId that itself contains the separator" in {
     val weird = s"film${SlotKeyed.IdSep}odd"
     SlotKeyed.filmIdOf(SlotKeyed.idOf(weird, "slot")) shouldBe "film"   // documents the known limit

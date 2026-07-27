@@ -512,9 +512,9 @@ class WorkerWiring(
   // for the same reason showtimes moved to `screenings` — an UPDATE_LOOKUP change event
   // otherwise carries the whole film document, and those documents queue up on an
   // unbounded executor (one poster URL was resident 10,848 times in the 2026-07-27 UK
-  // OOM dump). Persist this stream's resume token like the other two.
+  // OOM dump).
   lazy val slotsRepository: services.movies.SlotsRepository =
-    new services.movies.MongoSlotsRepository(mongoConnection.database, persistResumeToken = true)
+    new services.movies.MongoSlotsRepository(mongoConnection.database)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
     screenings = Some(screeningsRepository),

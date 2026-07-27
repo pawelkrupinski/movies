@@ -2,18 +2,14 @@ package services.movies
 
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
-import com.mongodb.client.model.changestream.ChangeStreamDocument
 import models.{Source, SourceData}
 import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, Indexes, ReplaceOneModel, Sorts}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 
 import java.time.Instant
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -80,10 +76,12 @@ trait SlotsRepository {
   /** Drop all of a film's slots (the film was deleted / re-keyed). */
   def deleteFilm(filmId: String): Unit
 
-  /** Push: ring `onChange(filmId)` whenever a film's slots actually change. A no-op
-   *  write does NOT ring, mirroring the `movies` and `screenings` guards. Returns a
-   *  handle to stop watching, or None when this impl can't push. */
-  def watch(onChange: String => Unit): Option[AutoCloseable] = None
+  // Deliberately NO `watch`. `screenings` has one because a showtimes-only change
+  // touches nothing else, so without it the projector would never hear about it. Slots
+  // are different: every slot write is accompanied by a `movies` write (see
+  // `MovieRepository.updateIfPresent`, which touches `movies` precisely so one event
+  // fires). A second stream here would fan out a SECOND time for one logical change and
+  // double the re-projections — the opposite of what this split is for.
 
   def close(): Unit = ()
 }
@@ -95,9 +93,8 @@ trait SlotsRepository {
  */
 class InMemorySlotsRepository extends SlotsRepository {
 
-  private val byFilm    = scala.collection.mutable.Map.empty[String, Map[String, SourceData]]
-  private val lock      = new Object
-  private val listeners = new CopyOnWriteArrayList[String => Unit]()
+  private val byFilm = scala.collection.mutable.Map.empty[String, Map[String, SourceData]]
+  private val lock   = new Object
 
   def findForFilm(filmId: String): Map[String, SourceData] =
     lock.synchronized(byFilm.getOrElse(filmId, Map.empty))
@@ -110,7 +107,6 @@ class InMemorySlotsRepository extends SlotsRepository {
       if (byFilm.getOrElse(filmId, Map.empty) == slots) false
       else { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots); true }
     }
-    if (changed) ring(filmId)
     true   // an in-memory store cannot fail to write
   }
 
@@ -120,7 +116,7 @@ class InMemorySlotsRepository extends SlotsRepository {
       if (cur.get(slotKey).contains(slot)) false
       else { byFilm.update(filmId, cur + (slotKey -> slot)); true }
     }
-    if (changed) ring(filmId)
+    ()
   }
 
   def deleteSlot(filmId: String, slotKey: String): Unit = {
@@ -129,20 +125,10 @@ class InMemorySlotsRepository extends SlotsRepository {
       if (!cur.contains(slotKey)) false
       else { val next = cur - slotKey; if (next.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, next); true }
     }
-    if (changed) ring(filmId)
+    ()
   }
 
-  def deleteFilm(filmId: String): Unit = {
-    val changed = lock.synchronized(byFilm.remove(filmId).isDefined)
-    if (changed) ring(filmId)
-  }
-
-  override def watch(onChange: String => Unit): Option[AutoCloseable] = {
-    listeners.add(onChange)
-    Some(new AutoCloseable { override def close(): Unit = { listeners.remove(onChange); () } })
-  }
-
-  private def ring(filmId: String): Unit = listeners.asScala.foreach(_(filmId))
+  def deleteFilm(filmId: String): Unit = lock.synchronized { byFilm.remove(filmId); () }
 }
 
 object SlotsRepository {
@@ -202,10 +188,7 @@ class MongoSlotsRepository(
   // the page is smaller. Injectable so tests can force multiple pages.
   findAllBatchSize:     Int            = 250,
   findAllBatchAttempts: Int            = 4,
-  findAllBatchBackoff:  FiniteDuration = 500.millis,
-  // Persist this stream's resume token so a restart replays slot changes that landed
-  // while down. ON only in the worker; OFF for web /debug + scripts.
-  persistResumeToken:   Boolean        = false
+  findAllBatchBackoff:  FiniteDuration = 500.millis
 ) extends SlotsRepository with Logging {
   import SlotKeyed.idOf
 
@@ -215,8 +198,6 @@ class MongoSlotsRepository(
     Try(Await.result(c.createIndex(Indexes.ascending("filmId")).toFuture(), 10.seconds))
     c
   }
-
-  private val resumeToken = new ChangeStreamResumeToken("movie_slots", sharedDb, persistResumeToken)
 
   def findForFilm(filmId: String): Map[String, SourceData] = coll.fold(Map.empty[String, SourceData]) { c =>
     Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds))
@@ -265,7 +246,7 @@ class MongoSlotsRepository(
       val result    = Await.result(c.bulkWrite(upserts :+ dropStale, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)
       if (result.getDeletedCount > 0)
         RemovalAudit.screeningsCleared("movie_slots.replaceFilm", filmId, result.getDeletedCount.toInt,
-          whole = slots.isEmpty, reason = "stale-slot-prune")
+          whole = slots.isEmpty, reason = "stale-slot-prune", what = "slots")
       true
     }.recover { case e =>
       logger.warn(s"SlotsRepository.replaceFilm($filmId) failed: ${e.getMessage}")
@@ -291,49 +272,9 @@ class MongoSlotsRepository(
     Try {
       val deleted = Await.result(c.deleteMany(Filters.eq("filmId", filmId)).toFuture(), 10.seconds).getDeletedCount
       if (deleted > 0)
-        RemovalAudit.screeningsCleared("movie_slots.deleteFilm", filmId, deleted.toInt, whole = true, reason = "film-deleted")
+        RemovalAudit.screeningsCleared("movie_slots.deleteFilm", filmId, deleted.toInt, whole = true,
+          reason = "film-deleted", what = "slots")
     }.recover { case e => logger.warn(s"SlotsRepository.deleteFilm($filmId) failed: ${e.getMessage}") }
   }
 
-  /** Watch `movie_slots`; ring `onChange(filmId)` for every change. Insert/update/replace
-   *  carry the doc's `filmId`; a delete carries only the composite `_id`, whose prefix is
-   *  the filmId. The caller re-reads + stitches. Requires a replica set. */
-  override def watch(onChange: String => Unit): Option[AutoCloseable] = coll.map { c =>
-    val subRef     = new AtomicReference[Subscription]()
-    val resumeFrom = resumeToken.load()
-    val base       = c.watch()
-    resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
-      .subscribe(new Observer[ChangeStreamDocument[StoredSlotDto]] {
-        override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
-        override def onNext(change: ChangeStreamDocument[StoredSlotDto]): Unit = {
-          resumeToken.advance(change.getResumeToken)
-          val filmId = Option(change.getFullDocument).map(_.filmId).orElse(
-            Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-              .map(v => if (v.isString) v.asString.getValue else v.toString)
-              .map(SlotKeyed.filmIdOf))
-          filmId.foreach(fid => try onChange(fid)
-            catch { case e: Throwable => logger.warn(s"movie_slots watch onChange($fid) failed: ${e.getMessage}") })
-          resumeToken.save(force = false)
-        }
-        override def onError(e: Throwable): Unit = {
-          if (ChangeStreamResumeToken.isInvalid(e)) {
-            logger.warn(s"movie_slots change stream: resume token invalid (${e.getMessage}) — clearing it; " +
-              "the next open starts fresh and the backstop resyncs the gap.")
-            resumeToken.clear()
-          } else
-            logger.warn(s"movie_slots change stream ended (${e.getMessage}) — a reopen resumes from the " +
-              "persisted token; the backstop covers the meantime.")
-          subRef.set(null)
-        }
-        override def onComplete(): Unit = subRef.set(null)
-      })
-    logger.info(s"MongoSlotsRepository: watching movie_slots change stream" +
-      s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
-    new AutoCloseable { override def close(): Unit = {
-      resumeToken.save(force = true)
-      Option(subRef.get()).foreach(_.unsubscribe())
-    } }
-  }
-
-  override def close(): Unit = resumeToken.save(force = true)
 }

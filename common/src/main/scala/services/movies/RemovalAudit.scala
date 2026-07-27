@@ -76,8 +76,9 @@ object RemovalAudit {
   /** All of a film's screening slots cleared at once (`whole` = the slot map was
    *  empty, so every slot went) — INFO; a partial stale-slot trim on a healthy
    *  write is routine — DEBUG. */
-  def screeningsCleared(source: String, filmId: String, slots: Int, whole: Boolean, reason: String): Unit = {
-    val line = s"[$source] screenings ${if (whole) "CLEARED" else "trimmed"}: filmId=$filmId slots=$slots reason=$reason"
+  def screeningsCleared(source: String, filmId: String, slots: Int, whole: Boolean, reason: String,
+                        what: String = "screenings"): Unit = {
+    val line = s"[$source] $what ${if (whole) "CLEARED" else "trimmed"}: filmId=$filmId slots=$slots reason=$reason"
     if (whole) logger.info(line) else logger.debug(line)
   }
 

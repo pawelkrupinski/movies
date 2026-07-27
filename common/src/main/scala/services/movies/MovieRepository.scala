@@ -691,7 +691,15 @@ class MongoMovieRepository(
                 case None => 0L
               }
             } else {
-              Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
+              // Mark the write as a SLOT change, not a bare `updatedAt` bump. Without this
+              // the change stream cannot tell it from the no-op writes `updated_at_only`
+              // exists to catch, and the split would silently retire that canary while
+              // driving `source_data` to zero on the dashboard.
+              val update =
+                if (slotWrites.isEmpty) patchToUpdate(patch)
+                else Updates.combine(patchToUpdate(patch),
+                  Updates.set("slotsUpdatedAt", BsonDateTime(Instant.now().toEpochMilli)))
+              Await.result(c.updateOne(Filters.eq("_id", id), update, new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
                 .getMatchedCount
             })
         // Present when the movies write matched, OR a screenings-only change (no movies

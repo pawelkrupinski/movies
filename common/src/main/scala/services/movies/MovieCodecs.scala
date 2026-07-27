@@ -43,7 +43,14 @@ case class StoredMovieDto(
   // `Source.displayName` like `sourceData`. Optional so legacy documents decode
   // to None → empty map; omitted when empty to keep documents lean.
   retainedSynopses:  Option[Map[String, String]],
-  updatedAt:         Instant
+  updatedAt:         Instant,
+  // Bumped when the film's cinema slots changed. Those slots live in `movie_slots`
+  // now, so a slot-only change would otherwise reach the change stream as a bare
+  // `updatedAt` bump — indistinguishable from the no-op writes `updated_at_only`
+  // exists to catch. This marker keeps the two apart: a real slot change classifies
+  // as `source_data`, and the redundant-write canary stays meaningful. Optional so
+  // legacy documents decode to None.
+  slotsUpdatedAt:    Option[Instant] = None
 )
 
 object StoredMovieDto {
