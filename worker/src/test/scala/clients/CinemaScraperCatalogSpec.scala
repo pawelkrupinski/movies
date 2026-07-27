@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort}
+import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -39,13 +39,26 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
    *  throws / returns empty. */
   private def catalog(biletyna: String = "does-not-exist",
                       zyte:     String = "does-not-exist",
-                      flicks:   HttpFetch = http): CinemaScraperCatalog =
+                      flicks:   HttpFetch = http,
+                      vue:      HttpFetch = http): CinemaScraperCatalog =
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks,
+      zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
       odeonAuthToken = () => None
     )
+
+  /** An HttpFetch that fails every GET and POST with a uniquely-identifiable
+   *  message, so a test can prove WHICH seam a scraper egressed through by catching
+   *  it (Vue POSTs its token, so POST must be tagged too). */
+  private def probe(tag: String): HttpFetch = new HttpFetch {
+    def get(url: String): String = throw new RuntimeException(s"SEAM:$tag GET $url")
+    def post(url: String, body: String, contentType: String): String = throw new RuntimeException(s"SEAM:$tag POST $url")
+  }
+
+  /** The `SEAM:` tag reachable anywhere in a throwable's cause chain. */
+  private def seamChain(t: Throwable): String =
+    Iterator.iterate(t)(_.getCause).takeWhile(_ != null).flatMap(x => Option(x.getMessage)).mkString(" | ")
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {
     val scraper = catalog(biletyna = "kino-kameralne").all.find(_.cinema == KinoKameralne).value
@@ -128,6 +141,26 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       primary should not be a [FlicksClient]      // moved off the aggregator…
       primary.chain shouldBe true                 // …onto an own-site chain source
     }
+  }
+
+  // Cineworld + Vue are Cloudflare-403'd from our Fly datacenter IP (verified in
+  // prod 2026-07-27 — the pre-merge check tested the roster from a residential IP,
+  // not the data endpoints from Fly), so their scrapes MUST egress through the
+  // residential seam, never the shared `http`. A leak onto `http` would 403 every
+  // UK chain scrape from prod. The `probe` seams throw a tagged error, so catching
+  // it proves which fetch the scraper actually used.
+  it should "route Cineworld through the flicks residential seam, not the shared http" in {
+    val ex = intercept[Exception] {
+      catalog(flicks = probe("FLICKS")).all.find(_.cinema == CineworldSheffield).value.fetch()
+    }
+    seamChain(ex) should include ("SEAM:FLICKS")
+  }
+
+  it should "route Vue through the host-sticky vue residential seam, not the shared http" in {
+    val ex = intercept[Exception] {
+      catalog(vue = probe("VUE")).all.find(_.cinema == VueCinemasSheffield).value.fetch()
+    }
+    seamChain(ex) should include ("SEAM:VUE")
   }
 
   // KinoPort lost its gcsw.pl/kino/ programme alias in a 2026-06 site rebuild

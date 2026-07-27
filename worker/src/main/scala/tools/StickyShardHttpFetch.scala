@@ -49,4 +49,11 @@ object StickyShardHttpFetch {
       val uri = URI.create(url)
       s"${Option(uri.getHost).getOrElse("")}${Option(uri.getPath).getOrElse("")}"
     }.getOrElse(url)
+
+  /** Host only — every URL on a host routes to the SAME shard (IP + cookie jar),
+   *  so a mint-cookie-here / spend-cookie-there flow across different paths (Vue's
+   *  `/auth/token` POST then `/…/films` GET) stays on one IP. Funnels a whole host
+   *  onto one IP, so only for low-volume, cookie-bound sources. */
+  def hostOnly(url: String): String =
+    scala.util.Try(Option(URI.create(url).getHost).getOrElse(url)).getOrElse(url)
 }

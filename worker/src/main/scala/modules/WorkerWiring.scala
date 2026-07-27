@@ -198,11 +198,20 @@ class WorkerWiring(
   // a session cookie (verified 2026-06-16). Per-venue stickiness means the warm
   // and the API retry share an IP, and each IP warms once then reuses the cookie.
   // Stateless venues (biletyna, ck105) pass None.
-  private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None): HttpFetch =
+  //
+  // `keyOf` chooses the sticky-shard key. The default (host+path) spreads venues
+  // across IPs — right for stateless per-venue scrapes (flicks, Cineworld). Vue
+  // needs HOST-only stickiness instead: its token cookie is minted by a POST to
+  // `/auth/token` and spent by a GET to `/…/films` — different PATHS — so host+path
+  // would split them onto different IPs and lose the cookie. Host-only funnels all
+  // of a brand's traffic onto one IP+cookie jar; fine at Vue's ~88-venue/420-min
+  // volume, well under Decodo's concurrent-auth cap.
+  private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
+                           keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
     proxyShards.fold(fallback) { shards =>
       val legs: IndexedSeq[HttpFetch] =
         warmUrl.fold[IndexedSeq[HttpFetch]](shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-      val proxyLeg = new StickyShardHttpFetch(legs)
+      val proxyLeg = new StickyShardHttpFetch(legs, keyOf)
       new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
     }
 
@@ -243,7 +252,15 @@ class WorkerWiring(
     // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
     zyteFetch = zyteFetch,
     flicksFetch = flicksFetch,
+    vueFetch = vueFetch,
     odeonAuthToken = odeonAuthHarvester.token)
+
+  // Vue/CinemaxX films API is Cloudflare-403'd from our Fly IP (like flicks) AND
+  // token-gated, so it egresses residential AND host-sticky (one IP+cookie for the
+  // token POST + films GET — see proxyPrimary/keyOf). Cineworld reuses flicksFetch
+  // (GET-only, no cookie, so per-venue stickiness is fine). Both fall back to flicks
+  // if the proxy is down. Showcase/Everyman + Odeon reach Fly directly, so stay on http.
+  lazy val vueFetch: HttpFetch = proxyPrimary(httoFetch, keyOf = StickyShardHttpFetch.hostOnly)
 
   // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
   // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL

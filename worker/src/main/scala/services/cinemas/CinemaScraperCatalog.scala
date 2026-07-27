@@ -59,6 +59,13 @@ class CinemaScraperCatalog(
   // Residential-proxy egress for flicks.co.uk — every UK venue (see the ctor
   // doc). Same no-default reason as `zyteFetch`.
   flicksFetch: HttpFetch,
+  // Host-sticky residential egress for Vue/CinemaxX: their films API is
+  // Cloudflare-403'd from our Fly IP AND token-cookie-gated, so it needs a
+  // residential IP that STAYS the same across the token POST + films GET. Own
+  // param (not flicksFetch) because flicksFetch is per-venue sticky, which would
+  // split the POST and GET onto different IPs. Defaults to `http` in the secondary
+  // ctor/tests.
+  vueFetch: HttpFetch,
   // Supplies Odeon's short-lived Vista JWT (harvested via Zyte in prod, see
   // [[services.cinemas.uk.OdeonAuthHarvester]]). No primary-ctor default (Scala 3
   // forbids two overloaded ctors both carrying defaults); the diagnostic ctor +
@@ -78,7 +85,7 @@ class CinemaScraperCatalog(
       (h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http),
       // No residential proxy outside WorkerWiring — a diagnostic runs from a
       // developer's own (unblocked) IP, so plain `http` is the right default.
-      flicksFetch = http,
+      flicksFetch = http, vueFetch = http,
       // A diagnostic has no Zyte harvester wired, so Odeon venues throw → flicks fallback.
       odeonAuthToken = () => None)
 
@@ -399,13 +406,15 @@ class CinemaScraperCatalog(
 
   // UK chain own-site clients — the catalogue PRIMARY for their venues, with
   // flicks.co.uk kept as the aggregator fallback (see [[ChainFlicksFallback]] +
-  // `WorkerWiring.recordingScraper`). All reach their JSON APIs from our datacenter
-  // egress (verified 2026-07-27), so they use the direct `http` fetch; a block would
-  // roll to the flicks fallback rather than needing a proxy leg.
+  // `WorkerWiring.recordingScraper`). Cineworld + Vue are Cloudflare-403'd from our
+  // Fly datacenter IP (verified in prod 2026-07-27), so they egress residential:
+  // Cineworld via `flicksFetch` (GET-only, per-venue sticky is fine), Vue via
+  // `vueFetch` (host-sticky, for its token cookie). Showcase/Everyman + Odeon reach
+  // Fly directly, so they use `http`. Any proxy failure rolls to the flicks fallback.
   private def cineworld(id: String, cinema: Cinema): CineworldClient =
-    new CineworldClient(http, id, cinema, today = today)
+    new CineworldClient(flicksFetch, id, cinema, today = today)
   private def vueUk(id: String, cinema: Cinema): VueCinemasPlatformClient =
-    new VueCinemasPlatformClient(http, VueCinemasPlatformClient.MyVueBaseUrl, id, cinema)
+    new VueCinemasPlatformClient(vueFetch, VueCinemasPlatformClient.MyVueBaseUrl, id, cinema)
   private def showcase(id: String, cinema: Cinema): GatsbyBoxOfficeClient =
     new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.ShowcaseBaseUrl, id, cinema)
   private def everyman(id: String, cinema: Cinema): GatsbyBoxOfficeClient =
