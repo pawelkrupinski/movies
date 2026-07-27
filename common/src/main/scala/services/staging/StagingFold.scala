@@ -19,6 +19,40 @@ import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMov
  */
 object StagingFold {
 
+  /** What [[MongoStagingFolder]] does after one transaction attempt. */
+  sealed trait Next
+  object Next {
+    /** The body ran — commit, and report these new promotions. */
+    case class Commit(newPromotions: Seq[(CacheKey, MovieRecord)]) extends Next
+    /** A transient transaction error with retries left — abort and go round again. */
+    case class Retry(cause: Throwable) extends Next
+    /** Out of retries, or a failure retrying cannot help — abort and RAISE. */
+    case class Abandon(cause: Throwable) extends Next
+  }
+
+  /** Decide what one transaction attempt's outcome means. Pure, and split out from the
+   *  I/O for one reason: the distinction between `Commit(Seq.empty)` and `Abandon` is the
+   *  whole bug.
+   *
+   *  A failed fold used to return `Seq.empty` — byte-identical to a clean fold that
+   *  promoted nothing. `StagingFoldHandler` therefore marked the task Done while the
+   *  staging rows were still sitting there, `StagingReaper` re-enqueued the same fold on
+   *  its next tick, and `pending_movies` grew without bound. That is how the 2026-07-27
+   *  `Missing field: sourceData` decode bug ran for hours behind nothing louder than a
+   *  WARN: the failure had no channel to surface on. `StagingFoldHandler` documents a
+   *  THROWN fold as the reschedule signal, so a failure has to reach the caller as one. */
+  def nextAfterAttempt(
+    outcome:    scala.util.Try[Seq[(CacheKey, MovieRecord)]],
+    attempt:    Int,
+    maxRetries: Int
+  ): Next = outcome match {
+    case scala.util.Success(newPromotions) => Next.Commit(newPromotions)
+    case scala.util.Failure(e: com.mongodb.MongoException)
+      if e.hasErrorLabel(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) && attempt < maxRetries =>
+      Next.Retry(e)
+    case scala.util.Failure(e) => Next.Abandon(e)
+  }
+
   /** What to write to bring `movies` to its folded+settled state, and which
    *  staging rows were consumed (all of them). `moviesDeletes` are existing
    *  `movies` rows in the group whose key the collapse retired (re-keyed to a

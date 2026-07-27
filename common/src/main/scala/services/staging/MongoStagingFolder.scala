@@ -1,6 +1,6 @@
 package services.staging
 
-import com.mongodb.{MongoException, WriteConcern}
+import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{ClientSession, MongoCollection, ObservableFuture, SingleObservableFuture}
@@ -8,12 +8,12 @@ import org.reactivestreams.{Publisher, Subscriber, Subscription}
 import models.MovieRecord
 import play.api.Logging
 import services.MongoConnection
-import services.movies.{CacheKey, MovieCodecs, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, MovieCodecs, SlotKeyed, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
 
 import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Transactional `StagingFolder` for production. Folds a concluded newcomer's
@@ -44,6 +44,15 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
   private val moviesColl  = collection(services.movies.MovieRepository.Collection)
   private val stagingColl = collection(StagingRepository.Collection)
 
+  // The side collections a `movies` row's cinemas live in. Untyped (`Document`) because
+  // this only ever DELETES by `filmId` — no decode, so no codec, and no dependency on
+  // either repository's DTO. Same transaction as the `movies` delete they follow, so a
+  // film and its cinemas leave together or not at all.
+  private def sideCollection(name: String): Option[MongoCollection[org.mongodb.scala.Document]] =
+    connection.database.map(_.getCollection(name).withWriteConcern(WriteConcern.MAJORITY))
+  private val slotsColl      = sideCollection(services.movies.SlotsRepository.Collection)
+  private val screeningsColl = sideCollection(services.movies.ScreeningsRepository.Collection)
+
   def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] =
     (connection.startSession(), moviesColl, stagingColl) match {
       case (Some(session), Some(movies), Some(staging)) =>
@@ -58,22 +67,23 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     staging: MongoCollection[StoredMovieDto],
     cleanTitle: String
   ): Seq[(CacheKey, MovieRecord)] = {
-    var attempt  = 0
-    var result   = Option.empty[Seq[(CacheKey, MovieRecord)]]
+    var attempt = 0
+    var result  = Option.empty[Seq[(CacheKey, MovieRecord)]]
     while (result.isEmpty) {
       attempt += 1
       session.startTransaction()
-      Try(foldOnce(session, movies, staging, cleanTitle)) match {
-        case Success(newPromotions) =>
+      val outcome = Try(foldOnce(session, movies, staging, cleanTitle))
+      StagingFold.nextAfterAttempt(outcome, attempt, maxRetries) match {
+        case StagingFold.Next.Commit(newPromotions) =>
           await(publisherToFuture(session.commitTransaction())); result = Some(newPromotions)
-        case Failure(e: MongoException)
-          if e.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) && attempt < maxRetries =>
+        case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
-          logger.warn(s"Staging fold '$cleanTitle' hit a transient txn error (attempt $attempt) — retrying.")
-        case Failure(e) =>
+          logger.warn(s"Staging fold '$cleanTitle' hit a transient txn error (attempt $attempt): ${e.getMessage} — retrying.")
+        case StagingFold.Next.Abandon(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
-          logger.warn(s"Staging fold '$cleanTitle' aborted: ${e.getMessage}")
-          result = Some(Seq.empty)
+          logger.error(s"Staging fold '$cleanTitle' aborted after $attempt attempt(s): ${e.getMessage} " +
+            "— rethrowing so the task reschedules instead of reporting an empty fold as success.")
+          throw e
       }
     }
     result.getOrElse(Seq.empty)
@@ -122,8 +132,18 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
         await(movies.replaceOne(session, Filters.eq("_id", id),
           StoredMovieDto.fromDomain(id, record, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
       }
-      plan.moviesDeletes.foreach(k =>
-        await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k.cleanTitle, k.year))).toFuture()))
+      plan.moviesDeletes.foreach { k =>
+        val loserId = StoredMovieRecord.idFor(k.cleanTitle, k.year)
+        await(movies.deleteOne(session, Filters.eq("_id", loserId)).toFuture())
+        // A film's cinemas live in the side collections now, and this delete bypasses
+        // `MovieRepository.delete` — which is what takes them along. Without this the
+        // merge loser's rows outlive it forever: measured on prod PL 2026-07-27, 888
+        // `movie_slots` rows across 19 vanished films, plus 61 orphaned `screenings`
+        // films from the same bypass predating the split. In the SAME transaction, so
+        // the film and its cinemas leave together.
+        slotsColl.foreach(c      => await(c.deleteMany(session, SlotKeyed.filmFilter(loserId)).toFuture()))
+        screeningsColl.foreach(c => await(c.deleteMany(session, SlotKeyed.filmFilter(loserId)).toFuture()))
+      }
       plan.stagingDeletes.foreach(r =>
         await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()))
       // These `movies` deletes bypass MovieRepository.delete (direct in-txn deleteOne),
