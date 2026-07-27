@@ -1,0 +1,121 @@
+# Odeon ocapi `siteId` -> models.Cinema case object, from the live /ocapi/v1/sites
+# roster (113 venues, harvested 2026-07-27). The 11 UNMATCHED rows are Republic-
+# of-Ireland Odeon venues we don't model (no Odeon* case object). All 102 UK/NI
+# case objects matched 1:1.
+# siteId	apiName	matchedScalaCaseObject	ourDisplayName
+017	Birmingham New Street	OdeonBirminghamNewStreet	Odeon Birmingham New Street
+019	Kilmarnock	OdeonCinemaKilmarnock	Odeon Cinema Kilmarnock
+031	Coolock	UNMATCHED	
+033	Blanchardstown	UNMATCHED	
+040	Coventry	OdeonCinemaCoventry	Odeon Cinema Coventry
+044	Dundee	OdeonLuxeDundee	Odeon Luxe Dundee
+050	Chatham	OdeonCinemaChatham	Odeon Cinema Chatham
+061	Newbridge	UNMATCHED	
+071	Cavan	UNMATCHED	
+072	Limerick	UNMATCHED	
+073	Portlaoise	UNMATCHED	
+074	Naas	UNMATCHED	
+075	Waterford	UNMATCHED	
+076	Stillorgan	UNMATCHED	
+077	Point Square	UNMATCHED	
+078	Charlestown	UNMATCHED	
+086	Exeter	OdeonCinemaExeter	Odeon Cinema Exeter
+090	South Woodford	OdeonCinemaSouthWoodford	Odeon Cinema South Woodford
+124	Hastings	OdeonCinemaHastings	Odeon Cinema Hastings
+125	Holloway	OdeonCinemaHolloway	Odeon Cinema Holloway
+153	London Leicester Square	OdeonCinemaLuxeLeicesterSquare	Odeon Luxe Leicester Square
+155	London West End	OdeonLuxeWestEnd	Odeon Luxe West End
+158	London Haymarket	OdeonCinemaLuxeHaymarket	Odeon Luxe Haymarket
+159	Maidstone	OdeonCinemaMaidstone	Odeon Cinema Maidstone
+200	London Tottenham Court Road	OdeonCinemaTottenhamCourtRoad	Odeon Cinema Tottenham Court Road
+209	Sheffield	OdeonLuxeSheffield	Odeon Luxe Sheffield
+220	Salisbury	OdeonCinemaSalisbury	Odeon Cinema Salisbury
+244	Nuneaton	OdeonLuxeNuneaton	Odeon Luxe Nuneaton
+282	Worcester	OdeonCinemaWorcester	Odeon Cinema Worcester
+315	Bristol	OdeonCabotCircus	Odeon Cabot Circus
+355	Bath	OdeonCinemaBath	Odeon Cinema Bath
+380	Northampton	OdeonNorthampton	Odeon Northampton
+395	Middlesbrough	OdeonMiddlesbrough	Odeon Middlesbrough
+430	Stoke	OdeonCinemaStokeOnTrent	Odeon Cinema Stoke-on-Trent
+440	Hull	OdeonLuxeHull	Odeon Luxe Hull
+453	Taunton	OdeonCinemaTaunton	Odeon Cinema Taunton
+475	Bromborough	OdeonLuxeBromborough	Odeon Luxe Bromborough
+484	Leeds Bradford	OdeonLuxeLeedsBradford	Odeon Luxe Leeds-Bradford
+486	Putney	OdeonCinemaLuxePutney	Odeon Luxe Putney
+498	Chelmsford	OdeonCinemaChelmsford	Odeon Cinema Chelmsford
+500	Southend	OdeonCinemaSouthendOnSea	Odeon Cinema Southend-on-Sea
+505	Leicester	OdeonLuxeLeicester	Odeon Luxe Leicester
+508	Dunfermline	OdeonCinemaDunfermline	Odeon Cinema Dunfermline
+510	Guildford	OdeonCinemaGuildford	Odeon Cinema Guildford
+512	Tunbridge Wells	OdeonCinemaTunbridgeWells	Odeon Cinema Tunbridge Wells
+515	Colchester	OdeonCinemaColchester	Odeon Cinema Colchester
+522	Liverpool Switch Island	OdeonLiverpoolSwitchIsland	Odeon Liverpool Switch Island
+530	Glasgow Quay	OdeonLuxeGlasgow	Odeon Luxe Glasgow
+536	Kingston	OdeonCinemaKingston	Odeon Cinema Kingston
+546	Bridgend	OdeonCinemaBridgend	Odeon Cinema Bridgend
+555	Wimbledon	OdeonCinemaWimbledon	Odeon Cinema Wimbledon
+560	Liverpool One	OdeonLiverpoolONE	Odeon Liverpool ONE
+568	Lincoln	OdeonCinemaLincoln	Odeon Cinema Lincoln
+570	Epsom	OdeonCinemaEpsom	Odeon Cinema Epsom
+593	Uxbridge	OdeonCinemaUxbridge	Odeon Cinema Uxbridge
+598	Wrexham Eagles Meadow	OdeonCinemaWrexham	Odeon Cinema Wrexham
+600	Belfast	OdeonCinemaBelfast	Odeon Cinema Belfast
+615	Braehead	OdeonCinemaBraehead	Odeon Cinema Braehead
+694	Streatham	OdeonCinemaStreatham	Odeon Cinema Streatham
+695	Beckenham	OdeonCinemaBeckenham	Odeon Cinema Beckenham
+750	Edinburgh Lothian Road	OdeonEdinburghLothianRoad	Odeon Edinburgh (Lothian Road)
+755	Andover	OdeonCinemaAndover	Odeon Cinema Andover
+756	Crewe	OdeonCinemaCrewe	Odeon Cinema Crewe
+757	Newark	OdeonCinemaNewark	Odeon Cinema Newark
+758	Loughborough	OdeonCinemaLoughborough	Odeon Cinema Loughborough
+759	Swadlincote	OdeonCinemaSwadlincote	Odeon Cinema Swadlincote
+760	Llanelli	OdeonCinemaLlanelli	Odeon Cinema Llanelli
+761	West Bromwich	OdeonCinemaWestBromwich	Odeon Cinema West Bromwich
+800	Basingstoke	OdeonCinemaBasingstoke	Odeon Cinema Basingstoke
+806	Harrogate	OdeonCinemaHarrogate	Odeon Cinema Harrogate
+824	Brighton	OdeonCinemaBrighton	Odeon Cinema Brighton
+838	Swiss Cottage	OdeonLuxeSwissCottage	Odeon Luxe Swiss Cottage
+841	Edinburgh West	OdeonLuxeEdinburghEdinburghWest	Odeon Luxe Edinburgh (Edinburgh West)
+842	Mansfield	OdeonCinemaMansfield	Odeon Cinema Mansfield
+843	Rochdale	OdeonCinemaRochdale	Odeon Cinema Rochdale
+845	Aylesbury	OdeonCinemaAylesbury	Odeon Cinema Aylesbury
+846	Birmingham Broadway Plaza	OdeonLuxeBirminghamBroadwayPlaza	Odeon Luxe Birmingham Broadway Plaza
+847	Trowbridge	OdeonCinemaTrowbridge	Odeon Cinema Trowbridge
+848	Hereford	OdeonCinemaHereford	Odeon Cinema Hereford
+849	Milton Keynes Stadium	OdeonCinemaMiltonKeynes	Odeon Cinema Milton Keynes
+850	Edinburgh Fort Kinnaird	OdeonEdinburghFortKinnaird	Odeon Edinburgh (Fort Kinnaird)
+851	Oldham	OdeonCinemaOldham	Odeon Cinema Oldham
+852	Orpington	OdeonCinemaOrpington	Odeon Cinema Orpington
+853	Northwich Barons Quay	OdeonCinemaNorthwichBaronsQuay	Odeon Cinema Northwich Barons Quay
+854	Bournemouth BH2	OdeonCinemaBournemouthBH2	Odeon Cinema Bournemouth BH2
+856	Manchester Great Northern	OdeonCinemaManchesterGreatNorthern	Odeon Cinema Manchester Great Northern
+857	Stafford	OdeonLuxeStafford	Odeon Luxe Stafford
+858	Islington	OdeonLuxeIslington	Odeon Luxe Islington
+859	Durham	OdeonLuxeDurham	Odeon Luxe Durham
+860	Leeds Thorpe Park	OdeonLuxeLeedsThorpePark	Odeon Luxe Leeds (Thorpe Park)
+888	Richmond	OdeonCinemaRichmond	Odeon Cinema Richmond
+912	Warrington	OdeonLuxeWarrington	Odeon Luxe Warrington
+915	Dudley	OdeonCinemaDudley	Odeon Cinema Dudley
+916	Telford	OdeonLuxeTelford	Odeon Luxe Telford
+917	Derby	OdeonLuxeDerby	Odeon Luxe Derby
+920	Swansea	OdeonCinemaSwansea	Odeon Cinema Swansea
+923	East Kilbride	OdeonLuxeEastKilbride	Odeon Luxe East Kilbride
+925	Preston	OdeonCinemaPreston	Odeon Cinema Preston
+929	Hatfield	OdeonCinemaHatfield	Odeon Cinema Hatfield
+930	Tamworth	OdeonCinemaTamworth	Odeon Cinema Tamworth
+948	Port Solent	OdeonCinemaPortSolent	Odeon Cinema Port Solent
+949	Lee Valley	OdeonLuxeLeeValley	Odeon Luxe Lee Valley
+953	Huddersfield	OdeonCinemaHuddersfield	Odeon Cinema Huddersfield
+954	Cardiff	OdeonCinemaCardiff	Odeon Cinema Cardiff
+955	Trafford Centre	OdeonCinemaManchesterTraffordCentre	Odeon Cinema Manchester Trafford Centre
+957	Norwich	OdeonNorwich	Odeon Cinema Norwich
+961	Silverlink	OdeonCinemaSilverlink	Odeon Cinema Silverlink
+962	Maidenhead	OdeonLuxeMaidenhead	Odeon Luxe Maidenhead
+963	Greenwich	OdeonCinemaGreenwich	Odeon Cinema Greenwich
+980	Metrocentre	OdeonCinemaMetrocentre	Odeon Cinema Metrocentre
+985	Dorchester	OdeonCinemaDorchester	Odeon Cinema Dorchester
+995	Acton	OdeonCinemaActon	Odeon Cinema Acton
+998	Peterborough	OdeonLuxePeterborough	Odeon Luxe Peterborough
+
+# OURS-WITH-NO-API-MATCH
+# (none — every Odeon* case object matched an ocapi siteId)
