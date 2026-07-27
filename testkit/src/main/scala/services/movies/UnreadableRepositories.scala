@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{MovieRecord, SourceData}
+import models.{MovieRecord, Showtime, SourceData}
 
 /**
  * Test doubles for the ONE thing every "checked" read contract exists to express: a read
@@ -19,6 +19,20 @@ import models.{MovieRecord, SourceData}
 class UnreadableSlotsRepository extends InMemorySlotsRepository {
   override def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) = (Map.empty, false)
   override def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean)      = (Map.empty, false)
+}
+
+/** A [[ScreeningsRepository]] whose per-film reads always fail — empty result,
+ *  `complete = false` — while every write is delegated to `store` so a spec can seed real
+ *  screenings and then fail only the read. Decorates rather than extends the in-memory
+ *  store so an integration spec can fail the read in front of the REAL Mongo repository. */
+class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryScreeningsRepository)
+  extends ScreeningsRepository {
+  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = (Map.empty, false)
+  def findAll(): Map[String, Map[String, Seq[Showtime]]]                        = store.findAll()
+  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit      = store.replaceFilm(filmId, slots)
+  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = store.upsertSlot(filmId, slotKey, showtimes)
+  def deleteSlot(filmId: String, slotKey: String): Unit                         = store.deleteSlot(filmId, slotKey)
+  def deleteFilm(filmId: String): Unit                                          = store.deleteFilm(filmId)
 }
 
 /** A [[SlotsRepository]] whose WRITES always fail. The mirror-image guard: `upsert` may

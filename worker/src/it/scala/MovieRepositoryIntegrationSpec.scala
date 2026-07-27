@@ -1523,4 +1523,50 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       cache.stop()
     } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
   }
+
+  // The same family one collection over, and the one member that never got a checked read.
+  // `upsert` re-stitches a cache-STRIPPED record's showtimes back out of `screenings` before
+  // writing, because `replaceFilm` deletes every slot the record doesn't name. When that read
+  // FAILS it returns empty — indistinguishable from "this film has no screenings" — so every
+  // slot looks showtime-less and the delete vector erases the lot, while `movie_slots` keeps
+  // the film↔cinema rows and `movies` keeps the film. That is exactly the state prod DE was in
+  // on 2026-07-27: 13,201 cinema slots, only 2,609 with a screenings doc, zero the other way,
+  // film count flat and every city still present while ~80% of upcoming showtimes vanished.
+  it should "keep a film's showtimes when the screenings read fails under a whole-record write" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, ShowtimesDigest,
+      StoredMovieRecord, UnreadableScreeningsRepository}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-unreadable-screenings__"
+    val year   = Some(1912)
+    val id     = StoredMovieRecord.idFor(title, year)
+    val when   = java.time.LocalDateTime.now().plusDays(1).withHour(20).withMinute(0).withSecond(0).withNano(0)
+    try {
+      // A live film showing at two cinemas, written through the real repository.
+      val healthy = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+      healthy.upsert(title, year, MovieRecord(imdbId = Some("tt0000082"), tmdbId = Some(4244),
+        data = Map[Source, SourceData](
+          Multikino   -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))),
+          KinoMuranow -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))))))
+      scr.findForFilm(id).keySet should have size 2
+
+      // The record as the CACHE holds it: showtimes stripped, digest kept — the shape every
+      // ordinary enrichment/merge write carries. Now the screenings read fails.
+      val stripped = ShowtimesDigest.stripForCache(
+        MovieRecord(imdbId = Some("tt0000082"), tmdbId = Some(4244), data = Map[Source, SourceData](
+          Multikino   -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))),
+          KinoMuranow -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))))))
+      val blind = new MongoMovieRepository(Some(db), slots = Some(slots),
+        screenings = Some(new UnreadableScreeningsRepository(scr)))
+      blind.upsert(title, year, stripped)
+
+      // Neither cinema stopped screening — the read just failed. Before the fix both were
+      // deleted here and only the slot rows survived.
+      withClue(s"screenings now: ${scr.findForFilm(id).keySet}: ")(
+        scr.findForFilm(id).keySet should have size 2)
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+  }
+
 }

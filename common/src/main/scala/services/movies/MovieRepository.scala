@@ -677,7 +677,11 @@ class MongoMovieRepository(
     val id   = documentId(title, year)
     // A whole-record write can carry slots STRIPPED for the cache; `showtimesOf` would
     // drop them and `replaceFilm` would DELETE their screenings. Re-stitch first.
-    val restitched = screenings.fold(e.data)(ScreeningsRepository.reStitch(_, id, e.data))
+    // …and a re-stitch whose READ failed under-reports the film: every slot it could not
+    // refill looks showtime-less, so the `replaceFilm` below would delete it. `screeningsSeen`
+    // carries that distinction down to the write.
+    val (restitched, screeningsSeen) =
+      screenings.fold((e.data, true))(ScreeningsRepository.reStitchChecked(_, id, e.data))
     // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
     // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
     // either place — the one way this migration can lose data — and a slots failure is
@@ -706,8 +710,16 @@ class MongoMovieRepository(
     val opts = new ReplaceOptions().upsert(true)
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
-      // Write this film's cinema showtimes to `screenings` (their authority).
-      screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(restitched)))
+      // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
+      // is upsert PLUS a delete of every slot the record doesn't name, so it may only run on
+      // a record we know is complete. When the re-stitch read failed we still write what this
+      // tick positively carries, but never the delete half — a slot we simply could not read
+      // is not a slot that stopped screening.
+      screenings.foreach { s =>
+        val showtimes = ScreeningsRepository.showtimesOf(restitched)
+        if (screeningsSeen) s.replaceFilm(id, showtimes)
+        else showtimes.foreach { case (slotKey, st) => s.upsertSlot(id, slotKey, st) }
+      }
       ()
     }.recover {
       case exception: Throwable if isClusterClosed(exception) =>

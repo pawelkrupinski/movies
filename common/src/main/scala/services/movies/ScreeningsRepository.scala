@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Per-cinema showtimes, split out of the embedded `movies.sourceData` map into
@@ -38,8 +38,19 @@ import scala.util.Try
 trait ScreeningsRepository {
 
   /** Every slot's showtimes for one film: `slotKey -> showtimes`. Empty when the
-   *  film has no recorded screenings. */
-  def findForFilm(filmId: String): Map[String, Seq[Showtime]]
+   *  film has no recorded screenings — OR when the read failed, which callers that
+   *  act destructively on the emptiness must not conflate. Use
+   *  [[findForFilmChecked]] there. */
+  def findForFilm(filmId: String): Map[String, Seq[Showtime]] = findForFilmChecked(filmId)._1
+
+  /** [[findForFilm]] plus whether the read actually SAW the film's screenings.
+   *  `(Map.empty, true)` is "this film has none"; `(Map.empty, false)` is "we could
+   *  not tell". `reStitch` feeds the whole-record write path, whose `replaceFilm`
+   *  DELETES every slot the record does not name — so a failed read that reads as
+   *  "no showtimes" deletes them all. That is how the German corpus lost ~80% of its
+   *  upcoming showtimes on 2026-07-27 while its film count and every film↔cinema slot
+   *  row stayed intact. */
+  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean)
 
   /** Every film's screenings: `filmId -> (slotKey -> showtimes)`. For the boot
    *  hydrate / `findAll` read-stitch. */
@@ -81,8 +92,8 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
   private val lock      = new Object
   private val listeners = new CopyOnWriteArrayList[String => Unit]()
 
-  def findForFilm(filmId: String): Map[String, Seq[Showtime]] =
-    lock.synchronized(byFilm.getOrElse(filmId, Map.empty))
+  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
+    (lock.synchronized(byFilm.getOrElse(filmId, Map.empty)), true)
 
   def findAll(): Map[String, Map[String, Seq[Showtime]]] =
     lock.synchronized(byFilm.toMap)
@@ -143,13 +154,22 @@ object ScreeningsRepository {
    *  write from the (stripped) cache would otherwise `showtimesOf`-drop those slots and
    *  `replaceFilm`-delete their screenings; re-stitching keeps them. Slots carrying real
    *  showtimes pass through unchanged. Pure + unit-tested. */
-  def reStitch(screenings: ScreeningsRepository, id: String, data: Map[Source, SourceData]): Map[Source, SourceData] = {
-    val scr = screenings.findForFilm(id)
-    data.map {
+  def reStitch(screenings: ScreeningsRepository, id: String, data: Map[Source, SourceData]): Map[Source, SourceData] =
+    reStitchChecked(screenings, id, data)._1
+
+  /** [[reStitch]] plus whether the screenings read that fed it SAW the film. A `false`
+   *  here means the stripped slots could not be refilled, so the result under-reports
+   *  the film's showtimes and MUST NOT be handed to a full `replaceFilm` — its delete
+   *  vector would erase every slot the read failed to return. */
+  def reStitchChecked(screenings: ScreeningsRepository, id: String,
+                      data: Map[Source, SourceData]): (Map[Source, SourceData], Boolean) = {
+    val (scr, complete) = screenings.findForFilmChecked(id)
+    val stitched = data.map {
       case (src, sd) if sd.showtimes.isEmpty && sd.showtimesDigest.isDefined =>
         src -> sd.copy(showtimes = scr.getOrElse(src.displayName, Seq.empty))
       case other => other
     }
+    (stitched, complete)
   }
 
   /** The per-slot screening writes needed to turn `before`'s showtimes into
@@ -253,10 +273,15 @@ class MongoScreeningsRepository(
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
-  def findForFilm(filmId: String): Map[String, Seq[Showtime]] = coll.fold(Map.empty[String, Seq[Showtime]]) { c =>
-    Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds))
-      .getOrElse(Seq.empty).map(d => d.slotKey -> d.showtimes).toMap
-  }
+  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
+    coll.fold((Map.empty[String, Seq[Showtime]], false)) { c =>
+      Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds)) match {
+        case Success(docs) => (docs.map(d => d.slotKey -> d.showtimes).toMap, true)
+        case Failure(exception) =>
+          logger.warn(s"ScreeningsRepository.findForFilm($filmId) failed: ${exception.getMessage}")
+          (Map.empty, false)
+      }
+    }
 
   /** Every film's screenings, keyset-paged by `_id` (via [[KeysetScan]]) rather than pulled
    *  through ONE unbounded `find().toFuture()`. That single cursor over the whole
