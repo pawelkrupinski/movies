@@ -1,0 +1,98 @@
+# Vue Cinemas platform venue map — myvue.com (UK/IE)
+# Recorded live from GET https://www.myvue.com/api/microservice/showings/cinemas on 2026-07-27.
+# Columns: apiCinemaId<TAB>apiFullName<TAB>matchedScalaCaseObjectName<TAB>ourDisplayName
+# UNMATCHED = no confident counterpart among the Vue* case objects in
+# common/src/main/scala/models/Cinema.scala. Accuracy over coverage: never guessed.
+10051	Accrington - The Viaduct	VueCinemasAccrington	Vue Accrington
+10077	Altrincham - Denmark Street	VueCinemasAltrincham	Vue Altrincham
+10094	Ashbourne	UNMATCHED	
+10078	Barrow - Hollywood Park	VueCinemasBarrow	Vue Barrow
+10099	Vue Basildon	VueCinemasBasildon	Vue Basildon
+10029	Basingstoke - Festival Place	VueCinemasBasingstoke	Vue Basingstoke
+10092	Bedford	VueCinemasBedford	Vue Bedford
+10087	Bicester - Pioneer Square	VueCinemasBicester	Vue Bicester
+10055	Birkenhead - Europa Boulevard	VueCinemasBirkenhead	Vue Birkenhead
+10015	Birmingham (Star City)	VueCinemasBirmingham	Vue Birmingham
+10007	Blackburn - Peel Leisure Park	VueCinemasBlackburn	Vue Blackburn
+10040	Bolton - Horwich	VueCinemasBolton	Vue Bolton
+10018	Bristol - Cribbs Causeway	VueCinemasBristolCribbsCauseway	Vue Bristol Cribbs Causeway
+10019	Bristol - Longwell Green	VueCinemasBristolLongwellGreen	Vue Bristol Longwell Green
+10093	Bromley - St Mark's Square	VueCinemasBromley	Vue Bromley
+10073	Bury The Rock	VueCinemasBury	Vue Bury
+10068	Camberley - The Atrium	VueCinemasCamberley	Vue Camberley
+10056	Carlisle - Botchergate	VueCinemasCarlisle	Vue Carlisle
+10075	Carmarthen - St Catherines Walk	VueCinemasCarmarthen	Vue Carmarthen
+20002	Castleford	VueCinemasCastleford	Vue Castleford
+10034	Cheshire Oaks - The Coliseum	VueCinemasCheshireOaks	Vue Cheshire Oaks
+10060	Cleveleys - North Pomenade	VueCinemasCleveleys	Vue Cleveleys
+20004	Colchester	VueCinemasColchester	Vue Colchester
+10085	Cramlington	VueCinemasCramlington	Vue Cramlington
+10025	Vue Croydon Purley Way	VueCinemasPurleyWayCroydon	Vue Purley Way Croydon
+10067	Cwmbran	VueCinemasCwmbran	Vue Cwmbran
+10044	Dagenham - Cook Road	VueCinemasDagenham	Vue Dagenham
+10090	Darlington - Feethams	VueCinemasDarlington	Vue Darlington
+10041	Doncaster - Herten Way	VueCinemasDoncaster	Vue Doncaster
+10011	Dublin - Liffey Valley	UNMATCHED	
+10069	Eastleigh - Swan Centre	VueCinemasEastleigh	Vue Eastleigh
+10010	Edinburgh - Ocean Terminal	VueEdinburghOceanTerminal	Vue Edinburgh Ocean Terminal
+10038	Edinburgh - Omni Centre	VueEdinburghOmniCentre	Vue Edinburgh Omni Centre
+10096	Eltham - Eltham High Street	VueCinemasEltham	Vue Eltham
+10059	Exeter - Summerland Gate	VueCinemasExeter	Vue Exeter
+10089	Farnborough - Kingsmead Shopping Centre	VueCinemasFarnborough	Vue Farnborough
+10088	Gateshead - Trinity Square	VueCinemasGateshead	Vue Gateshead
+10086	Glasgow - Glasgow Fort	VueCinemasGlasgowFort	Vue Glasgow Fort
+10097	Glasgow - Glasgow St Enoch	VueCinemasGlasgowStEnoch	Vue Glasgow St. Enoch
+10076	Halifax - Broad Street	VueCinemasHalifax	Vue Halifax
+10003	Hamilton - Palace Towers	VueCinemasHamilton	Vue Hamilton
+10006	Harrow - St Georges	VueCinemasHarrow	Vue Harrow
+10035	Hartlepool - The Lanyard	VueCinemasHartlepool	Vue Hartlepool
+10065	Hull - Princes Quary	VueCinemasHull	Vue Hull
+10049	Inverness - Eastfield Way	VueCinemasInverness	Vue Inverness
+10061	Lancaster - Church Street	VueCinemasLancaster	Vue Lancaster
+10079	Leamington - Leamington Spa	VueCinemasLeamingtonSpa	Vue Leamington Spa
+10037	Leeds - Kirkstall Road	VueCinemasLeedsKirkstallRoad	Vue Leeds (Kirkstall Road)
+10012	Leeds - The Light	VueCinemasLeedsTheLight	Vue Leeds (The Light)
+10026	Leicester - Meridian Lesiure Park	VueCinemasLeicester	Vue Leicester
+10095	Limerick	UNMATCHED	
+10001	Livingston - Livingston Designer Outlet	VueCinemasLivingston	Vue Livingston
+10031	London - Finchley Road  (02 Centre)	VueCinemasFinchleyRoadSwissCottage	Vue Finchley Road
+10046	London - Fulham Broadway	VueCinemasFulham	Vue Fulham
+10032	London - Islington (Angel Central)	VueCinemasIslington	Vue Islington
+10022	London -  North Finchley (Finchley Lido)	VueCinemasFinchley	Vue North Finchley
+10080	London - Piccadilly Circus	VueCinemasPiccadillyCircus	Vue Piccadilly
+10030	London - West End (Leicester Square)	VueCinemasWestEnd	Vue West End
+10072	London - Westfield (Shepherd's Bush)	VueCinemasWestfieldShepherdSBush	Vue Westfield Shepherd's Bush
+10074	London - Westfield Stratford City	VueCinemasStratford	Vue Stratford
+10091	Manchester Printworks	VueCinemasManchesterPrintworks	Vue Manchester Printworks
+10057	Manchester Quayside (Media City UK)	VueCinemasManchesterQuayside	Vue Manchester Quayside
+10066	Merthyr Tydfil - Merthyr Tydfil Leisure Village	VueCinemasMerthyrTydfil	Vue Merthyr Tydfil
+10070	Newbury - The Kennet Centre	VueCinemasNewbury	Vue Newbury
+10053	Newcastle Under Lyme - The Square	VueCinemasNewcastleUnderLyme	Vue Newcastle-under-Lyme
+10005	Northampton - Sol Central	VueCinemasNorthampton	Vue Northampton
+10014	Norwich - Castle Mall	VueCinemasNorwich	Vue Norwich
+20003	Nottingham	VueCinemasNottingham	Vue Nottingham
+10008	Oxford - Ozone Leisure	VueCinemasOxford	Vue Oxford
+10027	Plymouth - Barbican Leisure	VueCinemasPlymouth	Vue Plymouth
+20000	Poole	VueCinemasPoole	Vue Poole
+10021	Portsmouth - Gunwharf Quays	VueCinemasPortsmouth	Vue Portsmouth
+10043	Preston - Capitol Centre	VueCinemasPreston	Vue Preston
+10020	Reading - The Oracle	VueCinemasReading	Vue Reading
+10081	Redditch - Kingfisher Centre	VueCinemasRedditch	Vue Redditch
+10013	Romford - The Brewery	VueCinemasRomford	Vue Romford
+10050	Scunthorpe - Fentron Street	VueCinemasScunthorpe	Vue Scunthorpe
+10042	Sheffield - Meadowhall Centre	VueCinemasSheffield	Vue Sheffield
+10004	Southport (Ocean Plaza)	VueCinemasSouthport	Vue Southport
+10024	Staines - Two Rivers Shopping Centre	VueCinemasStainesUponThames	Vue Staines
+10064	Stirling - Forthside	VueCinemasStirling	Vue Stirling
+10083	Stroud	VueCinemasStroud	Vue Stroud
+10058	Swansea - York Street	VueCinemasSwansea	Vue Swansea
+10098	Swindon - Greenbridge	VueCinemasSwindon	Vue Swindon
+10063	Thanet - Westwood Cross	VueCinemasThanetWestwoodCross	Vue Thanet Westwood Cross
+10045	Thurrock - Lakeside Shopping Centre	VueCinemasWestThurrock	Vue West Thurrock
+10084	Torbay - Paignton	VueCinemasTorbayPaignton	Vue Torbay (Paignton)
+10023	Watford - Garston	VueCinemasWatford	Vue Watford
+10071	London - Wood Green	VueCinemasWoodGreen	Vue Wood Green
+10017	Worcester - Friar Street	VueCinemasWorcester	Vue Worcester
+10048	York - Clifton Moor	VueCinemasYork	Vue York
+# OURS-WITH-NO-API-MATCH
+#	(none — all 88 Vue* case objects in Cinema.scala matched an API venue)

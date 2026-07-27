@@ -1,0 +1,93 @@
+# Cineworld UK: API venue id -> models.Cinema case object
+# Roster: https://www.cineworld.co.uk/uk/data-api-service/v1/quickbook/10108/cinemas/with-event/until/<date>?attr=&lang=en_GB
+# Captured 2026-07-27 (87 venues). Columns: apiCinemaId, apiDisplayName, caseObject, ourDisplayName
+012	Swindon - Shaw Ridge	CineworldShawRidgeSwindon	Cineworld (Shaw Ridge) Swindon
+013	Harlow - Queensgate	CineworldHarlowQueensgate	Cineworld Harlow (Queensgate)
+014	Brighton	CineworldBrighton	Cineworld Brighton
+019	Stevenage	CineworldStevenage	Cineworld Stevenage
+020	Rochester	CineworldRochester	Cineworld Rochester
+021	Wakefield	CineworldWakefield	Cineworld Wakefield
+022	Aberdeen - Queens Links	CineworldQueensLinkAberdeen	Cineworld (Queens Link) Aberdeen
+023	London - Feltham	CineworldFeltham	Cineworld Feltham
+024	Boldon Tyne and Wear	CineworldBoldonTyneWear	Cineworld Boldon Tyne & Wear
+025	Wolverhampton	CineworldWolverhampton	Cineworld Wolverhampton
+026	Newport Wales - Spytty Park	CineworldSpyttyParkNewport	Cineworld (Spytty Park) Newport
+027	London - Bexleyheath	CineworldBexleyheath	Cineworld Bexleyheath
+028	Ipswich	CineworldIpswich	Cineworld Ipswich
+029	Chesterfield	CineworldChesterfield	Cineworld Chesterfield
+030	Luton	CineworldLuton	Cineworld Luton
+031	Sheffield	CineworldSheffield	Cineworld Sheffield
+032	Bolton	CineworldBolton	Cineworld Bolton
+033	Shrewsbury	CineworldShrewsbury	Cineworld Shrewsbury
+034	Crawley	CineworldCrawley	Cineworld Crawley
+035	Ashford	CineworldAshford	Cineworld Ashford
+036	Dundee	CineworldDundee	Cineworld Dundee
+037	Edinburgh	CineworldEdinburgh	Cineworld Edinburgh
+040	Hull	CineworldHull	Cineworld Hull
+041	London - West India Quay	CineworldWestIndiaQuay	Cineworld West India Quay
+042	Milton Keynes	CineworldMiltonKeynes	Cineworld Milton Keynes
+043	Huntingdon	CineworldHuntingdon	Cineworld Huntingdon
+044	Birmingham - Broad Street	CineworldBroadStreetBirmingham	Cineworld Broad Street, Birmingham
+045	Isle of Wight	CineworldNewportIsleOfWight	Cineworld Newport, Isle of Wight
+046	London - Wood Green	CineworldWoodGreen	Cineworld Wood Green
+047	Burton upon Trent	CineworldBurtonOnTrent	Cineworld Burton-on-Trent
+048	London - Enfield	CineworldEnfield	Cineworld Enfield
+049	Rugby	CineworldRugby	Cineworld Rugby
+050	St Helens	CineworldStHelens	Cineworld St Helens
+051	Didsbury	CineworldManchester	Cineworld Didsbury
+052	Falkirk	CineworldFalkirk	Cineworld Falkirk
+053	Llandudno	CineworldLlandudno	Cineworld Llandudno
+055	Cardiff	CineworldCardiff	Cineworld Cardiff
+056	Solihull	CineworldSolihull	Cineworld Solihull
+058	Bradford	CineworldBradford	Cineworld Bradford
+059	Yeovil	CineworldYeovil	Cineworld Yeovil
+060	London - Ilford	CineworldIlford	Cineworld Ilford
+061	Braintree	CineworldBraintree	Cineworld Braintree
+062	Jersey	CineworldStHelierJersey	Cineworld St Helier, Jersey
+063	Chichester	CineworldChichester	Cineworld Chichester
+066	London - Wandsworth	CineworldWandsworth	Cineworld Wandsworth
+068	Ashton-under-Lyne	CineworldAshtonUnderLyne	Cineworld Ashton-under-Lyne
+069	Cheltenham	CineworldCheltenham	Cineworld Cheltenham
+070	Bury St Edmunds	CineworldBuryStEdmunds	Cineworld Bury St Edmunds
+071	Didcot	CineworldDidcot	Cineworld Didcot
+073	High Wycombe	CineworldHighWycombe	Cineworld High Wycombe
+074	Aberdeen - Union Square	CineworldUnionSquareAberdeen	Cineworld (Union Square) Aberdeen
+075	Witney	CineworldWitney	Cineworld Witney
+076	Haverhill	CineworldHaverhill	Cineworld Haverhill
+077	London - The O2 Greenwich	CineworldGreenwich	Cineworld at The O2 Greenwich
+080	Aldershot	CineworldAldershot	Cineworld Aldershot
+082	London - Wembley	CineworldWembley	Cineworld Wembley
+083	Gloucester Quays	CineworldGloucesterQuays	Cineworld Gloucester Quays
+084	St Neots	CineworldStNeots	Cineworld St Neots
+085	Telford	CineworldTelford	Cineworld Telford
+088	Glasgow - Silverburn	CineworldSilverburnGlasgow	Cineworld (Silverburn) Glasgow
+089	Broughton	CineworldBroughton	Cineworld Broughton
+090	Birmingham - NEC	CineworldNECBirmingham	Cineworld NEC Birmingham
+091	Whiteley	CineworldWhiteley	Cineworld Whiteley
+092	Hinckley	CineworldHinckley	Cineworld Hinckley
+093	Stoke-on-Trent	CineworldStokeOnTrent	Cineworld Stoke-on-Trent
+096	Dalton Park	CineworldDaltonParkMurtonCounty	Cineworld Dalton Park (Murton County)
+097	Ely	CineworldEly	Cineworld Ely
+098	Harlow - Harvey Centre	CineworldHarlowHarveyCentre	Cineworld Harlow (Harvey Centre)
+099	Dover	CineworldDover	Cineworld Dover
+100	Basildon	CineworldBasildon	Cineworld Basildon
+102	Hemel Hempstead	CineworldHemelHempstead	Cineworld Hemel Hempstead
+103	London - Leicester Square	CineworldLeicesterSquare	Cineworld Leicester Square
+105	Newcastle upon Tyne	CineworldNewcastle	Cineworld Newcastle
+106	London - South Ruislip	CineworldSouthRuislip	Cineworld South Ruislip
+107	Bracknell	CineworldBracknell	Cineworld Bracknell
+108	Leeds - White Rose	CineworldLeeds	Cineworld Leeds
+109	Weston-super-Mare	CineworldWestonSuperMare	Cineworld Weston-super-Mare
+110	Speke	CineworldSpeke	Cineworld Speke
+111	Watford	CineworldWatford	Cineworld Watford
+112	Rushden Lakes	CineworldRushdenLakes	Cineworld Rushden Lakes
+113	Eastbourne at The Beacon	CineworldEastbourne	Cineworld Eastbourne
+114	Plymouth	CineworldPlymouth	Cineworld Plymouth
+115	Warrington	CineworldWarrington	Cineworld Warrington
+116	York	CineworldYork	Cineworld York
+117	Belfast	CineworldBelfast	Cineworld Belfast
+118	London - Hounslow	CineworldLondonHounslow	Cineworld London Hounslow
+119	Barnsley	CineworldBarnsley	Cineworld Barnsley
+
+# OURS-WITH-NO-API-MATCH
+# (none - all 87 Cineworld* case objects map to an API venue)
