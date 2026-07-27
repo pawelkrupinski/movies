@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.metrics.CorpusMetricsFixtures._
 import services.metrics.WorkerCorpusMetrics.Subset
 import services.metrics.WorkerSourceFilmsMetrics.Scope
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.movies.{IncompleteScanMovieRepository, InMemoryMovieRepository, StoredMovieRecord}
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -99,18 +99,71 @@ class WorkerCorpusScanSpec extends AnyFlatSpec with Matchers {
     gauge(text, WorkerShowtimesMetrics.Name, s"""city="poznan",country="pl"""") shouldBe Some(2.0)
   }
 
-  // Pre-extraction each sampler ignored its scan's completeness boolean and published
-  // whatever it had counted; sharing the scan must not silently change that.
-  it should "still publish on an INCOMPLETE scan, as each sampler did on its own scan" in {
+  // These three used to publish whatever a partial scan had counted, and this spec used
+  // to PIN that ("still publish on an INCOMPLETE scan"). Prod settled the argument on
+  // 2026-07-27: the `Missing field: sourceData` decode bug failed every batch, so the
+  // censuses published 0 for ~50 minutes while all three corpora sat intact — the panel
+  // read as "the corpus is gone", and `kinowo-showtime-volume-collapsed` pages on exactly
+  // that shape. A partial census is fewer rows READ, not a smaller corpus, and as a gauge
+  // value the two cannot be told apart. So it publishes nothing and says so instead.
+  it should "keep the last complete values when a scan falls short, not publish a partial count" in {
     val registry  = new PrometheusRegistry()
-    val partial = new InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record))) {
-      override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { super.foreachRecord(f); false }
-    }
     val showtimes = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock)
 
-    new WorkerCorpusScan(partial, Seq(showtimes)).sample()
+    new WorkerCorpusScan(repositoryOf(rows*), Seq(showtimes)).sample()
+    gauge(PrometheusExposition.render(registry), WorkerShowtimesMetrics.Name,
+      s"""city="poznan",country="pl"""") shouldBe Some(2.0)
 
-    val text = PrometheusExposition.render(registry)
-    gauge(text, WorkerShowtimesMetrics.Name, s"""city="poznan",country="pl"""") shouldBe Some(2.0)
+    // A pass that fails BEFORE reaching Poznań's row still delivers Wrocław's. Publishing
+    // that would drop Poznań 2 → 0: a total city outage, from a read that simply stopped.
+    new WorkerCorpusScan(new IncompleteScanMovieRepository(rows.drop(1).map(r => (r.title, r.year, r.record))),
+      Seq(showtimes)).sample()
+
+    val after = PrometheusExposition.render(registry)
+    gauge(after, WorkerShowtimesMetrics.Name, s"""city="poznan",country="pl"""")  shouldBe Some(2.0)
+    gauge(after, WorkerShowtimesMetrics.Name, s"""city="wroclaw",country="pl"""") shouldBe Some(1.0)
+  }
+
+  // The exact prod shape: EVERY batch fails, so the scan delivers no rows at all. Publishing
+  // that reads as a total corpus wipe.
+  it should "not publish a zero census when the scan reads nothing at all" in {
+    val registry = new PrometheusRegistry()
+    val corpus   = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl")
+
+    new WorkerCorpusScan(repositoryOf(rows*), Seq(corpus)).sample()
+    gauge(PrometheusExposition.render(registry), WorkerCorpusMetrics.Name,
+      s"""country="pl",subset="${Subset.Total}"""") shouldBe Some(2.0)
+
+    new WorkerCorpusScan(new IncompleteScanMovieRepository(), Seq(corpus)).sample()
+
+    gauge(PrometheusExposition.render(registry), WorkerCorpusMetrics.Name,
+      s"""country="pl",subset="${Subset.Total}"""") shouldBe Some(2.0)
+  }
+
+  // Skipping the publish leaves the gauges frozen at plausible numbers, so a census that is
+  // genuinely stuck would be invisible without this. The counter is the only signal that
+  // says "these gauges have stopped meaning anything".
+  it should "count an incomplete pass so a stuck census can't hide behind frozen gauges" in {
+    val registry = new PrometheusRegistry()
+    val counter  = WorkerCorpusScan.incompleteCounter(registry)
+    val scan     = new WorkerCorpusScan(new IncompleteScanMovieRepository(), Seq.empty,
+      metrics = CorpusScanMetrics.prometheus(counter, "pl"))
+
+    scan.sample()
+    scan.sample()
+
+    PrometheusExposition.sample(PrometheusExposition.render(registry),
+      WorkerCorpusScan.IncompleteMetricName, """country="pl"""") shouldBe Some(2.0)
+  }
+
+  it should "not count a complete pass" in {
+    val registry = new PrometheusRegistry()
+    val counter  = WorkerCorpusScan.incompleteCounter(registry)
+
+    new WorkerCorpusScan(repositoryOf(rows*), Seq.empty,
+      metrics = CorpusScanMetrics.prometheus(counter, "pl")).sample()
+
+    PrometheusExposition.sample(PrometheusExposition.render(registry),
+      WorkerCorpusScan.IncompleteMetricName, """country="pl"""") shouldBe Some(0.0)
   }
 }

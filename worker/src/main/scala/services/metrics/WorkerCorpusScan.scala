@@ -1,5 +1,7 @@
 package services.metrics
 
+import io.prometheus.metrics.core.metrics.Counter
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 import play.api.Logging
 import services.movies.{MovieRepository, StoredMovieRecord}
 import tools.DaemonExecutors
@@ -19,25 +21,39 @@ import scala.util.Try
  * largest). One stitched scan serves all three: the films/showtimes collectors need
  * the stitched showtimes, and the corpus census simply ignores them.
  *
- * Failure semantics are passed through untouched: `foreachRecord` reports `false` when
- * a batch read failed mid-scan, and each collector decides for itself what to do with a
- * partial corpus (today all three publish regardless — exactly what they did when each
- * ignored the boolean on its own scan).
+ * Failure semantics: `foreachRecord` reports `false` when a batch read failed mid-scan,
+ * and every collector SKIPS its publish on that — a partial census is fewer rows read,
+ * not a smaller corpus, and as a gauge value the two are indistinguishable (2026-07-27:
+ * a decode bug failed every batch and the censuses published 0 while the corpus sat
+ * intact). Skipping leaves the last good value, so the miss is counted here instead: a
+ * census that is genuinely stuck must not hide behind gauges frozen at plausible numbers.
  */
 class WorkerCorpusScan(
   repository:     MovieRepository,
   collectors:     Seq[CorpusMetricsCollector],
-  sampleInterval: FiniteDuration = WorkerCorpusScan.DefaultSampleInterval
+  sampleInterval: FiniteDuration = WorkerCorpusScan.DefaultSampleInterval,
+  // Counts the passes that could not read the whole corpus. Noop for tests that only
+  // care about the gauges; the worker injects the Prometheus-backed sink.
+  metrics:        CorpusScanMetrics = CorpusScanMetrics.noop
 ) extends Logging {
 
   private val scheduler = DaemonExecutors.scheduler("worker-corpus-scan")
 
   /** Scan the corpus ONCE, fan every row out to all collectors, then let each publish
    *  its gauges. Read-only and keyset-paged, so it adds no write load and never holds
-   *  the whole corpus on the heap. */
+   *  the whole corpus on the heap.
+   *
+   *  An incomplete pass publishes NOTHING and is counted + logged instead. The gauges
+   *  keep their last complete values, which is the honest reading: this pass learned
+   *  nothing about the corpus. */
   def sample(): Unit = {
     val samplers = collectors.map(_.startSample())
     val complete = repository.foreachRecord(row => samplers.foreach(_.accept(row)))
+    if (!complete) {
+      metrics.recordIncompleteSample()
+      logger.warn("worker-corpus-scan: corpus scan incomplete — census gauges keep their previous values " +
+        "rather than publishing a partial count as if the corpus had shrunk.")
+    }
     samplers.foreach(_.publish(complete))
   }
 
@@ -57,6 +73,42 @@ object WorkerCorpusScan {
    *  slower than the seconds-apart Fly `/metrics` scrape, so a more frequent re-scan
    *  would be wasted reads. */
   val DefaultSampleInterval: FiniteDuration = 5.minutes
+
+  val IncompleteMetricName = "kinowo_worker_corpus_scan_incomplete_total"
+
+  /** Register the shared counter every country's scan increments (leading `country`
+   *  label, like every other worker metric family). */
+  def incompleteCounter(registry: PrometheusRegistry): Counter =
+    Counter.builder()
+      .name(IncompleteMetricName)
+      .help("Corpus census passes that could not read the whole `movies` collection, by country. " +
+        "The census gauges (kinowo_worker_corpus_movies / _showtimes / _movies_served) deliberately " +
+        "publish NOTHING on such a pass — they hold their last complete values — so a rising rate here " +
+        "is the only sign those gauges have gone stale, and stale is what they are.")
+      .labelNames("country")
+      .register(registry)
+}
+
+/** Where [[WorkerCorpusScan]] reports a pass that fell short of the whole corpus.
+ *  A trait so the scan stays testable without a Prometheus registry, mirroring
+ *  [[services.movies.ChangeStreamMetrics]]. */
+trait CorpusScanMetrics {
+  def recordIncompleteSample(): Unit
+}
+
+object CorpusScanMetrics {
+  val noop: CorpusScanMetrics = new CorpusScanMetrics { def recordIncompleteSample(): Unit = () }
+
+  /** Binds one country's slice of the shared counter, materializing the series at 0 up
+   *  front. Same rule the census gauges follow: a healthy country must be an explicit 0,
+   *  not an absent series — otherwise the metric only appears once it has already gone
+   *  wrong, and an alert on it has nothing to compare against until then. */
+  def prometheus(counter: Counter, countryCode: String): CorpusScanMetrics = {
+    counter.labelValues(countryCode)
+    new CorpusScanMetrics {
+      def recordIncompleteSample(): Unit = counter.labelValues(countryCode).inc()
+    }
+  }
 }
 
 /** A gauge family that is populated by censusing the whole `movies` corpus. It

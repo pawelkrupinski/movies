@@ -1,6 +1,6 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.Gauge
+import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 
@@ -54,6 +54,11 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   val servedGauge:    Gauge          = WorkerSourceFilmsMetrics.gauge(registry)
   val showtimesGauge: Gauge          = WorkerShowtimesMetrics.gauge(registry)
   val (ratingNotRunGauge, ratingOldestAgeGauge): (Gauge, Gauge) = RatingRunCensus.gauges(registry)
+
+  // Counts census passes that could not read the whole corpus. The gauges above publish
+  // NOTHING on such a pass (a partial count is indistinguishable from a real collapse),
+  // so this counter is what keeps a stuck census visible instead of frozen-and-plausible.
+  val corpusScanIncomplete: Counter = WorkerCorpusScan.incompleteCounter(registry)
 
   /** The per-country task-metrics facade a wiring holds. Cheap — it just binds the
    *  country code to the shared [[taskSeries]]. */

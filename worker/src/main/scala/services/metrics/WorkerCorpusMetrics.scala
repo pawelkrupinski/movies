@@ -37,10 +37,17 @@ class WorkerCorpusMetrics(corpus: Gauge, countryCode: String) extends CorpusMetr
 
     def accept(row: StoredMovieRecord): Unit = counts = counts.add(row.record)
 
-    /** Publishes on a partial scan too — an incomplete census reads as a dip, which is
-     *  what this gauge did before the scan was shared (it ignored the scan's boolean). */
+    /** Publishes ONLY a complete census. A partial scan's counts are not a smaller
+     *  corpus, they are fewer rows read — and published as a gauge the two are
+     *  indistinguishable. On 2026-07-27 the `Missing field: sourceData` decode bug failed
+     *  every batch, so this published `total=0` for ~50 minutes while the corpus sat
+     *  intact at 943 films; the panel read as "Poland's corpus is gone". Skipping leaves
+     *  the last good value in place and [[WorkerCorpusScan]] counts the miss, so a
+     *  census that is genuinely stuck is still visible — as a stuck census, which is what
+     *  it is, rather than as an imaginary collapse. */
     def publish(scanComplete: Boolean): Unit =
-      counts.bySubset.foreach { case (subset, value) => corpus.labelValues(countryCode, subset).set(value.toDouble) }
+      if (scanComplete)
+        counts.bySubset.foreach { case (subset, value) => corpus.labelValues(countryCode, subset).set(value.toDouble) }
   }
 }
 

@@ -49,9 +49,11 @@ class WorkerSourceFilmsMetrics(
 
     def accept(row: StoredMovieRecord): Unit = tally.accept(row)
 
-    /** Publishes on a partial scan too — matches what this gauge did before the scan
-     *  was shared (it ignored the scan's completeness boolean). */
-    def publish(scanComplete: Boolean): Unit = {
+    /** Publishes ONLY a complete census — see [[WorkerCorpusMetrics]] for the incident
+     *  that forced this. This gauge is the source-vs-read-model drift comparison, so a
+     *  partial scan here reads as "the projector dropped films", sending a reader after
+     *  a projection bug that does not exist. */
+    def publish(scanComplete: Boolean): Unit = if (scanComplete) {
       val counts = tally.counts
       for (c <- cities; scope <- Scope.all)
         served.labelValues(countryCode, c.slug, scope).set(counts.getOrElse((c.slug, scope), 0).toDouble)

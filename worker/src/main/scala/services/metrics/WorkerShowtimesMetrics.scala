@@ -48,9 +48,12 @@ class WorkerShowtimesMetrics(
 
     def accept(row: StoredMovieRecord): Unit = tally.accept(row)
 
-    /** Publishes on a partial scan too — matches what this gauge did before the scan
-     *  was shared (it ignored the scan's completeness boolean). */
-    def publish(scanComplete: Boolean): Unit = {
+    /** Publishes ONLY a complete census — see [[WorkerCorpusMetrics]] for the incident
+     *  that forced this. It matters most here: `kinowo-showtime-volume-collapsed` pages
+     *  when a country falls under 60% of its 6h peak, so a partial scan publishes exactly
+     *  the shape that rule exists to catch and the page cannot be told from a real
+     *  collapse. A rule this sharp has to be fed only counts the scan stands behind. */
+    def publish(scanComplete: Boolean): Unit = if (scanComplete) {
       val counts = tally.counts
       for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(counts.getOrElse(c.slug, 0).toDouble)
     }

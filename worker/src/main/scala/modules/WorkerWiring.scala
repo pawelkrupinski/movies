@@ -701,7 +701,8 @@ class WorkerWiring(
   // their own timer AND their own full scan of the same rows — 14,704 documents per
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: services.metrics.WorkerCorpusScan =
-    new services.metrics.WorkerCorpusScan(movieRepository, Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics))
+    new services.metrics.WorkerCorpusScan(movieRepository, Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics),
+      metrics = services.metrics.CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code))
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: services.metrics.RatingRunCensus =
