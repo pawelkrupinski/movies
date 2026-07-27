@@ -915,6 +915,46 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
   }
 
+  // Slots read-path parity — the generalisation of the bug that shipped. `findAllForListing`
+  // reads `movies.sourceData` straight out of an aggregation and so bypassed the shared
+  // stitch, listing a migrated film with NO cinemas. Every reader is pinned here rather
+  // than just that one, because the failure mode is "a reader forgot to stitch" and the
+  // next one added will forget too. The showtimes equivalent below exists because exactly
+  // this class of divergence once dropped 129 films.
+  it should "return identical slots from findById, findAll, foreachRecord and findAllForListing" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import models.SourceData
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    val title  = "__integration-test-slotparity__"
+    val year   = Some(1915)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      val slot = SourceData(title = Some("PA"), posterUrl = Some("https://poster/pa.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 9, 19, 0), Some("https://book/pa-1"))))
+      split.upsert(title, year, MovieRecord(imdbId = Some("tt0000023"), data = Map[Source, SourceData](Multikino -> slot)))
+
+      def slotsOf(r: Option[StoredMovieRecord]) =
+        r.map(_.record.cinemaData.map { case (src, sd) => src -> sd.posterUrl })
+
+      val viaFindById   = slotsOf(split.findById(id))
+      val viaFindAll    = slotsOf(split.findAll().find(r => StoredMovieRecord.idOf(r) == id))
+      var scanned: Option[StoredMovieRecord] = None
+      split.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id) scanned = Some(r))
+      val viaForeach    = slotsOf(scanned)
+      val viaListing    = slotsOf(split.findAllForListing().find(r => StoredMovieRecord.idOf(r) == id))
+
+      val expected = Some(Map[Source, Option[String]](Multikino -> Some("https://poster/pa.png")))
+      withClue("findById: ")          { viaFindById shouldBe expected }
+      withClue("findAll: ")           { viaFindAll  shouldBe expected }
+      withClue("foreachRecord: ")     { viaForeach  shouldBe expected }
+      withClue("findAllForListing: ") { viaListing  shouldBe expected }
+    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.
