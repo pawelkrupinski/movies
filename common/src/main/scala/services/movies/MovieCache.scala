@@ -117,7 +117,13 @@ trait MovieCache extends MovieCacheReader {
    *  hold `key`. The TMDB resolve's carry-forward reads this rather than the
    *  Caffeine-only `get`, so a cold / evicted / re-keyed entry can't make the
    *  rebuild read EMPTY and null a persisted rating (or cinema slot). */
-  private[services] def stored(key: CacheKey): Option[MovieRecord]
+  private[services] def stored(key: CacheKey): Option[MovieRecord] = storedChecked(key)._1
+
+  /** Like [[stored]], but says whether the underlying read SUCCEEDED — `(row, readOk)`.
+   *  A caller that would treat `None` as "this film is new" MUST use this instead: a
+   *  failed read otherwise makes it rebuild a live film from scratch, carrying only what
+   *  the current scrape saw. See [[MovieRepository.findByIdChecked]]. */
+  private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
 
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
@@ -193,6 +199,11 @@ class CaffeineMovieCache(
   // Polish so every existing single-country construction is unchanged.
   enrichmentLanguage: java.util.Locale = CountryNames.DefaultLanguage
 ) extends MovieCache with Stoppable with Logging {
+
+  // Films skipped this process's lifetime because their stored row could not be read.
+  // Exposed for tests + diagnostics: a non-zero value means scrapes are landing against
+  // an unreadable corpus, which is the state that used to silently prune boards.
+  private[services] val skippedUnreadable = new java.util.concurrent.atomic.AtomicLong(0)
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
   private val negative: Cache[CacheKey, java.lang.Boolean] =
@@ -542,8 +553,13 @@ class CaffeineMovieCache(
    *  EMPTY and null the scores the `*Ratings` refreshers own (and the cinema
    *  slots) — the "ratings keep disappearing" clobber. On a warm cache it's just
    *  `get`; the `movies` read only happens on a miss. */
-  private[services] def stored(key: CacheKey): Option[MovieRecord] =
-    get(key).orElse(repository.findById(StoredMovieRecord.idFor(key.cleanTitle, key.year)).map(_.record))
+  private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean) =
+    get(key) match {
+      case cached @ Some(_) => (cached, true)
+      case None =>
+        val (row, readOk) = repository.findByIdChecked(StoredMovieRecord.idFor(key.cleanTitle, key.year))
+        (row.map(_.record), readOk)
+    }
 
   def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey =
     withTitleLock(oldKey.cleanTitle) {
@@ -812,10 +828,24 @@ class CaffeineMovieCache(
     withTitleLock(oldKey.cleanTitle) {
       // `stored` (cache-or-Mongo): a cold `oldKey` read EMPTY would be re-`put` at
       // `newKey` rating-less, nulling the scores the `*Ratings` refreshers own.
-      val current = stored(oldKey).getOrElse(MovieRecord())
-      val updated = update(current)
-      if (oldKey != newKey) invalidate(oldKey)
-      put(newKey, updated)
+      //
+      // A read that FAILED is worse still, and the cold-read fix above does not cover it:
+      // the record would be re-`put` at `newKey` with no ratings AND no cinemas, so
+      // `upsert` prunes every one of the film's showtimes. Defer instead — the row stays
+      // at `oldKey`, nothing is invalidated, and the settle that asked for this re-key
+      // runs again on its next tick. See [[MovieRepository.findByIdChecked]].
+      storedChecked(oldKey) match {
+        case (_, false) =>
+          logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
+            s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): the stored row could not be READ, " +
+            "and re-keying a row we cannot see would write it back with neither ratings nor cinemas.")
+          skippedUnreadable.incrementAndGet()
+          ()
+        case (row, true) =>
+          val updated = update(row.getOrElse(MovieRecord()))
+          if (oldKey != newKey) invalidate(oldKey)
+          put(newKey, updated)
+      }
     }
   }
 
@@ -1185,8 +1215,26 @@ class CaffeineMovieCache(
               // `searchTitle` stays absent — a row landing straight in `movies`
               // carries none, so movies ingestion stays a pure function of the
               // canonical title, no scrape-order dependence.
-              val base = stored(key).getOrElse(MovieRecord())
-              put(key, base.copy(data = base.data + (slotKey -> slot)))
+              // …and a cache miss whose Mongo read FAILED is not proof of anything at all.
+              // Treating it as first-time builds the record from scratch, so it carries
+              // only the cinema being scraped right now, and `MovieRepository.upsert`
+              // writes that as the whole film — `screenings.replaceFilm` then prunes every
+              // OTHER cinema's showtimes. One unreadable row costs that film its board;
+              // a cold cache after a restart routes the entire corpus down this branch,
+              // which is how 2026-07-27 lost ~60% of the showtimes in every country while
+              // the film counts stayed flat. Skip the film instead: the slot is simply not
+              // recorded this tick, the stored rows are left exactly as they are, and the
+              // cinema's next scrape (or the cache's next hydrate) picks it up.
+              storedChecked(key) match {
+                case (_, false) =>
+                  logger.warn(s"Skipping '${key.cleanTitle}' (${key.year.getOrElse("—")}) from " +
+                    s"${cinema.displayName}: its stored row could not be READ, and rebuilding it from " +
+                    "this scrape alone would prune every other cinema's showtimes.")
+                  skippedUnreadable.incrementAndGet()
+                case (row, true) =>
+                  val base = row.getOrElse(MovieRecord())
+                  put(key, base.copy(data = base.data + (slotKey -> slot)))
+              }
           }
           // A brand-new cinema observation grows what the TMDB stage can work
           // with; drop any stale "missing" verdict so the imminent publish

@@ -97,8 +97,25 @@ trait MovieRepository {
    *  up front — rendering the whole corpus's details in one Twirl pass OOM'd the
    *  view. The default scans [[findAll]] (fine for the in-memory store);
    *  `MongoMovieRepository` overrides it with an indexed `_id` lookup. */
-  def findById(id: String): Option[StoredMovieRecord] =
-    findAll().find(row => StoredMovieRecord.idOf(row) == id)
+  def findById(id: String): Option[StoredMovieRecord] = findByIdChecked(id)._1
+
+  /** Like [[findById]] but says whether the READ succeeded, so `None` can be told from
+   *  "could not look".
+   *
+   *  `findById` collapses both into `None`, and one caller cannot afford that:
+   *  `MovieCache.stored` uses it as the merge base for a scrape whose film is not in the
+   *  cache, and `None` there means "brand-new film". Building a record from scratch makes
+   *  it carry ONLY the cinema just scraped, and `MovieRepository.upsert` then writes that
+   *  as the whole film — `screenings.replaceFilm` prunes every other cinema's showtimes
+   *  with its `$nin`. So a read failure silently empties a live film of every cinema but
+   *  one, and a cold cache (every restart) routes the WHOLE corpus through that branch.
+   *  That is what emptied the boards on 2026-07-27: a decode bug made this read throw, and
+   *  the logs filled with `MovieRepository.findById(…) failed` while the showtime volume
+   *  fell to a third across every country.
+   *
+   *  The in-memory store cannot fail, so the default reports `true`. */
+  def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) =
+    (findAll().find(row => StoredMovieRecord.idOf(row) == id), true)
 
   /** Like [[findAll]] but with each source's `showtimes` list dropped — the
    *  rows for a LISTING that renders only per-cinema metadata + counts, never
@@ -486,18 +503,24 @@ class MongoMovieRepository(
   /** Indexed single-document lookup by `_id` — the `/debug` lazy-details endpoint
    *  fetches one row's per-source breakdown when its table row is expanded.
    *  Mirrors [[findAll]]'s decode; an absent `_id` yields `None`. Best-effort:
-   *  failures are logged, not thrown. */
-  override def findById(id: String): Option[StoredMovieRecord] = coll match {
+   *  failures are logged, not thrown, and reported as `false` so a caller can tell an
+   *  absent row from an unreadable one — see the trait doc for what conflating them
+   *  costs. A row whose SLOT read failed counts as unreadable too: `decodeStitched`
+   *  declines to build it, and that `None` means "could not look", not "no such film". */
+  override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = coll match {
     case Some(c) =>
-      Try {
-        Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
-          .flatMap(decodeStitched)
-      }.recover {
-        case exception: Throwable =>
+      Try(Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))) match {
+        case scala.util.Success(None)      => (None, true)   // genuinely absent
+        case scala.util.Success(Some(dto)) =>
+          decodeStitched(dto) match {
+            case some @ Some(_) => (some, true)
+            case None           => (None, false)             // slots unreadable
+          }
+        case scala.util.Failure(exception) =>
           logger.warn(s"MovieRepository.findById($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          None
-      }.getOrElse(None)
-    case None => None
+          (None, false)
+      }
+    case None => (None, true)
   }
 
   /** Strips each source's `showtimes` SERVER-SIDE so they never cross the wire:
