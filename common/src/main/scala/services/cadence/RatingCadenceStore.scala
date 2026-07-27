@@ -71,7 +71,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
   // Relaxed `{w:1, j:false}` like freshness: cadence stats are a cache — a lost
   // write just means the film briefly reverts toward the base interval.
   private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection("rating_cadence").withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))
+    db.map(_.getCollection(RatingCadenceReader.Collection).withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))
 
   coll.foreach { c =>
     val thread = new Thread(() => hydrate(c), "rating-cadence-init")
@@ -197,6 +197,10 @@ trait RatingCadenceReader {
 }
 
 object RatingCadenceReader {
+  /** The cadence-stats collection — see [[services.DebugMirror]] for why the name
+   *  is a constant rather than an inline literal. */
+  val Collection = "rating_cadence"
+
   /** No data — the default where cadence isn't wired (tests, Mongo-less dev). */
   val empty: RatingCadenceReader = new RatingCadenceReader {
     override def all(): Seq[(String, RatingChangeStats)] = Seq.empty
@@ -205,7 +209,7 @@ object RatingCadenceReader {
 }
 
 class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceReader with Logging {
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("rating_cadence"))
+  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(RatingCadenceReader.Collection))
 
   override def all(): Seq[(String, RatingChangeStats)] = coll match {
     case None => Seq.empty

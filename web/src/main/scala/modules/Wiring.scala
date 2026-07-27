@@ -198,6 +198,11 @@ trait Wiring {
   // from the MIRROR (which holds every country's db, not just the boot one), so
   // `?country=uk` is as fast as the boot country instead of paying the tunnel's
   // ~110ms per round-trip; unset → the MAIN Mongo, as before.
+  //
+  // The mirror is read UNCONDITIONALLY once configured, so a collection its sync
+  // doesn't carry reads as permanently EMPTY — a blank page, no error. POINTING A
+  // NEW READER HERE MEANS ADDING ITS COLLECTION TO `services.DebugMirror`, which
+  // `MongoConnectionSpec` diffs against the sync's own list.
   private lazy val bootDebugStack: DebugStack = new DebugStack(
     models.Country.fromEnv, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
     readModelMovies       = () => webReadModel.allMovies(),

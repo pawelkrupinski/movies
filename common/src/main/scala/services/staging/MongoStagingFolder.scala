@@ -41,8 +41,8 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
         // staging rows are considered consumed.
         .withWriteConcern(WriteConcern.MAJORITY))
 
-  private val moviesColl  = collection("movies")
-  private val stagingColl = collection("pending_movies")
+  private val moviesColl  = collection(services.movies.MovieRepository.Collection)
+  private val stagingColl = collection(StagingRepository.Collection)
 
   def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] =
     (connection.startSession(), moviesColl, stagingColl) match {

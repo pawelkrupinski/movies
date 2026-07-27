@@ -196,6 +196,10 @@ trait MovieRepository {
 }
 
 object MovieRepository {
+  /** The corpus collection. Named here rather than inline so
+   *  [[services.DebugMirror]] can state what the local /debug mirror has to carry. */
+  val Collection = "movies"
+
   /** A copy of `row` with every source's `showtimes` dropped — the shared rule
    *  behind [[MovieRepository.findAllForListing]]. `MongoMovieRepository` strips
    *  the same field server-side; this keeps the in-memory store's listing view
@@ -346,7 +350,7 @@ class MongoMovieRepository(
         // so a write lost to a crash is recovered by the next scrape pass. Skipping
         // the journal sync cuts per-write cost on the shared-CPU Mongo — the worker's
         // write rate is what throttles it. Same trade `MongoTaskQueue` already makes.
-        val coll = withRegistry.getCollection[StoredMovieDto]("movies")
+        val coll = withRegistry.getCollection[StoredMovieDto](MovieRepository.Collection)
           .withWriteConcern(WriteConcern.W1.withJournal(false))
         ensureIndexes(coll)
         (None, Some(withRegistry), Some(coll))
@@ -946,7 +950,7 @@ class MongoMovieRepository(
           val client  = MongoClient(uri)
           val db      = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
           // Relaxed write concern — see the sharedDb path above.
-          val coll    = db.getCollection[StoredMovieDto]("movies")
+          val coll    = db.getCollection[StoredMovieDto](MovieRepository.Collection)
             .withWriteConcern(WriteConcern.W1.withJournal(false))
           // Touch the collection to surface connectivity errors at startup,
           // not on the first read after the app is "up".

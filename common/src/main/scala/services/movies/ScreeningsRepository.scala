@@ -128,6 +128,9 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
 }
 
 object ScreeningsRepository {
+  /** The showtimes collection — see [[services.DebugMirror]] for why the name is
+   *  a constant rather than an inline literal. */
+  val Collection = "screenings"
 
   /** The cinema slots that carry showtimes, keyed by slot wire-key
    *  (`Source.displayName`). Tmdb/Imdb slots never have showtimes, so they're
@@ -240,7 +243,7 @@ class MongoScreeningsRepository(
   import ScreeningsRepository.IdSep
 
   private lazy val coll: Option[MongoCollection[StoredScreeningsDto]] = sharedDb.map { db =>
-    val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredScreeningsDto]("screenings")
+    val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredScreeningsDto](ScreeningsRepository.Collection)
       .withWriteConcern(WriteConcern.W1.withJournal(false))
     Try(Await.result(c.createIndex(Indexes.ascending("filmId")).toFuture(), 10.seconds))
     c

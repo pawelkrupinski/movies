@@ -46,9 +46,9 @@ class MongoReadModelRepository(
   // on the shared-CPU Mongo, which the worker's projection cascade was saturating.
   private val RelaxedWrites = WriteConcern.W1.withJournal(false)
   private val movies: Option[MongoCollection[ResolvedMovie]] =
-    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[ResolvedMovie]("web_movies").withWriteConcern(RelaxedWrites))
+    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[ResolvedMovie](MongoReadModelRepository.MoviesCollection).withWriteConcern(RelaxedWrites))
   private val screenings: Option[MongoCollection[CityScreening]] =
-    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[CityScreening]("web_screenings").withWriteConcern(RelaxedWrites))
+    sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[CityScreening](MongoReadModelRepository.ScreeningsCollection).withWriteConcern(RelaxedWrites))
 
   // Best-effort index creation. The web's per-city read filters on `city`; the
   // projector's per-film prune filters on `filmId`. Idempotent — re-creating an
@@ -199,10 +199,10 @@ class MongoReadModelRepository(
   // ── Change streams ──────────────────────────────────────────────────────────
 
   def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit): Option[StreamSubscription] =
-    movies.map(watch(_, onUpsert, onDelete, "web_movies"))
+    movies.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.MoviesCollection))
 
   def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit): Option[StreamSubscription] =
-    screenings.map(watch(_, onUpsert, onDelete, "web_screenings"))
+    screenings.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.ScreeningsCollection))
 
   /** Route each insert / update / replace to `onUpsert` (full post-image via
    *  `UPDATE_LOOKUP`) and each delete to `onDelete(_id)`. The driver auto-
@@ -240,4 +240,11 @@ class MongoReadModelRepository(
 
   private def isClusterClosed(exception: Throwable): Boolean =
     Option(exception.getMessage).exists(_.contains("state should be: open"))
+}
+
+object MongoReadModelRepository {
+  /** The two derived collections. Named here rather than inline so
+   *  [[services.DebugMirror]] can state what the local /debug mirror has to carry. */
+  val MoviesCollection     = "web_movies"
+  val ScreeningsCollection = "web_screenings"
 }

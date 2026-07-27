@@ -132,6 +132,9 @@ class InMemorySlotsRepository extends SlotsRepository {
 }
 
 object SlotsRepository {
+  /** The per-cinema slot collection — see [[services.DebugMirror]] for why the name
+   *  is a constant rather than an inline literal. */
+  val Collection = "movie_slots"
 
   /** A record's slots in wire form, ready to store. Showtimes are dropped — they are
    *  authoritative in `screenings`, and storing them twice would let the two disagree. */
@@ -193,7 +196,7 @@ class MongoSlotsRepository(
   import SlotKeyed.idOf
 
   private lazy val coll: Option[MongoCollection[StoredSlotDto]] = sharedDb.map { db =>
-    val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredSlotDto]("movie_slots")
+    val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredSlotDto](SlotsRepository.Collection)
       .withWriteConcern(WriteConcern.W1.withJournal(false))
     Try(Await.result(c.createIndex(Indexes.ascending("filmId")).toFuture(), 10.seconds))
     c

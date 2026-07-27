@@ -289,15 +289,15 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "have the sync mirror every collection the /debug stacks read" in {
-    // Each of these backs a reader Wiring points at the mirror connection:
-    // movies + screenings (the corpus table, showtimes stitched back in),
-    // enrichment_attempts + rating_cadence (the per-row expand), and
-    // movie_slots — `Wiring.slotsRepository` is built on the MIRROR database,
-    // and both findAll and the per-film decode resolve slots through it. A
-    // collection missing from the sync reads as permanently empty rather than
-    // failing: every film rendered slot-less on /debug for as long as
-    // movie_slots was absent here.
-    val read = Set("movies", "screenings", "enrichment_attempts", "rating_cadence", "movie_slots")
+    // The read set comes from [[DebugMirror]] — each entry names a reader Wiring
+    // points at the mirror connection — NOT a literal maintained here. Updating a
+    // hand-written copy by hand is what let this drift three times over: a
+    // collection missing from the sync reads as permanently EMPTY rather than
+    // failing, so `movie_slots` rendered every /debug film slot-less, `web_movies`
+    // / `web_screenings` left `/debug/readmodel` blank for every non-boot country,
+    // and `pending_movies` blanked the staging table — each silently, and each
+    // while this list still looked deliberate.
+    val read = DebugMirror.Collections
     val mirrored = """"([a-z_]+)"""".r.findAllMatchIn(
       """\[([^\]]*)\]""".r.findFirstMatchIn(
         mirrorTargetsJs.linesIterator.dropWhile(!_.contains("MIRRORED_COLLECTIONS")).mkString(" ")

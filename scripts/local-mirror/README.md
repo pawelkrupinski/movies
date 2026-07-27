@@ -23,10 +23,15 @@ cadence — i.e. **~340ms of pure latency**. Against the LAN mirror the ping is
 **What's mirrored** — `scripts/local-mirror/mirror-targets.js`, the single
 source of truth for both halves:
 
-- **Collections:** `movies`, `screenings`, `enrichment_attempts`,
-  `rating_cadence`, `movie_slots` — exactly what a `/debug` load reads
-  (`MongoConnectionSpec` fails if the app reads one this list omits; that is how
-  `movie_slots` turned up missing, having rendered every film slot-less).
+- **Collections:** `movies`, `screenings`, `movie_slots`,
+  `enrichment_attempts`, `rating_cadence`, `pending_movies`, `web_movies`,
+  `web_screenings` — exactly what a `/debug` load reads. A collection this list
+  omits reads as permanently **empty**, not slowly-from-prod: the `/debug`
+  country stacks read the mirror unconditionally. `MongoConnectionSpec` fails
+  if the app reads one the list omits, diffing it against
+  `services.DebugMirror` rather than a literal — which is how `web_movies` /
+  `web_screenings` (a blank `/debug/readmodel` for every non-boot country) and
+  `pending_movies` (a blank staging table) turned up missing.
 - **Databases:** every `kinowo*` database the tunnel exposes, discovered at
   startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
   (`/debug?country=uk`) is LAN-fast too, not just the boot country.

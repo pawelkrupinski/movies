@@ -114,6 +114,10 @@ trait StagingRepository {
 }
 
 object StagingRepository {
+  /** The staging collection — see [[services.DebugMirror]] for why the name is a
+   *  constant rather than an inline literal. */
+  val Collection = "pending_movies"
+
   /** Merge a fresh scrape-divert `fresh` record onto the `existing` row already
    *  stored under the same `_id`, so a RE-SCRAPE refreshes the cinema's slot
    *  WITHOUT clobbering the enrichment the resolve step stamped.
@@ -189,7 +193,7 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
   private lazy val coll: Option[MongoCollection[StoredMovieDto]] =
     sharedDb.map { db =>
       db.withCodecRegistry(MovieCodecs.registry)
-        .getCollection[StoredMovieDto]("pending_movies")
+        .getCollection[StoredMovieDto](StagingRepository.Collection)
         .withWriteConcern(WriteConcern.W1.withJournal(false))
     }
 
