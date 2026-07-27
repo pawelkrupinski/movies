@@ -7,13 +7,17 @@ import org.scalatest.matchers.should.Matchers
  * Guards the alert coverage over SLOT VOLUME, the axis the film-count alerts
  * are structurally blind to.
  *
- * 2026-07-27: the UK lost 63% of its upcoming showtimes over six hours
- * (152,315 → ~56,000; London 22,066 → 9,956) while its source corpus held flat
- * at ~9,013 rows and its film count barely moved. Nothing paged. It was noticed
- * by eye, hours later, on the `kinowo — total upcoming showtimes served` panel
- * — whose own description names this exact failure ("a cliff here with the film
- * count flat means slots were lost without a whole film disappearing") while no
- * rule watched it.
+ * 2026-07-27: the UK lost 73% of its upcoming showtimes over six hours
+ * (152,315 → ~40,000; London 22,066 → 9,956) while its film count ROSE over the
+ * same window, 1,271 → 1,559 rows. Nothing paged. It was noticed by eye, hours
+ * later, on the `kinowo — total upcoming showtimes served` panel — whose own
+ * description names this exact failure ("a cliff here with the film count flat
+ * means slots were lost without a whole film disappearing") while no rule
+ * watched it.
+ *
+ * Films UP while slots crater is the part that makes this its own alert rather
+ * than a tuning of the film-count rules: a scrape outage takes the films with
+ * the slots, so this shape can only come from the slot path itself.
  *
  * Three properties have to hold together, and each maps to a way the existing
  * film-count rules missed it:

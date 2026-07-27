@@ -842,9 +842,15 @@ groups:
       # would serve, per country and city, sampled through the real projection
       # path. This rule is what makes that panel page.
       #
-      # 2026-07-27: the UK fell 152,315 -> ~56,000 upcoming slots in six hours
-      # (London 22,066 -> 9,956) while its corpus held flat at ~9,013 rows and
-      # its film count barely moved. The swing rule above was live and silent
+      # 2026-07-27: the UK fell 152,315 -> ~40,000 upcoming slots in six hours
+      # (London 22,066 -> 9,956) while its film count ROSE over the same window,
+      # 1,271 -> 1,559 rows (corpus_movies{subset="total"} — note the other
+      # subsets overlap it, so summing them over-counts the corpus ~6x). Slots at
+      # a 24h low with films at a high is the whole signal: the loss cannot be a
+      # scrape outage, because a dead cinema takes its films with it. The
+      # sibling countries stayed put throughout (PL ~900 films / ~36k slots flat;
+      # DE refilled to 1,198 / ~59k and HELD), so it is not a fleet-wide effect
+      # either. The swing rule above was live and silent
       # the whole time, because its baseline is avg_over_time(...[1h]) — over a
       # multi-hour bleed the reference falls with the metric and the ratio never
       # trips. The fix is a baseline LONGER than the incident.
