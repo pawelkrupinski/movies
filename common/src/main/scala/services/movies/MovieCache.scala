@@ -848,7 +848,15 @@ class CaffeineMovieCache(
           ()
         case (row, true) =>
           val updated = update(row.getOrElse(MovieRecord()))
-          if (oldKey != newKey) invalidate(oldKey)
+          // Carry the film's screenings + slots to the new id BEFORE the old row (and its
+          // side rows with it) is deleted. Without this the rename destroys them: `upsert`
+          // re-stitches showtimes from the id it writes to, finds none at the new id, and
+          // stores none — see `MovieRepository.moveFilm`.
+          if (oldKey != newKey) {
+            repository.moveFilm(StoredMovieRecord.idFor(oldKey.cleanTitle, oldKey.year),
+                                StoredMovieRecord.idFor(newKey.cleanTitle, newKey.year))
+            invalidate(oldKey)
+          }
           put(newKey, updated)
       }
     }

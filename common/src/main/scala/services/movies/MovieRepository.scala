@@ -174,6 +174,24 @@ trait MovieRepository {
    *  are logged, never thrown. */
   def deleteById(id: String): Unit
 
+  /** Move a film's SIDE-COLLECTION rows (`screenings`, `movie_slots`) from one document
+   *  id to another — the re-key.
+   *
+   *  A re-key is a rename, not a departure: `foo|` becomes `foo|2026` the moment TMDB
+   *  concludes the year, and the film keeps screening throughout. But its showtimes are
+   *  filed under the OLD id, and nothing else moves them — `upsert` re-stitches from the
+   *  id it is writing TO, so at the new id it finds nothing and stores nothing, while the
+   *  old id is deleted with the old row. The showtimes are destroyed in between.
+   *
+   *  That is not hypothetical: the 30-minute `SettleReaper` re-keys continuously, and on
+   *  2026-07-27 prod shed ~10k upcoming showtimes per cycle in PL alone, films left
+   *  intact, rebuilt only by the next scrape — the sawtooth this method exists to end.
+   *
+   *  Rows already at `newId` are kept, with the moved ones taking precedence on a shared
+   *  slot key (the same direction `rekey`'s record merge carries state forward).
+   *  Best-effort and a no-op without side collections wired. */
+  def moveFilm(oldId: String, newId: String): Unit = ()
+
   /** Write-through upsert. Best-effort — failures are logged, never thrown. */
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit
 
@@ -632,6 +650,26 @@ class MongoMovieRepository(
       ()
     }.recover {
       case exception: Throwable => logger.warn(s"MovieRepository.deleteById($id) failed: ${exception.getMessage}")
+    }
+  }
+
+  /** Carry a film's screenings + slots across a re-key, so the rename doesn't strand them
+   *  under an id that is about to be deleted. See the trait doc for what it cost. */
+  override def moveFilm(oldId: String, newId: String): Unit = if (oldId != newId) {
+    screenings.foreach { s =>
+      val moving = s.findForFilm(oldId)
+      if (moving.nonEmpty) {
+        s.replaceFilm(newId, s.findForFilm(newId) ++ moving)
+        s.deleteFilm(oldId)
+        logger.info(s"re-key $oldId -> $newId: carried ${moving.size} screenings slot(s) across.")
+      }
+    }
+    slots.foreach { sl =>
+      val moving = sl.findForFilm(oldId)
+      if (moving.nonEmpty) {
+        sl.replaceFilm(newId, sl.findForFilm(newId) ++ moving)
+        sl.deleteFilm(oldId)
+      }
     }
   }
 
