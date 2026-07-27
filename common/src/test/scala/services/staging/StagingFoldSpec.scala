@@ -124,6 +124,40 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.moviesDeletes shouldBe Seq(CacheKey("Zawodowcy", Some(2025)))
   }
 
+  // WHY a `moviesDeletes` entry must never be treated as "this film is leaving".
+  //
+  // The entry above is a RENAME: the retired key's cinemas are carried onto the winner,
+  // and the film keeps showing. Reading it as a removal and cascading a cleanup off it —
+  // deleting the retired id's `screenings` / `movie_slots` rows — destroys showtimes that
+  // are still the film's only copy, because the winner's side rows are not written until
+  // `MovieRepository.upsert` next writes that film. That shipped on 2026-07-27 and took
+  // prod PL from 39,413 upcoming showtimes to 18,161 and UK from 22,250 to 7,226 inside
+  // twenty minutes (@8033e39c6, reverted @926027438). A spec written around the MERGE case
+  // passed the whole time, so this one pins the RE-KEY case by name.
+  it should "retire a key as a RENAME — the cinemas move to the winner, the film stays" in {
+    val existing2025 = StoredMovieRecord("Zawodowcy", Some(2025), MovieRecord(
+      tmdbId = Some(1122573),
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Zawodowcy"), releaseYear = Some(2025)))))
+    val fresh2026 = staging(Helios, "Zawodowcy", 2026, 1122573, 2026)
+
+    val plan = StagingFold.planGroup(Seq(fresh2026), Seq(existing2025))
+
+    plan.moviesDeletes should have size 1
+    val retired = plan.moviesDeletes.head
+    retired shouldBe CacheKey("Zawodowcy", Some(2025))
+
+    // The retired key's cinema is present on the winner — so the row was renamed, not
+    // removed, and nothing about that film has stopped screening.
+    plan.moviesUpserts should have size 1
+    val (winnerKey, winner) = plan.moviesUpserts.head
+    winnerKey                 should not be retired
+    winner.data.keySet        should contain (Multikino)
+    // And it is NOT a promotion: no brand-new film appeared, which is the other tell that
+    // this is one film changing key rather than one leaving and another arriving.
+    plan.newPromotions        shouldBe empty
+  }
+
   it should "fold a yearless+idless staging stray onto a resolved movies sibling (Dzień objawienia)" in {
     // The stranded-duplicate shape `canonicalizeBySanitize` exists to fix, now
     // healed by the fold: a yearless, unresolved staging row beside an existing
