@@ -32,6 +32,13 @@ class JsonDecodingTest {
         // the same pills the web does.
         assertEquals(2026, f.releaseYear)
         assertEquals(listOf("Animacja", "Komedia", "Familijny"), f.genres)
+        // The optional age-rating certificate decodes when the wire carries
+        // it, and is null on films that omit the key (most non-UK titles).
+        assertEquals("PG", f.ageRating)
+        assertTrue(
+            "expected at least one film with no age rating",
+            films.any { it.ageRating == null },
+        )
         // The listing carries the full showings tree (date → cinema → showtime).
         val day = f.showings.firstOrNull()
         assertNotNull("expected at least one day of showings", day)

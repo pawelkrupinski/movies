@@ -86,6 +86,26 @@ final class CardsVisibleUITests: XCTestCase {
             + "is suppressing the per-card cinema label")
     }
 
+    /// The age-rating certificate badge renders on the card when the film
+    /// carries an `ageRating` (the warm fixture stamps every film "15"). The
+    /// badge is addressed by identifier — its label is the bare certificate
+    /// text, which would be brittle to match — and existence is enough: it's
+    /// present only inside `if let certificate` in `MetaPillsView`, so its
+    /// presence proves the "render only when present" branch fired. Matched as
+    /// `.any` because the bordered-capsule overlay composes the Text into a
+    /// generic element rather than a plain `staticText`.
+    func testAgeRatingBadgeShownWhenFilmHasCertificate() throws {
+        XCTAssertTrue(
+            anyCard().waitForExistence(timeout: 30),
+            "Grid never mounted — no film card in the tree at all")
+        let badge = app.descendants(matching: .any)
+            .matching(identifier: A11y.FilmCard.ageRating)
+            .firstMatch
+        XCTAssertTrue(
+            badge.waitForExistence(timeout: 10),
+            "The age-rating badge did not render for a film carrying an ageRating")
+    }
+
     // MARK: - Helpers
 
     private func allCards() -> [XCUIElement] {

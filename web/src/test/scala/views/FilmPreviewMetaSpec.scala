@@ -3,7 +3,7 @@ package views
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
-import models.{Helios, London, Movie, MovieRecord, Poznan, Showtime}
+import models.{Helios, London, Movie, MovieRecord, Poznan, Showtime, Source, SourceData, Tmdb}
 import services.readmodel.TestReadModel
 import testsupport.TestMessages
 import org.scalatest.flatspec.AnyFlatSpec
@@ -104,5 +104,18 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
   it should "render the synopsis markdown emphasis as <strong>/<em>, escaping the prose" in {
     val html = render(sample.copy(synopsis = Some("Film o **wojnie** i *miłości* <x>.")))
     html should include ("Film o <strong>wojnie</strong> i <em>miłości</em> &lt;x&gt;.")
+  }
+
+  // The BBFC-style age-rating certificate is shown as a pill in the title's
+  // meta row on the detail page — only when the resolved film carries one.
+  "the detail age-rating pill" should "render when the film carries a certificate" in {
+    val withCert = sample.copy(resolved =
+      TestReadModel.resolved("Incepcja", Some(2010),
+        MovieRecord(data = Map[Source, SourceData](Tmdb -> SourceData(ageRating = Some("15"))))))
+    render(withCert) should include ("""<span class="pill age-rating">15</span>""")
+  }
+
+  it should "be absent when the film carries no certificate" in {
+    render(sample) should not include "age-rating"
   }
 }

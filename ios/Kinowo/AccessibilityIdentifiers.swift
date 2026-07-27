@@ -32,6 +32,9 @@ enum A11y {
     enum FilmCard {
         static let share    = "filmcard.share"
         static let copyLink = "filmcard.copyLink"
+        /// The age-rating certificate badge, present only for a film the
+        /// server sent an `ageRating` for.
+        static let ageRating = "filmcard.ageRating"
     }
 
     /// Per-film detail screen.

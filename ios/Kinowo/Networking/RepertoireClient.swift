@@ -227,6 +227,10 @@ extension RepertoireStore {
                 runtimeMinutes: 120,
                 releaseYear: 2026,
                 genres: ["Dramat"],
+                // A certificate so the age-rating badge is exercised on the
+                // grid (CardsVisibleUITests). Absence is covered by the
+                // AgeRatingDecodeTests unit path.
+                ageRating: "15",
                 ratings: .empty,
                 countries: ["Polska"],
                 // Non-empty so the detail screen's director / cast meta blocks

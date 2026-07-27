@@ -152,11 +152,12 @@ fun FilmCard(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                // Runtime + year only — the listing card drops genres
-                // (they stay on the detail screen).
+                // Runtime + year + age rating only — the listing card drops
+                // genres (they stay on the detail screen).
                 MetaPills(
                     runtimeMinutes = film.runtimeMinutes,
                     releaseYear = film.releaseYear,
+                    ageRating = film.ageRating,
                     scale = scale,
                     modifier = Modifier.padding(top = spacing.titleToMeta * scale),
                 )

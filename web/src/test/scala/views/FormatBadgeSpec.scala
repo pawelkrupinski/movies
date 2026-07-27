@@ -3,7 +3,7 @@ package views
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
-import models.{Helios, Movie, MovieRecord, Showtime}
+import models.{Helios, Movie, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -19,7 +19,9 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
 
   private implicit val city: models.City = Poznan
 
-  private def schedule(showtimes: Seq[Showtime]): FilmSchedule =
+  private def schedule(showtimes: Seq[Showtime], ageRating: Option[String] = None): FilmSchedule = {
+    val record = MovieRecord(
+      data = ageRating.fold(Map.empty[Source, SourceData])(r => Map(Tmdb -> SourceData(ageRating = Some(r)))))
     FilmSchedule(
       movie          = Movie("Test movie", Some(120)),
       posterUrl      = None,
@@ -28,8 +30,9 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
       director       = Seq.empty,
       cinemaFilmUrls = Nil,
       showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, showtimes))),
-      resolved       = TestReadModel.resolved("Test movie", None, MovieRecord())
+      resolved       = TestReadModel.resolved("Test movie", None, record)
     )
+  }
 
   private val baseTime = LocalDateTime.of(2026, 5, 13, 18, 0)
 
@@ -85,6 +88,22 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
     val html = views.html._filmCards(Seq(schedule(showtimes))).body
     html should include ("""data-format=""""")
     html should include ("""data-format="2D"""")
+  }
+
+  // ── age-rating pill + data-age-rating attribute ───────────────────────────
+
+  private val oneShowtime = Seq(Showtime(baseTime, Some("https://example.com/a"), Some("Sala 1"), List("2D")))
+
+  "the age-rating pill" should "render on the card and expose data-age-rating when the film carries a certificate" in {
+    val html = views.html._filmCards(Seq(schedule(oneShowtime, ageRating = Some("15")))).body
+    html should include ("""<span class="pill age-rating">15</span>""")
+    html should include (""" data-age-rating="15"""")
+  }
+
+  it should "render neither the pill nor the attribute when no certificate is present" in {
+    val html = views.html._filmCards(Seq(schedule(oneShowtime, ageRating = None))).body
+    html should not include "age-rating"
+    html should not include "data-age-rating"
   }
 
 }

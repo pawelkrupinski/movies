@@ -31,6 +31,11 @@ data class Film(
     /** Genre labels in source-priority order. The card shows the first
      *  three; the detail screen shows them all (web `.pill.genre`). */
     val genres: List<String> = emptyList(),
+    /** Age-rating certificate (e.g. BBFC "15", "PG", "12A", "U", "18"),
+     *  shown as a meta pill. Null for films the source gives no rating —
+     *  most non-UK titles today — and defaulted null so payloads that
+     *  predate the field still decode. */
+    val ageRating: String? = null,
     val ratings: Ratings = Ratings.EMPTY,
     val countries: List<String> = emptyList(),
     val directors: List<String> = emptyList(),

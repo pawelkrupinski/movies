@@ -50,7 +50,8 @@ struct FilmCardView: View {
                 // (they stay on the detail screen).
                 MetaPillsView(
                     runtimeMinutes: film.runtimeMinutes,
-                    releaseYear: film.releaseYear
+                    releaseYear: film.releaseYear,
+                    ageRating: film.ageRating
                 )
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)
@@ -85,19 +86,42 @@ struct MetaPillsView: View {
     let runtimeMinutes: Int?
     let releaseYear: Int?
     var genres: [String] = []
+    /// Age-rating certificate ("15", "PG", "12A", …) or `nil` for a film
+    /// with none. Rendered as a bordered capsule ahead of runtime so the
+    /// certificate reads as a certificate, not just another genre chip.
+    var ageRating: String? = nil
 
     var body: some View {
         let runtime = (runtimeMinutes ?? 0) > 0 ? Self.formatRuntime(runtimeMinutes!) : nil
         let year = releaseYear.map(String.init)
-        if runtime != nil || year != nil || !genres.isEmpty {
+        let certificate = ageRating
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap { $0.isEmpty ? nil : $0 }
+        if runtime != nil || year != nil || !genres.isEmpty || certificate != nil {
             // Bottom-align so the larger plain-text year shares a bottom
             // edge with the smaller pills.
             FlowLayout(spacing: 6, lineSpacing: 6, bottomAligned: true) {
+                if let certificate { certificatePill(certificate) }
                 if let runtime { pill(runtime) }
                 if let year { yearText(year) }
                 ForEach(genres, id: \.self) { pill($0) }
             }
         }
+    }
+
+    /// The age-rating badge. The same filled-capsule pill as the runtime /
+    /// genre chips (same geometry and background), a touch bolder and brighter
+    /// so a bare "15" reads as a certificate rather than a one-word genre. It
+    /// carries the sole accessibility identifier in this row so a UI test can
+    /// address it without matching on the certificate text.
+    private func certificatePill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundColor(Color(white: 0.85))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(red: 0.2, green: 0.2, blue: 0.28), in: Capsule())
+            .accessibilityIdentifier(A11y.FilmCard.ageRating)
     }
 
     private func pill(_ text: String) -> some View {

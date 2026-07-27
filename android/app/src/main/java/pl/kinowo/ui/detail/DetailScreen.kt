@@ -144,12 +144,13 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                             color = OriginalTitleText,
                         )
                     }
-                    // Runtime / year / genre pills — the `/film` title block
-                    // shows every genre (no cap, unlike the listing card).
+                    // Age rating / runtime / year / genre pills — the `/film`
+                    // title block shows every genre (no cap, unlike the card).
                     MetaPills(
                         runtimeMinutes = film.runtimeMinutes,
                         releaseYear = film.releaseYear,
                         genres = film.genres,
+                        ageRating = film.ageRating,
                     )
                     RatingBadges(film.ratings)
                 }

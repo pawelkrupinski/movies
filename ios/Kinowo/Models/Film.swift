@@ -39,6 +39,15 @@ struct Film: Identifiable, Hashable, Codable {
     /// Genre labels (already in source-priority order from the server).
     /// The web card shows the first three; the `/film` page shows all.
     let genres: [String]
+    /// Age-rating certificate exactly as printed on it (e.g. BBFC "15",
+    /// "PG", "12A", "U", "18"). Optional because most films — everything
+    /// outside the UK today — carry no certificate, so the server omits
+    /// the key; `MetaPillsView` renders the badge only when it's present.
+    ///
+    /// `var` with a default so the synthesized memberwise init keeps the
+    /// argument optional — the fixture `Film(…)` constructions across the
+    /// test suites don't name one, mirroring `slug`.
+    var ageRating: String? = nil
     let ratings: Ratings
     let countries: [String]
     let directors: [String]

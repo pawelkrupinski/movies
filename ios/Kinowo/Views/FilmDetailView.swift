@@ -116,7 +116,8 @@ struct FilmDetailView: View {
                 MetaPillsView(
                     runtimeMinutes: film.runtimeMinutes,
                     releaseYear: film.releaseYear,
-                    genres: film.genres
+                    genres: film.genres,
+                    ageRating: film.ageRating
                 )
                 if !film.ratings.isEmpty {
                     RatingBadgesView(ratings: film.ratings)

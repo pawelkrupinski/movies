@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,8 +25,11 @@ import pl.kinowo.ui.theme.MetaYearText
  * `.pill.year`, `.pill.genre` row. The year renders as plain text
  * (matching the web's `.year { background: transparent; border: none }`),
  * runtime and genres as rounded pills. Genres default to none — the
- * listing card omits them; the detail screen passes them all. Renders
- * nothing when there's no runtime, year, or genre.
+ * listing card omits them; the detail screen passes them all. The
+ * age-rating certificate ([ageRating], e.g. BBFC "15") leads the row as
+ * its own pill when present, and is dropped when null — most non-UK
+ * films carry no rating. Renders nothing when there's no runtime, year,
+ * genre, or age rating.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -33,12 +37,14 @@ fun MetaPills(
     runtimeMinutes: Int?,
     releaseYear: Int?,
     genres: List<String> = emptyList(),
+    ageRating: String? = null,
     scale: Float = 1f,
     modifier: Modifier = Modifier,
 ) {
     val runtime = runtimeMinutes?.takeIf { it > 0 }?.let { formatRuntime(it) }
     val year = releaseYear?.toString()
-    if (runtime == null && year == null && genres.isEmpty()) return
+    val age = ageRating?.takeIf { it.isNotBlank() }
+    if (runtime == null && year == null && genres.isEmpty() && age == null) return
     FlowRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy((6 * scale).dp),
@@ -47,11 +53,16 @@ fun MetaPills(
         // Bottom-align so the larger plain-text year shares a bottom
         // edge with the smaller pills.
         val itemAlign = Modifier.align(Alignment.Bottom)
+        age?.let { Pill(it, scale, itemAlign.testTag(AgeRatingBadgeTag)) }
         runtime?.let { Pill(it, scale, itemAlign) }
         year?.let { YearText(it, scale, itemAlign) }
         for (genre in genres) Pill(genre, scale, itemAlign)
     }
 }
+
+/** Test tag on the age-rating pill so a Compose test can assert its
+ *  presence/absence without matching the certificate string itself. */
+const val AgeRatingBadgeTag = "ageRatingBadge"
 
 @Composable
 private fun Pill(label: String, scale: Float, modifier: Modifier = Modifier) {
