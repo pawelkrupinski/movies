@@ -1,12 +1,12 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, Cinema, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort, OdeonNorwich}
+import models.{AdaKinoStudyjne, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort, OdeonNorwich}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.CinemaScraperCatalog
-import services.cinemas.uk.FlicksClient
+import services.cinemas.uk.{CineworldClient, FlicksClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 
 import java.time.LocalDate
@@ -105,6 +105,26 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val movies  = scraper.fetch()  // reads the flicks fixture via flicksFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)
+  }
+
+  // UK chain venues (Cineworld / Vue / Showcase / Everyman) are now own-site
+  // PRIMARY, with flicks.co.uk kept as the aggregator fallback via
+  // ChainFlicksFallback + WorkerWiring.recordingScraper (the mirror of Poland's
+  // own-site→Filmweb setup). Guard both halves: the catalogue wires the chain
+  // client (not flicks) for those venues, AND every one keeps a flicks fallback
+  // slug — a regression that dropped either would silently lose coverage the day a
+  // chain API changed shape. (Before this wiring these venues WERE FlicksClients
+  // and the slug map was empty, so this test fails on the pre-change catalogue.)
+  it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {
+    val c = catalog()
+    c.all.find(_.cinema == CineworldSheffield).value shouldBe a [CineworldClient]
+    c.flicksFallbackSlugs.get(CineworldSheffield) shouldBe Some("cineworld-sheffield")
+    c.flicksFallbackSlugs should have size 241
+    c.flicksFallbackSlugs.keys.foreach { cin =>
+      val primary = c.all.find(_.cinema == cin).value
+      primary should not be a [FlicksClient]      // moved off the aggregator…
+      primary.chain shouldBe true                 // …onto an own-site chain source
+    }
   }
 
   // KinoPort lost its gcsw.pl/kino/ programme alias in a 2026-06 site rebuild
