@@ -92,6 +92,7 @@ object WorkerMain extends Logging {
     // flips the worker's credit backoff on/off here; the credit threshold lives
     // outside the worker, this just receives the decision.
     addThrottleEndpoint(health, wiring)
+    addHeapDumpEndpoint(health, wiring.heapDumpDir)
     logger.info(s"Worker throttle control up on :$port/throttle")
 
     // Now that the heartbeat + watchdog are running, let /health report real
@@ -175,6 +176,39 @@ object WorkerMain extends Logging {
       val body = state.fold("no state — pass ?state=on|off or a Grafana firing/resolved webhook")(
         on => s"throttled=$on").getBytes("UTF-8")
       exchange.sendResponseHeaders(if (state.isDefined) 200 else 400, body.length.toLong)
+      val os = exchange.getResponseBody
+      try os.write(body) finally os.close()
+    })
+    ()
+  }
+
+  /** On-demand HPROF dump of the LIVE heap, written to the Fly volume.
+   *
+   *  `-XX:+HeapDumpOnOutOfMemoryError` only fires at the hard OOM, which is exactly
+   *  when you have already lost the machine — and a worker that is merely running hot
+   *  never produces one at all. That left the only way to inspect a suspicious heap
+   *  being to wait for it to die. The box is JRE-only (no jcmd/jmap), so nothing can
+   *  attach from outside either; [[tools.HeapDumper]] could already do this from
+   *  inside the process, it just had no trigger but the wedged-watchdog.
+   *
+   *  Same exposure as /throttle and /metrics: port 9000 has no `[[services]]` block,
+   *  so it is reachable on Fly's private network and via `flyctl proxy`, not publicly.
+   *
+   *    flyctl proxy 9000:9000 --app kinowo-worker-uk &
+   *    curl -X POST localhost:9000/heapdump
+   *
+   *  POST-only: a dump stops the world for the length of a full GC and writes a few
+   *  hundred MB to the volume, so it must not be reachable by a stray GET from a
+   *  health-checker or a link-prefetch. `dump` is injected so the endpoint is testable
+   *  without dumping the test JVM's own heap. */
+  private[modules] def addHeapDumpEndpoint(server: HttpServer, dir: String,
+                                           dump: String => Option[String] = tools.HeapDumper.dump(_)): Unit = {
+    server.createContext("/heapdump", exchange => {
+      val (status, text) =
+        if (exchange.getRequestMethod != "POST") (405, "POST to take a heap dump (it stops the world)")
+        else dump(dir).fold((500, "heap dump failed — see the worker log"))(p => (200, s"wrote $p"))
+      val body = text.getBytes("UTF-8")
+      exchange.sendResponseHeaders(status, body.length.toLong)
       val os = exchange.getResponseBody
       try os.write(body) finally os.close()
     })
