@@ -55,6 +55,12 @@ trait CinemaScraper {
    *  single-venue scraper is fallback-eligible. */
   def chain: Boolean = false
 
+  /** Whether `fetch()` returned the venue's WHOLE listing. False only where the caller
+   *  knows it did not — a chunked scrape reduced from some of its date-chunks. The cache
+   *  skips its prune on a short listing, so a film that merely wasn't looked at is not
+   *  mistaken for one that stopped screening. */
+  def listingIsComplete: Boolean = true
+
   /** A public, human-facing page for the venue we scrape — its own repertoire
    *  page for a bespoke own-site client, the Filmweb showtimes page for a
    *  Filmweb-backed venue, the chain's venue page for a multiplex. Surfaced on

@@ -38,7 +38,7 @@ class CinemaScrapeRunner(
     val cinema: Cinema = scraper.cinema
     val t0      = System.currentTimeMillis()
     val movies  = scraper.fetch()
-    val touched = movieCache.recordCinemaScrape(cinema, movies)
+    val touched = movieCache.recordCinemaScrape(cinema, movies, scraper.listingIsComplete)
     val events   = classify(cinema, touched)
     val elapsed  = System.currentTimeMillis() - t0
     val awaiting = touched.count(_._3) - events.size

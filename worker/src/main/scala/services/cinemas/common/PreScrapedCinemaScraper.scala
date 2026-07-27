@@ -13,7 +13,10 @@ class PreScrapedCinemaScraper(
   val cinema:   Cinema,
   hosts:        Set[String],
   isChain:      Boolean,
-  result:       () => Seq[CinemaMovie]
+  result:       () => Seq[CinemaMovie],
+  // False when the chunked run this was reduced from was missing chunks — see
+  // `CinemaScraper.listingIsComplete`.
+  listingComplete: Boolean = true
 ) extends CinemaScraper {
   def scrapeHosts: Set[String]  = hosts
   def fetch(): Seq[CinemaMovie] = result()
@@ -21,4 +24,5 @@ class PreScrapedCinemaScraper(
   // same Filmweb-fallback eligibility (`FallbackEligibility.eligible`) it would
   // for the live scrape — a chunked chain must not become fallback-eligible.
   override def chain: Boolean = isChain
+  override def listingIsComplete: Boolean = listingComplete
 }

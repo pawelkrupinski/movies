@@ -73,7 +73,12 @@ trait MovieCacheReader {
 trait MovieCache extends MovieCacheReader {
   /** Apply one cinema's fresh scrape to the cache. Returns one
    *  `(CinemaMovie, CacheKey, isNew)` triple per input movie. */
-  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)]
+  /** `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked
+   *  scrape reduced from only some of its date-chunks. The prune below is then skipped
+   *  outright, because a film missing from a listing nobody finished is not evidence that
+   *  it stopped screening. */
+  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
+                         listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)]
 
   /** Reload the positive cache from the repository: drop every in-memory positive
    *  entry, then `repository.findAll()` and put each row. Returns the number of
@@ -893,7 +898,12 @@ class CaffeineMovieCache(
       .collect { case (s, sd) if Source.cinemaOf(s).contains(cinema) => (s, sd) }
   }
 
-  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
+  /** `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked
+   *  scrape reduced from only some of its date-chunks. The prune below is then skipped
+   *  outright, because a film missing from a listing nobody finished is not evidence that
+   *  it stopped screening. */
+  def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
+                         listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, proxy 503, blank HTML), not a
     // cinema that's genuinely showing zero films right now. Without this
@@ -1045,8 +1055,16 @@ class CaffeineMovieCache(
     // The BREADTH half of the pair; the depth half bails at the top of this method.
     val knownCinemaSlots = heldSlotsOf(cinema).size
     val scrapeLooksPartial =
-      knownCinemaSlots >= MinSlotsForShrinkGuard &&
-      deduped.size < knownCinemaSlots * PruneFloorRatio
+      // A caller that KNOWS the listing is short says so, and that beats any inference:
+      // a chunked scrape reduced from some of its date-chunks returns most of the board
+      // (so the ratio below never engages) while silently omitting every film that only
+      // screens on a missing date. Those are the advance-booking titles — Met Opera, RBO
+      // season, NT Live, anniversary re-releases — and pruning them is what emptied UK
+      // venues on 2026-07-27. The reduce handler computes exactly this fact and used to
+      // throw it away.
+      !listingIsComplete || (
+        knownCinemaSlots >= MinSlotsForShrinkGuard &&
+        deduped.size < knownCinemaSlots * PruneFloorRatio)
     // When `staging` is wired, divert a genuinely-NEW film (its `sanitize(title)`
     // group is absent from `movies`) to the staging sink to incubate; a film
     // already known to `movies` keeps the direct path. Snapshot the known

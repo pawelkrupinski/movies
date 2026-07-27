@@ -48,12 +48,18 @@ class ScrapeChunkReduceHandler(
         val stored = store.loadChunks(cinema, runId)
           .map { case (k, json) => k -> CinemaMovieJson.decode(json, scraper.cinema) }
         val movies = scraper.reduceChunks(stored)
+        // Work out whether this is the WHOLE listing BEFORE publishing, and tell the
+        // cache. A partial reduce omits every film that only screens on a missing date,
+        // and the cache's prune would read that omission as "stopped screening" — which
+        // is how UK venues lost their advance-booking titles on 2026-07-27. This used to
+        // be computed after the publish and only logged.
+        val expected = run.get.expectedKeys.toSet
+        val missing  = expected.diff(stored.keySet)
         try {
-          publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, () => movies))
+          publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain,
+            () => movies, listingComplete = missing.isEmpty))
           scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema))
           store.completeRun(cinema, runId)
-          val expected = run.get.expectedKeys.toSet
-          val missing  = expected.diff(stored.keySet)
           if (missing.nonEmpty)
             logger.warn(s"$cinema run $runId reduced PARTIAL: ${stored.size}/${expected.size} chunks (${missing.size} missing)")
           Done
