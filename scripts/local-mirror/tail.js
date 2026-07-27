@@ -68,7 +68,9 @@ try {
       // drop / rename / invalidate: ignored — a full re-seed handles those.
     }
     state.updateOne({ _id: SRC_DB }, { $set: { resumeToken: ev._id } }, { upsert: true });
-    if (n > 0 && n % 20 === 0) print(`[tail] ${SRC_DB}: applied ${n} changes`);
+    // Every 200, not every 20: a catch-up burst after a restart applies
+    // thousands of changes, and this line is a heartbeat, not an audit trail.
+    if (n > 0 && n % 200 === 0) print(`[tail] ${SRC_DB}: applied ${n} changes`);
   }
 } catch (e) {
   // The saved token has aged out of prod's oplog (ChangeStreamHistoryLost,

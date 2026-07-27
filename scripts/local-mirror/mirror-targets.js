@@ -3,12 +3,17 @@
 // Loaded via mongosh's `--file` list BEFORE the script that uses it, so these
 // names are plain globals — mongosh has no module system.
 //
-// The four collections are exactly what a /debug page load reads: the corpus
-// table (`movies`, with `screenings` stitched back in for showtimes) and the
-// per-row expand's two stores (`enrichment_attempts`, `rating_cadence`). Adding
-// a collection here is what makes it readable at LAN latency; anything absent
-// still resolves against prod over the tunnel, just slowly.
-const MIRRORED_COLLECTIONS = ["movies", "screenings", "enrichment_attempts", "rating_cadence"];
+// These are what a /debug page load reads: the corpus table (`movies`, with
+// `screenings` stitched back in for showtimes), the per-row expand's two stores
+// (`enrichment_attempts`, `rating_cadence`), and `movie_slots` — the per-film
+// slot rows the corpus readers resolve alongside `movies`. Adding a collection
+// here is what makes it readable at LAN latency; anything absent still resolves
+// against prod over the tunnel, just slowly.
+//
+// A collection added here is MISSING from every existing mirror until it is
+// re-seeded — which is why staleness.js treats "prod has documents, the mirror
+// has none of that collection" as stale, so the next cycle heals it by itself.
+const MIRRORED_COLLECTIONS = ["movies", "screenings", "enrichment_attempts", "rating_cadence", "movie_slots"];
 
 // Prod's per-country databases sit side by side on the ONE local mirror
 // instance, each suffixed rather than reusing prod's name. The suffix is load

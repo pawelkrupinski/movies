@@ -24,7 +24,9 @@ cadence — i.e. **~340ms of pure latency**. Against the LAN mirror the ping is
 source of truth for both halves:
 
 - **Collections:** `movies`, `screenings`, `enrichment_attempts`,
-  `rating_cadence` — exactly what a `/debug` load reads.
+  `rating_cadence`, `movie_slots` — exactly what a `/debug` load reads
+  (`MongoConnectionSpec` fails if the app reads one this list omits; that is how
+  `movie_slots` turned up missing, having rendered every film slot-less).
 - **Databases:** every `kinowo*` database the tunnel exposes, discovered at
   startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
   (`/debug?country=uk`) is LAN-fast too, not just the boot country.
@@ -83,11 +85,14 @@ scripts/local-mirror/service.sh uninstall   # stop + remove the agent
 The agent runs `mirror.sh`, a self-healing daemon: it brings up its **own**
 `flyctl proxy` tunnel when nothing already serves `:27017` (and uses an existing
 one — e.g. `sbt run`'s — when there is, never fighting it), re-ensures the native
-Mongo via `brew services` if it's stopped, re-seeds if `kinowo_prod_mirror` is empty, and
-reconnects the tunnel / change stream on every drop. So a dropped tunnel, a
-stopped Mongo, or a stale resume token all recover on their own instead of
-leaving `/debug` empty. The Mongo itself also restarts at login (it's a
-`brew services` agent). Logs: `~/Library/Logs/kinowo-local-mirror.log`. Prereqs:
+Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty **or
+has drifted** (below), and reconnects the tunnel / change stream on every drop.
+So a dropped tunnel, a stopped Mongo, or a stale resume token all recover on
+their own instead of leaving `/debug` empty. The Mongo itself also restarts at
+login (it's a `brew services` agent). Logs:
+`~/Library/Logs/kinowo-local-mirror.log`, trimmed to its last 2000 lines
+whenever it passes 8MB (in place — launchd holds an append fd on it, so renaming
+would strand the agent writing to the old inode). Prereqs:
 `MONGODB_MOVIES_MIRROR_URI` set (above) and `flyctl auth login` done.
 
 ## Running the web + worker stack locally (`kinowo_local`)
@@ -117,6 +122,34 @@ and `mirror.sh` does a full re-seed.
 - Force a fresh full copy: `scripts/local-mirror/mirror.sh --reseed`
 - The initial seed is a zlib-compressed cursor copy over the tunnel (~50s for
   ~1300 docs); the continuous tailer is incremental and cheap.
+
+### The staleness gate — why a mirror can't quietly rot
+
+Resuming is only the right recovery while the saved token still tracks prod. A
+tailer that crash-loops on a token it can never advance leaves a mirror that is
+**non-empty and arbitrarily out of date**, and the old "re-seed only when
+`movies` is empty" check called that healthy — so `/debug` served weeks-old data
+with nothing to notice (found 2026-07-27: ~1000 restarts logged while `kinowo_uk`
+sat at 406 of prod's 1555 movies).
+
+So every supervision cycle now asks `staleness.js` first, and re-seeds when
+either signal trips:
+
+- **lag** — prod's newest `updatedAt` (across `movies` + `screenings`) minus the
+  mirror's, over 30 minutes. Measured mirror-vs-prod, never against the wall
+  clock, so an idle prod at 04:00 stays "fresh" at lag 0 rather than triggering
+  a pointless re-seed every night.
+- **count drift** — `movies` off by more than 2%. Deletes carry no `updatedAt`,
+  so a mirror that missed only deletions keeps pace on lag while over-reporting.
+
+A check that itself fails (tunnel blip) means *tail anyway* and re-judge next
+cycle — a broken gate must never block the sync. The thresholds live in
+`staleness-rule.js` as a pure function, asserted with no Mongo at all:
+
+```
+mongosh --nodb --quiet --file scripts/local-mirror/staleness-rule.js \
+                       --file scripts/local-mirror/staleness-rule-spec.js
+```
 
 ## Sync the admin-curated `titleRules` into `kinowo_local`
 

@@ -20,7 +20,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 LABEL="pl.kinowo.local-mirror"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-LOG="$HOME/Library/Logs/kinowo-local-mirror.log"
+. "$HERE/log-path.sh"   # $MIRROR_LOG — the path mirror.sh also rotates
+LOG="$MIRROR_LOG"
 DOMAIN="gui/$(id -u)"
 
 case "${1:-}" in

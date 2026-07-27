@@ -8,12 +8,13 @@
 #
 #   1. ensure the local mirror Mongo is up (start-local-mongo.sh),
 #   2. ensure prod (the source) is reachable via the tunnel,
-#   3. seed the mirrored collections once if empty (or `--reseed` to force),
+#   3. seed the mirrored collections when the mirror is empty, has drifted too
+#      far to catch up by resuming, or is missing one (or `--reseed` to force),
 #   4. tail prod's database change stream → local, restarting on disconnect.
 #
 # WHICH databases and collections are mirrored lives in mirror-targets.js —
 # every country /debug can switch to (so `?country=uk` is LAN-fast too, not just
-# the boot country), and the four collections a /debug load reads. Each database
+# the boot country), and the collections a /debug load reads. Each database
 # gets its OWN tailer process: a change stream is per-database here (a
 # deployment-wide one is Unauthorized for these credentials) and mongosh is
 # single-threaded, so N databases means N supervised children, not one loop.
@@ -44,6 +45,25 @@ DST="$(envval MONGODB_MOVIES_MIRROR_URI)"
 [ -n "$SRC" ] || { echo "[mirror] set MONGODB_URI in .env.local (prod tunnel = sync source)" >&2; exit 1; }
 [ -n "$DST" ] || { echo "[mirror] set MONGODB_MOVIES_MIRROR_URI in .env.local (local mirror = sync target)" >&2; exit 1; }
 RESEED="${1:-}"
+
+# ── Keep our own log from growing without bound ──────────────────────────────
+# Under launchd this process's stdout IS $MIRROR_LOG, and nothing else rotates
+# it — a tailer stuck in a restart loop grew it to 23MB. launchd holds an
+# append-mode fd on the file, so trimming has to happen IN PLACE: renaming would
+# leave the agent writing to the renamed inode and the "rotated" file empty.
+. "$HERE/log-path.sh"
+MAX_LOG_BYTES=$((8 * 1024 * 1024))
+LOG_KEEP_LINES=2000
+rotate_log() {
+  [ -f "$MIRROR_LOG" ] || return 0
+  local size; size="$(stat -f%z "$MIRROR_LOG" 2>/dev/null || echo 0)"
+  [ "$size" -gt "$MAX_LOG_BYTES" ] || return 0
+  local trimmed="$MIRROR_LOG.trimmed"
+  tail -n "$LOG_KEEP_LINES" "$MIRROR_LOG" > "$trimmed" 2>/dev/null || return 0
+  cat "$trimmed" > "$MIRROR_LOG"          # truncate + refill, keeping the inode
+  rm -f "$trimmed"
+  echo "[mirror] log passed $((MAX_LOG_BYTES / 1024 / 1024))MB — trimmed to its last $LOG_KEEP_LINES lines"
+}
 
 # Tune the prod source connection: zlib wire compression so the seed cursor and
 # change stream carry ~6x less data over the tunnel (the uncompressed mongodump
@@ -102,30 +122,52 @@ discover_dbs() {
 }
 
 reseed()   { mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
-mirror_db() { echo "${1}_prod_mirror"; }   # must match mirror-targets.js `mirrorDbFor`
+
+# Does this database's mirror need a full re-seed before it is worth tailing?
+# staleness.js exits 3 when the mirror has drifted beyond what resuming a change
+# stream can close (see staleness-rule.js for the thresholds and why). Any other
+# exit — fresh, or the check itself failing on a blip — means tail, and the next
+# cycle judges again; a broken check must never block the sync.
+needs_reseed() {
+  local code
+  set +e
+  mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" \
+    --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/staleness.js"
+  code=$?
+  set -e
+  [ "$code" -eq 3 ]
+}
 
 # ── Resilient per-database sync loop ─────────────────────────────────────────
-# Every cycle re-ensures the mirror Mongo + the tunnel, (re)seeds when this
-# database's `movies` is empty (a fresh instance or a wiped volume), then tails.
+# Every cycle re-ensures the mirror Mongo + the tunnel, re-seeds when this
+# database's mirror is empty or has drifted too far (needs_reseed), then tails.
 # tail.js exits 2 when its resume token has aged out of prod's oplog → full
 # re-seed; any other exit is a transient blip → resume from the saved token.
 # Nothing here is fatal: a down tunnel, a stopped Mongo, or a wiped mirror all
 # recover on the next cycle instead of killing the sync.
 supervise_db() {
-  local srcdb="$1" force="$2" code local_n
+  local srcdb="$1" force="$2" code fails=0 backoff
   while true; do
     if ! ensure_local_mongo; then echo "[mirror] $srcdb: local Mongo unavailable — retrying in 5s"; sleep 5; continue; fi
     if ! ensure_tunnel;     then echo "[mirror] $srcdb: tunnel unavailable — retrying in 5s";     sleep 5; continue; fi
 
-    local_n="$(mongosh "$DST" --quiet --eval \
-      "print(db.getSiblingDB('$(mirror_db "$srcdb")').getCollection('movies').countDocuments())" 2>/dev/null | tail -1)" || local_n=""
-    if [ "$force" = "1" ] || [ "${local_n:-0}" = "0" ]; then reseed "$srcdb"; force=0; fi
+    if [ "$force" = "1" ] || needs_reseed "$srcdb"; then reseed "$srcdb"; force=0; fi
 
     set +e; mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
       --file "$HERE/mirror-targets.js" --file "$HERE/tail.js"; code=$?; set -e
-    if [ "$code" -eq 2 ]; then echo "[mirror] $srcdb: resume token expired — re-seeding…"; reseed "$srcdb"
-    else echo "[mirror] $srcdb: stream ended (exit $code) — recovering in 2s…"; fi
-    sleep 2
+    if [ "$code" -eq 2 ]; then
+      echo "[mirror] $srcdb: resume token expired — re-seeding…"; reseed "$srcdb"; fails=0; continue
+    fi
+    # A stream that ends immediately, over and over, is the shape that filled the
+    # log with ~1000 identical lines: back off as the failures pile up, and after
+    # the first few say it only every 20th time (with the streak, so a glance at
+    # the log still shows how bad it is).
+    fails=$((fails + 1))
+    backoff=$(( fails < 5 ? 2 : (fails < 20 ? 15 : 60) ))
+    if [ "$fails" -le 3 ] || [ $((fails % 20)) -eq 0 ]; then
+      echo "[mirror] $srcdb: stream ended (exit $code, $fails in a row) — recovering in ${backoff}s…"
+    fi
+    sleep "$backoff"
   done
 }
 
@@ -149,5 +191,13 @@ for srcdb in $DBS; do
   supervise_db "$srcdb" "$FORCE_RESEED" &
   CHILDREN+=($!)
 done
+
 echo "[mirror] ${#CHILDREN[@]} tailer(s) running (Ctrl-C to stop)…"
+
+# Trim from the PARENT only — N children truncating one file in place would race
+# each other. Startup pass first, then every 5 minutes for a run that never ends.
+# Counted after the line above so the rotator never reads as a tailer.
+rotate_log
+( while true; do sleep 300; rotate_log; done ) &
+CHILDREN+=($!)
 wait
