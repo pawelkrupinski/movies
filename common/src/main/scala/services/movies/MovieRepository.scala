@@ -630,7 +630,15 @@ class MongoMovieRepository(
       // both are empty the row already equals `after`: skip the write (and its no-op
       // `$set` + change event). "Present and up to date" is still success.
       val strippedAfter = after.copy(data = stripFor(after.data))
-      val patch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)), strippedAfter)
+      // With the slots split on, `movies` is not where slots live, so the patch must not
+      // carry them: `upsert` drops the embedded map once the slots land, and a later patch
+      // that still wrote `sourceData.<slot>` would resurrect it field by field and undo
+      // exactly the shrink this split exists for. Dropping it here means the embedded map
+      // simply goes stale — reads prefer `movie_slots` whenever a film has rows there, and
+      // fall back to that stale copy only for a film with none, which is the same
+      // already-correct value it had before.
+      val rawPatch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)), strippedAfter)
+      val patch    = if (slots.isDefined) rawPatch.copy(data = Map.empty) else rawPatch
       if (patch.isEmpty && ops.isEmpty && slotWrites.isEmpty) true
       else Try {
         // MongoDB update-operator paths treat '.' as a nesting separator, so a

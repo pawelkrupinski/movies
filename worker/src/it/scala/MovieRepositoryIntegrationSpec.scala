@@ -712,6 +712,40 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
   }
 
+  // A patch must not put the slots back. `upsert` drops the embedded map once the slots
+  // land; if `updateIfPresent` still wrote `sourceData.<slot>`, the very next metadata
+  // change would rebuild it field by field and the document would creep back to full size.
+  it should "not resurrect the embedded sourceData through a later patch" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import models.SourceData
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    val raw    = new MongoMovieRepository(Some(db))   // sees the stored doc, unstitched
+    val title  = "__integration-test-slotpatch__"
+    val year   = Some(1910)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      val slot = SourceData(title = Some("SP"), posterUrl = Some("https://poster/p1.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 4, 19, 0), Some("https://book/sp-1"))))
+      val base = MovieRecord(imdbId = Some("tt0000018"), data = Map[Source, SourceData](Multikino -> slot))
+
+      split.upsert(title, year, base)
+      raw.findById(id).map(_.record.data.size) shouldBe Some(0)   // stripped by the upsert
+
+      // a metadata-only patch: slots move, `movies` stays empty
+      val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/p2.png"))))
+      split.updateIfPresent(title, year, base, after) shouldBe true
+      raw.findById(id).map(_.record.data.size) shouldBe Some(0)   // still no embedded copy
+      slots.findForFilm(id).get(Multikino.displayName).flatMap(_.posterUrl) shouldBe Some("https://poster/p2.png")
+      // …and the film still reads complete through the split-aware repository
+      split.findById(id).flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe
+        Some("https://poster/p2.png")
+    } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.
