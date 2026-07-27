@@ -6,8 +6,9 @@
 //     --eval "var DST='<LOCAL_URI>'; var SRC_DB='kinowo_uk'" \
 //     --file mirror-targets.js --file tail.js
 //
-// One stream per DATABASE, not per collection: four collection streams would be
-// four blocking cursors that a single-threaded mongosh cannot interleave. The
+// One stream per DATABASE, not per collection: a stream per mirrored
+// collection would be N blocking cursors that a single-threaded mongosh cannot
+// interleave. The
 // next level up — one deployment-wide stream covering every country at once —
 // is what the credentials refuse (`db.getMongo().watch()` → Unauthorized), so
 // the database is both the widest scope available and the natural unit of
@@ -23,7 +24,7 @@ const state = dstDb.getCollection("__mirror_state");
 
 const saved = state.findOne({ _id: SRC_DB });
 // Server-side filter: a database stream carries every collection in the
-// database, and we mirror only four of them. Filtering here rather than in the
+// database, and we mirror only some of them. Filtering here rather than in the
 // loop keeps the untracked collections' churn off the tunnel entirely.
 const pipeline = [{ $match: { "ns.coll": { $in: MIRRORED_COLLECTIONS } } }];
 const opts = { fullDocument: "updateLookup" };
@@ -48,7 +49,7 @@ try {
   let n = 0;
   while (cs.hasNext()) {
     const ev = cs.next();
-    // Route by the event's own collection — one stream now feeds four mirrors.
+    // Route by the event's own collection — one stream feeds every mirrored one.
     const dst = dstDb.getCollection(ev.ns.coll);
     switch (ev.operationType) {
       case "insert":
