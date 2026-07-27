@@ -37,7 +37,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
-    "tt0000078", "tt0000079", "tt0000080"
+    "tt0000078", "tt0000079", "tt0000080", "tt0000081"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -1472,6 +1472,55 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // None, NOT a record with an empty `data` map. Fails before the fix: `findById`
       // returned a film with zero cinemas, which the projector treats as "delete them all".
       blindRepo.findById(id) shouldBe None
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+  }
+
+  // END TO END, against real Mongo: the whole 2026-07-27 failure in one test.
+  //
+  // The unit specs pin each link — a failed read reports itself, a scrape defers on one —
+  // but the damage came from the COMBINATION, and only real storage shows it: an
+  // unreadable corpus leaves the cache cold, the scrape lands anyway, and
+  // `screenings.replaceFilm` prunes with `$nin` against a record built from that one
+  // cinema. This asserts the thing that actually matters to a user: the OTHER cinema's
+  // showtimes are still in Mongo afterwards.
+  it should "leave a film's other cinemas' showtimes alone when a scrape lands on an unreadable corpus" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
+      UnreadableSlotsRepository, CaffeineMovieCache}
+    import models.CinemaMovie
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-unreadable-scrape__"
+    val year   = Some(1911)
+    val id     = StoredMovieRecord.idFor(title, year)
+    val when   = java.time.LocalDateTime.now().plusDays(1).withHour(20).withMinute(0).withSecond(0).withNano(0)
+    try {
+      // A live film showing at TWO cinemas, written through the real repository.
+      val healthy = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+      healthy.upsert(title, year, MovieRecord(imdbId = Some("tt0000081"), tmdbId = Some(4243),
+        data = Map[Source, SourceData](
+          Multikino   -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))),
+          KinoMuranow -> SourceData(title = Some("Unreadable"), showtimes = Seq(Showtime(when, None))))))
+      scr.findForFilm(id).keySet should have size 2
+
+      // Now the corpus goes unreadable — the state the decode bug produced — so the cache
+      // boot-hydrates EMPTY and the per-film read fails too.
+      val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(scr),
+        slots = Some(new UnreadableSlotsRepository))
+      val cache = new CaffeineMovieCache(blindRepo)
+
+      // …and Multikino's scrape lands, as it would on any ordinary tick.
+      cache.recordCinemaScrape(Multikino, Seq(CinemaMovie(
+        movie = models.Movie(title, releaseYear = year), cinema = Multikino, posterUrl = None,
+        filmUrl = None, synopsis = None, cast = Seq.empty, director = Seq.empty,
+        showtimes = Seq(Showtime(when, None)))))
+
+      // Kino Muranów never went anywhere. Before the fix this scrape rebuilt the film
+      // from itself alone and `$nin` deleted Muranów's showtimes from `screenings`.
+      withClue(s"screenings now: ${scr.findForFilm(id).keySet}: ")(
+        scr.findForFilm(id).keySet should contain (KinoMuranow.displayName))
+      cache.stop()
     } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
   }
 }
