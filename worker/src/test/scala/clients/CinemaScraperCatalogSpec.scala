@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort, OdeonNorwich}
+import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -43,7 +43,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks
+      zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks,
+      odeonAuthToken = () => None
     )
 
   "CinemaScraperCatalog" should "route Kino Kameralne through the injected biletyna seam, not the shared http" in {
@@ -95,16 +96,18 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // one recorded day so the chunked scrape lands on the captured sessions fragment.
   it should "route UK Flicks venues through the injected residential-proxy seam, not the shared http" in {
     val sessions  = new FakeHttpFetch("flicks")
-    val programme = s"${FlicksClient.BaseUrl}/cinema/odeon-cinema-norwich/"
+    val programme = s"${FlicksClient.BaseUrl}/cinema/arc-cinema-at-the-royalty-great-yarmouth/"
     val flicks = new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url == programme) """<div class="timetable__day" data-date="2026-07-11"></div>"""
         else sessions.get(url)
     }
-    val scraper = catalog(flicks = flicks).all.find(_.cinema == OdeonNorwich).value
+    // Arc Cinema Great Yarmouth is a genuine flicks-primary independent (unlike the
+    // chain venues, which moved to own-site clients with flicks only as fallback).
+    val scraper = catalog(flicks = flicks).all.find(_.cinema == ArcCinemaGreatYarmouth).value
     val movies  = scraper.fetch()  // reads the flicks fixture via flicksFetch
     movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)
+    movies.map(_.cinema).toSet shouldBe Set(ArcCinemaGreatYarmouth)
   }
 
   // UK chain venues (Cineworld / Vue / Showcase / Everyman) are now own-site
@@ -119,7 +122,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val c = catalog()
     c.all.find(_.cinema == CineworldSheffield).value shouldBe a [CineworldClient]
     c.flicksFallbackSlugs.get(CineworldSheffield) shouldBe Some("cineworld-sheffield")
-    c.flicksFallbackSlugs should have size 241
+    c.flicksFallbackSlugs should have size 343   // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 102
     c.flicksFallbackSlugs.keys.foreach { cin =>
       val primary = c.all.find(_.cinema == cin).value
       primary should not be a [FlicksClient]      // moved off the aggregator…

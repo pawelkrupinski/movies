@@ -20,7 +20,7 @@ import services.cinemas._
 import services.enrichment._
 import services.cinemas.common._
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient, MultikinoClient}
-import services.cinemas.uk.FlicksClient
+import services.cinemas.uk.{FlicksClient, OdeonAuthHarvester}
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
@@ -242,7 +242,15 @@ class WorkerWiring(
     // → a permanent white /uptime bar. Only Zyte's true-residential network
     // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
     zyteFetch = zyteFetch,
-    flicksFetch = flicksFetch)
+    flicksFetch = flicksFetch,
+    odeonAuthToken = odeonAuthHarvester.token)
+
+  // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
+  // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL
+  // cache — ~2 browser fetches/day — so Odeon's ocapi pulls run over plain `http`.
+  // No key (CI/local) → token() is None → Odeon venues ride the flicks fallback.
+  lazy val odeonAuthHarvester: OdeonAuthHarvester =
+    new OdeonAuthHarvester(() => OdeonAuthHarvester.zyteFetchPage(Env.get("ZYTE_API_KEY")))
 
   // This country's own cities — the default scrape set. A country wiring only
   // ever scrapes its own cities (never another country's), so the default is
