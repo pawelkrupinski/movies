@@ -525,7 +525,28 @@ class CaffeineMovieCache(
         (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year))
     if (needsFix) {
       withTitleLock(canonical.cleanTitle) {
-        keys.foreach(invalidate)
+        // Split the keys: rows that genuinely go away, versus the canonical row itself.
+        //
+        // `invalidate` deletes from BOTH stores, and `MovieRepository.delete` cascades to
+        // `screenings`/`movie_slots`. Applying it to the CANONICAL key deleted the very
+        // row `put` then rewrites — and since `CacheKey` equality is normalised, that is
+        // the SAME `_id`. So the side rows went, `upsert`'s re-stitch read the id it had
+        // just emptied, and the film lost its showtimes. Measured on prod 2026-07-27:
+        // 735 of 941 rows delete+re-inserted under byte-identical ids every 30 minutes,
+        // each losing its showtimes until the next scrape restored them — the sawtooth.
+        //
+        // The canonical row does not need deleting at all: `put` rewrites it in place
+        // (`replaceOne` on the same id). Only its CAFFEINE key object needs replacing, so
+        // the stored spelling follows the canonical — which is what this invalidate was
+        // for. `positive.invalidate` does exactly that and touches no stored row.
+        val victims = keys.filterNot(_ == canonical)
+        // A victim IS going away, so carry its cinemas onto the winner first — same rule
+        // as the fold and the re-key.
+        val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year)
+        victims.foreach(v =>
+          repository.moveFilm(StoredMovieRecord.idFor(v.cleanTitle, v.year), canonicalId))
+        victims.foreach(invalidate)
+        keys.filter(_ == canonical).foreach(positive.invalidate)
         put(canonical, merged)
       }
       // Victims = every other row in the cluster folded away; a lone respelled

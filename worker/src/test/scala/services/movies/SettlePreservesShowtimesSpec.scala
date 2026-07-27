@@ -93,4 +93,33 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
     withClue(s"rows=${cache.snapshot().map(r => (r.title, r.year))}: ")(
       showtimeCount(screenings) shouldBe 2)
   }
+
+  // The THIRD site, and the one that produced prod's 30-minute sawtooth. No merge and no
+  // re-key: a single row whose stored spelling differs from the canonical one is rewritten
+  // under the canonical string. `collapseCluster` did that by invalidating EVERY key and
+  // re-`put`ting — and because `CacheKey` equality is normalised, invalidating the
+  // canonical key deleted the SAME `_id` the `put` recreates. The delete cascaded to
+  // `screenings`, and the re-stitch then read the id it had just emptied.
+  //
+  // Prod 2026-07-27: 735 of 941 rows delete+re-inserted under byte-identical ids every 30
+  // minutes, each shedding its showtimes until the next scrape restored them.
+  "a settle that only re-spells a row" should "not delete the row it is rewriting" in {
+    val (screenings, repository, cache) = fixture
+    // Stored all-caps; `canonical()` prefers "Zoo", so the row needs re-spelling.
+    cache.put(CacheKey("ZOO", Some(2026)),
+      MovieRecord(tmdbId = Some(31), data = withShowtime(Helios, "ZOO")))
+    showtimeCount(screenings) shouldBe 1
+    val deletesBefore = repository.deletes.size
+
+    cache.canonicalizeBySanitize()
+
+    withClue(s"rows=${cache.snapshot().map(r => (r.title, r.year))}: ")(
+      showtimeCount(screenings) shouldBe 1)
+    // …and it should not have deleted anything at all: rewriting a row in place is an
+    // upsert, not a delete+insert. This is the churn half of the same bug.
+    withClue("the settle delete+re-inserted a row it was only re-spelling: ")(
+      repository.deletes.size shouldBe deletesBefore)
+    // the re-spelling still happened
+    cache.snapshot().map(_.title) shouldBe Seq("Zoo")
+  }
 }
