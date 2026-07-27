@@ -42,41 +42,84 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
    *  `concludeEnrichment` does for no-match films), then re-scrape the IDENTICAL
    *  reports and settle again. Returns (keys after first settle, keys after the
    *  re-scrape settle, merges during the re-scrape tick). */
-  private def reScrape(reports: Seq[CinemaMovie]): (Set[(String, Option[Int])], Set[(String, Option[Int])], Int) = {
-    val merges = new CountingMergeMetrics
-    val cache  = new CaffeineMovieCache(new InMemoryMovieRepository, mergeMetrics = merges)
+  private def reScrape(reports: Seq[CinemaMovie]): (Set[(String, Option[Int])], Set[(String, Option[Int])], Int) =
+    reScrapeFull(reports)._1
+
+  /** The cycle, plus the two things the key set cannot show: how many WRITES the settled
+   *  tick performed, and whether the corpus still holds its showtimes.
+   *
+   *  Returns ((settledKeys, afterKeys, merges), writesOnSettledTick, showtimesAfter). */
+  private def reScrapeFull(reports: Seq[CinemaMovie])
+      : ((Set[(String, Option[Int])], Set[(String, Option[Int])], Int), Int, Int) = {
+    val merges     = new CountingMergeMetrics
+    // Screenings WIRED: the production storage split, so a fold that strands a film's
+    // showtimes under a retired id is visible here instead of only against real Mongo.
+    val screenings = new InMemoryScreeningsRepository
+    val repository = new InMemoryMovieRepository(screenings = Some(screenings))
+    val cache      = new CaffeineMovieCache(repository, mergeMetrics = merges)
     reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
     cache.canonicalizeBySanitize()
     // Mark concluded (no-TMDB), the state the real flapping films are in.
     cache.snapshot().foreach(sr => cache.put(cache.keyOf(sr.title, sr.year), sr.record.copy(tmdbNoMatch = true)))
     cache.canonicalizeBySanitize()
     val settled = keys(cache)
-    val mergesBefore = merges.count
+    // Measured HERE — immediately after the settle and BEFORE the re-scrape tick, which
+    // would re-supply showtimes and mask a settle that had just thrown them away. That
+    // masking is why the first version of this assertion passed against the bug.
+    val showtimesAfterSettle = screenings.findAll().values.flatMap(_.values).map(_.size).sum
+    val mergesBefore  = merges.count
+    val writesBefore  = repository.upserts.size + repository.deletes.size
     reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
     cache.canonicalizeBySanitize()
-    (settled, keys(cache), merges.count - mergesBefore)
+    val writes = repository.upserts.size + repository.deletes.size - writesBefore
+    ((settled, keys(cache), merges.count - mergesBefore), writes, showtimesAfterSettle)
   }
 
   "a settled casing-variant film" should "be a fixpoint under an identical re-scrape" in {
     // All-caps variant sorts FIRST by raw cleanTitle (0x4F 'O' < 0x6F 'o'), so
     // canonicalRank prefers "ZOO" while canonical() (isAllCaps) prefers "Zoo".
-    val (settled, after, merges) = reScrape(Seq(
+    val ((settled, after, merges), writes, showtimes) = reScrapeFull(Seq(
       cm(Helios,   "Zoo", Some(2026)),
       cm(KinoMuza, "ZOO", Some(2026))))
-    withClue(s"settled=$settled  afterReScrape=$after  merges=$merges\n") {
+    withClue(s"settled=$settled  afterReScrape=$after  merges=$merges  writes=$writes  showtimes=$showtimes\n") {
       after shouldBe settled
       merges shouldBe 0
+      writes shouldBe 0
+      showtimes should be > 0
     }
   }
 
   "a settled year/yearless film" should "be a fixpoint under an identical re-scrape" in {
-    val (settled, after, merges) = reScrape(Seq(
+    val ((settled, after, merges), writes, showtimes) = reScrapeFull(Seq(
       cm(Helios,   "Sycamore", Some(2025)),
       cm(KinoMuza, "Sycamore", None)))
-    withClue(s"settled=$settled  afterReScrape=$after  merges=$merges\n") {
+    withClue(s"settled=$settled  afterReScrape=$after  merges=$merges  writes=$writes  showtimes=$showtimes\n") {
       after shouldBe settled
       merges shouldBe 0
+      writes shouldBe 0
+      showtimes should be > 0
     }
+  }
+
+  // THE two blind spots this spec had, stated as their own cases so a future refactor
+  // cannot quietly drop them.
+  //
+  // 1. QUIESCENCE, not just convergence. The spec asserted the key SET and the MERGE
+  //    count. Prod satisfied both while deleting and re-inserting 735 of 941 rows every
+  //    30 minutes under IDENTICAL ids (measured 2026-07-27: merges 0-2/30min, deletes
+  //    735/30min, id set byte-identical across the burst). A converged corpus that
+  //    rewrites itself forever is not settled — so count the writes.
+  //
+  // 2. The corpus must still HOLD its showtimes. With screenings inline (the old fake)
+  //    a fold unions the records and carries them for free; under the production split
+  //    they live under the film id, and a rename that doesn't move them destroys them.
+  "an identical re-scrape of a settled corpus" should "perform NO writes and keep every showtime" in {
+    val ((_, _, merges), writes, showtimes) = reScrapeFull(Seq(
+      cm(Helios,   "Quiescent", Some(2026)),
+      cm(KinoMuza, "QUIESCENT", Some(2026)),
+      cm(KinoMuranow, "Quiescent", None)))
+    withClue(s"a settled corpus rewrote itself: writes=$writes merges=$merges\n")(writes shouldBe 0)
+    withClue(s"the settle lost the corpus's showtimes: $showtimes\n")(showtimes should be > 0)
   }
 
   "a bare scrape" should "fold a decorated edition sharing the base tmdbId into one record (split into cards in display)" in {

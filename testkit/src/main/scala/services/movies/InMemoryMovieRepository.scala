@@ -17,7 +17,22 @@ import scala.collection.mutable
  * test can assert write-through behavior. Tests that don't care simply
  * ignore the buffers.
  */
-class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty) extends MovieRepository {
+class InMemoryMovieRepository(
+  seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty,
+  // Wire this to model the PRODUCTION storage split: showtimes stored in their own
+  // collection keyed by film id, not inline in the record.
+  //
+  // Without it this fake cannot express the bug class that cost the most in 2026-07:
+  // a merge or re-key is a RENAME, and the film's showtimes live under the OLD id, so
+  // anything that writes the winner and deletes the loser destroys them. With showtimes
+  // inline (the default) a fold unions the records and carries them for free, so every
+  // merge/re-key spec passed while prod bled. Every routing decision below goes through
+  // the SAME pure helpers `MongoMovieRepository` uses — `stripShowtimes`, `showtimesOf`,
+  // `reStitch`, `stitch` — so the fake cannot drift from the real one.
+  screenings: Option[ScreeningsRepository] = None
+) extends MovieRepository {
+
+  override def hasScreenings: Boolean = screenings.isDefined
 
   private val store   = mutable.LinkedHashMap.empty[String, StoredMovieRecord]
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
@@ -62,13 +77,37 @@ class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Se
   // deterministic where Mongo's re-derivation isn't. The fake differs from Mongo
   // only at the infra boundary (a HashMap, not BSON), never in read semantics.
   def findAll(): Seq[StoredMovieRecord] = lock.synchronized {
-    store.iterator.map { case (id, s) => StoredMovieRecord.fromStorage(id, s.record) }.toSeq
+    val all = screenings.map(_.findAll()).getOrElse(Map.empty)
+    store.iterator.map { case (id, s) =>
+      val row = StoredMovieRecord.fromStorage(id, s.record)
+      if (screenings.isEmpty) row
+      else row.copy(record = row.record.copy(
+        data = ScreeningsRepository.stitch(row.record.data, all.getOrElse(id, Map.empty))))
+    }.toSeq
   }
 
   def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
-    store.put(idOf(t, y), StoredMovieRecord(t, y, e))
+    val id = idOf(t, y)
+    // Same order as `MongoMovieRepository.upsert`: re-stitch first (a record can arrive
+    // stripped for cache residency, and `showtimesOf` would then drop showtimes that
+    // `replaceFilm` proceeds to delete), then store the row WITHOUT showtimes and file
+    // them under the film id.
+    val restitched = screenings.fold(e.data)(ScreeningsRepository.reStitch(_, id, e.data))
+    val forStore   = if (screenings.isEmpty) e else e.copy(data = ScreeningsRepository.stripShowtimes(restitched))
+    store.put(id, StoredMovieRecord(t, y, forStore))
+    screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(restitched)))
     upserts.append((t, y, e))
     notifyWatcher(t, y, e)
+  }
+
+  /** Carry a film's screenings across a re-key / fold, mirroring
+   *  `MongoMovieRepository.moveFilm` — rows already at `newId` are kept, the moved ones
+   *  winning a shared slot key. */
+  override def moveFilm(oldId: String, newId: String): Unit = if (oldId != newId) lock.synchronized {
+    screenings.foreach { s =>
+      val moving = s.findForFilm(oldId)
+      if (moving.nonEmpty) { s.replaceFilm(newId, s.findForFilm(newId) ++ moving); s.deleteFilm(oldId) }
+    }
   }
 
   def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
@@ -97,12 +136,14 @@ class InMemoryMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Se
   def delete(t: String, y: Option[Int]): Unit = lock.synchronized {
     val id = idOf(t, y)
     store.remove(id)
+    screenings.foreach(_.deleteFilm(id))   // the cascade the real repository owns
     deletes.append((t, y))
     changes.dispatchDelete(id)
   }
 
   def deleteById(id: String): Unit = lock.synchronized {
     if (store.remove(id).isDefined) {
+      screenings.foreach(_.deleteFilm(id))
       deletes.append((id, None))
       changes.dispatchDelete(id)
     }
