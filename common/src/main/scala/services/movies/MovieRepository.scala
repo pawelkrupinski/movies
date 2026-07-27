@@ -595,7 +595,20 @@ class MongoMovieRepository(
     // deliberately swallowed so it can't break the movies write, so the write itself has
     // to report back. A film whose slot write failed simply keeps the embedded map and is
     // retried on the next scrape.
-    val slotsLanded = slots.exists(_.replaceFilm(id, SlotsRepository.slotsOf(restitched)))
+    // Skip the write when the stored rows already match. `upsert` is the whole-record
+    // path every scrape merge takes, and `replaceFilm` rewrites EVERY row of the film —
+    // 471 of them for a film showing across the UK — so a scrape that changed only
+    // showtimes would otherwise churn the entire slot set for nothing. One indexed read
+    // replaces that; the film's screenings are already read here for `reStitch`, so this
+    // is a second small read, not a new round-trip pattern.
+    //
+    // Already-matching counts as LANDED: the rows are correct, so the embedded copy is
+    // still safe to drop. A failed read returns empty, which reads as "differs" and
+    // writes — the safe direction.
+    val slotPayload = SlotsRepository.slotsOf(restitched)
+    val slotsLanded = slots.exists { s =>
+      if (s.findForFilm(id) == slotPayload) true else s.replaceFilm(id, slotPayload)
+    }
     // Under the read-split `movies` carries no showtimes (they go to `screenings`), and
     // once the slots have landed it carries no sourceData either — which is what shrinks
     // the document the change stream re-decodes on every write.

@@ -872,6 +872,49 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
   }
 
+  // `upsert` is the whole-record path every scrape merge takes, and replaceFilm rewrites
+  // EVERY row of the film. A re-scrape whose slots are unchanged must not churn them —
+  // for a film across 471 UK venues that is 471 pointless row writes per scrape, and
+  // Mongo write throughput has been the binding constraint on this system before.
+  it should "not rewrite unchanged slot rows on a repeat upsert" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredSlotDto, MovieCodecs, StoredMovieRecord}
+    import org.mongodb.scala.ObservableFuture
+    import models.SourceData
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    val raw    = new MongoMovieRepository(Some(db))
+    val title  = "__integration-test-slotchurn__"
+    val year   = Some(1914)
+    val id     = StoredMovieRecord.idFor(title, year)
+    def rowStamps() = Await.result(
+      db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredSlotDto]("movie_slots")
+        .find(org.mongodb.scala.model.Filters.eq("filmId", id)).toFuture(), 10.seconds)
+      .map(d => d.slotKey -> d.updatedAt).toMap
+    try {
+      val early = Showtime(java.time.LocalDateTime.of(2026, 6, 8, 14, 0), Some("https://book/c-1"))
+      val late  = Showtime(java.time.LocalDateTime.of(2026, 6, 8, 20, 0), Some("https://book/c-2"))
+      val slot  = SourceData(title = Some("CH"), posterUrl = Some("https://poster/c.png"), showtimes = Seq(early, late))
+      val base  = MovieRecord(imdbId = Some("tt0000022"), data = Map[Source, SourceData](Multikino -> slot))
+      split.upsert(title, year, base)
+      val before = rowStamps()
+      before should not be empty
+
+      // a re-scrape that changed only showtimes — slots identical
+      Thread.sleep(50)
+      split.upsert(title, year, base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(showtimes = Seq(late)))))
+      rowStamps() shouldBe before          // untouched
+
+      // …but a real slot change still writes
+      Thread.sleep(50)
+      split.upsert(title, year, base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/c2.png")))))
+      rowStamps() should not be before
+      slots.findForFilm(id).get(Multikino.displayName).flatMap(_.posterUrl) shouldBe Some("https://poster/c2.png")
+    } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.
