@@ -398,6 +398,14 @@ class TmdbClient(
         // no separate id→name lookup needed.
         val genres = (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
           .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
+        // Per-country age rating (BBFC "12A", FSK "16", …): a SEPARATE
+        // `/movie/{id}/release_dates` call (kept off the detail URL so the detail
+        // fixtures don't re-fingerprint), selecting the DEPLOYMENT country's
+        // certification. A cinema-scraped rating still wins (`MovieRecord.ageRating`
+        // is cinema-first); this is the fallback that gives every resolved film a
+        // per-country rating even where no cinema exposes one. Best-effort — a miss
+        // yields None. Verbatim — TMDB's own label for that country.
+        val ageRating = releaseCertification(tmdbId, auth)
         TmdbClient.FullDetails(
           title         = (js \ "title").asOpt[String].filter(_.nonEmpty),
           originalTitle = (js \ "original_title").asOpt[String].filter(_.nonEmpty),
@@ -415,9 +423,22 @@ class TmdbClient(
           // `MovieRecord.posterUrl` — so a better localised portrait improves
           // the `data-fallbacks` chain (and the no-cinema-poster case).
           posterUrl     = TmdbClient.bestPortraitPosterUrl(posters(tmdbId), language.getLanguage)
-                            .orElse((js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p"))
+                            .orElse((js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p")),
+          ageRating     = ageRating
         )
       }
+  }
+
+  /** The DEPLOYMENT country's age-rating certification from TMDB's
+   *  `/movie/{id}/release_dates` (`results[].iso_3166_1` → `release_dates[].certification`).
+   *  Country from `language.getCountry` (GB/DE/PL). First non-blank certification for
+   *  that country, verbatim. Best-effort: a network/parse failure or no match yields
+   *  None (so the film simply carries no TMDB-sourced rating). A separate call rather
+   *  than `append_to_response`, so the movie-detail fixtures keep their fingerprint. */
+  private def releaseCertification(tmdbId: Int, auth: Map[String, String]): Option[String] = {
+    val country = language.getCountry
+    if (country.isEmpty) None
+    else Try(TmdbClient.certificationFor(Json.parse(httpGet(s"$ApiBase/movie/$tmdbId/release_dates${apiKeyParameter("?")}", auth)), country)).toOption.flatten
   }
 
   /** Deployment-language + language-neutral poster variants for a movie, from
@@ -499,6 +520,17 @@ class TmdbClient(
 }
 
 object TmdbClient {
+  /** The `certification` for `country` (ISO-3166-1, e.g. "GB"/"DE"/"PL") from a
+   *  `/movie/{id}/release_dates` JSON body: the matching `results[].iso_3166_1`
+   *  block's first non-blank `release_dates[].certification`, verbatim. None when
+   *  the country isn't listed or carries only blank certs. Pure (no I/O) so the
+   *  country-selection is unit-tested without a live call. */
+  def certificationFor(js: play.api.libs.json.JsValue, country: String): Option[String] =
+    (js \ "results").asOpt[play.api.libs.json.JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      .find(r => (r \ "iso_3166_1").asOpt[String].contains(country))
+      .flatMap(r => (r \ "release_dates").asOpt[play.api.libs.json.JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+        .flatMap(rd => (rd \ "certification").asOpt[String]).map(_.trim).find(_.nonEmpty))
+
   private val ApiBase = "https://api.themoviedb.org/3"
   // TMDB's CDN-served poster path. w500 is the largest "good" size for our
   // cards (next step up is "original" which can be 2000+ px and isn't worth
@@ -649,7 +681,8 @@ object TmdbClient {
     releaseYear:    Option[Int],
     countries:      Seq[String],
     genres:         Seq[String],
-    posterUrl:      Option[String]
+    posterUrl:      Option[String],
+    ageRating:      Option[String] = None
   )
 
   /** One poster variant from `/movie/{id}/images`. `aspectRatio` is

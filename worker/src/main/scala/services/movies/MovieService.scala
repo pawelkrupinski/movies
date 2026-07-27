@@ -635,6 +635,10 @@ class MovieService(
         genres         = if (d.genres.nonEmpty) d.genres
                          else if (existingMatchesLanguage) existingTmdbSlot.genres else Seq.empty,
         posterUrl      = d.posterUrl.orElse(carriedLocalized(existingTmdbSlot.posterUrl)),
+        // Per-country age rating (TMDB's certification for the deployment country) —
+        // the fallback beneath any cinema-scraped rating (MovieRecord.ageRating is
+        // cinema-first). Carried forward if a re-resolve returns none.
+        ageRating      = d.ageRating.orElse(existingTmdbSlot.ageRating),
         // Stamp the language these fields were fetched in, so a slot frozen by a
         // pre-locale-fix resolve is detectable rather than silently Polish forever.
         language       = Some(tmdb.language.toLanguageTag)
