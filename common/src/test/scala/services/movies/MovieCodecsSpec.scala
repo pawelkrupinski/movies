@@ -247,6 +247,25 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.retainedSynopses shouldBe Map.empty
   }
 
+  it should "decode a migrated document whose embedded sourceData was retired to an empty map" in {
+    // Once a film's slots reach `movie_slots`, `scripts.RetireEmbeddedSlots`
+    // `$unset`s `sourceData` outright — the field is absent, not empty. Decoding it
+    // as a required Map threw `Missing field: sourceData`, which killed the whole
+    // `MovieRepository` keyset batch (corpus scan "incomplete") and aborted every
+    // staging fold whose group loaded such a row, stranding newcomers in
+    // `pending_movies` for good.
+    val record = MovieRecord(imdbId = Some("tt0000099"),
+      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Migrated"))))
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw),
+      StoredMovieDto.fromDomain("migrated|2026", record, Instant.now()), EncoderContext.builder().build())
+    raw.remove("sourceData")  // exactly what the slot migration leaves behind
+
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    back.record.data   shouldBe Map.empty
+    back.record.imdbId shouldBe Some("tt0000099")
+  }
+
   it should "drop a retainedSynopses key for an unknown (legacy) Source displayName on decode" in {
     val record = MovieRecord(
       data = Map[Source, SourceData](Tmdb -> SourceData(title = Some("Known"))),

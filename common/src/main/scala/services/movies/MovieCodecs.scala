@@ -38,7 +38,14 @@ case class StoredMovieDto(
   // to None → default false; only persisted when true to keep documents lean.
   tmdbNoMatch:       Option[Boolean],
   detailPending:     Option[Boolean],
-  sourceData:        Map[String, SourceData],
+  // Optional on the wire so a MIGRATED document decodes to None → empty map. Once
+  // a film's slots have landed in `movie_slots`, `scripts.RetireEmbeddedSlots`
+  // `$unset`s this field entirely — and as a required `Map` it decoded as
+  // `Missing field: sourceData`, killing the whole keyset batch (so the corpus
+  // scan reported incomplete) and aborting every staging fold that loaded such a
+  // row (so PL newcomers never left `pending_movies`). Encoding is unchanged —
+  // `fromDomain` always writes the map, empty or not.
+  sourceData:        Option[Map[String, SourceData]],
   // Longest synopsis kept per source after its live slot was pruned, keyed by
   // `Source.displayName` like `sourceData`. Optional so legacy documents decode
   // to None → empty map; omitted when empty to keep documents lean.
@@ -76,7 +83,10 @@ object StoredMovieDto {
       searchTitle       = r.searchTitle,
       tmdbNoMatch       = Option.when(r.tmdbNoMatch)(true),
       detailPending     = Option.when(r.detailPending)(true),
-      sourceData        = r.data.map { case (s, sd) => s.displayName -> sd },
+      // Always `Some` — the write shape is unchanged (an empty map still encodes as
+      // `sourceData: {}`). Only READS tolerate the field's absence; dropping the
+      // embedded copy is the migration's job, not the codec's.
+      sourceData        = Some(r.data.map { case (s, sd) => s.displayName -> sd }),
       retainedSynopses  = Option.when(r.retainedSynopses.nonEmpty)(
                             r.retainedSynopses.map { case (s, v) => s.displayName -> v }),
       updatedAt         = updatedAt
@@ -103,7 +113,8 @@ object StoredMovieDto {
       // same showtimes (the /debug twin-slot duplication). See
       // `Source.dropSupersededCinemaSlots`.
       data              = Source.dropSupersededCinemaSlots(
-                            dto.sourceData.flatMap { case (k, sd) => Source.byWireKey(k).map(_ -> sd) }),
+                            dto.sourceData.getOrElse(Map.empty)
+                              .flatMap { case (k, sd) => Source.byWireKey(k).map(_ -> sd) }),
       retainedSynopses  = dto.retainedSynopses.getOrElse(Map.empty)
                             .flatMap { case (k, v) => Source.byWireKey(k).map(_ -> v) }
     )

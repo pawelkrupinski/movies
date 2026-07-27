@@ -67,7 +67,10 @@ object RetireEmbeddedSlots {
       val skipped = Seq.newBuilder[String]
       docs.foreach { dto =>
         n += 1
-        val embedded = dto.sourceData.keySet
+        // An already-retired row has no `sourceData` field at all (None) — same
+        // "nothing embedded left to strip" case as an empty map, so the pass is
+        // re-runnable over a partly-migrated corpus.
+        val embedded = dto.sourceData.getOrElse(Map.empty).keySet
         if (embedded.isEmpty) bare += 1
         else if (!coversEmbedded(embedded, stored.getOrElse(dto._id, Map.empty).keySet)) skipped += dto._id
         else {

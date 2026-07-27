@@ -36,7 +36,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // re-keyed sentinel — but `imdbId` never changes.
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
-    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099"
+    "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
+    "tt0000078"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -118,6 +119,32 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     e.tmdbId            shouldBe Some(424242)
     e.metacriticUrl     shouldBe Some("https://www.metacritic.com/movie/integration-test")
     e.rottenTomatoesUrl shouldBe Some("https://www.rottentomatoes.com/m/integration_test")
+  }
+
+  // The keyset scan behind `findAll` is a plain `find` — unlike `findAllForListing`,
+  // which defends server-side with `$ifNull: ["$sourceData", {}]`. So it was the path
+  // that met the migration head-on: one `$unset` row in a batch threw
+  // `Missing field: sourceData`, the batch failed all its retries, and the scan
+  // reported INCOMPLETE — silently, since a failed scan only logs. Written against
+  // the real `$unset` rather than a hand-built document so it tracks whatever
+  // `RetireEmbeddedSlots` actually leaves behind.
+  it should "scan a film whose embedded sourceData the slot migration retired" in {
+    val record = MovieRecord(
+      imdbId = Some("tt0000078"),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Retired Slots"))))
+    repository.upsert("__integration-test-retired-slots__", Some(1903), record)
+
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    try Await.ready(
+      client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("movies")
+        .updateOne(Filters.eq("imdbId", "tt0000078"),
+          org.mongodb.scala.model.Updates.unset("sourceData")).toFuture(),
+      10.seconds)
+    finally client.close()
+
+    val found = repository.findAll().find(_.record.imdbId.contains("tt0000078"))
+    found should not be empty
+    found.get.record.data shouldBe Map.empty  // slots live in `movie_slots` now
   }
 
   // `findAllForListing` is the /debug corpus-table read: it strips each source's
