@@ -196,10 +196,10 @@ object ScreeningsRepository {
    *  standing between a whole-record write and a film's screenings, so it is unit-tested
    *  directly. */
   private[movies] def staleSlotsFilter(filmId: String, keep: Set[String]): Bson =
-    Filters.and(Filters.eq("filmId", filmId), Filters.nin[String]("slotKey", keep.toSeq*))
+    SlotKeyed.staleSlotsFilter(filmId, keep)
 
   // Non-printable separator so the composite `_id` never collides with a slot key.
-  private[movies] val IdSep: Char = '\u001f'
+  private[movies] val IdSep: Char = SlotKeyed.IdSep
 }
 
 /** Storage DTO for one cinema slot's screenings — the macro codec target for the

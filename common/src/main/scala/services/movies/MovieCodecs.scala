@@ -200,7 +200,12 @@ object MovieCodecs {
       Macros.createCodecProvider[StoredMovieDto](),
       // The `screenings` collection (showtimes split out of `movies`) — same
       // Showtime + LocalDateTime codecs as above.
-      Macros.createCodecProvider[StoredScreeningsDto]()
+      Macros.createCodecProvider[StoredScreeningsDto](),
+      // The `movie_slots` collection (the per-cinema SourceData split out of
+      // `movies.sourceData`) — reuses `sourceDataProvider` above for its slot field,
+      // so a slot round-trips through the SAME backward-compatible codec whether it
+      // is read from `movies` or from its own row.
+      Macros.createCodecProvider[StoredSlotDto]()
     ),
     DEFAULT_CODEC_REGISTRY
   )
