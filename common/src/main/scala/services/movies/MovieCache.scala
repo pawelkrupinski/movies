@@ -696,11 +696,20 @@ class CaffeineMovieCache(
     // re-spawn the duplicate. One rule for both fold paths keeps the stored
     // result a pure function of the row set, not arrival order.
     val (canonical, merged) = FilmCanonicalizer.canonical(Seq(siblingKey -> siblingRecord, newKey -> newRecord))
+    val victims = Seq(siblingKey, newKey).distinct.filterNot(_ == canonical)
+    // Carry each loser's screenings + slots onto the canonical id BEFORE persisting. A merge
+    // is a rename too: the losing row's showtimes are filed under ITS id, while the record we
+    // are about to write holds that row STRIPPED (cache residency), so `upsert`'s re-stitch —
+    // which looks under the id it is WRITING to — would find nothing and store nothing, and
+    // the delete below would then destroy the only copy. Same rule as the re-key in
+    // `MovieCache.rekey`; a `movies` row disappearing almost never means the film left.
+    val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year)
+    victims.foreach(victim =>
+      repository.moveFilm(StoredMovieRecord.idFor(victim.cleanTitle, victim.year), canonicalId))
     persist(canonical, merged)
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
     retriggerChangedEnrichments(siblingRecord, siblingKey, merged, canonical)
-    val victims = Seq(siblingKey, newKey).distinct.filterNot(_ == canonical)
     victims.foreach { victim =>
       positive.invalidate(victim)
       repository.delete(victim.cleanTitle, victim.year)
