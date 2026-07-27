@@ -172,6 +172,17 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Both side collections must be wired into the worker's repository, or their writes
+  // silently go nowhere: `movies` keeps the embedded copy, the split never takes effect,
+  // and the change stream keeps carrying whole documents. The seam is invisible from
+  // outside the repository, so it is surfaced as `hasScreenings` / `hasSlots`.
+  "The worker's movie repository" should "have both the screenings and the slots split wired" in {
+    val wiring = new PhaseLeafProbe
+    wiring.movieRepository.hasScreenings shouldBe true
+    wiring.movieRepository.hasSlots      shouldBe true
+    wiring.stop()
+  }
+
   "The phase-split fetch chains" should "tally cinema-site calls under `scrape` and metadata calls under `enrich`" in {
     val wiring = new PhaseLeafProbe
     (wiring.enrichmentFetch eq wiring.httoFetch) shouldBe false

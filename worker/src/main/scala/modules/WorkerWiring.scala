@@ -508,9 +508,17 @@ class WorkerWiring(
     // writes only `screenings`, so without this a restart drops showtime edits made while
     // down and only the full reproject catches them — the gap that kept it non-redundant.
     new services.movies.MongoScreeningsRepository(mongoConnection.database, persistResumeToken = true)
+  // Slot split: the per-cinema SourceData lives in `movie_slots`, one row per slot,
+  // for the same reason showtimes moved to `screenings` — an UPDATE_LOOKUP change event
+  // otherwise carries the whole film document, and those documents queue up on an
+  // unbounded executor (one poster URL was resident 10,848 times in the 2026-07-27 UK
+  // OOM dump). Persist this stream's resume token like the other two.
+  lazy val slotsRepository: services.movies.SlotsRepository =
+    new services.movies.MongoSlotsRepository(mongoConnection.database, persistResumeToken = true)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
     screenings = Some(screeningsRepository),
+    slots = Some(slotsRepository),
     // The worker is the durable read-model/cache mirror: persist the change-stream resume
     // token so a restart replays events missed while down instead of leaning on the backstop.
     persistResumeToken = true)

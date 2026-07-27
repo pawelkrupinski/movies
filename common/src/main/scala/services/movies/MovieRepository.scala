@@ -79,6 +79,11 @@ trait MovieRepository {
    *  Without it the cache MUST keep showtimes (there is nowhere else to hold them). */
   def hasScreenings: Boolean = false
 
+  /** Whether the slot split is active — i.e. a `movie_slots` repository is wired, so
+   *  each film's per-cinema SourceData is mirrored into its own row. Readers use this
+   *  to decide whether a film's slots may live outside the `movies` document. */
+  def hasSlots: Boolean = false
+
   /** Whether the persistence layer is wired up. When false, callers can still
    *  use the in-memory cache but writes are no-ops. */
   def enabled: Boolean
@@ -278,6 +283,7 @@ class MongoMovieRepository(
 ) extends MovieRepository with Logging {
 
   override def hasScreenings: Boolean = screenings.isDefined
+  override def hasSlots:       Boolean = slots.isDefined
 
 
   private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =

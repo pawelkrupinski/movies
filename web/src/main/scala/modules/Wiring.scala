@@ -85,9 +85,14 @@ trait Wiring {
   // reads `movies` from. The worker owns the backfill; here we just read.
   lazy val screeningsRepository: services.movies.ScreeningsRepository =
     new services.movies.MongoScreeningsRepository(movieMirrorConnection.database)
+  // Same read-stitch seam for the slots split. The worker owns the writes; web only
+  // needs the repository so a film whose slots have moved to `movie_slots` still reads
+  // complete.
+  lazy val slotsRepository: services.movies.SlotsRepository =
+    new services.movies.MongoSlotsRepository(movieMirrorConnection.database)
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     movieMirrorConnection.database, fallbackToOwnInit = false,
-    screenings = Some(screeningsRepository))
+    screenings = Some(screeningsRepository), slots = Some(slotsRepository))
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
 
@@ -214,9 +219,11 @@ trait Wiring {
           MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
           MongoConnection.fromEnvForDb(country.mongoDb, required = false, sharedClient = Some(client)))
         val screenings = new services.movies.MongoScreeningsRepository(conn.database)
+        val slots      = new services.movies.MongoSlotsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)
         val stack = new DebugStack(country,
-          new MongoMovieRepository(conn.database, fallbackToOwnInit = false, screenings = Some(screenings)),
+          new MongoMovieRepository(conn.database, fallbackToOwnInit = false,
+            screenings = Some(screenings), slots = Some(slots)),
           new services.staging.MongoStagingRepository(conn.database),
           new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
