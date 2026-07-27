@@ -1264,9 +1264,17 @@ class CaffeineMovieCache(
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
       genres         = if (cm.movie.genres.nonEmpty) StringPool.canonicalAll(cm.movie.genres)
                        else priorSlot.map(_.genres).getOrElse(Seq.empty),
-      posterUrl      = cm.posterUrl.orElse(priorSlot.flatMap(_.posterUrl)),
-      filmUrl        = cm.filmUrl,
-      trailerUrl     = cm.trailerUrl.orElse(priorSlot.flatMap(_.trailerUrl)),
+      // Interned like the fields above, and for the same reason: a film's poster,
+      // film page and trailer are ONE url repeated across every cinema showing it.
+      // Highest-yield strings in the corpus by some margin — the 2026-07-27 UK heap
+      // dump held 136,064 poster-url instances for 1,896 distinct values (71.8x) and
+      // 138,199 film-page instances for 2,004 (69.0x). `Showtime.bookingUrl` is
+      // deliberately NOT interned: it is per-screening, only 1.6x repeated
+      // (182,719 -> 116,571 distinct), so pooling it would evict this whole
+      // low-cardinality vocabulary for almost no saving.
+      posterUrl      = cm.posterUrl.map(StringPool.canonical).orElse(priorSlot.flatMap(_.posterUrl)),
+      filmUrl        = cm.filmUrl.map(StringPool.canonical),
+      trailerUrl     = cm.trailerUrl.map(StringPool.canonical).orElse(priorSlot.flatMap(_.trailerUrl)),
       // Canonical order so a reorder-only re-scrape stores a byte-identical slot and
       // the write-through guard skips it. Past showings the fresh scrape drops are NOT
       // retained: under the index-only cache the resident `priorSlot` is stripped (Nil
