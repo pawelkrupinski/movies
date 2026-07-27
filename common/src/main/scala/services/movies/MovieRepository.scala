@@ -502,7 +502,13 @@ class MongoMovieRepository(
             |    "as": "f",
             |    "cond": { "$ne": ["$$f.k", "showtimes"] } } } } } } } } } }""".stripMargin)
         val pipeline = Seq[Bson](Aggregates.sort(Sorts.ascending("_id")), stripShowtimes)
-        Await.result(c.aggregate[StoredMovieDto](pipeline).toFuture(), 60.seconds).map(StoredMovieDto.toDomain)
+        val rows = Await.result(c.aggregate[StoredMovieDto](pipeline).toFuture(), 60.seconds)
+        // Stitch slots like every other reader. This one reads `movies.sourceData`
+        // straight out of an aggregation, so a migrated film — whose slots have moved to
+        // `movie_slots` — would otherwise list with NO cinemas at all. Showtimes stay
+        // stripped: slots are stored without them, which is exactly what this path wants.
+        val allSlots = slots.map(_.findAllChecked()._1).getOrElse(Map.empty[String, Map[String, SourceData]])
+        rows.map(dto => stitchSlots(StoredMovieDto.toDomain(dto), allSlots.getOrElse(dto._id, Map.empty)))
       }.recover {
         case exception: Throwable =>
           logger.warn(s"MovieRepository.findAllForListing failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
@@ -645,8 +651,14 @@ class MongoMovieRepository(
         // per-source `$set` on `sourceData.<displayName>` is rejected when a source's
         // displayName has a dot ("Helios Ostrów Wlkp."); fall back to a conditional
         // full-document replace there. `None` movies patch = a screenings-only change.
+        // A slots-only change must still TOUCH `movies`. That document is the single
+        // change-notification channel the projector listens on, and `movie_slots`
+        // deliberately has no watcher of its own: a second stream would fan out a second
+        // time for one logical change and double the projections. `patchToUpdate` always
+        // bumps `updatedAt`, so an otherwise-empty patch becomes exactly the one-field
+        // write that fires one event — the same count as before the split, not one more.
         val moviesMatched: Option[Long] =
-          if (patch.isEmpty) None
+          if (patch.isEmpty && slotWrites.isEmpty) None
           else Some(
             if (patch.data.keysIterator.exists(_.displayName.contains('.'))) {
               // Can't drive the field-level diff (the dotted `$set` path is rejected), so
@@ -708,9 +720,11 @@ class MongoMovieRepository(
   // Translate a `MovieRecordPatch` into a `$set`/`$unset` Mongo update. Each
   // scalar field gets its own atom; the `data` map gets per-source
   // `sourceData.<sourceName>` paths so a Tmdb-only refresh doesn't touch a
-  // cinema's slot and vice versa. `updatedAt` bumps alongside the real change;
-  // `updateIfPresent` skips an empty patch before reaching here, so this never
-  // emits an `updatedAt`-only no-op write.
+  // cinema's slot and vice versa. `updatedAt` bumps alongside the real change — and
+  // under the slots split that bump is sometimes the ONLY atom: a slots-only change
+  // reaches here with an empty patch precisely so the write fires a change event on the
+  // channel the projector listens to. `updateIfPresent` still skips a patch that is empty
+  // with nothing else to announce.
   private def patchToUpdate(p: MovieRecordPatch): Bson = {
     val atoms = scala.collection.mutable.ListBuffer.empty[Bson]
     def scalar[A](field: String, u: FieldUpdate[A], toBson: A => org.bson.BsonValue): Unit = u match {

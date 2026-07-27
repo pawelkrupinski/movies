@@ -746,6 +746,132 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
   }
 
+  // The projector only learns a film changed from the `movies` change stream. Once slots
+  // moved out, a metadata-only change writes nothing but `movie_slots` — and `movie_slots`
+  // has no watcher on purpose, since a second stream would fan out twice for one logical
+  // change. So the write has to touch `movies` anyway, or the read model silently stops
+  // updating for every title/poster/synopsis edit. It did; this is the guard.
+  it should "still fan out a change event when only the slots changed" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import models.SourceData
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    val title  = "__integration-test-slotfanout__"
+    val year   = Some(1911)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      val slot = SourceData(title = Some("SF"), posterUrl = Some("https://poster/f1.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 5, 19, 0), Some("https://book/sf-1"))))
+      val base = MovieRecord(imdbId = Some("tt0000019"), data = Map[Source, SourceData](Multikino -> slot))
+      split.upsert(title, year, base)
+
+      val fanouts = new java.util.concurrent.atomic.AtomicInteger(0)
+      val got     = new CountDownLatch(1)
+      val handle  = split.watchChanges(r =>
+        if (StoredMovieRecord.idOf(r) == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
+      try {
+        Thread.sleep(1500)
+        // metadata only: no showtime change, and `movies` no longer stores the slot
+        val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/f2.png"))))
+        split.updateIfPresent(title, year, base, after) shouldBe true
+        got.await(15, TimeUnit.SECONDS) shouldBe true
+        // …and EXACTLY once. One logical change must not re-project twice: that is why
+        // `movie_slots` has no watcher of its own and the write touches `movies` instead.
+        Thread.sleep(3000)   // leave room for a second event to arrive if one were coming
+        fanouts.get() shouldBe 1
+      } finally handle.foreach(_.close())
+    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
+  // findAllForListing reads `movies.sourceData` straight out of an aggregation, so it is
+  // the one reader that does not go through the shared stitch — and a migrated film would
+  // list with no cinemas at all.
+  it should "stitch slots into the listing read as well" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import models.SourceData
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    val title  = "__integration-test-slotlisting__"
+    val year   = Some(1912)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      val slot = SourceData(title = Some("SL"), posterUrl = Some("https://poster/l1.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 6, 19, 0), Some("https://book/sl-1"))))
+      split.upsert(title, year, MovieRecord(imdbId = Some("tt0000020"), data = Map[Source, SourceData](Multikino -> slot)))
+
+      val listed = split.findAllForListing().find(r => StoredMovieRecord.idOf(r) == id)
+      listed.map(_.record.cinemaData.keySet)                         shouldBe Some(Set(Multikino))
+      listed.flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe Some("https://poster/l1.png")
+      // …still without showtimes, which is the whole point of this read
+      listed.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes) shouldBe Some(Seq.empty)
+    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
+  // Showtimes EXPIRING is what most re-scrapes look like: same film, same metadata, one
+  // fewer session because a screening has passed. That must stay a screenings-only write.
+  // If the slots split made it also write `movie_slots` — or touch `movies` — every scrape
+  // of every film would re-project for nothing, on a clock rather than on a real change.
+  it should "keep an expiring-showtimes re-scrape a screenings-only write, with one fanout and no slot write" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import java.util.concurrent.atomic.AtomicInteger
+    import models.SourceData
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    val raw    = new MongoMovieRepository(Some(db))
+    val title  = "__integration-test-slotexpiry__"
+    val year   = Some(1913)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      val early = Showtime(java.time.LocalDateTime.of(2026, 6, 7, 14, 0), Some("https://book/e-1"))
+      val late  = Showtime(java.time.LocalDateTime.of(2026, 6, 7, 20, 0), Some("https://book/e-2"))
+      val slot  = SourceData(title = Some("EX"), posterUrl = Some("https://poster/e.png"),
+        showtimes = Seq(early, late))
+      val base  = MovieRecord(imdbId = Some("tt0000021"), data = Map[Source, SourceData](Multikino -> slot))
+      split.upsert(title, year, base)
+
+      val slotsBefore   = slots.findForFilm(id)
+      val slotUpdatedAt = Option(Await.result(
+        db.withCodecRegistry(services.movies.MovieCodecs.registry)
+          .getCollection[services.movies.StoredSlotDto]("movie_slots")
+          .find(org.mongodb.scala.model.Filters.eq("filmId", id)).first().toFuture(), 10.seconds)).map(_.updatedAt)
+
+      val fanouts = new AtomicInteger(0)
+      val got     = new CountDownLatch(1)
+      val handle  = split.watchChanges(r =>
+        if (StoredMovieRecord.idOf(r) == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
+      try {
+        Thread.sleep(1500)
+        // the 14:00 screening has passed — the scrape returns only the 20:00 one
+        val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(showtimes = Seq(late))))
+        split.updateIfPresent(title, year, base, after) shouldBe true
+
+        got.await(15, TimeUnit.SECONDS) shouldBe true   // the read model DOES need the change
+        Thread.sleep(3000)
+        fanouts.get() shouldBe 1                        // …but exactly once, not twice
+
+        scr.findForFilm(id).get(Multikino.displayName).map(_.size) shouldBe Some(1)
+        slots.findForFilm(id) shouldBe slotsBefore      // slot CONTENT untouched
+        // and not even rewritten — an expiring showtime must not churn movie_slots rows
+        val slotUpdatedAfter = Option(Await.result(
+          db.withCodecRegistry(services.movies.MovieCodecs.registry)
+            .getCollection[services.movies.StoredSlotDto]("movie_slots")
+            .find(org.mongodb.scala.model.Filters.eq("filmId", id)).first().toFuture(), 10.seconds)).map(_.updatedAt)
+        slotUpdatedAfter shouldBe slotUpdatedAt
+      } finally handle.foreach(_.close())
+    } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.
