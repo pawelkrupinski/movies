@@ -19,7 +19,7 @@ GET     /:city/film                 controllers.MovieController.film(city: Strin
 GET     /:city/film/og-image        controllers.MovieController.ogImage(city: String, title: String)
 GET     /:city/film/:slug           controllers.MovieController.filmBySlug(city: String, slug: String)
 GET     /:city/og-image             controllers.MovieController.cityOgImage(city: String)
-GET     /:city/filmy                controllers.MovieController.browse(city: String, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
+GET     /:city/filmy                controllers.MovieController.browse(city: String, country: Option[String] ?= None, director: Option[String] ?= None, cast: Option[String] ?= None, genre: Option[String] ?= None)
 GET     /:city/plan                 controllers.PlanController.plan(city: String)
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────

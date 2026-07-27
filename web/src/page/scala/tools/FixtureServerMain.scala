@@ -121,7 +121,7 @@ object FixtureServerMain {
           case s if s == "/"     || s.startsWith("/?")     => indexPageFor(c)
           case "/filmy"                                    => indexPageFor(c)
           case s if s.startsWith("/filmy?") &&
-                     (s.contains("kraj=") || s.contains("rezyser=") || s.contains("aktor=")) => filmyPageFor(c)
+                     (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => filmyPageFor(c)
           case s if s.startsWith("/filmy?")                => indexPageFor(c)
           case s if s == "/plan" || s.startsWith("/plan?") => planPageFor(c)
           case s if s.startsWith("/film/") =>

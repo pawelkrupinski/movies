@@ -2622,13 +2622,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "a genre pill on a film card" should "link to the /{city}/filmy?gatunek= browse page for that genre" in {
+  "a genre pill on a film card" should "link to the /{city}/filmy?genre= browse page for that genre" in {
     onPath("/") { page =>
       val href = page.evalString(
         "(() => { const a = document.querySelector('.col[data-genres] a.pill.genre');" +
           "  return a ? a.getAttribute('href') : ''; })()"
       )
-      href should startWith(cityPrefix + "/filmy?gatunek=")
+      href should startWith(cityPrefix + "/filmy?genre=")
     }
   }
 

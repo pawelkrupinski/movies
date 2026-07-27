@@ -494,10 +494,10 @@ class MovieController( cc: ControllerComponents,
     )).withCookies(cityCookie(city))
   }
 
-  def browse(city: String, kraj: Option[String], rezyser: Option[String], aktor: Option[String], gatunek: Option[String]): Action[AnyContent] = Action { request =>
+  def browse(city: String, country: Option[String], director: Option[String], cast: Option[String], genre: Option[String]): Action[AnyContent] = Action { request =>
     withCity(city) { c =>
       val all = movieControllerService.toSchedules(c)
-      (kraj, rezyser, aktor, gatunek) match {
+      (country, director, cast, genre) match {
         case (Some(name), _, _, _) => renderBrowse(c, name, all.filter(_.movie.countries.contains(name)), request)
         case (_, Some(name), _, _) => renderBrowse(c, name, all.filter(_.director.contains(name)),        request)
         case (_, _, Some(name), _) => renderBrowse(c, name, all.filter(_.cast.contains(name)),            request)
