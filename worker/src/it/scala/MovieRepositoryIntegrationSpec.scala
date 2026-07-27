@@ -621,6 +621,52 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { slots.deleteFilm(StoredMovieRecord.idFor("__integration-test-slotsplit__", Some(1907))); client.close() }
   }
 
+  // Read flip: `movie_slots` wins when the film has rows there, and the embedded
+  // `movies.sourceData` still serves films the lazy migration has not reached. Both
+  // halves matter — the first is the point of the split, the second is what stops it
+  // blanking every film that has not been rewritten yet.
+  it should "read slots from movie_slots when present and fall back to the embedded map when not" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    val legacy = new MongoMovieRepository(Some(db), screenings = Some(scr)) // writes the embedded map only
+    val title  = "__integration-test-slotread__"
+    val year   = Some(1908)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      // Carries a showtime so `screenings` is non-empty: scanStitched treats an empty
+      // screenings load as a FAILED scan (prune-safety), which would otherwise stop
+      // step (3) below from ever seeing a batch.
+      val slot = SourceData(title = Some("SR"), posterUrl = Some("https://poster/embedded.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 2, 19, 0), Some("https://book/sr-1"))))
+      val base = MovieRecord(imdbId = Some("tt0000016"), data = Map[Source, SourceData](Multikino -> slot))
+
+      // (1) written by a repository with NO slots repo — nothing in movie_slots
+      legacy.upsert(title, year, base)
+      slots.findForFilm(id) shouldBe empty
+      // …the split-aware reader still sees the film, from the embedded map
+      split.findById(id).flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe
+        Some("https://poster/embedded.png")
+
+      // (2) now write through the split repo — movie_slots gains the row and wins the read
+      val moved = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/split.png"))))
+      split.upsert(title, year, moved)
+      slots.findForFilm(id) should not be empty
+      split.findById(id).flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe
+        Some("https://poster/split.png")
+
+      // (3) the corpus scan agrees with the per-film read — the divergence that once
+      // dropped 129 films is exactly what a second stitch site can reintroduce
+      var scanned: Option[String] = None
+      split.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id)
+        scanned = r.record.cinemaData.get(Multikino).flatMap(_.posterUrl))
+      scanned shouldBe Some("https://poster/split.png")
+    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.

@@ -292,14 +292,37 @@ class MongoMovieRepository(
 
   /** Re-inject a stored row's showtimes from `screenings` (its authority under the
    *  split), given that film's `slotKey -> showtimes` map. No-op without a split. */
-  private def stitchRow(r: StoredMovieRecord, scr: Map[String, Seq[Showtime]]): StoredMovieRecord =
-    if (screenings.isEmpty) r
-    else r.copy(record = r.record.copy(data = ScreeningsRepository.stitch(r.record.data, scr)))
+  private def stitchRow(r: StoredMovieRecord, scr: Map[String, Seq[Showtime]],
+                        storedSlots: Map[String, SourceData] = Map.empty): StoredMovieRecord = {
+    val withSlots = stitchSlots(r, storedSlots)
+    if (screenings.isEmpty) withSlots
+    else withSlots.copy(record = withSlots.record.copy(
+      data = ScreeningsRepository.stitch(withSlots.record.data, scr)))
+  }
 
-  /** Decode one stored row and re-inject its showtimes from `screenings` — the
-   *  per-film read-stitch shared by [[findById]] and the change-stream fan-out. */
+  /** Swap a row's slots for the ones stored in `movie_slots`, when it has any.
+   *
+   *  EMPTY means "fall back to the embedded map", NOT "this film has no slots" — and
+   *  that asymmetry is deliberate. The migration is lazy: a film only gains rows here
+   *  when it is next written, so early on most films legitimately have none, and a
+   *  failed read is indistinguishable from an un-migrated film. While `movies` still
+   *  carries the embedded copy both cases resolve identically and safely.
+   *
+   *  That stops being true the moment the embedded copy is retired: then an empty read
+   *  would serve a film with no cinemas at all, so THAT phase must add the same
+   *  "empty ⇒ treat as incomplete" guard `scanStitched` applies to screenings, and must
+   *  not land until a backfill has covered the corpus. */
+  private def stitchSlots(r: StoredMovieRecord, storedSlots: Map[String, SourceData]): StoredMovieRecord =
+    if (storedSlots.isEmpty) r
+    else r.copy(record = r.record.copy(data = SlotsRepository.stitch(storedSlots)))
+
+  /** Decode one stored row and re-inject its slots from `movie_slots` and its showtimes
+   *  from `screenings` — the per-film read-stitch shared by [[findById]] and the
+   *  change-stream fan-out. Slots first: the showtime stitch keys off the slot map. */
   private def decodeStitched(dto: StoredMovieDto): StoredMovieRecord =
-    stitchRow(StoredMovieDto.toDomain(dto), screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty))
+    stitchRow(StoredMovieDto.toDomain(dto),
+      screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty),
+      slots.map(_.findForFilm(dto._id)).getOrElse(Map.empty))
 
   // Lazy so subclasses that override every wire method (e.g.
   // `InMemoryMovieRepository` in tests) never trigger a Mongo connection
@@ -386,11 +409,17 @@ class MongoMovieRepository(
    *  map (separate small docs) is held. */
   private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit): Boolean = {
     val allScr = screenings.map(_.findAll()).getOrElse(Map.empty)
+    // Unlike screenings, an EMPTY slots load is NOT treated as a failed scan: under the
+    // lazy migration most films legitimately have no rows here yet, and while `movies`
+    // still carries the embedded copy every such film stitches from that instead. See
+    // `stitchSlots` for what has to change when the embedded copy is retired.
+    val allSlots = slots.map(_.findAll()).getOrElse(Map.empty)
     if (screenings.isDefined && allScr.isEmpty) {
       logger.warn("MovieRepository.scanStitched: screenings load empty — treating scan as incomplete so a reconcile can't prune on stripped rows.")
       false
     } else scanByKeyset(batch =>
-      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto), allScr.getOrElse(dto._id, Map.empty)))))
+      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto),
+        allScr.getOrElse(dto._id, Map.empty), allSlots.getOrElse(dto._id, Map.empty)))))
   }
 
   /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]
