@@ -51,11 +51,25 @@ trait SlotsRepository {
 
   /** Every film's slots: `filmId -> (slotKey -> slot)`. For the boot hydrate /
    *  `findAll` read-stitch. */
-  def findAll(): Map[String, Map[String, SourceData]]
+  def findAll(): Map[String, Map[String, SourceData]] = findAllChecked()._1
+
+  /** Every film's slots, PLUS whether the scan actually completed.
+   *
+   *  The distinction is load-bearing once the embedded copy is retired. An empty map
+   *  can mean "the collection is genuinely empty" (early in the lazy migration —
+   *  harmless) or "the read failed" (every migrated film looks like it has no cinemas —
+   *  catastrophic if a pruning caller believes it). Only the repository knows which, so
+   *  it says so rather than making callers guess from the emptiness. */
+  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean)
 
   /** Set a film's slots to EXACTLY `slots` — upsert those present, delete any no
-   *  longer present. The whole-record write path. */
-  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Unit
+   *  longer present. The whole-record write path.
+   *
+   *  Returns whether the write actually landed. The caller uses that to decide
+   *  whether it may drop the embedded copy from the `movies` document: dropping it
+   *  after a FAILED slot write would leave the film with no cinemas anywhere. A
+   *  store that cannot fail (in-memory) always reports true. */
+  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean
 
   /** Upsert one slot — the per-slot patch write path. */
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit
@@ -88,14 +102,16 @@ class InMemorySlotsRepository extends SlotsRepository {
   def findForFilm(filmId: String): Map[String, SourceData] =
     lock.synchronized(byFilm.getOrElse(filmId, Map.empty))
 
-  def findAll(): Map[String, Map[String, SourceData]] = lock.synchronized(byFilm.toMap)
+  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) =
+    (lock.synchronized(byFilm.toMap), true)   // an in-memory scan cannot fail
 
-  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Unit = {
+  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean = {
     val changed = lock.synchronized {
       if (byFilm.getOrElse(filmId, Map.empty) == slots) false
       else { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots); true }
     }
     if (changed) ring(filmId)
+    true   // an in-memory store cannot fail to write
   }
 
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = {
@@ -211,7 +227,7 @@ class MongoSlotsRepository(
    *  for why a single unbounded cursor is not safe here. An INCOMPLETE scan returns an
    *  empty map so a caller can treat it as "unknown" rather than "the film has no slots"
    *  and prune on it. */
-  def findAll(): Map[String, Map[String, SourceData]] = coll match {
+  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) = coll match {
     case Some(c) =>
       val buf = Vector.newBuilder[StoredSlotDto]
       val complete = KeysetScan.scan[StoredSlotDto](
@@ -228,16 +244,17 @@ class MongoSlotsRepository(
           logger.warn(s"SlotsRepository.findAll keyset scan failed after retries: " +
             s"${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
       )(batch => buf ++= batch)
-      if (complete) buf.result().groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap
-      else Map.empty
-    case None => Map.empty
+      if (complete) (buf.result().groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, true)
+      else (Map.empty, false)
+    // No collection wired at all — not a failure, there is simply nothing to read.
+    case None => (Map.empty, true)
   }
 
   /** ONE ordered bulk round-trip: every slot's upsert plus a single `deleteMany` of
    *  whatever `slots` no longer names — the same shape as
    *  [[MongoScreeningsRepository.replaceFilm]], including the `$nin: []` edge case where
    *  an EMPTY `slots` clears every slot of the film. */
-  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Unit = coll.foreach { c =>
+  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean = coll.fold(false) { c =>
     Try {
       val now     = Instant.now()
       val upserts = slots.toSeq.map { case (k, sd) =>
@@ -249,7 +266,11 @@ class MongoSlotsRepository(
       if (result.getDeletedCount > 0)
         RemovalAudit.screeningsCleared("movie_slots.replaceFilm", filmId, result.getDeletedCount.toInt,
           whole = slots.isEmpty, reason = "stale-slot-prune")
-    }.recover { case e => logger.warn(s"SlotsRepository.replaceFilm($filmId) failed: ${e.getMessage}") }
+      true
+    }.recover { case e =>
+      logger.warn(s"SlotsRepository.replaceFilm($filmId) failed: ${e.getMessage}")
+      false
+    }.getOrElse(false)
   }
 
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = coll.foreach { c =>

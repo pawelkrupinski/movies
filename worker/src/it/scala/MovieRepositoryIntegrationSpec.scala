@@ -667,6 +667,51 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
   }
 
+  // The payoff: once the slots have landed, `movies` stops carrying sourceData at all,
+  // so the document the change stream re-decodes on every write is a fraction of its
+  // former size. Guarded by the rule that the embedded copy is only dropped after the
+  // slot write is CONFIRMED — the one way this migration could lose a film.
+  it should "drop the embedded sourceData once the slots have landed, and keep it when they have not" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, SlotsRepository, StoredMovieRecord}
+    import models.SourceData
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-slotretire__"
+    val year   = Some(1909)
+    val id     = StoredMovieRecord.idFor(title, year)
+    // Sees the RAW movies doc — no stitching — so it can prove what is actually stored.
+    val raw    = new MongoMovieRepository(Some(db))
+    try {
+      val slot = SourceData(title = Some("SR"), posterUrl = Some("https://poster/retire.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 3, 19, 0), Some("https://book/rt-1"))))
+      val base = MovieRecord(imdbId = Some("tt0000017"), data = Map[Source, SourceData](Multikino -> slot))
+
+      // slots land → movies carries NO sourceData, and the film still reads complete
+      val split = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+      split.upsert(title, year, base)
+      raw.findById(id).map(_.record.data.size)                                         shouldBe Some(0)
+      slots.findForFilm(id)                                                            should not be empty
+      split.findById(id).flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe
+        Some("https://poster/retire.png")
+
+      // a slots store that FAILS to write must leave the embedded copy in place, or the
+      // film would have no cinemas in either collection
+      val failing = new SlotsRepository {
+        def findForFilm(filmId: String)  = Map.empty[String, SourceData]
+        def findAllChecked()             = (Map.empty[String, Map[String, SourceData]], true)
+        def replaceFilm(filmId: String, s: Map[String, SourceData]) = false   // write failed
+        def upsertSlot(filmId: String, k: String, s: SourceData)    = ()
+        def deleteSlot(filmId: String, k: String)                   = ()
+        def deleteFilm(filmId: String)                              = ()
+      }
+      val degraded = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(failing))
+      degraded.upsert(title, year, base)
+      raw.findById(id).map(_.record.data.size) shouldBe Some(1)   // embedded copy retained
+    } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.

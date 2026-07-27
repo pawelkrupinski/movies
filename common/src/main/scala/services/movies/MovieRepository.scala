@@ -409,12 +409,16 @@ class MongoMovieRepository(
    *  map (separate small docs) is held. */
   private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit): Boolean = {
     val allScr = screenings.map(_.findAll()).getOrElse(Map.empty)
-    // Unlike screenings, an EMPTY slots load is NOT treated as a failed scan: under the
-    // lazy migration most films legitimately have no rows here yet, and while `movies`
-    // still carries the embedded copy every such film stitches from that instead. See
-    // `stitchSlots` for what has to change when the embedded copy is retired.
-    val allSlots = slots.map(_.findAll()).getOrElse(Map.empty)
-    if (screenings.isDefined && allScr.isEmpty) {
+    // An EMPTY slots load is fine — under the lazy migration plenty of films legitimately
+    // have no rows yet, and a genuinely slot-less row (a sentinel) is normal too. A FAILED
+    // load is not: every migrated film would look like it has no cinemas, and a pruning
+    // caller acting on that would wipe them. Only the repository can tell those apart, so
+    // it reports completeness rather than leaving us to infer it from emptiness.
+    val (allSlots, slotsComplete) = slots.map(_.findAllChecked()).getOrElse((Map.empty[String, Map[String, SourceData]], true))
+    if (!slotsComplete) {
+      logger.warn("MovieRepository.scanStitched: movie_slots load failed — treating scan as incomplete so a reconcile can't prune films whose slots moved out of `movies`.")
+      false
+    } else if (screenings.isDefined && allScr.isEmpty) {
       logger.warn("MovieRepository.scanStitched: screenings load empty — treating scan as incomplete so a reconcile can't prune on stripped rows.")
       false
     } else scanByKeyset(batch =>
@@ -579,17 +583,23 @@ class MongoMovieRepository(
     // A whole-record write can carry slots STRIPPED for the cache; `showtimesOf` would
     // drop them and `replaceFilm` would DELETE their screenings. Re-stitch first.
     val restitched = screenings.fold(e.data)(ScreeningsRepository.reStitch(_, id, e.data))
-    // Under the read-split, `movies` carries no showtimes (they go to `screenings`).
-    val dto  = StoredMovieDto.fromDomain(id, e.copy(data = stripFor(restitched)), Instant.now())
+    // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
+    // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
+    // either place — the one way this migration can lose data — and a slots failure is
+    // deliberately swallowed so it can't break the movies write, so the write itself has
+    // to report back. A film whose slot write failed simply keeps the embedded map and is
+    // retried on the next scrape.
+    val slotsLanded = slots.exists(_.replaceFilm(id, SlotsRepository.slotsOf(restitched)))
+    // Under the read-split `movies` carries no showtimes (they go to `screenings`), and
+    // once the slots have landed it carries no sourceData either — which is what shrinks
+    // the document the change stream re-decodes on every write.
+    val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else stripFor(restitched)
+    val dto  = StoredMovieDto.fromDomain(id, e.copy(data = dataForMovies), Instant.now())
     val opts = new ReplaceOptions().upsert(true)
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
       // Write this film's cinema showtimes to `screenings` (their authority).
       screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(restitched)))
-      // Mirror the slots into `movie_slots` (dual write; `movies` is still the read
-      // authority). From `restitched` for the same reason `screenings` is: a
-      // cache-stripped slot must not be mistaken for a slot that has gone away.
-      slots.foreach(_.replaceFilm(id, SlotsRepository.slotsOf(restitched)))
       ()
     }.recover {
       case exception: Throwable if isClusterClosed(exception) =>
