@@ -2,6 +2,7 @@ package services.cinemas.pl
 
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
 import play.api.libs.json._
+import services.cinemas.common.AgeRating
 import services.movies.TrailerEmbed
 
 import java.time.LocalDateTime
@@ -88,9 +89,22 @@ object MultikinoParser {
                       .flatMap(_.value.headOption).flatMap(_.asOpt[String])
                       .filter(_.nonEmpty)
                       .flatMap(u => TrailerEmbed.youTubeId(u)
-                        .map(id => s"https://www.youtube.com/watch?v=$id"))
+                        .map(id => s"https://www.youtube.com/watch?v=$id")),
+      // Same Vue-platform `certificate = {name, description, src}` shape the UK
+      // reads (see VueCinemasPlatformParser) — `name` is the Polish rating label
+      // ("15+", "18+"). AgeRating drops the "TBC" placeholder and blanks; the
+      // Polish "no restriction" marker "BO" (bez ograniczeń, also "b.o.") means
+      // no age limit rather than a rating to badge, so drop it here before
+      // normalising — verbatim otherwise, so "15+"/"18+" stay as spelled.
+      ageRating   = AgeRating.normalize(
+                      (film \ "certificate" \ "name").asOpt[String]
+                        .filterNot(name => NoRestriction.contains(name.trim.toLowerCase)))
     )
   }
+
+  /** Polish "no age restriction" markers — a marker, not a rating, so they map
+   *  to `None`. "BO" = "bez ograniczeń"; "b.o." is the abbreviated spelling. */
+  private val NoRestriction = Set("bo", "b.o.")
 
   private def parseSession(session: JsValue): Option[Showtime] =
     (session \ "startTime").asOpt[String].map { startTime =>

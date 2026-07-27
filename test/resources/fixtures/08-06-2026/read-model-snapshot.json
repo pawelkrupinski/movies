@@ -909,7 +909,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Babystar-2025-10094428"
     },
     "weightedRating" : 6.05,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "backroomsbezwyjscia|2026",
     "title" : "Backrooms. Bez wyjścia",
@@ -1725,7 +1726,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=BTS+World+Tour+%E2%80%98Arirang%E2%80%99+in+Busan%3A+Live+Viewing"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "btsworldtourariranginbusanlive|2026",
     "title" : "Bts world tour 'arirang' in busan: live",
@@ -1758,7 +1760,8 @@
       "lublin" : "Ta historyczna podróż trwa nadal. Po rekordowym otwarciu światowej trasy koncertowej „ARIRANG” królowie popu, BTS, powracają na kultowy stadion Busan Asiad Main Stadium, by dać monumentalny koncert w ojczyźnie, transmitowany na żywo do kin na całym świecie. To wzruszający powrót do miejsca, w którym trzy lata i osiem miesięcy temu po raz ostatni wystąpili w pełnym składzie przed wstąpieniem do wojska. Trasa obejmująca 34 miasta i 85 koncertów ustanawia nowy rekord jako najobszerniejsza trasa koncertowa w historii koreańskich artystów. Co najważniejsze, występ odbędzie się 13 czerwca – w rocznicę debiutu BTS – co nadaje mu głęboki wymiar symboliczny, ponieważ grupa świętuje swoje dziedzictwo i przyszłość. Trasa zatytułowana ARIRANG towarzyszy piątemu pełnoprawnemu albumowi BTS, łącząc tożsamość grupy poprzez szczerą introspekcję oraz uniwersalne motywy tęsknoty i głębokiej miłości. Dzięki charakterystycznej, spektakularnej scenografii z widokiem 360 stopni, koncert zapewnia wciągające doświadczenie, które przenosi widza w sam środek uroczystości. Nie przegap tego przełomowego wydarzenia kulturalnego. Podziel się elektryzującą energią sceny BTS na dużym ekranie na całym świecie w tym wyjątkowym dniu, 13 czerwca, z Busan. Pamiętaj, że w niektórych regionach transmisje są zaplanowane później, aby dostosować się do lokalnych stref czasowych.",
       "rybnik" : "Ta historyczna podróż trwa nadal. Po rekordowym otwarciu światowej trasy koncertowej „ARIRANG” królowie popu, BTS, powracają na kultowy stadion Busan Asiad Main Stadium, by dać monumentalny koncert w ojczyźnie, transmitowany na żywo do kin na całym świecie. To wzruszający powrót do miejsca, w którym trzy lata i osiem miesięcy temu po raz ostatni wystąpili w pełnym składzie przed wstąpieniem do wojska. Trasa obejmująca 34 miasta i 85 koncertów ustanawia nowy rekord jako najobszerniejsza trasa koncertowa w historii koreańskich artystów. Co najważniejsze, występ odbędzie się 13 czerwca – w rocznicę debiutu BTS – co nadaje mu głęboki wymiar symboliczny, ponieważ grupa świętuje swoje dziedzictwo i przyszłość. Trasa zatytułowana ARIRANG towarzyszy piątemu pełnoprawnemu albumowi BTS, łącząc tożsamość grupy poprzez szczerą introspekcję oraz uniwersalne motywy tęsknoty i głębokiej miłości. Dzięki charakterystycznej, spektakularnej scenografii z widokiem 360 stopni, koncert zapewnia wciągające doświadczenie, które przenosi widza w sam środek uroczystości. Nie przegap tego przełomowego wydarzenia kulturalnego. Podziel się elektryzującą energią sceny BTS na dużym ekranie na całym świecie w tym wyjątkowym dniu, 13 czerwca, z Busan. Pamiętaj, że w niektórych regionach transmisje są zaplanowane później, aby dostosować się do lokalnych stref czasowych.",
       "wroclaw" : "Ta historyczna podróż trwa nadal. Po rekordowym otwarciu światowej trasy koncertowej „ARIRANG” królowie popu, BTS, powracają na kultowy stadion Busan Asiad Main Stadium, by dać monumentalny koncert w ojczyźnie, transmitowany na żywo do kin na całym świecie. To wzruszający powrót do miejsca, w którym trzy lata i osiem miesięcy temu po raz ostatni wystąpili w pełnym składzie przed wstąpieniem do wojska. Trasa obejmująca 34 miasta i 85 koncertów ustanawia nowy rekord jako najobszerniejsza trasa koncertowa w historii koreańskich artystów. Co najważniejsze, występ odbędzie się 13 czerwca – w rocznicę debiutu BTS – co nadaje mu głęboki wymiar symboliczny, ponieważ grupa świętuje swoje dziedzictwo i przyszłość. Trasa zatytułowana ARIRANG towarzyszy piątemu pełnoprawnemu albumowi BTS, łącząc tożsamość grupy poprzez szczerą introspekcję oraz uniwersalne motywy tęsknoty i głębokiej miłości. Dzięki charakterystycznej, spektakularnej scenografii z widokiem 360 stopni, koncert zapewnia wciągające doświadczenie, które przenosi widza w sam środek uroczystości. Nie przegap tego przełomowego wydarzenia kulturalnego. Podziel się elektryzującą energią sceny BTS na dużym ekranie na całym świecie w tym wyjątkowym dniu, 13 czerwca, z Busan. Pamiętaj, że w niektórych regionach transmisje są zaplanowane później, aby dostosować się do lokalnych stref czasowych."
-    }
+    },
+    "ageRating" : "12"
   }, {
     "_id" : "bum|2024",
     "title" : "Bum!",
@@ -2065,7 +2068,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Ch%C5%82opiec+na+kra%C5%84cach+%C5%9Bwiata-2025-10095535"
     },
     "weightedRating" : 6.9,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "chlopiecwrozowychspodniach|2024",
     "title" : "Chłopiec w różowych spodniach",
@@ -2485,7 +2489,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Cudowny+Ch%C5%82opak%3A+Bia%C5%82y+Ptak"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "10"
   }, {
     "_id" : "cyklkultowaklasykazawiescieczerwonelatarnie|1991",
     "title" : "Cykl \"Kultowa klasyka\" - Zawieście czerwone latarnie",
@@ -2884,7 +2889,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/David-2025-10082378"
     },
     "weightedRating" : 7.3999999999999995,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "delicatessen|1991",
     "title" : "Delicatessen",
@@ -2935,7 +2941,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Diabe%C5%82+ubiera+si%C4%99+u+Prady+2-2026-10083431"
     },
     "weightedRating" : 6.7250000000000005,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "dkfczlowiekwzagrozeniupociagi|2024",
     "title" : "DKF Człowiek w Zagrożeniu: Pociągi",
@@ -3558,7 +3565,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Drama-2026-10063474"
     },
     "weightedRating" : 6.950000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "15"
   }, {
     "_id" : "dreamlandkrainasnow|2025",
     "title" : "Dreamland Kraina Snów",
@@ -3878,7 +3886,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Drzewo+magii-2026-10104409"
     },
     "weightedRating" : 7.099999999999999,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "8"
   }, {
     "_id" : "duzhestrashnekino6ua|2026",
     "title" : "Duzhe strashne kino 6 - UA",
@@ -3899,7 +3908,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Duzhe+strashne+kino+6+-+UA"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "dylematypasmofilmowkrotkometrazowych|2026",
     "title" : "Dylematy – pasmo filmów krótkometrażowych",
@@ -4143,7 +4153,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Dzie%C5%84+objawienia-2026-10060793"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "dziewczynapietaszek|1940",
     "title" : "Dziewczyna Piętaszek",
@@ -5009,7 +5020,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Fleak.+Futrzak+i+ja-2025-849883"
     },
     "weightedRating" : 5.9,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "flow|2024",
     "title" : "Flow",
@@ -5543,7 +5555,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Hopni%C4%99ci-2026-10058575"
     },
     "weightedRating" : 7.800000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "inaczejnizwraju|1984",
     "title" : "Inaczej niż w raju",
@@ -5606,7 +5619,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Jak+Bert+to+wszystko+ogarnie"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "jakdalekostadjakbliskoponiedzialkizkonwickimpisarzscenarzystarezyser|1972",
     "title" : "Jak daleko stąd, jak blisko | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser",
@@ -8107,7 +8121,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Kurozaj%C4%85c+i+%C5%9Awi%C4%85tynia+%C5%9Awistaka"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "ladiesnightnarodzinygwiazdy|2018",
     "title" : "Ladies Night - Narodziny gwiazdy",
@@ -8730,7 +8745,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Mandalorets%27+i+Grogu+-+UA"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "mandalorianigrogudubbingkinodlaseniora|",
     "title" : "Mandalorian i grogu (dubbing) - kino dla seniora",
@@ -8771,7 +8787,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/The+Mandalorian+and+Grogu-2026-10046150"
     },
     "weightedRating" : 6.566666666666666,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "mandarynka|2015",
     "title" : "Mandarynka",
@@ -8907,7 +8924,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Maryja.+Matka+Papie%C5%BCa-2026-10115054"
     },
     "weightedRating" : 6.4,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "matadorfiestakinahiszpanskiegoalmodovarbanderas|1986",
     "title" : "Matador – fiesta kina hiszpańskiego: almodóvar/ banderas",
@@ -9226,7 +9244,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Michael-2026-10008180"
     },
     "weightedRating" : 6.199999999999999,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "mickeyinickykinodlaseniora|",
     "title" : "Mickey i nicky – kino dla seniora",
@@ -9680,7 +9699,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Mira"
     },
     "weightedRating" : 7.4,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "9"
   }, {
     "_id" : "misbamseisekretmorza|2025",
     "title" : "Miś Bamse i sekret morza",
@@ -9988,7 +10008,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Moon%3A+Panda+i+ja"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "mortalkombat2|2026",
     "title" : "Mortal Kombat II",
@@ -10013,7 +10034,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Mortal+Kombat+II-2026-10007434"
     },
     "weightedRating" : 6.025,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "15"
   }, {
     "_id" : "mowmijimpa|2026",
     "title" : "Mów mi Jimpa",
@@ -10097,7 +10119,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Mufasa%3A+Kr%C3%B3l+Lew-2024-10000630"
     },
     "weightedRating" : 6.175000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "mulhollanddrive|2001",
     "title" : "Mulholland Drive",
@@ -10278,7 +10301,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Najlepsze+urodziny+Kr%C3%B3lika+Karola-2021-10019611"
     },
     "weightedRating" : 5.15,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "4"
   }, {
     "_id" : "najlepszeznajgorszychsarniezniwoczylipokusastatuetkowegoszlaku|2006",
     "title" : "Najlepsze z najgorszych: Sarnie żniwo, czyli pokusa statuetkowego szlaku",
@@ -10772,7 +10796,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+3.+Ale+kosmos%21-2026-10116428"
     },
     "weightedRating" : 6.1,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "5"
   }, {
     "_id" : "niesamowiteprzygodyskarpetek|2025",
     "title" : "Niesamowite przygody skarpetek",
@@ -10797,7 +10822,8 @@
     "weightedRating" : 5.15,
     "synopsisByCity" : {
       "gliwice" : "Nie każda zgubiona skarpetka wpada pod łóżko lub kanapę. Niektóre prowadzą zaskakujące życie – podróżują w czasie, trafiają na biegun północny albo nawet do Hollywood. Ich niesamowite przygody są pełne wrażeń i dobrego humoru! Czy kiedykolwiek zastanawialiście się, co się dzieje z tymi wszystkimi zaginionymi skarpetkami? Każdy z nas miał to doświadczenie – wrzucamy parę skarpetek do szuflady, szafy czy też do kosza na pranie i później wyjmujemy… tylko jedną skarpetkę! Gdzie one znikają? Może skrycie marzą o bardziej fascynującym życiu niż służenie naszym stopom? Być może chciałyby zostać gwiazdami filmowymi lub politykami? A może, wpadając w kąt naszego pokoju, przenoszą się w czasie do prehistorii? Gdziekolwiek trafiają, ich przygody na pewno są przepełnione dobrą zabawą! „Niesamowite przygody skarpetek” to animowany serial dla dzieci na podstawie bestsellerowych książek Justyny Bednarek i Daniela de Latour. Każdy odcinek przedstawia perypetie różnych skarpetek w historiach pełnych abstrakcyjnego humoru i nietypowych przygód. W tym secie dowiecie się: 1. O skarpetce, która została mysią mamą 2. O skarpetce, która rozśmieszyła córkę Sułtana 3. O skarpetce, która trafiła do prehistorii 4. O skarpetce, która znalazła wiosnę 5. O skarpetce, która została duchem 6. O skarpetce, która została prezydentką"
-    }
+    },
+    "ageRating" : "5"
   }, {
     "_id" : "niespodziankipasmofilmowkrotkometrazowych|2026",
     "title" : "Niespodzianki – pasmo filmów krótkometrażówych",
@@ -10931,7 +10957,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Niezwyk%C5%82y+ch%C5%82opak-2025-10067696"
     },
     "weightedRating" : 6.1,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "10"
   }, {
     "_id" : "nino|2025",
     "title" : "Nino",
@@ -11193,7 +11220,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Nowy+Pami%C4%99tnik+Pauliny+P."
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "10"
   }, {
     "_id" : "nozwwodzie|1962",
     "title" : "Nóż w wodzie",
@@ -11335,7 +11363,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Obsesja-2025-10094250"
     },
     "weightedRating" : 7.9,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "15"
   }, {
     "_id" : "oczymsobieniemowimy|2026",
     "title" : "O czym sobie nie mówimy",
@@ -12178,7 +12207,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Pan+Ryba-2026-10089553"
     },
     "weightedRating" : 5.5,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "pantadeusz1999spotkaniezmichalemzebrowskimprzedfilmem|",
     "title" : "Pan Tadeusz (1999) + spotkanie z Michałem Żebrowskim przed filmem",
@@ -12280,7 +12310,8 @@
       "wroclaw" : "Młodzi ludzie są świadkami wypadku na autostradzie. Nie przypuszczają, że wraz z nimi z miejsca tragedii wymknie się coś jeszcze. Wkrótce odkryją, że nie są już sami: towarzyszy im demoniczna obecność, byt niespokojny, który nie ustanie, dopóki ich nie dopadnie. Od tej chwili niewinna podróż kamperem przeistacza się w powolny, nieuchronny koszmar.",
       "lodz" : "Młodzi ludzie są świadkami wypadku na autostradzie. Nie przypuszczają, że wraz z nimi z miejsca tragedii wymknie się coś jeszcze. Wkrótce odkryją, że nie są już sami: towarzyszy im demoniczna obecność, byt niespokojny, który nie ustanie, dopóki ich nie dopadnie. Od tej chwili niewinna podróż kamperem przeistacza się w powolny, nieuchronny koszmar.",
       "czestochowa" : "Młodzi ludzie są świadkami wypadku na autostradzie. Nie przypuszczają, że wraz z nimi z miejsca tragedii wymknie się coś jeszcze. Wkrótce odkryją, że nie są już sami: towarzyszy im demoniczna obecność, byt niespokojny, który nie ustanie, dopóki ich nie dopadnie. Od tej chwili niewinna podróż kamperem przeistacza się w powolny, nieuchronny koszmar."
-    }
+    },
+    "ageRating" : "15"
   }, {
     "_id" : "paterson|2016",
     "title" : "Paterson",
@@ -12463,7 +12494,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Piep*zy%C4%87+Mickiewicza+3-2026-10088045"
     },
     "weightedRating" : 5.55,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "pieskiepopoludnie|",
     "title" : "Pieskie popołudnie",
@@ -13485,7 +13517,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Pojedynek"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "15"
   }, {
     "_id" : "pokazprzedpremierowydzienobjawienia|2026",
     "title" : "Pokaz przedpremierowy: Dzień objawienia",
@@ -13901,7 +13934,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Pos%C5%82ani-2026-10121693"
     },
     "weightedRating" : 6.4,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "posluchajcochcecipowiedziec|2024",
     "title" : "Posłuchaj, co chcę ci powiedzieć",
@@ -14210,7 +14244,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Projekt+Hail+Mary-2026-10047841"
     },
     "weightedRating" : 8.325000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "15"
   }, {
     "_id" : "projekttatopokazfilmurambopierwszakrewnadzienojca2026|",
     "title" : "Projekt TATO: pokaz filmu Rambo: Pierwsza krew na Dzień Ojca 2026",
@@ -15691,7 +15726,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Sprawiedliwo%C5%9B%C4%87+owiec-2026-10110027"
     },
     "weightedRating" : 7.8999999999999995,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "10"
   }, {
     "_id" : "stanprzymnie|1986",
     "title" : "Stań przy mnie",
@@ -15892,7 +15928,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Straszny+film-2026-10084281"
     },
     "weightedRating" : 4.466666666666667,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "15"
   }, {
     "_id" : "strefainteresow|2023",
     "title" : "Strefa interesów",
@@ -16025,7 +16062,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Super+Mario+Galaxy+Film-2026-10093937"
     },
     "weightedRating" : 5.05,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "supermariogalaxymovie|",
     "title" : "Super mario galaxy movie",
@@ -16844,7 +16882,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Te%C5%9Bciowie+3"
     },
     "weightedRating" : 6.9,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "15"
   }, {
     "_id" : "tesciowieusmiechoporanku|",
     "title" : "Teściowie | uśmiech o poranku",
@@ -16930,7 +16969,8 @@
       "wroclaw" : "Internetowy hit „The Amazing Digital Circus” doczekał się długo wyczekiwanej finałowej odsłony w formie pełnometrażowego filmu kinowego! Ten „Ostatni akt” łączy w sobie 8. odcinek z zupełnie nowym, godzinnym 9. odcinkiem, który fani będą mogli obejrzeć jako pierwsi na świecie. Po odejściu Caine'a i zamknięciu cyrku, aktorom pozostają jedynie błędy i traumy z przeszłości, które dotrzymują im towarzystwa. Gdy perspektywa wieczności zbliża się wielkimi krokami, odkrywają prawdę o Digital Circus i jego historii. Czy pogodzą się z tym, co odkryją, czy też dokonają… innego wyboru? Poza tym, prawdopodobnie w pewnym momencie ktoś powie coś zabawnego, bo to zakończenie nie może być aż tak przygnębiające, prawda?",
       "lodz" : "Internetowy hit „The Amazing Digital Circus” doczekał się długo wyczekiwanej finałowej odsłony w formie pełnometrażowego filmu kinowego! Ten „Ostatni akt” łączy w sobie 8. odcinek z zupełnie nowym, godzinnym 9. odcinkiem, który fani będą mogli obejrzeć jako pierwsi na świecie. Po odejściu Caine'a i zamknięciu cyrku, aktorom pozostają jedynie błędy i traumy z przeszłości, które dotrzymują im towarzystwa. Gdy perspektywa wieczności zbliża się wielkimi krokami, odkrywają prawdę o Digital Circus i jego historii. Czy pogodzą się z tym, co odkryją, czy też dokonają… innego wyboru? Poza tym, prawdopodobnie w pewnym momencie ktoś powie coś zabawnego, bo to zakończenie nie może być aż tak przygnębiające, prawda?",
       "czestochowa" : "Internetowy hit „The Amazing Digital Circus” doczekał się długo wyczekiwanej finałowej odsłony w formie pełnometrażowego filmu kinowego! Ten „Ostatni akt” łączy w sobie 8. odcinek z zupełnie nowym, godzinnym 9. odcinkiem, który fani będą mogli obejrzeć jako pierwsi na świecie. Po odejściu Caine'a i zamknięciu cyrku, aktorom pozostają jedynie błędy i traumy z przeszłości, które dotrzymują im towarzystwa. Gdy perspektywa wieczności zbliża się wielkimi krokami, odkrywają prawdę o Digital Circus i jego historii. Czy pogodzą się z tym, co odkryją, czy też dokonają… innego wyboru? Poza tym, prawdopodobnie w pewnym momencie ktoś powie coś zabawnego, bo to zakończenie nie może być aż tak przygnębiające, prawda?"
-    }
+    },
+    "ageRating" : "12"
   }, {
     "_id" : "thebirthdaypartybuntwniebie|2023",
     "title" : "The Birthday Party: Bunt w niebie",
@@ -17029,7 +17069,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Tom+i+Jerry%3A+Przygoda+w+muzeum-2025-10086986"
     },
     "weightedRating" : 2.8,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "toniemojfilm|2024",
     "title" : "To nie mój film",
@@ -18287,7 +18328,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Willow+i+tajemniczy+las"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "6"
   }, {
     "_id" : "windanaszafotorgascenseurpourlechafaud17edycjaprzegladunowegokinafrancuskiego|1958",
     "title" : "Windą na szafot (org. Ascenseur pour l'échafaud) 17. edycja Przeglądu Nowego Kina Francuskiego",
@@ -18390,7 +18432,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/W%C5%82adcy+Wszech%C5%9Bwiata-2026-176583"
     },
     "weightedRating" : 6.8,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "wojnaosztuke|2025",
     "title" : "Wojna o sztukę",
@@ -19383,7 +19426,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Za+du%C5%BCy+na+bajki+3-2026-10066465"
     },
     "weightedRating" : 5.25,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "10"
   }, {
     "_id" : "zapiskismiertelnika|",
     "title" : "Zapiski śmiertelnika",
@@ -19620,7 +19664,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Zawodowcy-2026-10051619"
     },
     "weightedRating" : 5.6,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "13"
   }, {
     "_id" : "zebymleczne|2026",
     "title" : "Zęby mleczne",

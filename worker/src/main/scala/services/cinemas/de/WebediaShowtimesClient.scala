@@ -3,7 +3,7 @@ package services.cinemas.de
 import tools.HttpFetch
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
+import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.util.Try
@@ -147,6 +147,7 @@ class WebediaShowtimesClient(
         originalTitle  = raw.originalTitle.filter(_ != raw.title)
       ),
       cinema      = cinema,
+      ageRating   = raw.ageRating,
       posterUrl   = raw.posterUrl,
       filmUrl     = None,   // no stable public film-page URL is derivable from the JSON
       synopsis    = raw.synopsis,
@@ -200,6 +201,7 @@ object WebediaShowtimesClient {
     director:       Seq[String],
     posterUrl:      Option[String],
     synopsis:       Option[String],
+    ageRating:      Option[String],
     showtimes:      Seq[Showtime]
   )
 
@@ -231,6 +233,13 @@ object WebediaShowtimesClient {
       // flatten it, keeping the paragraph breaks, or the tags render as visible text.
       synopsis       = (movie \ "synopsisFull").asOpt[String]
         .map(tools.TextNormalization.stripHtmlKeepingParagraphs).filter(_.nonEmpty),
+      // German FSK certificate off the first `releases[]` element that carries one
+      // (a film's earliest releases can lack a certificate while a later one has
+      // it). Kept verbatim — e.g. "FSK 6" — because the "FSK" prefix IS the
+      // recognisable German label; `normalize` only drops blank/placeholder codes.
+      ageRating      = AgeRating.normalize(
+        (movie \ "releases").asOpt[Seq[JsValue]].getOrElse(Nil)
+          .flatMap(r => (r \ "certificate" \ "code").asOpt[String]).headOption),
       showtimes      = parseShowtimes(js \ "showtimes")
     )
   }

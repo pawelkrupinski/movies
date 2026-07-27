@@ -171,7 +171,8 @@ class HeliosClient(
     slug:          Option[String],
     countries:     Seq[String],
     genres:        Seq[String],
-    trailerUrl:    Option[String]
+    trailerUrl:    Option[String],
+    ageRating:     Option[String]
   )
 
   private def parseApiMovieBody(body: String): Option[ApiMovieInfo] =
@@ -207,10 +208,28 @@ class HeliosClient(
                             .flatMap(_.value.headOption).flatMap(_.asOpt[String])
                             .filter(_.nonEmpty)
                             .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
-                              .map(id => s"https://www.youtube.com/watch?v=$id"))
+                              .map(id => s"https://www.youtube.com/watch?v=$id")),
+          ageRating     = parseAgeRating(js)
         )
       }
     }
+
+  // Helios ships `ratings: [{cinemaGroupId, symbol, value, description}]` — the
+  // Polish age certificate. `symbol`/`value` are the clean short form ("15",
+  // "7", "0"); `description` is the verbose "od lat 15" / "b.o.". Take the FIRST
+  // rating's `symbol` (falling back to `value`) as the clean numeric label. The
+  // "no restriction" marker — symbol "0" or description "b.o." (bez ograniczeń) —
+  // is filtered to `None` here before `AgeRating.normalize`, which only strips
+  // blanks/placeholders and can't know Helios's local convention. Empty
+  // `ratings` → `None`.
+  private def parseAgeRating(js: JsValue): Option[String] =
+    (js \ "ratings").asOpt[JsArray].flatMap(_.value.headOption).flatMap { rating =>
+      val symbol      = (rating \ "symbol").asOpt[String].filter(_.nonEmpty)
+                          .orElse((rating \ "value").asOpt[String].filter(_.nonEmpty))
+      val description = (rating \ "description").asOpt[String].map(_.trim)
+      val noRestriction = symbol.contains("0") || description.exists(_.equalsIgnoreCase("b.o."))
+      if (noRestriction) None else symbol
+    }.flatMap(services.cinemas.common.AgeRating.normalize)
 
   // Detail bodies (movie metadata, screen names) go through `detailFetch` so the
   // shared chain cache dedups them across locations and passes.
@@ -254,6 +273,7 @@ class HeliosClient(
         cast       = restInfo.map(_.cast).getOrElse(Seq.empty),
         director   = restInfo.map(_.director).getOrElse(Seq.empty),
         trailerUrl = restInfo.flatMap(_.trailerUrl).orElse(cm.trailerUrl),
+        ageRating  = restInfo.flatMap(_.ageRating).orElse(cm.ageRating),
         showtimes  = cm.showtimes.map(enrichShowtime(_, rest))
       )
     }
@@ -286,6 +306,7 @@ class HeliosClient(
             cast       = info.cast,
             director   = info.director,
             trailerUrl = info.trailerUrl,
+            ageRating  = info.ageRating,
             showtimes  = screenings.toSeq.flatMap(restShowtime(_, rest)).distinct.sortBy(_.dateTime)
           ))
       }
@@ -354,6 +375,7 @@ class HeliosClient(
           cast       = if (primary.cast.nonEmpty) primary.cast else other.cast,
           director   = if (primary.director.nonEmpty) primary.director else other.director,
           trailerUrl = primary.trailerUrl.orElse(other.trailerUrl),
+          ageRating  = primary.ageRating.orElse(other.ageRating),
           showtimes  = (primary.showtimes ++ other.showtimes).distinct.sortBy(_.dateTime)
         )
       }

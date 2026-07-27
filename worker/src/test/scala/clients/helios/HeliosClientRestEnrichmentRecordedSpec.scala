@@ -62,6 +62,28 @@ class HeliosClientRestEnrichmentRecordedSpec extends AnyFlatSpec with Matchers {
     byTitle.get("Projekt Hail Mary").flatMap(_.movie.originalTitle) shouldBe Some("Project Hail Mary")
   }
 
+  // Helios ships the Polish age certificate as `ratings: [{symbol, value,
+  // description}]` on the movie DETAIL body — `symbol`/`value` the clean short
+  // form ("15", "7", "0"), `description` the verbose "od lat 15" / "b.o.". The
+  // client lifts the first rating's clean symbol onto `CinemaMovie.ageRating`.
+
+  it should "lift the clean age-rating symbol from the REST movie details" in {
+    val byTitle = fetch().map(m => m.movie.title -> m).toMap
+    // "Projekt Hail Mary" carries ratings[].symbol == "15" in its fixture.
+    byTitle.get("Projekt Hail Mary").flatMap(_.ageRating) shouldBe Some("15")
+  }
+
+  it should "map the no-restriction marker (symbol 0 / b.o.) to no age rating" in {
+    val byTitle = fetch().map(m => m.movie.title -> m).toMap
+    // "Pucio" carries ratings[].symbol == "0" / description == "b.o." — bez
+    // ograniczeń — which must collapse to None rather than showing "0".
+    val pucio = byTitle.get("Pucio")
+    pucio should not be empty
+    pucio.flatMap(_.ageRating) shouldBe None
+    // No row anywhere should surface the raw no-restriction sentinel.
+    fetch().flatMap(_.ageRating) should not contain "0"
+  }
+
   it should "extract Polish genre labels from REST movie details, title-cased" in {
     val byTitle = fetch().map(m => m.movie.title -> m).toMap
     val kurozajac = byTitle.get("Kurozając i Świątynia Świstaka")

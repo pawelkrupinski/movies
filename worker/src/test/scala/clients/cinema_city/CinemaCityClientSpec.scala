@@ -206,6 +206,30 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
     detailFor("Mortal Kombat II").flatMap(_.trailerUrl) shouldBe None
   }
 
+  // ─── age rating (from filmDetails.ageRestrictionName) ─────────────────────
+  //
+  // CC's `var filmDetails = {…}` JSON carries `ageRestrictionName`: "na" for an
+  // unrestricted film, or "<n>-plus" ("12-plus", "5-plus") for a rated one. The
+  // parser drops "na" (unrated stays unbadged) and strips the "-plus" suffix to
+  // the bare numeric ("12"). The Kinepolis/Plaza detail fixtures the rest of this
+  // spec replays are all "na", so the positive case reads a real non-na film page
+  // from the 08-06-2026 corpus (zawodowcy = 12-plus, skarpetek = 5-plus).
+
+  private val agedClient = new CinemaCityClient(new clients.tools.FakeHttpFetch("08-06-2026"))
+
+  it should "strip the '-plus' suffix off ageRestrictionName to a bare numeric rating" in {
+    agedClient.fetchFilmDetail("https://www.cinema-city.pl/filmy/zawodowcy/8118s2r")
+      .flatMap(_.ageRating) shouldBe Some("12")
+    agedClient.fetchFilmDetail("https://www.cinema-city.pl/filmy/niesamowite-przygody-skarpetek/7251d2r")
+      .flatMap(_.ageRating) shouldBe Some("5")
+  }
+
+  it should "treat ageRestrictionName 'na' as no age rating" in {
+    // Both replayed Kinepolis detail fixtures carry ageRestrictionName="na".
+    detailFor("Diabeł ubiera się u Prady 2").flatMap(_.ageRating) shouldBe None
+    detailFor("Kurozając i świątynia świstaka").flatMap(_.ageRating) shouldBe None
+  }
+
   // ─── Kinepolis: poster URLs ───────────────────────────────────────────────
 
   it should "return correct poster URL for every film" in {

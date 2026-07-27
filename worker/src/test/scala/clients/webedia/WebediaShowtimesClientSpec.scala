@@ -15,8 +15,9 @@ import scala.io.Source
  *  `www.filmstarts.de/_/showtimes/theater-<id>/d-<date>/p-<n>/` endpoint parses:
  *  one film per `results[]`, title + `originalTitle` (Moana → a TMDB hint),
  *  production year, "1 Std. 56 Min."-style runtime, director off `credits`, the
- *  `startsAt` local `LocalDateTime`s, a `3D` format token read from `tags`, and
- *  cleaned relay booking links. */
+ *  German FSK certificate off `releases[].certificate.code`, the `startsAt` local
+ *  `LocalDateTime`s, a `3D` format token read from `tags`, and cleaned relay
+ *  booking links. */
 class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def fixture: String = {
@@ -49,6 +50,22 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     vaiana.year.value shouldBe 2026
     vaiana.runtimeMinutes.value shouldBe 116         // "1 Std. 56 Min."
     vaiana.director should contain("Thomas Kail")
+  }
+
+  it should "carry the German FSK certificate verbatim off the first release that has one" in {
+    // Single-release films: the code is right there.
+    page.films.find(_.title == "Vaiana").value.ageRating.value shouldBe "FSK 6"
+    page.films.find(_.title == "Supergirl").value.ageRating.value shouldBe "FSK 12"
+    // "Der Super Mario Galaxy Film" ships releases=[{no certificate}, {FSK 6}] —
+    // the first release lacks a certificate, so we take the next one that has it.
+    page.films.find(_.title == "Der Super Mario Galaxy Film").value.ageRating.value shouldBe "FSK 6"
+    // Every film in this capture is FSK-classified; the "FSK" prefix is kept.
+    all(page.films.flatMap(_.ageRating)) should startWith("FSK ")
+  }
+
+  it should "leave ageRating None when no release carries a certificate" in {
+    val noCert = """{"results":[{"movie":{"internalId":42,"title":"Ungeprüft","releases":[{"name":"kino"}]}}]}"""
+    WebediaShowtimesClient.parsePage(noCert).films.head.ageRating shouldBe None
   }
 
   it should "flatten version buckets into local-time showtimes with format tokens" in {

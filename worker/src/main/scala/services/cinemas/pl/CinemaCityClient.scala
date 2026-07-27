@@ -3,7 +3,7 @@ package services.cinemas.pl
 import tools.HttpFetch
 import play.api.libs.json._
 import models.{Cinema, CinemaMovie, Movie, Showtime}
-import services.cinemas.common.FilmDetail
+import services.cinemas.common.{AgeRating, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
@@ -59,7 +59,8 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
         director   = detail.director,
         countries  = detail.countries,
         genres     = detail.genres,
-        trailerUrl = detail.trailerUrl
+        trailerUrl = detail.trailerUrl,
+        ageRating  = detail.ageRating
       )
     }
 
@@ -174,11 +175,12 @@ object CinemaCityClient {
     director:   Seq[String],
     countries:  Seq[String],
     genres:     Seq[String],
-    trailerUrl: Option[String]
+    trailerUrl: Option[String],
+    ageRating:  Option[String]
   )
 
   object Details {
-    val empty: Details = Details(None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None)
+    val empty: Details = Details(None, Seq.empty, Seq.empty, Seq.empty, Seq.empty, None, None)
   }
 
   // Kinepolis' `auditorium` field returns names truncated to 5 chars without a
@@ -243,7 +245,14 @@ object CinemaCityClient {
     val trailerUrl = videoLink.orElse(mediaVideo)
       .flatMap(u => services.movies.TrailerEmbed.youTubeId(u)
         .map(id => s"https://www.youtube.com/watch?v=$id"))
-    Details(synopsis = synopsis, cast = cast, director = director, countries = countries, genres = genres, trailerUrl = trailerUrl)
+    // Polish age rating from `filmDetails.ageRestrictionName`: "na" means no
+    // restriction (drop it — an unrated film stays unbadged), while "12-plus"
+    // etc. carry the numeric core with a "-plus" suffix we strip to the bare
+    // "12" before the shared `AgeRating.normalize` trims/placeholder-filters.
+    val ageRating = js.flatMap(j => (j \ "ageRestrictionName").asOpt[String])
+      .filterNot(_.equalsIgnoreCase("na"))
+      .flatMap(name => AgeRating.normalize(name.stripSuffix("-plus")))
+    Details(synopsis = synopsis, cast = cast, director = director, countries = countries, genres = genres, trailerUrl = trailerUrl, ageRating = ageRating)
   }
 
   /** Cinema City's `categoriesAttributes` tokens → the Polish labels TMDB
