@@ -77,6 +77,20 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     nineFifteen.format should not contain "Saver"
   }
 
+  it should "resolve the film's synopsis, cast, director and genres from relatedData" in {
+    val mario = movies.find(_.movie.title == "The Super Mario Galaxy Movie").value
+    mario.synopsis.value should include("Super Mario")
+    // castAndCrew ids joined against relatedData: directors carry role "Director".
+    mario.director should contain("Aaron Horvath")
+    // Names are stitched from given/middle/family with blank parts dropped, so
+    // no stray double-spaces survive the space-padded source fields.
+    mario.director should not contain "Aaron  Horvath"
+    mario.cast should contain("Charlie Day")
+    mario.cast should contain("Jack Black")
+    // genreIds resolved against relatedData.genres[].name.text.
+    mario.movie.genres should contain("Animation")
+  }
+
   it should "NOT trust the API release year (re-releases are dated to the original year)" in {
     // We never read `film.releaseDate` — EmbeddedYear / TMDB backfill the year.
     movies.flatMap(_.movie.releaseYear) shouldBe empty

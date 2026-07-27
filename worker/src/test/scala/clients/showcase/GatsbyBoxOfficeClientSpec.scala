@@ -115,6 +115,15 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
       List("2D", "IMAX")
   }
 
+  it should "badge the spoken language of a foreign-language screening" in {
+    // "Jana Nayagan" is a Tamil release shown subtitled — the session carries
+    // Localization.Language.Tamil alongside Showtime.Accessibility.Subtitled, so
+    // the token reads "TAMIL" (what it's in) after "SUB" (how you read it).
+    film("Jana Nayagan").showtimes
+      .find(_.dateTime == LocalDateTime.of(2026, 7, 27, 20, 50)).value
+      .format shouldBe List("2D", "SUB", "TAMIL")
+  }
+
   // ── the horizon: ONE call, no per-day fan-out ─────────────────────────────
 
   "the 210-day horizon" should "be spanned by a single schedule request" in {

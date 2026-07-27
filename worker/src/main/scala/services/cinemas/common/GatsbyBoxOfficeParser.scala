@@ -143,7 +143,8 @@ object GatsbyBoxOfficeParser {
    *
    *  Dimension first (so a row reads "2D"/"3D" the way Multikino's and Cinema
    *  City's do), then the vendor-shared premium-format tokens, then the
-   *  language version. A plain digital screening yields just "2D".
+   *  language version, then the spoken-language marker. A plain digital
+   *  screening yields just "2D".
    *
    *  Language lives here rather than in [[WebediaBoxOffice]] because the token
    *  is per-market: Germany wants OmU/OV, the UK wants SUB/DUB.
@@ -170,7 +171,17 @@ object GatsbyBoxOfficeParser {
       else if (has("accessibility.dubbed") || has("localization.dubbed")) List("DUB")
       else Nil
 
-    (dimension ++ WebediaBoxOffice.premiumTokens(tags) ++ language).distinct
+    // Foreign-language screenings carry the film's spoken language as a dotted
+    // `Localization.Language.<Lang>` tag (Tamil, Telugu, Punjabi, Japanese …).
+    // Surface the bare language name, uppercased to match every token above, so
+    // a Tamil showing reads apart from the English default. This is WHAT the
+    // dialogue is in, distinct from the SUB/DUB above (HOW it reaches you).
+    val sourceLanguage = tags.collect {
+      case tag if tag.toLowerCase.startsWith("localization.language.") =>
+        tag.substring(tag.lastIndexOf('.') + 1).toUpperCase
+    }
+
+    (dimension ++ WebediaBoxOffice.premiumTokens(tags) ++ language ++ sourceLanguage).distinct
   }
 
   private def toCinemaMovie(

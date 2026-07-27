@@ -111,13 +111,24 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val odyssey = day.find(_.movie.title == "The Odyssey (2026)").value
     odyssey.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 11, 20)).value.format shouldBe
       List("IMAX", "2D")
-    day.flatMap(_.showtimes).flatMap(_.format).toSet shouldBe Set("2D", "3D", "IMAX", "4DX", "NAP")
+    // TAMIL / TELUGU join the set off the day's foreign-language screenings.
+    day.flatMap(_.showtimes).flatMap(_.format).toSet shouldBe
+      Set("2D", "3D", "IMAX", "4DX", "NAP", "TAMIL", "TELUGU")
   }
 
   it should "mark a subtitled screening" in {
     val odyssey = day.find(_.movie.title == "The Odyssey (2026)").value
     odyssey.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 18, 10)).value.format shouldBe
       List("2D", "NAP")
+  }
+
+  it should "badge the spoken language of a foreign-language screening" in {
+    // "Jana Nayagan (Tamil)" is subtitled Tamil — its attributeIds carry 'tamil'
+    // alongside 'subbed', so the badge reads "TAMIL" (what it's in) after the
+    // "NAP" subtitle marker, with the language ids never leaking as genres.
+    val janaNayagan = day.find(_.movie.title == "Jana Nayagan (Tamil)").value
+    janaNayagan.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 10, 40)).value.format shouldBe
+      List("2D", "NAP", "TAMIL")
   }
 
   // ── fetch(): planChunks → fetchChunk → reduceChunks, in process ───────────

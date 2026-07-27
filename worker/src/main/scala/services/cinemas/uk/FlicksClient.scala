@@ -32,9 +32,11 @@ import scala.util.Try
  *        variant screenings.
  *
  * One instance serves one venue — its Flicks `cinemaSlug` + the [[Cinema]] it
- * feeds, mirroring [[FilmwebShowtimesClient]]. One AJAX call per day; the film's
- * numeric Flicks id (`content_id`) rides along as an `externalId`. TMDB enriches
- * synopsis/cast/year downstream.
+ * feeds, mirroring [[FilmwebShowtimesClient]]. One AJAX call per day. Each
+ * session button carries a `data-eventjson` blob from which we lift the film's
+ * numeric Flicks id (`content_id`, an `externalId`), its `content_cast`
+ * (comma-separated) and `content_genre` (comma-separated); the film card also
+ * carries a `/trailer/` link. TMDB still enriches synopsis/year downstream.
  */
 class FlicksClient(
   http:       HttpFetch,
@@ -133,15 +135,16 @@ class FlicksClient(
       else {
         val head = group.head
         Some(CinemaMovie(
-          movie       = Movie(title = head.title, runtimeMinutes = head.runtimeMinutes),
+          movie       = Movie(title = head.title, runtimeMinutes = head.runtimeMinutes, genres = head.genres),
           cinema      = cinema,
           posterUrl   = head.posterUrl,
           filmUrl     = Some(s"$BaseUrl/movie/${head.slug}/"),
           synopsis    = None,
-          cast        = Seq.empty,
+          cast        = head.cast,
           director    = head.director.toSeq,
           showtimes   = showtimes,
-          externalIds = head.contentId.map("flicks" -> _).toMap
+          externalIds = head.contentId.map("flicks" -> _).toMap,
+          trailerUrl  = head.trailerUrl
         ))
       }
     }
@@ -193,7 +196,18 @@ object FlicksClient {
   private val DigitsPat  = """(\d+)""".r
   private val OptTimePat = """(\d{1,2}):(\d{2}):\d{2}""".r
   private val AmPmPat    = """(?i)(\d{1,2}):(\d{2})\s*(am|pm)""".r
-  private val ContentId  = """"content_id"\s*:\s*"(\d+)"""".r
+  // Keys lifted from a session button's `data-eventjson` blob (jsoup returns it
+  // entity-decoded, so we match against real quotes). `content_cast` and
+  // `content_genre` are comma-separated lists; `content_awards`/`content_rating`
+  // have no model home and are ignored.
+  private val ContentId    = """"content_id"\s*:\s*"(\d+)"""".r
+  private val ContentCast  = """"content_cast"\s*:\s*"([^"]*)"""".r
+  private val ContentGenre = """"content_genre"\s*:\s*"([^"]*)"""".r
+
+  /** Split one of the comma-separated `data-eventjson` list values into trimmed,
+   *  non-blank entries (`"a, b ,"` → `List("a", "b")`). */
+  private def commaList(value: String): List[String] =
+    value.split(",").iterator.map(_.trim).filter(_.nonEmpty).toList
 
   /** One session slot off the fragment: the film's slug (stable id) + title +
    *  metadata (constant across a film's sessions) and the single screening. */
@@ -204,6 +218,9 @@ object FlicksClient {
     posterUrl:      Option[String],
     director:       Option[String],
     contentId:      Option[String],
+    cast:           Seq[String],
+    genres:         Seq[String],
+    trailerUrl:     Option[String],
     dateTime:       LocalDateTime,
     booking:        Option[String],
     format:         List[String]
@@ -222,8 +239,16 @@ object FlicksClient {
             .map(_.text).flatMap(s => DigitsPat.findFirstIn(s)).map(_.toInt).filter(_ > 0)
           val poster    = Option(article.selectFirst(".cinema-times__image img")).map(_.attr("src")).filter(_.nonEmpty)
           val director  = Option(article.selectFirst(".cinema__director span")).map(_.text.trim).filter(_.nonEmpty)
-          val contentId = article.select("a.times-calendar-times__button").asScala.iterator
-            .flatMap(b => ContentId.findFirstMatchIn(b.attr("data-eventjson")).map(_.group(1))).nextOption()
+          // Every session button in a film's card carries the same `data-eventjson`
+          // blob; read the first non-empty one once and lift id/cast/genre from it.
+          val eventJson = article.select("a.times-calendar-times__button").asScala.iterator
+            .map(_.attr("data-eventjson")).find(_.nonEmpty).getOrElse("")
+          val contentId = ContentId.findFirstMatchIn(eventJson).map(_.group(1))
+          val cast      = ContentCast.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil)
+          val genres    = ContentGenre.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil)
+          val trailer   = Option(article.selectFirst(""".cinema__trailer-wrap a[href^="/trailer/"]"""))
+            .map(_.attr("href")).filter(_.nonEmpty)
+            .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
 
           article.select("li.times-calendar-times__el").asScala.toSeq.flatMap { li =>
             val button = Option(li.selectFirst("a.times-calendar-times__button"))
@@ -231,7 +256,7 @@ object FlicksClient {
               val booking = button.map(_.attr("href")).filter(_.nonEmpty)
               val label   = Option(li.selectFirst("span.times-calendar-times__el__label span"))
                 .map(_.text.trim).filter(_.nonEmpty)
-              RawFlicksSlot(sl, t, runtime, poster, director, contentId,
+              RawFlicksSlot(sl, t, runtime, poster, director, contentId, cast, genres, trailer,
                 LocalDateTime.of(date, time), booking, label.toList)
             }
           }

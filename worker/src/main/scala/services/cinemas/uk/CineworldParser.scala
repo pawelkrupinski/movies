@@ -138,7 +138,8 @@ object CineworldParser {
 
   /** The screen-feature tokens we badge a showtime with, in the app-wide
    *  vocabulary `FormatTags` fixes (2D / 3D / IMAX / 4DX / NAP …) so Cineworld
-   *  agrees with every other source. Deliberately narrow: `laser`,
+   *  agrees with every other source, plus the film's spoken language on the
+   *  foreign-language screenings that carry one. Deliberately narrow: `laser`,
    *  `recliner`, `reserved-selected` and `audio-described` ride the majority of
    *  screenings here (audio description alone is on ~75% of them), so badging
    *  them would be noise rather than a distinguishing mark. */
@@ -148,7 +149,7 @@ object CineworldParser {
       PremiumFormats.collectFirst { case (id, token) if set.contains(id) => token },
       if (set.contains("3d")) Some("3D") else if (set.contains("2d")) Some("2D") else None,
       if (set.contains("subbed")) Some("NAP") else None
-    ).flatten
+    ).flatten ++ attrs.flatMap(LanguageLabel.get).distinct
   }
 
   /** Premium presentation formats, most distinctive first — a 4DX screening is
@@ -156,6 +157,18 @@ object CineworldParser {
    *  the dimension token follows it separately. */
   private val PremiumFormats: List[(String, String)] =
     List("imax" -> "IMAX", "4dx" -> "4DX", "screenx" -> "SCREENX")
+
+  /** Spoken-language attribute ids Cineworld tags a foreign-language screening
+   *  with → the token we badge it with, so a Tamil or Telugu showing reads
+   *  apart from the English default. Whitelisted like [[GenreLabel]] for the
+   *  same reason: `attributeIds` has no namespace to separate a language from a
+   *  rating, genre or seating id, so an unrecognised token must drop rather
+   *  than leak a non-language attribute onto the badge. */
+  private val LanguageLabel: Map[String, String] = Map(
+    "hindi"  -> "HINDI",
+    "tamil"  -> "TAMIL",
+    "telugu" -> "TELUGU"
+  )
 
   /** Cineworld's `auditorium` is the bare screen number ("12"); the venue signs
    *  and the booking flow both call it "Screen 12". Anything non-numeric (a

@@ -58,12 +58,45 @@ object OdeonParser {
       (relatedData \ block).asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
         .flatMap(v => (v \ "id").asOpt[String].map(_ -> v)).toMap
 
-    val films      = relatedById("films")
-    val screens    = relatedById("screens")
-    val attributes = relatedById("attributes")
+    val films       = relatedById("films")
+    val screens     = relatedById("screens")
+    val attributes  = relatedById("attributes")
+    val castAndCrew = relatedById("castAndCrew")
+    val genres      = relatedById("genres")
 
     def attributeName(id: String): Option[String] =
       attributes.get(id).flatMap(a => (a \ "name" \ "text").asOpt[String])
+
+    // `relatedData.castAndCrew[].name` splits the person across
+    // given/middle/family (some parts blank or space-padded); join the
+    // non-blank, trimmed parts into one display name.
+    def personName(memberId: String): Option[String] =
+      castAndCrew.get(memberId).map { p =>
+        Seq("givenName", "middleName", "familyName")
+          .flatMap(k => (p \ "name" \ k).asOpt[String]).map(_.trim).filter(_.nonEmpty)
+          .mkString(" ")
+      }.filter(_.nonEmpty)
+
+    // A film's `castAndCrew[]` are `{castAndCrewMemberId, roles[]}` refs;
+    // resolve each id against `relatedData.castAndCrew` and keep those whose
+    // roles include `role`, preserving the source order.
+    def peopleWithRole(film: JsValue, role: String): Seq[String] =
+      (film \ "castAndCrew").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
+        .filter(c => (c \ "roles").asOpt[Seq[String]].getOrElse(Seq.empty).contains(role))
+        .flatMap(c => (c \ "castAndCrewMemberId").asOpt[String])
+        .flatMap(personName).toSeq
+
+    // A film's `genreIds[]` resolved against `relatedData.genres[].name.text`.
+    def filmGenres(film: JsValue): Seq[String] =
+      (film \ "genreIds").asOpt[Seq[String]].getOrElse(Seq.empty)
+        .flatMap(genres.get)
+        .flatMap(g => (g \ "name" \ "text").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+
+    // Prefer the full synopsis; fall back to the short one.
+    def filmSynopsis(film: JsValue): Option[String] =
+      (film \ "synopsis" \ "text").asOpt[String]
+        .orElse((film \ "shortSynopsis" \ "text").asOpt[String])
+        .map(_.trim).filter(_.nonEmpty)
 
     val showtimes = (root \ "showtimes").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
 
@@ -113,18 +146,25 @@ object OdeonParser {
         .distinctBy(s => (s.dateTime, s.bookingUrl, s.room, s.format))
         .sortBy(_.dateTime)
       if (shows.isEmpty) None
-      else Some(CinemaMovie(
-        movie       = Movie(title = head.title, runtimeMinutes = head.runtime),
-        cinema      = cinema,
-        posterUrl   = None,
-        filmUrl     = head.filmUrl,
-        synopsis    = None,
-        cast        = Seq.empty,
-        director    = Seq.empty,
-        showtimes   = shows,
-        externalIds = Map("odeon" -> head.filmId),
-        trailerUrl  = head.trailer
-      ))
+      else {
+        val film = films.get(head.filmId)
+        Some(CinemaMovie(
+          movie       = Movie(
+            title          = head.title,
+            runtimeMinutes = head.runtime,
+            genres         = film.map(filmGenres).getOrElse(Seq.empty)
+          ),
+          cinema      = cinema,
+          posterUrl   = None,
+          filmUrl     = head.filmUrl,
+          synopsis    = film.flatMap(filmSynopsis),
+          cast        = film.map(peopleWithRole(_, "Actor")).getOrElse(Seq.empty),
+          director    = film.map(peopleWithRole(_, "Director")).getOrElse(Seq.empty),
+          showtimes   = shows,
+          externalIds = Map("odeon" -> head.filmId),
+          trailerUrl  = head.trailer
+        ))
+      }
     }
   }
 

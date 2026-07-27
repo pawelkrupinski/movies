@@ -14,9 +14,10 @@ import scala.io.Source
  *  2026-07-11) through the pure `parseDay`. Pins that the AJAX
  *  `/cinema/sessions/<slug>/<date>/` fragment parses: one film per
  *  `article.cinema-times__article`, its `/movie/<slug>` id + title + runtime +
- *  director + Flicks `content_id`, the session times (24h `data-optlabel` and
- *  the 12h fallback) as local `LocalDateTime`s, the cinema-chain booking
- *  deep-links, and the premium/format labels (IMAX…). */
+ *  director + Flicks `content_id` + `content_cast`/`content_genre` (lifted from
+ *  the button's `data-eventjson`) + the `/trailer/` link, the session times (24h
+ *  `data-optlabel` and the 12h fallback) as local `LocalDateTime`s, the
+ *  cinema-chain booking deep-links, and the premium/format labels (IMAX…). */
 class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val date = LocalDate.of(2026, 7, 11)
@@ -39,6 +40,22 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     minions.runtimeMinutes.value shouldBe 90           // "90 mins"
     minions.director.value shouldBe "Pierre Coffin"
     minions.contentId.value shouldBe "25079"
+  }
+
+  it should "lift the cast + genres from the button's data-eventjson blob" in {
+    val minions = slots.find(_.slug == "minions-3").value
+    // content_cast is a 9-name comma list, split + trimmed.
+    minions.cast should have size 9
+    minions.cast should contain("christoph waltz")
+    // content_genre "kids & family" — jsoup decodes the &amp;, one entry, no comma.
+    minions.genres shouldBe Seq("kids & family")
+    // A multi-genre film confirms the comma split.
+    slots.find(_.slug == "supergirl-woman-of-tomorrow").value.genres.size should be > 1
+  }
+
+  it should "surface the film's absolutised /trailer/ link" in {
+    val minions = slots.find(_.slug == "minions-3").value
+    minions.trailerUrl.value shouldBe s"${FlicksClient.BaseUrl}/trailer/minions-3/48677/"
   }
 
   it should "parse session times to local date-times with the chain booking link" in {
