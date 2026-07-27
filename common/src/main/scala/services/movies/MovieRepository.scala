@@ -112,14 +112,20 @@ trait MovieRepository {
   def findAllForListing(): Seq[StoredMovieRecord] =
     findAll().map(MovieRepository.withoutShowtimes)
 
-  /** Stream every persisted record through `f`, one row at a time, without
-   *  materialising the whole collection on the heap. The default loads via
-   *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository`
-   *  overrides it to page the cursor by `_id`, so the worker's read-model
-   *  reconcile never holds the full ~13 MB `movies` corpus (incl. multi-MB raw
-   *  `sourceData` rows) in memory at once. Ordering and the concurrent-write
-   *  no-duplicate/no-skip guarantee match [[findAll]] (keyset pagination on the
-   *  unique, immutable `_id` index).
+  /** Stream every persisted record through `f`, one row at a time. The default loads via
+   *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository` overrides
+   *  it to page the `movies` cursor by `_id`. Ordering and the concurrent-write
+   *  no-duplicate/no-skip guarantee match [[findAll]] (keyset pagination on the unique,
+   *  immutable `_id` index).
+   *
+   *  Only the `movies` pages are bounded. Under the split, the bulk of what used to be a
+   *  `movies` row now lives in the side collections, and `scanStitched` loads BOTH whole
+   *  (`screenings` + `movie_slots`) before it starts paging — measured on prod PL
+   *  2026-07-27, `movies` fell to 0.4 MB while the two side collections hold 7.5 MB each.
+   *  So this bounds the cursor, not the scan's peak heap; the earlier "never holds the
+   *  full corpus at once" claim stopped being true when the slots moved out. Splitting
+   *  the side loads into per-page lookups would trade that ~15 MB for one round-trip per
+   *  page, which is a real change and not one to smuggle into a doc comment.
    *
    *  Returns `true` when the WHOLE corpus was scanned, `false` when a read failed
    *  mid-scan and the iteration stopped early (rows delivered so far still reached
@@ -304,29 +310,38 @@ class MongoMovieRepository(
       data = ScreeningsRepository.stitch(withSlots.record.data, scr)))
   }
 
-  /** Swap a row's slots for the ones stored in `movie_slots`, when it has any.
+  /** Union a row's stored `movie_slots` rows with whatever its `movies` document still
+   *  embeds — see [[SlotsRepository.merge]] for why a union rather than "stored wins",
+   *  and for the prod measurement that forced it.
    *
-   *  EMPTY means "fall back to the embedded map", NOT "this film has no slots" — and
-   *  that asymmetry is deliberate. The migration is lazy: a film only gains rows here
-   *  when it is next written, so early on most films legitimately have none, and a
-   *  failed read is indistinguishable from an un-migrated film. While `movies` still
-   *  carries the embedded copy both cases resolve identically and safely.
-   *
-   *  That stops being true the moment the embedded copy is retired: then an empty read
-   *  would serve a film with no cinemas at all, so THAT phase must add the same
-   *  "empty ⇒ treat as incomplete" guard `scanStitched` applies to screenings, and must
-   *  not land until a backfill has covered the corpus. */
+   *  An EMPTY `storedSlots` still means "fall back to the embedded map", but it no longer
+   *  has to carry the weight of distinguishing a genuinely slot-less film from a failed
+   *  read: [[SlotsRepository.findForFilmChecked]] answers that directly, and callers
+   *  refuse to build a record at all when the read failed. */
   private def stitchSlots(r: StoredMovieRecord, storedSlots: Map[String, SourceData]): StoredMovieRecord =
     if (storedSlots.isEmpty) r
-    else r.copy(record = r.record.copy(data = SlotsRepository.stitch(storedSlots)))
+    else r.copy(record = r.record.copy(data = SlotsRepository.merge(r.record.data, storedSlots)))
 
   /** Decode one stored row and re-inject its slots from `movie_slots` and its showtimes
    *  from `screenings` — the per-film read-stitch shared by [[findById]] and the
-   *  change-stream fan-out. Slots first: the showtime stitch keys off the slot map. */
-  private def decodeStitched(dto: StoredMovieDto): StoredMovieRecord =
-    stitchRow(StoredMovieDto.toDomain(dto),
-      screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty),
-      slots.map(_.findForFilm(dto._id)).getOrElse(Map.empty))
+   *  change-stream fan-out. Slots first: the showtime stitch keys off the slot map.
+   *
+   *  `None` when the SLOT read failed. A migrated film's `movies` document holds no
+   *  cinemas of its own, so a failed slot read would decode to a film with none at all —
+   *  and this is precisely the record the change-stream fan-out hands the read-model
+   *  projector, whose `diffScreenings` then deletes every `web_screening` the film has.
+   *  Declining to produce a record costs one missed re-projection, which the film's next
+   *  write repeats; producing an empty one empties a live film off the site. */
+  private def decodeStitched(dto: StoredMovieDto): Option[StoredMovieRecord] = {
+    val (storedSlots, slotsRead) = slots.map(_.findForFilmChecked(dto._id))
+      .getOrElse((Map.empty[String, SourceData], true))
+    if (!slotsRead) {
+      logger.warn(s"MovieRepository: skipping ${dto._id} — its movie_slots read failed, and serving the row " +
+        "without them would present a live film as having no cinemas.")
+      None
+    } else Some(stitchRow(StoredMovieDto.toDomain(dto),
+      screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty), storedSlots))
+  }
 
   // Lazy so subclasses that override every wire method (e.g.
   // `InMemoryMovieRepository` in tests) never trigger a Mongo connection
@@ -476,7 +491,7 @@ class MongoMovieRepository(
     case Some(c) =>
       Try {
         Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
-          .map(decodeStitched)
+          .flatMap(decodeStitched)
       }.recover {
         case exception: Throwable =>
           logger.warn(s"MovieRepository.findById($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
@@ -511,7 +526,15 @@ class MongoMovieRepository(
         // straight out of an aggregation, so a migrated film — whose slots have moved to
         // `movie_slots` — would otherwise list with NO cinemas at all. Showtimes stay
         // stripped: slots are stored without them, which is exactly what this path wants.
-        val allSlots = slots.map(_.findAllChecked()._1).getOrElse(Map.empty[String, Map[String, SourceData]])
+        // A failed slots load can't be recovered from here (the listing has no "partial"
+        // shape to return), but it MUST NOT pass silently: every migrated film would
+        // render cinema-less and the page would read as a corpus-wide outage. This one is
+        // the dev /debug table, so it degrades loudly instead of refusing to render.
+        val (allSlots, slotsRead) = slots.map(_.findAllChecked())
+          .getOrElse((Map.empty[String, Map[String, SourceData]], true))
+        if (!slotsRead)
+          logger.warn("MovieRepository.findAllForListing: movie_slots load failed — every migrated film will " +
+            "list with no cinemas. The listing is stale, not the corpus.")
         rows.map(dto => stitchSlots(StoredMovieDto.toDomain(dto), allSlots.getOrElse(dto._id, Map.empty)))
       }.recover {
         case exception: Throwable =>
@@ -523,7 +546,8 @@ class MongoMovieRepository(
 
   /** Stream every persisted record through `f`, one keyset page at a time (via
    *  [[scanByKeyset]]), so the caller (the read-model reconcile) never holds more than
-   *  one batch — `findAllBatchSize` rows — of the ~13 MB corpus at once. See
+   *  one batch — `findAllBatchSize` rows — of `movies` at once. The side collections
+   *  `scanStitched` preloads are NOT bounded that way; see the trait doc. See
    *  [[scanByKeyset]] for the exactly-once + bounded guarantees and the per-batch retry
    *  (the 2026-06-29 served-films flap, where a batch blew its 60s budget under worker
    *  CPU throttle). Returns `true` only when the scan ran to the last page; `false` when
@@ -852,7 +876,9 @@ class MongoMovieRepository(
               fullDocument match {
                 // The movies doc has no showtimes — stitch them back from `screenings`
                 // (via decodeStitched) before fanning out, so consumers get a full row.
-                case Some(dto) => movieChanges.dispatchUpsert(decodeStitched(dto))
+                // A failed slot read yields None and we fan out NOTHING: an empty-cinema
+                // record here is what the projector turns into a screenings wipe.
+                case Some(dto) => decodeStitched(dto).foreach(movieChanges.dispatchUpsert)
                 // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill).
                 // Surface its _id so consumers can drop the row.
                 case None      => deletedId.foreach(movieChanges.dispatchDelete)

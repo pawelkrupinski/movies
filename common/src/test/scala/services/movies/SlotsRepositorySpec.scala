@@ -106,6 +106,46 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
     r.findAll().keySet shouldBe Set("f2")
   }
 
+  // The read rule for the transitional state where a film has BOTH an embedded map and
+  // stored rows, and the two disagree. Prod PL 2026-07-27: 81 of the 82 films holding
+  // both had diverging key sets, 14 of them with a cinema the stored rows did not carry
+  // — those 14 were being served with fewer cinemas than the corpus held.
+  "merge" should "keep a cinema the embedded map has and the stored rows do not" in {
+    // Two DISTINCT cinemas, so neither supersedes the other and the union is visible.
+    val other: Source = Cinema.all(1)
+    val merged = SlotsRepository.merge(Map(slotA -> sd("embedded-only")), Map(other.displayName -> sd("B")))
+    merged.keySet shouldBe Set(slotA, other)
+    merged(slotA).title shouldBe Some("embedded-only")
+  }
+
+  it should "let a stored row win a key both carry — it is the fresher write path" in {
+    SlotsRepository.merge(Map(slotA -> sd("stale")), Map(slotA.displayName -> sd("fresh")))(slotA).title shouldBe
+      Some("fresh")
+  }
+
+  it should "collapse to exactly the stored rows once the embedded copy is retired" in {
+    SlotsRepository.merge(Map.empty, Map(slotA.displayName -> sd("A"))) shouldBe
+      SlotsRepository.stitch(Map(slotA.displayName -> sd("A")))
+  }
+
+  it should "leave an un-migrated film's embedded map alone, showtimes included" in {
+    val withTimes = sd("A").copy(showtimes = Seq(Showtime(LocalDateTime.of(2026, 7, 27, 20, 0), None)))
+    SlotsRepository.merge(Map(slotA -> withTimes), Map.empty) shouldBe Map(slotA -> withTimes)
+  }
+
+  it should "still drop a bare-cinema slot superseded by a per-title one across the union" in {
+    // embedded carries the legacy bare-Cinema key, stored carries the per-title one that
+    // supersedes it — the union must not resurrect the twin `stitch` exists to drop.
+    SlotsRepository.merge(Map(slotA -> sd("bare")), Map(slotB.displayName -> sd("per-title"))).keySet shouldBe
+      Set(slotB)
+  }
+
+  // The per-film read's failure signal. An in-memory read cannot fail, so this pins the
+  // contract's shape; MovieRepositoryIntegrationSpec pins the Mongo side's `false`.
+  "findForFilmChecked" should "report a genuinely slot-less film as a COMPLETE empty read" in {
+    repo.findForFilmChecked("nobody") shouldBe (Map.empty, true)
+  }
+
   "the composite id" should "survive a filmId that itself contains the separator" in {
     val weird = s"film${SlotKeyed.IdSep}odd"
     SlotKeyed.filmIdOf(SlotKeyed.idOf(weird, "slot")) shouldBe "film"   // documents the known limit

@@ -26,6 +26,12 @@ object SlotKeyed {
    *  carries no post-image, recovers which film changed. */
   def filmIdOf(compositeId: String): String = compositeId.takeWhile(_ != IdSep)
 
+  /** Every stored row of one film, in either side collection — the per-film read/delete
+   *  predicate. Shared so a caller that reaches a side collection directly (the staging
+   *  fold, which deletes `movies` rows inside its own transaction and must take their
+   *  slots + screenings with them) keys on the same field as the repositories do. */
+  def filmFilter(filmId: String): Bson = Filters.eq("filmId", filmId)
+
   /** The stored rows of `filmId` that `keep` no longer names — the DELETE half of a
    *  `replaceFilm`, as ONE server-side predicate rather than a read plus a delete per
    *  stale slot.

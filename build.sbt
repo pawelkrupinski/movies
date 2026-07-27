@@ -123,7 +123,10 @@ lazy val testkit = (project in file("testkit"))
 // MovieCache to Mongo; the web app's cache picks those writes up via the Mongo
 // change stream, so the two processes share no in-process state.
 lazy val worker = (project in file("worker"))
-  .dependsOn(common, testkit % "test,fixtures->compile")
+  // `it` too: the integration specs need the same shared doubles the unit specs do —
+  // notably the repositories that report an INCOMPLETE read, which is the only way to
+  // test that a caller honours a completeness flag.
+  .dependsOn(common, testkit % "test,it,fixtures->compile")
   .enablePlugins(JavaAppPackaging)
   .configs(IntegrationTest, Fixtures)
   .settings(

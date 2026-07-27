@@ -42,8 +42,24 @@ import scala.util.Try
  */
 trait SlotsRepository {
 
-  /** Every slot of one film: `slotKey -> slot`. Empty when the film has none. */
-  def findForFilm(filmId: String): Map[String, SourceData]
+  /** Every slot of one film: `slotKey -> slot`. Empty when the film has none.
+   *
+   *  Conflates "no rows" with "the read failed" — use [[findForFilmChecked]] anywhere
+   *  the difference decides what gets SERVED. */
+  def findForFilm(filmId: String): Map[String, SourceData] = findForFilmChecked(filmId)._1
+
+  /** One film's slots, PLUS whether the read actually succeeded — the per-film twin of
+   *  [[findAllChecked]], and load-bearing for the same reason one level down.
+   *
+   *  The corpus scan learned this lesson first; the per-film path needed it just as
+   *  much. Once a film's embedded copy is retired, `movies` carries no cinemas at all,
+   *  so a failed slot read decodes to a film with NO cinemas — and the change-stream
+   *  fan-out hands that straight to the read-model projector, whose `diffScreenings`
+   *  deletes every `web_screening` the film has. A transient Mongo blip would empty a
+   *  live film's showtimes off the site. Only the repository can tell "genuinely
+   *  slot-less" from "could not read", so it says so instead of leaving the caller to
+   *  infer it from the emptiness. A store that cannot fail always reports true. */
+  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean)
 
   /** Every film's slots: `filmId -> (slotKey -> slot)`. For the boot hydrate /
    *  `findAll` read-stitch. */
@@ -88,43 +104,34 @@ trait SlotsRepository {
 
 /**
  * In-memory `SlotsRepository` for tests and Mongo-less dev. Mirrors
- * [[MongoSlotsRepository]]'s semantics: idempotent per-slot writes, per-film
- * grouping, and a ring that fires only on a real change.
+ * [[MongoSlotsRepository]]'s semantics: idempotent per-slot writes and per-film
+ * grouping. Neither store holds business logic — both just store — so neither can
+ * drift from the other's understanding of the rules.
  */
 class InMemorySlotsRepository extends SlotsRepository {
 
   private val byFilm = scala.collection.mutable.Map.empty[String, Map[String, SourceData]]
   private val lock   = new Object
 
-  def findForFilm(filmId: String): Map[String, SourceData] =
-    lock.synchronized(byFilm.getOrElse(filmId, Map.empty))
+  // An in-memory read cannot fail, so the checked form always reports complete.
+  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) =
+    (lock.synchronized(byFilm.getOrElse(filmId, Map.empty)), true)
 
   def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) =
     (lock.synchronized(byFilm.toMap), true)   // an in-memory scan cannot fail
 
   def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean = {
-    val changed = lock.synchronized {
-      if (byFilm.getOrElse(filmId, Map.empty) == slots) false
-      else { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots); true }
-    }
+    lock.synchronized { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots) }
     true   // an in-memory store cannot fail to write
   }
 
-  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = {
-    val changed = lock.synchronized {
-      val cur = byFilm.getOrElse(filmId, Map.empty)
-      if (cur.get(slotKey).contains(slot)) false
-      else { byFilm.update(filmId, cur + (slotKey -> slot)); true }
-    }
-    ()
+  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = lock.synchronized {
+    byFilm.update(filmId, byFilm.getOrElse(filmId, Map.empty) + (slotKey -> slot))
   }
 
-  def deleteSlot(filmId: String, slotKey: String): Unit = {
-    val changed = lock.synchronized {
-      val cur = byFilm.getOrElse(filmId, Map.empty)
-      if (!cur.contains(slotKey)) false
-      else { val next = cur - slotKey; if (next.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, next); true }
-    }
+  def deleteSlot(filmId: String, slotKey: String): Unit = lock.synchronized {
+    val next = byFilm.getOrElse(filmId, Map.empty) - slotKey
+    if (next.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, next)
     ()
   }
 
@@ -150,6 +157,30 @@ object SlotsRepository {
   def stitch(slots: Map[String, SourceData]): Map[Source, SourceData] =
     Source.dropSupersededCinemaSlots(
       slots.iterator.flatMap { case (k, sd) => Source.byWireKey(k).map(_ -> sd) }.toMap)
+
+  /** A film's slots as a reader should see them mid-migration: the stored rows UNIONED
+   *  with whatever the `movies` document still embeds, a stored row winning any key both
+   *  carry.
+   *
+   *  Union, not "stored wins outright", because during the lazy migration NEITHER store
+   *  is a complete view on its own and the two genuinely disagree. Measured on prod PL
+   *  (2026-07-27): 81 of the 82 films holding both had diverging key sets, and 14 of them
+   *  had a cinema in the embedded map that `movie_slots` did not carry — so a
+   *  stored-shadows-embedded read served those 14 films with FEWER cinemas than the
+   *  corpus actually held. The divergence is produced by writers that touch one store
+   *  and not the other: `MongoStagingFolder` writes the embedded map in its transaction
+   *  and no slot rows at all, while `updateIfPresent` writes per-slot deltas and
+   *  deliberately leaves the embedded map alone.
+   *
+   *  Losing a cinema is the harmful direction; carrying a stale one for a scrape cycle is
+   *  not, because the next whole-record `upsert` writes the full slot set and clears the
+   *  embedded map — at which point this union collapses to exactly the stored rows. The
+   *  rule therefore erases itself as the migration completes rather than needing a second
+   *  cleanup to retire it. */
+  def merge(embedded: Map[Source, SourceData], stored: Map[String, SourceData]): Map[Source, SourceData] =
+    if (stored.isEmpty) embedded
+    else if (embedded.isEmpty) stitch(stored)
+    else stitch(embedded.map { case (s, sd) => s.displayName -> sd } ++ stored)
 
   /** The per-slot writes needed to turn `before` into `after`: `slotKey -> Some(slot)`
    *  to upsert, `slotKey -> None` to delete. Only genuinely-changed slots appear, so an
@@ -202,10 +233,20 @@ class MongoSlotsRepository(
     c
   }
 
-  def findForFilm(filmId: String): Map[String, SourceData] = coll.fold(Map.empty[String, SourceData]) { c =>
-    Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds))
-      .getOrElse(Seq.empty).map(d => d.slotKey -> d.slot).toMap
-  }
+  /** A FAILED read reports `false` rather than passing an empty map off as "this film has
+   *  no cinemas" — see the trait doc for what believing that emptiness costs. Logged too:
+   *  the old silent `getOrElse(Seq.empty)` meant the one read whose failure can empty a
+   *  live film left no trace at all. */
+  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) =
+    coll.fold((Map.empty[String, SourceData], true)) { c =>
+      Try(Await.result(c.find(SlotKeyed.filmFilter(filmId)).toFuture(), 30.seconds)) match {
+        case scala.util.Success(rows) => (rows.map(d => d.slotKey -> d.slot).toMap, true)
+        case scala.util.Failure(e) =>
+          logger.warn(s"SlotsRepository.findForFilm($filmId) failed: ${e.getClass.getSimpleName}: ${e.getMessage} " +
+            "— reporting the read as incomplete so no caller serves the film as cinema-less.")
+          (Map.empty, false)
+      }
+    }
 
   /** Every film's slots, keyset-paged by `_id` — see [[MongoScreeningsRepository.findAll]]
    *  for why a single unbounded cursor is not safe here. An INCOMPLETE scan returns an
@@ -273,7 +314,7 @@ class MongoSlotsRepository(
 
   def deleteFilm(filmId: String): Unit = coll.foreach { c =>
     Try {
-      val deleted = Await.result(c.deleteMany(Filters.eq("filmId", filmId)).toFuture(), 10.seconds).getDeletedCount
+      val deleted = Await.result(c.deleteMany(SlotKeyed.filmFilter(filmId)).toFuture(), 10.seconds).getDeletedCount
       if (deleted > 0)
         RemovalAudit.screeningsCleared("movie_slots.deleteFilm", filmId, deleted.toInt, whole = true,
           reason = "film-deleted", what = "slots")

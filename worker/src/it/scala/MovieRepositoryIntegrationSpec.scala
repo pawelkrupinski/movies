@@ -37,7 +37,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
-    "tt0000078"
+    "tt0000078", "tt0000079", "tt0000080"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -699,7 +699,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // former size. Guarded by the rule that the embedded copy is only dropped after the
   // slot write is CONFIRMED — the one way this migration could lose a film.
   it should "drop the embedded sourceData once the slots have landed, and keep it when they have not" in {
-    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, SlotsRepository, StoredMovieRecord}
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import models.SourceData
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
@@ -725,15 +725,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       // a slots store that FAILS to write must leave the embedded copy in place, or the
       // film would have no cinemas in either collection
-      val failing = new SlotsRepository {
-        def findForFilm(filmId: String)  = Map.empty[String, SourceData]
-        def findAllChecked()             = (Map.empty[String, Map[String, SourceData]], true)
-        def replaceFilm(filmId: String, s: Map[String, SourceData]) = false   // write failed
-        def upsertSlot(filmId: String, k: String, s: SourceData)    = ()
-        def deleteSlot(filmId: String, k: String)                   = ()
-        def deleteFilm(filmId: String)                              = ()
-      }
-      val degraded = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(failing))
+      val degraded = new MongoMovieRepository(Some(db), screenings = Some(scr),
+        slots = Some(new services.movies.UnwritableSlotsRepository))
       degraded.upsert(title, year, base)
       raw.findById(id).map(_.record.data.size) shouldBe Some(1)   // embedded copy retained
     } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
@@ -1414,5 +1407,71 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       Seq(film, neighbour, separatorFilm).foreach(screenings.deleteFilm)
       client.close()
     }
+  }
+
+  // A film mid-migration holds cinemas in BOTH places, and the two genuinely disagree —
+  // `MongoStagingFolder` writes the embedded map and no slot rows, `updateIfPresent`
+  // writes slot deltas and leaves the embedded map alone. Letting the stored rows shadow
+  // the embedded map dropped the cinemas only the embedded map had: on prod PL
+  // 2026-07-27, 14 films were being served with fewer cinemas than the corpus held.
+  it should "serve a cinema the embedded map has and movie_slots does not" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-slot-union__"
+    val year   = Some(1908)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      // Write the film with BOTH cinemas and NO slots repository wired — the un-migrated
+      // shape, and exactly what the staging fold's in-transaction write leaves behind.
+      val embeddedOnly = new MongoMovieRepository(Some(db), screenings = Some(scr))
+      embeddedOnly.upsert(title, year, MovieRecord(imdbId = Some("tt0000079"),
+        data = Map[Source, SourceData](
+          Multikino   -> SourceData(title = Some("from movies")),
+          KinoMuranow -> SourceData(title = Some("embedded only")))))
+      // …then let a per-slot delta land for ONE of them, as `updateIfPresent` does.
+      slots.replaceFilm(id, Map(Multikino.displayName -> SourceData(title = Some("from movie_slots"))))
+
+      val repo = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+      val read = repo.findById(id).map(_.record.cinemaData).getOrElse(Map.empty)
+      // the stored row wins the key both carry…
+      read.get(Multikino).flatMap(_.title)   shouldBe Some("from movie_slots")
+      // …and the cinema only `movies` knows about SURVIVES. Fails before the union rule:
+      // the stored rows shadowed the embedded map and this cinema simply vanished.
+      read.get(KinoMuranow).flatMap(_.title) shouldBe Some("embedded only")
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+  }
+
+  // Once a film's embedded copy is retired, `movies` carries no cinemas at all — so a
+  // FAILED slot read decodes to a film with none. That record is what the change-stream
+  // fan-out hands the projector, whose `diffScreenings` then deletes every `web_screening`
+  // the film has: a transient Mongo blip would empty a live film off the site.
+  it should "refuse to decode a migrated film at all when its slot read fails" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord,
+      SlotsRepository, UnreadableSlotsRepository}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val title  = "__integration-test-slot-readfail__"
+    val year   = Some(1909)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      val repo = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+      repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000080"),
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("live cinema")))))
+      // the migrated shape: slots landed, so `movies` dropped its embedded copy
+      slots.findForFilm(id)                                    should not be empty
+      repo.findById(id).map(_.record.data.size)                shouldBe Some(1)
+
+      // …now the same row, read through a slots repository whose reads fail.
+      val blind: SlotsRepository = new UnreadableSlotsRepository
+      val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(blind))
+      // None, NOT a record with an empty `data` map. Fails before the fix: `findById`
+      // returned a film with zero cinemas, which the projector treats as "delete them all".
+      blindRepo.findById(id) shouldBe None
+    } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
   }
 }
