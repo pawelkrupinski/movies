@@ -26,10 +26,10 @@ import pl.kinowo.ui.theme.MetaYearText
  * (matching the web's `.year { background: transparent; border: none }`),
  * runtime and genres as rounded pills. Genres default to none — the
  * listing card omits them; the detail screen passes them all. The
- * age-rating certificate ([ageRating], e.g. BBFC "15") leads the row as
- * its own pill when present, and is dropped when null — most non-UK
- * films carry no rating. Renders nothing when there's no runtime, year,
- * genre, or age rating.
+ * age-rating certificate ([ageRating], e.g. BBFC "15") renders as its
+ * own pill immediately after the year when present, and is dropped when
+ * null — most non-UK films carry no rating. Renders nothing when there's
+ * no runtime, year, genre, or age rating.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -53,9 +53,9 @@ fun MetaPills(
         // Bottom-align so the larger plain-text year shares a bottom
         // edge with the smaller pills.
         val itemAlign = Modifier.align(Alignment.Bottom)
-        age?.let { Pill(it, scale, itemAlign.testTag(AgeRatingBadgeTag)) }
         runtime?.let { Pill(it, scale, itemAlign) }
         year?.let { YearText(it, scale, itemAlign) }
+        age?.let { Pill(it, scale, itemAlign.testTag(AgeRatingBadgeTag)) }
         for (genre in genres) Pill(genre, scale, itemAlign)
     }
 }

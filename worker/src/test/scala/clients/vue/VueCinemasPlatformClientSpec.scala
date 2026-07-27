@@ -58,8 +58,9 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
     // certificate.name is the BBFC label; kept exactly as the API spells it.
     films.find(_.movie.title == "The Odyssey").value.ageRating.value shouldBe "15"
     films.find(_.movie.title == "Toy Story 5").value.ageRating.value  shouldBe "PG"
-    // The API lower-cases "12a" — no transformation, so it stays "12a".
-    films.find(_.movie.title == "Supergirl").value.ageRating.value    shouldBe "12a"
+    // The API lower-cases "12a"; AgeRating.normalize upper-cases it to the
+    // canonical BBFC "12A".
+    films.find(_.movie.title == "Supergirl").value.ageRating.value    shouldBe "12A"
     // A not-yet-classified film carries certificate.name "tbc" → no rating.
     films.find(_.movie.title == "GHOST: 2 Big To Rig").value.ageRating shouldBe None
   }

@@ -32,10 +32,10 @@
     <div class="col">
       <div class="film-title">@film.movie.title@film.movie.runtimeMinutes.filter(_ > 0).map { mins =>
   <span class="pill runtime">@controllers.CardFormat.runtimePill(mins)</span>
-}@film.resolved.ageRating.map { r =>
-  <span class="pill age-rating">@r</span>
 }@film.movie.releaseYear.map { y =>
   <span class="pill year">@y</span>
+}@film.resolved.ageRating.map { r =>
+  <span class="pill age-rating">@r</span>
 }@for(g <- film.movie.genres) {
   <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
 }</div>

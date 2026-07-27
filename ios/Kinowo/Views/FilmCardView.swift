@@ -87,7 +87,7 @@ struct MetaPillsView: View {
     let releaseYear: Int?
     var genres: [String] = []
     /// Age-rating certificate ("15", "PG", "12A", …) or `nil` for a film
-    /// with none. Rendered as a bordered capsule ahead of runtime so the
+    /// with none. Rendered as a bordered capsule after the year so the
     /// certificate reads as a certificate, not just another genre chip.
     var ageRating: String? = nil
 
@@ -101,9 +101,9 @@ struct MetaPillsView: View {
             // Bottom-align so the larger plain-text year shares a bottom
             // edge with the smaller pills.
             FlowLayout(spacing: 6, lineSpacing: 6, bottomAligned: true) {
-                if let certificate { certificatePill(certificate) }
                 if let runtime { pill(runtime) }
                 if let year { yearText(year) }
+                if let certificate { certificatePill(certificate) }
                 ForEach(genres, id: \.self) { pill($0) }
             }
         }
