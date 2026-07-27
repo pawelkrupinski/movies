@@ -83,6 +83,27 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     handler.handle(task(TaskType.StagingResolveTmdb, StagingTaskKeys.titlePayload("Film"))) shouldBe a[HandlerOutcome.Reschedule]
   }
 
+  it should "complete (not reschedule) while a cinema still owes its detail, so the chain re-enqueues instead of backing off" in {
+    // The UK stall of 2026-07-27: six films sat at `staging detail not ready`,
+    // attempts 9-10, `nextEligibleAt` 13-30 min out — long after the detail they
+    // were waiting for had landed. Rescheduling parks the task under the same
+    // exponential backoff a FAILURE gets, and `TaskQueue.enqueue` is insert-only,
+    // so nothing can pull a waiting task's backoff forward. Completing hands the
+    // film back to `StagingReaper`, which re-enqueues a fresh task (attempts=0)
+    // the moment every venue's detail is in — see the reaper's "enqueue
+    // StagingResolveTmdb once the detail is present".
+    val repository = new InMemoryStagingRepository
+    repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
+    var resolveCalled = false
+    val handler = new StagingResolveTmdbHandler(steps(repository,
+      Seq(new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("p"))))),   // enricher wired, detail step not run yet
+      (_, _, r) => { resolveCalled = true; Some(r.copy(tmdbId = Some(5))) }))
+
+    handler.handle(task(TaskType.StagingResolveTmdb, StagingTaskKeys.titlePayload("Film"))) shouldBe HandlerOutcome.Skipped
+    resolveCalled shouldBe false                                       // gate held — no half-informed resolve
+    repository.findAll().head.record.tmdbConcluded shouldBe false      // still owed, so the reaper re-enqueues it
+  }
+
   it should "give up and conclude as no-match once the resolve retry budget is exhausted" in {
     // A TMDB lookup that keeps throwing returns None (transient) on every attempt.
     // Without a give-up budget the film re-resolves forever and piles up in

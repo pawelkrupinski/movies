@@ -44,14 +44,27 @@ object StagingDetailHandler {
  *  have gone by still failing, the lookup is treated as permanently failing (a
  *  decorated/foreign title TMDB can't search, or a lookup that keeps throwing)
  *  and the film concludes as a no-match so it folds (un-enriched) instead of
- *  re-resolving forever — the staging accumulation this guards against. */
+ *  re-resolving forever — the staging accumulation this guards against.
+ *
+ *  Detail still outstanding is NOT a failure, so it completes (`Skipped`) rather
+ *  than rescheduling: this task simply isn't due yet, and `StagingReaper` — the
+ *  single owner of the chain — re-enqueues it the moment every cinema's detail
+ *  has landed. Rescheduling instead parked it under the same exponential backoff
+ *  a failure gets, and `TaskQueue.enqueue` is insert-only, so a chain that later
+ *  wanted to run the step could not pull the waiting task's `nextEligibleAt`
+ *  forward. A UK film showing at ten Cineworld venues (whose per-venue detail
+ *  fetches pace out over the best part of an hour) therefore burned ten claims
+ *  climbing to the 30-minute backoff cap, then idled at the cap AFTER its last
+ *  detail landed — the "staging detail not ready" rows of 2026-07-27. Completing
+ *  also keeps `attempts` — and with it the TMDB give-up budget above — counting
+ *  actual TMDB misses rather than time spent waiting on a sibling step. */
 class StagingResolveTmdbHandler(steps: StagingSteps) extends TaskHandler {
   val taskType: TaskType = TaskType.StagingResolveTmdb
   def handle(task: Task): HandlerOutcome = {
     val giveUp = task.attempts >= StagingResolveTmdbHandler.MaxResolveAttempts
     steps.resolveAndStamp(StagingTaskKeys.anchorOf(task.payload), giveUp) match {
       case StagingSteps.Resolved | StagingSteps.AlreadyDone => HandlerOutcome.Done
-      case StagingSteps.DetailNotReady                      => HandlerOutcome.Reschedule(Some("staging detail not ready"))
+      case StagingSteps.DetailNotReady                      => HandlerOutcome.Skipped
       case StagingSteps.TransientFailure                    => HandlerOutcome.Reschedule(Some("staging tmdb resolve transient miss"))
     }
   }

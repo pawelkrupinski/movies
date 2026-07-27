@@ -239,7 +239,7 @@ object StagingSteps {
   /** What `resolveAndStamp` decided — drives the handler's outcome + the reaper. */
   sealed trait ResolveResult
   case object Resolved         extends ResolveResult  // stamped a hit or tmdbNoMatch — film is concluded
-  case object DetailNotReady   extends ResolveResult  // a deferred cinema still owes detail (safety net) — retry
+  case object DetailNotReady   extends ResolveResult  // a cinema still owes detail — not due yet; the reaper re-enqueues
   case object TransientFailure extends ResolveResult  // TMDB returned None — retry with backoff
   case object AlreadyDone      extends ResolveResult  // gone, or already concluded — nothing to do
 }
