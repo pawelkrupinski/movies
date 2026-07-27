@@ -1,8 +1,8 @@
 package scripts
 
-import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.model.{Filters, Sorts, Updates}
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
-import services.movies.{MongoSlotsRepository, MovieCodecs, StoredMovieDto}
+import services.movies.{KeysetScan, MongoSlotsRepository, MovieCodecs, StoredMovieDto}
 import tools.Env
 
 import scala.concurrent.Await
@@ -62,10 +62,23 @@ object RetireEmbeddedSlots {
       println(s"RetireEmbeddedSlots: $dbName${if (dryRun) " (dry run)" else ""} " +
         s"[batch=$batch pause=${pauseMs}ms]  movie_slots covers ${stored.size} film(s)")
 
-      val docs = Await.result(coll.find().toFuture(), 300.seconds)
       var stripped = 0; var bare = 0; var n = 0
       val skipped = Seq.newBuilder[String]
-      docs.foreach { dto =>
+      // Keyset-paged, not one unbounded `find()`: a single cursor over the whole corpus
+      // recurses the async driver's read-completion chain into a StackOverflowError on an
+      // I/O thread (Sentry KINOWO-19), which no `Try` here would catch. `KeysetScan` is
+      // exactly the defence every other full-collection read in this repo already uses.
+      val complete = KeysetScan.scan[StoredMovieDto](
+        label          = "RetireEmbeddedSlots corpus batch",
+        batchSize      = 200,
+        maxAttempts    = 4,
+        initialBackoff = 500.millis,
+        keyOf          = _._id,
+        fetchPage      = (afterId, limit) => Await.result(
+          coll.find(afterId.fold(Filters.empty())(Filters.gt("_id", _)))
+            .sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds),
+        onIncomplete   = e => println(s"  corpus scan failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
+      ) { docs => docs.foreach { dto =>
         n += 1
         // An already-retired row has no `sourceData` field at all (None) — same
         // "nothing embedded left to strip" case as an empty map, so the pass is
@@ -86,13 +99,18 @@ object RetireEmbeddedSlots {
             if (!dryRun && pauseMs > 0) Thread.sleep(pauseMs.toLong)
           }
         }
-      }
+      } }
       val out = Outcome(n, stripped, bare, skipped.result())
       println(s"  scanned ${out.scanned}  ${if (dryRun) "would strip" else "stripped"} ${out.stripped}  " +
         s"already-bare ${out.alreadyBare}  skipped ${out.skipped.size}")
       if (out.skipped.nonEmpty) {
         println("  SKIPPED (movie_slots does not cover the embedded map — re-run BackfillMovieSlots first):")
         out.skipped.take(10).foreach(id => println(s"    $id"))
+      }
+      if (!complete) {
+        println("  SCAN INCOMPLETE — a corpus batch failed after retries, so this pass did not see every film.")
+        println("  Re-run; the strip is idempotent and an unseen film simply keeps its embedded map.")
+        sys.exit(2)
       }
     } finally client.close()
   }
