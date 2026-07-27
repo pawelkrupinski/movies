@@ -257,6 +257,18 @@ class MongoMovieRepository(
   // carries no showtimes). Maintenance scripts/tests that pass `None` keep the plain
   // embedded shape (they don't serve).
   screenings: Option[ScreeningsRepository] = None,
+  // The per-cinema SourceData slots, split out of `movies.sourceData` into
+  // `movie_slots` — the same move as `screenings`, one level further, so a change
+  // event carries ONE slot instead of the whole film document (see [[SlotsRepository]]
+  // for the measurement that motivated it).
+  //
+  // Wiring this turns on DUAL WRITE only: `movies` still carries the embedded
+  // `sourceData` map and reads still come from it, so this is behaviour-preserving
+  // and reversible — unwire it and nothing notices. Flipping reads to `movie_slots`
+  // is a later phase, and must not happen before a backfill has populated the
+  // collection for films whose slots haven't been rewritten since the split landed.
+  // Scripts/tests that pass `None` write nothing extra.
+  slots: Option[SlotsRepository] = None,
   // Persist the change-stream resume token so the shared cursor reopens (after a terminal
   // error or a WORKER RESTART) from where it left off — replaying events that landed while
   // this process was down, closing the gap the consumers' periodic backstops exist for. ON
@@ -508,6 +520,7 @@ class MongoMovieRepository(
         RemovalAudit.filmRemoved("movies.delete", documentId(title, year),
           reason = if (result.getDeletedCount > 1) s"title+year (${result.getDeletedCount} docs)" else "title+year")
       screenings.foreach(_.deleteFilm(documentId(title, year)))
+      slots.foreach(_.deleteFilm(documentId(title, year)))
       ()
     }.recover {
       case exception: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${exception.getMessage}")
@@ -519,6 +532,7 @@ class MongoMovieRepository(
       val deleted = Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds).getDeletedCount
       if (deleted > 0) RemovalAudit.filmRemoved("movies.deleteById", id, reason = "orphan-id-reap")
       screenings.foreach(_.deleteFilm(id))
+      slots.foreach(_.deleteFilm(id))
       ()
     }.recover {
       case exception: Throwable => logger.warn(s"MovieRepository.deleteById($id) failed: ${exception.getMessage}")
@@ -537,6 +551,10 @@ class MongoMovieRepository(
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
       // Write this film's cinema showtimes to `screenings` (their authority).
       screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(restitched)))
+      // Mirror the slots into `movie_slots` (dual write; `movies` is still the read
+      // authority). From `restitched` for the same reason `screenings` is: a
+      // cache-stripped slot must not be mistaken for a slot that has gone away.
+      slots.foreach(_.replaceFilm(id, SlotsRepository.slotsOf(restitched)))
       ()
     }.recover {
       case exception: Throwable if isClusterClosed(exception) =>
@@ -557,13 +575,18 @@ class MongoMovieRepository(
       // ORIGINAL records. Only when a screenings repo is wired.
       val ops = if (screenings.isDefined) ScreeningsRepository.slotOps(before.data, after.data)
                 else Map.empty[String, Option[Seq[Showtime]]]
+      // Slot deltas → `movie_slots` (dual write). Also from the ORIGINAL records:
+      // `slotsOf` drops showtimes itself, so a showtimes-only change yields no slot
+      // write and the two side collections stay independent.
+      val slotWrites = if (slots.isDefined) SlotsRepository.slotOps(before.data, after.data)
+                       else Map.empty[String, Option[SourceData]]
       // Movies patch from the (split-stripped) records, so a showtimes-only change
       // yields an EMPTY movies patch — movies stays put, no fat change event. When
       // both are empty the row already equals `after`: skip the write (and its no-op
       // `$set` + change event). "Present and up to date" is still success.
       val strippedAfter = after.copy(data = stripFor(after.data))
       val patch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)), strippedAfter)
-      if (patch.isEmpty && ops.isEmpty) true
+      if (patch.isEmpty && ops.isEmpty && slotWrites.isEmpty) true
       else Try {
         // MongoDB update-operator paths treat '.' as a nesting separator, so a
         // per-source `$set` on `sourceData.<displayName>` is rejected when a source's
@@ -600,6 +623,12 @@ class MongoMovieRepository(
         if (present) screenings.foreach { s =>
           ops.foreach {
             case (k, Some(st)) => s.upsertSlot(id, k, st)
+            case (k, None)     => s.deleteSlot(id, k)
+          }
+        }
+        if (present) slots.foreach { s =>
+          slotWrites.foreach {
+            case (k, Some(sd)) => s.upsertSlot(id, k, sd)
             case (k, None)     => s.deleteSlot(id, k)
           }
         }

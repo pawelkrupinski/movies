@@ -566,6 +566,61 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { plain.close(); client.close() }
   }
 
+  // Dual write into `movie_slots`: wiring a SlotsRepository mirrors each film's slots
+  // into their own rows WITHOUT changing what `movies` stores or what reads return.
+  // That reversibility is the whole point of this phase — the read flip comes later,
+  // and only after a backfill. Verified against a real replica set.
+  it should "dual-write cinema slots into movie_slots while movies stays the read authority" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    try {
+      val title = "__integration-test-slotsplit__"
+      val year  = Some(1907)
+      val id    = StoredMovieRecord.idFor(title, year)
+      val key   = Multikino.displayName
+      val slot  = SourceData(title = Some("SS"), posterUrl = Some("https://poster/ss.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/ss-1"))))
+      val base  = MovieRecord(imdbId = Some("tt0000015"), data = Map[Source, SourceData](Multikino -> slot))
+
+      repo.upsert(title, year, base)
+      // mirrored into movie_slots, with showtimes left to `screenings`
+      slots.findForFilm(id).get(key).flatMap(_.posterUrl) shouldBe Some("https://poster/ss.png")
+      slots.findForFilm(id)(key).showtimes                shouldBe empty
+      // …and `movies` is still the read authority: the record reads back unchanged
+      repo.findById(id).flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe
+        Some("https://poster/ss.png")
+
+      // a metadata change mirrors through updateIfPresent
+      val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/ss2.png"))))
+      repo.updateIfPresent(title, year, base, after) shouldBe true
+      slots.findForFilm(id).get(key).flatMap(_.posterUrl) shouldBe Some("https://poster/ss2.png")
+
+      // a showtimes-only change must NOT rewrite the slot — that is screenings' job,
+      // and the two side collections have to stay independent
+      val after2 = after.copy(data = Map[Source, SourceData](Multikino ->
+        after.data(Multikino).copy(showtimes = slot.showtimes :+
+          Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/ss-2")))))
+      repo.updateIfPresent(title, year, after, after2) shouldBe true
+      scr.findForFilm(id).get(key).map(_.size)           shouldBe Some(2)
+      slots.findForFilm(id).get(key).flatMap(_.posterUrl) shouldBe Some("https://poster/ss2.png")
+      slots.findForFilm(id)(key).showtimes                shouldBe empty
+
+      // a slot that leaves the film is pruned by the whole-record write
+      repo.upsert(title, year, base.copy(data = Map.empty[Source, SourceData]))
+      slots.findForFilm(id) shouldBe empty
+
+      // deleting the film clears its slots
+      repo.upsert(title, year, base)
+      slots.findForFilm(id)  should not be empty
+      repo.delete(title, year)
+      slots.findForFilm(id) shouldBe empty
+    } finally { slots.deleteFilm(StoredMovieRecord.idFor("__integration-test-slotsplit__", Some(1907))); client.close() }
+  }
+
   // (C) Read-path parity: every corpus reader must agree on a film's showtimes under
   // the split. findAll and foreachRecord diverging (one forgot to stitch) is what
   // dropped 129 films; this guards against ANY future divergence between the readers.
