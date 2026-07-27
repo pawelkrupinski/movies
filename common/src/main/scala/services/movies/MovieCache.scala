@@ -1275,7 +1275,10 @@ class CaffeineMovieCache(
       // one deferred write it would save. Dropping a just-passed showtime is
       // display-neutral (the web filters past showtimes at render). See
       // MovieRecordMerge.sortShowtimes.
-      showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes)
+      showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes),
+      // Carry the certificate forward on a listing-only re-scrape, like the detail
+      // fields above, so a tick that lacks it doesn't wipe a value the detail merge added.
+      ageRating      = cm.ageRating.map(StringPool.canonical).orElse(priorSlot.flatMap(_.ageRating))
     )
 
   /** If `primary` doesn't currently exist in the cache, look for an existing

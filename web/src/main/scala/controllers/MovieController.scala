@@ -29,6 +29,8 @@ case class ApiRatings(
 case class ApiFilm(
   title: String, slug: String, posterURL: Option[String], fallbackPosterURLs: Seq[String],
   runtimeMinutes: Option[Int], releaseYear: Option[Int], genres: Seq[String],
+  // Age rating / certificate (UK BBFC "15"/"PG"/…); omitted when the film has none.
+  ageRating: Option[String],
   ratings: ApiRatings,
   countries: Seq[String], directors: Seq[String], cast: Seq[String],
   showings: Seq[ApiDayShowings]
@@ -103,6 +105,7 @@ object ApiFilm {
       runtimeMinutes   = fs.movie.runtimeMinutes,
       releaseYear      = fs.movie.releaseYear,
       genres           = fs.movie.genres,
+      ageRating        = resolved.ageRating,
       ratings          = ApiRatings(
         imdb              = resolved.ratings.imdb,
         imdbURL           = resolved.ratings.imdbUrl,

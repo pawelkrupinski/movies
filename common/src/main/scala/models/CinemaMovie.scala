@@ -14,5 +14,9 @@ case class CinemaMovie(
   // vimeo, raw mp4 — whatever the upstream returns, stored verbatim). Empty for
   // cinemas that don't expose one. Normalised to an embed URL by the view layer
   // via `TrailerEmbed.embedUrlFor`.
-  trailerUrl:  Option[String]      = None
+  trailerUrl:  Option[String]      = None,
+  // Age rating / certificate as the cinema labels it (UK BBFC "15"/"PG"/"12A"/…).
+  // Set by the clients whose listing or detail page exposes it; `None` otherwise.
+  // Flows to `SourceData.ageRating` and then `MovieRecord.ageRating` (cinema-first).
+  ageRating:   Option[String]      = None
 )

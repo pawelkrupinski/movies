@@ -72,7 +72,13 @@ case class SourceData(
   // CACHE-ONLY, NEVER PERSISTED. The worker's MovieCache strips `showtimes` (they live
   // in Mongo `screenings`) and keeps this digest so the write-guard + screenings-diff
   // still detect showtime changes without the lists resident. `None` everywhere else.
-  showtimesDigest: Option[Int]    = None
+  showtimesDigest: Option[Int]    = None,
+  // Age rating / certificate as the source labels it, verbatim per source (UK BBFC
+  // "U"/"PG"/"12A"/"12"/"15"/"18"/"TBC"; other countries their own scheme). Cinema
+  // slots carry it (the UK chains + Flicks expose it); `MovieRecord.ageRating` takes
+  // it CINEMA-first — the screening venue's certificate is the authoritative one for
+  // that country, unlike TMDB's per-country certification jumble.
+  ageRating:       Option[String] = None
 ) {
   // Record IDENTITY / metadata equality is showtime-AGNOSTIC: canonicalize / settle /
   // divert compare records to decide film identity + row structure, which never depend

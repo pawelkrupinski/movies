@@ -23,6 +23,7 @@ case class FilmDetail(
   genres:         Seq[String]    = Seq.empty,
   posterUrl:      Option[String] = None,
   trailerUrl:     Option[String] = None,
+  ageRating:      Option[String] = None,
   // A per-FILM language/format (NAP/DUB/LEK) some cinemas expose only on the
   // detail page (a "Wersja językowa: polski lektor" row), never in the listing
   // title. Applied to the film's showings so the language badge is preserved
@@ -46,6 +47,7 @@ case class FilmDetail(
     genres         = if (slot.genres.nonEmpty) slot.genres else genres,
     posterUrl      = slot.posterUrl.orElse(posterUrl),
     trailerUrl     = slot.trailerUrl.orElse(trailerUrl),
+    ageRating      = slot.ageRating.orElse(ageRating),
     // Badge the film's showings with the detail-page language, but never
     // overwrite a per-screening format the listing already set.
     showtimes      = if (format.isEmpty) slot.showtimes

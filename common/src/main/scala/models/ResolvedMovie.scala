@@ -52,7 +52,13 @@ case class ResolvedMovie(
   // and placed last — so positional constructors and legacy `web_movies`
   // documents written before this field both stay valid (the codec ignores
   // absent fields, restoring this as `Map.empty`).
-  synopsisByCity:     Map[String, String] = Map.empty
+  synopsisByCity:     Map[String, String] = Map.empty,
+  // Age rating / certificate to badge on the card + detail (UK BBFC "15"/"PG"/…).
+  // Verbatim from the screening venue (cinema-first — see `MovieRecord.ageRating`).
+  // `None` where no source carries one (e.g. PL today), so clients render the badge
+  // only when present. Defaulted + last so legacy `web_movies` docs and positional
+  // constructors stay valid (the codec restores an absent field as `None`).
+  ageRating:          Option[String]      = None
 ) {
   /** Readable alias for the Mongo `_id`. */
   def id: String = _id

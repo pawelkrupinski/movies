@@ -468,6 +468,16 @@ case class MovieRecord(
     else prioritizedCinema.iterator.map(_._2.genres).find(_.nonEmpty).getOrElse(Seq.empty)
   }
 
+  /** Age rating / certificate, CINEMA-first: the local screening venue's
+   *  certificate (BBFC in the UK) is the authoritative one for that country,
+   *  unlike TMDB's multi-country certification. Falls back to a `Tmdb` slot's
+   *  value only if no cinema carries one. Verbatim per source — no cross-scheme
+   *  normalisation (a UK "15" and a German "FSK 16" are different labels for
+   *  different audiences). */
+  def ageRating: Option[String] =
+    prioritizedCinema.iterator.flatMap(_._2.ageRating).find(_.nonEmpty)
+      .orElse(data.get(Tmdb).flatMap(_.ageRating))
+
   /** Production countries — union across sources, deduplicated
    *  case-insensitively while preserving the priority-first order. Sources
    *  spell country names in their own way, so the same country might appear

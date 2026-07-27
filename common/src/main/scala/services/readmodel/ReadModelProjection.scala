@@ -79,7 +79,8 @@ object ReadModelProjection {
       synopsisByCity     = synopsisByCity(r),
       trailerUrls        = r.trailerUrls.flatMap(TrailerEmbed.embedUrlFor).distinct,
       ratings            = ratingsFor(r, title),
-      weightedRating     = r.weightedRating
+      weightedRating     = r.weightedRating,
+      ageRating          = r.ageRating
     )
   }
 
@@ -226,7 +227,10 @@ object ReadModelProjection {
       // so it's identical across variants).
       synopsis       = scoped.synopsisNonCinema,
       synopsisByCity = synopsisByCity(scoped),
-      ratings        = ratingsFor(r, title)
+      ratings        = ratingsFor(r, title),
+      // Scope the certificate to this variant's sources too — a split row's badge
+      // should come from the cinema actually shown in the variant.
+      ageRating      = scoped.ageRating
     )
     (movie, screeningsFor(scoped.cinemaShowings, fid))
   }
