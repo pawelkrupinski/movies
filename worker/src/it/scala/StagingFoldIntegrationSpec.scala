@@ -17,12 +17,15 @@ import scala.concurrent.duration._
  * `MongoStagingFolder` against a real replica set — it needs transactions, so this is the
  * only layer that reaches it at all.
  *
- * The case under test is the one the unit specs structurally cannot see: the fold deletes
- * a group-merge LOSER with a direct in-transaction `deleteOne` on `movies`, bypassing
- * `MovieRepository.delete` — which is what takes the film's cinemas in the side
- * collections with it. Nothing else ever cleans those up, so they outlived their film
- * forever: 888 `movie_slots` rows across 19 vanished films on prod PL 2026-07-27, plus 61
- * orphaned `screenings` films from the same bypass predating the slot split.
+ * The case under test is the one the unit specs structurally cannot see, and it is the
+ * one that cost prod: the fold retires a `movies` row with a direct in-transaction
+ * `deleteOne`, and most of those retirements are RE-KEYS (`foo|` collapsing onto
+ * `foo|2026` once TMDB concludes the year), not films leaving. The film's showtimes are
+ * still stored under the OLD id at that moment — the winner's side rows are written later,
+ * by `MovieRepository.upsert` — so a fold that "tidies up" the loser's screenings destroys
+ * them. Shipped @8033e39c6, it took PL from 39,413 upcoming showtimes to 18,161 and UK
+ * from 22,250 to 7,226 within twenty minutes of deploy, hitting hardest exactly where the
+ * most folding was happening.
  */
 class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
@@ -47,7 +50,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
   private def sd(t: String) = SourceData(title = Some(t))
 
-  it should "take a merge loser's slots and screenings with it when the fold deletes the film" in {
+  it should "keep a retired key's screenings — the winner has not inherited them yet" in {
     val client     = MongoClient(uri)
     val db         = client.getDatabase(dbName)
     val connection = new MongoConnection(Some(uri), dbName, required = false)
@@ -80,20 +83,23 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
       new MongoStagingFolder(connection).foldGroup(title)
 
-      // Whichever variant the collapse retired, its side rows must have gone with it —
-      // a `movies` row that is gone must not leave cinemas behind. Fails before the fix:
-      // the film vanished and its slots + screenings stayed forever.
       val survivors = Await.result(movies.find(Filters.regex("_id",
         s"^${services.movies.TitleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
-      Seq(winner, loser).filterNot(survivors.contains).foreach { gone =>
-        withClue(s"$gone was deleted by the fold, so its side rows must be gone too: ") {
-          slots.findForFilm(gone)      shouldBe empty
-          screenings.findForFilm(gone) shouldBe empty
+      survivors      should not be empty   // premise: the fold did run
+      survivors.size shouldBe 1            // …and did collapse the two into one
+
+      // The retired key's cinemas must SURVIVE the fold. The winner's side rows are not
+      // written by this transaction, so until `MovieRepository.upsert` next writes that
+      // film these rows are the only copy of its showtimes — deleting them here is what
+      // emptied prod. They become inert once the winner is written; `ReapOrphanedFilmRows`
+      // clears them then, out of band, without racing the re-key.
+      Seq(winner, loser).filterNot(survivors.contains).foreach { retired =>
+        withClue(s"$retired was retired by the fold, but its showtimes are still the only copy: ") {
+          screenings.findForFilm(retired) should not be empty
+          slots.findForFilm(retired)      should not be empty
         }
       }
-      survivors                     should not be empty   // premise: the fold did run
-      survivors.size                shouldBe 1            // …and did collapse the two
     } finally {
       Seq(winner, loser).foreach { id => slots.deleteFilm(id); screenings.deleteFilm(id) }
       Await.ready(movies.deleteMany(Filters.regex("_id",

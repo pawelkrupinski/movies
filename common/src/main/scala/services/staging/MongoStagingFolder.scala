@@ -8,7 +8,7 @@ import org.reactivestreams.{Publisher, Subscriber, Subscription}
 import models.MovieRecord
 import play.api.Logging
 import services.MongoConnection
-import services.movies.{CacheKey, MovieCodecs, SlotKeyed, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, MovieCodecs, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -43,15 +43,6 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
 
   private val moviesColl  = collection(services.movies.MovieRepository.Collection)
   private val stagingColl = collection(StagingRepository.Collection)
-
-  // The side collections a `movies` row's cinemas live in. Untyped (`Document`) because
-  // this only ever DELETES by `filmId` — no decode, so no codec, and no dependency on
-  // either repository's DTO. Same transaction as the `movies` delete they follow, so a
-  // film and its cinemas leave together or not at all.
-  private def sideCollection(name: String): Option[MongoCollection[org.mongodb.scala.Document]] =
-    connection.database.map(_.getCollection(name).withWriteConcern(WriteConcern.MAJORITY))
-  private val slotsColl      = sideCollection(services.movies.SlotsRepository.Collection)
-  private val screeningsColl = sideCollection(services.movies.ScreeningsRepository.Collection)
 
   def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] =
     (connection.startSession(), moviesColl, stagingColl) match {
@@ -132,18 +123,27 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
         await(movies.replaceOne(session, Filters.eq("_id", id),
           StoredMovieDto.fromDomain(id, record, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
       }
-      plan.moviesDeletes.foreach { k =>
-        val loserId = StoredMovieRecord.idFor(k.cleanTitle, k.year)
-        await(movies.deleteOne(session, Filters.eq("_id", loserId)).toFuture())
-        // A film's cinemas live in the side collections now, and this delete bypasses
-        // `MovieRepository.delete` — which is what takes them along. Without this the
-        // merge loser's rows outlive it forever: measured on prod PL 2026-07-27, 888
-        // `movie_slots` rows across 19 vanished films, plus 61 orphaned `screenings`
-        // films from the same bypass predating the split. In the SAME transaction, so
-        // the film and its cinemas leave together.
-        slotsColl.foreach(c      => await(c.deleteMany(session, SlotKeyed.filmFilter(loserId)).toFuture()))
-        screeningsColl.foreach(c => await(c.deleteMany(session, SlotKeyed.filmFilter(loserId)).toFuture()))
-      }
+      // Delete the retired `movies` rows ONLY — never their side-collection rows.
+      //
+      // Taking the cinemas along looks right (that is what `MovieRepository.delete` does,
+      // and it is why orphans accumulate here) but it is wrong for THIS caller, because
+      // most of `moviesDeletes` are not films leaving — they are films being RE-KEYED.
+      // `planGroup` collapses `foo|` onto `foo|2026` once TMDB concludes the year: the
+      // winner is upserted above, the old key lands here, and the film's showtimes are
+      // still stored under the OLD id. The winner's side rows are not written by this
+      // transaction at all — they materialise later, when `MovieRepository.upsert` next
+      // writes that film. Deleting the loser's rows therefore destroys the showtimes in
+      // the window between the two, and the read model re-projects the film with none.
+      //
+      // Shipped @8033e39c6 and reverted the same day: it ran into the tail of the staging
+      // backlog draining (PL alone folded 1,100+ rows, i.e. a re-key wave) and took prod
+      // PL from 39,413 upcoming showtimes to 18,161 and UK from 22,250 to 7,226 before it
+      // was pulled. The orphans it was meant to stop are inert rows nothing reads;
+      // `scripts.ReapOrphanedFilmRows` clears them without racing a re-key. Making the
+      // fold side-aware means MIGRATING the loser's rows onto the winner, not deleting
+      // them — a real change, not a delete.
+      plan.moviesDeletes.foreach(k =>
+        await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k.cleanTitle, k.year))).toFuture()))
       plan.stagingDeletes.foreach(r =>
         await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()))
       // These `movies` deletes bypass MovieRepository.delete (direct in-txn deleteOne),
