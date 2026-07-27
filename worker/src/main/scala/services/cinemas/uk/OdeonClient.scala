@@ -2,7 +2,7 @@ package services.cinemas.uk
 
 import tools.HttpFetch
 import models._
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
 import java.time.{LocalDate, ZoneId}
 
@@ -93,9 +93,9 @@ object OdeonClient {
    *  protected, so plain HTTP over the injected `http` reaches it. */
   val ApiBase = "https://vwc.odeon.co.uk/WSVistaWebClient"
 
-  /** A safety ceiling on the discovered horizon, not a target: `film-screening-
-   *  dates` advertises event/advance dates months out (observed ~4.5 months),
-   *  and we fetch every advertised day, but bound it so a stray far-future date
-   *  can't balloon a venue's chunk fan-out. */
-  val MaxHorizonDays = 160
+  /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]].
+   *  `film-screening-dates` advertises event/advance dates months out (observed ~4.5),
+   *  and we fetch every advertised day; this only bounds a stray far-future one. Was 160,
+   *  which cut the tail off the listing and so had scrape-prune delete it. */
+  val MaxHorizonDays = ScrapeHorizon.MaxDays
 }

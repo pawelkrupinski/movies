@@ -129,12 +129,14 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     days shouldBe days.sorted
   }
 
-  it should "cap the discovered horizon at today+MaxHorizonDays" in {
-    // today early enough that the page's last dates sit past today+160.
+  // A sanity valve, not a coverage cap — see `ScrapeHorizon`. Odeon advertises event and
+  // advance dates months out; dropping them from the listing is what had scrape-prune
+  // delete those films entirely.
+  it should "plan every advertised day, however far out, and bound only the absurd" in {
     val days = client(today = LocalDate.of(2026, 6, 1)).planChunks()
     val cap  = LocalDate.of(2026, 6, 1).plusDays(OdeonClient.MaxHorizonDays.toLong).toString
     all(days) should be <= cap                 // ISO dates order lexicographically
-    days should not contain "2026-12-13"       // past the cap — dropped
+    days should contain("2026-12-13")          // advance date — KEPT now
   }
 
   "fetchChunk" should "fetch + parse a single business date's showtimes into films" in {

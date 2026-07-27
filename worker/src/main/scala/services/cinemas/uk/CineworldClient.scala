@@ -1,7 +1,7 @@
 package services.cinemas.uk
 
 import models.{Cinema, CinemaMovie, CineworldChain, Source}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, FilmDetail, ScrapeHorizon}
 import tools.HttpFetch
 
 import java.time.{LocalDate, ZoneId}
@@ -117,11 +117,12 @@ object CineworldClient {
    *  attribute filter — we want every screening) and the response locale. */
   private val Query = "?attr=&lang=en_GB"
 
-  /** How far ahead a venue is scraped. See `planChunks` for why it's a budget
-   *  decision (one request per day × 87 venues) rather than a data one. Five
-   *  weeks covers Cineworld's dense day-by-day block; the same order as
-   *  Germany's 34-day Webedia horizon. */
-  val MaxHorizonDays = 35
+  /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]] for why
+   *  it is a sanity bound rather than a budget, and what the old 35-day budget cost. The
+   *  venue's own `dates` endpoint names exactly which days exist, so no day is fetched
+   *  blind: sampled 2026-07-27 the tail is 3-28 extra days per venue (Sheffield: 55 days,
+   *  19 past the old cap, ending 2027-04-22). */
+  val MaxHorizonDays = ScrapeHorizon.MaxDays
 
   def datesUrl(cinemaId: String, until: LocalDate): String =
     s"$BaseApiUrl/dates/in-cinema/$cinemaId/until/$until$Query"

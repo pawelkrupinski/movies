@@ -118,19 +118,22 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     days shouldBe days.sorted
   }
 
-  it should "cap the discovered horizon at today+MaxHorizonDays" in {
-    // today set early enough that the page's last dates sit past the horizon cap.
+  // The bound is a SANITY valve, not a coverage cap — see `ScrapeHorizon`. Every day the
+  // venue advertises is planned, however far out, because a day we do not fetch is a day
+  // whose films `MovieCache`'s scrape-prune then deletes as "no longer screening". The
+  // old 210-day cap did exactly that to the UK's advance-sale programme.
+  it should "plan every advertised day, however far out, and bound only the absurd" in {
     val today  = LocalDate.of(2026, 5, 1)
-    val capStr = today.plusDays(FlicksClient.MaxHorizonDays.toLong).toString  // 2026-11-27
+    val capStr = today.plusDays(FlicksClient.MaxHorizonDays.toLong).toString
     val client = new FlicksClient(
       new ScriptedByUrl(_ => programmePage),
       "odeon-cinema-norwich", OdeonNorwich, today = today)
 
     val days = client.planChunks()
     all(days) should be <= capStr          // ISO dates order lexicographically
-    days should contain("2026-11-23")      // within the cap — kept
-    days should not contain "2026-12-01"   // past the cap — dropped
-    days should not contain "2026-12-13"
+    days should contain("2026-11-23")
+    days should contain("2026-12-01")      // advance-sale tail — KEPT now
+    days should contain("2026-12-13")
   }
 
   it should "THROW (failing the scrape) when the programme page can't be fetched" in {

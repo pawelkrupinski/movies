@@ -36,18 +36,36 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   // ── the horizon: days come off the venue's own `dates` endpoint ───────────
-  "planChunks" should "plan exactly the days the venue advertises, capped at the horizon" in {
+  // The venue's day list is the horizon — we plan EVERY day it advertises, not a
+  // window of it. Sheffield (recorded 2026-07-27) publishes a dense five-week block
+  // and then a sparse advance-sale tail of one-off event days running to 2027-04-22:
+  // Met Opera, RBO season, NT Live, anniversary re-releases.
+  //
+  // Capping this at 35 days is what deleted them from prod. The cap kept the tail out
+  // of the listing, and `MovieCache`'s scrape-prune reads "absent from the listing" as
+  // "stopped screening" — so every complete scrape dropped the venue's whole advance
+  // programme. Measured on 2026-07-27: ZERO Cineworld showtimes survived beyond 36 days.
+  "planChunks" should "plan every day the venue advertises, including the advance-sale tail" in {
     val days = client().planChunks()
-    days.size shouldBe 36                        // today + MaxHorizonDays, all populated
+    days.size shouldBe 55
     days.head shouldBe "2026-07-27"
-    days.last shouldBe today.plusDays(CineworldClient.MaxHorizonDays.toLong).toString
+    days.last shouldBe "2027-04-22"
     days shouldBe days.sorted
+    // the tail specifically — the part a 35-day cap would have cut
+    days.count(_ > "2026-08-31") shouldBe 19
   }
 
-  it should "drop a day the API lists outside [today, today+MaxHorizonDays]" in {
+  it should "keep a far-out advance-sale day, and drop only days already past" in {
     val strays = scripted(_ =>
       """{"body":{"dates":["2026-07-20","2026-07-27","2026-08-31","2027-01-04"]}}""")
-    client(strays).planChunks() shouldBe Seq("2026-07-27", "2026-08-31")
+    // 2026-07-20 is yesterday's programme — nothing upcoming there. 2027-01-04 is a real
+    // advance-sale day and must be planned.
+    client(strays).planChunks() shouldBe Seq("2026-07-27", "2026-08-31", "2027-01-04")
+  }
+
+  it should "ignore a date beyond the sanity horizon (a garbage far date can't fan out forever)" in {
+    val silly = scripted(_ => """{"body":{"dates":["2026-07-27","2099-01-01"]}}""")
+    client(silly).planChunks() shouldBe Seq("2026-07-27")
   }
 
   it should "return empty (not throw) for a venue with nothing on" in {

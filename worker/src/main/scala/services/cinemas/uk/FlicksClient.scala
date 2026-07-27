@@ -4,7 +4,7 @@ import tools.HttpFetch
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper}
+import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -155,12 +155,12 @@ object FlicksClient {
 
   val BaseUrl = "https://www.flicks.co.uk"
 
-  /** A safety ceiling on the discovered horizon, not a target: Flicks advertises
-   *  a venue's whole booking horizon (observed out to ~5 months), and we fetch
-   *  every advertised day, but bound it so a stray far-future date in the tab
-   *  list can't balloon a venue's chunk fan-out. ~7 months clears the real
-   *  horizon with headroom. */
-  val MaxHorizonDays = 210
+  /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]]. Flicks
+   *  advertises a venue's whole booking horizon as day tabs and we fetch every advertised
+   *  day; this only bounds a stray far-future tab. Deliberately the SAME number the chain
+   *  clients use, so a venue's primary and its Flicks fallback cover one window and
+   *  neither prunes the other's tail. */
+  val MaxHorizonDays = ScrapeHorizon.MaxDays
 
   private val DataDate = """data-date="(\d{4}-\d{2}-\d{2})"""".r
   // The venue programme page's day-tab container. Rendered on EVERY venue page,

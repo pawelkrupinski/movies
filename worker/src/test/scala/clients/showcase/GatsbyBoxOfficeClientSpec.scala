@@ -44,7 +44,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
   private def film(title: String): CinemaMovie = films.find(_.movie.title == title).value
 
   "fetch" should "join the venue's schedule against the chain catalogue into one row per film" in {
-    films.size shouldBe 72
+    films.size shouldBe 81
     films.map(_.cinema).toSet shouldBe Set(ShowcaseDeLuxBluewater)
     films.map(_.movie.title) shouldBe films.map(_.movie.title).sorted
     all(films.map(_.showtimes.size)) should be > 0
@@ -66,10 +66,10 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
 
   it should "parse each session to the venue's local date-time, screen and booking link" in {
     val first = film("Jurassic Park").showtimes.head
-    first.dateTime shouldBe LocalDateTime.of(2026, 7, 27, 13, 5)
+    first.dateTime shouldBe LocalDateTime.of(2026, 7, 28, 13, 0)
     first.room.value shouldBe "8"
     first.bookingUrl.value shouldBe
-      "https://tickets.showcasecinemas.co.uk/launch/ticketing/cb83e445-7282-5bbc-9612-1bfba7b4bc1a"
+      "https://tickets.showcasecinemas.co.uk/launch/ticketing/4722a021-7132-5ea4-91c8-f9e19c22bf70"
     first.format shouldBe List("2D")   // Format.Projection.Digital, nothing else
   }
 
@@ -133,15 +133,18 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
     ) shouldBe
       s"${GatsbyBoxOfficeClient.ShowcaseBaseUrl}/api/gatsby-source-boxofficeapi/schedule" +
         "?theaters=%7B%22id%22%3A%22X06JR%22%2C%22timeZone%22%3A%22Europe%2FLondon%22%7D" +
-        "&from=2026-07-27T00:00:00&to=2027-02-22T00:00:00"
+        "&from=2026-07-27T00:00:00&to=2028-07-26T00:00:00"
   }
 
   it should "return days reaching far past a one-week grid, gap days simply absent" in {
     val days = films.flatMap(_.showtimes).map(_.dateTime.toLocalDate).distinct.sorted
-    days.size shouldBe 65
+    days.size shouldBe 75
     days.head shouldBe Today
-    days.last shouldBe LocalDate.of(2027, 2, 7)          // ~6 months out, in ONE request
-    all(days.map(_.toString)) should be <= "2027-02-22"  // inside the horizon
+    // Re-recorded 2026-07-27 at the shared 2-year horizon: 10 more programme days and 9
+    // more films than the old 210-day window returned, all of it advance-sale stock the
+    // cap used to hide — and hiding it is what had scrape-prune delete those films.
+    days.last shouldBe LocalDate.of(2027, 5, 30)
+    all(days.map(_.toString)) should be <= "2028-07-26"  // inside the sanity bound
   }
 
   // ── parser edge cases the live snapshot happens not to contain ────────────

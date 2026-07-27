@@ -93,24 +93,11 @@ object GatsbyBoxOfficeClient {
 
   val UkTimeZone = "Europe/London"
 
-  /** How far ahead one `fetch()` asks for.
-   *
-   *  Matched to [[services.cinemas.uk.FlicksClient]]'s 210 rather than the
-   *  German client's 34, because the constraint those two answer is different.
-   *  There, the horizon is a per-day request budget — every extra day is
-   *  another round-trip — so it is tuned down to the site's own booking window.
-   *  Here the whole range is ONE request, and the marginal cost of a wider one
-   *  is only the extra bytes: measured 2026-07-27 against Showcase's busiest
-   *  venue (Bluewater), 90 days returned 1.03 MB and a FULL YEAR returned
-   *  1.05 MB — ~2% more for 4× the window.
-   *
-   *  So the cap isn't protecting a budget, it is bounding the payload we parse
-   *  and keeping the far tail out. Advance bookings do trickle to ~10 months
-   *  out (a handful of dates reaching 2027-05-30), but those are single
-   *  event-cinema dates that roll into any horizon long before they screen.
-   *  210 days captures the real programme, agrees with the sibling UK chain, and
-   *  keeps one brand-wide convention rather than a per-venue guess. */
-  val MaxHorizonDays = 210
+  /** The shared scrape horizon — see [[ScrapeHorizon]]. This one bounds the PAYLOAD we
+   *  parse rather than a request count, but the consequence of cutting it was the same:
+   *  advance bookings trickle to ~10 months out (a handful of dates reaching 2027-05-30)
+   *  and the old 210-day cap kept them out of the listing, so scrape-prune deleted them. */
+  val MaxHorizonDays = ScrapeHorizon.MaxDays
 
   /** The chain-wide film catalogue (Gatsby static query `allMovie`). The hash is
    *  Gatsby's digest of the query TEXT, so it is identical on both brands'
