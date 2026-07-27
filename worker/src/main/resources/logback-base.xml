@@ -21,6 +21,18 @@
        the process that actually runs enrichment, so this logger lives here. -->
   <logger name="services.enrichment.EnrichmentService" level="DEBUG"/>
 
+  <!-- RemovalAudit's dedicated stream — the ONE place "N films vanished" is
+       recorded (unscreened cleanup, staging folds, orphan reaps, read-model card
+       prunes). It is deliberately a fixed name rather than a class logger, so
+       NONE of the `services`/`clients`/`modules` levels above reach it: without
+       this line it inherits the root's WARN and every INFO audit call is a silent
+       no-op. That is exactly what happened between 4f0c24ccf (2026-07-20, when
+       the audit landed) and this fix — the 245-row UnscreenedCleanup on the
+       German worker on 2026-07-27 left no audit trail at all. Keep the name in
+       step with `RemovalAudit.LoggerName`; RemovalAuditLoggingSpec asserts a real
+       call reaches an appender. -->
+  <logger name="kinowo.removal-audit" level="INFO"/>
+
   <!-- ThrottledHttpFetch's per-host "pace-report" (requests / 429s / clean-rate
        / pace-in-force, once per host per 5min). It's the signal for tuning a
        paced host's rate empirically — e.g. Filmstarts, which draws 429s until

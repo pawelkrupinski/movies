@@ -12,6 +12,15 @@
        and "first run in 10s" line are INFO and always visible. -->
   <logger name="services.enrichment.EnrichmentService" level="DEBUG"/>
 
+  <!-- RemovalAudit's dedicated stream — the ONE place a removal is recorded
+       (here: `MongoMovieRepository.delete` / `deleteById`). It is deliberately a
+       fixed name rather than a class logger, so the `services`/`clients` levels
+       above do NOT reach it: without this line it inherits the root's WARN and
+       every INFO audit call is a silent no-op. Keep the name in step with
+       `RemovalAudit.LoggerName`; LogbackConfigSpec asserts a real call reaches an
+       appender. Mirrored in the worker's logback-base.xml. -->
+  <logger name="kinowo.removal-audit" level="INFO"/>
+
   <!-- MongoDB driver 5.x's TLS selector-monitor loop races against
        connection-pool churn: a SocketChannel queued for selector
        registration can be closed by another thread (idle-pool shrinkage,

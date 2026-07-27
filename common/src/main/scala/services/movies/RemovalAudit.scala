@@ -22,6 +22,12 @@ import play.api.Logger
  * single-slot churn on a healthy scrape logs at DEBUG. All of it flows through the
  * dedicated `kinowo.removal-audit` logger, so an operator can grep that one name
  * or dial its level in `logback.xml` without touching the callers.
+ *
+ * Because the name is fixed rather than class-derived, no package-level logger
+ * covers it: BOTH `worker/…/logback-base.xml` and `web/…/logback.xml` must name
+ * `kinowo.removal-audit` explicitly, or it inherits the root's WARN and every
+ * call here silently does nothing. `RemovalAuditLoggingSpec` (worker) and
+ * `LogbackConfigSpec` (web) hold that line.
  */
 object RemovalAudit {
 
