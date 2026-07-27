@@ -7,14 +7,14 @@ import play.api.mvc._
 import models.Cinema
 import services.UptimeMonitor
 import services.UptimeMonitor._
-import services.fallback.{FilmwebFallbackState, FilmwebFallbackStore}
+import services.fallback.{FallbackState, FallbackStore}
 
 import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FilmwebFallbackStore, country: models.Country)(using mat: Materializer) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore, country: models.Country)(using mat: Materializer) extends AbstractController(cc) {
 
   // The city groups this deployment can render, scoped to the ONE country it
   // serves. `Cinema.byCity` spans every country at once, and rows are matched to
@@ -239,9 +239,10 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   private val tsFmt = DateTimeFormatter.ofPattern("d MMM HH:mm").withZone(warsawZone)
   private def fmtInstant(i: Instant): String = tsFmt.format(i)
 
-  private def fallbackRow(s: FilmwebFallbackState): FallbackRow = FallbackRow(
+  private def fallbackRow(s: FallbackState): FallbackRow = FallbackRow(
     cinema    = s.cinema,
-    filmwebId = s.filmwebCinemaId.map(_.toString).getOrElse("—"),
+    source    = s.fallbackSource,
+    ref       = s.fallbackRef.getOrElse("—"),
     since     = s.since.map(fmtInstant).getOrElse("—"),
     reason    = s.lastReason.getOrElse("—"),
     fails     = s.consecutiveFailures,
@@ -325,7 +326,7 @@ object UptimeBarPayload {
 }
 
 case class FallbackRow(
-  cinema: String, filmwebId: String, since: String, reason: String,
+  cinema: String, source: String, ref: String, since: String, reason: String,
   fails: Int, nextProbe: String, history: Seq[String]
 )
 

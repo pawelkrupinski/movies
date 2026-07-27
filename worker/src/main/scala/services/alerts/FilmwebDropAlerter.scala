@@ -24,7 +24,7 @@ import scala.collection.concurrent.TrieMap
  * still shows it white.
  *
  * Non-Filmweb cinemas are ignored — their health is the general `UptimeMonitor`'s
- * (and `FilmwebFallbackScraper`'s) job, not this Filmweb-specific watcher.
+ * (and `SourceFallbackScraper`'s) job, not this Filmweb-specific watcher.
  *
  * Thread-safety: each cinema's outcomes arrive sequentially (one fetch per
  * tick) while different cinemas run concurrently on different keys, so the

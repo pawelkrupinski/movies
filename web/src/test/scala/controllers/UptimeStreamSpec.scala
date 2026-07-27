@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsObject, Json}
 import play.api.test.Helpers
 import services.UptimeMonitor
-import services.fallback.InMemoryFilmwebFallbackStore
+import services.fallback.InMemoryFallbackStore
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -30,7 +30,7 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
   private def controller(monitor: UptimeMonitor) =
-    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new InMemoryFilmwebFallbackStore, models.Country.Poland)
+    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new InMemoryFallbackStore, models.Country.Poland)
 
   private def servicesIn(frame: String): Seq[String] =
     Json.parse(frame.stripPrefix("data: ").trim).as[List[JsObject]].map(o => (o \ "service").as[String])

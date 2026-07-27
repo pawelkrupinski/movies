@@ -20,7 +20,7 @@ import scala.concurrent.duration._
  *
  * Retry ONLY — recording the scrape's *outcome* against the `UptimeMonitor`
  * is `UptimeRecordingScraper`'s job, wrapped OUTSIDE this. Keeping the two
- * concerns apart lets a third decorator (`FilmwebFallbackScraper`) sit
+ * concerns apart lets a third decorator (`SourceFallbackScraper`) sit
  * between them and substitute the outcome it actually served. A scrape that
  * recovers within the tick simply returns its data here; the failed attempts
  * a retry swallowed never reach the recorder, so they don't stamp a yellow

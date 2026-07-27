@@ -10,7 +10,7 @@ import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
 import services.UptimeMonitor
-import services.fallback.{FallbackEvent, FilmwebFallbackState, InMemoryFilmwebFallbackStore}
+import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -27,7 +27,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private implicit val mat: Materializer = Materializer(sys)
   override def afterAll(): Unit = Await.result(sys.terminate(), 10.seconds)
 
-  private val fallbackStore = new InMemoryFilmwebFallbackStore
+  private val fallbackStore = new InMemoryFallbackStore
   private def controllerFor(country: models.Country) =
     new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(), fallbackStore, country)
   private val controller = controllerFor(models.Country.Poland)
@@ -41,8 +41,8 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private def rowsFrom(crafted: Map[String, Seq[BarData]]): String => ServiceRow =
     n => ServiceRow(n, crafted.getOrElse(n, Seq.empty))
 
-  private def fallbackState(name: String, active: Boolean) = FilmwebFallbackState(
-    cinema = name, active = active, filmwebCinemaId = Some(2180),
+  private def fallbackState(name: String, active: Boolean) = FallbackState(
+    cinema = name, active = active, fallbackSource = "Filmweb", fallbackRef = Some("2180"),
     since = Some(Instant.ofEpochMilli(1_700_000_000_000L)), lastReason = Some("RuntimeException: down"),
     consecutiveFailures = if (active) 2 else 0,
     lastPrimaryProbeAt = Some(Instant.ofEpochMilli(1_700_000_100_000L)),
@@ -198,14 +198,14 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     html should include ("""title="FilmwebShowtimesClient"""") // full class on hover
   }
 
-  "the /uptime page's Filmweb-fallback section" should "list only the cinemas currently on fallback — not recovered or by-design venues" in {
+  "the /uptime page's aggregator-fallback section" should "list only the cinemas currently on fallback — not recovered or by-design venues" in {
     fallbackStore.put(fallbackState("Kino Praha", active = true))
     fallbackStore.put(fallbackState("Kino Iluzjon", active = false))   // recovered (inactive, has history)
 
     val result = controller.index(adminSession)
     status(result) shouldBe OK
     val html = contentAsString(result)
-    html should include ("Filmweb fallback — currently on fallback (1)")
+    html should include ("Aggregator fallback — currently on fallback (1)")
     html should include ("Kino Praha")              // active fallback shown
     html should include ("RuntimeException: down")  // the active row's reason rendered
     // The recovered table and Filmweb-only-by-design table were dropped …

@@ -1,6 +1,6 @@
 package services.alerts
 
-import services.fallback.{FallbackEvent, FilmwebFallbackState}
+import services.fallback.{FallbackEvent, FallbackState}
 
 /**
  * Turns a Filmweb-fallback transition into the Telegram alert text — but only for
@@ -15,9 +15,9 @@ import services.fallback.{FallbackEvent, FilmwebFallbackState}
  * RECOVERED therefore only fires for an entry we actually paged.
  */
 object FallbackAlert {
-  def messageFor(state: FilmwebFallbackState, event: FallbackEvent): Option[String] = event.event match {
+  def messageFor(state: FallbackState, event: FallbackEvent): Option[String] = event.event match {
     case FallbackEvent.Enter if state.alerted =>
-      Some(s"⚠️ ${state.cinema} — serving via Filmweb fallback\nReason: ${event.reason}")
+      Some(s"⚠️ ${state.cinema} — serving via ${state.fallbackSource} fallback\nReason: ${event.reason}")
     case FallbackEvent.Recovered if state.alerted =>
       Some(s"✅ ${state.cinema} — recovered, own scraper is back")
     case _ =>

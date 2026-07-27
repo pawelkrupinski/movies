@@ -16,22 +16,22 @@ import scala.util.Try
 /**
  * Persistence for per-cinema Filmweb-fallback state. Pure storage — the
  * transition rules (when to enter, when to re-probe, when to recover) live above
- * the trait in `FilmwebFallbackScraper`, so the fake is a boring `HashMap` and
+ * the trait in `SourceFallbackScraper`, so the fake is a boring `HashMap` and
  * the real impl differs only at the Mongo boundary (CLAUDE.md "share business
  * logic" / "fake is boring").
  */
-trait FilmwebFallbackStore {
-  def get(cinema: String): Option[FilmwebFallbackState]
-  def findAll(): Seq[FilmwebFallbackState]
-  def put(state: FilmwebFallbackState): Unit
+trait FallbackStore {
+  def get(cinema: String): Option[FallbackState]
+  def findAll(): Seq[FallbackState]
+  def put(state: FallbackState): Unit
   def close(): Unit = ()
 }
 
-class InMemoryFilmwebFallbackStore extends FilmwebFallbackStore {
-  private val map = new ConcurrentHashMap[String, FilmwebFallbackState]()
-  def get(cinema: String): Option[FilmwebFallbackState] = Option(map.get(cinema))
-  def findAll(): Seq[FilmwebFallbackState] = map.values().asScala.toSeq
-  def put(state: FilmwebFallbackState): Unit = { map.put(state.cinema, state); () }
+class InMemoryFallbackStore extends FallbackStore {
+  private val map = new ConcurrentHashMap[String, FallbackState]()
+  def get(cinema: String): Option[FallbackState] = Option(map.get(cinema))
+  def findAll(): Seq[FallbackState] = map.values().asScala.toSeq
+  def put(state: FallbackState): Unit = { map.put(state.cinema, state); () }
 }
 
 /**
@@ -42,25 +42,25 @@ class InMemoryFilmwebFallbackStore extends FilmwebFallbackStore {
  * along as a string-encoded array (`epochMillis\tevent\treason`), reusing the
  * proven string-list idiom rather than nested-document parsing.
  */
-class MongoFilmwebFallbackStore(
+class MongoFallbackStore(
   db: Option[MongoDatabase] = None,
-  collectionName: String = MongoFilmwebFallbackStore.CollectionName
-) extends FilmwebFallbackStore with Logging {
-  import MongoFilmwebFallbackStore._
+  collectionName: String = MongoFallbackStore.CollectionName
+) extends FallbackStore with Logging {
+  import MongoFallbackStore._
 
-  private val mirror = new ConcurrentHashMap[String, FilmwebFallbackState]()
+  private val mirror = new ConcurrentHashMap[String, FallbackState]()
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
 
   coll.foreach(hydrate)
 
-  def get(cinema: String): Option[FilmwebFallbackState] = Option(mirror.get(cinema))
-  def findAll(): Seq[FilmwebFallbackState] = mirror.values().asScala.toSeq
+  def get(cinema: String): Option[FallbackState] = Option(mirror.get(cinema))
+  def findAll(): Seq[FallbackState] = mirror.values().asScala.toSeq
 
   /** Writes are SYNCHRONOUS (unlike the hot-path freshness store): a cinema
    *  enters/leaves fallback at most a few times a day, so the round-trip cost is
    *  irrelevant, and a deterministic write keeps the state machine + status page
    *  honest. Try-guarded so a Mongo hiccup can never break the scrape tick. */
-  def put(state: FilmwebFallbackState): Unit = {
+  def put(state: FallbackState): Unit = {
     mirror.put(state.cinema, state)
     coll.foreach { c =>
       Try {
@@ -80,7 +80,7 @@ class MongoFilmwebFallbackStore(
   }.recover { case exception => logger.warn(s"Filmweb-fallback hydrate failed: ${exception.getMessage}") }
 }
 
-object MongoFilmwebFallbackStore {
+object MongoFallbackStore {
   val CollectionName = "filmwebFallback"
 
   private val Sep = "\t"
@@ -96,9 +96,10 @@ object MongoFilmwebFallbackStore {
 
   private def date(i: Instant): java.util.Date = new java.util.Date(i.toEpochMilli)
 
-  private[fallback] def toUpdate(s: FilmwebFallbackState): Bson = Updates.combine(
+  private[fallback] def toUpdate(s: FallbackState): Bson = Updates.combine(
     Updates.set("active", s.active),
-    Updates.set("filmwebCinemaId", s.filmwebCinemaId.map(Int.box).orNull),
+    Updates.set("fallbackSource", s.fallbackSource),
+    Updates.set("fallbackRef", s.fallbackRef.orNull),
     Updates.set("failingSince", s.failingSince.map(date).orNull),
     Updates.set("since", s.since.map(date).orNull),
     Updates.set("lastReason", s.lastReason.orNull),
@@ -110,13 +111,16 @@ object MongoFilmwebFallbackStore {
     Updates.set("alerted", s.alerted)
   )
 
-  private[fallback] def fromDocument(document: Document): Option[FilmwebFallbackState] =
+  private[fallback] def fromDocument(document: Document): Option[FallbackState] =
     Option(document.getString("_id")).map { id =>
       def instant(key: String): Option[Instant] = Option(document.getDate(key)).map(d => Instant.ofEpochMilli(d.getTime))
-      FilmwebFallbackState(
+      FallbackState(
         cinema              = id,
         active              = Try(document.getBoolean("active", false)).getOrElse(false),
-        filmwebCinemaId     = document.get("filmwebCinemaId").filter(_.isNumber).map(_.asNumber().intValue()),
+        fallbackSource      = Option(document.getString("fallbackSource")).getOrElse(FallbackState.DefaultSource),
+        // New generic handle, else the pre-generalisation numeric `filmwebCinemaId`.
+        fallbackRef         = Option(document.getString("fallbackRef"))
+                                .orElse(document.get("filmwebCinemaId").filter(_.isNumber).map(_.asNumber().intValue().toString)),
         failingSince        = instant("failingSince"),
         since               = instant("since"),
         lastReason          = Option(document.getString("lastReason")),

@@ -1533,6 +1533,14 @@ class CinemaScraperCatalog(
   val all: Seq[CinemaScraper] =
     City.all.flatMap(c => byCity.getOrElse(c.slug, Nil))
 
+  /** UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) whose own-site
+   *  client is the catalogue's primary and that keep flicks.co.uk as their aggregator
+   *  FALLBACK — the mirror of the Polish own-site→Filmweb arrangement. Maps each such
+   *  cinema to the flicks slug it used to be catalogued under, so `WorkerWiring` can
+   *  build the fallback `FlicksClient` on demand. Populated by the chain-wiring step;
+   *  empty until then (behaviour identical to the pre-chain flicks-primary catalogue). */
+  val flicksFallbackSlugs: Map[Cinema, String] = ChainFlicksFallback.slugs
+
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
    *  suppresses per-host uptime rows for these — each cinema's health is
    *  already tracked under its `displayName` by `UptimeRecordingScraper`, so a

@@ -3,14 +3,14 @@ package services.alerts
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.fallback.{FallbackEvent, FilmwebFallbackState}
+import services.fallback.{FallbackEvent, FallbackState}
 
 import java.time.Instant
 
 class FallbackAlertSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val state = FilmwebFallbackState(
-    cinema = "Kino Praha", active = true, filmwebCinemaId = Some(2180), since = Some(Instant.EPOCH),
+  private val state = FallbackState(
+    cinema = "Kino Praha", active = true, fallbackSource = "Filmweb", fallbackRef = Some("2180"), since = Some(Instant.EPOCH),
     lastReason = Some("RuntimeException: down"), consecutiveFailures = 1,
     lastPrimaryProbeAt = None, nextPrimaryProbeAt = None, updatedAt = Instant.EPOCH, history = Nil,
     alerted = true   // the scraper set this on entering fallback (i.e. after the grace window)

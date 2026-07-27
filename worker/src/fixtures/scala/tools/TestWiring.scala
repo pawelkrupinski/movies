@@ -91,7 +91,7 @@ trait TestWiring extends WorkerWiring {
 
   // No Filmweb fallback in tests: pin the id map empty so fixture replay never
   // resolves (one GET per Filmweb city) or fetches Filmweb live. Eligible scrapers
-  // are still wrapped in FilmwebFallbackScraper, but with no id the fallback
+  // are still wrapped in SourceFallbackScraper, but with no id the fallback
   // short-circuits to the primary's real outcome — identical to pre-fallback
   // behaviour, so fixture snapshots are unaffected.
   override protected lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty

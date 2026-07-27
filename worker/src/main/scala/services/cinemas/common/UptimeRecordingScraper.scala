@@ -20,7 +20,7 @@ import scala.util.control.NonFatal
  *
  * Wrapped OUTSIDE `RetryingCinemaScraper`, so the failed attempts a retry
  * recovers from never reach here — only the tick's final outcome is recorded.
- * Splitting record from retry is what lets `FilmwebFallbackScraper` slot
+ * Splitting record from retry is what lets `SourceFallbackScraper` slot
  * between the two and record the outcome it actually served (incl. the
  * "served via Filmweb" flag) instead of the primary's failure.
  */

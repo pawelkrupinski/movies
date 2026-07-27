@@ -12,7 +12,7 @@ import java.util.concurrent.{Callable, ExecutionException, ExecutorService, Time
  * `2× the host's rolling median`, clamped. A scrape that overruns is cancelled
  * — its thread interrupted, so it stops pinning a worker slot and burning the
  * shared-cpu credit — and a `TimeoutException` is thrown. The outer
- * `UptimeRecordingScraper` / `FilmwebFallbackScraper` then records that as a
+ * `UptimeRecordingScraper` / `SourceFallbackScraper` then records that as a
  * normal failure (a red bar, or a Filmweb fallback for eligible venues), so a
  * cut scrape surfaces on /uptime exactly like any other timeout.
  *

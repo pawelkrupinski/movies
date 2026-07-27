@@ -3,17 +3,17 @@ package services.cinemas
 import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
 import services.alerts.FallbackAlert
 import models.{Cinema, CinemaMovie, Multikino}
-import services.fallback.{FallbackEvent, FilmwebFallbackState, InMemoryFilmwebFallbackStore}
+import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.UptimeMonitor
 import services.cinemas.common.CinemaScraper
-import services.cinemas.pl.FilmwebFallbackScraper
+import services.cinemas.common.SourceFallbackScraper
 
 import java.time.Instant
 import scala.concurrent.duration._
 
-class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
+class SourceFallbackSpec extends AnyFlatSpec with Matchers {
 
   private val Service = Multikino.displayName
 
@@ -38,12 +38,14 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
     grace:       FiniteDuration = 6.hours
   ) {
     val monitor = new UptimeMonitor()
-    val store   = new InMemoryFilmwebFallbackStore
+    val store   = new InMemoryFallbackStore
     val primary = new FakeScraper(primaryPlan)
     var clock: Instant = Instant.parse("2026-06-10T08:00:00Z")
-    val events = collection.mutable.ListBuffer.empty[(FilmwebFallbackState, FallbackEvent)]
-    val scraper = new FilmwebFallbackScraper(
-      primary, () => filmweb, () => Some(2180), monitor, store,
+    val events = collection.mutable.ListBuffer.empty[(FallbackState, FallbackEvent)]
+    val scraper = new SourceFallbackScraper(
+      primary,
+      fallback = () => filmweb, fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
+      monitor, store,
       now = () => clock, baseBackoff = base, maxBackoff = 60.minutes, fallbackAfter = grace,
       onEvent = (s, e) => events += ((s, e))
     )
@@ -59,7 +61,7 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
 
   private def filmwebWith(movies: Seq[CinemaMovie]) = ScriptedCinemaScraper(List.fill(99)(Right(movies)))
 
-  "FilmwebFallbackScraper" should "serve the primary and record a plain success when it's healthy" in {
+  "SourceFallbackScraper" should "serve the primary and record a plain success when it's healthy" in {
     val h = new Harness(Seq(Right(OneMovie)), Some(filmwebWith(OneMovie)))
     h.scraper.fetch() shouldBe OneMovie
     h.bucket.successes shouldBe 1
@@ -101,7 +103,7 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
     h.scraper.fetch() shouldBe OneMovie     // now served from Filmweb
     h.bucket.fallback shouldBe true         // the slot is marked "served via Filmweb"
     h.state.map(_.active) shouldBe Some(true)
-    h.state.flatMap(_.filmwebCinemaId) shouldBe Some(2180)
+    h.state.flatMap(_.fallbackRef) shouldBe Some("2180")
     h.state.map(_.consecutiveFailures) shouldBe Some(1)
     h.events.map(_._2.event) shouldBe List(FallbackEvent.Enter)
   }
@@ -121,8 +123,8 @@ class FilmwebFallbackSpec extends AnyFlatSpec with Matchers {
   it should "enter immediately after a restart when the persisted grace clock is already older than the window" in {
     val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)))
     // Simulate a worker that recorded the first failure 7h ago and then restarted.
-    h.store.put(FilmwebFallbackState(
-      cinema = Service, active = false, filmwebCinemaId = Some(2180),
+    h.store.put(FallbackState(
+      cinema = Service, active = false, fallbackSource = "Filmweb", fallbackRef = Some("2180"),
       failingSince = Some(h.clock.minusMillis((7.hours).toMillis)), since = None, lastReason = Some("down"),
       consecutiveFailures = 0, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None,
       updatedAt = h.clock.minusMillis((7.hours).toMillis), history = Nil

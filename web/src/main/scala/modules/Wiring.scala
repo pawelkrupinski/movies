@@ -5,7 +5,7 @@ import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
-import services.fallback.{FilmwebFallbackStore, MongoFilmwebFallbackStore}
+import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.metrics.WebJvmMetrics
 import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
@@ -254,7 +254,7 @@ trait Wiring {
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics, webJvmMetrics, metricsCountry.code)
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).
-  lazy val filmwebFallbackStore: FilmwebFallbackStore = new MongoFilmwebFallbackStore(mongoConnection.database)
+  lazy val filmwebFallbackStore: FallbackStore = new MongoFallbackStore(mongoConnection.database)
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore, models.Country.fromEnv)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore)
   // Dev-only SSE feed for the /debug live view; watches the SELECTED country's

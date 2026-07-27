@@ -1,29 +1,33 @@
-package services.cinemas.pl
+package services.cinemas.common
 
 import models.{Cinema, CinemaMovie}
 import services.UptimeMonitor
-import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore}
-import services.cinemas.common.{CinemaScraper, UptimeRecordingScraper}
+import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
 
 import java.time.{Duration, Instant}
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 /**
- * Decorator (for non-chain, non-Filmweb venues — see [[FallbackEligibility]])
- * that serves showtimes from Filmweb when the cinema's own scraper has been
- * failing continuously for [[fallbackAfter]] (default 6h), and records the
- * outcome — including the "served via Filmweb" flag — against the `UptimeMonitor`.
- * It REPLACES `UptimeRecordingScraper` for eligible cinemas (it does its own
- * recording); its `primary` is the retry-only `RetryingCinemaScraper`.
+ * Decorator that serves showtimes from a SECONDARY source when the cinema's own
+ * primary scraper has been failing continuously for [[fallbackAfter]] (default
+ * 6h), and records the outcome — including the "served via <fallback>" flag —
+ * against the `UptimeMonitor`. It REPLACES `UptimeRecordingScraper` for venues
+ * that have a fallback; its `primary` is the retry-only `RetryingCinemaScraper`.
  *
- * The 6h grace is the whole point: Filmweb's listing is sparser than a cinema's
+ * Source-neutral by construction: `fallback` supplies the secondary scraper and
+ * `fallbackName` names it ("Filmweb" for a Polish own-site venue, "Flicks" for a
+ * UK chain venue whose aggregator backstop is flicks.co.uk). The name flows into
+ * the persisted state, the /uptime label and the Telegram alert so each reads as
+ * "via Filmweb" / "via Flicks" correctly.
+ *
+ * The 6h grace is the whole point: the fallback feed is sparser than a cinema's
  * own site, so switching to it on the FIRST failed scrape made a block of films
  * flicker out and back in during a site's brief morning outage. Instead we ride
  * out short outages on the corpus's last-good data — a throw skips the tick and
  * an empty scrape is a no-op (`MovieCache` bails on empty rather than pruning),
- * so both keep the last successful showtimes — and only fall back to Filmweb once
- * the primary has been down for `fallbackAfter` without interruption.
+ * so both keep the last successful showtimes — and only fall back once the primary
+ * has been down for `fallbackAfter` without interruption.
  *
  * Per tick (`service` = `cinema.displayName`):
  *
@@ -31,45 +35,46 @@ import scala.util.control.NonFatal
  *                                    were on fallback, mark RECOVERED and release
  *                                    it; if merely in the grace window, just clear
  *                                    the clock).
- *   - Primary threw, or returned empty while Filmweb has data, but the failing run
- *                                    is still younger than `fallbackAfter` → GRACE:
- *                                    record the primary's real outcome (a throw
- *                                    re-raises so the tick skips the cinema; an
- *                                    empty is returned as-is, a no-op downstream),
+ *   - Primary threw, or returned empty while the fallback has data, but the failing
+ *                                    run is still younger than `fallbackAfter` →
+ *                                    GRACE: record the primary's real outcome (a
+ *                                    throw re-raises so the tick skips the cinema;
+ *                                    an empty is returned as-is, a no-op downstream),
  *                                    start/keep the `failingSince` clock, DON'T
- *                                    serve Filmweb.
- *   - The failing run has reached `fallbackAfter` AND Filmweb has data → serve
- *                                    Filmweb, record a fallback-success (green +
- *                                    "via Filmweb"), ENTER fallback (or PROBE_FAILED
+ *                                    serve the fallback.
+ *   - The failing run has reached `fallbackAfter` AND the fallback has data → serve
+ *                                    it, record a fallback-success (green + "via
+ *                                    <fallback>"), ENTER fallback (or PROBE_FAILED
  *                                    if already on it) and back off the next primary
  *                                    re-probe.
- *   - Primary empty AND Filmweb also empty/unavailable → the genuine-empty case
+ *   - Primary empty AND the fallback also empty/unavailable → the genuine-empty case
  *                                    (e.g. a dark late-night repertoire): record the
  *                                    primary's real outcome and do NOT start a
  *                                    failing spell — only a real failure (a throw, or
- *                                    an empty Filmweb could actually cover) counts,
- *                                    so an empty night never trips.
+ *                                    an empty the fallback could actually cover)
+ *                                    counts, so an empty night never trips.
  *
  * Recovery: while on fallback we skip the (often slow/timing-out) primary until
- * `nextPrimaryProbeAt`, serving Filmweb directly; at that point we re-probe the
+ * `nextPrimaryProbeAt`, serving the fallback directly; at that point we re-probe the
  * primary, recovering immediately if it's back, else extending the backoff
- * (exponential, capped). State + history persist via `FilmwebFallbackStore` for
+ * (exponential, capped). State + history persist via `FallbackStore` for
  * the /uptime/fallback page; `onEvent` fires on ENTER / PROBE_FAILED / RECOVERED
  * for alerting.
  */
-class FilmwebFallbackScraper(
+class SourceFallbackScraper(
   primary:         CinemaScraper,
-  filmweb:         () => Option[CinemaScraper],
-  filmwebCinemaId: () => Option[Int],
+  fallback:        () => Option[CinemaScraper],
+  fallbackName:    String,
+  fallbackRef:     () => Option[String],
   monitor:         UptimeMonitor,
-  store:           FilmwebFallbackStore,
+  store:           FallbackStore,
   now:             () => Instant = () => Instant.now(),
-  baseBackoff:     FiniteDuration = FilmwebFallbackScraper.DefaultBaseBackoff,
-  maxBackoff:      FiniteDuration = FilmwebFallbackScraper.DefaultMaxBackoff,
-  fallbackAfter:   FiniteDuration = FilmwebFallbackScraper.DefaultFallbackAfter,
-  onEvent:         (FilmwebFallbackState, FallbackEvent) => Unit = (_, _) => ()
+  baseBackoff:     FiniteDuration = SourceFallbackScraper.DefaultBaseBackoff,
+  maxBackoff:      FiniteDuration = SourceFallbackScraper.DefaultMaxBackoff,
+  fallbackAfter:   FiniteDuration = SourceFallbackScraper.DefaultFallbackAfter,
+  onEvent:         (FallbackState, FallbackEvent) => Unit = (_, _) => ()
 ) extends CinemaScraper {
-  import FilmwebFallbackScraper._
+  import SourceFallbackScraper._
 
   val cinema: Cinema           = primary.cinema
   def scrapeHosts: Set[String] = primary.scrapeHosts
@@ -83,7 +88,7 @@ class FilmwebFallbackScraper(
 
     if (withinBackoff) {
       // On fallback, not yet time to re-probe → skip the broken primary entirely.
-      val (fwMovies, fwMs, fwServed) = tryFilmweb()
+      val (fwMovies, fwMs, fwServed) = tryFallback()
       previous.foreach(p => store.put(p.copy(updatedAt = nowI)))
       if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fwMovies }
       else { monitor.recordEmpty(service, fwMs); Seq.empty }
@@ -95,16 +100,16 @@ class FilmwebFallbackScraper(
           movies
 
         case PrimaryOutcome.Threw(t) =>
-          // A throw is unambiguously a failure — no need to consult Filmweb to
+          // A throw is unambiguously a failure — no need to consult the fallback to
           // classify it; only reach for it once the grace window has elapsed.
           onFailure(previous, nowI, active, UptimeRecordingScraper.errorLabel(t)) {
             monitor.recordFailure(service, UptimeRecordingScraper.errorLabel(t)); throw t
           }
 
         case PrimaryOutcome.Empty(movies, ms) =>
-          // Empty only counts as a failure if Filmweb can actually cover it —
+          // Empty only counts as a failure if the fallback can actually cover it —
           // otherwise it's a genuine empty repertoire and must never trip.
-          val (fwMovies, fwMs, fwServed) = tryFilmweb()
+          val (fwMovies, fwMs, fwServed) = tryFallback()
           if (!fwServed) {
             if (active) markPrimaryDown(previous, nowI, EmptyReason)  // already on fallback: still a failed re-probe
             monitor.recordEmpty(service, ms); movies
@@ -119,20 +124,20 @@ class FilmwebFallbackScraper(
     }
   }
 
-  /** Failure handling for the "no Filmweb needed to classify" path (a throw). If
+  /** Failure handling for the "no fallback needed to classify" path (a throw). If
    *  we're already on fallback it's a failed re-probe; otherwise it's a grace
-   *  failure until [[fallbackAfter]] elapses, at which point — if Filmweb has data
+   *  failure until [[fallbackAfter]] elapses, at which point — if the fallback has data
    *  — we enter fallback and serve it. `keepPrimaryOutcome` is evaluated (re-raising
-   *  the throw) whenever Filmweb can't step in. */
-  private def onFailure(previous: Option[FilmwebFallbackState], nowI: Instant, active: Boolean, reason: String)(
+   *  the throw) whenever the fallback can't step in. */
+  private def onFailure(previous: Option[FallbackState], nowI: Instant, active: Boolean, reason: String)(
     keepPrimaryOutcome: => Seq[CinemaMovie]
   ): Seq[CinemaMovie] =
     if (active) {
-      val (fwMovies, fwMs, fwServed) = tryFilmweb()
+      val (fwMovies, fwMs, fwServed) = tryFallback()
       markPrimaryDown(previous, nowI, reason)
       if (fwServed) { monitor.recordFallbackSuccess(service, fwMs); fwMovies } else keepPrimaryOutcome
     } else if (graceElapsed(previous, nowI)) {
-      val (fwMovies, fwMs, fwServed) = tryFilmweb()
+      val (fwMovies, fwMs, fwServed) = tryFallback()
       if (fwServed) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs); fwMovies }
       else { recordGraceFailure(previous, nowI, reason); keepPrimaryOutcome }
     } else {
@@ -142,7 +147,7 @@ class FilmwebFallbackScraper(
   /** Has the current continuous-failure run reached [[fallbackAfter]]?
    *  `failingSince` is carried from the persisted state (or starts now), so the
    *  clock survives worker restarts. */
-  private def graceElapsed(previous: Option[FilmwebFallbackState], nowI: Instant): Boolean = {
+  private def graceElapsed(previous: Option[FallbackState], nowI: Instant): Boolean = {
     val failingSince = previous.flatMap(_.failingSince).getOrElse(nowI)
     Duration.between(failingSince, nowI).toMillis >= fallbackAfter.toMillis
   }
@@ -158,7 +163,7 @@ class FilmwebFallbackScraper(
     }
   }
 
-  private def tryFilmweb(): (Seq[CinemaMovie], Long, Boolean) = filmweb() match {
+  private def tryFallback(): (Seq[CinemaMovie], Long, Boolean) = fallback() match {
     case Some(fw) =>
       val t0 = System.currentTimeMillis()
       val movies = try fw.fetch() catch { case NonFatal(_) => Seq.empty }
@@ -170,11 +175,11 @@ class FilmwebFallbackScraper(
    *  this is the first failure) without entering fallback. `active=false` so the
    *  /uptime page (which filters on `active`) ignores it, and no history/event is
    *  recorded — a grace failure is not a fallback transition. */
-  private def recordGraceFailure(previous: Option[FilmwebFallbackState], nowI: Instant, reason: String): Unit = {
+  private def recordGraceFailure(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
     val base = previous.getOrElse(initialState)
     store.put(base.copy(
       active              = false,
-      filmwebCinemaId     = filmwebCinemaId(),
+      fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
       lastReason          = Some(reason),
       consecutiveFailures = 0,             // backoff only matters once we're on fallback
@@ -185,14 +190,14 @@ class FilmwebFallbackScraper(
   }
 
   /** Cross from the grace window into fallback: the primary has now been failing
-   *  for [[fallbackAfter]] and Filmweb has data. Pages ENTER immediately — the
+   *  for [[fallbackAfter]] and the fallback has data. Pages ENTER immediately — the
    *  grace window already proved this is no brief blip. */
-  private def enterFallback(previous: Option[FilmwebFallbackState], nowI: Instant, reason: String): Unit = {
+  private def enterFallback(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
     val base  = previous.getOrElse(initialState)
     val event = FallbackEvent(nowI, FallbackEvent.Enter, reason)
     val next = base.copy(
       active              = true,
-      filmwebCinemaId     = filmwebCinemaId(),
+      fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
       since               = Some(nowI),
       lastReason          = Some(reason),
@@ -200,7 +205,7 @@ class FilmwebFallbackScraper(
       lastPrimaryProbeAt  = Some(nowI),
       nextPrimaryProbeAt  = Some(nowI.plusMillis(backoffFor(1).toMillis)),
       updatedAt           = nowI,
-      history             = (event :: base.history).take(FilmwebFallbackState.MaxHistory),
+      history             = (event :: base.history).take(FallbackState.MaxHistory),
       alerted             = true
     )
     store.put(next)
@@ -211,13 +216,13 @@ class FilmwebFallbackScraper(
    *  PROBE_FAILED, bump the failure count and push the next probe out with
    *  exponential backoff. Routine backoff noise — no page (FallbackAlert ignores
    *  PROBE_FAILED). */
-  private def markPrimaryDown(previous: Option[FilmwebFallbackState], nowI: Instant, reason: String): Unit = {
+  private def markPrimaryDown(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
     val base        = previous.getOrElse(initialState)
     val consecutive = base.consecutiveFailures + 1
     val event       = FallbackEvent(nowI, FallbackEvent.ProbeFailed, reason)
     val next = base.copy(
       active              = true,
-      filmwebCinemaId     = filmwebCinemaId(),
+      fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
       since               = base.since.orElse(Some(nowI)),
       lastReason          = Some(reason),
@@ -225,7 +230,7 @@ class FilmwebFallbackScraper(
       lastPrimaryProbeAt  = Some(nowI),
       nextPrimaryProbeAt  = Some(nowI.plusMillis(backoffFor(consecutive).toMillis)),
       updatedAt           = nowI,
-      history             = (event :: base.history).take(FilmwebFallbackState.MaxHistory)
+      history             = (event :: base.history).take(FallbackState.MaxHistory)
     )
     store.put(next)
     onEvent(next, event)
@@ -234,13 +239,13 @@ class FilmwebFallbackScraper(
   /** A healthy primary tick ends the current failing run. If we were on fallback,
    *  mark RECOVERED and page (the entry paged, so the recovery is worth a page); if
    *  we were merely in the grace window, clear the clock silently. */
-  private def endFailingSpell(previous: Option[FilmwebFallbackState], nowI: Instant): Unit = previous.foreach { p =>
+  private def endFailingSpell(previous: Option[FallbackState], nowI: Instant): Unit = previous.foreach { p =>
     if (p.active) {
       val event = FallbackEvent(nowI, FallbackEvent.Recovered, "primary recovered")
       val next = p.copy(
         active = false, lastReason = Some("primary recovered"), consecutiveFailures = 0,
         failingSince = None, since = None, lastPrimaryProbeAt = Some(nowI), nextPrimaryProbeAt = None,
-        updatedAt = nowI, history = (event :: p.history).take(FilmwebFallbackState.MaxHistory)
+        updatedAt = nowI, history = (event :: p.history).take(FallbackState.MaxHistory)
       )
       store.put(next)
       onEvent(next, event)
@@ -254,18 +259,18 @@ class FilmwebFallbackScraper(
     if (shifted > maxBackoff) maxBackoff else shifted
   }
 
-  private def initialState = FilmwebFallbackState(
-    cinema = service, active = false, filmwebCinemaId = filmwebCinemaId(), failingSince = None, since = None,
+  private def initialState = FallbackState(
+    cinema = service, active = false, fallbackSource = fallbackName, fallbackRef = fallbackRef(), failingSince = None, since = None,
     lastReason = None, consecutiveFailures = 0, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None,
     updatedAt = Instant.EPOCH, history = Nil
   )
 }
 
-object FilmwebFallbackScraper {
+object SourceFallbackScraper {
   val DefaultBaseBackoff: FiniteDuration = 5.minutes
   val DefaultMaxBackoff:  FiniteDuration = 60.minutes
   /** Ride out a primary outage on last-good data for this long before switching to
-   *  Filmweb's sparser listing — only a genuinely sustained failure trips fallback,
+   *  the fallback's sparser listing — only a genuinely sustained failure trips fallback,
    *  so a brief blip never flickers a block of films out of the corpus. */
   val DefaultFallbackAfter: FiniteDuration = 6.hours
 

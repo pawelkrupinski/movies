@@ -75,28 +75,28 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fold the Filmweb-fallback section onto the page, below the triage and above Cinemas" in {
-    val fallback = FallbackRow("Kino Praha", "2180", "1 Jan 12:00", "RuntimeException: down",
+    val fallback = FallbackRow("Kino Praha", "Filmweb", "2180", "1 Jan 12:00", "RuntimeException: down",
       2, "1 Jan 13:00", Seq("evt-recent", "evt-older"))
     val out = views.html.uptime(
       Seq.empty, Seq.empty, Seq(fallback), cinemasByCity, Seq.empty, Seq.empty).body
 
-    out should include ("""id="filmweb-fallback"""")
-    out should include ("Filmweb fallback — currently on fallback (1)")
+    out should include ("""id="fallback"""")
+    out should include ("Aggregator fallback — currently on fallback (1)")
     out should include ("Kino Praha")            // the active fallback row
     // The fallback block sits between the triage sections and the Cinemas section.
-    out.indexOf("""id="filmweb-fallback"""") should be < out.indexOf("<h2>Cinemas</h2>")
+    out.indexOf("""id="fallback"""") should be < out.indexOf("<h2>Cinemas</h2>")
   }
 
   it should "render the Filmweb-fallback section collapsed by default, expandable on click" in {
-    val fallback = FallbackRow("Kino Praha", "2180", "1 Jan 12:00", "down",
+    val fallback = FallbackRow("Kino Praha", "Filmweb", "2180", "1 Jan 12:00", "down",
       2, "1 Jan 13:00", Seq("evt-recent"))
     val out = views.html.uptime(
       Seq.empty, Seq.empty, Seq(fallback), Nil, Nil, Nil).body
 
     // A <details> with NO `open` attribute → collapsed until the <summary> is clicked.
-    out should include ("""<details class="leading-fallback" id="filmweb-fallback">""")
-    out should include ("<summary>Filmweb fallback — currently on fallback (1)</summary>")
-    out should not include ("leading-fallback\" id=\"filmweb-fallback\" open")
+    out should include ("""<details class="leading-fallback" id="fallback">""")
+    out should include ("<summary>Aggregator fallback — currently on fallback (1)</summary>")
+    out should not include ("leading-fallback\" id=\"fallback\" open")
   }
 
   // /uptime is scoped to the ONE country this deployment serves — the bars are
@@ -127,7 +127,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "show only the most recent history event, with the full history in an instant hover tooltip" in {
-    val fallback = FallbackRow("Kino Praha", "2180", "1 Jan 12:00", "down",
+    val fallback = FallbackRow("Kino Praha", "Filmweb", "2180", "1 Jan 12:00", "down",
       2, "1 Jan 13:00", Seq("evt-recent", "evt-older"))
     val out = views.html.uptime(
       Seq.empty, Seq.empty, Seq(fallback), Nil, Nil, Nil).body

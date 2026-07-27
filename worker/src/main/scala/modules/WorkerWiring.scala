@@ -13,13 +13,14 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadMod
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import clients.TmdbClient
 import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
-import services.fallback.{FallbackEvent, FilmwebFallbackState, FilmwebFallbackStore, MongoFilmwebFallbackStore}
+import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, WriteThroughResolutionCache}
 import services.cinemas._
 import services.enrichment._
 import services.cinemas.common._
-import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebFallbackScraper, FilmwebShowtimesClient, MultikinoClient}
+import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient, MultikinoClient}
+import services.cinemas.uk.FlicksClient
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
@@ -284,13 +285,13 @@ class WorkerWiring(
 
   // ── Filmweb fallback ────────────────────────────────────────────────────────
   // Each non-chain venue whose own scraper throws or comes back empty is served
-  // from Filmweb instead (FilmwebFallbackScraper), and the swap is recorded for
+  // from Filmweb instead (SourceFallbackScraper), and the swap is recorded for
   // the /uptime/fallback page. Each cinema's Filmweb id is resolved once (one GET
   // per Filmweb-listed city), guarded so a network/resolver failure yields no
   // fallback rather than a boot failure; cinemas Filmweb doesn't list simply have
   // no fallback available. Test wirings pin this empty so fixture replay never
   // resolves or fetches Filmweb live (see TestWiring). Also empty for a country
-  // whose Filmweb path is off — an empty id map makes every FilmwebFallbackScraper
+  // whose Filmweb path is off — an empty id map makes every SourceFallbackScraper
   // short-circuit to the primary's real outcome (identical to no fallback).
   protected lazy val filmwebFallbackIds: Map[Cinema, Int] =
     if (!filmwebEnabled) Map.empty
@@ -303,8 +304,8 @@ class WorkerWiring(
     filmwebFallbackIds.get(cinema).map(id =>
       new FilmwebShowtimesClient(httoFetch, id, cinema, today = heliosToday))
 
-  lazy val filmwebFallbackStore: FilmwebFallbackStore =
-    new MongoFilmwebFallbackStore(mongoConnection.database)
+  lazy val filmwebFallbackStore: FallbackStore =
+    new MongoFallbackStore(mongoConnection.database)
 
   // Telegram alerter for fallback ENTER / RECOVERED events, wired only when the
   // bot token + chat id are configured (absent in CI / local without secrets →
@@ -340,7 +341,7 @@ class WorkerWiring(
   // configured, and (re)writes the cinema's /uptime tags so the FtFW chip appears
   // on ENTER and clears on RECOVER. `state.active` is the post-transition truth
   // (put() runs before onEvent), so no store round-trip is needed.
-  protected def filmwebFallbackOnEvent: (FilmwebFallbackState, FallbackEvent) => Unit =
+  protected def filmwebFallbackOnEvent: (FallbackState, FallbackEvent) => Unit =
     (state, event) => {
       FallbackAlert.messageFor(state, event).foreach(message => fallbackTelegramNotifier.foreach(_.send(message)))
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
@@ -394,17 +395,37 @@ class WorkerWiring(
         recordingScraper(inner, FallbackEligibility.eligible(raw))
       }
 
-  /** Wrap a scrape source with the outcome recorder: the Filmweb fallback for an
-   *  eligible single venue, else the plain uptime recorder. Extracted so the
-   *  chunked reduce step (`publishScrape`) records uptime + falls back exactly
-   *  like a live scrape. */
+  /** Cinema → its flicks.co.uk slug, for UK chain venues whose own-site scraper is
+   *  the primary and flicks is the aggregator FALLBACK (the mirror of the Polish
+   *  own-site→Filmweb arrangement). Sourced from the catalogue so the same slug that
+   *  used to be a flicks *catalogue* entry now feeds the fallback. Keyed by cinema so
+   *  it applies whether the primary is a plain or a chunked chain scraper. */
+  protected def flicksFallbackSlugs: Map[Cinema, String] = cinemaScraperCatalog.flicksFallbackSlugs
+
+  /** Wrap a scrape source with the outcome recorder + its fallback source:
+   *   - a UK chain venue → flicks.co.uk as the aggregator fallback;
+   *   - else an eligible single venue → Filmweb;
+   *   - else the plain uptime recorder.
+   *  One source-neutral [[SourceFallbackScraper]] serves both feeds; `fallbackName`
+   *  drives the /uptime label + Telegram text. Extracted so the chunked reduce step
+   *  (`publishScrape`) records uptime + falls back exactly like a live scrape. */
   private def recordingScraper(inner: CinemaScraper, eligible: Boolean): CinemaScraper =
-    if (eligible)
-      new FilmwebFallbackScraper(inner,
-        () => filmwebFallbackFor(inner.cinema), () => filmwebFallbackIds.get(inner.cinema),
-        uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)
-    else
-      new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener)
+    flicksFallbackSlugs.get(inner.cinema) match {
+      case Some(slug) =>
+        new SourceFallbackScraper(inner,
+          fallback     = () => Some(new FlicksClient(flicksFetch, slug, inner.cinema)),
+          fallbackName = "Flicks",
+          fallbackRef  = () => Some(slug),
+          uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)
+      case None if eligible =>
+        new SourceFallbackScraper(inner,
+          fallback     = () => filmwebFallbackFor(inner.cinema),
+          fallbackName = "Filmweb",
+          fallbackRef  = () => filmwebFallbackIds.get(inner.cinema).map(_.toString),
+          uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)
+      case None =>
+        new UptimeRecordingScraper(inner, uptimeMonitor, scrapeOutcomeListener)
+    }
 
   /** Rolling per-host scrape-duration stats backing the adaptive scrape timeout.
    *  In-memory by design — it adds no Mongo write load (the throttle this guards
