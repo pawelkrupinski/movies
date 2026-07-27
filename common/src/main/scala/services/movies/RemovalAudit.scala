@@ -73,6 +73,25 @@ object RemovalAudit {
     logger.info(s"[scrape-prune] cinema='$cinema' SKIPPED prune (looks partial): " +
       s"batch=$batchFilms known=$knownSlots reason=$reason")
 
+  /** The DEPTH guard rejected a whole tick: the cinema's films all came back but
+   *  carrying a fraction of their screenings, which is a degraded fetch (a chunked
+   *  scrape that lost most of its dates) rather than a real schedule cut. The tick
+   *  is discarded entirely, so the stored showtimes survive to the next healthy
+   *  run. WARN, not INFO — unlike a skipped prune this means a scrape was thrown
+   *  away, and a cinema that keeps tripping it is genuinely failing to fetch. */
+  def scrapeDepthGuarded(cinema: String, batchShowtimes: Int, knownShowtimes: Int, consecutive: Int): Unit =
+    logger.warn(s"[scrape-depth] cinema='$cinema' DISCARDED tick (looks depth-degraded): " +
+      s"batch=$batchShowtimes showtime(s) vs known=$knownShowtimes consecutive=$consecutive reason=depth-guard")
+
+  /** The depth guard gave up on a cinema: the shrink persisted across enough
+   *  consecutive ticks to be a real schedule cut rather than a bad fetch, so the
+   *  smaller board is allowed through. The counterpart to [[scrapeDepthGuarded]] —
+   *  if this fires for a cinema that is actually broken, its fetch has been failing
+   *  the same way for several ticks and wants investigating. */
+  def scrapeDepthAccepted(cinema: String, batchShowtimes: Int, knownShowtimes: Int, consecutive: Int): Unit =
+    logger.warn(s"[scrape-depth] cinema='$cinema' ACCEPTED a sustained reduction after " +
+      s"$consecutive consecutive rejections: batch=$batchShowtimes vs known=$knownShowtimes reason=depth-guard-exhausted")
+
   /** All of a film's screening slots cleared at once (`whole` = the slot map was
    *  empty, so every slot went) — INFO; a partial stale-slot trim on a healthy
    *  write is routine — DEBUG. */

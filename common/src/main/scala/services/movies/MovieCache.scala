@@ -208,6 +208,28 @@ class CaffeineMovieCache(
   private val MinSlotsForShrinkGuard = 8
   private val PruneFloorRatio        = 0.5
 
+  // The DEPTH guard's engage-floor (its ratio is `PruneFloorRatio` above — one
+  // half-floor, measured valid on both axes, rather than two constants that mean
+  // the same thing). A cinema holding fewer upcoming showtimes than this is small
+  // enough that halving its board between ticks is a real schedule change, not a
+  // degraded fetch — the depth analogue of `MinSlotsForShrinkGuard`, and set to
+  // roughly that many slots' worth of screenings.
+  private val MinShowtimesForDepthGuard = 24
+
+  // The depth guard DISCARDS a tick, so it must not be able to freeze a venue
+  // forever. A board that genuinely halves — a screen closes, a summer schedule
+  // starts — would otherwise be rejected on every subsequent tick too, since each
+  // one is compared against the same stale stored total. Leaving stale FUTURE
+  // showtimes up is worse than showing too few: a user can act on a screening that
+  // is not happening. After this many CONSECUTIVE rejections the reduction is
+  // treated as real and allowed through. This does not reopen the incident: those
+  // degraded ticks were interspersed with healthy ones, each of which resets the
+  // count and restores the full board.
+  private val MaxConsecutiveDepthRejections = 3
+
+  /** Consecutive depth-guard rejections per cinema, reset by any tick that passes. */
+  private val depthRejections = scala.collection.concurrent.TrieMap.empty[String, Int]
+
   // Fires the cold-mirror sync at most once, on the FIRST scrape (see
   // `recordCinemaScrape`). One-shot so the sync can't re-trigger at an
   // arrival-order-dependent later scrape — the mirror only goes cold at boot, and a
@@ -831,6 +853,16 @@ class CaffeineMovieCache(
   private def cinemaSlotKey(cinema: Cinema, title: String): Source =
     CinemaShowing.keyFor(cinema, title)
 
+  /** Every slot this cinema currently holds in the cache. Shared by the two
+   *  degraded-scrape guards, which read the same held-slot set along different
+   *  axes — how many slots (breadth) and how many showtimes (depth). */
+  private def heldSlotsOf(cinema: Cinema): Iterator[(Source, SourceData)] = {
+    import scala.jdk.CollectionConverters._
+    positive.asMap().asScala.values.iterator
+      .flatMap(_.data.iterator)
+      .collect { case (s, sd) if Source.cinemaOf(s).contains(cinema) => (s, sd) }
+  }
+
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie]): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
     // challenge, parser regex mismatch, proxy 503, blank HTML), not a
@@ -840,6 +872,40 @@ class CaffeineMovieCache(
     // — producing the visible "row appears and disappears" flicker. Bail out
     // and trust the slot data we have until the next non-empty tick.
     if (movies.isEmpty) return Seq.empty
+
+    // DEPTH guard — the same "trust what we have" bail as above, on the axis
+    // neither that check nor the film-count shrink guard further down can see.
+    // A CHUNKED cinema is fetched one task per DATE, so a bad fetch window loses
+    // whole dates while every film still comes back on the dates that worked:
+    // breadth intact, depth collapsed. The shrink guard counts films and reads a
+    // full board; every slot is "touched" so the prune never even engages; and the
+    // thin showtime list simply REPLACES the full one (a cinema slot is rewritten
+    // wholesale). That is how the UK lost ~70% of its upcoming showtimes on
+    // 2026-07-27 while its film count ROSE — cinemas measured holding 18% of what
+    // a complete re-scrape found, restored in full by the next healthy run.
+    //
+    // Threshold from production: sampling complete chunked runs against the
+    // showtimes already stored for the same cinema, a HEALTHY tick reproduces the
+    // stored count to within a few percent (PL+DE: mean 1.04, sd 0.05, range
+    // 0.98-1.10), while the degraded UK ticks sat at 0.09-0.40. Reusing the shrink
+    // guard's half-floor therefore sits ~10 sd below normal variation — no realistic
+    // false positive — and still catches the incident with room to spare.
+    // `MinShowtimesForDepthGuard` keeps it off boards small enough for a halving to
+    // be real: a two-screen venue genuinely can go from three showings to one.
+    val knownCinemaShowtimes = heldSlotsOf(cinema).map(_._2.showtimes.size).sum
+    val batchShowtimes       = movies.iterator.map(_.showtimes.size).sum
+    if (knownCinemaShowtimes >= MinShowtimesForDepthGuard &&
+        batchShowtimes < knownCinemaShowtimes * PruneFloorRatio) {
+      val consecutive = depthRejections.updateWith(cinema.displayName)(n => Some(n.getOrElse(0) + 1)).getOrElse(1)
+      if (consecutive <= MaxConsecutiveDepthRejections) {
+        RemovalAudit.scrapeDepthGuarded(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)
+        return Seq.empty
+      }
+      // Sustained across several ticks — stop treating it as a bad fetch and let
+      // the smaller board land, rather than serving showtimes that no longer exist.
+      RemovalAudit.scrapeDepthAccepted(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)
+    }
+    depthRejections.remove(cinema.displayName)
 
     // Cold-mirror guard (only matters when diversion is wired). The newcomer test
     // further down reads the in-memory mirror (`knownSanitized` / `knownAliases` /
@@ -946,9 +1012,8 @@ class CaffeineMovieCache(
     // If so, the prune below is skipped — the films this tick failed to mention keep
     // their slots until a healthy tick, instead of flickering off the site. Generic
     // across cinemas; Multikino (Cloudflare + session wall) is the recurring victim.
-    val knownCinemaSlots = positive.asMap().asScala.values.iterator
-      .flatMap(_.data.keysIterator)
-      .count(s => Source.cinemaOf(s).contains(cinema))
+    // The BREADTH half of the pair; the depth half bails at the top of this method.
+    val knownCinemaSlots = heldSlotsOf(cinema).size
     val scrapeLooksPartial =
       knownCinemaSlots >= MinSlotsForShrinkGuard &&
       deduped.size < knownCinemaSlots * PruneFloorRatio

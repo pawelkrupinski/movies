@@ -1017,6 +1017,136 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     multikinoSlot(cache, "Film 2") shouldBe None
   }
 
+  // ── Depth guard: a scrape that keeps every film but loses their showtimes ──
+  //
+  // The shrink guard above counts FILMS, which is the axis a row-subset failure
+  // (Multikino behind Cloudflare) degrades along. A CHUNKED cinema degrades along
+  // a different axis: one task per date, so a bad fetch window loses whole DATES
+  // while every film still comes back on the dates that worked. Breadth is intact,
+  // depth collapses — the film-count guard reads healthy, every slot is "touched"
+  // so the prune isn't even involved, and the thin showtime list simply overwrites
+  // the full one. That is how the UK lost ~70% of its upcoming showtimes on
+  // 2026-07-27 while its film count ROSE (cinemas measured holding 18% of what a
+  // complete re-scrape found, restored in full by the next healthy run).
+  //
+  // The floor is empirical, not guessed — the measured distribution it came from
+  // is pinned as a table in the last test of this group.
+
+  /** `films` slots at this cinema, each carrying `showtimesEach` distinct screenings
+   *  (spread across days so the count scales past a single day's opening hours). */
+  private def deepScrape(films: Int, showtimesEach: Int): Seq[CinemaMovie] =
+    (1 to films).map { i =>
+      val times = (0 until showtimesEach).map { n =>
+        showtime(f"2027-06-${8 + n / 12}%02dT${8 + n % 12}%02d:00")
+      }
+      cinemaMovie(s"Film $i", Multikino, showtimes = times)
+    }
+
+  private def multikinoShowtimeCount(cache: CaffeineMovieCache, title: String): Int =
+    multikinoSlot(cache, title).map(_.showtimes.size).getOrElse(0)
+
+  it should "keep a cinema's stored showtimes when a scrape returns every film but only a fraction of their screenings (a chunked scrape that lost most of its dates)" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
+    multikinoShowtimeCount(cache, "Film 1") shouldBe 12
+    // Next tick: all ten films still listed — so the FILM-count guard sees a full
+    // board — but each carries one showtime instead of twelve. That is a degraded
+    // fetch, not ten cinemas simultaneously cutting a film to a single screening.
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
+    (1 to 10).foreach(i =>
+      withClue(s"Film $i must keep its showtimes through a depth-degraded scrape: ")(
+        multikinoShowtimeCount(cache, s"Film $i") shouldBe 12))
+  }
+
+  it should "still apply a scrape whose showtimes shrink plausibly (a real schedule change, not a degraded fetch)" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
+    // Ten of twelve screenings kept — well inside what a real week-turn does, and
+    // far above the degraded-fetch floor — so the write lands normally.
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 10))
+    multikinoShowtimeCount(cache, "Film 1") shouldBe 10
+  }
+
+  it should "still apply a deep drop on a board too small for the shrink to be implausible" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    // A handful of screenings total — a small venue really can go from three
+    // showings to one between ticks, so this must land rather than linger.
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 2, showtimesEach = 3))
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 2, showtimesEach = 1))
+    multikinoShowtimeCount(cache, "Film 1") shouldBe 1
+  }
+
+  // The measured basis for the half-floor, kept as a table so a future tuning has
+  // to argue with the data rather than with a bare constant.
+  //
+  // Method: for every chunked scrape run that COMPLETED but had not yet published,
+  // count the showtimes the fresh scrape found and the showtimes already stored for
+  // that same cinema, and take the ratio. Sampled live on 2026-07-27 across all
+  // three countries. PL+DE were healthy that day and supply the normal population;
+  // the UK was mid-incident and supplies the degraded one.
+  //
+  //   healthy (PL+DE, boards >= 24 showtimes, n=6): 0.98 0.99 1.00 1.06 1.09 1.10
+  //                                                 mean 1.038, sd 0.054
+  //   degraded (UK, n=20): 0.00 0.08 0.09 0.09 0.10 0.11 0.12 0.13 0.13 0.15
+  //                        0.16 0.17 0.17 0.18 0.18 0.23 0.28 0.40 0.78 0.88
+  //
+  // A healthy tick reproduces what is stored to within ~5%, so a 0.5 floor sits
+  // 9.9 sd below the healthy mean — no realistic false positive — while catching
+  // 18 of the 20 degraded ticks. The two it misses (0.78, 0.88) are mild enough to
+  // be genuine schedule changes, which is the right call for a guard that DISCARDS
+  // a tick: over-triggering freezes a cinema on stale data.
+  //
+  // Caveat kept deliberately visible: n=6 on the healthy side. The distribution is
+  // tight, but a cinema legitimately halving its board is under-sampled, which is
+  // exactly what `MinShowtimesForDepthGuard` exists to keep out of range.
+  it should "let a sustained reduction through rather than freezing a cinema on stale future showtimes" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
+    // A board that really did halve keeps reporting the smaller schedule. The first
+    // few ticks are treated as a degraded fetch, but the guard must eventually
+    // believe it — serving showtimes that no longer exist is worse than showing few.
+    (1 to 4).foreach(_ => cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 2)))
+    multikinoShowtimeCount(cache, "Film 1") shouldBe 2
+  }
+
+  it should "reset its patience after any healthy tick, so an intermittent bad fetch never accumulates" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
+    // Degraded, healthy, degraded, healthy… — the shape of the 2026-07-27 incident,
+    // where bad ticks were interspersed with complete runs. The count must never
+    // build up to the give-up threshold, so the full board always survives.
+    (1 to 6).foreach { _ =>
+      cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
+      cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
+    }
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
+    multikinoShowtimeCount(cache, "Film 1") shouldBe 12
+  }
+
+  // 1.00 is in the measured set but is not asserted below: at that ratio an applied
+  // tick and a discarded one leave the same count, so it discriminates nothing.
+  private val MeasuredHealthyRatios  = Seq(0.98, 0.99, 1.06, 1.09, 1.10)
+  private val MeasuredDegradedRatios = Seq(0.08, 0.13, 0.18, 0.28, 0.40)
+
+  it should "apply every ratio measured on a healthy cinema and discard every degraded one" in {
+    val stored = 100 // one slot, comfortably over MinShowtimesForDepthGuard
+    def tickAt(ratio: Double): Int = {
+      val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
+      val incoming = (stored * ratio).round.toInt
+      cache.recordCinemaScrape(Multikino, deepScrape(films = 1, showtimesEach = stored))
+      cache.recordCinemaScrape(Multikino, deepScrape(films = 1, showtimesEach = incoming))
+      multikinoShowtimeCount(cache, "Film 1")
+    }
+    MeasuredHealthyRatios.foreach { r =>
+      withClue(s"healthy ratio $r is normal production variation and must be APPLIED: ")(
+        tickAt(r) shouldBe (stored * r).round.toInt)
+    }
+    MeasuredDegradedRatios.foreach { r =>
+      withClue(s"degraded ratio $r must be DISCARDED, leaving the stored showtimes intact: ")(
+        tickAt(r) shouldBe stored)
+    }
+  }
+
   it should "carry a slot's detail fields (director/cast/runtime) forward when a later scrape's listing omits them (no strip, no churn)" in {
     val repo  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repo)
