@@ -2,6 +2,7 @@ package services.cinemas.uk
 
 import models._
 import play.api.libs.json._
+import services.cinemas.common.AgeRating
 
 import java.time.{LocalDate, OffsetDateTime}
 import scala.util.Try
@@ -58,11 +59,12 @@ object OdeonParser {
       (relatedData \ block).asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
         .flatMap(v => (v \ "id").asOpt[String].map(_ -> v)).toMap
 
-    val films       = relatedById("films")
-    val screens     = relatedById("screens")
-    val attributes  = relatedById("attributes")
-    val castAndCrew = relatedById("castAndCrew")
-    val genres      = relatedById("genres")
+    val films         = relatedById("films")
+    val screens       = relatedById("screens")
+    val attributes    = relatedById("attributes")
+    val castAndCrew   = relatedById("castAndCrew")
+    val genres        = relatedById("genres")
+    val censorRatings = relatedById("censorRatings")
 
     def attributeName(id: String): Option[String] =
       attributes.get(id).flatMap(a => (a \ "name" \ "text").asOpt[String])
@@ -91,6 +93,14 @@ object OdeonParser {
       (film \ "genreIds").asOpt[Seq[String]].getOrElse(Seq.empty)
         .flatMap(genres.get)
         .flatMap(g => (g \ "name" \ "text").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+
+    // A film's `censorRatingId` resolved against
+    // `relatedData.censorRatings[].classification.text` — the BBFC label
+    // ("PG", "U", "15"). AgeRating trims and drops any unclassified placeholder.
+    def filmAgeRating(film: JsValue): Option[String] =
+      (film \ "censorRatingId").asOpt[String].flatMap(censorRatings.get)
+        .flatMap(c => (c \ "classification" \ "text").asOpt[String])
+        .flatMap(AgeRating.normalize)
 
     // Prefer the full synopsis; fall back to the short one.
     def filmSynopsis(film: JsValue): Option[String] =
@@ -162,7 +172,8 @@ object OdeonParser {
           director    = film.map(peopleWithRole(_, "Director")).getOrElse(Seq.empty),
           showtimes   = shows,
           externalIds = Map("odeon" -> head.filmId),
-          trailerUrl  = head.trailer
+          trailerUrl  = head.trailer,
+          ageRating   = film.flatMap(filmAgeRating)
         ))
       }
     }

@@ -4,7 +4,7 @@ import tools.HttpFetch
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
+import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -144,7 +144,8 @@ class FlicksClient(
           director    = head.director.toSeq,
           showtimes   = showtimes,
           externalIds = head.contentId.map("flicks" -> _).toMap,
-          trailerUrl  = head.trailerUrl
+          trailerUrl  = head.trailerUrl,
+          ageRating   = head.ageRating
         ))
       }
     }
@@ -198,8 +199,10 @@ object FlicksClient {
   private val AmPmPat    = """(?i)(\d{1,2}):(\d{2})\s*(am|pm)""".r
   // Keys lifted from a session button's `data-eventjson` blob (jsoup returns it
   // entity-decoded, so we match against real quotes). `content_cast` and
-  // `content_genre` are comma-separated lists; `content_awards`/`content_rating`
-  // have no model home and are ignored.
+  // `content_genre` are comma-separated lists; `content_awards` has no model
+  // home and is ignored. The age rating (`content_rating` in the blob) is read
+  // instead off the film card's `.cinema__movie-classification` element, where
+  // it renders cleanly as the BBFC label.
   private val ContentId    = """"content_id"\s*:\s*"(\d+)"""".r
   private val ContentCast  = """"content_cast"\s*:\s*"([^"]*)"""".r
   private val ContentGenre = """"content_genre"\s*:\s*"([^"]*)"""".r
@@ -221,6 +224,7 @@ object FlicksClient {
     cast:           Seq[String],
     genres:         Seq[String],
     trailerUrl:     Option[String],
+    ageRating:      Option[String],
     dateTime:       LocalDateTime,
     booking:        Option[String],
     format:         List[String]
@@ -249,6 +253,9 @@ object FlicksClient {
           val trailer   = Option(article.selectFirst(""".cinema__trailer-wrap a[href^="/trailer/"]"""))
             .map(_.attr("href")).filter(_.nonEmpty)
             .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
+          // The BBFC label ("U"/"PG"/"12A") the card renders in its own element.
+          val ageRating = Option(article.selectFirst(".cinema__movie-classification"))
+            .map(_.text).flatMap(AgeRating.normalize)
 
           article.select("li.times-calendar-times__el").asScala.toSeq.flatMap { li =>
             val button = Option(li.selectFirst("a.times-calendar-times__button"))
@@ -257,7 +264,7 @@ object FlicksClient {
               val label   = Option(li.selectFirst("span.times-calendar-times__el__label span"))
                 .map(_.text.trim).filter(_.nonEmpty)
               RawFlicksSlot(sl, t, runtime, poster, director, contentId, cast, genres, trailer,
-                LocalDateTime.of(date, time), booking, label.toList)
+                ageRating, LocalDateTime.of(date, time), booking, label.toList)
             }
           }
         case _ => Seq.empty

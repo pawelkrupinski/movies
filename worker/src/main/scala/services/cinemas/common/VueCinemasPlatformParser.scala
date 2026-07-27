@@ -64,7 +64,11 @@ object VueCinemasPlatformParser {
                      (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty).map("mxc" -> _)).toMap,
       trailerUrl  = (film \ "trailers").asOpt[JsArray].flatMap(_.value.headOption)
                       .flatMap(_.asOpt[String]).filter(_.nonEmpty)
-                      .flatMap(u => TrailerEmbed.youTubeId(u).map(id => s"https://www.youtube.com/watch?v=$id"))
+                      .flatMap(u => TrailerEmbed.youTubeId(u).map(id => s"https://www.youtube.com/watch?v=$id")),
+      // `certificate` is `{name, description, src}`; `name` is the BBFC label
+      // ("15", "PG", lower-case "12a"). AgeRating drops the "tbc" placeholder
+      // upstream carries before a film is classified.
+      ageRating   = AgeRating.normalize((film \ "certificate" \ "name").asOpt[String])
     )
   }
 

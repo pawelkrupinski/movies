@@ -91,6 +91,13 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     mario.movie.genres should contain("Animation")
   }
 
+  it should "resolve the film's age rating from relatedData.censorRatings by id" in {
+    // film.censorRatingId → censorRatings[].classification.text, kept verbatim.
+    movies.find(_.movie.title == "The Super Mario Galaxy Movie").value.ageRating.value shouldBe "PG"
+    // A different rating id resolves to its own label.
+    movies.find(_.movie.title == "Obsession").value.ageRating.value shouldBe "18"
+  }
+
   it should "NOT trust the API release year (re-releases are dated to the original year)" in {
     // We never read `film.releaseDate` — EmbeddedYear / TMDB backfill the year.
     movies.flatMap(_.movie.releaseYear) shouldBe empty

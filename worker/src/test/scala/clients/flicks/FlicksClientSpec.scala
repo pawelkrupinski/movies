@@ -42,6 +42,12 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     minions.contentId.value shouldBe "25079"
   }
 
+  it should "carry the BBFC age rating off the card's .cinema__movie-classification element" in {
+    slots.find(_.slug == "minions-3").value.ageRating.value shouldBe "U"
+    // A different film carries its own label, kept verbatim ("12A" stays "12A").
+    slots.find(_.slug == "supergirl-woman-of-tomorrow").value.ageRating.value shouldBe "12A"
+  }
+
   it should "lift the cast + genres from the button's data-eventjson blob" in {
     val minions = slots.find(_.slug == "minions-3").value
     // content_cast is a 9-name comma list, split + trimmed.

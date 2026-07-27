@@ -1,10 +1,13 @@
 package services.cinemas.uk
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
+import org.jsoup.Jsoup
 import play.api.libs.json._
+import services.cinemas.common.FilmDetail
 import services.movies.TrailerEmbed
 
 import java.time.{LocalDate, LocalDateTime}
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -73,7 +76,8 @@ object CineworldParser {
             trailerUrl     = (film \ "videoLink").asOpt[String].filter(_.nonEmpty)
                                .flatMap(TrailerEmbed.youTubeId)
                                .map(id => s"https://www.youtube.com/watch?v=$id"),
-            genres         = attributesOf(film).flatMap(GenreLabel.get).distinct.toList)
+            genres         = attributesOf(film).flatMap(GenreLabel.get).distinct.toList,
+            ageRating      = certificateOf(attributesOf(film)))
         }
     }.toMap
 
@@ -108,14 +112,17 @@ object CineworldParser {
             cinema      = cinema,
             posterUrl   = film.posterUrl,
             filmUrl     = film.filmUrl,
-            // Synopsis / cast / director aren't in this feed and Cineworld's film
-            // pages are client-rendered, so TMDB supplies them downstream.
+            // Synopsis / cast / director aren't in this listing feed; they live on
+            // the film's detail page (`filmUrl`) and are filled in by the deferred
+            // `CineworldClient` DetailEnricher via `parseDetail`.
             synopsis    = None,
             cast        = Seq.empty,
             director    = Seq.empty,
             showtimes   = slots.map(_._2).sortBy(_.dateTime),
             externalIds = Map("cineworld" -> filmId),
-            trailerUrl  = film.trailerUrl)
+            trailerUrl  = film.trailerUrl,
+            // BBFC certificate off the film's `attributeIds` (see `certificateOf`).
+            ageRating   = film.ageRating)
         }
       }
   }
@@ -126,8 +133,57 @@ object CineworldParser {
     posterUrl:      Option[String],
     filmUrl:        Option[String],
     trailerUrl:     Option[String],
-    genres:         Seq[String]
+    genres:         Seq[String],
+    ageRating:      Option[String]
   )
+
+  /** Parse a Cineworld film DETAIL page (`/films/<slug>/<id>`) for the fields the
+   *  listing feed omits — synopsis, cast, director, running time, certificate.
+   *  The page ships them twice: a client-rendered `movie-component` and a
+   *  server-rendered `<noscript>` block of `Label: value` `<p>`s
+   *  ("Cast: …", "Director: …", "Running time: 102 minutes", "Age restrictions:
+   *  PG") plus one UNLABELLED `<p>` — the synopsis. We read the `<noscript>`
+   *  block (jsoup parses its children as real elements): stable plain HTML, no
+   *  JS. Release/production year is deliberately NOT read — Cineworld stamps the
+   *  UK theatrical year on re-releases (the same trap `parseDay` avoids). */
+  def parseDetail(html: String): FilmDetail = {
+    val paragraphs = Jsoup.parse(html).select("noscript p").eachText().asScala.toList
+    val byLabel: Map[String, String] = paragraphs.flatMap { text =>
+      labelOf(text).map(label => label -> text.substring(label.length + 1).trim)
+    }.toMap
+    FilmDetail(
+      // The synopsis is the sole `<p>` carrying no recognised label prefix.
+      synopsis       = paragraphs.find(labelOf(_).isEmpty).map(_.trim).filter(_.nonEmpty),
+      cast           = byLabel.get("Cast").map(splitList).getOrElse(Seq.empty),
+      director       = byLabel.get("Director").map(splitList).getOrElse(Seq.empty),
+      runtimeMinutes = byLabel.get("Running time").flatMap(firstInt),
+      ageRating      = byLabel.get("Age restrictions").map(_.trim.toUpperCase)
+                         .filter(c => c.nonEmpty && c != "TBC"))
+  }
+
+  /** The recognised `<p>` label prefixes on a detail page's `<noscript>` block.
+   *  A paragraph starting with `"<Label>:"` is that field; the one paragraph
+   *  matching none is the synopsis. Kept case-insensitive against label casing
+   *  drift. `Production` / `Release date` are recognised only so they DON'T get
+   *  mistaken for the synopsis — their values are never read (the year trap). */
+  private val DetailLabels: List[String] =
+    List("Release date", "Running time", "Original title", "Original language",
+         "Cast", "Director", "Production", "Genre", "Age restrictions")
+
+  /** The label a `<p>`'s text begins with (`"<Label>:"`, case-insensitive), or
+   *  None when it matches no known label — the synopsis paragraph. */
+  private def labelOf(text: String): Option[String] =
+    DetailLabels.find(l =>
+      text.length > l.length && text.charAt(l.length) == ':' && text.regionMatches(true, 0, l, 0, l.length))
+
+  /** A comma-separated `<p>` value ("Tim Allen, Joan Cusack, …") → its trimmed,
+   *  non-empty parts. */
+  private def splitList(value: String): Seq[String] =
+    value.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq
+
+  /** The leading integer of a value like "102 minutes", or None. */
+  private def firstInt(value: String): Option[Int] =
+    """\d+""".r.findFirstIn(value).flatMap(_.toIntOption)
 
   /** `attributeIds` is one kitchen-sink list per film AND per event, mixing
    *  screen format (`2d`, `imax`, `4dx`), genre (`action`), BBFC rating (`15`),
@@ -169,6 +225,29 @@ object CineworldParser {
     "tamil"  -> "TAMIL",
     "telugu" -> "TELUGU"
   )
+
+  /** BBFC certificate ids as they appear in a film's `attributeIds` → the label
+   *  we display. Whitelisted like [[GenreLabel]] / [[LanguageLabel]]: the same
+   *  kitchen-sink list carries genres, formats, languages and seating with no
+   *  namespace to tell a certificate apart, so only these recognised codes map
+   *  and everything else drops. `tbc` (rating pending) is deliberately absent →
+   *  no ageRating. The full BBFC set is U / PG / 12A / 12 / 15 / 18; the Sheffield
+   *  fixture carries every one except the rare bare `12` (cinemas almost always
+   *  screen the `12a` advisory cut), kept as a documented BBFC code. */
+  private val CertificateLabel: Map[String, String] = Map(
+    "u"   -> "U",
+    "pg"  -> "PG",
+    "12a" -> "12A",
+    "12"  -> "12",
+    "15"  -> "15",
+    "18"  -> "18"
+  )
+
+  /** A film's BBFC certificate off its `attributeIds`, or None when it carries no
+   *  recognised certificate token (`tbc` = rating pending, or none at all). At
+   *  most one certificate per film, so the first recognised token wins. */
+  private def certificateOf(attrs: Seq[String]): Option[String] =
+    attrs.flatMap(CertificateLabel.get).headOption
 
   /** Cineworld's `auditorium` is the bare screen number ("12"); the venue signs
    *  and the booking flow both call it "Screen 12". Anything non-numeric (a

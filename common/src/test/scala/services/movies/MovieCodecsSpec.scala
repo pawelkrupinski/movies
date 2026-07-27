@@ -105,6 +105,17 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.cinemaData(Helios).countries shouldBe Seq("Polska", "Francja")
   }
 
+  // The SourceData decode is hand-written (the encode is macro-derived), so a new
+  // field must be added to BOTH sides or it silently vanishes on read. This guards
+  // ageRating specifically — the PL e2e can't, since no PL source carries one.
+  it should "round-trip a cinema slot's ageRating certificate" in {
+    val slot   = SourceData(title = Some("Cineworld film"), ageRating = Some("12A"))
+    val record = MovieRecord(data = Map[Source, SourceData](Helios -> slot))
+    val back   = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("cert|2026", record, Instant.now())))
+    back.record.data(Helios).ageRating shouldBe Some("12A")
+    back.record.ageRating              shouldBe Some("12A")
+  }
+
   it should "round-trip the Tmdb slot's enrichment-language stamp" in {
     // The stamp is what lets the reaper spot a slot frozen in another deployment's
     // language; if it doesn't survive Mongo, every row looks stale forever.

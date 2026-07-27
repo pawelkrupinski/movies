@@ -77,10 +77,21 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     toyStory.posterUrl.value should include("regalcdn.azureedge.net")
     toyStory.trailerUrl.value shouldBe "https://www.youtube.com/watch?v=UV7Ht-R3ICY"
     toyStory.externalIds shouldBe Map("cineworld" -> "ho00014533")
-    // Genres are the only usable slice of the film's kitchen-sink attributeIds
+    // Genres are one slice of the film's kitchen-sink attributeIds
     // ('2d','3d','4dx','action','animation','audio-described','laser','pg',
-    // 'reserved-selected') — ratings, formats and seating drop.
+    // 'reserved-selected'); the BBFC rating is lifted out separately (below) and
+    // formats / seating drop.
     toyStory.movie.genres shouldBe Seq("Action", "Animation")
+  }
+
+  it should "lift the BBFC certificate out of attributeIds into ageRating" in {
+    day.find(_.movie.title == "Toy Story 5").value.ageRating.value shouldBe "PG"
+    day.find(_.movie.title == "£2 Family Films : Chicken Run (2026 Re-Release)").value.ageRating.value shouldBe "U"
+    day.find(_.movie.title == "The Odyssey (2026)").value.ageRating.value shouldBe "15"
+    day.find(_.movie.title == "Evil Dead Burn").value.ageRating.value shouldBe "18"
+    day.find(_.movie.title == "Brunello: The Gracious Visionary").value.ageRating.value shouldBe "12A"
+    // 'tbc' (rating pending) is not a certificate → no ageRating.
+    day.find(_.movie.title == "Animal Farm (2025)").value.ageRating shouldBe None
   }
 
   it should "leave releaseYear unset — the API's is the UK re-release year" in {
@@ -155,6 +166,22 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "declare the chain and the host it scrapes" in {
     client().chain shouldBe true
     client().scrapeHosts shouldBe Set("www.cineworld.co.uk")
+  }
+
+  // ── the deferred DetailEnricher: the film's own /films/<slug>/<id> page ──────
+  "fetchFilmDetail" should "parse synopsis, cast, director, runtime and cert off the film page" in {
+    // The `filmUrl` the listing scrape leaves on the movie IS the detail ref.
+    val ref    = day.find(_.movie.title == "Toy Story 5").value.filmUrl.value
+    val detail = client().fetchFilmDetail(ref).value
+    detail.synopsis.value should include("Toy Story 5")
+    detail.director should contain("Andrew Stanton")
+    detail.cast should contain allOf ("Tom Hanks", "Tim Allen")
+    detail.runtimeMinutes.value shouldBe 102
+    detail.ageRating.value shouldBe "PG"
+  }
+
+  it should "advertise the chain-wide detail group" in {
+    client().detailGroup shouldBe "cineworld"
   }
 
   private def scripted(respond: String => String): tools.HttpFetch = new tools.GetOnlyHttpFetch {

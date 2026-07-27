@@ -179,7 +179,9 @@ object MovieCodecs {
         // pl-PL (the historical hardcoded enrichment language), which is what
         // those rows actually hold.
         language       = optStr("language"),
-        showtimes      = showtimes
+        showtimes      = showtimes,
+        // Absent on every row written before the certificate field existed → None.
+        ageRating      = optStr("ageRating")
       )
     }
   }

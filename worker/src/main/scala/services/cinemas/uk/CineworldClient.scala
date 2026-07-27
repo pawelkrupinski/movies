@@ -1,10 +1,11 @@
 package services.cinemas.uk
 
-import models.{Cinema, CinemaMovie}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
+import models.{Cinema, CinemaMovie, CineworldChain, Source}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, FilmDetail}
 import tools.HttpFetch
 
 import java.time.{LocalDate, ZoneId}
+import scala.util.Try
 
 /**
  * Cineworld — the UK's second-largest chain (87 sites), served off the same
@@ -33,12 +34,39 @@ class CineworldClient(
   cinemaId: String,
   override val cinema: Cinema,
   today:    LocalDate = LocalDate.now(ZoneId.of("Europe/London"))
-) extends ChunkedCinemaScraper {
+) extends ChunkedCinemaScraper with DetailEnricher {
 
   import CineworldClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def chain: Boolean = true
+
+  /** Cineworld's listing feed omits synopsis/cast/director — they live on each
+   *  film's detail page (`/films/<slug>/<id>`, the `filmUrl` the listing leaves
+   *  on the movie), so this scraper opts into deferred detail enrichment.
+   *
+   *  `detailGroup` is chain-wide ("cineworld"): one fetch per film per freshness
+   *  window serves the whole chain. Detail here is DISPLAY enrichment only —
+   *  Cineworld rows already resolve from their listing title (there is no
+   *  detail-only TMDB hint we hold them for; the listing has no director/year),
+   *  so `defersTmdbResolution` is false: rows reach the read model straight off
+   *  the listing and the synopsis/cast/director merge in asynchronously.
+   *
+   *  `detailTarget` routes the fetched detail into the single `CineworldChain`
+   *  network slot (as Cinema City does with `CinemaCityChain`) rather than an
+   *  arbitrary venue's — the 87 venues share `detailGroup "cineworld"`, so one
+   *  fetch per film serves the chain and lands in one shared slot. */
+  override val detailGroup: String = "cineworld"
+  override def detailTarget: Source = CineworldChain
+  override def enrichmentServiceOverride: Option[String] = Some("Cineworld Enrichment")
+  override def defersTmdbResolution: Boolean = false
+
+  /** Fetch + parse one film's detail page by the `filmUrl` the listing left on
+   *  the movie. Same `http` the listing scrape uses. None on fetch failure so
+   *  the task stays stale and is retried rather than recording an empty result
+   *  as fresh. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    Try(http.get(ref)).toOption.map(CineworldParser.parseDetail)
 
   /** The venue's public page. Cineworld's canonical URL is
    *  `/cinemas/<slug>/<siteCode>` and the numeric site code alone resolves it —

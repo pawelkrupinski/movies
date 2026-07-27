@@ -54,6 +54,16 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
     odyssey.externalIds("mxc")         shouldBe "b63dbbaf-6c0e-4622-b9b1-698037e6247e"
   }
 
+  it should "carry the BBFC certificate verbatim, dropping the 'tbc' placeholder" in {
+    // certificate.name is the BBFC label; kept exactly as the API spells it.
+    films.find(_.movie.title == "The Odyssey").value.ageRating.value shouldBe "15"
+    films.find(_.movie.title == "Toy Story 5").value.ageRating.value  shouldBe "PG"
+    // The API lower-cases "12a" — no transformation, so it stays "12a".
+    films.find(_.movie.title == "Supergirl").value.ageRating.value    shouldBe "12a"
+    // A not-yet-classified film carries certificate.name "tbc" → no rating.
+    films.find(_.movie.title == "GHOST: 2 Big To Rig").value.ageRating shouldBe None
+  }
+
   it should "leave releaseYear unset — the API's releaseDate is the local re-release, not the production year" in {
     // "Chicken Run (2000)" is re-run this summer and carries a 2026 releaseDate.
     films.find(_.movie.title == "Chicken Run (2000)").value.movie.releaseYear shouldBe None
