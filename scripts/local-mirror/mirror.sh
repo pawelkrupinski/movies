@@ -10,7 +10,10 @@
 #   2. ensure prod (the source) is reachable via the tunnel,
 #   3. seed the mirrored collections when the mirror is empty, has drifted too
 #      far to catch up by resuming, or is missing one (or `--reseed` to force),
-#   4. tail prod's database change stream → local, restarting on disconnect.
+#   4. tail prod's database change stream → local, restarting on disconnect,
+#   5. notice mirror-targets.js changing under it and restart the tailers, so
+#      adding a collection takes effect on a RUNNING mirror rather than at the
+#      next manual restart (see targets_fingerprint below).
 #
 # WHICH databases and collections are mirrored lives in mirror-targets.js —
 # every country /debug can switch to (so `?country=uk` is LAN-fast too, not just
@@ -123,6 +126,34 @@ discover_dbs() {
 
 reseed()   { mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
 
+# ── Noticing that mirror-targets.js changed under a RUNNING mirror ────────────
+# Every mongosh invocation below re-reads mirror-targets.js, so a new collection
+# is picked up the next time one STARTS. The catch is that a healthy `tail.js`
+# never ends: its change-stream `$match` pins the collection list it was launched
+# with, so on a long-lived mirror an edit to MIRRORED_COLLECTIONS reached nothing
+# until the whole agent was restarted by hand. Worse, the halfway state is a
+# loop: `needs_reseed` (which DOES re-read) sees the new collection missing and
+# re-seeds it, the stale tailer never tails it, prod moves on, and the next
+# check re-seeds it again.
+#
+# So the parent republishes the digest of the current list once a minute, and
+# each tailer compares it against the one it started with — see supervise_db.
+# The digest covers the SET of names only, so editing a comment or reordering
+# the literal doesn't churn every tailer (targets-fingerprint.js).
+TARGETS_POLL="${KINOWO_MIRROR_TARGETS_POLL:-60}"
+TARGETS_FP_FILE="$(mktemp -t kinowo-mirror-targets)"
+
+# `--nodb`: this needs no server, so a down tunnel can't stop us noticing an
+# edit. Empty output (a syntax error in the file, a missing mongosh) is treated
+# by every reader as "don't know" and never as a change.
+targets_fingerprint() {
+  mongosh --nodb --quiet --file "$HERE/mirror-targets.js" --file "$HERE/targets-fingerprint.js" 2>/dev/null | tail -1
+}
+
+# What the children compare against. Falls back to the last good value rather
+# than to empty, so one failed read can't look like an edit.
+published_fingerprint() { cat "$TARGETS_FP_FILE" 2>/dev/null; }
+
 # Does this database's mirror need a full re-seed before it is worth tailing?
 # staleness.js exits 3 when the mirror has drifted beyond what resuming a change
 # stream can close (see staleness-rule.js for the thresholds and why). Any other
@@ -153,8 +184,35 @@ supervise_db() {
 
     if [ "$force" = "1" ] || needs_reseed "$srcdb"; then reseed "$srcdb"; force=0; fi
 
-    set +e; mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
-      --file "$HERE/mirror-targets.js" --file "$HERE/tail.js"; code=$?; set -e
+    # The list this tailer is about to pin. Captured BEFORE launching it, so an
+    # edit landing mid-launch is caught on the next poll rather than missed.
+    local launched_with; launched_with="$(published_fingerprint)"
+    local retargeted=0
+
+    set +e
+    mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
+      --file "$HERE/mirror-targets.js" --file "$HERE/tail.js" &
+    local tailpid=$!
+    # Watch for a retarget while the tailer streams. An empty reading means the
+    # digest could not be computed — treated as "unchanged", never as an edit.
+    while kill -0 "$tailpid" 2>/dev/null; do
+      sleep "$TARGETS_POLL"
+      local now; now="$(published_fingerprint)"
+      if [ -n "$now" ] && [ -n "$launched_with" ] && [ "$now" != "$launched_with" ]; then
+        echo "[mirror] $srcdb: mirrored-collection list changed — restarting tailer to pick it up"
+        retargeted=1
+        kill "$tailpid" 2>/dev/null || true
+        break
+      fi
+    done
+    wait "$tailpid"; code=$?
+    set -e
+
+    # A tailer WE stopped is not a failure: go straight round again, where
+    # needs_reseed seeds whatever the new list added and tail.js re-reads it.
+    # Resetting `fails` keeps a retarget from counting toward the backoff.
+    if [ "$retargeted" = "1" ]; then fails=0; continue; fi
+
     if [ "$code" -eq 2 ]; then
       echo "[mirror] $srcdb: resume token expired — re-seeding…"; reseed "$srcdb"; fails=0; continue
     fi
@@ -185,7 +243,12 @@ echo "[mirror] mirroring: $DBS"
 
 CHILDREN=()
 cleanup_children() { for pid in "${CHILDREN[@]:-}"; do kill "$pid" 2>/dev/null || true; done; }
-trap 'cleanup_children; cleanup' EXIT INT TERM
+trap 'cleanup_children; rm -f "$TARGETS_FP_FILE"; cleanup' EXIT INT TERM
+
+# Publish the current collection-list digest BEFORE the tailers start, so each
+# one has something to compare against from its first poll.
+targets_fingerprint > "$TARGETS_FP_FILE"
+echo "[mirror] watching mirror-targets.js for collection changes (every ${TARGETS_POLL}s)"
 
 for srcdb in $DBS; do
   supervise_db "$srcdb" "$FORCE_RESEED" &
@@ -199,5 +262,17 @@ echo "[mirror] ${#CHILDREN[@]} tailer(s) running (Ctrl-C to stop)…"
 # Counted after the line above so the rotator never reads as a tailer.
 rotate_log
 ( while true; do sleep 300; rotate_log; done ) &
+CHILDREN+=($!)
+
+# Re-read mirror-targets.js from the PARENT only — N children each spawning a
+# mongosh every poll would be N times the cost for one shared answer. A read that
+# comes back empty (mid-edit file, mongosh hiccup) leaves the last good digest in
+# place, so a half-written file can't be mistaken for an edit and bounce every
+# tailer.
+( while true; do
+    sleep "$TARGETS_POLL"
+    fp="$(targets_fingerprint)"
+    [ -n "$fp" ] && printf '%s\n' "$fp" > "$TARGETS_FP_FILE"
+  done ) &
 CHILDREN+=($!)
 wait
