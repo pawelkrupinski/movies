@@ -36,7 +36,9 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   tools.IntegrationMongo.requireThrowaway()
 
   private val uri    = Env.get("MONGODB_URI").get
-  private val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+  // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
+  // collection and settles it, which is not survivable for a neighbouring suite's rows.
+  private val dbName = tools.IntegrationCorpusDatabase.named("merge-screenings")
 
   // Two rows the fold will recognise as the same film (shared tmdbId) under different keys —
   // the cross-language duplicate shape (`Tangled` / `Zaplatani`) the canonicaliser exists for.

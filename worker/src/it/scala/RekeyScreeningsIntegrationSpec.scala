@@ -1,7 +1,7 @@
 package services.movies
 
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,7 +35,9 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   tools.IntegrationMongo.requireThrowaway()
 
   private val uri    = Env.get("MONGODB_URI").get
-  private val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+  // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
+  // collection and settles it, which is not survivable for a neighbouring suite's rows.
+  private val dbName = tools.IntegrationCorpusDatabase.named("rekey-screenings")
 
   // A yearless row whose cinema slot carries a delimited year — exactly what
   // `backfillEmbeddedYears` re-keys onto that year.
@@ -79,6 +81,47 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
       Seq(yearlessId, yearedId).foreach { id => screenings.deleteFilm(id); slots.deleteFilm(id) }
       Await.ready(db.getCollection("movies")
         .deleteMany(Filters.regex("_id", s"^${TitleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
+      client.close()
+    }
+  }
+
+  // The settle above is a WHOLE-CORPUS operation, and this suite runs in parallel with
+  // every other it suite. So the corpus it settles must not be the one the neighbours are
+  // using: `canonicalizeBySanitize` merges same-tmdbId year-variants and DELETES the
+  // losers, cascading their `screenings` and `movie_slots` away — it has no notion of
+  // which spec owns a row. Sharing a database, seeding these two rows and running only
+  // THIS suite logged `[movies.delete] film removed: id=foldorphansitsentinel|2026`,
+  // which is `StagingFoldIntegrationSpec`'s sentinel pair: exactly the rows whose survival
+  // that suite asserts, deleted from under it. Hence [[tools.IntegrationCorpusDatabase]].
+  it should "settle its own corpus, not the database the other suites share" in {
+    val neighbourTitle = "__neighbour-corpus-sentinel__"
+    val neighbours     = Seq(Some(2025), Some(2026)).map(y => StoredMovieRecord.idFor(neighbourTitle, y))
+    val client = MongoClient(uri)
+    // The SHARED database — deliberately not this suite's own.
+    val shared = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("movies")
+    try {
+      // Two year-variants of one film under a single tmdbId: the shape a settle collapses.
+      neighbours.foreach(id => Await.result(shared.replaceOne(Filters.eq("_id", id),
+        org.mongodb.scala.Document("_id" -> id, "tmdbId" -> 9913,
+          "sourceData" -> org.mongodb.scala.Document(),
+          "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
+        new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds))
+
+      val ownClient = MongoClient(uri)
+      try {
+        val cache = new CaffeineMovieCache(new MongoMovieRepository(
+          Some(ownClient.getDatabase(dbName)),
+          screenings = Some(new MongoScreeningsRepository(Some(ownClient.getDatabase(dbName)))),
+          slots      = Some(new MongoSlotsRepository(Some(ownClient.getDatabase(dbName))))))
+        cache.backfillEmbeddedYears()
+      } finally ownClient.close()
+
+      val left = Await.result(shared.find(Filters.in("_id", neighbours*)).toFuture(), 10.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+      withClue("the settle reached into the shared corpus and folded a neighbour's rows: ")(
+        left.sorted shouldBe neighbours.sorted)
+    } finally {
+      Await.ready(shared.deleteMany(Filters.in("_id", neighbours*)).toFuture(), 10.seconds)
       client.close()
     }
   }
