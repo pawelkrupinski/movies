@@ -129,14 +129,19 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    * all, and `StagingFold.planGroup` picks the surviving key from `canonical`, which derives
    * it from exactly those cinema-reported titles.
    *
-   * So the fold chooses the canonical spelling from the staging rows ALONE, while the cache's
-   * `canonicalizeBySanitize` chooses it from the full stitched record. The two disagree, and
-   * which one a film ends up under depends on whether its slots had migrated by the time it
-   * folded — the corpus stops being a pure function of what was scraped. That is visible in
-   * `StagingOrderDeterminismSpec` as a decorated variant and its base film swapping the
-   * canonical key and the cinemas between them under different arrival orders.
+   * The expectation was that the fold would therefore key the film on the staging row's
+   * spelling while the cache keyed it on the stitched record, and that the corpus would stop
+   * being a pure function of what was scraped. It does not: `FilmCanonicalizer.canonical`
+   * weighs the ROWS' EXISTING KEYS alongside the slot titles, and the existing key already
+   * carries the settled spelling, so the migrated film stays put whatever staging reports.
+   *
+   * Which is what this pins — and only that. Removing the film's stored cinemas entirely
+   * does NOT change the outcome (checked), so the stored cinemas are not what decides it and
+   * the name must not claim they are. The reasoning is kept because it is not visible from
+   * the code, and the next reader of the raw-`movies` read will draw the same wrong
+   * conclusion.
    */
-  it should "choose the canonical key from a migrated film's stored cinemas, not from staging alone" in {
+  it should "keep a migrated film on its existing key rather than adopting the staging spelling" in {
     val client     = MongoClient(uri)
     val db         = client.getDatabase(dbName)
     val connection = new MongoConnection(Some(uri), dbName, required = false)
@@ -147,7 +152,16 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     // The bare spelling is what the cinemas report, and it is the one the settle would key
     // on. It exists ONLY in `movie_slots` — a fully migrated film, which is what prod's
     // corpus is converging to.
-    val decorated  = s"Przeglad: $blindTitle"
+    //
+    // The staging row must SANITIZE INTO THIS GROUP or the fold never sees it. It used to
+    // report "Przeglad: …", and a programme prefix is exactly what `sanitize` does NOT
+    // strip (that is `apiQuery`'s job — a decorated edition is a row of its own by
+    // design), so `selectStagingGroup` matched nothing, `foldOnce` short-circuited on
+    // `stagingRows.isEmpty`, and this test asserted only that the row it had just written
+    // still existed. A SHOUTED spelling is the right shape here: same group, different
+    // string, so the fold genuinely has to choose between the staging spelling and the
+    // stored cinemas'.
+    val shouted    = blindTitle.toUpperCase(java.util.Locale.ROOT)
     try {
       Await.result(movies.replaceOne(Filters.eq("_id", existing),
         org.mongodb.scala.Document("_id" -> existing, "tmdbId" -> blindTmdbId,
@@ -163,7 +177,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       Await.result(staging.replaceOne(Filters.eq("_id", stagingId),
         org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> blindTmdbId,
           "sourceData" -> org.mongodb.scala.Document(models.KinoMuza.displayName ->
-            org.mongodb.scala.Document("title" -> decorated)),
+            org.mongodb.scala.Document("title" -> shouted)),
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
 
@@ -175,6 +189,10 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
                s"'$blindTitle' and still keyed it on the single staging row's spelling: ") {
         survivors shouldBe Seq(existing)
       }
+      // …and the fold actually RAN. Without this the assertion above is satisfied just as
+      // well by a fold that consumed nothing, which is precisely how it used to pass.
+      withClue("the fold consumed no staging row, so it never chose anything: ")(
+        Await.result(staging.find(Filters.eq("_id", stagingId)).toFuture(), 10.seconds) shouldBe empty)
     } finally {
       slots.deleteFilm(existing)
       Await.ready(movies.deleteMany(Filters.regex("_id", s"^$blindSanitize\\|")).toFuture(), 10.seconds)
