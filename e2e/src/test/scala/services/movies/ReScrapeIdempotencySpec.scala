@@ -59,6 +59,13 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   private def keySet(w: FixtureTestWiring): Set[(String, Option[Int])] =
     w.movieCache.snapshot().map(r => (r.title, r.year)).toSet
 
+  /** Each film's cinema set, read from the REPOSITORY rather than the cache snapshot —
+   *  under the storage split the snapshot is the stripped index, and the cinemas being
+   *  asserted on live in `movie_slots`. */
+  private def cinemasByFilm(w: FixtureTestWiring): Map[String, Set[String]] =
+    w.movieRepository.findAll().map(r =>
+      StoredMovieRecord.idOf(r) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
+
   /** One production-shaped scrape tick that REPLICATES `runOneScrapeTick` but
    *  observes the staging sink right after the scrape phase (before it drains),
    *  so a known film re-diverted to `pending_movies` is visible. Returns the set
@@ -150,21 +157,54 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
   // settle that keeps finding rows to collapse means its own output isn't a
   // fixpoint of its own rule (the partition/canonical-key choice isn't stable),
   // which is the seam the re-scrape flap rode in on.
+  //
+  // "Unchanged" is asserted on all three axes, because the corpus this runs on has
+  // already CLEARED STAGING and been folded together — the point at which the settle
+  // is supposed to have nothing left to do. Keys alone are far too weak a check: the
+  // damage found under the storage split moved a film's CINEMAS between the base row
+  // and its decorated variant ("Człowiek z marmuru" ↔ "WAJDA: re-wizje: …") without
+  // either key changing, and rewrote slots on a corpus that should have been at rest.
+  // So: no folds, the same keys, the same per-film cinema sets, and — the axis that
+  // actually catches a silent rewrite — ZERO persisted writes.
   "an already-settled corpus" should "be unchanged by a further settle pass (settle is idempotent)" in {
     val (w, merges) = settled
     val before       = keySet(w)
+    val cinemasBefore = cinemasByFilm(w)
     val mergesBefore = merges.total
     info(s"settled corpus: ${before.size} films")
 
+    // Every persisted edit fires the change stream, so this counts DB writes, not just
+    // outcomes — a settle that rewrites a row to the same value still emits, and on a
+    // corpus at rest that is already the bug.
+    val emissions = new AtomicInteger(0)
+    w.movieRepository.watchChanges(_ => { emissions.incrementAndGet(); () }, _ => { emissions.incrementAndGet(); () })
+
+    // BOTH settle passes. `MovieService.settle` is only `backfillEmbeddedYears`; the pass
+    // that actually folds and re-keys is `canonicalizeBySanitize`, which the comment above
+    // has always named and this test never ran. On a corpus that has cleared staging both
+    // must be no-ops.
     w.movieService.settle()
+    w.movieCache.canonicalizeBySanitize()
 
     val after = keySet(w)
+    val cinemasAfter = cinemasByFilm(w)
     withClue(
       s"a settle on a settled corpus folded ${merges.total - mergesBefore} row(s); " +
         s"keys APPEARED=${(after -- before).take(8).mkString(", ")} VANISHED=${(before -- after).take(8).mkString(", ")}\n") {
       (merges.total - mergesBefore) shouldBe 0
       after shouldBe before
     }
+    val moved = (cinemasBefore.keySet ++ cinemasAfter.keySet)
+      .filter(k => cinemasBefore.get(k) != cinemasAfter.get(k))
+    withClue(
+      s"a settle on a settled corpus MOVED cinemas on ${moved.size} film(s):\n" +
+        moved.take(6).map(k =>
+          s"  $k lost=${cinemasBefore.getOrElse(k, Set.empty) -- cinemasAfter.getOrElse(k, Set.empty)} " +
+          s"gained=${cinemasAfter.getOrElse(k, Set.empty) -- cinemasBefore.getOrElse(k, Set.empty)}").mkString("\n") + "\n") {
+      moved shouldBe empty
+    }
+    withClue(s"a settle on a corpus that has cleared staging and folded wrote ${emissions.get} time(s) — " +
+             "it should have had nothing to do\n")(emissions.get shouldBe 0)
   }
 
   // ── Re-scrape is a no-op ─────────────────────────────────────────────────────

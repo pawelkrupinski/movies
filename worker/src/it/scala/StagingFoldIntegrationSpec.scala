@@ -109,4 +109,69 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       client.close()
     }
   }
+
+  // A second sentinel, with its own cleanup — see the naming note above.
+  private val blindTitle = "__foldblind-it-sentinel__"
+  private def blindSanitize = services.movies.TitleNormalizer.sanitize(blindTitle)
+
+  /**
+   * The fold plans against RAW `movies` documents (`StoredMovieDto.toDomain`), never the
+   * stitched view. Under the storage split a migrated film's `sourceData` is empty — its
+   * cinemas are rows in `movie_slots` — so the fold sees a film that reports no cinemas at
+   * all, and `StagingFold.planGroup` picks the surviving key from `canonical`, which derives
+   * it from exactly those cinema-reported titles.
+   *
+   * So the fold chooses the canonical spelling from the staging rows ALONE, while the cache's
+   * `canonicalizeBySanitize` chooses it from the full stitched record. The two disagree, and
+   * which one a film ends up under depends on whether its slots had migrated by the time it
+   * folded — the corpus stops being a pure function of what was scraped. That is visible in
+   * `StagingOrderDeterminismSpec` as a decorated variant and its base film swapping the
+   * canonical key and the cinemas between them under different arrival orders.
+   */
+  it should "choose the canonical key from a migrated film's stored cinemas, not from staging alone" in {
+    val client     = MongoClient(uri)
+    val db         = client.getDatabase(dbName)
+    val connection = new MongoConnection(Some(uri), dbName, required = false)
+    val slots      = new MongoSlotsRepository(Some(db))
+    val staging    = db.getCollection(StagingRepository.Collection)
+    val movies     = db.getCollection(services.movies.MovieRepository.Collection)
+    val existing   = StoredMovieRecord.idFor(blindTitle, Some(2026))
+    // The bare spelling is what the cinemas report, and it is the one the settle would key
+    // on. It exists ONLY in `movie_slots` — a fully migrated film, which is what prod's
+    // corpus is converging to.
+    val decorated  = s"Przeglad: $blindTitle"
+    try {
+      Await.result(movies.replaceOne(Filters.eq("_id", existing),
+        org.mongodb.scala.Document("_id" -> existing, "tmdbId" -> 4243,
+          "sourceData" -> org.mongodb.scala.Document(),
+          "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
+        new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+      slots.replaceFilm(existing, Map(
+        Multikino.displayName -> sd(blindTitle),
+        models.Helios.displayName -> sd(blindTitle)))
+
+      // One staging row, reporting the DECORATED spelling for the same film.
+      val stagingId = s"${models.KinoMuza.displayName}|$blindSanitize|2026"
+      Await.result(staging.replaceOne(Filters.eq("_id", stagingId),
+        org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> 4243,
+          "sourceData" -> org.mongodb.scala.Document(models.KinoMuza.displayName ->
+            org.mongodb.scala.Document("title" -> decorated)),
+          "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
+        new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+
+      new MongoStagingFolder(connection).foldGroup(blindTitle)
+
+      val survivors = Await.result(movies.find(Filters.regex("_id", s"^$blindSanitize\\|")).toFuture(), 10.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+      withClue(s"survivors=$survivors — the fold saw the film's two stored cinemas reporting " +
+               s"'$blindTitle' and still keyed it on the single staging row's spelling: ") {
+        survivors shouldBe Seq(existing)
+      }
+    } finally {
+      slots.deleteFilm(existing)
+      Await.ready(movies.deleteMany(Filters.regex("_id", s"^$blindSanitize\\|")).toFuture(), 10.seconds)
+      Await.ready(staging.deleteMany(Filters.regex("_id", s".*$blindSanitize.*")).toFuture(), 10.seconds)
+      client.close()
+    }
+  }
 }
