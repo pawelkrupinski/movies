@@ -10,6 +10,12 @@
 // table (`pending_movies`), and the read-cache dump (`web_movies`,
 // `web_screenings`).
 //
+// `cinema_scrapes` is the exception: it backs no page. It holds each cinema's
+// last content-bearing scrape — the listing the client actually produced, before
+// the corpus merge touched it — which is the first thing you want when a scrape
+// looks wrong, and the corpus a local replay replays. Reading that over the
+// tunnel is the latency this mirror exists to remove.
+//
 // Adding a collection here is what makes it readable at LAN latency; anything
 // absent reads as permanently EMPTY, NOT slowly-from-prod — the /debug country
 // stacks read the mirror unconditionally, with no fall-back to the tunnel.
@@ -24,6 +30,7 @@ const MIRRORED_COLLECTIONS = [
   "enrichment_attempts", "rating_cadence",
   "pending_movies",
   "web_movies", "web_screenings",
+  "cinema_scrapes",
 ];
 
 // Prod's per-country databases sit side by side on the ONE local mirror

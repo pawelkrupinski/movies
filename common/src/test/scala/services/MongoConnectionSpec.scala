@@ -307,4 +307,14 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
       (read -- mirrored) shouldBe empty
     }
   }
+
+  it should "mirror the scrape archive, so a local replay has something to replay" in {
+    // `cinema_scrapes` is the odd one out in this list: it backs no /debug page.
+    // It is here because it is the corpus you reach for when a scrape looks
+    // wrong — the last listing each cinema actually produced — and pulling it
+    // over the tunnel row by row is exactly the latency the mirror exists to
+    // remove. Named explicitly rather than left to the set-difference above,
+    // which only catches a collection some reader ALREADY names.
+    DebugMirror.Collections should contain (services.scrapes.ScrapeArchiveRepository.Collection)
+  }
 }

@@ -4,6 +4,7 @@ import services.attempts.EnrichmentAttempts
 import services.cadence.RatingCadenceReader
 import services.movies.{MovieRepository, ScreeningsRepository, SlotsRepository}
 import services.readmodel.MongoReadModelRepository
+import services.scrapes.ScrapeArchiveRepository
 import services.staging.StagingRepository
 
 /**
@@ -25,6 +26,11 @@ import services.staging.StagingRepository
  * `MongoConnectionSpec` fails when `mirror-targets.js` doesn't carry one of them.
  * ADD A READER TO A `/debug` STACK ⇒ ADD ITS COLLECTION HERE.
  *
+ * The reverse does not hold: an entry here need not back a page. `cinema_scrapes`
+ * is mirrored for INSPECTION and local replay rather than for a reader — see its
+ * note below. The rule is "a reader implies an entry", not "an entry implies a
+ * reader".
+ *
  * `tasks` is deliberately absent: it is a WRITE path (the /debug row's ↻
  * re-enrich enqueues for the real worker to consume), so mirroring it would
  * strand the work locally rather than make a page fast.
@@ -42,6 +48,13 @@ object DebugMirror {
     StagingRepository.Collection,
     // The /debug/readmodel dump of what the serving app actually serves.
     MongoReadModelRepository.MoviesCollection,
-    MongoReadModelRepository.ScreeningsCollection
+    MongoReadModelRepository.ScreeningsCollection,
+    // Each cinema's last content-bearing scrape. The one entry here that backs
+    // no /debug page: it is mirrored because it is what you read when a scrape
+    // looks wrong — the listing the client actually produced, before the corpus
+    // merge touched it — and fetching that over the tunnel is the latency this
+    // mirror exists to remove. Mirroring it also means a local replay has a
+    // corpus to replay without re-scraping.
+    ScrapeArchiveRepository.Collection
   )
 }
