@@ -531,7 +531,7 @@
     {
       "id": 16,
       "title": "Off-book native memory — RSS minus NMT-committed",
-      "description": "kinowo_worker_native_offbook_gap_bytes: resident memory the JVM does not account for anywhere. Neither of the panels at the top of this dashboard can show it — jvm_memory_* covers the heap, the NMT panel covers what HotSpot admits to committing, and this is what is resident beyond BOTH. It is the primary signal for the ~5-6h non-heap OOM restarts: the 2026-07-09 probe found every NMT category flat across a whole 5h life while RSS climbed ~26MB/hr, which is glibc malloc retention/fragmentation in the C heap and appears here and nowhere else. Read it as a slope, not a level — a straight diagonal that resets only at a restart is the pre-OOM signature, and the point it would cross the cgroup ceiling on the RSS panel is roughly when the machine dies.",
+      "description": "kinowo_worker_native_offbook_gap_bytes: RSS minus everything HotSpot admits to committing. Neither of the panels at the top of this dashboard can show it — jvm_memory_* covers the heap, the NMT panel covers the committed native categories, and this is the remainder. It is the primary signal for the ~5-6h non-heap OOM restarts: the 2026-07-09 probe found every NMT category flat across a whole 5h life while RSS climbed ~26MB/hr, which is glibc malloc retention/fragmentation in the C heap and appears here and nowhere else. READ THE SLOPE, NOT THE LEVEL — the level is normally NEGATIVE (around −200 to −320MB in steady state) because committed is not resident: pages can be committed and never touched. That is why this axis is deliberately not floored at zero. A gap climbing steadily toward and past zero, resetting only at a restart, is the pre-OOM signature; where it would meet the cgroup ceiling on the RSS panel is roughly when the machine dies.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -546,7 +546,6 @@
       "fieldConfig": {
         "defaults": {
           "unit": "bytes",
-          "min": 0,
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 12,

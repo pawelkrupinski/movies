@@ -108,6 +108,57 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /**
+   * Charted is not the same as visible, and both of these were caught only by
+   * querying the live data after the panels shipped:
+   *
+   *  - `kinowo_worker_native_offbook_gap_bytes` is RSS MINUS NMT-committed, and
+   *    committed routinely exceeds resident (committed pages that were never
+   *    touched aren't resident), so on a healthy worker it sits at roughly
+   *    −200 to −320 MB. A panel with `min: 0` clips every one of those points
+   *    and draws an empty chart — charted, provisioned, guarded by the coverage
+   *    check above, and showing nothing.
+   *
+   *  - `kinowo_uptime_recent_zeroes` is per-SERVICE across ~2,800 services, of
+   *    which ~120 are legitimately empty at any moment. One series each is 120
+   *    lines of spaghetti; the readable signal is how MANY services are empty,
+   *    which is what moves when something breaks.
+   */
+  "the off-book native memory panel" should "not floor its axis at zero on a routinely-negative series" in {
+    val panel = panelBlockContaining("kinowo_worker_native_offbook_gap_bytes")
+    withClue(
+      "the off-book gap is RSS minus NMT-committed and is normally NEGATIVE (committed > resident); " +
+        "a min:0 axis clips the whole series and draws an empty panel. "
+    ) {
+      panel should not include "\"min\": 0"
+    }
+  }
+
+  "the empty-uptime-checks panel" should "aggregate services rather than drawing one line each" in {
+    val panel = panelBlockContaining("kinowo_uptime_recent_zeroes")
+    withClue(
+      "~120 of ~2,800 services report an empty listing at any moment, so a per-service query draws " +
+        "~120 overlapping lines. Aggregate (count) so the panel shows the population, which is the " +
+        "thing that moves when a venue stops returning results. "
+    ) {
+      panel should include("count(")
+      panel should not include "by (service)"
+    }
+  }
+
+  /** One panel's raw JSON, located by a query it runs and bounded at the next
+   *  panel's `"id":` so a neighbour's config never leaks into the assertion. */
+  private def panelBlockContaining(expr: String): String = {
+    val json  = RepoFile.read(Dashboards.find(d => RepoFile.read(d).contains(expr)).getOrElse(
+      fail(s"no dashboard queries $expr")))
+    val start = json.lastIndexOf("\"id\":", json.indexOf(expr))
+    val end   = json.indexOf("\"id\":", json.indexOf(expr)) match {
+      case -1 => json.length
+      case i  => i
+    }
+    json.substring(start, end)
+  }
+
   "every web-exported metric family" should "be charted too" in {
     WebExportedFamilies.foreach { family =>
       withClue(s"$family is exported by the web app's /metrics and charted nowhere. ") {

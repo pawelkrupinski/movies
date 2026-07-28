@@ -173,14 +173,15 @@
     },
     {
       "id": 54,
-      "title": "Uptime checks that parsed but came back EMPTY, by service (recent 30 min)",
-      "description": "kinowo_uptime_recent_zeroes — checks that neither succeeded nor failed: the request went through, the response parsed, and it contained nothing. This is the third outcome the /uptime page tracks and the only one no other panel or alert reads, which makes it the quietest failure we have: a cinema site that starts answering 200 with an empty listing counts as zero failures, so the proxy panel beside this one stays green, the failure-share alerts stay silent, and the films simply stop arriving. Any service holding a sustained non-zero here is scraping nothing while reporting healthy — cross-check it against that country's films-served and showtime-volume panels below, where the loss eventually lands.",
+      "title": "Venues answering with an EMPTY listing (count of services, recent 30 min)",
+      "description": "How many services report kinowo_uptime_recent_zeroes — checks that neither succeeded nor failed: the request went through, the response parsed, and it held no screenings. This is the third outcome the /uptime page tracks and the only one no other panel or alert reads, which is what makes it the quietest failure we have: a cinema site that starts answering 200 with an empty listing counts as zero failures, so the proxy panel beside this one stays green, the failure-share alerts stay silent, and the films simply stop arriving. READ THE LEVEL AS A POPULATION, NOT A FAULT — measured 2026-07-28, ~123 of ~2,766 services sit here at any moment and every one of them had zero successes, which is what a genuinely dormant venue looks like (see the white-cinema sweeps: dormant, not broken). The signal is the STEP: a jump in this count is a batch of venues that just stopped returning results, and that lands later on the films-served and showtime-volume panels below. Which venues is a question for /uptime, which lists them by name — this panel exists to tell you WHEN to go look.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 39 },
       "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 15 } }, "overrides": [] },
       "targets": [
-        { "refId": "A", "expr": "sum by (service) (kinowo_uptime_recent_zeroes{country=~\"$country\"}) > 0", "legendFormat": "{{service}}" }
+        { "refId": "A", "expr": "count(kinowo_uptime_recent_zeroes{country=~\"$country\"} > 0)", "legendFormat": "venues returning empty" },
+        { "refId": "B", "expr": "count(kinowo_uptime_recent_successes{country=~\"$country\"} > 0)", "legendFormat": "venues returning screenings" }
       ]
     },
     {
