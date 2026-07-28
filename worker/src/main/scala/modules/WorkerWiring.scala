@@ -1144,11 +1144,18 @@ class WorkerWiring(
   // 1 disables the spread. See ScrapeReaper.enqueueSpread.
   def scrapeEnqueueSpreadSlices: Int =
     Env.positiveInt("KINOWO_SCRAPE_ENQUEUE_SPREAD_SLICES", services.tasks.ScrapeCadence.EnqueueSpreadSlices)
+  // Ceiling on outstanding scrape TASKS, the bound that survives the healthy path —
+  // the per-tick caps above count VENUES, which on a chunked country understates the
+  // work by the fan-out factor. Sized in ScrapeCadence. See ScrapeReaper's parameter.
+  def maxOutstandingScrapeTasks: Int =
+    Env.positiveInt("KINOWO_SCRAPE_MAX_OUTSTANDING_TASKS",
+      services.tasks.ScrapeCadence.MaxOutstandingScrapeTasks)
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
       throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
+      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks,
       enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing

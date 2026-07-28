@@ -333,6 +333,35 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 2
   }
 
+  // The HEALTHY cap has the same units problem the throttled one had, and it is what
+  // re-arms the spiral on every boot. A deploy re-grants CPU credit to ~16k, which is
+  // above the exit>14000 threshold, so a freshly-restarted worker reads as healthy and
+  // takes this path — where maxEnqueuePerTick is also counted in VENUES. 40 UK venues
+  // is ~1,440 chunk fetches dumped in one tick: ~20 minutes of work for a 4-worker
+  // pool paced at 5 req/s. The pool pins at 100%, the 16k drains in minutes, and the
+  // worker enters throttle already carrying the backlog that keeps it there.
+  //
+  // The work itself is sustainable — UK needs ~72 tasks/min against a ~300/min ceiling,
+  // a 24% duty cycle. Only the BURST is the problem, so bound the outstanding work and
+  // let the steady rate through.
+  it should "not pile a fresh batch onto a backlog that is still draining" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 4)
+
+    // Not throttled: the healthy path. A previous tick's venue is still fanned out.
+    (1 to 4).foreach(i => queue.enqueue(TaskType.ScrapeChunk, s"chunk-$i", Map("chunk" -> i.toString)))
+    reaper.tick() shouldBe 0
+
+    // Two chunks finish → two task-slots free → two more cinemas may go in.
+    (1 to 2).foreach { _ =>
+      val c = queue.claim("w", 1.minute).get
+      queue.complete(c.id, "w")
+    }
+    reaper.tick() shouldBe 2
+  }
+
   // Parse-wave smoothing: a healthy tick's due batch otherwise hits the queue at one
   // instant, so the scrapes fetch in parallel and their payloads PARSE together — a
   // CPU spike that floors the shared-CPU credit balance. `planSlices` splits the

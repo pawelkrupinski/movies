@@ -83,6 +83,26 @@ object ScrapeCadence {
    *  eligible AND drains before the run is abandoned to a partial reduce. */
   val ChunkEnqueueSpread: FiniteDuration = 5.minutes
 
+  /** Ceiling on outstanding scrape TASKS — ScrapeCinema + ScrapeChunk +
+   *  ScrapeChunkReduce — that the [[ScrapeReaper]] will let build up
+   *  (`KINOWO_SCRAPE_MAX_OUTSTANDING_TASKS`). The only cap here counted in units of
+   *  WORK rather than units of VENUE, and the one that holds on the healthy path.
+   *
+   *  It exists because a venue is not a unit of work on a chunked country. A UK Flicks
+   *  venue fans out ~36 `ScrapeChunk` fetches, so a healthy tick at
+   *  [[MaxEnqueuePerTick]]=40 is ~1,440 tasks — about 20 minutes of work for a
+   *  4-worker pool paced at 5 req/s — enqueued at a single instant. The TOTAL is
+   *  comfortable (UK needs ~72 tasks/min against a ~300/min ceiling, a 24% duty cycle);
+   *  it is purely the burst that floors the credit balance. Restarts made it
+   *  self-perpetuating: a deploy re-grants credit to ~16k, above the throttle's
+   *  `exit>14000`, so the worker reads healthy, dumps a full batch, and is already
+   *  carrying it when credit falls back through `enter<8000`.
+   *
+   *  150 caps a burst at ~30s of pool work, leaving the rest of the tick idle for
+   *  credit to rebuild, while sitting far above the ~72/min the corpus actually needs —
+   *  so it bounds bursts without constraining steady-state throughput or freshness. */
+  val MaxOutstandingScrapeTasks: Int = 150
+
   /** Per-tick enqueue cap for the SECONDARY reapers (detail/rating/tmdb-retry)
    *  while throttled (`KINOWO_THROTTLED_ENQUEUE_PER_TICK`). Their TTLs are 4–6h, so
    *  even 3/tick drains the corpus many times over within a window — and quieting

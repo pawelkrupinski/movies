@@ -98,6 +98,23 @@ class ScrapeReaper(
   // behaviour (the not-throttled path is unaffected).
   throttledMaxEnqueuePerTick: Int = Int.MaxValue,
   throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
+  // Ceiling on outstanding scrape TASKS ([[ScrapeReaper.ScrapeWorkTypes]]) that applies
+  // on the HEALTHY path too — the smoothing bound, as opposed to the throttled
+  // emergency brake above.
+  //
+  // `maxEnqueuePerTick` counts venues, and on a chunked country a venue is not a unit
+  // of work: 40 UK venues is ~1,440 chunk fetches, roughly 20 minutes for a 4-worker
+  // pool paced at 5 req/s, dumped at one instant. That burst is what floors the credit
+  // balance — not the total, which is comfortable (UK needs ~72 tasks/min against a
+  // ~300/min ceiling, a 24% duty cycle). A restart makes it worse: the deploy re-grants
+  // credit to ~16k, above `exit>14000`, so the worker reads as healthy, takes this
+  // path, and enters the throttle it is about to trip already carrying the backlog that
+  // keeps it there.
+  //
+  // Bounding the outstanding TASKS converts that into the steady trickle the corpus
+  // actually needs — same total work and freshness, no burst. Default unbounded so
+  // callers/tests that don't wire it keep the old behaviour.
+  maxOutstandingScrapeTasks: Int = Int.MaxValue,
   // SPREAD the (non-throttled) per-tick batch across the tick interval instead of
   // dumping it all at the tick instant. The reaper enqueues a clump of due cinemas
   // each tick; they fetch in parallel and their HTML/JSON payloads PARSE together —
@@ -197,10 +214,14 @@ class ScrapeReaper(
     // backlog lets the pool drain to near-empty and idle between ticks → credit
     // recovers, then the full cap resumes. Most-overdue-first (above) means the
     // bounded trickle still serves the stalest cinemas.
+    val outstanding = ScrapeReaper.ScrapeWorkTypes.map(queue.waitingCount).sum
+    // The smoothing bound, applied whatever the throttle says: never pile a fresh batch
+    // onto work that is still draining. See `maxOutstandingScrapeTasks`.
+    val backlogRoom = math.max(0, maxOutstandingScrapeTasks - outstanding)
+
     if (throttle.isThrottled) {
-      val outstanding = ScrapeReaper.ScrapeWorkTypes.map(queue.waitingCount).sum
-      val cap         = math.max(0, throttledMaxEnqueuePerTick - outstanding)
-      val enqueued    = enqueueUpTo(due, cap)
+      val cap      = math.min(backlogRoom, math.max(0, throttledMaxEnqueuePerTick - outstanding))
+      val enqueued = enqueueUpTo(due, cap)
       if (enqueued > 0)
         logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
           s"backlog-capped to $cap new ($outstanding scrape task(s) already waiting); enqueued $enqueued " +
@@ -208,8 +229,8 @@ class ScrapeReaper(
       enqueued
     } else if (enqueueSpread <= 1) {
       // Un-spread healthy path (the default): enqueue the whole capped batch now.
-      val enqueued = enqueueUpTo(due, rampedCap(now))
-      if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s).")
+      val enqueued = enqueueUpTo(due, math.min(rampedCap(now), backlogRoom))
+      if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s) ($outstanding scrape task(s) already waiting).")
       enqueued
     } else {
       // Spread the capped batch across the interval so the parses don't clump — see
@@ -217,7 +238,7 @@ class ScrapeReaper(
       // offsets. The queue dedups, so a slice landing near the next tick can't
       // double-enqueue. `tick` returns only what it enqueued SYNCHRONOUSLY (slice 0),
       // matching the un-spread contract for the first-of-batch.
-      val plan = planSlices(due.take(rampedCap(now)), enqueueSpread)
+      val plan = planSlices(due.take(math.min(rampedCap(now), backlogRoom)), enqueueSpread)
       val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size) }.getOrElse(0)
       plan.drop(1).foreach { case (offset, group) =>
         scheduleSlice(offset, () => {
