@@ -99,12 +99,12 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
   }
 
   "the UK worker" should "scrape on a cadence its paced Flicks sweep can drain within" in {
-    // Was a hard-coded 420. That number was sized when all 843 UK venues fanned out
-    // onto flicks.co.uk; since 2026-07-27 the 343 chain venues are own-site-primary
-    // and only reach flicks after 6h of a failing primary, so the paced origin
-    // carries 500. Assert the INVARIANT the way DE's test does rather than the
-    // arithmetic, so the pace and the cadence can each move as long as the sweep
-    // still fits — a literal is exactly what let the old value outlive its premise.
+    // UK is the fleet's slowest (7h vs DE's 3h). This used to assert the literal 420,
+    // which is how the number outlived its premise: it was sized when all 843 UK
+    // venues fanned out onto flicks.co.uk, and since 2026-07-27 the 343 chain venues
+    // are own-site-primary (only reaching flicks after 6h of a failing primary), so
+    // the paced origin carries 500. Assert the INVARIANT the way DE's test does, so
+    // the pace and the cadence can each move as long as the sweep still fits.
     val pace    = RateLimitedHttpFetch.configuredInterval("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/")
     val cadence = cadenceOf("fly.worker.uk.toml").map(_.toInt).map(_.minutes)
 
@@ -117,12 +117,13 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
       sweep should be <= cadence.get
     }
 
-    // HEADROOM, reported not asserted. At 500 venues x 36 requests x 200ms the sweep
-    // is 60min against a 60min cadence: it fits with 0% to spare, so the paced origin
-    // is busy 100% of every window and the worker never idles on it. DE deliberately
-    // keeps ~11%. This prints the margin so a run that "passes" at the knife edge
-    // still says so out loud — the invariant above is the hard floor, not a comfort
-    // zone, and a venue advertising one more day than measured breaks it.
+    // HEADROOM, reported not asserted. The invariant above is a hard floor, not a
+    // comfort zone: `sweep <= cadence` still passes at exact equality, which means a
+    // pacer at a 100% duty cycle and a worker that never idles. That is not
+    // hypothetical — the hourly cadence tried on 2026-07-28 landed exactly there
+    // (500 x 36 x 200ms = 60min against a 60min window) and was reverted the same
+    // day. DE deliberately keeps ~11%. Print the margin so a run that passes at the
+    // knife edge still says so out loud.
     val headroom = 1.0 - sweep.toMillis.toDouble / cadence.get.toMillis
     info(f"Flicks sweep uses ${100 * (1 - headroom)}%.1f%% of the ${cadence.get.toMinutes}min window (headroom ${100 * headroom}%+.1f%%)")
   }
@@ -166,14 +167,16 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
       minutes / 60
     }
 
+    // One clause per country, never a grouping. The first version of this guard said
+    // "Xh for pl and uk" because those two happened to share a value for a few hours
+    // on 2026-07-28; the moment UK went back to 7h the assertion failed on the
+    // GROUPING rather than on any real drift, which is a guard failing for the wrong
+    // reason. Spelling each country out has no such coupling.
     val (pl, uk, de) = (hoursOf("fly.worker.toml"), hoursOf("fly.worker.uk.toml"), hoursOf("fly.worker.de.toml"))
-    withClue("the panel groups pl and uk into one figure; they have drifted apart, so reword it: ") {
-      pl shouldBe uk
-    }
 
     val dashboard = RepoFile.read("fly/grafana/provisioning/dashboards/fly-overview.json")
-    withClue(s"the oldest-scrape panel must say '${pl}h for pl and uk, ${de}h for de': ") {
-      dashboard should include(s"${pl}h for pl and uk, ${de}h for de")
+    withClue(s"the oldest-scrape panel must say '${pl}h for pl, ${uk}h for uk, ${de}h for de': ") {
+      dashboard should include(s"${pl}h for pl, ${uk}h for uk, ${de}h for de")
     }
   }
 }

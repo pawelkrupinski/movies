@@ -409,13 +409,15 @@ object RealHttpFetch {
     // WorkerScrapeCadenceConfigSpec locks both). KINOWO_FLICKS_PACE_MS retunes it
     // live: if 200ms still throttles, step it down (and bump the cadence to match).
     //
-    // ⚠️ Since the cadence went to 60min (2026-07-28) that sweep exactly fills its
-    // window, so this pacer now runs at a 100% duty cycle — a sustained ~5 req/s,
-    // ~432k requests/day, against ONE third-party origin, up from ~62k/day at the
-    // old 420min cadence. The 200ms was tuned against BURST-shaped 429s; a flat
-    // 24/7 load is a different profile, and a longer-window quota (hourly/daily)
-    // would surface here rather than in the burst behaviour it was fitted to.
-    // Watch panel-14 of kinowo-worker-diag for the throttle % before assuming it holds.
+    // The cadence is 420min, so that ~60min sweep leaves the pacer idle ~86% of the
+    // time: ~62k requests/day at this origin. Keep it that way. An hourly cadence was
+    // tried on 2026-07-28 and reverted the same day — it made the sweep exactly fill
+    // its window, putting this pacer at a 100% duty cycle: a sustained ~5 req/s,
+    // ~432k requests/day, against ONE third-party origin. The 200ms was tuned against
+    // BURST-shaped 429s, and a flat 24/7 load is a different profile — a longer-window
+    // quota (hourly/daily) would surface there rather than in the burst behaviour it
+    // was fitted to. If the cadence is ever shortened again, watch panel-14 of
+    // kinowo-worker-diag for the throttle % rather than assuming this pace still holds.
     HostPolicy(
       Set("flicks.co.uk"),
       minRequestInterval = Some(Duration.ofMillis(200)),
