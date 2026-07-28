@@ -51,7 +51,7 @@ Per-country uptime lives in a SEPARATE Mongo database — `kinowo` (PL),
 `db.getSiblingDB(...)`; a PL-only sweep silently ignores ~2,400 foreign venues.
 Totals: **PL 20 white / 1 red**, **DE 323 white / 23 red (of 1,538 services)**,
 **UK 63 white / 0 red (of 850)**. One real bug found and fixed — in the UK
-Flicks client (`fixed` @ee7738e54, below). Full per-country detail after the
+Flicks client (`fixed` @d618f3a86, below). Full per-country detail after the
 Polish section.
 
 ### PL — 20 white
@@ -179,7 +179,7 @@ old; the cinema must renew its cert, we cannot fix this from our side.**
   `MsiClientSpec` — a `FakeHttpFetch` serving a film in month+2 fails before /
   passes after.
 
-### UK — 63 white, 0 red — ONE REAL BUG, `fixed` @ee7738e54
+### UK — 63 white, 0 red — ONE REAL BUG, `fixed` @d618f3a86
 
 62 of the 63 are `FlicksClient` venues (flicks.co.uk, the UK listings
 aggregator); the 1 remaining is `GatsbyBoxOfficeClient` (Everyman Durham).
@@ -222,7 +222,7 @@ currently-GREEN venues (curzon-soho `a=22`, phoenix-picturehouse-oxford `a=14`,
 watershed-bristol `a=12`) is `<a>`-only, so bookable venues are unaffected by
 the change and no partial loss was hiding there.
 
-**Fix** (`fixed` @ee7738e54): match the button by CLASS, not tag
+**Fix** (`fixed` @d618f3a86): match the button by CLASS, not tag
 (`.times-calendar-times__button`), in both the session loop and the
 `data-eventjson` lookup; the booking link simply stays `None` when there is no
 href — an unbookable screening is still a screening. `parseTime` already falls
@@ -234,7 +234,17 @@ after, all 21 pass. Also pins that the duplicated desktop/mobile buttons collaps
 to one showtime per screening via the existing `(time, booking)` dedup.
 Snapshots did NOT shift (`read-model-snapshot.json` / `expected-*.html` are
 built from a corpus with no span-button fixture), confirmed by `testUnit`
-— which includes `e2e/Test/test` — passing untouched.
+— which includes `e2e/Test/test` — passing untouched. CI green end-to-end on
+the merge commit (all test layers + all six deploys, incl. `kinowo-worker-uk`).
+
+**Verification still owed — do this FIRST next run.** At hand-off the four
+venues' newest uptime buckets (03:45–04:45 UTC) still PREDATED the deploy
+(~05:15 UTC), so the fix is shipped but has NOT yet been observed working in
+prod; UK venues scrape on a chunked cadence, so a given venue can go 1–2h
+between scrapes. **Confirm Barn Cinema Dartington, Broadway Cinema Villa Marina,
+Watersmeet and Cube Cinema Bristol have gone GREEN.** If they are still white
+with `data-date` tabs present on their Flicks page, the span-button fix was not
+the whole story and the venue needs re-probing.
 
 ### DE — 323 white, 23 red — no code change; a source-coverage story
 
