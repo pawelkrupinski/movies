@@ -370,7 +370,9 @@ trait TestWiring extends WorkerWiring {
         val advance = stagingHandlerByType.get(task.taskType).exists { h =>
           (try h.handle(task) catch { case _: Exception => HandlerOutcome.Reschedule(None) }) match {
             case HandlerOutcome.Done | HandlerOutcome.Skipped => true
-            case _: HandlerOutcome.Reschedule                 => false
+            // Reschedule or Deferred — either way the step didn't finish, so the
+            // chain doesn't advance and the task is dropped rather than spun.
+            case _                                            => false
           }
         }
         taskQueue.complete(task.id, workerId)

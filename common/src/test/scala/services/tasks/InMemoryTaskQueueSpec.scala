@@ -92,6 +92,29 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.claim("w1", 1.minute, t0.plusSeconds(301)).map(_.dedupKey) shouldBe Some("scrape|x")
   }
 
+  it should "give the attempt back when released with refundAttempt, so an untried claim costs no retry budget" in {
+    // `claim` charges an attempt up front, so a claim that was refused before any
+    // work ran (circuit open) burns retry budget identically to a real failure —
+    // which is how 68 fast-fails walked the UK Odeon chunks to attempts 5-6 in nine
+    // minutes on 2026-07-28 without a single one reaching the wire.
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
+    val first = q.claim("w1", 1.minute, t0).get
+    first.attempts shouldBe 1
+    q.release(first.id, "w1", Some("circuit open"), notBefore = None, refundAttempt = true)
+    q.claim("w1", 1.minute, t0).get.attempts shouldBe 1   // re-claimed at 1, not 2 — the refund cancelled the charge
+  }
+
+  it should "floor a refund at zero rather than drive attempts negative" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)
+    val task = q.claim("w1", 1.minute, t0).get
+    q.release(task.id, "w1", None, notBefore = None, refundAttempt = true)   // 1 → 0
+    val again = q.claim("w1", 1.minute, t0).get
+    q.release(again.id, "w1", None, notBefore = None, refundAttempt = true)  // 1 → 0, not -1
+    q.claim("w1", 1.minute, t0).get.attempts shouldBe 1
+  }
+
   "reapExpiredLeases" should "return expired worked-on tasks to waiting and guard against a late complete" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0)

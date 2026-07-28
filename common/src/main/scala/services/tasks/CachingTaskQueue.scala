@@ -64,8 +64,9 @@ class CachingTaskQueue(
 
   // A released task is still active (back to waiting) — keep its cache entry so we
   // don't re-enqueue it while it waits.
-  override def release(id: String, workerId: String, error: Option[String], notBefore: Option[Instant]): Unit =
-    delegate.release(id, workerId, error, notBefore)
+  override def release(id: String, workerId: String, error: Option[String], notBefore: Option[Instant],
+                       refundAttempt: Boolean): Unit =
+    delegate.release(id, workerId, error, notBefore, refundAttempt)
 
   override def reapExpiredLeases(now: Instant): Int = delegate.reapExpiredLeases(now)
   override def countByState(): Map[String, Long] = delegate.countByState()

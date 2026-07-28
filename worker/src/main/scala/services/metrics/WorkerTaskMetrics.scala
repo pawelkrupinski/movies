@@ -394,11 +394,15 @@ object WorkerTaskMetrics {
     val Done        = "done"
     val Skipped     = "skipped"
     val Rescheduled = "rescheduled"
+    // Returned untried because a precondition refused it (circuit open) — kept
+    // apart from `rescheduled` precisely because the two used to be indistinguishable:
+    // a host-wide block read as a flood of genuine task failures on the panel.
+    val Deferred    = "deferred"
     val Failed      = "failed"
     val NoHandler   = "no_handler"
   }
   val Outcomes: Seq[String] =
-    Seq(Outcome.Done, Outcome.Skipped, Outcome.Rescheduled, Outcome.Failed, Outcome.NoHandler)
+    Seq(Outcome.Done, Outcome.Skipped, Outcome.Rescheduled, Outcome.Deferred, Outcome.Failed, Outcome.NoHandler)
 
   object EnqueueResult { val Added = "added"; val Deduped = "deduped" }
   val EnqueueResults: Seq[String] = Seq(EnqueueResult.Added, EnqueueResult.Deduped)

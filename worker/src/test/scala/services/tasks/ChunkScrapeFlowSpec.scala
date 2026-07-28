@@ -30,17 +30,33 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
       Seq(Showtime(LocalDateTime.of(2026, 6, day, 18, 0), None)), Map.empty, None)
 
   /** A fake chunked cinema: each cinemaName maps to its slice; keys in `failOnce` throw
-   *  on their first `fetchChunk` then succeed; `planThrows` fails enumeration. */
+   *  on their first `fetchChunk` then succeed; keys in `circuitOpen` fast-fail as a
+   *  breaker-blocked host would; `planThrows` fails enumeration. */
   private class FakeChunked(slices: Map[String, Seq[CinemaMovie]], failOnce: Set[String] = Set.empty,
-                            failAlways: Set[String] = Set.empty, planThrows: Boolean = false) extends ChunkedCinemaScraper {
+                            failAlways: Set[String] = Set.empty, planThrows: Boolean = false,
+                            circuitOpen: Set[String] = Set.empty) extends ChunkedCinemaScraper {
     private val failed = mutable.Set.empty[String]
     val cinema: models.Cinema = ChunkScrapeFlowSpec.this.cinema
     def scrapeHosts: Set[String] = Set("fake.pl")
     def planChunks(): Seq[String] = if (planThrows) throw new RuntimeException("nav down") else slices.keys.toSeq.sorted
     def fetchChunk(k: String): Seq[CinemaMovie] =
-      if (failAlways.contains(k)) throw new RuntimeException(s"chunk $k permanently down")
+      if (circuitOpen.contains(k)) throw new tools.CircuitOpenException("fake.pl", CircuitBlockMs)
+      else if (failAlways.contains(k)) throw new RuntimeException(s"chunk $k permanently down")
       else if (failOnce.contains(k) && failed.add(k)) throw new RuntimeException(s"chunk $k transient")
       else slices.getOrElse(k, Nil)
+  }
+
+  private val CircuitBlockMs = 45000L
+
+  /** A clock the test drives forward by hand — for the cases whose subject measures
+   *  a window from "now" (a circuit block), where a fixed clock would keep handing
+   *  back a deadline that has already passed. */
+  private class AdvancingClock(start: Instant) extends Clock {
+    private var current = start
+    def advanceMillis(ms: Long): Unit = current = current.plusMillis(ms)
+    override def instant(): Instant = current
+    override def getZone: java.time.ZoneId = ZoneOffset.UTC
+    override def withZone(zone: java.time.ZoneId): Clock = this
   }
 
   private class Harness(scraper: FakeChunked, clock: Clock = Clock.fixed(now, ZoneOffset.UTC)) {
@@ -59,11 +75,14 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
 
     /** Claim+handle every currently-claimable task once; on a finished ScrapeChunk
      *  fire the coordinator (as the EventBus subscription does in prod). Rescheduled
-     *  tasks are held back so the pass terminates. Returns tasks processed. */
+     *  and deferred tasks are held back so the pass terminates. Returns tasks
+     *  processed. Bounded like `StagingQueueEndToEndSpec`'s pump: a task released to
+     *  an instant this pass has already reached is claimable again immediately, and
+     *  an unguarded loop then spins the suite instead of failing it. */
     def drain(at: Instant = now): Int = {
       var n = 0
       var next = queue.claim("w", 30.seconds, at)
-      while (next.isDefined) {
+      while (next.isDefined && n < 500) {
         val task = next.get
         val handler = if (task.taskType == TaskType.ScrapeChunk) chunkH else reduceH
         handler.handle(task) match {
@@ -72,6 +91,10 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
             if (task.taskType == TaskType.ScrapeChunk)
               coord.onTaskFinished(TaskFinished(task.taskType, task.dedupKey, task.payload))
           case Reschedule(err) => queue.release(task.id, "w", err, Some(at.plusSeconds(60)))
+          // Mirrors TaskWorker: a deferred chunk waits out the block it named and
+          // gets its attempt back, since it never ran.
+          case Deferred(err, notBefore) =>
+            queue.release(task.id, "w", err, Some(notBefore.getOrElse(at.plusSeconds(60))), refundAttempt = true)
         }
         n += 1
         next = queue.claim("w", 30.seconds, at)
@@ -112,6 +135,42 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     h.drain(now.plusSeconds(120))   // b retried → stores → coordinator → reduce
     h.published should have size 1
     h.published.head.map(_.movie.title).toSet shouldBe Set("X", "Y")
+  }
+
+  it should "DEFER a chunk the host's circuit breaker refused, waiting out the block it named" in {
+    // The fetch never reached the wire, so this is not a chunk failure and must not
+    // be charged as one: it waits exactly as long as the breaker has left to run.
+    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), circuitOpen = Set("a")))
+    val runId = { h.planner.plan(cinemaName); h.store.activeRun(cinemaName).get.runId }
+    val payload = ChunkScrapeKeys.chunkPayload(cinemaName, runId, "a")
+
+    h.chunkH.handle(Task("t", TaskType.ScrapeChunk, "d", payload, 1)) match {
+      case Deferred(err, notBefore) =>
+        err.getOrElse("") should include ("circuit open for fake.pl")
+        notBefore shouldBe Some(now.plusMillis(CircuitBlockMs))  // the breaker's own half-open instant
+      case other => fail(s"expected a Deferred, got $other")
+    }
+  }
+
+  it should "not burn a chunk's retry budget while its host is circuit-broken" in {
+    // The regression the whole change exists for: on 2026-07-28 fast-fails walked
+    // the UK Odeon chunks to attempts 5-6 inside nine minutes — pushing them up a
+    // doubling backoff curve toward the 30-minute cap — without one wire call.
+    // Needs a MOVING clock: the breaker's block is always measured from "now", so a
+    // frozen one would re-defer to an instant already reached and spin the drain.
+    val clock = new AdvancingClock(now)
+    val h = new Harness(new FakeChunked(Map("a" -> Seq(film("X", 25))), circuitOpen = Set("a")), clock)
+    h.planner.plan(cinemaName) shouldBe 1
+
+    // Five blocks' worth of passes: each claims the chunk, is refused before the
+    // wire, and hands the attempt straight back.
+    (1 to 5).foreach { _ =>
+      h.drain(clock.instant())
+      clock.advanceMillis(CircuitBlockMs + 1000)
+    }
+
+    h.published shouldBe empty
+    h.queue.claim("probe", 30.seconds, clock.instant()).map(_.attempts) shouldBe Some(1)
   }
 
   it should "refuse a second concurrent run for the same cinema (the conflict guard)" in {

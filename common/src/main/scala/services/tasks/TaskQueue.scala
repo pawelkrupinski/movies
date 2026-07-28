@@ -90,6 +90,22 @@ object HandlerOutcome {
   case object Skipped extends HandlerOutcome
   /** Couldn't finish now; return the task to waiting to retry later. */
   case class Reschedule(error: Option[String] = None) extends HandlerOutcome
+  /** The work was never ATTEMPTED — a precondition outside this task's control
+   *  refused it before any of it ran (today: the host's circuit breaker is open,
+   *  so the fetch fast-failed without touching the wire). Returns the task to
+   *  waiting like [[Reschedule]], but REFUNDS the attempt and holds it until
+   *  `notBefore` — the instant the precondition is expected to clear — instead of
+   *  charging it a doubling backoff for something it never did.
+   *
+   *  Why the refund matters: `attempts` is incremented on CLAIM, so a fast-fail
+   *  costs a task exactly as much retry budget as a real failure. On 2026-07-28 a
+   *  UK Odeon block produced 68 circuit-open fast-fails against 9 genuine
+   *  failures in one 2.5-minute window; the chunks reached `attempts` 5-6 within
+   *  9 minutes and were being pushed toward the 30-minute backoff cap purely for
+   *  being rejected locally — so the estate stayed dark long after the host
+   *  recovered. Anything that DID reach the wire and fail is a `Reschedule`; the
+   *  backoff is the right answer there. */
+  case class Deferred(error: Option[String] = None, notBefore: Option[Instant] = None) extends HandlerOutcome
 }
 
 /** The two states a task moves through. `complete` removes the document outright, so
@@ -155,9 +171,15 @@ trait TaskQueue {
   /** Return a worked-on task to waiting (retry). Same ownership guard as
    *  [[complete]]. `notBefore`, when set, holds the task back from `claim` until
    *  that instant — the transient-failure backoff (see [[TaskWorker]]); `None`
-   *  makes it immediately claimable again (e.g. a no-handler hand-off). */
+   *  makes it immediately claimable again (e.g. a no-handler hand-off).
+   *
+   *  `refundAttempt` undoes the `attempts` increment [[claim]] charged, for a
+   *  claim under which NO work was attempted (see [[HandlerOutcome.Deferred]]).
+   *  Every give-up budget and the retry backoff curve read `attempts`, so without
+   *  the refund a task can be retried out of existence by preconditions it never
+   *  got past. Floors at 0 — a refund can never push the counter negative. */
   def release(id: String, workerId: String, error: Option[String] = None,
-              notBefore: Option[Instant] = None): Unit
+              notBefore: Option[Instant] = None, refundAttempt: Boolean = false): Unit
 
   /** Return every worked-on task whose lease has expired to waiting. Returns how
    *  many were reaped. */

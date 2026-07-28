@@ -74,6 +74,38 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.claim("w1", 1.minute, Instant.now().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
   }
 
+  it should "NOT charge an attempt for a Deferred task — it never ran" in {
+    // A Reschedule means "this failed"; a Deferred means "this was refused before
+    // it started". Charging both alike let a circuit-open host walk its whole
+    // backlog up the backoff curve without a single wire call (2026-07-28, Odeon UK).
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Deferred(Some("circuit open")))))
+    w.claimAndRun("w0") shouldBe PollResult.Returned
+    q.claim("w1", 1.minute, Instant.now().plusSeconds(30)).map(_.attempts) shouldBe Some(1)
+  }
+
+  it should "hold a Deferred task until the instant the handler named, not the backoff curve" in {
+    // The handler knows when the block lifts (the breaker's own half-open instant),
+    // so the task waits exactly that long — no longer, and no shorter.
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    val until = Instant.now().plusSeconds(60)
+    val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Deferred(Some("circuit open"), Some(until)))))
+    w.claimAndRun("w0") shouldBe PollResult.Returned
+    q.claim("w1", 1.minute, until.minusSeconds(1)) shouldBe None                       // still blocked
+    q.claim("w1", 1.minute, until).map(_.dedupKey) shouldBe Some("imdb|x")             // claimable the moment it lifts
+  }
+
+  it should "fall back to the backoff curve when a Deferred names no instant" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Deferred(Some("circuit open"), None))))
+    w.claimAndRun("w0") shouldBe PollResult.Returned
+    q.claim("w1", 1.minute) shouldBe None                                              // an unhinted defer still can't hot-loop
+    q.claim("w1", 1.minute, Instant.now().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
+  }
+
   "throttlePauseMillis" should "duty-cycle a busy worker while CPU-credit throttled and run full speed when healthy" in {
     val q = new InMemoryTaskQueue
     def workerWith(throttled: Boolean) =
@@ -275,6 +307,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     observed(Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Done)))         shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Done))
     observed(Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Skipped)))      shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Skipped))
     observed(Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Reschedule()))) shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Rescheduled))
+    observed(Seq(new RecordingHandler(ScrapeCinema, HandlerOutcome.Deferred())))   shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Deferred))
     observed(Seq(throwing))                                                        shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.Failed))
     observed(Seq.empty)                                                            shouldBe (List("ScrapeCinema"), List("ScrapeCinema" -> Outcome.NoHandler))
   }

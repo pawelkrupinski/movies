@@ -83,11 +83,12 @@ class InMemoryTaskQueue extends TaskQueue {
   }
 
   override def release(id: String, workerId: String, error: Option[String],
-                       notBefore: Option[Instant]): Unit = lock.synchronized {
+                       notBefore: Option[Instant], refundAttempt: Boolean): Unit = lock.synchronized {
     rows.get(id).foreach { r =>
       if (r.state == TaskState.WorkedOn && r.workerId.contains(workerId))
         rows.put(id, r.copy(state = TaskState.Waiting, workerId = None,
-          leaseExpiresAt = None, nextEligibleAt = notBefore))
+          leaseExpiresAt = None, nextEligibleAt = notBefore,
+          attempts = if (refundAttempt) math.max(0, r.attempts - 1) else r.attempts))
     }
   }
 

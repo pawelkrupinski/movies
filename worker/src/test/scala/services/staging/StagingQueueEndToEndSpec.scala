@@ -67,7 +67,9 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
         case HandlerOutcome.Done | HandlerOutcome.Skipped =>
           queue.complete(task.id, "w")
           reaper.onTaskFinished.applyOrElse(TaskFinished(task.taskType, task.dedupKey, task.payload), (_: DomainEvent) => ())
-        case _: HandlerOutcome.Reschedule => queue.release(task.id, "w", None, None)
+        // Reschedule or Deferred — the step didn't finish, so return it and let the
+        // guard bound the pump.
+        case _ => queue.release(task.id, "w", None, None)
       }
     }
 

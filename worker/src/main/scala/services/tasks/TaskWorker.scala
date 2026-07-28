@@ -227,6 +227,16 @@ class TaskWorker(
           queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
           observer.onFinished(task, Outcome.Rescheduled, millis)
           PollResult.Returned
+        // No work was attempted, so no backoff is owed and no attempt is charged:
+        // hold the task until the precondition is due to clear (the handler knows
+        // when — e.g. the circuit's own half-open instant) and hand back the
+        // increment `claim` took. Falls back to the normal curve when the handler
+        // names no instant, so an unhinted defer still can't hot-loop.
+        case Success(Deferred(err, notBefore)) =>
+          queue.release(task.id, workerId, err,
+            Some(notBefore.getOrElse(backoffUntil(task.attempts))), refundAttempt = true)
+          observer.onFinished(task, Outcome.Deferred, millis)
+          PollResult.Returned
         case Failure(exception) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
           queue.release(task.id, workerId, Some(exception.getMessage), Some(backoffUntil(task.attempts)))

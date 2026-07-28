@@ -12,8 +12,12 @@ import scala.concurrent.duration._
  *  `IOException` so every caller that already degrades on a fetch failure (cinema
  *  scrapers wrap detail fetches in `Try(...).toOption`; `MonitoringHttpFetch`
  *  records a failure) treats a circuit-broken host exactly like an unreachable
- *  one — which, for us, it effectively is. */
-class CircuitOpenException(host: String, openForMs: Long)
+ *  one — which, for us, it effectively is.
+ *
+ *  `openForMs` is exposed so a caller that can DEFER its work rather than fail it
+ *  can wait exactly as long as the block has left to run, instead of guessing —
+ *  see `services.tasks.HandlerOutcome.Deferred`. */
+class CircuitOpenException(val host: String, val openForMs: Long)
   extends java.io.IOException(s"circuit open for $host (${openForMs}ms before half-open)")
 
 /**

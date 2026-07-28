@@ -154,7 +154,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   }
 
   override def release(id: String, workerId: String, error: Option[String],
-                       notBefore: Option[Instant]): Unit = coll.foreach { c =>
+                       notBefore: Option[Instant], refundAttempt: Boolean): Unit = coll.foreach { c =>
     val filter = Filters.and(Filters.eq("_id", id), Filters.eq("state", TaskState.WorkedOn), Filters.eq("workerId", workerId))
     // Set the backoff window, or clear a stale one when releasing without it, so
     // a no-handler hand-off (notBefore = None) is immediately claimable again.
@@ -166,7 +166,13 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       Updates.unset("leaseExpiresAt"),
       eligibility
     )
-    val update = error.fold(base)(e => Updates.combine(base, Updates.set("lastError", e)))
+    // Give back the increment `claim` charged, for a claim that attempted no work.
+    // Cannot go negative without a guard: `claim` incremented to ≥1 before the
+    // handler ran, and the ownership filter above already no-ops this release if
+    // the lease was reaped and the task reclaimed by someone else.
+    val refunded =
+      if (refundAttempt) Updates.combine(base, Updates.inc("attempts", -1)) else base
+    val update = error.fold(refunded)(e => Updates.combine(refunded, Updates.set("lastError", e)))
     Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds))
       .recover { case exception => logger.warn(s"TaskQueue.release($id) failed: ${exception.getMessage}") }
   }
