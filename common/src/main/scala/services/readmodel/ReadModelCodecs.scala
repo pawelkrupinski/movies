@@ -17,7 +17,9 @@ import services.movies.JavaTimeCodecs
  * `movies` collection.
  */
 object ReadModelCodecs {
-  val registry: CodecRegistry = fromRegistries(
+
+  /** The macro-derived registry — the shape everything is written with. */
+  private val macroRegistry: CodecRegistry = fromRegistries(
     fromCodecs(JavaTimeCodecs.localDateTime),
     fromProviders(
       Macros.createCodecProviderIgnoreNone[Showtime](),
@@ -26,5 +28,29 @@ object ReadModelCodecs {
       Macros.createCodecProviderIgnoreNone[CityScreening]()
     ),
     DEFAULT_CODEC_REGISTRY
+  )
+
+  /** An empty instance per served type — the source of the decode defaults. Only its
+   *  ENCODED form is used, so these values never reach a reader except as the fill for a
+   *  field a stored document genuinely lacks. */
+  private val emptyMovie = ResolvedMovie(
+    _id = "", title = "", originalTitle = None, posterUrl = None, fallbackPosterUrls = Seq.empty,
+    runtimeMinutes = None, releaseYear = None, genres = Seq.empty, countries = Seq.empty,
+    directors = Seq.empty, cast = Seq.empty, synopsis = None, trailerUrls = Seq.empty,
+    ratings = ResolvedRatings(None, None, None, "", None, "", None, ""), weightedRating = 0.0)
+
+  private val emptyScreening = CityScreening(
+    _id = "", filmId = "", city = "", cinema = "", filmUrl = None, showtimes = Seq.empty)
+
+  /** Reads tolerate a document missing any field; writes still emit the full shape. See
+   *  [[DefaultingCodec]] — a missing non-`Option` field otherwise kills the whole keyset
+   *  batch, and `web_movies` is the sharpest case because full re-projection is retired,
+   *  so a quiescent row is never rewritten. */
+  val registry: CodecRegistry = fromRegistries(
+    fromCodecs(
+      DefaultingCodec(macroRegistry.get(classOf[ResolvedMovie]),  emptyMovie),
+      DefaultingCodec(macroRegistry.get(classOf[CityScreening]), emptyScreening)
+    ),
+    macroRegistry
   )
 }

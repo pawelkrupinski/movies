@@ -134,23 +134,23 @@ class StoredDocumentCompatibilitySpec extends AnyFlatSpec with Matchers {
     StoredDocumentCompatibility.encodedFields(ReadModelCodecs.registry.get(classOf[ResolvedMovie]), movie) should
       contain ("ratings")
 
-    // DEBT, and the sharpest of it. `web_movies` rows are written only by the projector,
-    // and the full re-projection was RETIRED — so a row is rewritten when its film changes
-    // and not otherwise. Adding a required field here therefore breaks every quiescent row
-    // until something touches it, which is exactly how `ratings` 404'd the served corpus.
-    // Any NEW field on ResolvedMovie must be `Option[...]`.
+    // PAID OFF. `ReadModelCodecs` now wraps the served types in `DefaultingCodec`, which
+    // fills any absent field from an encoded empty instance before decoding — so a
+    // `web_movies` row written by an older build still reads. That mattered most here:
+    // full re-projection is RETIRED, so a quiescent row is rewritten only when its film
+    // changes, and a newly-required field would have broken every untouched row
+    // indefinitely — which is how `ratings` 404'd the served corpus.
     check("ResolvedMovie", ReadModelCodecs.registry.get(classOf[ResolvedMovie]), movie,
-      knownRequired = IdOnly ++ Set("title", "ratings", "weightedRating", "genres", "countries",
-        "directors", "cast", "trailerUrls", "fallbackPosterUrls"))
+      knownRequired = IdOnly)
   }
 
   "a `web_screenings` document" should "decode with any field absent" in {
     val screening = CityScreening("film|2026|poznan|Multikino", "film|2026", "poznan", "Multikino",
       filmUrl = Some("https://f"), showtimes = Seq(showtime))
     check("CityScreening", ReadModelCodecs.registry.get(classOf[CityScreening]), screening,
-      // The read model is keyed and queried on these; a row lacking them cannot be served
-      // or pruned, so an absent one is corruption rather than an older shape. `cinema` and
-      // `showtimes` are DEBT on the same footing as the rest of the read model.
-      knownRequired = IdOnly ++ Set("filmId", "city", "cinema", "showtimes"))
+      // PAID OFF alongside `ResolvedMovie` — see above. A row lacking `filmId`/`city` is
+      // still useless to serve, but it now DECODES, so one bad row can no longer take the
+      // whole keyset batch (and therefore the whole scan) down with it.
+      knownRequired = IdOnly)
   }
 }

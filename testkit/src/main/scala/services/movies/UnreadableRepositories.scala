@@ -52,3 +52,16 @@ class IncompleteScanMovieRepository(delivered: Seq[(String, Option[Int], MovieRe
   extends InMemoryMovieRepository(delivered) {
   override def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { super.foreachRecord(f); false }
 }
+
+/** A [[ScreeningsRepository]] whose WRITES silently fail — which is the real shape here,
+ *  because `replaceFilm` returns `Unit` and swallows its own errors. A caller that copies
+ *  rows to a new id and then deletes the old ones must verify the copy landed; a Mongo
+ *  transaction would not save it, since nothing throws and nothing rolls back. */
+class UnwritableScreeningsRepository extends InMemoryScreeningsRepository {
+  /** Populate a film's rows, bypassing the write block — so a spec can set up the state a
+   *  failed copy is supposed to preserve. */
+  def seed(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit =
+    super.replaceFilm(filmId, slots)
+  override def replaceFilm(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit = ()
+  override def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[models.Showtime]): Unit = ()
+}

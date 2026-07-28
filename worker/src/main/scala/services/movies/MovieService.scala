@@ -527,7 +527,18 @@ class MovieService(
         // clobber that left already-fetched ratings blank (UK far more than PL,
         // its cache colder). With the real stored record, `buildResolvedRecord`'s
         // own same-tmdbId gate still discards a corrected film's stale ids.
-        val enr      = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, cache.stored(writeKey).getOrElse(MovieRecord()))
+        // A FAILED read is not an empty row. `stored` reports both as `None`, and carrying
+        // `MovieRecord()` forward would write the film stripped of every rating the
+        // `*Ratings` refreshers own AND every cinema slot — the same clobber the cold-cache
+        // fix above prevented, from the other cause. THROW rather than return `None`:
+        // `None` means "TMDB has no match" here, and `resolveTmdbOnce` turns that into
+        // `markMissing` + `tmdbNoMatch = true`, poisoning a film that is perfectly fine.
+        // Its `Try` already treats a Failure as "will retry", which is the deferral wanted.
+        val (carryForward, readOk) = cache.storedChecked(writeKey)
+        if (!readOk) throw new IllegalStateException(
+          s"TMDB carry-forward read failed for '${writeKey.cleanTitle}' (${writeKey.year.getOrElse("—")}) — " +
+          "deferring the resolve rather than writing the row without its ratings and cinemas")
+        val enr      = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, carryForward.getOrElse(MovieRecord()))
         // Settle this film at conclusion: write the resolved record AND fold any
         // yearless+idless sibling a concurrent scrape stranded (the "Dzień
         // objawienia" Multikino row) onto it in ONE merged write — so the row's
