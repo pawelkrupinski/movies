@@ -31,7 +31,9 @@ import scala.util.{Random, Try}
  *      zero persisted writes, within a bounded number of ticks. A pipeline that
  *      oscillates (the square-wave class of bug) never gets there, so the bound
  *      is the discriminator;
- *   4. and it is ORDER-INDEPENDENT: several independent passes, each taking the
+ *   4. NOTHING IS SILENTLY LOST: every cinema, every showtime and every film the
+ *      archive holds comes out the far end, in the rows the web would render;
+ *   5. and it is ORDER-INDEPENDENT: several independent passes, each taking the
  *      cinemas in a different random order AND each cinema's films in a different
  *      random order, land on byte-identical `movies` records, byte-identical
  *      `screenings`, and a byte-identical rendered read model.
@@ -81,6 +83,24 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   private def cinemasByFilm(w: ArchiveReplayWiring): Map[String, Set[String]] =
     w.movieRepository.findAll().map(r =>
       StoredMovieRecord.idOf(r) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
+
+  /** Boot the corpus to the steady state production reaches, settle it, and get
+   *  it into the read model.
+   *
+   *  The conclude pass AFTER the settles is load-bearing, not tidiness: a row the
+   *  settle created was never concluded by `bootCorpus`, and an unconcluded row
+   *  fails `readyToProject` and is silently skipped by the projector — which is
+   *  exactly how 32 of 80 films, 44 cinemas and 360 screenings went missing from
+   *  the read model while the corpus itself was complete. */
+  private def bootSettled(w: ArchiveReplayWiring): Unit = {
+    w.bootCorpus()
+    w.movieService.settle()
+    w.drainStaging()
+    w.movieService.settle()
+    w.concludeEnrichment()
+    w.readModelProjector.reconcile()
+    w.webReadModel.reload()
+  }
 
   /** Seed the archive with this country's corpus, exactly as a real scrape would
    *  have filed it — through `ScrapeAttempt`, so the archive's own "content only"
@@ -160,13 +180,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
            s"${w.archivedListings.values.map(_.size).sum} film listings")
 
-      // Boot to the steady state production reaches. `bootCorpus` doesn't run the
-      // convergence collapse, so settle explicitly (twice, with a staging drain
-      // between) to reach the fixpoint rather than a mid-settle transient.
-      w.bootCorpus()
-      w.movieService.settle()
-      w.drainStaging()
-      w.movieService.settle()
+      bootSettled(w)
 
       // ── 1) The settle is a fixpoint of itself ────────────────────────────────
       val before        = keySet(w)
@@ -284,6 +298,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     w.movieService.settle()
     w.drainStaging()
     w.movieService.settle()
+    w.concludeEnrichment()
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
 
@@ -321,6 +336,81 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       }
       withClue(s"${divergences.size} order-dependent divergence(s):\n${divergences.take(10).mkString("\n")}\n") {
         divergences.toList shouldBe empty
+      }
+    }
+  }
+
+
+  /** Every cinema, showtime and film the DATABASE holds, versus what the web
+   *  would actually render.
+   *
+   *  The two specs above are both blind to loss: a pipeline that dropped half the
+   *  corpus on the floor would still settle to a fixpoint, and would still do so
+   *  identically whatever order it read things in. Convergence says the corpus
+   *  stops changing; it says nothing about the corpus being COMPLETE. This is the
+   *  one that would have caught a projection that quietly served fewer films than
+   *  it was given.
+   *
+   *  The expectation is read back out of `cinema_scrapes` rather than from the
+   *  generator, so what is being compared is what the database actually holds
+   *  against what the read model actually emits — the whole path, end to end.
+   *
+   *  Subset, not equality, in both directions that matter: the read model may
+   *  legitimately hold MORE (a folded film carries several venues' spellings into
+   *  one row) but never less. */
+  s"the ${country.displayName} read model" should
+    "emit every cinema, showtime and film the archive holds" in {
+    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
+    IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, s"emit-${country.code}") { database =>
+      val archive = new MongoScrapeArchiveRepository(Some(database))
+      seedArchive(archive)
+
+      val w = new ArchiveReplayWiring(country, archive) {
+        override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
+      }
+      bootSettled(w)
+
+      // ── what the DATABASE holds ──────────────────────────────────────────────
+      val stored          = archive.findAll()
+      val storedCinemas   = stored.filter(_.films.nonEmpty).map(_.cinema.displayName).toSet
+      val storedScreenings = stored.flatMap(row =>
+        row.films.flatMap(_.showtimes.map(st => (row.cinema.displayName, st.dateTime)))).toSet
+      val storedTitles    = stored.flatMap(_.films.map(_.movie.title)).toSet
+
+      // ── what the WEB would render ────────────────────────────────────────────
+      val rows = country.cities.sortBy(_.slug).flatMap(c =>
+        new MovieControllerService(w.webReadModel).toSchedules(c, RenderAt))
+      val shown        = rows.flatMap(_.showings.flatMap(_._2))
+      val shownCinemas = shown.map(_.cinema.displayName).toSet
+      val shownScreenings = shown.flatMap(cs => cs.showtimes.map(st => (cs.cinema.displayName, st.dateTime))).toSet
+      val shownTitles  = rows.map(_.movie.title).toSet
+
+      info(s"${country.displayName}: archive holds ${storedCinemas.size} cinemas / " +
+           s"${storedScreenings.size} distinct screenings / ${storedTitles.size} scraped titles; " +
+           s"read model emits ${shownCinemas.size} cinemas / ${shownScreenings.size} screenings / ${shownTitles.size} films")
+      storedCinemas should not be empty
+
+      val lostCinemas = storedCinemas -- shownCinemas
+      withClue(s"${lostCinemas.size} cinema(s) in cinema_scrapes never reach the read model: " +
+               s"${lostCinemas.toList.sorted.take(10).mkString(", ")}\n") {
+        lostCinemas shouldBe empty
+      }
+
+      val lostScreenings = storedScreenings -- shownScreenings
+      withClue(s"${lostScreenings.size} of ${storedScreenings.size} screening(s) never reach the read model; " +
+               s"first: ${lostScreenings.toList.sortBy(p => (p._1, p._2)).take(8).mkString(", ")}\n") {
+        lostScreenings shouldBe empty
+      }
+
+      // A scraped title need not survive VERBATIM — folding is the point, and
+      // "Diuna (dubbing)" is meant to come out as "Diuna". What must survive is
+      // the FILM: every title the archive holds has to be represented by some
+      // emitted film that it folded into, so nothing vanishes without a home.
+      val settled = w.movieCache.snapshot().map(_.title).toSet
+      val homeless = settled -- shownTitles
+      withClue(s"${homeless.size} settled film(s) exist in the corpus but are emitted by nothing: " +
+               s"${homeless.toList.sorted.take(10).mkString(", ")}\n") {
+        homeless shouldBe empty
       }
     }
   }

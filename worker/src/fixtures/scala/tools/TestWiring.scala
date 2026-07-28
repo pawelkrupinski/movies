@@ -211,8 +211,15 @@ trait TestWiring extends WorkerWiring {
 
   /** Mark every row TMDB has not resolved as concluded-no-match, the state
    *  production reaches once the daily retry gives up. Without it a fixture-less
-   *  film stays perpetually "unresolved" and keeps re-triggering enrichment. */
-  protected def concludeEnrichment(): Unit =
+   *  film stays perpetually "unresolved" and keeps re-triggering enrichment.
+   *
+   *  Public because WHEN it runs matters and only the caller knows: a row the
+   *  SETTLE created (a fold's merge target, a re-key) was never seen by the pass
+   *  `bootCorpus` runs, and `MovieRecord.readyToProject` requires `tmdbConcluded`
+   *  — so a harness that settles after booting must conclude again afterwards or
+   *  those rows never reach the read model at all. Production doesn't need this:
+   *  `UnresolvedTmdbReaper` sweeps continuously. */
+  def concludeEnrichment(): Unit =
     movieRepository.findAll().foreach { sr =>
       if (!sr.record.tmdbConcluded)
         movieRepository.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
