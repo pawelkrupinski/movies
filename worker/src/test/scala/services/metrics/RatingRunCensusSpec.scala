@@ -103,7 +103,76 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     ukGauge(text, RatingRunCensus.OldestAgeName, "fw") shouldBe None
   }
 
+  // The shape panel-56 was structurally blind to: IMDb eligibility is imdbId-based
+  // (RatingSources), not tmdbId-based, so a row with an imdbId and no tmdbId joins
+  // the backlog while the tmdbId-keyed TMDB-resolve stamp the age was measured from
+  // cannot exist. The age then fell to `getOrElse(0.0)` and `max(prev, 0.0)` kept it
+  // there, so the panel showed a flat 0 next to a non-zero count — exactly the state
+  // the UK carried on 2026-07-28 (count 2, age 0, unchanged for six hours) while its
+  // help text promised a climbing diagonal.
+  private val imdbOnly       = key("Imdb Only", 2026)
+  private val recordImdbOnly = MovieRecord(imdbId = Some("tt9"))
+
+  "a backlog row with no TMDB resolve stamp" should "still age from when the census first saw it" in {
+    val registry            = new PrometheusRegistry()
+    val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
+    val clock               = new MovingClock(now)
+    val census = new RatingRunCensus(
+      cacheOf(Seq(imdbOnly -> recordImdbOnly)), freshness(), notRun, oldestAge, Country.Poland, clock)
+
+    census.sample()
+    gauge(PrometheusExposition.render(registry), RatingRunCensus.NotRunName, "imdb")    shouldBe Some(1.0)
+    withClue("the first sighting IS the clock start — no wait accrued yet: ")(
+      gauge(PrometheusExposition.render(registry), RatingRunCensus.OldestAgeName, "imdb") shouldBe Some(0.0))
+
+    clock.advance(600)
+    census.sample()
+    val text = PrometheusExposition.render(registry)
+    gauge(text, RatingRunCensus.NotRunName, "imdb") shouldBe Some(1.0)
+    withClue("the age must climb with the wait, not sit at a flat 0: ")(
+      gauge(text, RatingRunCensus.OldestAgeName, "imdb") shouldBe Some(600.0))
+  }
+
+  it should "forget its sighting once the rating runs, so a relapse starts a fresh clock" in {
+    val registry            = new PrometheusRegistry()
+    val (notRun, oldestAge) = RatingRunCensus.gauges(registry)
+    val clock               = new MovingClock(now)
+    val f                   = freshness()
+    val census = new RatingRunCensus(
+      cacheOf(Seq(imdbOnly -> recordImdbOnly)), f, notRun, oldestAge, Country.Poland, clock)
+
+    val stamp = RatingTasks.dedupKey(FreshnessKind.ImdbRating, imdbOnly, None)
+
+    census.sample()
+    clock.advance(600)
+    // The rating runs — the row leaves the backlog, and its sighting must go with it.
+    f.markFresh(stamp, FreshnessKind.ImdbRating, clock.instant())
+    census.sample()
+    gauge(PrometheusExposition.render(registry), RatingRunCensus.NotRunName, "imdb") shouldBe Some(0.0)
+
+    // A merge/re-key drops the stamp and the row relapses into the backlog. The clock
+    // starts over from the relapse rather than resuming the abandoned 600s — which is
+    // also what stops a drained row's sighting from being retained forever.
+    clock.advance(60)
+    f.invalidate(stamp)
+    census.sample()
+    clock.advance(30)
+    census.sample()
+    val relapsed = PrometheusExposition.render(registry)
+    gauge(relapsed, RatingRunCensus.NotRunName, "imdb") shouldBe Some(1.0)
+    withClue("the relapse must time from itself, not from the first sighting 690s ago: ")(
+      gauge(relapsed, RatingRunCensus.OldestAgeName, "imdb") shouldBe Some(30.0))
+  }
+
   // ── helpers ────────────────────────────────────────────────────────────────
+  private class MovingClock(start: Instant) extends java.time.Clock {
+    private var at: Instant                                  = start
+    def advance(seconds: Long): Unit                         = at = at.plusSeconds(seconds)
+    def instant(): Instant                                   = at
+    def getZone: java.time.ZoneId                            = java.time.ZoneOffset.UTC
+    override def withZone(zone: java.time.ZoneId): java.time.Clock = this
+  }
+
   private def cacheOf(rows: Seq[(CacheKey, MovieRecord)]): MovieCacheReader = new MovieCacheReader {
     def hasResolvedSiblingByTitle(rawTitle: String): Boolean = false
     def snapshot(): Seq[StoredMovieRecord]                   = Nil

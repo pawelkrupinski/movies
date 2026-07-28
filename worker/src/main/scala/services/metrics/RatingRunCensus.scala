@@ -28,7 +28,8 @@ import scala.util.Try
  *   - `kinowo_worker_rating_resolved_not_run{site}` — how many have never had this
  *     rating run (no freshness stamp), and
  *   - `kinowo_worker_rating_resolved_not_run_oldest_age_seconds{site}` — how long
- *     the oldest such film has waited since it resolved.
+ *     the oldest such film has waited, since it resolved on TMDB or, for a row
+ *     with no tmdbId to measure that from, since this census first saw it stuck.
  * A site that never runs keeps a non-zero backlog and an ever-climbing oldest
  * age, so Grafana can alert on it.
  *
@@ -62,10 +63,30 @@ class RatingRunCensus(
 
   private val scheduler = DaemonExecutors.scheduler("rating-run-census")
 
+  // When this census first saw each (site, row) in the backlog — the fallback
+  // clock start for a row whose TMDB-resolve stamp can't exist. IMDb eligibility
+  // is imdbId-based, not tmdbId-based (see [[RatingSources]]), so an imdbId-only
+  // row joins the backlog with nothing tmdbId-keyed to measure from; the age then
+  // collapsed to 0 and stayed there, leaving a non-zero count sitting under a flat
+  // line on the very panel that exists to show the wait climbing (the UK carried
+  // two such films for six hours on 2026-07-28). Only rows still in the backlog
+  // are carried forward, so a drained row forgets its sighting and the map can't
+  // grow without bound. Volatile: written by the scheduler thread, and by the
+  // caller's thread for the initial `start()` sample.
+  @volatile private var firstSeen: Map[(String, CacheKey), Instant] = Map.empty
+
   /** Walk the corpus once and publish each site's never-run backlog onto the
    *  gauges. Read-only, in-memory; bounded to once per `sampleInterval`. */
   def sample(): Unit = {
-    val stats = census(cache.entries, freshness.lastFetchedAt, clock.instant(), sources)
+    val now  = clock.instant()
+    val seen = scala.collection.mutable.Map.empty[(String, CacheKey), Instant]
+    val sighting: (String, CacheKey) => Instant = (site, key) => {
+      val at = firstSeen.getOrElse((site, key), now)
+      seen((site, key)) = at
+      at
+    }
+    val stats = census(cache.entries, freshness.lastFetchedAt, now, sources, Some(sighting))
+    firstSeen = seen.toMap
     sources.foreach { s =>
       val st = stats.getOrElse(s.kind.label, SiteBacklog.empty)
       notRun.labelValues(countryCode, s.kind.label).set(st.count.toDouble)
@@ -99,7 +120,7 @@ object RatingRunCensus {
       .register(registry)
     val oldestAge = Gauge.builder()
       .name(OldestAgeName)
-      .help("Seconds the OLDEST resolved-but-never-run film has waited since its TMDB resolution, by country and rating site — the never-run latency the first-attempt histogram can't show (it only times runs that happened). Climbs without bound for a site that never runs.")
+      .help("Seconds the OLDEST resolved-but-never-run film has waited, by country and rating site — the never-run latency the first-attempt histogram can't show (it only times runs that happened). Measured from the film's TMDB resolution, or from when this worker first saw the row stuck when it has no tmdbId to date that from (IMDb is eligible on an imdbId alone), so the line climbs for every backlog rather than only the tmdbId-keyed ones. The no-tmdbId fallback restarts at 0 after a worker restart.")
       .labelNames("country", "site")
       .register(registry)
     (notRun, oldestAge)
@@ -113,25 +134,36 @@ object RatingRunCensus {
   object SiteBacklog { val empty: SiteBacklog = SiteBacklog(0, 0.0) }
 
   /** Pure census: per site label, how many eligible rows have no rating stamp
-   *  (the run never happened), and the oldest `now − tmdbResolvedAt` among those
-   *  whose resolve time is known. `lastFetchedAt` is the freshness lookup (the
-   *  cache mirror in prod); `now` is the sample instant. `sources` are the rating
-   *  sources to census — the caller passes only those its country wires a handler
-   *  for (defaults to all). */
+   *  (the run never happened), and the oldest wait among them. `lastFetchedAt` is
+   *  the freshness lookup (the cache mirror in prod); `now` is the sample instant.
+   *  `sources` are the rating sources to census — the caller passes only those its
+   *  country wires a handler for (defaults to all).
+   *
+   *  A row's wait is measured from its TMDB resolution when that's knowable, and
+   *  otherwise from `firstBacklogSighting` — when the caller first observed this
+   *  (site, row) in the backlog. The fallback is what makes the gauge honest for a
+   *  row eligible WITHOUT a tmdbId (IMDb needs only an imdbId), which has no
+   *  tmdbId-keyed resolve stamp to measure from and previously reported a wait of
+   *  exactly 0 no matter how long it sat. It's the weaker of the two — the caller's
+   *  memory resets on a worker restart, where the stamp is durable — so it's only
+   *  ever the fallback. `None` ("this caller keeps no memory of sightings") dates
+   *  such a row from `now`, i.e. a wait of 0. */
   private[services] def census(
-    entries:       Iterable[(CacheKey, MovieRecord)],
-    lastFetchedAt: String => Option[Instant],
-    now:           Instant,
-    sources:       Seq[RatingSource] = RatingSources.all
+    entries:              Iterable[(CacheKey, MovieRecord)],
+    lastFetchedAt:        String => Option[Instant],
+    now:                  Instant,
+    sources:              Seq[RatingSource] = RatingSources.all,
+    firstBacklogSighting: Option[(String, CacheKey) => Instant] = None
   ): Map[String, SiteBacklog] = {
     val acc = scala.collection.mutable.Map.empty[String, SiteBacklog]
     entries.foreach { case (key, record) =>
       sources.foreach { s =>
         if (s.eligible(record) && !hasRun(lastFetchedAt, s.kind, key, record.tmdbId)) {
-          val ageSeconds = record.tmdbId
+          val waitingSince = record.tmdbId
             .flatMap(id => lastFetchedAt(RatingTasks.tmdbResolvedAtKey(id)))
-            .map(resolvedAt => math.max(0.0, (now.toEpochMilli - resolvedAt.toEpochMilli).toDouble / 1000.0))
-            .getOrElse(0.0)
+            .orElse(firstBacklogSighting.map(_(s.kind.label, key)))
+            .getOrElse(now)
+          val ageSeconds = math.max(0.0, (now.toEpochMilli - waitingSince.toEpochMilli).toDouble / 1000.0)
           val prev = acc.getOrElse(s.kind.label, SiteBacklog.empty)
           acc(s.kind.label) = SiteBacklog(prev.count + 1, math.max(prev.oldestAgeSeconds, ageSeconds))
         }
