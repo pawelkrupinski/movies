@@ -50,7 +50,16 @@ import scala.util.{Random, Try}
  */
 abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec with Matchers {
 
-  assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
+  // Deliberately NOT `assume`. A cancelled test reports as SUCCESS, so a leg that
+  // lost its Mongo would go green having verified nothing at all — and these run
+  // in their own workflow where nobody is reading the log line by line. They are
+  // only ever invoked by name (the `convergence*` aliases, the country-convergence
+  // workflow), and every one of those hands them a throwaway Mongo, so a missing
+  // URI is a broken invocation rather than a reason to skip.
+  if (Env.get("MONGODB_URI").isEmpty)
+    throw new IllegalStateException(
+      "MONGODB_URI is not set. The country convergence specs round-trip their corpus through a real " +
+      "cinema_scrapes collection and must never silently skip — point it at a throwaway Mongo.")
 
   /** Bound on re-scrape ticks before we declare the corpus non-convergent. */
   private val MaxTicks = 12
@@ -406,8 +415,13 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       // "Diuna (dubbing)" is meant to come out as "Diuna". What must survive is
       // the FILM: every title the archive holds has to be represented by some
       // emitted film that it folded into, so nothing vanishes without a home.
-      val settled = w.movieCache.snapshot().map(_.title).toSet
-      val homeless = settled -- shownTitles
+      // Compared on the canonical key, not the spelling: the projection derives a
+      // film's DISPLAY title, so a corpus row stored as "Cicha garden ii" is
+      // legitimately emitted as "Cicha Garden II". Matching raw strings reported
+      // six such films as lost when every one of them was on the page.
+      val settled  = w.movieCache.snapshot().map(r => TitleNormalizer.sanitize(r.title)).toSet
+      val emitted  = shownTitles.map(TitleNormalizer.sanitize)
+      val homeless = settled -- emitted
       withClue(s"${homeless.size} settled film(s) exist in the corpus but are emitted by nothing: " +
                s"${homeless.toList.sorted.take(10).mkString(", ")}\n") {
         homeless shouldBe empty

@@ -38,27 +38,50 @@ import java.time.LocalDateTime
  */
 object CountryScrapeCorpus {
 
-  /** Films per cinema. Kept small on purpose — the pipeline's cost is
-   *  film×cinema pairs, and the corpus needs to be broad (every venue in the
-   *  country) rather than deep. ~6 × the country's venue count lands all three
-   *  countries in the same order of magnitude as the Polish HTTP replay. */
-  private val FilmsPerCinema = 6
+  /** Films each venue lists. Set from the real per-country ratio measured off
+   *  production (`/api/repertoire`, 2026-07-28): Poland ~24 films per venue,
+   *  Germany ~12, the UK ~31. Deep enough that a venue's listing looks like a
+   *  week's repertoire rather than a handful of rows. */
+  private def filmsPerCinema(country: Country): Int = country match {
+    case Country.Germany => 12
+    case Country.UnitedKingdom => 31
+    case _ => 24
+  }
 
-  /** Base titles the variants below decorate. Deliberately mundane and
-   *  language-neutral — the corpus tests title MECHANICS, not vocabulary — but
-   *  broad enough that the settled corpus isn't a handful of rows every venue
-   *  piles onto. */
-  private val BaseTitles = Vector(
-    "Ścieżki życia", "Nocny kurier", "Blue Harvest", "Der lange Sommer",
-    "The Quiet Coast", "Anora", "Nosferatu", "Diuna", "Wicked", "Konklawe",
-    "Sonic 3", "Vermiglio", "Grand Tour", "Flow", "September 5", "Babygirl",
-    "Zimna wojna", "Ostatni seans", "Harvest Moon", "Die Blechtrommel",
-    "The Long Walk Home", "Perfect Days", "Past Lives", "Aftersun",
-    "Cicha noc", "Zielona granica", "Broker", "Drive My Car",
-    "Der Vorleser", "Das Boot", "Northern Lights", "The Salt Path",
-    "Chłopi", "Kos", "Iluzja", "Fremont",
-    "La Chimera", "Tár", "Saltburn", "Poor Things"
-  )
+  /** How many DISTINCT films the country's repertoire holds.
+   *
+   *  Derived from the catalogue, never a constant: a fixed pool is saturated by
+   *  the first few hundred venues, after which every country settles to the same
+   *  number of films no matter how many cinemas it has — which is exactly the
+   *  tell that the figure describes the generator rather than the country.
+   *  Production sits near four films per venue (PL 1,129 films over 274 venues,
+   *  DE 1,161 over 1,083, UK 1,695 over 778), so that is the shape used here. */
+  private def titlePool(country: Country): Int = cinemasOf(country).size * 4
+
+  // Titles are COMPOSED, not listed, so the pool can be however large the country
+  // needs. 24 x 24 x 8 = 4,608 distinct titles — comfortably past the largest
+  // catalogue — while staying mundane and language-mixed, since what is under test
+  // is title MECHANICS and not vocabulary.
+  private val Openers = Vector(
+    "Cicha", "Ostatnia", "Zimna", "Nocny", "Blue", "Long", "Perfect", "Northern",
+    "Grand", "Wielka", "Der lange", "Das letzte", "Quiet", "Green", "Salt", "Iron",
+    "Zielona", "Czarna", "Biały", "Srebrny", "Golden", "Silent", "Distant", "Hidden")
+  private val Subjects = Vector(
+    "noc", "seans", "wojna", "kurier", "Harvest", "Walk", "Days", "Lights",
+    "Tour", "podróż", "Sommer", "Boot", "Coast", "Border", "Path", "Horizon",
+    "granica", "ścieżka", "dom", "ogród", "River", "Winter", "Signal", "Garden")
+  private val Qualifiers = Vector(
+    "", " II", " III", ": Powrót", ": Początek", ": Epilog", " Reloaded", ": Finale")
+
+  /** The `n`th title of the pool. Pure — the same index is the same film in every
+   *  pass and every country, which is what lets a venue's listing be regenerated
+   *  rather than stored. */
+  private def titleAt(n: Int): String = {
+    val opener    = Openers(Math.floorMod(n, Openers.size))
+    val subject   = Subjects(Math.floorMod(n / Openers.size, Subjects.size))
+    val qualifier = Qualifiers(Math.floorMod(n / (Openers.size * Subjects.size), Qualifiers.size))
+    s"$opener $subject$qualifier"
+  }
 
   private val Formats  = Vector(List("2D"), List("2D", "NAP"), List("IMAX", "2D"), List("3D"), Nil)
   private val Rooms    = Vector(Some("Sala 1"), Some("Sala 2"), Some("Screen 4"), Some("Saal 3"), None)
@@ -85,6 +108,8 @@ object CountryScrapeCorpus {
    *  independent rows), each venue spelling them its own way. */
   def listings(country: Country, day: LocalDateTime): Map[Cinema, Seq[CinemaMovie]] = {
     val cinemas = cinemasOf(country)
+    val pool    = titlePool(country)
+    val perVenue = filmsPerCinema(country)
     cinemas.zipWithIndex.map { case (cinema, cinemaIndex) =>
       // Which film, and how this venue spells it, both come from a MIXING hash of
       // (venue, slot) rather than from arithmetic on the indices. The arithmetic
@@ -95,8 +120,8 @@ object CountryScrapeCorpus {
       // country therefore settled to the SAME 24 films no matter how many cinemas
       // it had — a number that looked like a pipeline invariant and was really an
       // artefact of the generator. Mixed, all combinations occur.
-      val films = (0 until FilmsPerCinema).flatMap { slot =>
-        val base    = BaseTitles(Math.floorMod(mix(cinemaIndex, slot), BaseTitles.size))
+      val films = (0 until perVenue).flatMap { slot =>
+        val base    = titleAt(Math.floorMod(mix(cinemaIndex, slot), pool))
         val variant = Variants(Math.floorMod(mix(slot * 31 + 7, cinemaIndex) >>> 3, Variants.size))
         val primary = film(cinema, cinemaIndex, base, variant.render(base))
         // Every fourth (cinema, film) also lists the SAME film under a second
