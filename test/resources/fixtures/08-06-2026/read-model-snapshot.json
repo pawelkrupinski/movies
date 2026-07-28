@@ -441,7 +441,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "akademiakinapolskiegoostatnietap1948przytorzekolejowym|",
-    "title" : "Akademia Kina Polskiego: Ostatni etap (1948) + Przy torze kolejowym",
+    "title" : "Akademia Kina Polskiego: Ostatni etap (1948) + Przy torze kolejowym (1963)",
     "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/fe4.png",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -450,9 +450,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym"
+      "metacriticUrl" : "https://www.metacritic.com/search/Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym+%281963%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym+%281963%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym+%281963%29"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -560,7 +560,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "alicjamajewskaiwlodzimierzkorcziwarsawstringquartetjubileusz|",
-    "title" : "Alicja majewska i włodzimierz korcz i warsaw string quartet - jubileusz",
+    "title" : "Alicja majewska & włodzimierz korcz & warsaw string quartet - jubileusz",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -568,9 +568,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Alicja+majewska+i+w%C5%82odzimierz+korcz+i+warsaw+string+quartet+-+jubileusz/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Alicja+majewska+i+w%C5%82odzimierz+korcz+i+warsaw+string+quartet+-+jubileusz",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Alicja+majewska+i+w%C5%82odzimierz+korcz+i+warsaw+string+quartet+-+jubileusz"
+      "metacriticUrl" : "https://www.metacritic.com/search/Alicja+majewska+%26+w%C5%82odzimierz+korcz+%26+warsaw+string+quartet+-+jubileusz/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Alicja+majewska+%26+w%C5%82odzimierz+korcz+%26+warsaw+string+quartet+-+jubileusz",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Alicja+majewska+%26+w%C5%82odzimierz+korcz+%26+warsaw+string+quartet+-+jubileusz"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -783,7 +783,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "arnieibarney|",
-    "title" : "Arnie i barney",
+    "title" : "Arnie & barney",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -791,9 +791,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Arnie+i+barney/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arnie+i+barney",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Arnie+i+barney"
+      "metacriticUrl" : "https://www.metacritic.com/search/Arnie+%26+barney/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arnie+%26+barney",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Arnie+%26+barney"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -1516,7 +1516,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "bonpodarunkowy|",
-    "title" : "Bonpodarunkowy",
+    "title" : "Bon podarunkowy",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -1524,9 +1524,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Bonpodarunkowy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Bonpodarunkowy",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Bonpodarunkowy"
+      "metacriticUrl" : "https://www.metacritic.com/search/Bon+podarunkowy/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Bon+podarunkowy",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Bon+podarunkowy"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -1947,7 +1947,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "charliechaplinkontrabusterkeaton|",
-    "title" : "Charliechaplinkontrabusterkeaton",
+    "title" : "Charlie chaplin kontra buster keaton",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -1956,9 +1956,9 @@
     "synopsis" : "Kino Pionier 1907 w Szczecinie zaprasza na kolejny seans filmów niemych z muzyką na żywo. Nasze najbliższe wydarzenie pozwoli skonfrontować ze sobą dwóch najwybitniejszych komików ery kina niemego – Charliego Chaplina i Bustera Keatona. Muzycznie na żywo zagra dla widzów Liliana Kostrzewa. CHARLIE W PARKU (In the Park, USA 1915, 14’) Pierwszy z dwóch jednoczęściowych filmów krótkometrażowych, które Chaplin nakręcił dla studia Essanay, powstał w pośpiechu na prośbę wytwórni, z powodu przedłużającej się produkcji jego poprzedniego filmu, „The Champion”. Film, w którym Charlie ingeruje w życie dwojga nieszczęśliwych kochanków, ma ten sam improwizacyjny charakter, co proste komedie parkowe nakręcone w studiu Keystone. To przykład jednego z najbardziej klasycznych przedsięwzięć Chaplina, z czasów budowania jego popularności. IMIGRANT (The Immigrant, USA 1917, 25’) Amerykańska słodko-gorzka komedia romantyczna z 1917 roku, przedstawiająca postać słynnego włóczęgi jako imigranta przybywającego do Stanów Zjednoczonych, który podczas podróży przez Ocean Atlantycki zostaje oskarżony o kradzież, a także zakochuje się w pięknej, młodej kobiecie (Edna Purviance). Jeden z najsłynniejszych filmów krótkometrażowych Charliego Chaplina, który w ciągu zaledwie 25 minut porusza tematy relacji międzyludzkich, mitu Ameryki, podziałów klasowych oraz imigracji. Film zawiera głośną sekwencję kopnięcia oficera imigracyjnego, która posłużyła w 1952 roku jako dowód antyamerykanizmu artysty i przyczyniła się do opuszczenia przez niego Stanów Zjednoczonych. ELEKTRYCZNY DOM (The Electric House, USA 1922, 23’) “Elektryczny dom” to jedna z najlepszych komedii Bustera Keatona, zamykająca tzw. trylogię na temat automatyzacji. Bohater grany przez Keatona zostaje poproszony przez bogatego właściciela willi o unowocześnienie jego domostwa. Zaskakujące wynalazki i innowacyjne rozwiązania wprawiają w zachwyt pana domu. Wszystko idzie świetnie aż do momentu, gdy w wyniku ingerencji zazdrosnego rywala zautomatyzowane sprzęty odmawiają posłuszeństwa. Ten zrealizowany równo 100 lat temu film wciąż bawi, ale też zaskakuje i daje do myślenia. Szczególnie kiedy uświadomimy sobie, że twórcy filmu nie tylko wymyślili i zaprojektowali niesamowite rozwiązania ułatwiające życie w domu, ale też przewidzieli, do czego może doprowadzić współczesny “bunt maszyn” i nasze uzależnienie od technologicznych udogodnień.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Charliechaplinkontrabusterkeaton/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Charliechaplinkontrabusterkeaton",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Charliechaplinkontrabusterkeaton"
+      "metacriticUrl" : "https://www.metacritic.com/search/Charlie+chaplin+kontra+buster+keaton/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Charlie+chaplin+kontra+buster+keaton",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Charlie+chaplin+kontra+buster+keaton"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -6936,7 +6936,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "klimtischieleerosipsycheklimtischieleerosandpsyche|",
-    "title" : "Klimt i schiele. Eros i psyche (klimt i schiele - eros and psyche)",
+    "title" : "Klimt i schiele. Eros i psyche (klimt & schiele - eros and psyche)",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -6944,9 +6944,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Klimt+i+schiele.+Eros+i+psyche+%28klimt+i+schiele+-+eros+and+psyche%29/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Klimt+i+schiele.+Eros+i+psyche+%28klimt+i+schiele+-+eros+and+psyche%29",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Klimt+i+schiele.+Eros+i+psyche+%28klimt+i+schiele+-+eros+and+psyche%29"
+      "metacriticUrl" : "https://www.metacritic.com/search/Klimt+i+schiele.+Eros+i+psyche+%28klimt+%26+schiele+-+eros+and+psyche%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Klimt+i+schiele.+Eros+i+psyche+%28klimt+%26+schiele+-+eros+and+psyche%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Klimt+i+schiele.+Eros+i+psyche+%28klimt+%26+schiele+-+eros+and+psyche%29"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -9583,7 +9583,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "minimaratonsupergirlisuperman|",
-    "title" : "Minimaraton supergirl i superman",
+    "title" : "Minimaraton supergirl & superman",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -9591,9 +9591,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Minimaraton+supergirl+i+superman/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Minimaraton+supergirl+i+superman",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Minimaraton+supergirl+i+superman"
+      "metacriticUrl" : "https://www.metacritic.com/search/Minimaraton+supergirl+%26+superman/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Minimaraton+supergirl+%26+superman",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Minimaraton+supergirl+%26+superman"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -10245,7 +10245,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "nagiinstynkt|1992",
-    "title" : "Nagiinstynkt",
+    "title" : "Nagi instynkt",
     "posterUrl" : "https://kinotatrylodz.pl/wp-content/uploads/2026/05/628810490_122164688630871629_1920286268684427616_n-764x1080.jpg",
     "fallbackPosterUrls" : [ ],
     "releaseYear" : 1992,
@@ -10255,9 +10255,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Nagiinstynkt/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Nagiinstynkt",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Nagiinstynkt"
+      "metacriticUrl" : "https://www.metacritic.com/search/Nagi+instynkt/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Nagi+instynkt",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Nagi+instynkt"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -11504,7 +11504,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "ojciecroku|",
-    "title" : "Ojciecroku",
+    "title" : "Ojciec roku",
     "posterUrl" : "https://biletyna.pl/file/get/id/197788",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -11513,9 +11513,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Ojciecroku/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ojciecroku",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ojciecroku"
+      "metacriticUrl" : "https://www.metacritic.com/search/Ojciec+roku/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ojciec+roku",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ojciec+roku"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -12056,7 +12056,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "ostatniwiking|",
-    "title" : "Ostatni wiking",
+    "title" : "Ostatni wiking (2025)",
     "posterUrl" : "https://biletyna.pl/file/get/id/321480",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -12065,9 +12065,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Ostatni+wiking/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ostatni+wiking",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ostatni+wiking"
+      "metacriticUrl" : "https://www.metacritic.com/search/Ostatni+wiking+%282025%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ostatni+wiking+%282025%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ostatni+wiking+%282025%29"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -12228,7 +12228,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "panzabawka|",
-    "title" : "Panzabawka",
+    "title" : "Pan zabawka",
     "posterUrl" : "https://biletyna.pl/file/get/id/367405",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -12237,9 +12237,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Panzabawka/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Panzabawka",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Panzabawka"
+      "metacriticUrl" : "https://www.metacritic.com/search/Pan+zabawka/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pan+zabawka",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pan+zabawka"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -16294,7 +16294,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "sztukanaekranieturnericonstable|",
-    "title" : "Sztuka na ekranie - TURNER i CONSTABLE",
+    "title" : "Sztuka na ekranie - Turner & constable",
     "posterUrl" : "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1274&mode=thumb",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -16303,9 +16303,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Sztuka+na+ekranie+-+TURNER+i+CONSTABLE/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Sztuka+na+ekranie+-+TURNER+i+CONSTABLE",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Sztuka+na+ekranie+-+TURNER+i+CONSTABLE"
+      "metacriticUrl" : "https://www.metacritic.com/search/Sztuka+na+ekranie+-+Turner+%26+constable/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Sztuka+na+ekranie+-+Turner+%26+constable",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Sztuka+na+ekranie+-+Turner+%26+constable"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -16452,7 +16452,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "sztukawcentrumnowosci2026turnericonstableprzelomowawystawa|",
-    "title" : "Sztuka w centrum. Nowości 2026 | Turner i Constable. Przełomowa wystawa",
+    "title" : "Sztuka w centrum. Nowości 2026 | Turner & Constable. Przełomowa wystawa",
     "posterUrl" : "https://gcf.org.pl/wp-content/uploads/2026/03/KM_Turner_Const_generic.jpg",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -16461,9 +16461,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Sztuka+w+centrum.+Nowo%C5%9Bci+2026+%7C+Turner+i+Constable.+Prze%C5%82omowa+wystawa/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Sztuka+w+centrum.+Nowo%C5%9Bci+2026+%7C+Turner+i+Constable.+Prze%C5%82omowa+wystawa",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Sztuka+w+centrum.+Nowo%C5%9Bci+2026+%7C+Turner+i+Constable.+Prze%C5%82omowa+wystawa"
+      "metacriticUrl" : "https://www.metacritic.com/search/Sztuka+w+centrum.+Nowo%C5%9Bci+2026+%7C+Turner+%26+Constable.+Prze%C5%82omowa+wystawa/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Sztuka+w+centrum.+Nowo%C5%9Bci+2026+%7C+Turner+%26+Constable.+Prze%C5%82omowa+wystawa",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Sztuka+w+centrum.+Nowo%C5%9Bci+2026+%7C+Turner+%26+Constable.+Prze%C5%82omowa+wystawa"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -17592,7 +17592,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "vaiana2|",
-    "title" : "Vaiana2",
+    "title" : "Vaiana 2",
     "posterUrl" : "https://kinobajka.pl/wp-content/uploads/2026/06/8139711.8-240x300.webp",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 100,
@@ -17602,9 +17602,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Vaiana2/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Vaiana2",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Vaiana2"
+      "metacriticUrl" : "https://www.metacritic.com/search/Vaiana+2/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Vaiana+2",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Vaiana+2"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -18134,7 +18134,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "wielkasztukawkinoteatrzerialtoturnericonstableprzelomowawystawa|",
-    "title" : "Wielka Sztuka w Kinoteatrze Rialto - Turner i Constable. Przełomowa wystawa",
+    "title" : "Wielka Sztuka w Kinoteatrze Rialto - Turner & Constable. Przełomowa wystawa",
     "posterUrl" : "https://dkinoteatrrialto.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 93,
@@ -18145,9 +18145,9 @@
     "synopsis" : "**Zapraszamy w filmową podróż do londyńskiego muzeum Tate Britain na najnowszą wystawę z okazji 250. rocznicy urodzin dwóch gigantów brytyjskiego malarstwa. Dokument z cenionej serii „Wystawa w Kinie” prezentuje splecione losy pejzażystów Turnera i Constable’a oraz ich arcydzieła w zbliżeniach niedostępnych dla zwykłego turysty.**\n\nJoseph Mallord William Turner (1775–1851) i John Constable (1776–1837) urodzili się w odstępie zaledwie jednego roku, ale artystycznie byli jak ogień i woda. Constable, admirator realizmu, z nostalgią malował sielskie krajobrazy i wyidealizowane miejsca, które kochał. Turner zaś szukał wrażeń, impresji, tworząc nastrojowe wizje, pełne płomiennych zachodów słońca i gwałtownych żywiołów. Jednego uznaje się za arcymistrza pejzażu w stylu tzw. realizmu melancholijnego, a drugiego za prekursora impresjonizmu. Obaj malarze przez całe życie ze sobą rywalizowali, a krytycy tamtych czasów z fascynacją obserwowali to starcie tytanów o skrajnie odmiennych temperamentach.\n\nPrzewodnikami po tej fascynującej historii, a zarazem wystawie o tytule „Turner & Constable. Rywale i wizjonerzy”, są wybitni eksperci i kuratorzy z Tate Britain, którzy w przystępny sposób odsłaniają kulisy pracy obu artystów. Twórcy cyklu „Exhibition on Screen” uzyskali ekskluzywny dostęp do prywatnych szkicowników i osobistych przedmiotów Turnera i Constable’a, oferują więc kinowym widzom intymny wgląd w ich życie. Dzięki detalom widocznym w zbliżeniach na wielkim ekranie widzowie mają niepowtarzalną okazję odkryć nieco inne niż powszechnie znane oblicza tych rywalizujących ze sobą artystów.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Wielka+Sztuka+w+Kinoteatrze+Rialto+-+Turner+i+Constable.+Prze%C5%82omowa+wystawa/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Wielka+Sztuka+w+Kinoteatrze+Rialto+-+Turner+i+Constable.+Prze%C5%82omowa+wystawa",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Wielka+Sztuka+w+Kinoteatrze+Rialto+-+Turner+i+Constable.+Prze%C5%82omowa+wystawa"
+      "metacriticUrl" : "https://www.metacritic.com/search/Wielka+Sztuka+w+Kinoteatrze+Rialto+-+Turner+%26+Constable.+Prze%C5%82omowa+wystawa/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Wielka+Sztuka+w+Kinoteatrze+Rialto+-+Turner+%26+Constable.+Prze%C5%82omowa+wystawa",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Wielka+Sztuka+w+Kinoteatrze+Rialto+-+Turner+%26+Constable.+Prze%C5%82omowa+wystawa"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -19352,7 +19352,7 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "zabriskiepoint|",
-    "title" : "Zabriskie Point",
+    "title" : "Zabriskie Point (1970)",
     "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/projekt_bez_nazwy__18__01.png",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
@@ -19361,9 +19361,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Zabriskie+Point/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zabriskie+Point",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zabriskie+Point"
+      "metacriticUrl" : "https://www.metacritic.com/search/Zabriskie+Point+%281970%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zabriskie+Point+%281970%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zabriskie+Point+%281970%29"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }

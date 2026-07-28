@@ -386,7 +386,18 @@ object TitleNormalizer {
     val chosen = tmdbTitle
       .filter(t => sanitize(t) == dominantKey && wellFormedTitle(t))
       .getOrElse {
-        val variants = (perCinemaTitles :+ fallback).filter(t => sanitize(t) == dominantKey)
+        // The fallback joins the pool only when NO cinema spelling survives the dominant-key
+        // filter. It used to be appended unconditionally, and that made the answer depend on
+        // WHO ASKED rather than on the film: `preferredDisplay` leaves a one-title group
+        // alone but canonicalises a group of two, so a row with a single cinema spelling got
+        // the raw title from the settle (pool = that spelling) and the canonicalised title
+        // from a hydrate (pool = that spelling + the sanitized `_id` prefix). "Arnie &
+        // barney" one way, "Arnie i barney" the other, neither persisted, so the settle
+        // rewrote those rows after every boot. Dropping the synthetic member gives both
+        // callers the same pool — the cinema spellings — and the same answer.
+        val fromCinemas = perCinemaTitles.filter(t => sanitize(t) == dominantKey)
+        val variants    = if (fromCinemas.nonEmpty) fromCinemas
+                          else Seq(fallback).filter(t => sanitize(t) == dominantKey)
         preferredDisplay(variants).getOrElse(fallback)
       }
     recase(chosen)

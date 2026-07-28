@@ -112,6 +112,14 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
   // A second sentinel, with its own cleanup — see the naming note above.
   private val blindTitle = "__foldblind-it-sentinel__"
+  // A tmdbId no other suite writes. `MongoStagingFolder.foldOnce` pulls cross-title
+  // same-tmdbId siblings from the WHOLE `movies` collection, so a tmdbId is a shared
+  // namespace between parallel suites exactly as a title prefix is — and this one was
+  // 4243, which `MovieRepositoryIntegrationSpec` also writes. Probed with that
+  // neighbour's row resident and nothing happened, so it is latent rather than live —
+  // but a tmdbId collision here would fold two unrelated films into one and delete the
+  // loser, in whichever suite lost the race, so it does not get to stay a coincidence.
+  private val blindTmdbId = 42431
   private def blindSanitize = services.movies.TitleNormalizer.sanitize(blindTitle)
 
   /**
@@ -142,7 +150,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     val decorated  = s"Przeglad: $blindTitle"
     try {
       Await.result(movies.replaceOne(Filters.eq("_id", existing),
-        org.mongodb.scala.Document("_id" -> existing, "tmdbId" -> 4243,
+        org.mongodb.scala.Document("_id" -> existing, "tmdbId" -> blindTmdbId,
           "sourceData" -> org.mongodb.scala.Document(),
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
@@ -153,7 +161,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       // One staging row, reporting the DECORATED spelling for the same film.
       val stagingId = s"${models.KinoMuza.displayName}|$blindSanitize|2026"
       Await.result(staging.replaceOne(Filters.eq("_id", stagingId),
-        org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> 4243,
+        org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> blindTmdbId,
           "sourceData" -> org.mongodb.scala.Document(models.KinoMuza.displayName ->
             org.mongodb.scala.Document("title" -> decorated)),
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),

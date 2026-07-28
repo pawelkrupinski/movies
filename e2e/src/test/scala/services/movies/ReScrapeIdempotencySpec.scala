@@ -207,6 +207,62 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
              "it should have had nothing to do\n")(emissions.get shouldBe 0)
   }
 
+  // ── …and across a REBOOT ────────────────────────────────────────────────────
+  // The test above settles the LIVE cache, so it only ever proves the settle is a
+  // fixpoint of the keys the settle itself last wrote. Production does not start there:
+  // a worker boots, hydrates every row from storage, and settles 16 minutes later. That
+  // is the composition `hydrate ∘ settle`, and it is the one that has to converge —
+  // hydrate re-derives each row's key from its stored record, so a key the settle picks
+  // by one rule and the hydrate rebuilds by another disagrees forever, with nothing
+  // persisted in between to settle the argument.
+  //
+  // It diverged in prod, measured 2026-07-28: the slot split left `movies.sourceData`
+  // empty, the hydrate named every film from the sanitized `_id` instead of its cinemas
+  // ("Thecabinetofdrcaligari"), and the first settle after each boot re-spelled 1240 of
+  // 1603 UK rows back — under byte-identical `_id`s, so nothing converged and every
+  // deploy paid it again. The live-cache assertions above cannot see that: the corpus
+  // they settle never went through a hydrate.
+  "an already-settled corpus" should "survive a reboot: hydrate from storage, then settle, changes nothing" in {
+    val (w, merges) = settled
+    val before        = keySet(w)
+    val cinemasBefore = cinemasByFilm(w)
+    val mergesBefore  = merges.total
+
+    val emissions = new AtomicInteger(0)
+    w.movieRepository.watchChanges(_ => { emissions.incrementAndGet(); () }, _ => { emissions.incrementAndGet(); () })
+
+    // A COLD cache over the same storage — what a worker actually boots into, and the
+    // only way to see this. `rehydrate()` on the warm cache cannot: `CacheKey` equality
+    // is by `sanitize`, so Caffeine keeps the key object it already has and a re-derived
+    // spelling is silently discarded. An empty cache has nothing to keep, so the stored
+    // corpus alone decides the keys — exactly as at boot.
+    val rebooted = new CaffeineMovieCache(w.movieRepository)
+    val afterHydrate = rebooted.snapshot().map(r => (r.title, r.year)).toSet
+    info(s"rebooted with ${afterHydrate.size} row(s) from storage")
+    withClue(s"a cold hydrate rebuilt keys the settle did not write — " +
+             s"APPEARED=${(afterHydrate -- before).take(8).mkString(", ")} " +
+             s"VANISHED=${(before -- afterHydrate).take(8).mkString(", ")}\n")(afterHydrate shouldBe before)
+
+    // `MovieService.settle` is `backfillEmbeddedYears`; both passes, as the reaper runs them.
+    rebooted.backfillEmbeddedYears()
+    rebooted.canonicalizeBySanitize()
+
+    val after = rebooted.snapshot().map(r => (r.title, r.year)).toSet
+    val cinemasAfter = cinemasByFilm(w)
+    val moved = (cinemasBefore.keySet ++ cinemasAfter.keySet)
+      .filter(k => cinemasBefore.get(k) != cinemasAfter.get(k))
+    withClue(s"a settle after a hydrate folded ${merges.total - mergesBefore} row(s); " +
+             s"keys APPEARED=${(after -- before).take(8).mkString(", ")} " +
+             s"VANISHED=${(before -- after).take(8).mkString(", ")}; " +
+             s"cinemas moved on ${moved.size} film(s)\n") {
+      (merges.total - mergesBefore) shouldBe 0
+      after shouldBe before
+      moved shouldBe empty
+    }
+    withClue(s"hydrate-then-settle wrote ${emissions.get} time(s) on a corpus at rest — " +
+             "this is the per-boot corpus rewrite\n")(emissions.get shouldBe 0)
+  }
+
   // ── Re-scrape is a no-op ─────────────────────────────────────────────────────
   "a settled corpus" should
     "be churn-free under an identical re-scrape: no re-divert of known films, no re-fold" in {
