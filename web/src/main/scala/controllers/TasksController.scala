@@ -7,7 +7,9 @@ import services.tasks.{BulkTaskResult, BulkTaskResultStore, EnqueueResult, Enric
 /**
  * Operational view of the durable task queue at `/tasks`. The page renders a
  * static shell and polls `/tasks/data` every 5s; each poll is one bounded,
- * index-backed `monitor` read (counts + the oldest N active tasks), so the cost
+ * index-backed `monitor` read (counts + N active tasks, worked-on first so the
+ * rows a worker is holding lead the table rather than scattering through the
+ * waiting backlog — see `TaskState.activeByPriority`), so the cost
  * scales with viewers-while-open, not with queue churn. A persistent change
  * stream was rejected for the same reason `/uptime` dropped one — it would push
  * every task transition 24/7 even with nobody watching.

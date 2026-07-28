@@ -693,13 +693,14 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  /** Dev-only: the active tasks in the durable queue (oldest-first), so the
-   *  /debug staging table's queue columns can show, per row, whether an enrichment
-   *  task already exists and its place in the queue. The page polls this; it's a
-   *  bounded, index-backed `monitor` read (the same one `/tasks/data` serves),
-   *  so the cost scales with viewers-while-open, not queue churn. Only the
-   *  fields the page matches on are shipped — type, dedup key, state; submission
-   *  order is already encoded by the oldest-first list position. */
+  /** Dev-only: the active tasks in the durable queue (worked-on first, then the
+   *  waiting block oldest-first), so the /debug staging table's queue columns can
+   *  show, per row, whether an enrichment task already exists and its place in the
+   *  queue. The page polls this; it's a bounded, index-backed `monitor` read (the
+   *  same one `/tasks/data` serves), so the cost scales with viewers-while-open,
+   *  not queue churn. Only the fields the page matches on are shipped — type,
+   *  dedup key, state; a waiting task's place is already encoded by its list
+   *  position. */
   def debugQueue(): Action[AnyContent] = Action { request =>
     devOnly {
       val snap = debugCountries.stackFor(debugCountries.resolve(request)).taskQueue.monitor(MovieController.DebugQueueActiveLimit)
@@ -910,7 +911,8 @@ object MovieController {
    *   3. then queued-but-past-the-snapshot, then no-task last.
    * Ties keep the incoming order (the caller pre-sorts by title, cinema).
    *
-   * `active` must be oldest-first, as `TaskQueue.monitor` returns it. This mirrors
+   * `active`'s waiting tasks must be oldest-first, as `TaskQueue.monitor` returns
+   * them (in one block, after the worked-on rows). This mirrors
    * the page's `waitingPlaces`/`badgeFor` JS (debug.scala.html) — keep the two in
    * sync so the server order and the live badge agree.
    */

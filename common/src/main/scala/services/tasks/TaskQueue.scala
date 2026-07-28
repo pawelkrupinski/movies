@@ -98,10 +98,18 @@ object TaskState {
   val Waiting  = "waiting"
   val WorkedOn = "worked_on"
 
+  /** Both states in the order [[TaskQueue.monitor]] surfaces them: what a worker
+   *  is holding right now first, then the waiting backlog. Worked-on rows are the
+   *  ones an operator is actually watching, and there are few of them (≤ the pool's
+   *  concurrency), so leading with them keeps them together at the top of `/tasks`
+   *  instead of scattered through — or pushed past `activeLimit` by — a deep
+   *  waiting queue. */
+  val activeByPriority: Seq[String] = Seq(WorkedOn, Waiting)
+
   /** Both states, for the queries that must bucket by state — `MongoTaskQueue`'s
    *  `countByState` narrows to these so an unrecognised value can't surface as a
    *  queue state. */
-  val all: Seq[String] = Seq(Waiting, WorkedOn)
+  val all: Seq[String] = activeByPriority
 }
 
 /**
@@ -166,9 +174,10 @@ trait TaskQueue {
   def waitingCount(taskType: TaskType): Int
 
   /** Read-only snapshot for the monitoring page: per-state counts plus the live
-   *  ACTIVE tasks (waiting + worked-on), oldest-first, capped at `activeLimit`.
-   *  Completed tasks are removed, so only active tasks appear. Index-backed +
-   *  bounded so the web can poll it cheaply. */
+   *  ACTIVE tasks (waiting + worked-on), ordered by [[TaskState.activeByPriority]]
+   *  — worked-on first — and oldest-first within each state, capped at
+   *  `activeLimit`. Completed tasks are removed, so only active tasks appear.
+   *  Index-backed + bounded so the web can poll it cheaply. */
   def monitor(activeLimit: Int = 200): QueueSnapshot
 
   /** Push: ring `onWaiting` whenever fresh work becomes claimable (a newly

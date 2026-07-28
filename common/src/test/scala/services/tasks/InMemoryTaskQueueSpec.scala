@@ -126,7 +126,7 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.waitingCount(ScrapeCinema) shouldBe 1        // only scrape|b still waiting
   }
 
-  "monitor" should "list active tasks oldest-first with their live state, and exclude completed ones" in {
+  "monitor" should "list active tasks oldest-first within a state, with their live state, and exclude completed ones" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|a", submittedAt = t0)
     q.enqueue(ImdbRating, "imdb|b", submittedAt = t0.plusSeconds(10))
@@ -152,6 +152,23 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     waiting.state shouldBe TaskState.Waiting
     waiting.workerId shouldBe None
     waiting.leaseExpiresAt shouldBe None
+  }
+
+  // What an operator watching /tasks wants at the top is what a worker is holding
+  // right now; oldest-first alone scatters those few rows through a long waiting
+  // backlog (and past the activeLimit once the backlog is deep).
+  it should "list worked-on tasks before waiting ones, even when a waiting task is older" in {
+    val q = new InMemoryTaskQueue
+    // Older, but held back from `claim` by its notBefore, so it stays waiting.
+    q.enqueue(ScrapeCinema, "scrape|old-waiting", submittedAt = t0,
+      notBefore = Some(t0.plusSeconds(3600)))
+    q.enqueue(ImdbRating, "imdb|newer", submittedAt = t0.plusSeconds(10))
+    q.enqueue(RtRating, "rt|newest", submittedAt = t0.plusSeconds(20))
+    q.claim("w1", 1.minute, t0) shouldBe defined // imdb|newer → worked_on
+
+    val active = q.monitor().active
+    active.map(_.dedupKey) shouldBe Seq("imdb|newer", "scrape|old-waiting", "rt|newest")
+    active.head.state shouldBe TaskState.WorkedOn
   }
 
   it should "cap the listed active tasks at activeLimit while still counting all" in {

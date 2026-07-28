@@ -242,13 +242,22 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   override def monitor(activeLimit: Int): QueueSnapshot = coll match {
     case None => QueueSnapshot(Map.empty, Seq.empty)
     case Some(c) =>
+      // One `{state, submittedAt}`-index-backed query per state, walked in
+      // `activeByPriority` order and spending the remaining row budget each time.
+      // The alternative — a single `state: -1, submittedAt: 1` sort — is
+      // mixed-direction, which that index can't serve, so Mongo would blocking-sort
+      // the whole active set in memory on every 5s poll.
       val active = Try {
-        Await.result(
-          c.find(Filters.in("state", TaskState.Waiting, TaskState.WorkedOn))
-            .sort(Indexes.ascending("submittedAt"))
-            .limit(activeLimit)
-            .toFuture(),
-          10.seconds).map(toSummary)
+        TaskState.activeByPriority.foldLeft(Seq.empty[TaskSummary]) { (listed, state) =>
+          val remaining = activeLimit - listed.size
+          if (remaining <= 0) listed
+          else listed ++ Await.result(
+            c.find(Filters.eq("state", state))
+              .sort(Indexes.ascending("submittedAt"))
+              .limit(remaining)
+              .toFuture(),
+            10.seconds).map(toSummary)
+        }
       }.recover {
         case exception: Throwable =>
           logger.warn(s"TaskQueue.monitor failed: ${exception.getMessage}")

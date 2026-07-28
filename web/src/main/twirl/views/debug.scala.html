@@ -343,12 +343,13 @@
   // The staging table's trailing "Queue #" column shows where each folded film
   // sits in the durable task queue. The snapshot is polled from /debug/queue; the
   // helpers below turn it into a per-film badge (see rebuildStagingTable).
-  let queueActive = []; // [{taskType, dedupKey, state}] — oldest-first, waiting + worked_on mixed
+  let queueActive = []; // [{taskType, dedupKey, state}] — worked_on first, then waiting oldest-first
   const STAGING_CAP = @MovieController.StagingRowLimit; // declared up here — rebuildStagingTable (below) reads it on the first load call
 
   // Place every WAITING task's dedupKey at its 1-based spot in the global queue.
-  // The worker leases the oldest waiting task first regardless of type, so a
-  // task's place is its index among waiting tasks (the snapshot is oldest-first).
+  // The worker leases the oldest waiting task first regardless of type, so a task's
+  // place is its index among waiting tasks (the snapshot lists them oldest-first,
+  // after the worked-on block).
   function waitingPlaces() {
     const m = new Map();
     let i = 0;

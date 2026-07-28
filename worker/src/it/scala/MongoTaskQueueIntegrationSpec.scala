@@ -149,6 +149,26 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.monitor(500).active.map(_.dedupKey) should not contain workKey
   }
 
+  // The monitor's state priority is a per-state query in Mongo, not one sort, so
+  // only real Mongo proves the two queries compose into "worked-on first, each
+  // group oldest-first" — the in-memory queue sorts a Seq instead.
+  it should "list worked-on tasks before waiting ones, even when a waiting task is older" in {
+    // Oldest, but its notBefore keeps `claim` (and so `drainUntil`) off it forever.
+    val oldWaitKey = s"chunk|it-mon-order-wait-${System.nanoTime()}"
+    queue.enqueue(TaskType.ScrapeChunk, oldWaitKey, submittedAt = t0,
+      notBefore = Some(Instant.now().plusSeconds(3600)))
+    val workKey = s"imdb|it-mon-order-work-${System.nanoTime()}"
+    queue.enqueue(TaskType.ImdbRating, workKey, submittedAt = t0.plusSeconds(60))
+    drainUntil(_.dedupKey == workKey, "mon-order-w1")
+
+    val listed = queue.monitor(500).active
+      .map(t => (t.dedupKey, t.state))
+      .filter { case (key, _) => key == oldWaitKey || key == workKey }
+    listed shouldBe Seq(
+      workKey    -> services.tasks.TaskState.WorkedOn,
+      oldWaitKey -> services.tasks.TaskState.Waiting)
+  }
+
   // The `notBefore` enqueue path — `setOnInsert("nextEligibleAt")` gated by the same
   // `claim` filter the release-backoff uses. Only real Mongo proves the on-insert
   // write + the eligibility query agree; it's what the chunk-scrape spread relies on.
