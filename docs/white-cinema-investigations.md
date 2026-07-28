@@ -32,6 +32,133 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-28
+
+**20 cinemas were 3-scrape-white** (newest bucket overall 2026-07-28 00:00 UTC /
+02:00 Warsaw; every venue's three white buckets land 23:15–00:00 UTC, i.e. within
+~45 min of the newest — actively scraping, not a boot artifact). **No code change
+shipped — all 20 white venues are genuinely film-dormant.** All three venues NEW
+to the white set were probed live and resolve to dormancy at the data layer; the
+17 carried-over venues were batch-re-probed and none had recovered-but-broken.
+Discovery method unchanged (`/uptime` auth-gated): a mongosh replay of
+`UptimeController`'s predicate over prod `uptimeBuckets` via the running
+`flyctl proxy` on `127.0.0.1:27017` — per service, last 3 non-empty buckets all
+`status==zero` (`successes==0 && failures==0 && zeroes>0`), excluding
+`|enrichment` / the 6 enrichment sources / `img:*`.
+
+**Set changes vs 2026-07-24 (was 18):**
+- **RECOVERED / fell off the white set:** **Kino Krapkowice** — its summer break
+  was announced to 31 Jul but it reopened early; the 24h bucket history reads
+  `wwwwwwwGGGGGGGGGGGGGGGGG` (green from ~02:45 UTC on 07-27 onward, last green
+  2026-07-27 23:30 UTC). Parser was correct all along; venue simply resumed.
+- **NEW this run (3, all probed live, all dormant):** **Kino Cytadela**,
+  **Kino Tur**, **Kino MOK Nowa Ruda** — see below.
+- **Carried over (17, all still white):** ADA Kino Studyjne, Cyfrowe Kino, DKF
+  Politechnika, Kino CK Lublin, Kino Chatka Żaka, Kino Kuźnica, Kino nad Wartą,
+  Kino PDK, Kino Sfinks (needs-human), Kino Świt, Kino ŚDK, Kino Warszawa
+  (Przeworsk), Kino Wisła Brzeszcze, Kino Zamek (needs-human), Kozienicki Dom
+  Kultury, Patria, Studio (Opole). Batch-probed live this run — every one still
+  genuinely film-dormant or on a known break; **no parser recovered-but-broke.**
+
+**Out-of-scope heads-up (RED, not white — fetch failure, different mode):**
+**Wybrzeże** was 3-scrape-**failing** (red) for the third run running (07-21,
+07-24, 07-28): `CircuitOpenException: circuit open for bilety.rck.kolobrzeg.pl`,
+behind the expired TLS certificate diagnosed 07-24. The breaker correctly
+surfaces it red, not white. Not a white target. **needs-human — now three runs
+old; the cinema must renew its cert, we cannot fix this from our side.**
+
+### Kino Cytadela (Muzeum Historii Polski, Warszawa) — `intentionally-dormant`
+- Client: `CytadelaClient` @ `muzhp.pl/repertuar`. Live: HTTP **200**, 83,043 B,
+  no redirect (`/pl/repertuar` serves the byte-identical document). Parser
+  selectors all zero: `repertoire-list__title`=0, `repertoire-item`=0,
+  `repertoire-item__time`=0, `/kino-film/` hrefs=0.
+- **Not markup drift** — the surrounding contract is intact (`repertoire-filters`
+  form, `repertoire-index` section still present); the results container is
+  server-rendered EMPTY: `<div class="repertoire-list js-list-data"
+  id="result-list"></div>`, and the filter form carries the site's own
+  zero-signal `data-maxpages="0"` plus the empty-state string
+  `data-textnofound="Brak wyników dla podanego zakresu wyszukiwań"`. No
+  client-side hydration (no `__NEXT_DATA__` / `fetch(` / `admin-ajax` /
+  `wp-json`); the site's own `/kino-repertuar/filterAjax` endpoint 404s.
+- Cross-checked for films elsewhere and found none: the booking shop
+  `sklep.muzhp.pl` has only "Gadżety"/"Wydawnictwa" product trees and its ticket
+  groups (`/rezerwacja/grupa-wydarzen.html`, idgw=16/20) list 15 items that are
+  all guided tours/walks — zero cinema products. Archived `/kino-film/<slug>`
+  pages (e.g. `pamietniki-tatusia-muminka`, `pucio`, last crawled May 2026) still
+  return 200 but their `ul.movie-detail-header__dates-list` is empty. `/kino`
+  is generic marketing copy. `sitemap.xml` and `robots.txt` both 404.
+- Caveat worth carrying: **no break announcement exists** — `/wydarzenia` and
+  `/aktualnosci` have zero hits for przerwa/wakacje/nieczynne/wrzesień/wracamy.
+  So this is an unannounced gap rather than a stated hiatus. Parser correct, no
+  test-backable fix. **Re-check next run; if still white in 2+ more runs, escalate**
+  (the museum may have quietly stopped programming the cinema).
+
+### Kino Tur (Turek) — `intentionally-dormant` (between repertoires)
+- Client: `BiletynaClient` @ `biletyna.pl/Turek/Kino-Tur`. Live: HTTP 200,
+  77,156 B; the single ld+json block's `events` array holds exactly **1** entry,
+  `@type` **ComedyEvent** ("Mariusz Kałamaga – Mamo! Papier się kończy!",
+  2026-10-03) — **0** `ScreeningEvent`. The parser's ScreeningEvent-only filter
+  correctly drops it.
+- **This is a fresh, benign gap, not a source going empty.** The 24h bucket
+  history reads `GGGGGGGGGGGGGGGGwwwwwwww` — green until **2026-07-27 16:00 UTC**,
+  white only for the last 8 buckets. Biletyna was carrying this venue's films
+  right up to yesterday; the last screenings ran 24–27 July and the August
+  repertoire simply is not loaded yet. Expect recovery when it is.
+- Noted for a future run (do NOT act on it now): the venue's own site
+  `mdk.turek.pl` publishes monthly repertoire articles (Joomla,
+  `div.com-content-article__body`, e.g. `/index.php/repertuar-kina-tur-czerwiec-2026`
+  → "Drzewo Magii" 5–8.06, "Toy Story 5" 19–22.06, "Gwiezdne wojny. Mandalorian
+  i Grogu" 26–29.06), and `miastoturek.pl/wydarzenia` carries weekly "Kino Tur
+  zaprasza na filmy" listings. `kinotur.pl` / `dk.turek.pl` do not resolve;
+  Filmweb has no `/kina/Turek` page (404). **Repointing would be wrong today** —
+  biletyna is a live, working source that merely ran out of dated events
+  yesterday, and mdk.turek.pl has no July/August article either (only up to
+  czerwiec 2026). If biletyna is STILL empty in 2+ runs while mdk.turek.pl has a
+  current monthly article, THAT is the moment to migrate to an own-site scraper.
+
+### Kino MOK Nowa Ruda — `intentionally-dormant` (unchanged since 2026-06-28)
+- Client: `MsiClient` @ `bilety.nowaruda.pl`. Both in-window month pages
+  (2026-07, 2026-08) return HTTP 200 with **0** `movies-movie__single js-event`
+  blocks. Swept 2026-09 → 2026-12 as well: the only event anywhere is
+  **1** block in 2026-10 — *"Piotr Bałtroczyk - Stand Up 2026"*, 2026-10-11
+  17:00, `czas: 90 min.` — a stand-up, correctly dropped by
+  `OnlyMovieEventsFilter`. Exactly the diagnosis from 2026-06-28; the venue has
+  simply never resumed film programming. Parser correct.
+- Portal quirk (no impact, recorded so a future run doesn't chase it): this
+  venue's `/MSI/mvc/pl/Repertoire/GetShortEventsWithFilters?date=…` endpoint
+  **ignores the `date` param** and returns the same 2,643-byte body for
+  2026-07/08/09/10, always the next upcoming item — and it tags that stand-up
+  `"eventCategoryName":"kino"`. `MsiClient` doesn't read that endpoint (it parses
+  the month page), so nothing is affected, but the "kino" label there is not
+  trustworthy evidence of a film.
+
+### Heads-up (NOT a white cause, evidence-backed, left for a human): `MsiClient` caps its scrape horizon at 2 months
+- `MsiClient.fetchUnfiltered` fetches exactly `YearMonth.from(today)` and
+  `.plusMonths(1)`. That is a hard-coded horizon cap, which the standing rule
+  (`ScrapeHorizon.MaxDays = 730`, "want ALL future screenings") forbids — every
+  screening 2+ months out is invisible at all ~12 MSI venues (Cinema1 Gdańsk,
+  GOK Tychowo, Chemik, Twierdza, Nowa Ruda, Przeworsk, Sztum, Kozienice, ŚDK,
+  Skarżysko, Wybrzeże, Planeta Brzesko).
+- **Measured today, it hides zero films**, which is why nothing shipped. Swept
+  2026-08 → 2026-11 across five MSI portals and pulled every out-of-window title:
+  Sztum 09 (KONCERT ELENI, RETRANSMISJA ANDRE RIEU) and 10 (KONCERT ŚLĄSKICH
+  GWIAZD, ANDRE RIEU, SPEKTAKL "ŻONA DO ADOPCJI"); mok.com.pl 10 (Gala Fado) and
+  11 (stand-up Rutkowskiego, Spektakl "Sklep z facetami"); Cinema1 09 (ANDRE RIEU
+  – NIECH ŻYJE MAASTRICHT! 2D NAPISY); GOK Tychowo 10 (Koncert Liszt Meets
+  Queen). Every one is a concert / stand-up / theatre / concert-retransmission —
+  non-film, and `OnlyMovieEventsFilter` would drop them anyway. These venues
+  publish only ~1–2 months ahead, so the cap costs nothing right now.
+- Not fixed this run on scope grounds: it causes **no** white bar, and lifting it
+  changes scrape volume for 12 venues at once (and would likely shift
+  `read-model-snapshot.json`) — too broad for an unattended white-cinema run with
+  zero current data gain. **Follow-up for a human:** replace the fixed 2-month
+  window with a `ScrapeHorizon.MaxDays`-derived month range (stopping early on
+  consecutive empty months so it stays cheap). Test-backable in
+  `MsiClientSpec` — a `FakeHttpFetch` serving a film in month+2 fails before /
+  passes after.
+
+---
+
 ## 2026-07-24
 
 **18 cinemas were 3-scrape-white** (real buckets ~12:30–15:30 UTC / 14:30–17:30
