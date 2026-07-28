@@ -78,6 +78,55 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     slept shouldBe empty
   }
 
+  it should "pause the host after a 503 so an overloaded upstream gets back-pressure" in {
+    // Odeon's Vista backend (2026-07-28) expressed overload as 503 + 30s timeouts
+    // and never once as 429, so the gate never engaged: the pace-report read
+    // "100.0% clean, unpaced" while two thirds of calls were failing, and the ONLY
+    // regulator left was the circuit breaker flapping open every 60s.
+    val (delegate, throttle, slept) = fixture()
+    delegate.queue(Tmdb, () => throw new HttpStatusException(503, "GET", Tmdb, None))
+    a [HttpStatusException] should be thrownBy throttle.get(Tmdb)   // propagated, not retried
+    slept shouldBe empty                                            // the failing call itself doesn't wait
+
+    delegate.queue(Tmdb2, () => "ok")
+    throttle.get(Tmdb2) shouldBe "ok"
+    slept should contain (5000L)   // ... but the NEXT call to that host stands down
+  }
+
+  it should "pause the host after a request timeout" in {
+    val (delegate, throttle, slept) = fixture()
+    delegate.queue(Tmdb, () => throw new java.net.http.HttpTimeoutException("request timed out"))
+    a [java.net.http.HttpTimeoutException] should be thrownBy throttle.get(Tmdb)
+
+    delegate.queue(Tmdb2, () => "ok")
+    throttle.get(Tmdb2) shouldBe "ok"
+    slept should contain (5000L)
+  }
+
+  it should "NOT pause the host on a circuit-breaker fast-fail" in {
+    // CircuitOpenException is an IOException, and this decorator sits OUTSIDE the
+    // breaker — so without an explicit exemption every fast-fail (which never
+    // touched the wire) would feed the gate, double-penalising a host the breaker
+    // is already shielding and inflating the throttle rate with phantom failures.
+    val (delegate, throttle, slept) = fixture()
+    delegate.queue(Tmdb, () => throw new CircuitOpenException("api.themoviedb.org", 59000L))
+    a [CircuitOpenException] should be thrownBy throttle.get(Tmdb)
+
+    delegate.queue(Tmdb2, () => "ok")
+    throttle.get(Tmdb2) shouldBe "ok"
+    slept shouldBe empty
+  }
+
+  it should "NOT pause the host on a 500 — a broken request is not an overloaded host" in {
+    val (delegate, throttle, slept) = fixture()
+    delegate.queue(Tmdb, () => throw new HttpStatusException(500, "GET", Tmdb, None))
+    a [HttpStatusException] should be thrownBy throttle.get(Tmdb)
+
+    delegate.queue(Tmdb2, () => "ok")
+    throttle.get(Tmdb2) shouldBe "ok"
+    slept shouldBe empty
+  }
+
   it should "propagate a non-429 status immediately without retrying" in {
     val (delegate, throttle, _) = fixture()
     delegate.queue(Tmdb, () => throw new HttpStatusException(404, "GET", Tmdb, None))
@@ -128,8 +177,29 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
 
     reports should have size 1
     reports.head should include ("api.themoviedb.org")
-    reports.head should include ("throttled (429)")
+    reports.head should include ("throttled (429/503/timeout)")
     reports.head should include ("75.0% clean")
+  }
+
+  it should "count a 503 in the throttle rate so the pace-report stops reading clean under overload" in {
+    // The report is what a pace gets tuned from. Counting only 429 made Odeon's
+    // 64%-failing host read "100.0% clean", which is the reading that hid the
+    // problem for as long as it did.
+    val delegate = new ScriptedFetch
+    val reports  = mutable.ListBuffer.empty[String]
+    var clockMs  = 0L
+    val throttle = new ThrottledHttpFetch(
+      delegate, maxAttempts = 1, jitterMillis = () => 0,
+      now = () => Instant.ofEpochMilli(clockMs), sleep = _ => (),
+      summaryInterval = 5.minutes, report = Some(msg => { reports += msg; () }))
+
+    delegate.queue(Tmdb, () => throw new HttpStatusException(503, "GET", Tmdb, None))
+    a [HttpStatusException] should be thrownBy throttle.get(Tmdb)
+    clockMs = 5.minutes.toMillis
+    throttle.get(Tmdb)
+
+    reports.head should include ("1 throttled")
+    reports.head should include ("0.0% clean")
   }
 
   it should "reset its tally each interval so a recovered host stops reporting failures" in {

@@ -10,20 +10,26 @@ import scala.concurrent.duration._
 /**
  * A shared, per-host rate-limit gate wrapping any `HttpFetch`.
  *
- * On HTTP 429, a per-request retry alone makes things WORSE under concurrency:
- * every in-flight request independently backs off and retries, then re-converges
- * into the same burst (thundering herd) and trips the limit again. This decorator
- * coordinates instead — a 429 from a host sets a single shared `pausedUntil` for
- * THAT host, and every request to it parks on that gate before firing, so the
- * whole caller fleet (the ~12 concurrent TMDB callers across the enrichment
- * budget + the worker pool) stands down together and resumes once, honoring the
- * server's `Retry-After`. Per-host, so a TMDB pause never stalls Filmweb / cinema
- * fetches.
+ * On an overload response, a per-request retry alone makes things WORSE under
+ * concurrency: every in-flight request independently backs off and retries, then
+ * re-converges into the same burst (thundering herd) and trips the limit again.
+ * This decorator coordinates instead — an overload from a host sets a single
+ * shared `pausedUntil` for THAT host, and every request to it parks on that gate
+ * before firing, so the whole caller fleet (the ~12 concurrent TMDB callers across
+ * the enrichment budget + the worker pool) stands down together and resumes once,
+ * honoring the server's `Retry-After`. Per-host, so a TMDB pause never stalls
+ * Filmweb / cinema fetches.
+ *
+ * "Overload" is 429 AND the ways a host says the same thing without it — 502/503/
+ * 504 and request timeouts (see `isOverload`, which also spells out what is
+ * deliberately excluded). Listening for 429 alone left hosts that never send one
+ * completely unpaced.
  *
  * Wire it CLOSEST to the wire (inside `MonitoringHttpFetch`) so its waits are
- * invisible to uptime. Only 429 is retried — every other status/exception
+ * invisible to uptime. Only 429 is RETRIED — every other status/exception
  * propagates immediately (404 is a real "not found" signal for several clients,
- * not something to retry). The wait between attempts IS the gate: the next
+ * not something to retry), though the non-429 overloads still set the gate on
+ * their way out. The wait between attempts IS the gate: the next
  * attempt parks on the freshly-set `pausedUntil`, so `Retry-After` is what paces
  * the retry. Persistent 429s past `maxAttempts` propagate the `HttpStatusException`
  * unchanged, so the resolve path still degrades to a transient miss (and the
@@ -88,7 +94,7 @@ class ThrottledHttpFetch(
       val clean = if (total == 0) 100.0 else 100.0 * (total - t429) / total
       val pace  = RateLimitedHttpFetch.configuredInterval(s"https://$host/")
         .map(d => s"${d.toMillis}ms").getOrElse("unpaced")
-      val msg = f"pace-report $host: $total%d requests, $t429%d throttled (429), $clean%.1f%% clean, pace=$pace"
+      val msg = f"pace-report $host: $total%d requests, $t429%d throttled (429/503/timeout), $clean%.1f%% clean, pace=$pace"
       report.fold(logger.info(msg))(_(msg))
     }
     s.requests.incrementAndGet()
@@ -103,6 +109,35 @@ class ThrottledHttpFetch(
     if (waitMs > 0) sleep(waitMs)
   }
 
+  /** Overload signals OTHER than 429 — the host saying "too much" without saying
+   *  it in the one status this gate used to listen for. 503/502/504 are a backend
+   *  at or past capacity, and a request timeout is the same message with no reply
+   *  at all. Odeon's Vista backend (2026-07-28) emitted exactly these — 6 timeouts
+   *  and 3 × 503 in one 2.5-minute window, zero 429s — so the gate never engaged,
+   *  the pace-report read "100.0% clean, unpaced", and nothing upstream ever slowed
+   *  down; the circuit breaker was left flapping open every 60s as the only
+   *  regulator.
+   *
+   *  Deliberately NOT here:
+   *   - 500, which is the host failing to serve THIS request (a bug, a bad
+   *     parameter), not a capacity signal — standing the fleet down wouldn't help.
+   *   - [[CircuitOpenException]]. It is an `IOException`, and this decorator sits
+   *     OUTSIDE the breaker, so without the exemption every fast-fail — a call that
+   *     never reached the wire — would set the gate on a host the breaker is
+   *     already shielding, and inflate the throttle rate with phantom failures. */
+  private def isOverload(e: Throwable): Boolean = e match {
+    case _: CircuitOpenException               => false
+    case s: HttpStatusException                => s.code == 502 || s.code == 503 || s.code == 504
+    case _: java.net.http.HttpTimeoutException => true
+    case _                                     => false
+  }
+
+  /** Stand the whole fleet down on this host for `pause`, and say so once. */
+  private def gate(host: String, pause: FiniteDuration): Unit = {
+    record(host, throttled = true)
+    pausedUntil.put(host, now().plusMillis(pause.toMillis))
+  }
+
   private def throttled[T](url: String)(block: => T): T = hostOf(url) match {
     case None       => block                              // unparseable host — nothing to gate on
     case Some(host) =>
@@ -115,9 +150,8 @@ class ThrottledHttpFetch(
         }
         catch {
           case e: HttpStatusException if e.code == 429 =>
-            record(host, throttled = true)
             val pause = (e.retryAfter.getOrElse(defaultPause)).min(maxPause)
-            pausedUntil.put(host, now().plusMillis(pause.toMillis))
+            gate(host, pause)
             if (n >= maxAttempts) {
               logger.warn(s"HTTP 429 from $host — exhausted $maxAttempts attempts; propagating.")
               throw e
@@ -125,6 +159,18 @@ class ThrottledHttpFetch(
             logger.warn(s"HTTP 429 from $host — pausing all calls to it for ${pause.toMillis}ms " +
               s"(attempt $n/$maxAttempts, Retry-After=${e.retryAfter.map(d => s"${d.toMillis}ms").getOrElse("absent")}).")
             attempt(n + 1)
+
+          // Set the gate and PROPAGATE — unlike 429, these are not retried here.
+          // A 503/timeout is a failure the caller and the circuit breaker both need
+          // to see (the breaker's consecutive-failure count is what fast-fails the
+          // host); the gate's only job is to keep the rest of the fleet off the host
+          // in the meantime, so the calls that survive the block don't re-converge
+          // into a burst the moment the breaker half-opens.
+          case e: Throwable if isOverload(e) =>
+            gate(host, defaultPause.min(maxPause))
+            logger.warn(s"${e.getMessage} — overload from $host; pausing all calls to it " +
+              s"for ${defaultPause.min(maxPause).toMillis}ms.")
+            throw e
         }
       }
       attempt(1)

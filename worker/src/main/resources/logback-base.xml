@@ -33,10 +33,12 @@
        call reaches an appender. -->
   <logger name="kinowo.removal-audit" level="INFO"/>
 
-  <!-- ThrottledHttpFetch's per-host "pace-report" (requests / 429s / clean-rate
-       / pace-in-force, once per host per 5min). It's the signal for tuning a
-       paced host's rate empirically — e.g. Filmstarts, which draws 429s until
-       KINOWO_FILMSTARTS_PACE_MS is wide enough. The class is in `tools`, which
+  <!-- ThrottledHttpFetch's per-host "pace-report" (requests / overload responses
+       — 429, 503 or timeout — / clean-rate / pace-in-force, once per host per
+       5min). It's the signal for tuning a paced host's rate empirically — e.g.
+       Filmstarts, which draws 429s until KINOWO_FILMSTARTS_PACE_MS is wide
+       enough. Counting only 429 once made Odeon's 64%-failing Vista backend read
+       "100.0% clean", which is what hid that outage. The class is in `tools`, which
        otherwise stays at root WARN, so surface just this one logger at INFO. A
        clean report is genuinely informational, not a warning — hence INFO, not
        a warn we'd have to filter back out once the 429s stop. -->
