@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 13,
+  "version": 14,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -548,7 +548,7 @@
     {
       "id": 58,
       "title": "Worker — oldest cinema scrape: how stale the worst cinema is, by country (h)",
-      "description": "Hours since the LEAST recently scraped cinema in each country last scraped successfully, from kinowo_worker_cinema_scrape_oldest_age_seconds. This is the roster's worst case, not its average: the HTTP-outcome panels count the scrapes that happened and can look perfectly clean while one venue has been dark for two days, because a cinema nobody scrapes contributes no samples to anything else. Healthy is a SAWTOOTH riding just under that country's scrape window — 1h for pl and uk, 2h for de (KINOWO_SCRAPE_FRESHNESS_MINUTES, set per worker app) — as cinemas fall due, get scraped, and the maximum resets. A line climbing in a straight diagonal past the window is the failure: the ScrapeReaper is not draining its backlog (CPU-credit throttle, chunked-scrape starvation) or one cinema throws on every attempt — a failed scrape deliberately does NOT mark freshness, so it stays stale and its age keeps climbing. Cinemas that have never scraped at all carry no age and are counted on the panel to the right, not folded in here.",
+      "description": "Hours since the LEAST recently scraped cinema in each country last scraped successfully, from kinowo_worker_cinema_scrape_oldest_age_seconds. This is the roster's worst case, not its average: the HTTP-outcome panels count the scrapes that happened and can look perfectly clean while one venue has been dark for two days, because a cinema nobody scrapes contributes no samples to anything else. Healthy is a SAWTOOTH riding just under that country's scrape window — 1h for pl and uk, 3h for de (KINOWO_SCRAPE_FRESHNESS_MINUTES, set per worker app) — as cinemas fall due, get scraped, and the maximum resets. A line climbing in a straight diagonal past the window is the failure: the ScrapeReaper is not draining its backlog (CPU-credit throttle, chunked-scrape starvation) or one cinema throws on every attempt — a failed scrape deliberately does NOT mark freshness, so it stays stale and its age keeps climbing. Cinemas that have never scraped at all carry no age and are counted on the panel to the right, not folded in here.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 197 },

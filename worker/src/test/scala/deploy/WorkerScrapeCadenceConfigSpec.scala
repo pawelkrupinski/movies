@@ -147,4 +147,33 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  /** The oldest-cinema-scrape panel tells the reader what "healthy" looks like by
+   *  naming each country's scrape window — and that is the ONE number on it that
+   *  cannot be derived from the series it draws. It was wrong within an hour of
+   *  being written (DE stated as 2h against a deployed 180min), because the panel
+   *  text and the toml that decides the value sit in different files and nothing
+   *  connected them. A panel that misstates the healthy band is worse than one
+   *  that says nothing: it turns a real 3x overrun into a reassuring "just over
+   *  the line". So the sentence is generated here from the same tomls the spec
+   *  already reads, and the panel has to spell it exactly. */
+  "the oldest-cinema-scrape panel" should "state the same scrape windows the worker apps actually deploy" in {
+    def hoursOf(toml: String): Int = {
+      val minutes = cadenceOf(toml).map(_.toInt).getOrElse(fail(s"$toml has no cadence"))
+      withClue(s"$toml's cadence ${minutes}min is not a whole number of hours, so the panel sentence needs rewording: ") {
+        minutes % 60 shouldBe 0
+      }
+      minutes / 60
+    }
+
+    val (pl, uk, de) = (hoursOf("fly.worker.toml"), hoursOf("fly.worker.uk.toml"), hoursOf("fly.worker.de.toml"))
+    withClue("the panel groups pl and uk into one figure; they have drifted apart, so reword it: ") {
+      pl shouldBe uk
+    }
+
+    val dashboard = RepoFile.read("fly/grafana/provisioning/dashboards/fly-overview.json")
+    withClue(s"the oldest-scrape panel must say '${pl}h for pl and uk, ${de}h for de': ") {
+      dashboard should include(s"${pl}h for pl and uk, ${de}h for de")
+    }
+  }
 }
