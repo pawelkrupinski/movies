@@ -228,18 +228,29 @@ class ScrapeReaper(
     // backlog lets the pool drain to near-empty and idle between ticks → credit
     // recovers, then the full cap resumes. Most-overdue-first (above) means the
     // bounded trickle still serves the stalest cinemas.
-    val outstanding = ScrapeReaper.ScrapeWorkTypes.map(queue.waitingCount).sum
-    // The smoothing bound, applied whatever the throttle says: never pile a fresh batch
-    // onto work that is still draining, and spend the remaining budget in TASKS by
-    // converting through what a venue fans out to. Integer division floors, so a room
-    // smaller than one venue's fan-out admits nothing rather than overshooting.
-    // See `maxOutstandingScrapeTasks` and `tasksPerVenue`.
-    val backlogRoom =
-      if (maxOutstandingScrapeTasks == Int.MaxValue) Int.MaxValue
-      else math.max(0, maxOutstandingScrapeTasks - outstanding) / math.max(1, tasksPerVenue)
+    // Outstanding work in TASKS. A waiting ScrapeCinema is counted as the fan-out it is
+    // about to become, not the one task it currently is: on a chunked country the
+    // planner is an INTENTION to enqueue ~36 more, and a budget that ignores that keeps
+    // admitting against room it has already committed. Prod showed exactly that shape —
+    // ScrapeCinema=13 waiting with ScrapeChunk=0, ~470 tasks of pending fan-out read as 13.
+    val perVenue = math.max(1, tasksPerVenue)
+    val outstanding =
+      queue.waitingCount(TaskType.ScrapeChunk) +
+      queue.waitingCount(TaskType.ScrapeChunkReduce) +
+      queue.waitingCount(TaskType.ScrapeCinema) * perVenue
+
+    /** Venues admissible under a budget expressed in TASKS. Integer division floors, so
+     *  room smaller than one venue's fan-out admits nothing rather than overshooting. */
+    def venuesWithin(taskBudget: Int): Int =
+      if (taskBudget == Int.MaxValue) Int.MaxValue
+      else math.max(0, taskBudget - outstanding) / perVenue
 
     if (throttle.isThrottled) {
-      val cap      = math.min(backlogRoom, math.max(0, throttledMaxEnqueuePerTick - outstanding))
+      // The throttled budget is a venue count from a time when a venue was a task, so
+      // floor it at one venue's fan-out — otherwise a chunked country can never admit
+      // anything at all while throttled and its corpus parks indefinitely, rather than
+      // trickling. One venue per tick IS the trickle for a chunked country.
+      val cap      = venuesWithin(math.max(throttledMaxEnqueuePerTick, perVenue))
       val enqueued = enqueueUpTo(due, cap)
       if (enqueued > 0)
         logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
@@ -248,7 +259,7 @@ class ScrapeReaper(
       enqueued
     } else if (enqueueSpread <= 1) {
       // Un-spread healthy path (the default): enqueue the whole capped batch now.
-      val enqueued = enqueueUpTo(due, math.min(rampedCap(now), backlogRoom))
+      val enqueued = enqueueUpTo(due, math.min(rampedCap(now), venuesWithin(maxOutstandingScrapeTasks)))
       if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s) ($outstanding scrape task(s) already waiting).")
       enqueued
     } else {
@@ -257,7 +268,7 @@ class ScrapeReaper(
       // offsets. The queue dedups, so a slice landing near the next tick can't
       // double-enqueue. `tick` returns only what it enqueued SYNCHRONOUSLY (slice 0),
       // matching the un-spread contract for the first-of-batch.
-      val plan = planSlices(due.take(math.min(rampedCap(now), backlogRoom)), enqueueSpread)
+      val plan = planSlices(due.take(math.min(rampedCap(now), venuesWithin(maxOutstandingScrapeTasks))), enqueueSpread)
       val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size) }.getOrElse(0)
       plan.drop(1).foreach { case (offset, group) =>
         scheduleSlice(offset, () => {

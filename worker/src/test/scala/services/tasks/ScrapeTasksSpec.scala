@@ -380,6 +380,26 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 2
   }
 
+  // A venue whose planner has been admitted but has NOT run yet is 36 tasks of work
+  // that exist only as an intention. Counting it as the one task it currently is lets
+  // the reaper keep admitting against a budget it has already committed: prod showed
+  // ScrapeCinema=13 waiting with ScrapeChunk=0, i.e. ~470 tasks of pending fan-out that
+  // the bound read as 13. Left alone it accumulates to the budget in VENUES and then
+  // fans out to ~36x it, which is worse than the burst it replaced.
+  it should "count an un-run planner as the fan-out it is about to become" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20, tasksPerVenue = 10)
+
+    // First tick admits 2 venues (20-task budget / 10). They are still WAITING — none
+    // has fanned out — so the budget is already fully committed and the next tick must
+    // add nothing. Counting those two as 2 tasks instead of 20 would admit 1 more.
+    reaper.tick() shouldBe 2
+    queue.waitingCount(TaskType.ScrapeCinema) shouldBe 2
+    reaper.tick() shouldBe 0
+  }
+
   // Parse-wave smoothing: a healthy tick's due batch otherwise hits the queue at one
   // instant, so the scrapes fetch in parallel and their payloads PARSE together — a
   // CPU spike that floors the shared-CPU credit balance. `planSlices` splits the
