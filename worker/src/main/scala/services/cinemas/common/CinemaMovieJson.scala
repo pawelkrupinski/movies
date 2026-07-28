@@ -19,18 +19,22 @@ object CinemaMovieJson {
   private implicit val showtimeFormat: Format[Showtime] = Json.format[Showtime]
   private implicit val movieFormat: Format[Movie] = Json.format[Movie]
 
-  /** A transport mirror of `CinemaMovie` minus `cinema`. */
+  /** A transport mirror of `CinemaMovie` minus `cinema`. Every OTHER field must
+   *  be here: a field omitted decodes as its default, so the chunked half of the
+   *  corpus quietly loses it while the non-chunked half keeps it. `ageRating`
+   *  was missing for exactly that reason — defaulted so a chunk written by the
+   *  previous deploy still decodes. */
   private case class Transport(
     movie: Movie, posterUrl: Option[String], filmUrl: Option[String], synopsis: Option[String],
     cast: Seq[String], director: Seq[String], showtimes: Seq[Showtime],
-    externalIds: Map[String, String], trailerUrl: Option[String])
+    externalIds: Map[String, String], trailerUrl: Option[String], ageRating: Option[String] = None)
   private implicit val transportFormat: Format[Transport] = Json.format[Transport]
 
   def encode(movies: Seq[CinemaMovie]): String =
     Json.stringify(Json.toJson(movies.map(m =>
-      Transport(m.movie, m.posterUrl, m.filmUrl, m.synopsis, m.cast, m.director, m.showtimes, m.externalIds, m.trailerUrl))))
+      Transport(m.movie, m.posterUrl, m.filmUrl, m.synopsis, m.cast, m.director, m.showtimes, m.externalIds, m.trailerUrl, m.ageRating))))
 
   def decode(json: String, cinema: Cinema): Seq[CinemaMovie] =
     Json.parse(json).as[Seq[Transport]].map(t =>
-      CinemaMovie(t.movie, cinema, t.posterUrl, t.filmUrl, t.synopsis, t.cast, t.director, t.showtimes, t.externalIds, t.trailerUrl))
+      CinemaMovie(t.movie, cinema, t.posterUrl, t.filmUrl, t.synopsis, t.cast, t.director, t.showtimes, t.externalIds, t.trailerUrl, t.ageRating))
 }
