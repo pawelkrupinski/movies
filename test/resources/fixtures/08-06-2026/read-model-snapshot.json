@@ -4524,6 +4524,31 @@
     "weightedRating" : 7.1499999999999995,
     "synopsisByCity" : { }
   }, {
+    "_id" : "federicofelliniciaoatutti|1957",
+    "title" : "Federico Fellini: ciao a tutti!",
+    "originalTitle" : "Le notti di Cabiria",
+    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/1dbb3597576ffa0f68209c107e48f9c8bc9ee13837caf07e216186166427906d-564x800.jpg",
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Le-Notti-di-Cabiria-1957-Giulietta-Masina.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/NOCE_CABIRII/plak1at_8204853.8.jpg_x_standa.jpg", "https://medstore.kinoteka.pl/Plakatblack(1).png", "https://www.novekino.pl/multimedia/federico_fellini_ciao_a_tutti_noce_cabirii/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/16x9-plansza-1024x576.jpg", "https://dkinoteatrrialto.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://bilety.kinospektrum.pl/uploads/event//1777975752.jpg", "https://okf.czest.pl/wp-content/uploads/2026/05/Noce-Cabirii-tlo-441x248.jpg", "/app/assets/movie/dguZv1x6PTeuEC2qKgjyLaGekQ1o.jpg", "https://biletyna.pl/file/get/id/361561", "https://image.tmdb.org/t/p/w500/ezDW37MA8aZlOgJYO4mysjc949J.jpg", "https://m.media-amazon.com/images/M/MV5BYmM0NDA3MzUtYzA1OC00ZDc0LWFlNWUtYjJmOTIxYjkyNGY4XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 110,
+    "releaseYear" : 1957,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "Włochy", "Francja" ],
+    "directors" : [ "Federico Fellini" ],
+    "cast" : [ "Giulietta Masina", "François Périer", "Franca Marzi", "Amedeo Nazzari", "Aldo Silvani" ],
+    "synopsis" : "Cabiria jest rzymską prostytutką, która pragnie prawdziwej miłości. Kiedy nieśmiały Oscar prosi ją o rękę, kobieta decyduje się diametralnie zmienić swoje życie.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 8.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt0050783/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Le+notti+di+Cabiria/?category=2",
+      "rottenTomatoes" : 100,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/nights_of_cabiria",
+      "filmweb" : 7.9,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Noce+Cabirii-1957-30934"
+    },
+    "weightedRating" : 8.666666666666666,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "felekitolaratujalas|2024",
     "title" : "Felek i Tola ratują las",
     "originalTitle" : "Fox and Hare Save the Forest",
@@ -20050,31 +20075,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/%C5%BBywot+Mateusza-1967-12135"
     },
     "weightedRating" : 7.4,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "|1957",
-    "title" : "Federico Fellini: ciao a tutti!",
-    "originalTitle" : "Le notti di Cabiria",
-    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/1dbb3597576ffa0f68209c107e48f9c8bc9ee13837caf07e216186166427906d-564x800.jpg",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Le-Notti-di-Cabiria-1957-Giulietta-Masina.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/FEDERICO_FELLINI_CIAO_A_TUTTI/NOCE_CABIRII/plak1at_8204853.8.jpg_x_standa.jpg", "https://medstore.kinoteka.pl/Plakatblack(1).png", "https://www.novekino.pl/multimedia/federico_fellini_ciao_a_tutti_noce_cabirii/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/16x9-plansza-1024x576.jpg", "https://dkinoteatrrialto.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://bilety.kinospektrum.pl/uploads/event//1777975752.jpg", "https://okf.czest.pl/wp-content/uploads/2026/05/Noce-Cabirii-tlo-441x248.jpg", "/app/assets/movie/dguZv1x6PTeuEC2qKgjyLaGekQ1o.jpg", "https://biletyna.pl/file/get/id/361561", "https://image.tmdb.org/t/p/w500/ezDW37MA8aZlOgJYO4mysjc949J.jpg", "https://m.media-amazon.com/images/M/MV5BYmM0NDA3MzUtYzA1OC00ZDc0LWFlNWUtYjJmOTIxYjkyNGY4XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 110,
-    "releaseYear" : 1957,
-    "genres" : [ "Dramat", "Komedia" ],
-    "countries" : [ "Włochy", "Francja" ],
-    "directors" : [ "Federico Fellini" ],
-    "cast" : [ "Giulietta Masina", "François Périer", "Franca Marzi", "Amedeo Nazzari", "Aldo Silvani" ],
-    "synopsis" : "Cabiria jest rzymską prostytutką, która pragnie prawdziwej miłości. Kiedy nieśmiały Oscar prosi ją o rękę, kobieta decyduje się diametralnie zmienić swoje życie.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 8.1,
-      "imdbUrl" : "https://www.imdb.com/title/tt0050783/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Le+notti+di+Cabiria/?category=2",
-      "rottenTomatoes" : 100,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/nights_of_cabiria",
-      "filmweb" : 7.9,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Noce+Cabirii-1957-30934"
-    },
-    "weightedRating" : 8.666666666666666,
     "synopsisByCity" : { }
   }, {
     "_id" : "дужестрашнекіно6|2026",
@@ -56566,6 +56566,33 @@
       "dateTime" : "2026-06-09T20:00:00",
       "bookingUrl" : "https://biletomat.pl/embeddables/repertoire?organizerId=1772&showId=31323",
       "room" : "Sala II",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "federicofelliniciaoatutti|1957|krakow|Kino Agrafka",
+    "filmId" : "federicofelliniciaoatutti|1957",
+    "city" : "krakow",
+    "cinema" : "Kino Agrafka",
+    "filmUrl" : "https://kinoagrafka.pl/fellini26.php",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-11T20:00:00",
+      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90093",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-12T20:00:00",
+      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90094",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-13T20:00:00",
+      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90095",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-14T17:00:00",
+      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90096",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-15T20:00:00",
+      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90097",
       "format" : [ ]
     } ]
   }, {
@@ -199993,33 +200020,6 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-17T19:00:00",
       "bookingUrl" : "https://bilety.kinoparadox.pl/index.php/repertoire.html?id=7264",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "|1957|krakow|Kino Agrafka",
-    "filmId" : "|1957",
-    "city" : "krakow",
-    "cinema" : "Kino Agrafka",
-    "filmUrl" : "https://kinoagrafka.pl/fellini26.php",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-11T20:00:00",
-      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90093",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-12T20:00:00",
-      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90094",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-13T20:00:00",
-      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90095",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-14T17:00:00",
-      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90096",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-15T20:00:00",
-      "bookingUrl" : "https://bilety.kinoagrafka.pl/repertoire.html?id=90097",
       "format" : [ ]
     } ]
   }, {

@@ -269,10 +269,25 @@ object TitleNormalizer {
 
   private val sanitizeCache = new ConcurrentHashMap[String, String]()
 
-  private val computeSanitize: java.util.function.Function[String, String] = title =>
+  private def strippedKey(t: String): String =
     NonAlnumUnicode.matcher(
-      tools.TextNormalization.deburr(normalize(canonical(title))).toLowerCase(Locale.ROOT)
+      tools.TextNormalization.deburr(normalize(t)).toLowerCase(Locale.ROOT)
     ).replaceAll("")
+
+  // Canonicalise, but never all the way to NOTHING. The Canonical tier is a set of
+  // `^`-anchored banner rules, and a cinema can list a film whose title is nothing BUT
+  // the banner — Kino Muza's "Federico Fellini: ciao a tutti!" is a programme name that
+  // is also the whole listing. That sanitized to "", so the film's identity became the
+  // bare year: `_id = "|1957"`, with its screening row keyed `"|1957|krakow|Kino Agrafka"`
+  // behind it. Identity is the one thing that cannot be empty — every wholly-banner film
+  // in a given year lands on that same `_id` and the later write replaces the earlier one.
+  // Falling back to the RAW title's key keeps the identity a pure function of what the
+  // cinemas reported, and still deburrs/lower-cases/strips, so the case and punctuation
+  // variants that should be one film remain one film.
+  private val computeSanitize: java.util.function.Function[String, String] = title => {
+    val canonicalised = strippedKey(canonical(title))
+    if (canonicalised.nonEmpty) canonicalised else strippedKey(title)
+  }
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
