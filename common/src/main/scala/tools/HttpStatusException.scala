@@ -11,13 +11,18 @@ import scala.concurrent.duration._
  * (`HTTP <code> for <method> <url>`), so existing `catch`/regex callers keep
  * working unchanged — in particular `MonitoringHttpFetch`'s `HTTP 5\d\d .*`
  * connection-failure classifier.
+ *
+ * The message carries the url [[RedactedUrl]]-masked, because this message is
+ * what every caller logs — `MovieService`'s "TMDB resolve failed … retry" line
+ * among them — and TMDB/OMDb authenticate in the query string. `url` itself
+ * stays raw for callers that re-issue or inspect the request.
  */
 class HttpStatusException(
   val code:       Int,
   val method:     String,
   val url:        String,
   val retryAfter: Option[FiniteDuration]
-) extends RuntimeException(s"HTTP $code for $method $url")
+) extends RuntimeException(s"HTTP $code for $method ${RedactedUrl(url)}")
 
 object HttpStatusException {
   /** Parse a `Retry-After` header value. Honors the delta-seconds form ("120")

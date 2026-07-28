@@ -150,9 +150,12 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     val code = response.statusCode()
     if (code >= 200 && code < 300) decodeBody(response.body())
     else {
-      if (code >= 500)                     logger.warn(s"HTTP $code from $method $url (server-side)")
-      else if (code == 403 || code == 429) logger.warn(s"HTTP $code from $method $url (blocked/throttled)")
-      else                                 logger.debug(s"HTTP $code from $method $url")
+      // Logged REDACTED: TMDB/OMDb authenticate in the query string, so the bare
+      // url would write their key into the 14-day persistent log (see RedactedUrl).
+      val safeUrl = RedactedUrl(url)
+      if (code >= 500)                     logger.warn(s"HTTP $code from $method $safeUrl (server-side)")
+      else if (code == 403 || code == 429) logger.warn(s"HTTP $code from $method $safeUrl (blocked/throttled)")
+      else                                 logger.debug(s"HTTP $code from $method $safeUrl")
       // Typed so a decorator (ThrottledHttpFetch) can react to 429 + Retry-After.
       // Message shape is unchanged, so MonitoringHttpFetch's 5xx classifier and
       // any message-matching caller keep working.
@@ -173,11 +176,14 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
   private def decodeBody(bytes: Array[Byte]): String =
     new String(Gunzip.decode(bytes), StandardCharsets.UTF_8)
 
-  private def logFailure(method: String, url: String, exception: Throwable): Unit = exception match {
-    case _: HttpTimeoutException =>
-      logger.warn(s"HTTP $method $url timed out after ${RealHttpFetch.requestTimeoutFor(url).toSeconds}s (service not responding)")
-    case _ =>
-      logger.warn(s"HTTP $method $url failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+  private def logFailure(method: String, url: String, exception: Throwable): Unit = {
+    val safeUrl = RedactedUrl(url)
+    exception match {
+      case _: HttpTimeoutException =>
+        logger.warn(s"HTTP $method $safeUrl timed out after ${RealHttpFetch.requestTimeoutFor(url).toSeconds}s (service not responding)")
+      case _ =>
+        logger.warn(s"HTTP $method $safeUrl failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+    }
   }
 
   // Async failures come wrapped in `CompletionException`; unwrap so the
