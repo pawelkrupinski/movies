@@ -65,3 +65,17 @@ class UnwritableScreeningsRepository extends InMemoryScreeningsRepository {
   override def replaceFilm(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit = ()
   override def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[models.Showtime]): Unit = ()
 }
+
+/** A [[MovieRepository]] whose BY-ID read fails while the row is genuinely there, and whose
+ *  every other operation is real. The shape a Mongo timeout or a slot-read failure produces:
+ *  `findByIdChecked` reports `(None, false)`, and a caller that only looks at the `None` sees
+ *  a film that does not exist.
+ *
+ *  `findAll` deliberately keeps working — the corruption this exposes is a WRITE built on a
+ *  failed point read, so the spec must still be able to see what the write did. */
+class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
+  extends InMemoryMovieRepository(seed) {
+  @volatile var failing: Boolean = true
+  override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) =
+    if (failing) (None, false) else super.findByIdChecked(id)
+}

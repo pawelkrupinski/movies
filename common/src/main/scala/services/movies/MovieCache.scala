@@ -594,16 +594,37 @@ class CaffeineMovieCache(
       // carries a year keeps its key — re-keying a yeared row across the async
       // resolve races `canonicalRank` (`canonicalizeBySanitize` owns that
       // migration — run by the staging fold and on every rehydrate).
-      val target =
+      val wanted =
         if (oldKey.year.isEmpty && resolved.resolvedYear.isDefined)
           keyOf(oldKey.cleanTitle, resolved.resolvedYear)
         else oldKey
-      // Fold any prior occupant of `target` into the resolved record up front so
+      // Fold any prior occupant of `wanted` into the resolved record up front so
       // re-keying onto an occupied year can't drop its cinema slots.
-      // `stored` (cache-or-Mongo), not a Caffeine-only read: a cold/evicted prior
-      // occupant of `target` must still be folded in, else the union below drops it
-      // and the replaced record nulls its ratings + slots.
-      val priorTarget = if (target != oldKey) stored(target) else None
+      // `storedChecked` (cache-or-Mongo), not a Caffeine-only read: a cold/evicted
+      // prior occupant must still be folded in, else the union below drops it and
+      // the replaced record nulls its ratings + slots.
+      //
+      // …and not `stored` either, because that collapses "the year is empty" into the
+      // same `None` as "the read failed", and the two want opposite actions. `wanted`
+      // is a key this caller never touched, so the repository read is the NORMAL path
+      // here, not a cold-cache fallback — a Mongo blip therefore re-keys the row onto
+      // an occupied year with an EMPTY merge base and writes over whatever lived
+      // there, which is how a rated row loses its scores while its showtimes (carried
+      // by `moveFilm`) look fine.
+      //
+      // A failed read defers the RE-KEY rather than throwing: the row keeps its
+      // current key and is written there, exactly as it would be had TMDB not
+      // resolved a year. Nothing is lost and nothing is overwritten; the periodic
+      // `canonicalizeBySanitize` re-keys it once the read works. Throwing is wrong at
+      // THIS site specifically — the no-match caller (`MovieService`, the
+      // `Success(None)` branch) is outside the `Try` that turns a failure into a
+      // retry, so an exception would escape into the task runner and park the task.
+      val (priorTarget, targetReadable) =
+        if (wanted != oldKey) storedChecked(wanted) else (None, true)
+      if (!targetReadable)
+        logger.warn(s"settle: could not read '${wanted.cleanTitle}' (${wanted.year.getOrElse("?")}) " +
+          s"to fold into the resolved row; leaving '${oldKey.cleanTitle}' on its own key this pass.")
+      val target = if (targetReadable) wanted else oldKey
       val base        = priorTarget.fold(resolved)(t => MovieRecordMerge.union(resolved, t))
       val norm        = TitleNormalizer.sanitize(oldKey.cleanTitle)
       // Fold ONLY the YEARLESS + IDLESS same-title strays onto the resolved row.

@@ -1502,9 +1502,30 @@ final class GermanCinema(displayName: String, pillName: String) extends Cinema(d
  *  by-display-name grouping for `Cinema.byCity`, and each cinema's Filmstarts
  *  `theaterId` for the scrape catalog. */
 object GermanRoster {
+  /** Display names already spoken for by a hand-declared source, which a generated German
+   *  venue may NOT reuse.
+   *
+   *  `displayName` is the wire key every per-cinema slot is stored under (`movie_slots`,
+   *  `screenings`, the embedded `sourceData` map), and `Source.byDisplayName` is a plain
+   *  `toMap` — so two venues sharing a name silently collapse to whichever is built LAST,
+   *  and the loser's stored slots read back as the WINNER. The roster is generated, so the
+   *  guard has to live here rather than in the data: regenerating `GermanRosterData` from
+   *  Filmstarts would otherwise reintroduce any collision that got hand-fixed there.
+   *
+   *  Two exist today — a German "Studio" against Opole's `KinoStudio`, and a German
+   *  "Cineworld" against the `CineworldChain` detail source — and both silently rebound a
+   *  Polish/UK venue's showtimes to a German one. `SourceWireKeySpec` fails on any third. */
+  private def claimedElsewhere: Set[String] =
+    (Cinema.polishAndUk.flatMap(_._2) ++ Seq(CinemaCityChain, CineworldChain)).map(_.displayName).toSet
+
   private val built: Seq[(GermanRegion, Seq[(GermanCinema, String)])] =
     GermanRosterData.regions.map { case (slug, name, lat, lon, cinemas) =>
-      val venues = cinemas.map { case (disp, pill, tid) => (new GermanCinema(disp, pill), tid) }
+      // Qualify only the venues that would collide, so the roster's names — and the wire
+      // keys of every already-stored German slot — stay exactly as they are otherwise.
+      val venues = cinemas.map { case (disp, pill, tid) =>
+        val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
+        (new GermanCinema(unique, pill), tid)
+      }
       (new GermanRegion(slug, CityLabels(name, name, name), lat, lon, venues.map(_._1)), venues)
     }
   val regions: Seq[GermanRegion]             = built.map(_._1)
@@ -1741,7 +1762,11 @@ object Cinema {
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city
    *  grouping — add a city here and both pick it up. */
-  val byCity: Seq[(String, Seq[Cinema])] = Seq(
+  /** The hand-declared venues — Poland and the UK. Split out from [[byCity]] so
+   *  `GermanRoster` can see which display names are already claimed before it materialises
+   *  the generated roster; see `GermanRoster.claimedElsewhere`. Declared BEFORE `byCity`
+   *  so it is assigned by the time that field forces the roster. */
+  val polishAndUk: Seq[(String, Seq[Cinema])] = Seq(
     "Poznań"      -> poznan,
     "Wrocław"     -> wroclaw,
     "Warszawa"    -> warszawa,
@@ -1863,7 +1888,10 @@ object Cinema {
     "Wiltshire" -> wiltshire,
     "Worcestershire" -> worcestershire,
     "Yorkshire" -> yorkshire,
-  ) ++ GermanRoster.byCity  // Germany: the full 158-region roster (data-driven)
+  )
+
+  val byCity: Seq[(String, Seq[Cinema])] =
+    polishAndUk ++ GermanRoster.byCity  // Germany: the full 158-region roster (data-driven)
 
   val all: Seq[Cinema] = byCity.flatMap(_._2)
 

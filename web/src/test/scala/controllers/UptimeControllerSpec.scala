@@ -54,22 +54,24 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // A real cinema that the controller will place under "Cinemas" via Cinema.byCity.
   private val cinema = Cinema.byCity.head._2.head.displayName
 
-  // "Studio" names TWO unrelated cinemas: one in Opole (Cinema.scala, Poland) and
-  // one in Germany's roster (GermanRosterData, Cologne area). The page grouped by
-  // the all-country `Cinema.byCity`, matching rows to cities by display name with
-  // no country filter — so the German deployment rendered an "Opole" header
-  // holding the German cinema's row, and rendered that one cinema twice.
-  private val SharedName = "Studio"
+  // A German venue, and the region it belongs to. This used to be the shared name "Studio"
+  // — one cinema in Opole, another in Germany's roster — which the page, grouping by the
+  // all-country `Cinema.byCity` with no country filter, rendered under an "Opole" header on
+  // the German deployment, and rendered twice. `GermanRoster` no longer lets a generated
+  // venue reuse a name a hand-declared cinema already holds (see `SourceWireKeySpec`: the
+  // name is the wire key slots are STORED under, so the collision was corrupting far more
+  // than this page), so no shared name exists to test with any more. The country scoping
+  // this test was added for still matters and is what it now asserts directly.
+  private val germanCinema = models.Country.Germany.cities.head.cinemas.head.displayName
   private def regionOf(country: models.Country, cinema: String) =
     country.cities.find(_.cinemas.exists(_.displayName == cinema)).get.labels.nominative
 
-  "groupRows on a German deployment" should "group a name shared with a Polish city under the German region" in {
-    val (_, _, cinemasByCity, _, _) = controllerFor(models.Country.Germany).groupRows(Set(SharedName), fakeRow)
+  "groupRows on a German deployment" should "group a German venue under its own region, once" in {
+    val (_, _, cinemasByCity, _, _) = controllerFor(models.Country.Germany).groupRows(Set(germanCinema), fakeRow)
 
-    cinemasByCity.map(_._1) should contain (regionOf(models.Country.Germany, SharedName))
-    cinemasByCity.map(_._1) should not contain ("Opole")
+    cinemasByCity.map(_._1) should contain (regionOf(models.Country.Germany, germanCinema))
     // One cinema, one row — not one per country whose roster happens to share the name.
-    cinemasByCity.flatMap(_._2).count(_.name == SharedName) shouldBe 1
+    cinemasByCity.flatMap(_._2).count(_.name == germanCinema) shouldBe 1
   }
 
   it should "never render another country's cities at all" in {
