@@ -3,6 +3,7 @@ package deploy
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.ChainFlicksFallback
 import tools.RateLimitedHttpFetch
 
 import scala.concurrent.duration.*
@@ -37,6 +38,25 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
    *  ran 14,862 venue sweeps and 51,973 day-chunks — ~3.5 days plus the one
    *  listing fetch per venue — leaving ~11% headroom for a busier week. */
   private val RequestsPerGermanVenue = 5
+
+  /** UK venues whose scrape actually reaches the PACED flicks.co.uk origin on the
+   *  happy path. The chain venues (Cineworld, Vue, Odeon, Everyman, Showcase) went
+   *  own-site-primary on 2026-07-27; `SourceFallbackScraper` only calls the flicks
+   *  fallback after the primary has been failing for 6h, so in steady state they
+   *  cost the paced origin nothing. Derived rather than written out, so wiring a
+   *  venue to a chain (or back to flicks) moves this number automatically.
+   *  (`ChainFlicksFallback.slugs` is what `CinemaScraperCatalog.flicksFallbackSlugs`
+   *  exposes; the catalog itself is a class needing live deps, so read the source.) */
+  private def FlicksPrimaryVenues =
+    Country.UnitedKingdom.cities.flatMap(_.cinemas).distinct.size - ChainFlicksFallback.slugs.size
+
+  /** flicks.co.uk requests one UK venue costs per sweep: the programme page
+   *  `planChunks` reads its `data-date` list off, plus one day-page per advertised
+   *  day. Measured on prod 2026-07-28 — over 24h the UK worker ran 2,377 chunked
+   *  venue sweeps and 82,939 day-chunks, i.e. ~34.9 days per venue — rounded up to
+   *  36 for the listing fetch. NOT `ScrapeHorizon.MaxDays` (730): that is a sanity
+   *  valve against a garbage far date, not the number of days a venue advertises. */
+  private val RequestsPerFlicksVenue = 36
 
   private def cadenceOf(toml: String): Option[String] =
     RepoFile
@@ -78,15 +98,33 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     cadenceOf("fly.worker.toml") shouldBe Some("60")
   }
 
-  "the UK worker" should "scrape on a slow cadence its paced full-horizon sweep can drain within" in {
-    // UK is the fleet's slowest (7h vs DE's 3h). Its 843 Flicks venues each fan out
-    // one ScrapeChunk per advertised day of their full booking horizon (up to
-    // MaxHorizonDays=210, ~90-150 populated) — ~100k requests per cycle. Flicks is
-    // now PACED (200ms, HostPolicies) to stop the 429s an unpaced fan-out drew, so
-    // like DE the pace sets the sweep length (~333min) and the cadence must exceed
-    // it. 420min clears it with headroom. (It was 300min while unpaced and merely
-    // drain-bound by the 4-worker pool; the 200ms pace is the new, slower bound.)
-    cadenceOf("fly.worker.uk.toml") shouldBe Some("420")
+  "the UK worker" should "scrape on a cadence its paced Flicks sweep can drain within" in {
+    // Was a hard-coded 420. That number was sized when all 843 UK venues fanned out
+    // onto flicks.co.uk; since 2026-07-27 the 343 chain venues are own-site-primary
+    // and only reach flicks after 6h of a failing primary, so the paced origin
+    // carries 500. Assert the INVARIANT the way DE's test does rather than the
+    // arithmetic, so the pace and the cadence can each move as long as the sweep
+    // still fits — a literal is exactly what let the old value outlive its premise.
+    val pace    = RateLimitedHttpFetch.configuredInterval("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/")
+    val cadence = cadenceOf("fly.worker.uk.toml").map(_.toInt).map(_.minutes)
+
+    withClue("Flicks must stay paced — unpaced fan-out is what drew the 429s: ") {
+      pace should not be empty
+    }
+    val requests = FlicksPrimaryVenues * RequestsPerFlicksVenue
+    val sweep    = (requests * pace.get.toMillis).millis
+    withClue(s"$requests requests at ${pace.get.toMillis}ms = ${sweep.toMinutes}min sweep vs ${cadence.get.toMinutes}min cadence: ") {
+      sweep should be <= cadence.get
+    }
+
+    // HEADROOM, reported not asserted. At 500 venues x 36 requests x 200ms the sweep
+    // is 60min against a 60min cadence: it fits with 0% to spare, so the paced origin
+    // is busy 100% of every window and the worker never idles on it. DE deliberately
+    // keeps ~11%. This prints the margin so a run that "passes" at the knife edge
+    // still says so out loud — the invariant above is the hard floor, not a comfort
+    // zone, and a venue advertising one more day than measured breaks it.
+    val headroom = 1.0 - sweep.toMillis.toDouble / cadence.get.toMillis
+    info(f"Flicks sweep uses ${100 * (1 - headroom)}%.1f%% of the ${cadence.get.toMinutes}min window (headroom ${100 * headroom}%+.1f%%)")
   }
 
   it should "pace Flicks so the fan-out stops tripping its 429 limiter" in {

@@ -33,17 +33,27 @@ primary_region = 'arn'
   # Credit-throttle thresholds (ms of fly_instance_cpu_balance), same as kinowo-worker.
   KINOWO_CREDIT_THROTTLE_ENTER_BELOW = '8000'
   KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
-  # Cinema-scrape freshness window. UK is the SLOWEST in the fleet (7h), not the
-  # fleet's 60min: the 843 Flicks venues each fan out one ScrapeChunk per advertised
-  # day of their full booking horizon (up to MaxHorizonDays=210, ~90-150 populated)
-  # — ~100k requests per cycle onto ONE origin. Flicks is now PACED at 200ms
-  # (HostPolicies) to stop the 429s an unpaced fan-out drew, which serialises the
-  # sweep to ~333min — so like DE the pace and cadence are coupled: the pace sets
-  # the sweep length, this budget must exceed it, and WorkerScrapeCadenceConfigSpec
-  # locks the pair. 420min clears the ~333min paced sweep with headroom. (It was
-  # 300min while unpaced, drain-bound by the 4-worker pool; pacing is the new,
-  # slower bound.) Retune via KINOWO_FLICKS_PACE_MS + this value together.
-  KINOWO_SCRAPE_FRESHNESS_MINUTES = '420'
+  # Cinema-scrape freshness window. UK is back on the fleet's hourly cadence: the
+  # 7h override it carried was sized for a world that ended on 2026-07-27, when it
+  # assumed all 843 venues fanned out onto flicks.co.uk. They don't any more — the
+  # 343 Cineworld/Vue/Odeon/Everyman/Showcase venues went own-site-primary and only
+  # fall back to flicks after 6h of a failing primary (SourceFallbackScraper), so
+  # the paced origin now carries 500 venues, not 843.
+  #
+  # The pace and cadence are still coupled exactly as DE's are, and
+  # WorkerScrapeCadenceConfigSpec locks the pair: flicks.co.uk is paced at 200ms
+  # (HostPolicies, KINOWO_FLICKS_PACE_MS) GLOBALLY per host — all 4 pool workers
+  # share one token bucket — so the sweep is 500 x (1 listing + 1 per advertised
+  # day) x 200ms and this budget must exceed it. Retune the two together.
+  #
+  # ⚠️ At the measured ~35 advertised days/venue that sweep is 500 x 36 x 200ms =
+  # exactly 60min against a 60min window: it FITS WITH 0% HEADROOM, so the paced
+  # origin is saturated 100% of the time and the worker never idles on it. DE keeps
+  # ~11% spare on purpose. This is the deliberate trade for the hourly cadence; if
+  # kinowo-worker-uk's CPU credit stays floored (it was pinned at 0 with 8-17k cc
+  # steal for all of 2026-07-28), this number is the first lever to move back up —
+  # 180min restores 67% headroom and still scrapes 2.3x more often than the old 420.
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '60'
   # JVM sizing: Xms=Xmx=448m on the 1 GB box — the UK corpus is ~half the former
   # combined set that needed 480m, and 448 + ~290 MB non-heap ≈ 738 MB RSS leaves
   # ~220 MB free. All other flags (SerialGC, tightened caps, -UseTypeSpeculation +
