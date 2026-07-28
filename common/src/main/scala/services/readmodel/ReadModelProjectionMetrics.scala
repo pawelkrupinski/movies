@@ -25,13 +25,23 @@ trait ReadModelProjectionMetrics {
   def recordWrite(target: String, op: String, count: Int): Unit
   def recordFilmPruned(count: Int): Unit
 
-  /** One `ReadModelProjection.projectAll` ran for a source row — `seconds` is its
-   *  wall-clock (CPU-bound: no I/O in the pure projection). Fed from
-   *  [[ReadModelProjector.project]]. `rate(..._duration_seconds_sum)` in centi-cores
-   *  is the projection's share of worker CPU — the driver behind the periodic
-   *  reproject burst and the boot-path credit floor; `..._calls_total` is how many
-   *  rows were projected. The observability gap that made attributing that CPU hard. */
-  def recordProject(seconds: Double): Unit
+  /** One `ReadModelProjection.projectAll` ran for a source row. Fed from
+   *  [[ReadModelProjector.project]]; `..._calls_total` is how many rows were projected.
+   *
+   *  Two costs, because they answer different questions and are NOT interchangeable:
+   *
+   *   - `wallSeconds` — how LONG the projection took. The latency signal: the duration
+   *     histogram and its heatmap, where a bright high band means expensive films.
+   *   - `cpuSeconds` — how much CPU it BURNED, from [[tools.ThreadCpuClock]]. The
+   *     attribution signal: `rate(..._cpu_seconds_total)` in centi-cores is the
+   *     projection's true share of worker CPU.
+   *
+   *  Only `cpuSeconds` may be compared against whole-process CPU. Wall-clock summed
+   *  across concurrent projections can exceed the second it is measured in, and on a
+   *  throttled box steal inflates it further — it read 45.9 centi-cores against an
+   *  18.0 centi-core process total on `kinowo-worker-uk` (2026-07-28), which is what
+   *  made it useless for the credit-floor diagnosis it was added for. */
+  def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit
 
   /** One projection decided whether to REUSE cached metadata or RECOMPUTE it.
    *  `reused=true` is the optimisation win: the row's metadata inputs were unchanged
@@ -68,7 +78,7 @@ object ReadModelProjectionMetrics {
   val noop: ReadModelProjectionMetrics = new ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
     def recordFilmPruned(count: Int): Unit                        = ()
-    def recordProject(seconds: Double): Unit                      = ()
+    def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
   }

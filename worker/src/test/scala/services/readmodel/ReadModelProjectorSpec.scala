@@ -41,14 +41,26 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     var prunes = 0
     val sweeps = scala.collection.mutable.Buffer.empty[(String, Boolean)]
     val projectDurations = scala.collection.mutable.Buffer.empty[Double]
+    val projectCpuSeconds = scala.collection.mutable.Buffer.empty[Double]
     var metadataReused = 0
     var metadataRecomputed = 0
     def projectCalls: Int = projectDurations.size
     def recordWrite(target: String, op: String, count: Int): Unit = writes((target, op)) += count
     def recordFilmPruned(count: Int): Unit                        = prunes += count
-    def recordProject(seconds: Double): Unit                      = projectDurations += seconds
+    def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = {
+      projectDurations  += wallSeconds
+      projectCpuSeconds += cpuSeconds
+    }
     def recordMetadataProjection(reused: Boolean): Unit          = if (reused) metadataReused += 1 else metadataRecomputed += 1
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
+  }
+
+  /** CPU clock that advances by a FIXED amount per reading, so a test can assert the
+   *  recorded CPU cost exactly instead of racing a real one. Wall-clock keeps running
+   *  independently, which is the whole point: the two must not be the same number. */
+  private class SteppingCpuClock(stepNanos: Long) extends tools.ThreadCpuClock {
+    private var current = 0L
+    def nanos(): Long = { val n = current; current += stepNanos; n }
   }
 
   /** Fake scheduler that CAPTURES the fixed-rate tasks `start()` submits instead of
@@ -384,6 +396,28 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.reconcile()
     m.projectCalls shouldBe 2
+  }
+
+  it should "attribute CPU from the thread CPU clock, not from wall-clock" in {
+    // The panel that stacks projection against process CPU is only meaningful if this
+    // number is CPU. Wall-clock is not: concurrent projections make it sum past one
+    // core-second per second, and steal on a throttled box inflates it further — it
+    // read 45.9cc against an 18.0cc process total on kinowo-worker-uk (2026-07-28).
+    // Pin the clock to a known step so the recorded cost is exact, and assert it came
+    // from THAT clock rather than from however long the projection happened to take.
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m,
+      cpuClock = new SteppingCpuClock(stepNanos = 250000000L)) // 0.25s of CPU per reading
+
+    projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
+
+    m.projectCpuSeconds.head shouldBe 0.25
+    // …and the wall-clock reading is still its own, genuinely-measured number. An
+    // in-memory projection takes far less than the stubbed 0.25s of "CPU", so the two
+    // series cannot be the same value — which is exactly the bug this guards.
+    m.projectDurations.head should be >= 0.0
+    m.projectDurations.head should be < 0.25
   }
 
   "a re-key that prunes the old film in reconcile" should "meter a film prune + its document deletes" in {

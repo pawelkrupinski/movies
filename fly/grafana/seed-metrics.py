@@ -81,6 +81,7 @@ def main():
         jit_seconds = random.uniform(60.0, 140.0)
         project_sum = random.uniform(200.0, 600.0)
         project_count = random.randint(400, 900)
+        project_cpu = random.uniform(60.0, 180.0)
 
         for i, ts in enumerate(steps):
             ms = ts * 1000
@@ -132,6 +133,16 @@ def main():
             out.append(
                 "kinowo_worker_readmodel_project_duration_seconds_count{%s} %d %d"
                 % (labels(with_country), project_count, ms)
+            )
+            # CPU actually burned, always a FRACTION of the wall-clock above: the
+            # projection runs on several pool threads at once and gets descheduled by
+            # steal, so wall-clock overstates it. The CPU-drivers panel stacks this one
+            # against process_cpu_seconds_total, so seed it below that total or the dev
+            # dashboard draws a stack taller than its own sanity line.
+            project_cpu += batch * random.uniform(0.15, 0.60)
+            out.append(
+                "kinowo_worker_readmodel_project_cpu_seconds_total{%s} %.4f %d"
+                % (labels(with_country), project_cpu, ms)
             )
 
     for app, country, heap_max, cities in WEBS:

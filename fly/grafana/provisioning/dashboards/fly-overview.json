@@ -627,7 +627,7 @@
     {
       "id": 46,
       "title": "kinowo-worker CPU drivers — projection vs JIT vs other (stacked = total CPU)",
-      "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the ~30cc daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_duration_seconds_sum)*100 — the pure ReadModelProjection.projectAll CPU (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it. The ~13cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes → no projection). Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
+      "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_cpu_seconds_total)*100 — the THREAD CPU burned inside ReadModelProjection.projectAll (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). It reads thread CPU, NOT wall-clock, on purpose: wall-clock summed across concurrent projections can exceed the second it is measured in, and steal on a throttled box inflates it further — the old wall-clock version read 45.9cc against an 18.0cc process total on kinowo-worker-uk (2026-07-28), i.e. it claimed projection burned more CPU than the whole process had, and it was least trustworthy exactly when read to diagnose a throttle. Wall-clock still drives the duration percentiles and the heatmap below, where LATENCY is the question. JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it, and since the projection series became real CPU they genuinely can. The ~13cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped for PL/DE (~30cc daytime, ~5cc overnight — schedules static → no screenings changes → no projection); UK is FLAT around the clock because its chunked scrape never idles, which is why UK credit never refills. Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
       "gridPos": {"h": 9, "w": 24, "x": 0, "y": 231},
@@ -674,7 +674,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[5m])*100)",
+          "expr": "sum without(country)(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m])*100)",
           "legendFormat": "projection (cc)"
         },
         {
@@ -684,7 +684,7 @@
         },
         {
           "refId": "C",
-          "expr": "clamp_min( (rate(process_cpu_seconds_total[5m])*100) - sum without(country)(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total[5m])*100), 0 ) and on(app) kinowo_worker_throttled{country=~\"$country\"}",
+          "expr": "clamp_min( (rate(process_cpu_seconds_total[5m])*100) - sum without(country)(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total[5m])*100), 0 ) and on(app) kinowo_worker_throttled{country=~\"$country\"}",
           "legendFormat": "other: scrape + Mongo I/O + GC (cc)"
         },
         {

@@ -48,7 +48,8 @@ class ReadModelProjector(
   writer:    ReadModelWriter,
   reader:    ReadModelReader,
   metrics:   ReadModelProjectionMetrics = ReadModelProjectionMetrics.noop,
-  scheduler: java.util.concurrent.ScheduledExecutorService = DaemonExecutors.scheduler("read-model-projector")
+  scheduler: java.util.concurrent.ScheduledExecutorService = DaemonExecutors.scheduler("read-model-projector"),
+  cpuClock:  tools.ThreadCpuClock = tools.ThreadCpuClock.threadMxBean
 ) extends Stoppable with Logging {
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
@@ -103,12 +104,18 @@ class ReadModelProjector(
     if (!stored.record.readyToProject) return 0
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
-    // exactly one. Each variant card is diffed and written independently. Time the
-    // pure projection (CPU-bound, no I/O) — its rate() in centi-cores attributes how
-    // much worker CPU the reproject/enrich churn spends here (the credit-floor driver).
-    val projectStart = System.nanoTime()
-    val variants     = projectReusingMetadata(stored)
-    metrics.recordProject((System.nanoTime() - projectStart) / 1e9)
+    // exactly one. Each variant card is diffed and written independently. Measure the
+    // pure projection BOTH ways: wall-clock answers "how long did it take" (the latency
+    // histogram), thread CPU answers "how much CPU did it burn" (the credit-floor
+    // attribution). They diverge under concurrency and under steal, so the one that may
+    // be compared against process CPU is the CPU one — see `recordProject`.
+    val wallStart = System.nanoTime()
+    val cpuStart  = cpuClock.nanos()
+    val variants  = projectReusingMetadata(stored)
+    metrics.recordProject(
+      wallSeconds = (System.nanoTime() - wallStart) / 1e9,
+      cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
+    )
     var written = 0
     variants.foreach { case (movie, screenings) =>
       if (!lastMovie.get(movie._id).contains(movie.##)) {

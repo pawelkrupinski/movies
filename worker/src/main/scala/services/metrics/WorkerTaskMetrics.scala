@@ -80,7 +80,8 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
   def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
   def recordFilmPruned(count: Int): Unit                        = series.recordFilmPruned(countryCode, count)
-  def recordProject(seconds: Double): Unit                      = series.recordProject(countryCode, seconds)
+  def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit =
+    series.recordProject(countryCode, wallSeconds, cpuSeconds)
   def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
 
@@ -219,10 +220,16 @@ object WorkerTaskMetrics {
 
     private val readModelProjectDuration = Histogram.builder()
       .name("kinowo_worker_readmodel_project_duration_seconds")
-      .help("Wall-clock of one pure ReadModelProjection.projectAll (CPU-bound, no I/O) per source row since boot, by country. rate(_sum)*100 is projection's share of worker CPU in centi-cores — the credit-floor driver the CPU-drivers dashboard stacks against JIT + everything else.")
+      .help("Wall-clock of one pure ReadModelProjection.projectAll per source row since boot, by country — the LATENCY signal (percentiles, the duration heatmap). NOT a CPU share: concurrent projections make rate(_sum) exceed one core-second per second, and steal on a throttled box inflates it further. Use kinowo_worker_readmodel_project_cpu_seconds_total for CPU attribution.")
       .labelNames("country")
       .classicUpperBounds(ProjectBucketsSeconds*)
       .classicOnly()
+      .register(registry)
+
+    private val readModelProjectCpu = Counter.builder()
+      .name("kinowo_worker_readmodel_project_cpu_seconds")
+      .help("Thread CPU seconds burned inside pure ReadModelProjection.projectAll since boot, by country. rate()*100 is projection's true share of worker CPU in centi-cores — the credit-floor driver the CPU-drivers dashboard stacks against JIT, GC and everything else. Unlike the wall-clock histogram this is immune to concurrency and to steal, so it can be compared against process_cpu_seconds_total.")
+      .labelNames("country")
       .register(registry)
 
     private val readModelProjectCalls = Counter.builder()
@@ -285,6 +292,7 @@ object WorkerTaskMetrics {
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
         readModelFilmsPruned.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
         readModelProjectCalls.labelValues(c).inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
+        readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
         ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, o))
         ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
@@ -316,8 +324,9 @@ object WorkerTaskMetrics {
     def recordFilmPruned(country: String, count: Int): Unit =
       if (count > 0) readModelFilmsPruned.labelValues(country).inc(count.toDouble)
 
-    def recordProject(country: String, seconds: Double): Unit = {
-      readModelProjectDuration.labelValues(country).observe(math.max(0.0, seconds))
+    def recordProject(country: String, wallSeconds: Double, cpuSeconds: Double): Unit = {
+      readModelProjectDuration.labelValues(country).observe(math.max(0.0, wallSeconds))
+      readModelProjectCpu.labelValues(country).inc(math.max(0.0, cpuSeconds))
       readModelProjectCalls.labelValues(country).inc()
     }
 
