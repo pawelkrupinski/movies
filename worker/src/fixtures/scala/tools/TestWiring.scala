@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.Cinema
 import modules.WorkerWiring
 import services.{MongoConnection, Stoppable}
-import services.events.{DomainEvent, EventBus}
+import services.events.{DomainEvent, EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.MovieService
 import services.resolution.ResolutionCache
@@ -171,6 +171,63 @@ trait TestWiring extends WorkerWiring {
    *  in prod. Production drains these as queue tasks on the `TaskWorker`; the
    *  harness doesn't run the worker, so it drives the same refresh inline (after
    *  the async TMDB + IMDb-id cascade has settled in `drainServices`). */
+  /** One scrape tick over every wired cinema, recording ALL of them before
+   *  publishing any enrichment event.
+   *
+   *  Production publishes enrichment INLINE as each cinema lands, so a film's
+   *  TMDB resolution can run against a partially-merged row and the scrape comes
+   *  out order-dependent (the events-seen count wobbles run to run). Recording
+   *  every cinema first settles each row to its final scraped shape before any
+   *  event fires. The order-INDEPENDENCE this side-steps is proved directly by
+   *  `ScrapeOrderDeterminismSpec`.
+   *
+   *  Shared by every harness that boots a corpus — the HTTP-fixture replay and
+   *  the archive replay both need exactly this tick. */
+  def runOneScrapeTick(): Unit = {
+    val ready = scala.collection.mutable.ListBuffer.empty[MovieDetailsComplete]
+    cinemaScrapers.foreach { scraper =>
+      try {
+        val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
+        // `classify` marks rows that await deferred detail `detailPending` (held
+        // back, no event yet) and returns the ready-now MovieDetailsComplete.
+        ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
+      } catch { case _: Exception => () }
+    }
+    // Cinemas that defer detail scrape BARE; fill each row's per-film detail via
+    // the EnrichDetails queue tasks NOW. `enrichDetailsSync` then publishes the
+    // detail-complete films' MovieDetailsComplete (the deferred TMDB trigger), so
+    // every TMDB resolution runs after the tick has settled, with the detail-page
+    // director/originalTitle/year already on the row. The ready-now events publish
+    // last — same "settle the whole tick, THEN publish" rule for both groups.
+    enrichDetailsSync()
+    ready.foreach(eventBus.publish)
+  }
+
+  /** Mark every row TMDB has not resolved as concluded-no-match, the state
+   *  production reaches once the daily retry gives up. Without it a fixture-less
+   *  film stays perpetually "unresolved" and keeps re-triggering enrichment. */
+  protected def concludeEnrichment(): Unit =
+    movieRepository.findAll().foreach { sr =>
+      if (!sr.record.tmdbConcluded)
+        movieRepository.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
+    }
+
+  /** Boot the corpus to the shape production reaches ~20s in: scrape once, drain
+   *  the cascade, refresh ratings, drop unscreened films, conclude enrichment.
+   *  Stops short of the read model — a harness that owns one projects on top of
+   *  this (see `FixtureTestWiring.bootStartup`). */
+  def bootCorpus(): Unit = {
+    runOneScrapeTick()
+    drainServices()
+    drainStaging()
+    // Ratings are queue tasks in production (drained by the TaskWorker). The
+    // harness doesn't run the worker, so refresh them synchronously here — the
+    // TMDB + IMDb-id cascade has already settled in drainServices.
+    enrichRatingsSync()
+    unscreenedCleanup.removeUnscreened()
+    concludeEnrichment()
+  }
+
   def enrichRatingsSync(): Unit =
     movieCache.snapshot()
       .filter(_.record.tmdbId.isDefined)

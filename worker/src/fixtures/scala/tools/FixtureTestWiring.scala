@@ -1,7 +1,7 @@
 package tools
 
 import clients.tools.FakeHttpFetch
-import services.events.MovieDetailsComplete
+
 import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter, WebReadModel}
 
@@ -86,58 +86,19 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // developer with KINOWO_PROXY_* in .env.local would otherwise do.
   override lazy val flicksFetch: HttpFetch = httoFetch
 
-  /** Record EVERY cinema first, THEN publish all the create events — load-bearing
-   *  for a deterministic single-pass snapshot, not arbitrary scaffolding.
-   *  Production publishes `MovieDetailsComplete` INLINE as each cinema lands and
-   *  relies on MANY 5-min passes (+ the daily retry) to converge; in ONE pass,
-   *  inline publish lets the async enrichment pool mutate (rekey/resolve) a row
-   *  WHILE a later cinema is still merging into it, so even a single-threaded
-   *  scrape comes out order-dependent (the events-seen count wobbles run to run).
-   *  Recording all cinemas before publishing settles every row to its final
-   *  scraped shape first. The order-INDEPENDENCE this side-steps is proved
-   *  directly and exhaustively by `ScrapeOrderDeterminismSpec`, which shuffles
-   *  cinema + event order under a jittered fetch clock and asserts byte-identical
-   *  records and rows across the whole corpus. */
-  def runOneScrapeTick(): Unit = {
-    val ready = collection.mutable.ListBuffer.empty[MovieDetailsComplete]
-    cinemaScrapers.foreach { scraper =>
-      try {
-        val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
-        // `classify` marks rows that await deferred detail `detailPending` (held
-        // back, no event yet) and returns the ready-now MovieDetailsComplete.
-        ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
-      } catch { case _: Exception => () }
-    }
-    // Cinemas that defer detail scrape BARE; fill each row's per-film detail via
-    // the EnrichDetails queue tasks NOW. `enrichDetailsSync` then publishes the
-    // detail-complete films' MovieDetailsComplete (the deferred TMDB trigger), so
-    // every TMDB resolution runs after the tick has settled, with the detail-page
-    // director/originalTitle/year already on the row. The ready-now events publish
-    // last — same "settle the whole tick, THEN publish" rule for both groups.
-    enrichDetailsSync()
-    ready.foreach(eventBus.publish)
-  }
-
-  /** Convenience: scrape every cinema once, drain the cascade, then run
-   *  the daily `UnscreenedCleanup` pass. After this returns the cache is in
-   *  the same shape it would be ~20s into production boot, so the rest of
-   *  the test can assert against `movieCache.snapshot()` directly (the serving
-   *  transform — `MovieControllerService.toSchedules` — is the web app's job
-   *  now and is tested there). */
+  /** Convenience: scrape every cinema once, drain the cascade, run the daily
+   *  `UnscreenedCleanup` pass, then project into the read model. After this
+   *  returns the cache is in the same shape it would be ~20s into production
+   *  boot, so the rest of the test can assert against `movieCache.snapshot()`
+   *  directly (the serving transform — `MovieControllerService.toSchedules` — is
+   *  the web app's job now and is tested there).
+   *
+   *  The corpus half is `TestWiring.bootCorpus`, shared with the archive-replay
+   *  wiring; the read-model tail is this wiring's alone, since it is the one that
+   *  owns `webReadModel`. Projection is a one-shot reconcile + reload (no
+   *  change-stream/scheduler) to keep the test deterministic and thread-free. */
   def bootStartup(): Unit = {
-    runOneScrapeTick()
-    drainServices()
-    drainStaging()
-    // Ratings are queue tasks in production (drained by the TaskWorker). The
-    // harness doesn't run the worker, so refresh them synchronously here — the
-    // TMDB + IMDb-id cascade has already settled in drainServices.
-    enrichRatingsSync()
-    unscreenedCleanup.removeUnscreened()
-    concludeEnrichment()
-    // Project the settled corpus into the read model and warm the web view, so
-    // a spec can serve via `webReadModel` exactly as the web app does. Done as a
-    // one-shot reconcile + reload (no change-stream/scheduler) to keep the test
-    // deterministic and thread-free.
+    bootCorpus()
     readModelProjector.reconcile()
     webReadModel.reload()
   }
@@ -197,12 +158,6 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
    *  so the read model reflects the settled corpus, not a transient
    *  mid-enrichment snapshot. These films were already `tmdbId`-less in the
    *  fixtures, so only their visibility changes, not their rendered data. */
-  private def concludeEnrichment(): Unit =
-    movieRepository.findAll().foreach { sr =>
-      if (!sr.record.tmdbConcluded)
-        movieRepository.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
-    }
-
   /** Settle the cache to its deterministic steady state. The production scrape
    *  (`cinemaScrapeRunner.run` per cinema) publishes enrichment INLINE as each
    *  cinema lands, so a film's TMDB/ratings can resolve against a partially-merged row; in
