@@ -99,7 +99,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/2001%3A+Odyseja+kosmiczna-1968-1458"
     },
     "weightedRating" : 8.35,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "AL"
   }, {
     "_id" : "2046|2004",
     "title" : "2046",
@@ -498,7 +499,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Akta+Bibiego-2024-10069070"
     },
     "weightedRating" : 7.95,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "albertalbertson|2026",
     "title" : "Albert Albertson",
@@ -597,7 +599,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=ALL+YOU+NEED+IS+KILL"
     },
     "weightedRating" : 7.333333333333333,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "anatomiaupadku|2023",
     "title" : "Anatomia upadku",
@@ -1046,7 +1049,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Batman-1989-1024"
     },
     "weightedRating" : 7.3500000000000005,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "bcaflashimprowizujewkinotece|2026",
     "title" : "BCA Flash improwizuje w Kinotece",
@@ -1373,7 +1377,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Bliskie+spotkania+trzeciego+stopnia-1977-1219"
     },
     "weightedRating" : 8.225,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "blisko|2022",
     "title" : "Blisko",
@@ -1399,7 +1404,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Blisko-2022-10009831"
     },
     "weightedRating" : 7.4,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "blueywkiniekolekcjazabawyzprzyjaciolmi|2026",
     "title" : "Bluey w kinie: Kolekcja Zabawy z przyjaciółmi",
@@ -1944,7 +1950,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Chainsaw+Man+-+The+Movie%3A+Reze+Arc-2025-10093832"
     },
     "weightedRating" : 8.333333333333334,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "charliechaplinkontrabusterkeaton|",
     "title" : "Charlie chaplin kontra buster keaton",
@@ -2005,7 +2012,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Chinatown-1974-1027"
     },
     "weightedRating" : 8.75,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "chlopieciczaplanapisyplponiedzialkizestudiemghibli|",
     "title" : "Chłopiec i czapla (napisy PL) | Poniedziałki ze Studiem Ghibli",
@@ -2449,7 +2457,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "cosiezdarzylobabyjaneamerykanskaklasyka|1962",
     "title" : "Co się zdarzyło baby jane? – amerykańska klasyka",
@@ -2608,7 +2617,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Czas+Apokalipsy-1979-1092"
     },
     "weightedRating" : 8.775,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "czlowiekdowszystkiego|2026",
     "title" : "Człowiek do wszystkiego",
@@ -3437,7 +3447,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Dobry%2C+z%C5%82y+i+brzydki-1966-5103"
     },
     "weightedRating" : 8.925,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "dobrzesieklamiewmilymtowarzystwie|2016",
     "title" : "Dobrze się kłamie w miłym towarzystwie",
@@ -4456,7 +4467,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Fargo-1996-1253"
     },
     "weightedRating" : 8.5,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "fargo|1996",
     "title" : "Fargo",
@@ -4481,7 +4493,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Fargo-1996-1253"
     },
     "weightedRating" : 8.5,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "fatherland|",
     "title" : "Fatherland",
@@ -4571,7 +4584,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Felek+i+Tola+ratuj%C4%85+las-2024-10048700"
     },
     "weightedRating" : 5.800000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "AL"
   }, {
     "_id" : "felixdaretodream|2025",
     "title" : "Felix – Dare to dream",
@@ -5166,7 +5180,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/%C5%9Aledz%C4%85c-1998-93473"
     },
     "weightedRating" : 7.25,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "frankenstein|2025",
     "title" : "Frankenstein",
@@ -5190,7 +5205,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Frankenstein-2025-591149"
     },
     "weightedRating" : 7.633333333333333,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "freakshow|2026",
     "title" : "Freak Show",
@@ -6606,7 +6622,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "klasykawkinieatlanticczasapokalipsy|1979",
     "title" : "Klasyka w kinie Atlantic: Czas Apokalipsy",
@@ -6689,7 +6706,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Rozmowa-1974-9253"
     },
     "weightedRating" : 8.325000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "klasykawkinieatlanticzawiescieczerwonelatarnie|1991",
     "title" : "Klasyka w kinie Atlantic: Zawieście czerwone latarnie",
@@ -6868,7 +6886,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Milczenie+owiec-1991-1047"
     },
     "weightedRating" : 8.75,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "klasykwkinierozmowa|1974",
     "title" : "Klasyk w kinie: Rozmowa",
@@ -6894,7 +6913,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Rozmowa-1974-9253"
     },
     "weightedRating" : 8.325000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "klatwadolinywezyzautorskanarracjalonypokazjednorazowy|",
     "title" : "Klątwa doliny węży – z autorską narracją Łony (pokaz jednorazowy)",
@@ -7373,7 +7393,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Kochanica+kr%C3%B3la+Jeanne+du+Barry-2023-10028214"
     },
     "weightedRating" : 5.65,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "kochanie|",
     "title" : "Kochanie",
@@ -7649,7 +7670,8 @@
       "wroclaw" : "Kosmiczny mecz to pełnometrażowy film, w którym - dzięki połączeniu filmu fabularnego z animacją - u boku Królika Bugsa i innych doskonale znanych i lubianych postaci Looney Tunes występuje koszykarz wszech czasów - MICHAEL JORDAN. Królik Bugs wraz z przyjaciółmi stawia czoła zrzędliwym przybyszom z obcej planety, którzy zamierzają porwać i przenieść postaci Looney Tunes na najbardziej ponurą planetę w całej galaktyce. Bugs- najbardziej szalony królik świata - proponuje kosmitom rozegranie meczu koszykarskiego. Stawką jest pozostawienie Królika Bugsa i jego przyjaciół w spokoju, no i oczywiście - przyszłość całej Ziemi. Bugs, Sylwester, Tweety, Daffy, a nawet Babunia, stają naprzeciw ślamazarnych stworków i kiedy wygrana wydaje się pewna, pokraczni kosmici zamieniają się w okamgnieniu w agresywnych i doskonałych koszykarzy. Na szczęście jest ktoś, kto może wybawić z opresji zrozpaczoną gromadkę...",
       "lodz" : "Kosmiczny mecz to pełnometrażowy film, w którym - dzięki połączeniu filmu fabularnego z animacją - u boku Królika Bugsa i innych doskonale znanych i lubianych postaci Looney Tunes występuje koszykarz wszech czasów - MICHAEL JORDAN. Królik Bugs wraz z przyjaciółmi stawia czoła zrzędliwym przybyszom z obcej planety, którzy zamierzają porwać i przenieść postaci Looney Tunes na najbardziej ponurą planetę w całej galaktyce. Bugs- najbardziej szalony królik świata - proponuje kosmitom rozegranie meczu koszykarskiego. Stawką jest pozostawienie Królika Bugsa i jego przyjaciół w spokoju, no i oczywiście - przyszłość całej Ziemi. Bugs, Sylwester, Tweety, Daffy, a nawet Babunia, stają naprzeciw ślamazarnych stworków i kiedy wygrana wydaje się pewna, pokraczni kosmici zamieniają się w okamgnieniu w agresywnych i doskonałych koszykarzy. Na szczęście jest ktoś, kto może wybawić z opresji zrozpaczoną gromadkę...",
       "czestochowa" : "Kosmiczny mecz to pełnometrażowy film, w którym - dzięki połączeniu filmu fabularnego z animacją - u boku Królika Bugsa i innych doskonale znanych i lubianych postaci Looney Tunes występuje koszykarz wszech czasów - MICHAEL JORDAN. Królik Bugs wraz z przyjaciółmi stawia czoła zrzędliwym przybyszom z obcej planety, którzy zamierzają porwać i przenieść postaci Looney Tunes na najbardziej ponurą planetę w całej galaktyce. Bugs- najbardziej szalony królik świata - proponuje kosmitom rozegranie meczu koszykarskiego. Stawką jest pozostawienie Królika Bugsa i jego przyjaciół w spokoju, no i oczywiście - przyszłość całej Ziemi. Bugs, Sylwester, Tweety, Daffy, a nawet Babunia, stają naprzeciw ślamazarnych stworków i kiedy wygrana wydaje się pewna, pokraczni kosmici zamieniają się w okamgnieniu w agresywnych i doskonałych koszykarzy. Na szczęście jest ktoś, kto może wybawić z opresji zrozpaczoną gromadkę..."
-    }
+    },
+    "ageRating" : "7"
   }, {
     "_id" : "kpopowelowczyniedemonowkaraokenazywoprzedseansem|2025",
     "title" : "K-popowe Łowczynie Demonów: Karaoke na żywo przed seansem",
@@ -7951,7 +7973,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=%E3%82%82%E3%81%AE%E3%81%AE%E3%81%91%E5%A7%AB"
     },
     "weightedRating" : 8.466666666666667,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "kultowedobranocki|",
     "title" : "Kultowe dobranocki",
@@ -8190,7 +8213,8 @@
       "wroclaw" : "Drogie Panie, zapraszamy na kolejną edycję Ladies Night w Cinema City! W programie: bezalkoholowy welcome drink, prezenty od partnerów dla każdego i konkursy z nagrodami. Tego wieczoru zobaczymy wzruszająca, filmowo-muzyczną opowieść o miłości, sławie i walce z własnymi demonami. Jackson Maine, gwiazdor muzyki country, którego kariera chyli się ku upadkowi, odkrywa utalentowaną, nieznaną nikomu piosenkarkę Ally. Kiedy między tą dwójką wybucha płomienny romans, Jack nakłania Ally do wyjścia z cienia i pomaga jej osiągnąć sławę. Jednak gdy kariera Ally w szybkim tempie przyćmiewa dokonania Jacka, jest mu coraz trudniej poradzić sobie z własną gasnącą gwiazdą.",
       "lodz" : "Drogie Panie, zapraszamy na kolejną edycję Ladies Night w Cinema City! W programie: bezalkoholowy welcome drink, prezenty od partnerów dla każdego i konkursy z nagrodami. Tego wieczoru zobaczymy wzruszająca, filmowo-muzyczną opowieść o miłości, sławie i walce z własnymi demonami. Jackson Maine, gwiazdor muzyki country, którego kariera chyli się ku upadkowi, odkrywa utalentowaną, nieznaną nikomu piosenkarkę Ally. Kiedy między tą dwójką wybucha płomienny romans, Jack nakłania Ally do wyjścia z cienia i pomaga jej osiągnąć sławę. Jednak gdy kariera Ally w szybkim tempie przyćmiewa dokonania Jacka, jest mu coraz trudniej poradzić sobie z własną gasnącą gwiazdą.",
       "czestochowa" : "Drogie Panie, zapraszamy na kolejną edycję Ladies Night w Cinema City! W programie: bezalkoholowy welcome drink, prezenty od partnerów dla każdego i konkursy z nagrodami. Tego wieczoru zobaczymy wzruszająca, filmowo-muzyczną opowieść o miłości, sławie i walce z własnymi demonami. Jackson Maine, gwiazdor muzyki country, którego kariera chyli się ku upadkowi, odkrywa utalentowaną, nieznaną nikomu piosenkarkę Ally. Kiedy między tą dwójką wybucha płomienny romans, Jack nakłania Ally do wyjścia z cienia i pomaga jej osiągnąć sławę. Jednak gdy kariera Ally w szybkim tempie przyćmiewa dokonania Jacka, jest mu coraz trudniej poradzić sobie z własną gasnącą gwiazdą."
-    }
+    },
+    "ageRating" : "12"
   }, {
     "_id" : "lagomera|2019",
     "title" : "La Gomera",
@@ -8215,7 +8239,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/La+Gomera-2019-829450"
     },
     "weightedRating" : 7,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "lagrazia|2025",
     "title" : "La grazia",
@@ -9519,7 +9544,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Milczenie+owiec-1991-1047"
     },
     "weightedRating" : 8.75,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "miloscipolityka|",
     "title" : "Miłość i polityka",
@@ -9680,7 +9706,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Minionki+i+straszyd%C5%82a-2026-10056836"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "minionkiistraszydla|2026",
     "title" : "Minionki i straszydła",
@@ -9702,7 +9729,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Minionki+i+straszyd%C5%82a-2026-10056836"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "mira|2025",
     "title" : "Mira",
@@ -10170,7 +10198,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Mulholland+Drive-2001-30630"
     },
     "weightedRating" : 8.125,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "munchmiloscduchyiwampirzyce|2022",
     "title" : "Munch: miłość, duchy i wampirzyce",
@@ -10686,7 +10715,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Nied%C5%BAwiedzie+nie+istniej%C4%85-2022-10016727"
     },
     "weightedRating" : 8.275,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "niemartwsienicminiejest|2024",
     "title" : "Nie martw się, nic mi nie jest",
@@ -10754,7 +10784,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Nienawi%C5%9B%C4%87-1995-8106"
     },
     "weightedRating" : 8.533333333333333,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "niesamowitahistoriamumbojumbo|2026",
     "title" : "Niesamowita historia Mumbo Jumbo",
@@ -11500,7 +11531,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Ojciec+chrzestny-1972-1089"
     },
     "weightedRating" : 9.375,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "ojciecchrzestny|1972",
     "title" : "Ojciec chrzestny",
@@ -11526,7 +11558,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Ojciec+chrzestny-1972-1089"
     },
     "weightedRating" : 9.375,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "ojciecroku|",
     "title" : "Ojciec roku",
@@ -11747,7 +11780,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Okno+na+podw%C3%B3rze-1954-1324"
     },
     "weightedRating" : 9.05,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "omahapokazwdkfmegaron|",
     "title" : "Omaha (pokaz w DKF Megaron)",
@@ -12181,7 +12215,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Pan+Nikt+kontra+Putin-2025-10071319"
     },
     "weightedRating" : 8.25,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "panniktkontraputin|2025",
     "title" : "Pan Nikt kontra Putin",
@@ -12207,7 +12242,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Pan+Nikt+kontra+Putin-2025-10071319"
     },
     "weightedRating" : 8.25,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "panryba|2026",
     "title" : "Pan Ryba",
@@ -12292,7 +12328,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=%EA%B8%B0%EC%83%9D%EC%B6%A9"
     },
     "weightedRating" : 9.366666666666667,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "pasazer|2026",
     "title" : "Pasażer",
@@ -12480,7 +12517,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Pianista-2002-32225"
     },
     "weightedRating" : 7.05,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "pieknobezrozmiarupokazstyluurodyidobrychmanieriprojekcjafilmuquotcruellaquot|",
     "title" : "Piękno Bez Rozmiaru [Pokaz stylu, urody i dobrych manier] i projekcja filmu &quot; Cruella&quot;",
@@ -12702,7 +12740,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Ba%C5%82tyk-2025-10076365"
     },
     "weightedRating" : 6.9,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "plenerowepalacowebezwyjscia|2025",
     "title" : "Plenerowe Pałacowe: Bez wyjścia",
@@ -12981,7 +13020,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Palm+Springs-2020-839586"
     },
     "weightedRating" : 8.05,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "plenerowepalacoweparasite|2019",
     "title" : "Plenerowe Pałacowe: Parasite",
@@ -13006,7 +13046,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=%EA%B8%B0%EC%83%9D%EC%B6%A9"
     },
     "weightedRating" : 9.366666666666667,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "plenerowepalacoweperfectdays|2023",
     "title" : "Plenerowe Pałacowe: Perfect Days",
@@ -13161,7 +13202,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Odg%C5%82osy-1977-90970"
     },
     "weightedRating" : 7.400000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "plenerowepalacowewartoscsentymentalna|2025",
     "title" : "Plenerowe Pałacowe: Wartość sentymentalna",
@@ -13382,7 +13424,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "podziemnykragfightclub|1999",
     "title" : "Podziemny Krąg (Fight Club)",
@@ -13408,7 +13451,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "podziemnykragpokazwdkfmegaron|1999",
     "title" : "Podziemny krąg (pokaz w DKF Megaron)",
@@ -13434,7 +13478,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "podziemnykragrerelease|1999",
     "title" : "Podziemny krąg (re-release)",
@@ -13460,7 +13505,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "podziemnykragzrekonstruowanawersja4k|1999",
     "title" : "Podziemny krąg - zrekonstruowana wersja 4K",
@@ -13505,7 +13551,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "pogarda|",
     "title" : "Pogarda",
@@ -13847,7 +13894,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/serial/Pucio-2026-10016294"
     },
     "weightedRating" : 7.1,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "AL"
   }, {
     "_id" : "poranekrodzinnyzksiazkamyszoneklecisamolotemfrajdawmuzie|",
     "title" : "Poranek Rodzinny z książką \"Myszonek leci samolotem\" | Frajda W Muzie!",
@@ -13916,7 +13964,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Portret+kobiety+w+ogniu-2019-829444"
     },
     "weightedRating" : 8.775,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "poslanikinodlaseniora|2026",
     "title" : "Posłani – kino dla seniora",
@@ -13938,7 +13987,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Pos%C5%82ani-2026-10121693"
     },
     "weightedRating" : 6.4,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "poslani|2026",
     "title" : "Posłani",
@@ -14243,7 +14293,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Projekt+Hail+Mary-2026-10047841"
     },
     "weightedRating" : 8.325000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "projekthailmary|2026",
     "title" : "Projekt Hail Mary",
@@ -14373,7 +14424,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Przekle%C5%84stwa+niewinno%C5%9Bci-1999-10981"
     },
     "weightedRating" : 7.55,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "przeklenstwaniewinnoscipokazprzedpremierowy|2000",
     "title" : "Przekleństwa niewinności | Pokaz Przedpremierowy",
@@ -14399,7 +14451,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Przekle%C5%84stwa+niewinno%C5%9Bci-1999-10981"
     },
     "weightedRating" : 7.55,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "przeklenstwaniewinnosci|2000",
     "title" : "Przekleństwa Niewinności",
@@ -14425,7 +14478,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Przekle%C5%84stwa+niewinno%C5%9Bci-1999-10981"
     },
     "weightedRating" : 7.55,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "przekletychlopiec|2025",
     "title" : "Przeklęty chłopiec",
@@ -14627,7 +14681,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/serial/Pucio-2026-10016294"
     },
     "weightedRating" : 7.1,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "AL"
   }, {
     "_id" : "quovadis|",
     "title" : "Quo Vadis",
@@ -14962,7 +15017,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Rozmowa-1974-9253"
     },
     "weightedRating" : 8.325000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "ruchomyzamekhauru|2004",
     "title" : "Ruchomy zamek Hauru",
@@ -14988,7 +15044,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Ruchomy+zamek+Hauru-2004-128710"
     },
     "weightedRating" : 8.3,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "saltoponiedzialkizkonwickimpisarzscenarzystarezyser|",
     "title" : "Salto | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser",
@@ -15725,7 +15782,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Sprawa+Kramer%C3%B3w-1979-1294"
     },
     "weightedRating" : 8.05,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "AL"
   }, {
     "_id" : "sprawiedliwoscowiec|2026",
     "title" : "Sprawiedliwość owiec",
@@ -15845,7 +15903,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Stowarzyszenie+Umar%C5%82ych+Poet%C3%B3w-1989-1262"
     },
     "weightedRating" : 8.075,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "stowarzyszenieumarlychpoetow|1989",
     "title" : "Stowarzyszenie Umarłych Poetów",
@@ -15871,7 +15930,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Stowarzyszenie+Umar%C5%82ych+Poet%C3%B3w-1989-1262"
     },
     "weightedRating" : 8.075,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "strasznyfilm6|",
     "title" : "Straszny film 6",
@@ -15980,7 +16040,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Strefa+interes%C3%B3w-2023-10014103"
     },
     "weightedRating" : 8.225,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "supergirlukrainskidubbing|2026",
     "title" : "Supergirl ukraiński dubbing",
@@ -16189,7 +16250,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Szcz%C4%99ki-1975-1217"
     },
     "weightedRating" : 8.399999999999999,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "szczeki|1975",
     "title" : "Szczęki",
@@ -16215,7 +16277,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Szcz%C4%99ki-1975-1217"
     },
     "weightedRating" : 8.399999999999999,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "szczesciarze|",
     "title" : "Szczęściarze",
@@ -16300,7 +16363,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Szopy+w+natarciu-1994-111708"
     },
     "weightedRating" : 7.7,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "sztukanaekranielottoiberensonsplecionelosysladamirenesansowegomistrza|",
     "title" : "Sztuka na ekranie: Lotto i Berenson – splecione losy. Śladami renesansowego mistrza",
@@ -16862,7 +16926,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
     },
     "weightedRating" : 7.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "taniwtorekrobinhoodkonieclegendy|2026",
     "title" : "Tani wtorek: Robin hood. Koniec legendy",
@@ -16951,7 +17016,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Testament+Ann+Lee-2025-10090000"
     },
     "weightedRating" : 7.300000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "theamazingdigitalcircusthelastact|2026",
     "title" : "The Amazing Digital Circus: The Last Act",
@@ -17118,7 +17184,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/To+nie+m%C3%B3j+film-2024-10049380"
     },
     "weightedRating" : 6.65,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "touczucie|2024",
     "title" : "To uczucie",
@@ -17141,7 +17208,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/To+uczucie-2024-10056090"
     },
     "weightedRating" : 6.800000000000001,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "toystory52ddubsps|",
     "title" : "Toy story 5 2d dub. sps",
@@ -17195,7 +17263,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Toy+Story+5-2026-10051461"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "toystory5|2026",
     "title" : "Toy Story 5",
@@ -17235,7 +17304,8 @@
       "wroclaw" : "Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. Reżyserem filmu jest Andrew Stanton, współreżyserem Kenna Harris, a producentem Lindsey Collins. Premiera „Toy Story 5” odbędzie się tylko w kinach, 19 czerwca 2026.",
       "lodz" : "Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. Reżyserem filmu jest Andrew Stanton, współreżyserem Kenna Harris, a producentem Lindsey Collins. Premiera „Toy Story 5” odbędzie się tylko w kinach, 19 czerwca 2026.",
       "czestochowa" : "Zabawki powracają w filmie Disneya i Pixara „Toy Story 5”, w którym na scenę wkracza technologia. Buzz, Chudy, Jessie i reszta ekipy mają trudne zadanie, gdy przychodzi im zmierzyć się z zupełnie nowym zagrożeniem. Reżyserem filmu jest Andrew Stanton, współreżyserem Kenna Harris, a producentem Lindsey Collins. Premiera „Toy Story 5” odbędzie się tylko w kinach, 19 czerwca 2026."
-    }
+    },
+    "ageRating" : "7"
   }, {
     "_id" : "trenertenisa|",
     "title" : "Trener tenisa",
@@ -17374,7 +17444,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Trzy+kolory%3A+Czerwony-1994-1162"
     },
     "weightedRating" : 8.975,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "trzykoloryniebieski|1993",
     "title" : "Trzy kolory: Niebieski",
@@ -17473,7 +17544,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Tylko+kochankowie+prze%C5%BCyj%C4%85-2013-650619"
     },
     "weightedRating" : 7.725,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "ucztababette|1987",
     "title" : "Uczta Babette",
@@ -17588,7 +17660,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Uwierz+w+ducha-1990-1258"
     },
     "weightedRating" : 6.1499999999999995,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "uwierzwducha|1990",
     "title" : "Uwierz w ducha",
@@ -17614,7 +17687,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Uwierz+w+ducha-1990-1258"
     },
     "weightedRating" : 6.1499999999999995,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "vaiana2|",
     "title" : "Vaiana 2",
@@ -18120,7 +18194,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/W+gorsecie-2022-10011944"
     },
     "weightedRating" : 7.25,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "16"
   }, {
     "_id" : "wieczoryzkinempolskimchlopakinieplacza|",
     "title" : "Wieczory z Kinem Polskim: Chłopaki nie płaczą",
@@ -19995,7 +20070,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Zwierzogr%C3%B3d+2-2025-10051462"
     },
     "weightedRating" : 7.85,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "zygfryddyskusjakinoniejawnequeerowekodyprlu|1987",
     "title" : "Zygfryd + dyskusja | Kino (nie)jawne: queerowe kody PRL-u",
@@ -20147,7 +20223,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Minionki+i+straszyd%C5%82a-2026-10056836"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   }, {
     "_id" : "супергьорл|",
     "title" : "Супергьорл",
@@ -20188,7 +20265,8 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Toy+Story+5-2026-10051461"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "synopsisByCity" : { },
+    "ageRating" : "7"
   } ],
   "screenings" : [ {
     "_id" : "100rocznicaurodzintadeuszakonwickiegoprzechodzienjakdalekostadjakblisko||warszawa|Kino Muranów",

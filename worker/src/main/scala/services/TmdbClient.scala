@@ -362,8 +362,8 @@ class TmdbClient(
     }.getOrElse(Set.empty)
   }.getOrElse(Set.empty)
 
-  /** One TMDB `/movie/{id}?language=<deployment>&append_to_response=credits` call
-   *  returning everything the TMDB enrichment stage needs to fill a
+  /** One TMDB `/movie/{id}?language=<deployment>&append_to_response=credits,release_dates`
+   *  call returning everything the TMDB enrichment stage needs to fill a
    *  `SourceData(Tmdb)` slot:
    *    - Deployment-language title + production-language original title
    *    - Deployment-language synopsis (`overview`)
@@ -373,13 +373,24 @@ class TmdbClient(
    *    - Poster URL — the best deployment-language portrait poster from `/movie/{id}/images`
    *      (see `posters`), falling back to the default `poster_path` when that
    *      endpoint has no usable portrait variant.
+   *    - Age rating — the deployment country's certification, out of the appended
+   *      `release_dates` block.
    *
    *  Returns None on network failure / unknown id — callers fall back to
    *  whatever the previous slot held. The detail itself is one round-trip; the
    *  poster lookup adds a single failure-tolerant `/images` call, so a poster
-   *  hiccup never breaks the resolve. */
+   *  hiccup never breaks the resolve.
+   *
+   *  `release_dates` rides along on `append_to_response` rather than costing its own
+   *  request. It shipped as a separate `/movie/{id}/release_dates` call to spare the
+   *  detail fixtures a re-fingerprint — which bought a per-resolve round-trip AND left
+   *  the endpoint with no fixture in the committed corpus at all, so `FakeHttpFetch`
+   *  threw for it, `Try` swallowed that, and every film in CI resolved with no age
+   *  rating while a developer holding a locally-recorded tree saw them appear. Folding
+   *  it in costs one fixture migration and removes both problems: same request count as
+   *  before the feature, and the rating now arrives in the body every test already replays. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
-    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=$languageTag&append_to_response=credits${apiKeyParameter("&")}", auth))
+    Try(httpGet(s"$ApiBase/movie/$tmdbId?language=$languageTag&append_to_response=credits,release_dates${apiKeyParameter("&")}", auth))
       .toOption.map { body =>
         val js   = Json.parse(body)
         val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
@@ -398,14 +409,15 @@ class TmdbClient(
         // no separate id→name lookup needed.
         val genres = (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
           .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
-        // Per-country age rating (BBFC "12A", FSK "16", …): a SEPARATE
-        // `/movie/{id}/release_dates` call (kept off the detail URL so the detail
-        // fixtures don't re-fingerprint), selecting the DEPLOYMENT country's
-        // certification. A cinema-scraped rating still wins (`MovieRecord.ageRating`
-        // is cinema-first); this is the fallback that gives every resolved film a
-        // per-country rating even where no cinema exposes one. Best-effort — a miss
-        // yields None. Verbatim — TMDB's own label for that country.
-        val ageRating = releaseCertification(tmdbId, auth)
+        // Per-country age rating (BBFC "12A", FSK "16", …) out of the APPENDED
+        // `release_dates` block, selecting the DEPLOYMENT country's certification. A
+        // cinema-scraped rating still wins (`MovieRecord.ageRating` is cinema-first);
+        // this is the fallback that gives every resolved film a per-country rating even
+        // where no cinema exposes one — in Poland that is every arthouse and independent
+        // venue, since only the three big chains label a certificate. Best-effort: a
+        // body without the block yields None. Verbatim — TMDB's own label for that country.
+        val ageRating = Option(language.getCountry).filter(_.nonEmpty).flatMap(country =>
+          (js \ "release_dates").toOption.flatMap(TmdbClient.certificationFor(_, country)))
         TmdbClient.FullDetails(
           title         = (js \ "title").asOpt[String].filter(_.nonEmpty),
           originalTitle = (js \ "original_title").asOpt[String].filter(_.nonEmpty),
@@ -427,18 +439,6 @@ class TmdbClient(
           ageRating     = ageRating
         )
       }
-  }
-
-  /** The DEPLOYMENT country's age-rating certification from TMDB's
-   *  `/movie/{id}/release_dates` (`results[].iso_3166_1` → `release_dates[].certification`).
-   *  Country from `language.getCountry` (GB/DE/PL). First non-blank certification for
-   *  that country, verbatim. Best-effort: a network/parse failure or no match yields
-   *  None (so the film simply carries no TMDB-sourced rating). A separate call rather
-   *  than `append_to_response`, so the movie-detail fixtures keep their fingerprint. */
-  private def releaseCertification(tmdbId: Int, auth: Map[String, String]): Option[String] = {
-    val country = language.getCountry
-    if (country.isEmpty) None
-    else Try(TmdbClient.certificationFor(Json.parse(httpGet(s"$ApiBase/movie/$tmdbId/release_dates${apiKeyParameter("?")}", auth)), country)).toOption.flatten
   }
 
   /** Deployment-language + language-neutral poster variants for a movie, from
@@ -521,10 +521,14 @@ class TmdbClient(
 
 object TmdbClient {
   /** The `certification` for `country` (ISO-3166-1, e.g. "GB"/"DE"/"PL") from a
-   *  `/movie/{id}/release_dates` JSON body: the matching `results[].iso_3166_1`
-   *  block's first non-blank `release_dates[].certification`, verbatim. None when
-   *  the country isn't listed or carries only blank certs. Pure (no I/O) so the
-   *  country-selection is unit-tested without a live call. */
+   *  release-dates block: the matching `results[].iso_3166_1` entry's first non-blank
+   *  `release_dates[].certification`, verbatim. None when the country isn't listed or
+   *  carries only blank certs. Pure (no I/O) so the country-selection is unit-tested
+   *  without a live call.
+   *
+   *  Takes the BLOCK, not the whole response, so it reads the same either way: TMDB's
+   *  `/movie/{id}/release_dates` body and the `release_dates` value appended to a detail
+   *  response are the same `{id, results[]}` shape. */
   def certificationFor(js: play.api.libs.json.JsValue, country: String): Option[String] =
     (js \ "results").asOpt[play.api.libs.json.JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .find(r => (r \ "iso_3166_1").asOpt[String].contains(country))

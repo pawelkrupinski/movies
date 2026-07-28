@@ -17,15 +17,25 @@ import scala.jdk.CollectionConverters._
 class RemovalAuditSpec extends AnyFlatSpec with Matchers {
 
   /** Run `body` with a logback ListAppender attached to the audit logger (forced to
-   *  DEBUG so both levels are captured), returning the events it emitted. */
+   *  DEBUG so both levels are captured), returning the events THIS THREAD emitted.
+   *
+   *  The thread filter is load-bearing, not tidiness. `kinowo.removal-audit` is a
+   *  fixed-name, process-global logger, so the appender catches every audit line any
+   *  suite emits while it is attached — and ScalaTest runs suites in parallel, with
+   *  `StagingFoldSpec`, `MovieCacheSpec` and friends all performing real deletes. The
+   *  assertions below pin an EXACT event list, so one foreign line failed them; the
+   *  odds rise sharply when `MONGODB_URI` is set and the Mongo-backed suites do real
+   *  work. Every call under test is synchronous on the test thread, so keeping only
+   *  this thread's events is both precise and complete. */
   private def capture(body: => Unit): Seq[ILoggingEvent] = {
     val lg  = LoggerFactory.getLogger(RemovalAudit.LoggerName).asInstanceOf[LogbackLogger]
     val app = new ListAppender[ILoggingEvent]()
     app.start()
     val prevLevel = lg.getLevel
+    val thread    = Thread.currentThread().getName
     lg.setLevel(Level.DEBUG)
     lg.addAppender(app)
-    try { body; app.list.asScala.toSeq }
+    try { body; app.list.asScala.toSeq.filter(_.getThreadName == thread) }
     finally { lg.detachAppender(app); lg.setLevel(prevLevel) }
   }
 

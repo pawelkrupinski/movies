@@ -10,24 +10,20 @@ import java.util.Locale
 import scala.collection.mutable
 
 /**
- * The `/movie/{id}/release_dates` endpoint, replayed through `TmdbClient` from a REAL
- * recorded payload rather than a hand-written one — per the `record-client-fixtures` rule,
- * which this endpoint shipped without: it had a pure unit test over invented JSON and no
- * coverage of the client issuing the call at all. The e2e fixture tree carries no
- * `release_dates` response either, so `FakeHttpFetch` throws for it, `releaseCertification`
- * swallows the throw, and every film in the harness resolves with `ageRating = None` — the
- * TMDB half of the age-rating feature is invisible to every test layer.
+ * TMDB's release-dates block, replayed through `TmdbClient` from a REAL recorded payload
+ * rather than a hand-written one — per the `record-client-fixtures` rule, which this
+ * endpoint shipped without: it had a pure unit test over invented JSON and no coverage of
+ * the client issuing the call at all.
  *
  * Fixture: `GET https://api.themoviedb.org/3/movie/27205/release_dates` (Inception),
  * recorded 2026-07-28. 75 countries, which is why the real payload is worth having: the
  * invented one had five.
  *
- * These specs also pin the REQUEST COUNT. Resolving one film's details issues a second
- * round-trip purely because this endpoint was kept off the detail URL — stated in the
- * source as being so the detail fixtures keep their fingerprint. That is a real cost paid
- * on every resolve; folding it into `append_to_response` would remove it, at the price of
- * re-recording every detail fixture. Pinning the count here means the trade is visible and
- * a future change to it is deliberate.
+ * These specs also pin the REQUEST COUNT at ONE. The certification now rides along on
+ * `append_to_response=credits,release_dates`; it shipped as a separate call, which cost a
+ * round-trip per resolve and — because that URL had no fixture in the committed corpus —
+ * meant CI resolved every film with no age rating while a developer holding a locally
+ * recorded tree saw them appear.
  */
 class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
 
@@ -77,19 +73,39 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
     TmdbClient.certificationFor(Json.parse(releaseDates), "GB") shouldBe Some("12A")
   }
 
-  "resolving one film's details" should "cost TWO TMDB round-trips, not one" in {
-    // The measured cost of keeping release_dates off the detail URL. Not a defect on its
-    // own — TMDB's limit is nowhere near — but it is a per-resolve tax paid for a test-
-    // fixture convenience, and it should not change without someone noticing.
-    val fetch = new RecordingFetch(Map(
-      ((_: String).contains("/release_dates")) -> releaseDates,
-      ((u: String) => u.contains("/movie/27205?")) -> """{"title":"Inception","genres":[],"production_countries":[]}"""))
+  /** The whole detail response as TMDB returns it under
+   *  `append_to_response=credits,release_dates`: the appended value is the same
+   *  `{id, results[]}` block the standalone endpoint serves. */
+  private val detailWithAppend =
+    s"""{"title":"Inception","genres":[],"production_countries":[],
+       | "credits":{"crew":[],"cast":[]},
+       | "release_dates":${Json.parse(releaseDates)}}""".stripMargin
+
+  "resolving one film's details" should "cost ONE TMDB round-trip, not two" in {
+    // The certification rides along on `append_to_response` instead of costing its own
+    // request. It shipped as a separate call to spare the detail fixtures a re-fingerprint;
+    // that bought a per-resolve round-trip and, worse, left the endpoint with no fixture in
+    // the committed corpus, so CI resolved every film with no age rating at all.
+    val fetch = new RecordingFetch(Map(((_: String).contains("/movie/27205")) -> detailWithAppend))
     client(fetch, Locale.UK).fullDetails(27205)
 
-    val tmdbCalls = fetch.urls.filter(_.contains("/movie/27205"))
-    withClue(s"calls were ${tmdbCalls.mkString(", ")}: ") {
-      tmdbCalls.count(_.contains("/release_dates")) shouldBe 1
-      tmdbCalls.exists(u => u.contains("append_to_response") && u.contains("release_dates")) shouldBe false
+    val detailCalls = fetch.urls.filter(_.contains("/movie/27205"))
+    withClue(s"calls were ${detailCalls.mkString(", ")}: ") {
+      detailCalls.count(_.endsWith("/release_dates")) shouldBe 0
+      detailCalls.count(_.contains("append_to_response=credits,release_dates")) shouldBe 1
     }
+  }
+
+  it should "read the appended block, so the film carries its certification" in {
+    val fetch = new RecordingFetch(Map(((_: String).contains("/movie/27205")) -> detailWithAppend))
+    client(fetch, Locale.UK).fullDetails(27205).flatMap(_.ageRating) shouldBe Some("12A")
+  }
+
+  it should "carry no rating when the body has no appended block, rather than throwing" in {
+    // An older recorded body, or a TMDB response that dropped the append: the film simply
+    // has no TMDB-sourced rating, exactly as before the feature existed.
+    val fetch = new RecordingFetch(Map(((_: String).contains("/movie/27205")) ->
+      """{"title":"Inception","genres":[],"production_countries":[]}"""))
+    client(fetch, Locale.UK).fullDetails(27205).flatMap(_.ageRating) shouldBe None
   }
 }
