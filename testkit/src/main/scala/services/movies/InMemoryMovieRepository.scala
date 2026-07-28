@@ -1,6 +1,6 @@
 package services.movies
 
-import models.MovieRecord
+import models.{MovieRecord, Source, SourceData}
 
 import scala.collection.mutable
 
@@ -29,10 +29,17 @@ class InMemoryMovieRepository(
   // merge/re-key spec passed while prod bled. Every routing decision below goes through
   // the SAME pure helpers `MongoMovieRepository` uses — `stripShowtimes`, `showtimesOf`,
   // `reStitch`, `stitch` — so the fake cannot drift from the real one.
-  screenings: Option[ScreeningsRepository] = None
+  screenings: Option[ScreeningsRepository] = None,
+  // The second half of the same split: the per-cinema `SourceData` themselves, out of
+  // `movies.sourceData` and into `movie_slots`. Wire BOTH to get production's storage
+  // shape — with only `screenings` the record still carries its cinema keys inline, so a
+  // reader that never consults `movie_slots` still sees every cinema and the mid-migration
+  // union (`SlotsRepository.merge`) is never exercised.
+  slots: Option[SlotsRepository] = None
 ) extends MovieRepository {
 
   override def hasScreenings: Boolean = screenings.isDefined
+  override def hasSlots:      Boolean = slots.isDefined
 
   private val store   = mutable.LinkedHashMap.empty[String, StoredMovieRecord]
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
@@ -55,8 +62,21 @@ class InMemoryMovieRepository(
   // attaches the cache AND the read-model projector); a single-watcher stub
   // would model only one and hide the multiplexing the real cursor now does.
   private val changes = new ChangeStreamFanout[StoredMovieRecord]("InMemoryMovieRepository")
-  private def notifyWatcher(t: String, y: Option[Int], e: MovieRecord): Unit =
-    changes.dispatchUpsert(StoredMovieRecord.fromStorage(idOf(t, y), e))
+  private def notifyWatcher(t: String, y: Option[Int], e: MovieRecord): Unit = {
+    // Watchers get the record a READER would see, not the shrunken `movies` document —
+    // the real change stream re-decodes the row and `decodeStitched` puts its slots and
+    // showtimes back. A fake that dispatched the stripped record would have every
+    // change-stream consumer (the cache, the read-model projector) see films with no
+    // cinemas the moment the split was wired.
+    val id = idOf(t, y)
+    changes.dispatchUpsert(StoredMovieRecord.fromStorage(id, e.copy(data = stitchSides(
+      id, e.data,
+      slots.map(_.findAll()).getOrElse(Map.empty),
+      screenings.map(_.findAll()).getOrElse(Map.empty)))))
+  }
+
+  private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =
+    if (screenings.isDefined) ScreeningsRepository.stripShowtimes(data) else data
 
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
@@ -77,13 +97,33 @@ class InMemoryMovieRepository(
   // deterministic where Mongo's re-derivation isn't. The fake differs from Mongo
   // only at the infra boundary (a HashMap, not BSON), never in read semantics.
   def findAll(): Seq[StoredMovieRecord] = lock.synchronized {
-    val all = screenings.map(_.findAll()).getOrElse(Map.empty)
+    val allScreenings = screenings.map(_.findAll()).getOrElse(Map.empty)
+    val allSlots      = slots.map(_.findAll()).getOrElse(Map.empty)
     store.iterator.map { case (id, s) =>
-      val row = StoredMovieRecord.fromStorage(id, s.record)
-      if (screenings.isEmpty) row
-      else row.copy(record = row.record.copy(
-        data = ScreeningsRepository.stitch(row.record.data, all.getOrElse(id, Map.empty))))
+      // Stitch FIRST, derive after — `fromStorage` reads the row's title off its cinema
+      // slots, and for a migrated film those are in `movie_slots`, not in the stored record.
+      // Same order as `MongoMovieRepository.stitchRow`, and for the same reason.
+      StoredMovieRecord.fromStorage(id,
+        s.record.copy(data = stitchSides(id, s.record.data, allSlots, allScreenings)))
     }.toSeq
+  }
+
+  /** Rebuild a row's `data` the way every production reader does: `movie_slots` UNIONED
+   *  with whatever the `movies` document still embeds (neither is complete mid-migration),
+   *  then showtimes re-injected from `screenings`. Same helpers, same order as
+   *  `MongoMovieRepository.decodeStitched`. */
+  private def stitchSides(
+    id: String,
+    embedded: Map[Source, SourceData],
+    allSlots: Map[String, Map[String, SourceData]],
+    allScreenings: Map[String, Map[String, Seq[models.Showtime]]]
+  ): Map[Source, SourceData] = {
+    val withSlots = slots.fold(embedded) { _ =>
+      val stored = allSlots.getOrElse(id, Map.empty)
+      if (stored.isEmpty) embedded else SlotsRepository.merge(embedded, stored)
+    }
+    screenings.fold(withSlots)(_ =>
+      ScreeningsRepository.stitch(withSlots, allScreenings.getOrElse(id, Map.empty)))
   }
 
   def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
@@ -93,20 +133,36 @@ class InMemoryMovieRepository(
     // `replaceFilm` proceeds to delete), then store the row WITHOUT showtimes and file
     // them under the film id.
     val restitched = screenings.fold(e.data)(ScreeningsRepository.reStitch(_, id, e.data))
-    val forStore   = if (screenings.isEmpty) e else e.copy(data = ScreeningsRepository.stripShowtimes(restitched))
-    store.put(id, StoredMovieRecord(t, y, forStore))
+    // Slots go FIRST, and the embedded map is dropped only once they have actually landed —
+    // dropping it on a failed slot write is the one way this migration loses a film's
+    // cinemas outright. An already-matching row counts as landed (see the same skip in
+    // `MongoMovieRepository.upsert`, which exists so a showtime-only change doesn't churn
+    // every slot of a film showing at 471 venues).
+    val slotPayload = SlotsRepository.slotsOf(restitched)
+    val slotsLanded = slots.exists(sl =>
+      if (sl.findForFilm(id) == slotPayload) true else sl.replaceFilm(id, slotPayload))
+    val dataForMovies =
+      if (slotsLanded) Map.empty[Source, SourceData]
+      else if (screenings.isEmpty) restitched
+      else ScreeningsRepository.stripShowtimes(restitched)
+    store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies)))
     screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(restitched)))
     upserts.append((t, y, e))
     notifyWatcher(t, y, e)
   }
 
-  /** Carry a film's screenings across a re-key / fold, mirroring
+  /** Carry a film's screenings AND slots across a re-key / fold, mirroring
    *  `MongoMovieRepository.moveFilm` — rows already at `newId` are kept, the moved ones
-   *  winning a shared slot key. */
+   *  winning a shared slot key. Both stores move, or a fold keeps the showtimes and loses
+   *  the cinema metadata that names them. */
   override def moveFilm(oldId: String, newId: String): Unit = if (oldId != newId) lock.synchronized {
     screenings.foreach { s =>
       val moving = s.findForFilm(oldId)
       if (moving.nonEmpty) { s.replaceFilm(newId, s.findForFilm(newId) ++ moving); s.deleteFilm(oldId) }
+    }
+    slots.foreach { sl =>
+      val moving = sl.findForFilm(oldId)
+      if (moving.nonEmpty) { sl.replaceFilm(newId, sl.findForFilm(newId) ++ moving); sl.deleteFilm(oldId) }
     }
   }
 
@@ -119,11 +175,31 @@ class InMemoryMovieRepository(
         // `before` and `after` differ get overwritten; everything else keeps
         // whatever the current store has. Tests for the audit-clobber race
         // depend on this.
-        val patch = MovieRecordPatch.diff(before, after)
+        // Under the split the deltas are routed exactly as `MongoMovieRepository` routes
+        // them: showtime changes to `screenings`, slot changes to `movie_slots`, and the
+        // `movies` patch carries NEITHER. Patching `sourceData` here would resurrect the
+        // embedded map field by field and undo the shrink the split exists for — and,
+        // because `upsert` leaves that map empty, would patch onto emptiness and store a
+        // record holding only the slots this one call happened to touch.
+        val showtimeOps = if (screenings.isDefined) ScreeningsRepository.slotOps(before.data, after.data)
+                          else Map.empty[String, Option[Seq[models.Showtime]]]
+        val slotOps     = if (slots.isDefined) SlotsRepository.slotOps(before.data, after.data)
+                          else Map.empty[String, Option[SourceData]]
+        val rawPatch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)),
+                                             after.copy(data = stripFor(after.data)))
+        val patch    = if (slots.isDefined) rawPatch.copy(data = Map.empty) else rawPatch
         // Nothing changed — skip the write + change notification, exactly as
         // MongoMovieRepository does (no pure-`updatedAt` no-op event).
-        if (patch.isEmpty) true
+        if (patch.isEmpty && showtimeOps.isEmpty && slotOps.isEmpty) true
         else {
+          screenings.foreach(s => showtimeOps.foreach {
+            case (k, Some(times)) => s.upsertSlot(id, k, times)
+            case (k, None)        => s.deleteSlot(id, k)
+          })
+          slots.foreach(sl => slotOps.foreach {
+            case (k, Some(sd)) => sl.upsertSlot(id, k, sd)
+            case (k, None)     => sl.deleteSlot(id, k)
+          })
           val merged = patch.applyTo(stored.record)
           store.put(id, StoredMovieRecord(t, y, merged))
           upserts.append((t, y, merged))
@@ -137,6 +213,7 @@ class InMemoryMovieRepository(
     val id = idOf(t, y)
     store.remove(id)
     screenings.foreach(_.deleteFilm(id))   // the cascade the real repository owns
+    slots.foreach(_.deleteFilm(id))
     deletes.append((t, y))
     changes.dispatchDelete(id)
   }
@@ -144,6 +221,7 @@ class InMemoryMovieRepository(
   def deleteById(id: String): Unit = lock.synchronized {
     if (store.remove(id).isDefined) {
       screenings.foreach(_.deleteFilm(id))
+      slots.foreach(_.deleteFilm(id))
       deletes.append((id, None))
       changes.dispatchDelete(id)
     }

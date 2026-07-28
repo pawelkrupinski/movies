@@ -147,6 +147,38 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     found.get.record.data shouldBe Map.empty  // slots live in `movie_slots` now
   }
 
+  it should "derive a migrated film's title from its movie_slots, not from the empty embedded map" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    // The title a cinema reports, and the `_id` that title sanitizes to. The gap between
+    // them is the whole point: recasing the id gives "Allyouneediskill", nothing like it.
+    val title  = "All You Need Is Kill"
+    val year   = Some(1909)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      // Written through the split repository, so the slots land in `movie_slots` and the
+      // `movies` document is left with no `sourceData` of its own — the fully-migrated
+      // shape every film converges to.
+      split.upsert(title, year, MovieRecord(imdbId = Some("tt0000079"),
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some(title),
+          showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 2, 19, 0), None))))))
+      withClue("premise — the film must be fully migrated for this to test anything: ")(
+        slots.findForFilm(id).keySet shouldBe Set(Multikino.displayName))
+
+      val found = split.findById(id)
+      withClue(s"stitched record: ${found.map(r => (r.title, r.record.data.keySet.map(_.displayName)))}\n") {
+        found.map(_.record.data.keySet.map(_.displayName)) shouldBe Some(Set(Multikino.displayName))
+        found.map(_.title) shouldBe Some(title)
+      }
+    } finally {
+      slots.deleteFilm(id); scr.deleteFilm(id); split.delete(title, year); client.close()
+    }
+  }
+
   // `findAllForListing` is the /debug corpus-table read: it strips each source's
   // `showtimes` SERVER-SIDE (an aggregation, since `sourceData`'s dynamic cinema
   // keys defy a plain field-exclusion projection) so the ~58%-of-bytes showtimes

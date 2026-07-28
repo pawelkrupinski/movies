@@ -2,7 +2,7 @@ package tools
 
 import clients.tools.FakeHttpFetch
 import services.events.MovieDetailsComplete
-import services.movies.InMemoryMovieRepository
+import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter, WebReadModel}
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
@@ -12,7 +12,20 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // the metadata clients would fall through to the real network. Point it at the
   // one fake so every cinema-site AND enrichment call is served from the fixtures.
   override lazy val enrichmentFetch: HttpFetch = httoFetch
-  override lazy val movieRepository = new InMemoryMovieRepository()
+  // PRODUCTION'S STORAGE SHAPE, not the simplified one. A film's showtimes live in
+  // `screenings` and its per-cinema slots in `movie_slots`, both keyed by film id, and the
+  // `movies` row keeps neither once they land. Every end-to-end spec that goes through this
+  // wiring therefore exercises the seam prod actually has.
+  //
+  // Wired here because a fake without it cannot express the bug class that cost the most in
+  // 2026-07: a merge or a re-key is a RENAME, and a renamed film's showtimes and slots stay
+  // filed under its OLD id — so anything that writes the winner and deletes the loser
+  // destroys them. With everything inline a fold unions the records and carries them for
+  // free, which is exactly why every merge/re-key spec stayed green while prod lost showtimes.
+  override lazy val screeningsRepository = new InMemoryScreeningsRepository
+  override lazy val slotsRepository      = new InMemorySlotsRepository
+  override lazy val movieRepository =
+    new InMemoryMovieRepository(screenings = Some(screeningsRepository), slots = Some(slotsRepository))
 
   // Mongo-free read model: the worker projects the scraped corpus into this
   // in-memory store, and the web's `WebReadModel` serves from it — the same
