@@ -23,16 +23,17 @@
 name: Country convergence
 
 on:
-    push:
+    # Runs AFTER `Deploy to Fly.io` finishes, the same way the Lighthouse audit
+    # does — not on push. These legs are minutes long (Poland 3, Germany 9, the UK
+    # 14) and firing them in parallel with the deploy workflow put three
+    # heavyweight jobs on the runner pool at exactly the moment the deploy needed
+    # it, for a signal nobody gates the deploy on anyway. Chaining keeps the
+    # deploy's "all green" arriving as early as it always did and still runs the
+    # convergence check against the very commit that shipped.
+    workflow_run:
+        workflows: [Deploy to Fly.io]
+        types: [completed]
         branches: [main]
-        paths:
-            - 'common/src/main/**'
-            - 'worker/src/main/**'
-            - 'worker/src/fixtures/**'
-            - 'e2e/src/test/**'
-            - 'testkit/src/main/**'
-            - 'build.sbt'
-            - '.github/workflows/country-convergence.yml'
     schedule:
         # 04:20 UTC — after the nightly country-fixture recorder, before the day starts.
         - cron: '20 4 * * *'
@@ -41,11 +42,16 @@ on:
 concurrency:
     # A push supersedes an in-flight run of the same ref; the nightly and manual
     # runs keep their own lane so a scheduled run is never cancelled by a push.
-    group: country-convergence-${{ github.ref }}-${{ github.event_name }}
+    group: country-convergence-${{ github.event.workflow_run.head_sha || github.ref }}-${{ github.event_name }}
     cancel-in-progress: true
 
 jobs:
     convergence:
+        # workflow_run fires on ANY conclusion, including a failed or cancelled
+        # deploy — gate to success so a broken build doesn't spend 26 runner
+        # minutes proving its own corpus converges. Schedule and manual runs have
+        # no upstream conclusion and always proceed.
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
         name: convergence (${{ matrix.country }})
         strategy:
             # Every country reports independently — one country's flap must not
