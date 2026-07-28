@@ -23,10 +23,30 @@ name: Daily country fixture artifact
 # past the gated hour and it recorded nothing. Dropping the exact-minute goal
 # removes the gate entirely — a delayed run is still after midnight.)
 
+# ── Which country ────────────────────────────────────────────────────────────
+#
+# The recorder walks `country.cities`, and this job never named a country — so
+# `Country.fromEnv` returned the Poland default and the corpus was Poland-only
+# for its whole life, leaving Germany and the UK with no offline replay of any
+# kind. `country` below fixes that.
+#
+# The SCHEDULED run still records Poland only, deliberately. A live re-record of
+# Germany walks all 1,533 Filmstarts venues, and the production DE worker is
+# already sweeping that same host on a 180-min cadence at 1400ms pacing; a second
+# concurrent full sweep is how you trip the documented 429 → HostCircuitBreaker →
+# ~5-minute all-DE blackout. Record those on demand, when nothing else needs the
+# rate budget, rather than nightly against a host we already pace carefully.
 on:
     schedule:
         - cron: '1 23 * * *'   # 00:01 Warsaw (CET) / 01:01 Warsaw (CEST)
     workflow_dispatch:
+        inputs:
+            country:
+                description: 'Country to record (pl | de | uk)'
+                required: false
+                default: 'pl'
+                type: choice
+                options: [pl, de, uk]
 
 jobs:
     record-country-fixture:
@@ -82,6 +102,8 @@ jobs:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:  ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:   ${{ secrets.MONGODB_DB }}
+                  # Schedule has no inputs, so it falls through to Poland.
+                  KINOWO_COUNTRY: ${{ inputs.country || 'pl' }}
               run: |
                   set -euo pipefail
                   ZIP="${GITHUB_WORKSPACE}/country-fixture.zip"
@@ -93,10 +115,14 @@ jobs:
             # yesterday's run has expired by the time this one finishes — i.e.
             # only the last run's capture is ever kept. The downloaded artifact is
             # itself a zip wrapping `country-fixture.zip` (the actual corpus).
+            #
+            # Poland keeps the bare `country-fixture` name: the local sync agent
+            # (`sync-country-fixture.sh`, outside this repo) pulls exactly that,
+            # and renaming it would silently stop every developer's mirror.
             - name: Upload country fixture artifact
               uses: actions/upload-artifact@v6
               with:
-                  name: country-fixture
+                  name: country-fixture${{ (inputs.country && inputs.country != 'pl') && format('-{0}', inputs.country) || '' }}
                   path: ${{ steps.record.outputs.zip_path }}
                   retention-days: 1
                   overwrite: true

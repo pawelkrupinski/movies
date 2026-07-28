@@ -12,8 +12,15 @@
 #     to drop a fresh capture under test/resources/fixtures/today/.
 #
 # Env:
-#   KINOWO_FIXTURE_DIR  fixture subdir under test/resources/fixtures
-#                       (default `today`; the recorder reads this var itself).
+#   KINOWO_COUNTRY      which country to record: pl (default) | de | uk. The
+#                       recorder walks `country.cities`, so WITHOUT this it
+#                       silently records Poland whatever you meant — which is why
+#                       the corpus was Poland-only for as long as it existed and
+#                       Germany and the UK had no offline replay at all.
+#   KINOWO_FIXTURE_DIR  fixture subdir under test/resources/fixtures. Defaults to
+#                       `today` for Poland (the name the local sync agent pulls)
+#                       and `today-<code>` otherwise, so recording one country
+#                       never overwrites another's corpus.
 #   TMDB_API_KEY        REQUIRED — real TMDB key; the whole enrichment cascade
 #                       401s and captures nothing without it.
 #   ZYTE_API_KEY        REQUIRED — Zyte key for the Multikino / biletyna scrapes.
@@ -64,10 +71,27 @@ if [ -n "$missing" ]; then
     exit 1
 fi
 
-DIR_NAME="${KINOWO_FIXTURE_DIR:-today}"
+# WHICH country. `Country.fromEnv` reads the singular `KINOWO_COUNTRY` while the
+# worker wiring reads the plural `KINOWO_COUNTRIES`, and anything that consults
+# only one of them falls back to the Poland default — so set BOTH or the run
+# records a catalogue you didn't ask for while looking like it worked.
+COUNTRY="${KINOWO_COUNTRY:-pl}"
+case "$COUNTRY" in
+    pl|de|uk) ;;
+    *) echo "::error::KINOWO_COUNTRY='$COUNTRY' is not one of pl|de|uk." >&2; exit 1 ;;
+esac
+export KINOWO_COUNTRY="$COUNTRY"
+export KINOWO_COUNTRIES="$COUNTRY"
+
+if [ -z "${KINOWO_FIXTURE_DIR:-}" ]; then
+    if [ "$COUNTRY" = "pl" ]; then KINOWO_FIXTURE_DIR="today"; else KINOWO_FIXTURE_DIR="today-$COUNTRY"; fi
+fi
+export KINOWO_FIXTURE_DIR
+
+DIR_NAME="$KINOWO_FIXTURE_DIR"
 DIR="test/resources/fixtures/$DIR_NAME"
 
-echo "Recording country fixture corpus into $DIR …"
+echo "Recording the $COUNTRY fixture corpus into $DIR …"
 sbt "worker/Test/runMain clients.tools.RecordAllDataToFixture"
 
 # Sanity-check the capture isn't empty before we treat the run as a success.
