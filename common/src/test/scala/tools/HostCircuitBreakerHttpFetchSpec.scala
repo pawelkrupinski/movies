@@ -1,5 +1,6 @@
 package tools
 
+import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -8,7 +9,7 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
-class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers {
+class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val urlA = "https://restapi.helios.pl/api/cinema/x/screen/y"
   private val urlB = "https://api.themoviedb.org/3/movie/1"
@@ -105,6 +106,79 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers {
     cb.get(urlA) shouldBe "ok"               // the trial call reaches the wire and succeeds
     delegate.calls.get() shouldBe callsBefore + 1
     cb.openRemainingMillis(hostA) shouldBe 0L // closed
+  }
+
+  it should "admit only ONE probe when the cooldown elapses, not every caller that arrives with it" in {
+    // The class has always promised "one trial call", but the open check was a
+    // plain read: once the window elapsed EVERY caller saw 0 remaining and went to
+    // the wire together. Re-entering the breaker from inside the probe's own call
+    // is the deterministic stand-in for that second queued thread.
+    val delegate = new FakeDelegate(timeout)
+    var clock    = Instant.parse("2026-06-23T00:00:00Z")
+    val cb       = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, now = () => clock)
+    (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    clock = clock.plusSeconds(61) // cooldown elapsed
+
+    var reentered: Option[Throwable] = None
+    delegate.respond = _ => {
+      if (reentered.isEmpty) reentered = Some(the[Throwable] thrownBy cb.get(urlA))
+      "ok"
+    }
+    val callsBefore = delegate.calls.get()
+    cb.get(urlA) shouldBe "ok"
+    reentered.value shouldBe a[CircuitOpenException]
+    delegate.calls.get() shouldBe callsBefore + 1 // the second caller never reached the wire
+  }
+
+  it should "say so every time a half-open probe re-opens it, not only the first time" in {
+    // A block that outlives one cooldown used to log ONE "Circuit OPEN" line and
+    // then nothing: `onFailure` re-armed the window silently whenever the breaker
+    // was already open. Filmstarts' ~5min 429 blocks therefore read as 60s ones.
+    val said     = scala.collection.mutable.ListBuffer.empty[String]
+    val delegate = new FakeDelegate(timeout)
+    var clock    = Instant.parse("2026-06-23T00:00:00Z")
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
+      now = () => clock, report = Some(message => { said += message; () }))
+
+    (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    clock = clock.plusSeconds(61)
+    a[HttpTimeoutException] should be thrownBy cb.get(urlA) // probe fails → re-open
+    clock = clock.plusSeconds(61)
+    a[HttpTimeoutException] should be thrownBy cb.get(urlA) // probe fails → re-open
+
+    said.count(_.contains(hostA)) shouldBe 3
+  }
+
+  it should "announce the recovery too, so a blackout has an end in the log" in {
+    val said     = scala.collection.mutable.ListBuffer.empty[String]
+    val delegate = new FakeDelegate(timeout)
+    var clock    = Instant.parse("2026-06-23T00:00:00Z")
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
+      now = () => clock, report = Some(message => { said += message; () }))
+
+    (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    clock = clock.plusSeconds(61)
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+
+    said.last should include ("CLOSED")
+    said.last should include (hostA)
+  }
+
+  it should "not announce a close for a host that was merely accruing failures" in {
+    // Below the threshold nothing was ever announced, so the recovery isn't news
+    // either — otherwise every transient blip pairs a silent failure with a
+    // "CLOSED" line that has no "OPEN" to match.
+    val said     = scala.collection.mutable.ListBuffer.empty[String]
+    val delegate = new FakeDelegate(timeout)
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
+      now = () => Instant.parse("2026-06-23T00:00:00Z"), report = Some(message => { said += message; () }))
+
+    (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+
+    said shouldBe empty
   }
 
   it should "isolate hosts — one open breaker never blocks a healthy host" in {
