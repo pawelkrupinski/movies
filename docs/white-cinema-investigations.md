@@ -21,6 +21,17 @@ and so you can re-check whether a previously-broken venue has recovered.
    start one if not (see the `prod-mongo-access` memory).
 2. Connect with `MONGODB_URI` from the root checkout `.env.local`, host swapped to
    `127.0.0.1:27017`.
+2b. **Sweep ALL THREE countries, not just Poland.** Each country's uptime lives in
+   its own database — `kinowo` (PL), `kinowo_de`, `kinowo_uk` (`Country.mongoDb`,
+   `common/.../models/Country.scala`) — on the SAME connection, so iterate with
+   `db.getSiblingDB(name)`. A PL-only sweep misses ~2,400 venues; runs before
+   2026-07-28 were PL-only. Scale differs enormously: PL ~20 white out of a small
+   bespoke-scraper roster, DE ~1,538 services on ONE client
+   (`WebediaShowtimesClient` → filmstarts.de), UK ~850 mostly on `FlicksClient`
+   → flicks.co.uk. For DE/UK, per-venue probing is infeasible — classify by
+   asking whether the AGGREGATOR advertises a programme (DE: `nextDate` +
+   `results` on `/_/showtimes/theater-<id>/d-<date>/p-1/`; UK: `data-date` day
+   tabs on `/cinema/<slug>/`), and only hand-probe the venues where it does.
 3. Collection `uptimeBuckets`, docs `{service, bucket, successes, failures,
    zeroes, errors, ...}`. Replicate `UptimeController`'s predicate
    (`web/.../controllers/UptimeController.scala`): per service take the last
@@ -33,6 +44,17 @@ and so you can re-check whether a previously-broken venue has recovered.
 ---
 
 ## 2026-07-28
+
+**This run covered ALL THREE countries** (previous runs were Poland-only).
+Per-country uptime lives in a SEPARATE Mongo database — `kinowo` (PL),
+`kinowo_de`, `kinowo_uk` — reachable over the one `flyctl proxy` via
+`db.getSiblingDB(...)`; a PL-only sweep silently ignores ~2,400 foreign venues.
+Totals: **PL 20 white / 1 red**, **DE 323 white / 23 red (of 1,538 services)**,
+**UK 63 white / 0 red (of 850)**. One real bug found and fixed — in the UK
+Flicks client (`fixed` @ee7738e54, below). Full per-country detail after the
+Polish section.
+
+### PL — 20 white
 
 **20 cinemas were 3-scrape-white** (newest bucket overall 2026-07-28 00:00 UTC /
 02:00 Warsaw; every venue's three white buckets land 23:15–00:00 UTC, i.e. within
@@ -156,6 +178,113 @@ old; the cinema must renew its cert, we cannot fix this from our side.**
   consecutive empty months so it stays cheap). Test-backable in
   `MsiClientSpec` — a `FakeHttpFetch` serving a film in month+2 fails before /
   passes after.
+
+### UK — 63 white, 0 red — ONE REAL BUG, `fixed` @ee7738e54
+
+62 of the 63 are `FlicksClient` venues (flicks.co.uk, the UK listings
+aggregator); the 1 remaining is `GatsbyBoxOfficeClient` (Everyman Durham).
+Swept all 62 Flicks venue pages and split them by whether Flicks itself
+advertises any day tabs:
+
+- **1 venue** — Neuadd Dwyfor Pwllheli — the venue page did not resolve at all
+  (transient URLError on the sweep). Not re-probed; re-check next run.
+- **57 venues** — HTTP 200 but **zero `data-date` day tabs**: Flicks holds no
+  sessions for them at all. **Not our bug and not fixable in our code.** Several
+  are genuinely closed (Belmont Filmhouse Aberdeen — shut since Oct 2022;
+  Watermans Brentford — building closed Apr 2024 pending relocation; Everyman
+  Durham — "closed until further notice"). But several others are unambiguously
+  OPERATING and simply missing from Flicks' backend — verified live against
+  their own sites: **Phoenix Cinema East Finchley** (phoenixcinema.co.uk listing
+  The Odyssey / Toy Story 5 / Blue Heron with dated screenings 2026-07-28
+  onward), **Institute of Contemporary Arts** (ica.art/films), **ARC
+  Stockton-on-Tees** (arconline.co.uk). Control: `curzon-soho` returns 4 films
+  for 2026-07-28, so the endpoint and the `is-ajax-call: yes` header are fine —
+  the zeroes are upstream coverage gaps, not a fetch failure.
+  **needs-human: an aggregator coverage gap.** The only fix is per-venue
+  own-site scrapers; that is a project, not a white-run change. Worth deciding
+  whether the biggest names (Phoenix, ICA) justify bespoke clients.
+- **4 venues** — HTTP 200 **WITH day tabs**, i.e. Flicks WAS advertising a
+  programme while we recorded zero. **That is the bug.** Barn Cinema Dartington
+  (tabs from 2026-07-28), Broadway Cinema Villa Marina (from 07-28), Watersmeet
+  (07-29), Cube Cinema Bristol (from 08-02).
+
+**Root cause — `FlicksClient` required the session button to be an `<a>`.**
+Flicks renders a session button as `<a class="times-calendar-times__button">`
+only where the venue has an online booking deep-link wired in. Venues without
+one render the identical card with the button as a plain
+`<span class="times-calendar-times__button">` — same time text, no href.
+`parseDay` did `li.selectFirst("a.times-calendar-times__button")`, so every such
+`li` yielded nothing, the film yielded no showtimes, the article was dropped and
+the venue scraped to **zero films → white**, while Flicks was plainly listing
+its programme. Measured: dartington 07-28 has `a=0, span=6`; villa-marina
+`a=0, span=4`; every one of the four affected venues is span-only. A sample of
+currently-GREEN venues (curzon-soho `a=22`, phoenix-picturehouse-oxford `a=14`,
+watershed-bristol `a=12`) is `<a>`-only, so bookable venues are unaffected by
+the change and no partial loss was hiding there.
+
+**Fix** (`fixed` @ee7738e54): match the button by CLASS, not tag
+(`.times-calendar-times__button`), in both the session loop and the
+`data-eventjson` lookup; the booking link simply stays `None` when there is no
+href — an unbookable screening is still a screening. `parseTime` already falls
+back from the absent `data-optlabel` to the visible "4:00 pm" text, so no time
+handling changed. Fail-before/pass-after `FlicksClientSpec` block over a real
+recorded fixture (Barn Cinema Dartington, 2026-07-28 — 2 films, 6 span buttons,
+0 `<a>`): before the fix `parseDay` returned `List()` and 4 new tests failed;
+after, all 21 pass. Also pins that the duplicated desktop/mobile buttons collapse
+to one showtime per screening via the existing `(time, booking)` dedup.
+Snapshots did NOT shift (`read-model-snapshot.json` / `expected-*.html` are
+built from a corpus with no span-button fixture), confirmed by `testUnit`
+— which includes `e2e/Test/test` — passing untouched.
+
+### DE — 323 white, 23 red — no code change; a source-coverage story
+
+All 1,538 German venues are one client (`WebediaShowtimesClient`) against ONE
+host, `www.filmstarts.de`, one `theaterId` each. So a DE-wide problem would be
+systemic — it isn't.
+
+- **The API is healthy and is NOT blocking us.** Control venues return full
+  slates (`theater-A0076` → 11–13 films/day, with `nextDate` set correctly when
+  a single day is empty). The 323 white venues return HTTP 200 with
+  `{"error":true,"message":"no.showtime.error","results":[],"nextDate":null}` —
+  and `nextDate:null` persisted across +1/+3/+7/+14 days. Their
+  `/kinoprogramm/kino/<ID>/` pages are 200 (not 404) but carry an empty
+  `schema.org/ItemList`. So filmstarts itself is asserting "no programme", and
+  our parser is correctly reporting zero.
+- **Sampled 7 white venues against their OWN websites.** 5 confirmed real:
+  **CinemaxX SI-Centrum Stuttgart** — closed since a mid-2025 burst pipe
+  flooded it, still shut (its own booking widget says "NICHTS ANZUZEIGEN" while
+  the neighbouring CinemaxX Liederhalle sells a full slate); **Mephisto
+  Augsburg** — permanently CLOSED (ARB Kino GmbH insolvency, shut end of Jan
+  2026, hall being converted by the Staatstheater); **Scala Schopfheim** —
+  "Sommerpause… ab 2. September"; **Kinocafe Taufkirchen** — "Sommerpause… bis
+  Mi 26. August"; **CineAStA Trier** — student cinema, semester break (expected).
+  2 look like genuine filmstarts staleness, both OPEN-AIR: **Lichtburg Open Air
+  Lemförde** (its own site's JSON-LD has ScreeningEvent "Die Ältern" 2026-07-31
+  and 08-01) and **Open-Air Kino Neu-Anspach** (event on 2026-08-03).
+- **Verdict: `intentionally-dormant` in the main, with an open-air caveat.**
+  Late July is peak Sommerpause for German indoor cinemas AND the semester
+  break, so a 21% white rate is plausible; the sample says the white set is
+  dominated by real breaks/closures rather than an aggregator bug. But
+  filmstarts appears to under-carry seasonal open-air venues specifically. Not
+  actioned: a fix means own-site scrapers for the open-air cohort, and no
+  fail-before/pass-after test can be written against a source that is correctly
+  reporting what it knows. **needs-human if we want open-air coverage** — the
+  cohort is identifiable by name (`Autokino…`, `Sommerkino…`, `Open-Air…`).
+- **DE red (23, out of scope but worth recording):** all `filmstarts.de`. The
+  underlying errors in the 24h window are **HTTP 404 for
+  `/kinoprogramm/kino/<ID>/`** on ~11 distinct theater IDs (`G02Q9`, `A2907`,
+  `A1451`, `G01C9`, `A2843`, `A2203`, `A1458`, `A0613`, `A0875`, `A2165`,
+  `A2846`) — venues DELISTED from filmstarts, correctly surfacing red rather
+  than white — plus `HttpTimeoutException` (96×) and the resulting
+  `CircuitOpenException`. The 404 IDs are a concrete, mechanical cleanup: they
+  will never recover on their own and each burns retries every cycle.
+  **needs-human: prune or re-resolve those theater IDs.**
+
+**UK red = 0**, but the 24h error log shows `403` on
+`cineworld.co.uk/…/quickbook/10108/dates` and on seven `myvue.com` cinema ids,
+plus proxy `401 WWW-Authenticate header missing` (28×) — chain endpoints
+rejecting us intermittently. They are not currently 3-scrape-red, so out of
+scope; noted so a future run can tell a new problem from a standing one.
 
 ---
 
