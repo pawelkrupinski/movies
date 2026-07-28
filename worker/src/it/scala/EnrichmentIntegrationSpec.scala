@@ -31,6 +31,16 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   import EnrichmentIntegrationSpec.{tmdb, imdb}
 
+  // TMDB and IMDb both answer `None` when they throttle us, exactly as they do when a
+  // film genuinely is not there — so a rate limiter looked identical to a broken lookup
+  // and took seven cases down together on 2026-07-28. `orCancel` retries the burst, then
+  // asks the upstream whether it is answering at all before calling it a regression.
+  private def probe(url: String): () => Unit = () => { new RealHttpFetch().get(url); () }
+  private def viaTmdb[T](body: => T): T =
+    LiveUpstream.orCancel("TMDB", probe(LiveUpstream.Probes.tmdb(Env.get("TMDB_API_KEY").get)))(body)
+  private def viaImdb[T](body: => T): T =
+    LiveUpstream.orCancel("IMDb", probe(LiveUpstream.Probes.Imdb))(body)
+
   // Films that appear in the current site data, picked for variety: a sequel,
   // an upcoming blockbuster, a Polish-language art-house piece, and a 1960s
   // classic (Wajda) which exercises old-films-with-diacritics matching.
@@ -42,7 +52,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
     ("Niewinni czarodzieje",         Some(1960))
   )
 
-  "TmdbClient.search" should "find a TMDB id for each known Polish title" in {
+  "TmdbClient.search" should "find a TMDB id for each known Polish title" in viaTmdb {
     knownFilms.foreach { case (title, year) =>
       withClue(s"$title (${year.getOrElse("?")}): ") {
         val hit = tmdb.search(title, year)
@@ -52,7 +62,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
     }
   }
 
-  "TmdbClient.imdbId" should "follow a TMDB id to a valid IMDb id" in {
+  "TmdbClient.imdbId" should "follow a TMDB id to a valid IMDb id" in viaTmdb {
     knownFilms.foreach { case (title, year) =>
       withClue(s"$title (${year.getOrElse("?")}): ") {
         val imdbId = tmdb.search(title, year).map(_.id).flatMap(tmdb.imdbId)
@@ -64,7 +74,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   }
 
   "The full Polish-title → TMDB → IMDb pipeline" should
-      "produce a usable IMDb id (and rating when IMDb has aggregated one) for each known film" in {
+      "produce a usable IMDb id (and rating when IMDb has aggregated one) for each known film" in viaImdb {
     var found = 0
     knownFilms.foreach { case (title, year) =>
       val result = for {
@@ -84,7 +94,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
     found should be >= 1
   }
 
-  "Title normalisation" should "let TMDB find a film whose Polish title we lowercased" in {
+  "Title normalisation" should "let TMDB find a film whose Polish title we lowercased" in viaTmdb {
     // Just sanity-checks that TMDB itself is forgiving of case — our normaliser
     // is for de-duplicating cache keys, not for sanitising the search query.
     tmdb.search("diabeł ubiera się u prady 2", Some(2026)) should not be empty

@@ -15,16 +15,24 @@ import tools.RealHttpFetch
  * (each builds its own client + probe) so `ParallelTestExecution` runs the
  * 12 network probes concurrently.
  *
- * Every assertion runs through `RetryWithBackoff()` so a transient 5xx on
- * MC/RT (they 502 / 503 / Cloudflare-challenge occasionally) doesn't fail
- * the build — `canonicalUrl` swallows any non-2xx as "slug doesn't exist",
- * so a one-off 502 would otherwise collapse a real `Some(...)` to `None`.
+ * Every assertion runs through [[LiveUpstream.orCancel]], which retries a transient 5xx
+ * (MC/RT 502 / 503 / Cloudflare-challenge occasionally) and then, if the failure
+ * persists, asks whether the site is answering AT ALL before deciding whether to fail.
+ * `canonicalUrl` swallows any non-2xx as "slug doesn't exist", so without that second
+ * question a sustained block is indistinguishable from a real slug-convention change —
+ * and it was the block, twice, on 2026-07-28.
  */
 class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
 
+  private def probe(url: String): () => Unit = () => { new RealHttpFetch().get(url); () }
+  private def metacritic[T](body: => T): T =
+    LiveUpstream.orCancel("Metacritic", probe(LiveUpstream.Probes.Metacritic))(body)
+  private def rottenTomatoes[T](body: => T): T =
+    LiveUpstream.orCancel("Rotten Tomatoes", probe(LiveUpstream.Probes.RottenTomatoes))(body)
+
   "MetacriticClient.canonicalUrl" should "resolve The Dark Knight to its canonical page" in {
     val c = new MetacriticClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    metacritic {
       c.canonicalUrl("The Dark Knight") shouldBe
         Some("https://www.metacritic.com/movie/the-dark-knight")
     }
@@ -32,14 +40,14 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   it should "return None for a clearly bogus title" in {
     val c = new MetacriticClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    metacritic {
       c.canonicalUrl("totally not a real movie xyz12345") shouldBe None
     }
   }
 
   it should "return None via urlFor when canonical 404s (search URLs never persisted)" in {
     val c = new MetacriticClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    metacritic {
       c.urlFor("totally not a real movie xyz12345") shouldBe None
     }
   }
@@ -48,7 +56,7 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   // Yu-Gi-Oh!, Airplane!, Moulin Rouge!, etc.
   it should "preserve '!' when building the slug (Yu-Gi-Oh!)" in {
     val c = new MetacriticClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    metacritic {
       c.canonicalUrl("Yu-Gi-Oh! The Dark Side of Dimensions") shouldBe
         Some("https://www.metacritic.com/movie/yu-gi-oh!-the-dark-side-of-dimensions")
     }
@@ -56,7 +64,7 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   "RottenTomatoesClient.canonicalUrl" should "resolve The Dark Knight" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       c.canonicalUrl("The Dark Knight") shouldBe
         Some("https://www.rottentomatoes.com/m/the_dark_knight")
     }
@@ -64,14 +72,14 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   it should "return None for a clearly bogus title" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       c.canonicalUrl("totally not a real movie xyz12345") shouldBe None
     }
   }
 
   it should "return None via urlFor when canonical 404s (search URLs never persisted)" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       c.urlFor("totally not a real movie xyz12345") shouldBe None
     }
   }
@@ -80,14 +88,14 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   // is the real page. The candidate-slug logic should follow the redirect.
   it should "resolve 'The Sting' to /m/sting (article-stripped) on RT" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       c.canonicalUrl("The Sting") shouldBe Some("https://www.rottentomatoes.com/m/sting")
     }
   }
 
   it should "resolve 'The Phantom of Liberty' to /m/phantom_of_liberty on RT" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       c.canonicalUrl("The Phantom of Liberty") shouldBe
         Some("https://www.rottentomatoes.com/m/phantom_of_liberty")
     }
@@ -100,7 +108,7 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   "RottenTomatoesClient.urlFor" should "fall through to the search-page scrape and pick the year-correct cut" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       // "Top Gun" has multiple cuts. Year=1986 should land on /m/top_gun even
       // if the canonical slug probe doesn't immediately disambiguate.
       c.urlFor("Top Gun", None, Some(1986)) shouldBe
@@ -110,7 +118,7 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   "RottenTomatoesClient.scoreFor" should "scrape the Tomatometer for a well-known film" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       // Catastrophe-detection only: assert we got *some* numeric value in a
       // sensible band, not a specific number that RT could legitimately update.
       c.scoreFor("https://www.rottentomatoes.com/m/the_dark_knight")
@@ -120,7 +128,7 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   it should "return None for a bogus /m/ slug" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
-    RetryWithBackoff() {
+    rottenTomatoes {
       c.scoreFor("https://www.rottentomatoes.com/m/totally_not_a_real_movie_xyz12345") shouldBe None
     }
   }

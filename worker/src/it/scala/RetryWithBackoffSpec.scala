@@ -95,8 +95,4 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     clock.now() should be <= 30000L   // …and within the 30s default
   }
 
-  private class FakeClock(private var t: Long) {
-    def now(): Long = t
-    def advance(ms: Long): Unit = t += ms
-  }
 }
