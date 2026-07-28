@@ -302,6 +302,37 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 1
   }
 
+  // The backlog bound above counted ScrapeCinema ONLY, which made it blind to the
+  // work a chunked venue actually creates: one ScrapeCinema fans out into one
+  // ScrapeChunk per advertised day (~36 for a UK Flicks venue). So a "backed-off"
+  // reaper saw a handful of waiting cinemas, decided it was under budget, and kept
+  // topping up — while a thousand chunk fetches sat queued behind them. Measured on
+  // kinowo-worker-uk 2026-07-28: throttled=1 the whole day with 381-1142 waiting
+  // tasks against a cap of 26, CPU credit pinned at 0 with 8-17k cc of steal. PL,
+  // whose venues barely chunk, sat at 5-55 and recovered normally. The trickle has
+  // to be measured in the unit the pool actually works in.
+  it should "count a chunked venue's fan-out against the throttled backlog budget" in {
+    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue     = new InMemoryTaskQueue
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = throttled)
+
+    // A venue already fanned out: no ScrapeCinema waiting, but 3 chunk fetches are.
+    // That is already over a budget of 2, so a backed-off reaper must add nothing.
+    (1 to 3).foreach(i => queue.enqueue(TaskType.ScrapeChunk, s"chunk-$i", Map("chunk" -> i.toString)))
+    queue.waitingCount(TaskType.ScrapeCinema) shouldBe 0
+
+    reaper.tick() shouldBe 0
+
+    // Drain the fan-out and the budget frees up again — bounded, not zero forever.
+    (1 to 3).foreach { _ =>
+      val c = queue.claim("w", 1.minute).get
+      queue.complete(c.id, "w")
+    }
+    reaper.tick() shouldBe 2
+  }
+
   // Parse-wave smoothing: a healthy tick's due batch otherwise hits the queue at one
   // instant, so the scrapes fetch in parallel and their payloads PARSE together — a
   // CPU spike that floors the shared-CPU credit balance. `planSlices` splits the
