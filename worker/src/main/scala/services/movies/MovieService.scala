@@ -9,7 +9,7 @@ import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComple
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.RatingTasks
-import tools.DaemonExecutors
+import tools.{DaemonExecutors, HttpStatusException}
 
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import scala.concurrent.ExecutionContextExecutorService
@@ -572,8 +572,33 @@ class MovieService(
     originalTitleHint: Option[String],
     directorHint:      Option[String]
   ): Option[(Int, Option[TmdbClient.SearchResult], TmdbClient.ExternalIds, Option[TmdbClient.FullDetails])] =
-    resolveTmdbId(cleanTitle, year, row, originalTitleHint, directorHint).map { case (tmdbId, hit) =>
-      (tmdbId, hit, tmdb.externalIds(tmdbId), tmdb.fullDetails(tmdbId))
+    resolveTmdbId(cleanTitle, year, row, originalTitleHint, directorHint).flatMap { case (tmdbId, hit) =>
+      externalIdsOfLiveMovie(tmdbId, cleanTitle).map(ids => (tmdbId, hit, ids, tmdb.fullDetails(tmdbId)))
+    }
+
+  /** The candidate's cross-reference ids, or None when TMDB answers 404 — the id
+   *  its search/find index just handed us no longer exists.
+   *
+   *  TMDB deletes movie entries (duplicates, cancelled productions) while the
+   *  search index keeps serving them for a while, so a dead candidate is a
+   *  normal, PERMANENT outcome rather than a failure to retry. It matters
+   *  because this was the one unguarded throw in `lookupTmdb` — `fullDetails`
+   *  already swallows — and `ResolveTmdbHandler` reschedules every throw as
+   *  transient with no attempts ceiling: one dead id parked the UK row
+   *  "Blade (2025)" at the 30-min backoff cap for six hours (attempts=20), the
+   *  whole time reading as head-of-line starvation on the oldest-waiting-age
+   *  panel. Returning None concludes it as a no-match, which the missing-id
+   *  reaper re-attempts on its own cadence; `forget` drops the memoised id so
+   *  that re-attempt genuinely re-searches instead of replaying the corpse for
+   *  the resolution cache's 24h. A 5xx/429/IO failure still throws — a real
+   *  TMDB outage must defer, not stamp the corpus unmatched. */
+  private def externalIdsOfLiveMovie(tmdbId: Int, cleanTitle: String): Option[TmdbClient.ExternalIds] =
+    try Some(tmdb.externalIds(tmdbId))
+    catch {
+      case e: HttpStatusException if e.code == 404 =>
+        logger.warn(s"TMDB id $tmdbId for '$cleanTitle' is gone (${e.getMessage}) — treating the candidate as no match")
+        tmdbIdCache.forget(cleanTitle)
+        None
     }
 
   /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
