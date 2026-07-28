@@ -1,6 +1,8 @@
 package scripts
 
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, UnscreenedCleanup}
+import org.mongodb.scala.MongoClient
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoSlotsRepository, UnscreenedCleanup}
+import tools.Env
 
 /**
  * One-shot backfill: the new `UnscreenedCleanup` ticks every 24h, but the
@@ -18,8 +20,16 @@ import services.movies.{CaffeineMovieCache, MongoMovieRepository, UnscreenedClea
 object UnscreenedRowsBackfill {
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository()
-    if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
+    val uri    = Env.get("MONGODB_URI").getOrElse { println("MONGODB_URI not set."); sys.exit(1) }
+    val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+    val client = MongoClient(uri)
+    val db     = client.getDatabase(dbName)
+    val repository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false)
+    require(repository.enabled, s"movies repository not enabled for $dbName")
+    // The cleanup corroborates every candidate against the durable slot store
+    // before deleting it, so the script must hand it the real `movie_slots` —
+    // an empty stub here would reproduce the very bug the guard exists to stop.
+    val slotsRepository = new MongoSlotsRepository(Some(db))
 
     val before    = repository.findAll()
     val orphans   = before.filter(_.record.cinemaData.isEmpty)
@@ -32,9 +42,10 @@ object UnscreenedRowsBackfill {
     if (orphans.size > Sample) println(s"  (+ ${orphans.size - Sample} more)")
 
     val cache   = new CaffeineMovieCache(repository)
-    val cleanup = new UnscreenedCleanup(cache)
+    val cleanup = new UnscreenedCleanup(cache, slotsRepository)
     val removed = cleanup.removeUnscreened()
     repository.close()
+    client.close()
 
     println()
     println("════ Summary ════")

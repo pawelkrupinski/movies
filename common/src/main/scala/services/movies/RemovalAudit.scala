@@ -59,6 +59,20 @@ object RemovalAudit {
   def cardRemoved(filmId: String, screenings: Int, reason: String): Unit =
     logger.info(s"[read-model] card removed: filmId=$filmId screenings=$screenings reason=$reason")
 
+  /** The unscreened cleanup DECLINED to delete rows its in-memory view called
+   *  unscreened, because the durable slot store refused to corroborate: it
+   *  either still holds cinemas for them, or could not be read at all. The
+   *  counterpart to [[filmsRemoved]], and the line that says "the guard earned
+   *  its keep this tick" — on 2026-07-27 the absent guard cost 19 still-playing
+   *  films. Logged even though nothing was removed, so a boot-race that WOULD
+   *  have deleted rows stays on the record. */
+  def cleanupSkipped(source: String, ids: Iterable[String], reason: String): Unit = {
+    val all = ids.toSeq
+    if (all.nonEmpty)
+      logger.info(s"[$source] SKIPPED ${all.size} row(s) the cache called unscreened: " +
+        s"reason=$reason ids=[${sample(all)}]")
+  }
+
   /** A single cinema's scrape pruned some of its slots off still-known films — the
    *  summary the served-films sawtooth needed: which cinema, how many films/slots. */
   def scrapePruned(cinema: String, films: Int, slots: Int, sampleFilmIds: Iterable[String], reason: String): Unit =

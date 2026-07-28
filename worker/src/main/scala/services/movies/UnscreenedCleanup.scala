@@ -20,11 +20,30 @@ import scala.util.Try
  * re-screening happens versus the steady-state churn of one-off events,
  * festival items, anniversary screenings, and similar.
  *
+ * TWO WITNESSES, because that trade-off is only acceptable when the row is
+ * genuinely dead. An empty in-memory `cinemaData` is not proof of that: the
+ * first tick fires 20s after EVERY boot (below), so a cache that has not
+ * finished hydrating reads as "no cinema screens this film" for rows that are
+ * playing tonight. On 2026-07-27 that cost 19 still-playing arthouse features
+ * (`Filipinana (2026)`, `Clarissa (2026)`, `Błogosławieni niszczyciele (2026)`,
+ * …) in a single pass 20s after a restart — and the delete cascade then cleared
+ * the very `movie_slots` rows that disproved it, each logging `slots=3` on the
+ * way out. The tell was that removals tracked BOOT COUNT, not the calendar:
+ * 0 films dropped on each of 07-24/25/26 (1–3 boots), 32 on 07-27 (29 boots).
+ *
+ * So the in-memory view only NOMINATES a row; `SlotsRepository` corroborates.
+ * A row dies only when the durable store also reports no cinemas AND that read
+ * actually succeeded — a FAILED read is not evidence of emptiness (it cannot
+ * tell "no cinemas" from "Mongo did not answer"), which is why we take the
+ * `*Checked` variant and not the bare `findForFilm`. Both refusals are logged
+ * via `RemovalAudit.cleanupSkipped` so a boot race that WOULD have deleted rows
+ * stays visible even though nothing was removed.
+ *
  * Lifecycle owned by `AppLoader` (`start()` schedules the daily tick;
  * `stop()` is registered as a shutdown hook). Per CLAUDE.md, the class
  * never self-subscribes or self-schedules.
  */
-class UnscreenedCleanup(cache: MovieCache) extends Stoppable with Logging {
+class UnscreenedCleanup(cache: MovieCache, slots: SlotsRepository) extends Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("unscreened-cleanup")
 
@@ -36,17 +55,39 @@ class UnscreenedCleanup(cache: MovieCache) extends Stoppable with Logging {
 
   /** Walk every cached row; drop the ones with no cinema slot left. Returns
    *  the count of rows removed. Public so the backfill script (and tests)
-   *  can invoke a one-shot pass; the daily scheduler calls the same method. */
+   *  can invoke a one-shot pass; the daily scheduler calls the same method.
+   *
+   *  An empty in-memory `cinemaData` only NOMINATES a row — it never convicts
+   *  it. Every candidate is corroborated against the durable slot store, and a
+   *  row dies only when `movie_slots` agrees, on a read that actually
+   *  succeeded. See the class doc for why. */
   def removeUnscreened(): Int = {
-    val orphans = cache.entries.collect { case (k, e) if e.cinemaData.isEmpty => k }
+    val candidates = cache.entries.collect { case (k, e) if e.cinemaData.isEmpty => k }
+    val checked    = candidates.map(key => key -> slots.findForFilmChecked(idOf(key)))
+
+    val orphans    = checked.collect { case (k, (stored, true)) if stored.isEmpty  => k }
+    val stillHeld  = checked.collect { case (k, (stored, true)) if stored.nonEmpty => k }
+    val unreadable = checked.collect { case (k, (_, false))                        => k }
+
+    RemovalAudit.cleanupSkipped("unscreened-cleanup", stillHeld.map(label),
+      reason = "slot-store-still-holds-cinemas")
+    RemovalAudit.cleanupSkipped("unscreened-cleanup", unreadable.map(label),
+      reason = "slot-store-read-failed")
+
     if (orphans.nonEmpty) {
       logger.info(s"Unscreened-row cleanup: dropping ${orphans.size} row(s) with no current screenings.")
-      services.movies.RemovalAudit.filmsRemoved("unscreened-cleanup",
-        orphans.map(k => s"${k.cleanTitle} (${k.year.getOrElse("—")})"), reason = "no-current-screenings")
+      RemovalAudit.filmsRemoved("unscreened-cleanup", orphans.map(label), reason = "no-current-screenings")
     }
     orphans.foreach(cache.invalidate)
     orphans.size
   }
+
+  /** The `_id` the delete would cascade against — the same formula
+   *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by, so the
+   *  slots we corroborate against are exactly the ones the delete would clear. */
+  private def idOf(key: CacheKey): String = StoredMovieRecord.idFor(key.cleanTitle, key.year)
+
+  private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 
   def start(): Unit = {
     logger.info(s"Unscreened-row cleanup scheduled every ${RunEveryHours}h (first run in ${StartupDelaySeconds}s).")
