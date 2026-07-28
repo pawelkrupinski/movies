@@ -708,6 +708,13 @@ class WorkerWiring(
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: services.metrics.RatingRunCensus =
     new services.metrics.RatingRunCensus(movieCache, freshnessStore, workerMetrics.ratingNotRunGauge, workerMetrics.ratingOldestAgeGauge, country)
+  // Worst-case scrape staleness across this country's roster — the cinema that has
+  // gone longest without a successful scrape, plus the never-scraped count. Reads
+  // the SAME freshness stamps the ScrapeReaper schedules from, so the metric and
+  // the scheduler can't disagree about how overdue a cinema is (see CinemaScrapeCensus).
+  lazy val cinemaScrapeCensus: services.metrics.CinemaScrapeCensus =
+    new services.metrics.CinemaScrapeCensus(cinemaScrapers, freshnessStore,
+      workerMetrics.scrapeOldestAgeGauge, workerMetrics.scrapeNeverScrapedGauge, country)
   // Metered (counts every enqueue attempt, incl. cache-served duplicates) wraps the
   // local dedup cache (skips the redundant enqueue round-trip) wraps Mongo.
   lazy val taskQueue: TaskQueue =
@@ -1262,6 +1269,8 @@ class WorkerWiring(
     corpusScan.start()
     // Census the per-site never-run rating backlog (off-band, in-memory scan).
     ratingRunCensus.start()
+    // Census the roster's worst-case scrape staleness (off-band, in-memory scan).
+    cinemaScrapeCensus.start()
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -1271,6 +1280,7 @@ class WorkerWiring(
 
   def stop(): Unit = {
     envConfigService.stop()
+    cinemaScrapeCensus.stop()
     ratingRunCensus.stop()
     corpusScan.stop()
     // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.

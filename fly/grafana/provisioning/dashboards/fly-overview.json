@@ -4,7 +4,7 @@
   "tags": ["fly", "kinowo"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 12,
+  "version": 13,
   "refresh": "1m",
   "time": { "from": "now-6h", "to": "now" },
   "annotations": {
@@ -546,12 +546,36 @@
       ]
     },
     {
+      "id": 58,
+      "title": "Worker — oldest cinema scrape: how stale the worst cinema is, by country (h)",
+      "description": "Hours since the LEAST recently scraped cinema in each country last scraped successfully, from kinowo_worker_cinema_scrape_oldest_age_seconds. This is the roster's worst case, not its average: the HTTP-outcome panels count the scrapes that happened and can look perfectly clean while one venue has been dark for two days, because a cinema nobody scrapes contributes no samples to anything else. Healthy is a SAWTOOTH riding just under that country's scrape window — 1h for pl and uk, 2h for de (KINOWO_SCRAPE_FRESHNESS_MINUTES, set per worker app) — as cinemas fall due, get scraped, and the maximum resets. A line climbing in a straight diagonal past the window is the failure: the ScrapeReaper is not draining its backlog (CPU-credit throttle, chunked-scrape starvation) or one cinema throws on every attempt — a failed scrape deliberately does NOT mark freshness, so it stays stale and its age keeps climbing. Cinemas that have never scraped at all carry no age and are counted on the panel to the right, not folded in here.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 197 },
+      "fieldConfig": { "defaults": { "unit": "h", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "max by (country) (kinowo_worker_cinema_scrape_oldest_age_seconds{country=~\"$country\"}) / 3600", "legendFormat": "{{country}}" }
+      ]
+    },
+    {
+      "id": 59,
+      "title": "Worker — cinemas that have never scraped, by country",
+      "description": "How many cinemas in each country's roster have no successful scrape at all (kinowo_worker_cinema_scrape_never_scraped). Held apart from the age panel on the left because a never-scraped cinema has no age: folding it in would either read as 0s old, hiding the worst case behind a healthy maximum, or need a sentinel that dwarfs the real ages and flattens the chart. A brief bump is normal right after a cinema is added to the catalogue or a country is onboarded, and it should fall back to 0 within a scrape window. A value stuck above 0 is a cinema that has never once worked — a broken client or a dead upstream that no error-rate panel can show you, because it never gets far enough to produce an outcome.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 197 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "max by (country) (kinowo_worker_cinema_scrape_never_scraped{country=~\"$country\"})", "legendFormat": "{{country}}" }
+      ]
+    },
+    {
       "id": 43,
       "title": "Worker — JVM heap & host free memory (vs -Xmx)",
       "description": "kinowo-worker heap detail + how much RAM the machine has left, scaled to the heap band (RSS and the 1GB machine-total line are omitted so this reads at ~0-320MB). JVM heap / old-gen / non-heap are the worker's own exports (app-metrics-live), scoped to $country by an `and on(app)` data join; host FREE is a Fly host metric (fly-prometheus, ~15-25min lag), scoped to $country through the hidden $worker_host_app variable — fly_instance_* carries no country label and sits on a different datasource, so a data join cannot reach it and the derived app list is the only way to narrow it. Old gen (tenured) rides ~205MB of the ~309MB max heap (-Xmx320m), i.e. ~90% full at rest — so a whole-corpus read-model reprojection's transient allocation tips it into a SerialGC full-GC thrash (VM Thread ~0.6 core) that drains CPU credit to the floor (seen 2026-07-03 20:40). 'Host free' is the machine's remaining RAM: hovering ~200MB, it leaves little room to raise -Xmx on this box. Its twin to the right is the same view of the WEB app.",
       "type": "timeseries",
       "datasource": { "type": "datasource", "uid": "-- Mixed --" },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 197 },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 205 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$worker_host_app\"}", "legendFormat": "Host free — {{app}}" },
@@ -567,7 +591,7 @@
       "description": "The WEB app's heap, read exactly like the worker panel to its left. The web JVM's own jvm_* exports carry no country label (one process per country, so the app label already implies it) — they are scoped to $country by intersecting with kinowo_web_movies_served{country}, the same `and on(app)` data join the worker panel uses against kinowo_worker_throttled. Host FREE is narrowed to $country through the hidden $web_host_app variable, the mirror of the worker panel's $worker_host_app — fly_instance_* has no country label, so that derived app list is what scopes it. Different tuning from the worker, so read the shape differently: web runs G1 at -Xmx384m (fly.toml JAVA_OPTS), so 'Old gen (G1)' sawtooths as concurrent cycles reclaim rather than sitting pinned ~90% full, and a rising floor across cycles — not a single spike — is the leak signal.",
       "type": "timeseries",
       "datasource": { "type": "datasource", "uid": "-- Mixed --" },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 197 },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 205 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$web_host_app\"}", "legendFormat": "Host free — {{app}}" },
@@ -583,7 +607,7 @@
       "description": "Worker CPU in centi-cores (100 = 1 core). 'java (fresh)' is the JVM's own process CPU from the app-metrics sidecar (~15s fresh, leading); 'host busy (authoritative)' is sum(rate(fly_instance_cpu{mode!=idle|steal})) — what Fly actually bills credit against (~15-25min lagged). The dashed breakeven line (~13cc) is the shared-cpu-2x credit EARN rate (empirical): while CPU sits ABOVE it the credit bucket drains, below it refills. Dead-flat CPU pinned above the line with no dips = a spin (the JDK-NIO2 epoll wedge) OR a structural overload — a reboot re-grant just re-drains; a bursty CPU that dips well under the line rebuilds credit. Pair with 'CPU credit balance'.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 214 },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 222 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -606,7 +630,7 @@
       "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the ~30cc daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_duration_seconds_sum)*100 — the pure ReadModelProjection.projectAll CPU (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it. The ~13cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes → no projection). Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 223},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 231},
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -676,7 +700,7 @@
       "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. change-events/s is the projection TRIGGER (a movies/screenings write); projection-calls/s is how many rows projectAll ran on; readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU and the duration metric above was needed).",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 232},
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 240},
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -713,7 +737,7 @@
       "description": "How hard the read-model projection works. Over-triggering shows as high projection calls/s (the reproject/enrich churn re-projecting rows); an expensive-film tail shows as high p99 ms (one row whose resolve/synopsis work is costly). p50/p95/p99 are per-projection wall-clock in ms (LEFT axis); projections/s is the trigger rate (RIGHT axis). After the metadata-reuse cache, showtime-only churn keeps the percentiles low even when calls/s is high.",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 239},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 247},
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -760,7 +784,7 @@
       "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half).",
       "type": "heatmap",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 248},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 256},
       "options": {
         "calculate": false,
         "cellGap": 1,
