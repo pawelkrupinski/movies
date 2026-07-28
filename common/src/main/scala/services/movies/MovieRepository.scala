@@ -462,22 +462,35 @@ class MongoMovieRepository(
    *  failed movies batch. The movies pages stay keyset-bounded; only the screenings
    *  map (separate small docs) is held. */
   private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit): Boolean = {
-    val allScr = screenings.map(_.findAll()).getOrElse(Map.empty)
-    // An EMPTY slots load is fine — under the lazy migration plenty of films legitimately
-    // have no rows yet, and a genuinely slot-less row (a sentinel) is normal too. A FAILED
-    // load is not: every migrated film would look like it has no cinemas, and a pruning
-    // caller acting on that would wipe them. Only the repository can tell those apart, so
-    // it reports completeness rather than leaving us to infer it from emptiness.
-    val (allSlots, slotsComplete) = slots.map(_.findAllChecked()).getOrElse((Map.empty[String, Map[String, SourceData]], true))
-    if (!slotsComplete) {
-      logger.warn("MovieRepository.scanStitched: movie_slots load failed — treating scan as incomplete so a reconcile can't prune films whose slots moved out of `movies`.")
-      false
-    } else if (screenings.isDefined && allScr.isEmpty) {
-      logger.warn("MovieRepository.scanStitched: screenings load empty — treating scan as incomplete so a reconcile can't prune on stripped rows.")
-      false
-    } else scanByKeyset(batch =>
+    // Side rows are fetched PER PAGE, for exactly the films that page holds, rather than
+    // preloaded whole. Both are one indexed `filmId $in [...]` query.
+    //
+    // `foreachRecord` promises its callers it never holds more than a page, and that
+    // stopped being true when the bulk of a row moved into the side collections: this
+    // preloaded both entire collections first (7.5 MB each on prod PL, more on UK) and
+    // held them for the whole scan, on a worker with a 320 MB heap and an OOM history. Now
+    // the peak is one page's films, whatever the corpus grows to.
+    //
+    // Completeness still gates the whole scan, not the page: a caller that PRUNES on a
+    // row's absence must not act on a partial view, so one failed side read fails the scan
+    // exactly as a failed `movies` batch does.
+    var sideReadsComplete = true
+    val moviesComplete = scanByKeyset { batch =>
+      val ids = batch.map(_._id).toSet
+      val (pageScr, scrOk) = screenings.map(_.findForFilmsChecked(ids))
+        .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true))
+      val (pageSlots, slotsOk) = slots.map(_.findForFilmsChecked(ids))
+        .getOrElse((Map.empty[String, Map[String, SourceData]], true))
+      if (!scrOk || !slotsOk) {
+        sideReadsComplete = false
+        logger.warn(s"MovieRepository.scanStitched: a side-collection read failed for a page of " +
+          s"${ids.size} film(s) (screenings ok=$scrOk, slots ok=$slotsOk) — treating the scan as " +
+          "incomplete so a reconcile cannot prune films whose cinemas it could not see.")
+      }
       onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto),
-        allScr.getOrElse(dto._id, Map.empty), allSlots.getOrElse(dto._id, Map.empty)))))
+        pageScr.getOrElse(dto._id, Map.empty), pageSlots.getOrElse(dto._id, Map.empty))))
+    }
+    moviesComplete && sideReadsComplete
   }
 
   /** Keyset-paged scan of the whole `movies` collection by `_id`, shared by [[findAll]]

@@ -54,6 +54,22 @@ trait ScreeningsRepository {
 
   /** Every film's screenings: `filmId -> (slotKey -> showtimes)`. For the boot
    *  hydrate / `findAll` read-stitch. */
+
+  /** The rows of SEVERAL films in ONE round-trip, plus whether the read succeeded.
+   *
+   *  The corpus scan used to preload this entire collection before it began paging
+   *  `movies`, making the scan's peak heap the size of the collection (7.5 MB each for
+   *  `screenings` and `movie_slots` on prod PL, more on UK) however small the page. Reading
+   *  a page's films at a time keeps the scan bounded by the page — which is what
+   *  `foreachRecord` promises its callers and had stopped being true when the side
+   *  collections were split out. Default: one call per id, so a store with no batch read
+   *  still satisfies the contract. */
+  def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) = {
+    val results = filmIds.iterator.map(id => id -> findForFilmChecked(id)).toSeq
+    (results.collect { case (id, (rows, _)) if rows.nonEmpty => id -> rows }.toMap,
+     results.forall { case (_, (_, ok)) => ok })
+  }
+
   def findAll(): Map[String, Map[String, Seq[Showtime]]]
 
   /** Set a film's screenings to EXACTLY `slots` — upsert those present, delete any
@@ -292,6 +308,20 @@ class MongoScreeningsRepository(
    *  Paging caps how many rows any one cursor delivers synchronously. On an INCOMPLETE
    *  scan (a page still failing after retries) returns an empty map — `scanStitched`
    *  treats that as "incomplete" and won't let a reconcile prune on stripped rows. */
+  /** ONE `filmId $in [...]` query, served by the `filmId` index. */
+  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) =
+    if (filmIds.isEmpty) (Map.empty, true)
+    else coll.fold((Map.empty[String, Map[String, Seq[Showtime]]], true)) { c =>
+      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).toFuture(), 60.seconds)) match {
+        case scala.util.Success(rows) =>
+          (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap, true)
+        case scala.util.Failure(e) =>
+          logger.warn(s"ScreeningsRepository.findForFilms(${filmIds.size} film(s)) failed: " +
+            s"${e.getClass.getSimpleName}: ${e.getMessage} — reporting the read as incomplete.")
+          (Map.empty, false)
+      }
+    }
+
   def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll match {
     case Some(c) =>
       val buf = Vector.newBuilder[StoredScreeningsDto]

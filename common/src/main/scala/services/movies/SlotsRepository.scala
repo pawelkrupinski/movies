@@ -72,6 +72,22 @@ trait SlotsRepository {
    *  harmless) or "the read failed" (every migrated film looks like it has no cinemas —
    *  catastrophic if a pruning caller believes it). Only the repository knows which, so
    *  it says so rather than making callers guess from the emptiness. */
+
+  /** The rows of SEVERAL films in ONE round-trip, plus whether the read succeeded.
+   *
+   *  The corpus scan used to preload this entire collection before it began paging
+   *  `movies`, making the scan's peak heap the size of the collection (7.5 MB each for
+   *  `screenings` and `movie_slots` on prod PL, more on UK) however small the page. Reading
+   *  a page's films at a time keeps the scan bounded by the page — which is what
+   *  `foreachRecord` promises its callers and had stopped being true when the side
+   *  collections were split out. Default: one call per id, so a store with no batch read
+   *  still satisfies the contract. */
+  def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) = {
+    val results = filmIds.iterator.map(id => id -> findForFilmChecked(id)).toSeq
+    (results.collect { case (id, (rows, _)) if rows.nonEmpty => id -> rows }.toMap,
+     results.forall { case (_, (_, ok)) => ok })
+  }
+
   def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean)
 
   /** Set a film's slots to EXACTLY `slots` — upsert those present, delete any no
@@ -252,6 +268,20 @@ class MongoSlotsRepository(
    *  for why a single unbounded cursor is not safe here. An INCOMPLETE scan returns an
    *  empty map so a caller can treat it as "unknown" rather than "the film has no slots"
    *  and prune on it. */
+  /** ONE `filmId $in [...]` query, served by the `filmId` index. */
+  override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) =
+    if (filmIds.isEmpty) (Map.empty, true)
+    else coll.fold((Map.empty[String, Map[String, SourceData]], true)) { c =>
+      Try(Await.result(c.find(Filters.in("filmId", filmIds.toSeq*)).toFuture(), 60.seconds)) match {
+        case scala.util.Success(rows) =>
+          (rows.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap, true)
+        case scala.util.Failure(e) =>
+          logger.warn(s"SlotsRepository.findForFilms(${filmIds.size} film(s)) failed: " +
+            s"${e.getClass.getSimpleName}: ${e.getMessage} — reporting the read as incomplete.")
+          (Map.empty, false)
+      }
+    }
+
   def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) = coll match {
     case Some(c) =>
       val buf = Vector.newBuilder[StoredSlotDto]
