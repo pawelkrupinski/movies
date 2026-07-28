@@ -1,6 +1,6 @@
 package clients.flicks
 
-import models.OdeonNorwich
+import models.{BarnCinemaDartingtonArtCentre, OdeonNorwich}
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
@@ -204,6 +204,66 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(OdeonNorwich)
     movies.map(_.movie.title) should contain("Minions & Monsters")
+  }
+
+  // ── sessions that carry no booking link ──────────────────────────────────
+  // Flicks renders a session button as an `<a>` only when the venue has a
+  // bookable deep-link behind it. Venues without online booking wired in (small
+  // independents, arts centres) get the SAME card with the button as a plain
+  // `<span class="times-calendar-times__button">` — the time is still there, it
+  // just isn't clickable. Keying the session on the `<a>` dropped every one of
+  // those showtimes, so the venue scraped to zero films and sat white on
+  // /uptime while Flicks was plainly listing its programme (2026-07-28: Barn
+  // Cinema Dartington, Broadway Cinema Villa Marina, Watersmeet).
+
+  /** A real Flicks sessions fragment for a venue whose showtimes are NOT
+   *  bookable (Barn Cinema, Dartington Art Centre, captured 2026-07-28). Two
+   *  films, six `<span class="times-calendar-times__button">` buttons and zero
+   *  `<a>` ones. Source:
+   *  https://www.flicks.co.uk/cinema/sessions/dartington-art-centre-totnes/2026-07-28/ */
+  private def unbookableFixture: String = {
+    val src = Source.fromFile(
+      "test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/dartington-art-centre-totnes/2026-07-28.html")
+    try src.mkString finally src.close()
+  }
+
+  private val dartingtonDate  = LocalDate.of(2026, 7, 28)
+  private lazy val unbookable = FlicksClient.parseDay(unbookableFixture, dartingtonDate)
+
+  "parseDay" should "read sessions rendered as a <span> button (no booking link)" in {
+    unbookable.map(_.slug).distinct should contain theSameElementsAs Seq("the-odyssey-2026", "minions-3")
+  }
+
+  it should "take an unbookable session's time from the visible 12h text" in {
+    // No `data-optlabel` on a span button, so the "4:00 pm" / "7:30 pm" text is
+    // the only time source.
+    unbookable.filter(_.slug == "the-odyssey-2026").map(_.dateTime).distinct should contain theSameElementsAs
+      Seq(LocalDateTime.of(2026, 7, 28, 16, 0), LocalDateTime.of(2026, 7, 28, 19, 30))
+    unbookable.filter(_.slug == "minions-3").map(_.dateTime).distinct shouldBe
+      Seq(LocalDateTime.of(2026, 7, 28, 14, 0))
+  }
+
+  it should "leave the booking link empty rather than inventing one" in {
+    unbookable.flatMap(_.booking) shouldBe empty
+  }
+
+  it should "still carry the film metadata off an unbookable card" in {
+    val odyssey = unbookable.find(_.slug == "the-odyssey-2026").value
+    odyssey.title shouldBe "The Odyssey"
+    odyssey.runtimeMinutes.value shouldBe 172
+    odyssey.director.value shouldBe "Christopher Nolan"
+    odyssey.ageRating.value shouldBe "15"
+  }
+
+  it should "collapse the duplicated desktop/mobile buttons into one showtime each" in {
+    // The card renders each session twice (a desktop-only and a mobile block);
+    // the (time, booking) dedup in moviesFor must leave one showtime per screening.
+    val movies = new FlicksClient(fake, "dartington-art-centre-totnes",
+      BarnCinemaDartingtonArtCentre, today = dartingtonDate).fetchChunk("2026-07-28")
+    movies.map(_.movie.title) should contain theSameElementsAs Seq("The Odyssey", "Minions & Monsters")
+    movies.find(_.movie.title == "The Odyssey").value.showtimes.map(_.dateTime) shouldBe
+      Seq(LocalDateTime.of(2026, 7, 28, 16, 0), LocalDateTime.of(2026, 7, 28, 19, 30))
+    movies.find(_.movie.title == "Minions & Monsters").value.showtimes should have size 1
   }
 
   private class ScriptedByUrl(respond: String => String) extends tools.GetOnlyHttpFetch {

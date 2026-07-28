@@ -26,10 +26,13 @@ import scala.util.Try
  *        `h3.cinema-times__movie-title`, a `/movie/<slug>/` link, the runtime
  *        (`.cinema__movie-duration` "90 mins"), the director
  *        (`.cinema__director span`), and a `ul.times-calendar-times` of session
- *        buttons — each an `<a>` to the cinema chain's own booking deep-link,
- *        with the 24h time in `data-optlabel` (falling back to the visible
- *        "h:mm am/pm") and a premium/format label (IMAX, LuxeSuite, iSense…) on
- *        variant screenings.
+ *        buttons — carrying the 24h time in `data-optlabel` (falling back to the
+ *        visible "h:mm am/pm") and a premium/format label (IMAX, LuxeSuite,
+ *        iSense…) on variant screenings. A button is an `<a>` to the cinema
+ *        chain's booking deep-link only where the venue has online booking wired
+ *        in; venues without it render the identical button as a `<span>`, so the
+ *        session is matched by CLASS, not tag, and its booking link is simply
+ *        absent.
  *
  * One instance serves one venue — its Flicks `cinemaSlug` + the [[Cinema]] it
  * feeds, mirroring [[FilmwebShowtimesClient]]. One AJAX call per day. Each
@@ -245,7 +248,7 @@ object FlicksClient {
           val director  = Option(article.selectFirst(".cinema__director span")).map(_.text.trim).filter(_.nonEmpty)
           // Every session button in a film's card carries the same `data-eventjson`
           // blob; read the first non-empty one once and lift id/cast/genre from it.
-          val eventJson = article.select("a.times-calendar-times__button").asScala.iterator
+          val eventJson = article.select(".times-calendar-times__button").asScala.iterator
             .map(_.attr("data-eventjson")).find(_.nonEmpty).getOrElse("")
           val contentId = ContentId.findFirstMatchIn(eventJson).map(_.group(1))
           val cast      = ContentCast.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil)
@@ -258,8 +261,13 @@ object FlicksClient {
             .map(_.text).flatMap(AgeRating.normalize)
 
           article.select("li.times-calendar-times__el").asScala.toSeq.flatMap { li =>
-            val button = Option(li.selectFirst("a.times-calendar-times__button"))
+            // Tag-agnostic: a bookable session is an `<a …>`, an unbookable one the
+            // same button as a `<span>`. Keying on the `<a>` silently dropped every
+            // showtime at a venue with no booking deep-links (see the spec).
+            val button = Option(li.selectFirst(".times-calendar-times__button"))
             button.flatMap(parseTime).map { time =>
+              // A `<span>` button has no href, so this stays None — an unbookable
+              // screening is still a screening.
               val booking = button.map(_.attr("href")).filter(_.nonEmpty)
               val label   = Option(li.selectFirst("span.times-calendar-times__el__label span"))
                 .map(_.text.trim).filter(_.nonEmpty)
