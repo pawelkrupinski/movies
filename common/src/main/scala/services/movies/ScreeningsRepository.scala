@@ -200,7 +200,21 @@ object ScreeningsRepository {
       if (aDigest == bDigest) None
       else {
         val a = after.get(s).map(_.showtimes).getOrElse(Seq.empty)
-        Some(s.displayName -> (if (a.nonEmpty) Some(a) else None))
+        if (a.nonEmpty) Some(s.displayName -> Some(a))
+        // An empty LIST is not evidence of an empty slot. A record resident in the cache has
+        // been through `stripForCache`, which drops every list and keeps only the digest — so
+        // "stripped" and "screening nothing" look identical here, and `putIfPresent` (every
+        // rating refresh, every per-slot scrape update) hands us exactly those stripped
+        // records. Deleting on that basis wipes the film's screenings for a cinema from a
+        // record that never carried them.
+        //
+        // The digest is what tells the two apart. Delete only when it says the slot really is
+        // empty — which also covers the slot vanishing from `after` entirely, a genuine
+        // removal that must still delete. Otherwise we know the showtimes CHANGED but not
+        // what to, so there is nothing this record can write: skip, and let the whole-record
+        // path (`upsert`, which re-stitches from `screenings` first) carry the change.
+        else if (aDigest == ShowtimesDigest.EmptyDigest) Some(s.displayName -> None)
+        else None
       }
     }.toMap
 

@@ -123,7 +123,11 @@ class SourceDataConvergenceSpec extends AnyFlatSpec with Matchers {
     // That is correct behaviour, and it is why a partial listing is so dangerous; see
     // `PartialReducePruneSpec`.
     Map(
-      Multikino   -> Seq("Migrated", "Mixed"),
+      // "Duplicated" is on Multikino's board because the SEED put it there (the yearless
+      // row). A cinema's listing is its whole board, so omitting it here would be Multikino
+      // reporting that it has stopped showing the film — a correct prune, but not the
+      // scenario this is testing.
+      Multikino   -> Seq("Migrated", "Mixed", "Duplicated"),
       Helios      -> Seq("Unmigrated", "Respelled"),
       KinoMuranow -> Seq("Mixed"),
       KinoMuza    -> Seq("Duplicated")
