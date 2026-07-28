@@ -112,7 +112,7 @@
     {
       "id": 2,
       "title": "Resident set size (RSS) vs cgroup limit",
-      "description": "process_resident_memory_bytes. The dashed line is the ~960MB cgroup ceiling. A slow climb that resets at a restart = the native working set; a spike to the line = a Fly RSS-kill.",
+      "description": "Two independent readings of the same number: process_resident_memory_bytes (the JVM's process exporter) and kinowo_worker_process_rss_bytes (VmRSS, read straight from /proc/self/status by the vitals sampler that also computes the off-book gap panel). They should sit on top of each other — they're drawn together so the gap panel's arithmetic is checkable rather than taken on faith, and so a divergence between the two sources shows up as a divergence instead of as a wrong gap. The dashed line is the ~960MB cgroup ceiling. A slow climb that resets at a restart = the native working set; a spike to the line = a Fly RSS-kill.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -179,6 +179,15 @@
           "refId": "B",
           "expr": "1006632960",
           "legendFormat": "cgroup limit (960MB)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "kinowo_worker_process_rss_bytes and on(app) kinowo_worker_throttled{country=~\"$country\"}",
+          "legendFormat": "RSS (VmRSS, sampler)",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"
@@ -512,6 +521,45 @@
           "refId": "A",
           "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[5m]))",
           "legendFormat": "avg project ms",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "app-metrics-live"
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Off-book native memory — RSS minus NMT-committed",
+      "description": "kinowo_worker_native_offbook_gap_bytes: resident memory the JVM does not account for anywhere. Neither of the panels at the top of this dashboard can show it — jvm_memory_* covers the heap, the NMT panel covers what HotSpot admits to committing, and this is what is resident beyond BOTH. It is the primary signal for the ~5-6h non-heap OOM restarts: the 2026-07-09 probe found every NMT category flat across a whole 5h life while RSS climbed ~26MB/hr, which is glibc malloc retention/fragmentation in the C heap and appears here and nowhere else. Read it as a slope, not a level — a straight diagonal that resets only at a restart is the pre-OOM signature, and the point it would cross the cgroup ceiling on the RSS panel is roughly when the machine dies.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "app-metrics-live"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_native_offbook_gap_bytes and on(app) kinowo_worker_throttled{country=~\"$country\"}",
+          "legendFormat": "off-book gap — {{app}}",
           "datasource": {
             "type": "prometheus",
             "uid": "app-metrics-live"
