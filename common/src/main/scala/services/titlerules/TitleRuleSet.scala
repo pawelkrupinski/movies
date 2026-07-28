@@ -54,6 +54,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
 
   private val structuralRules = tier(GlobalStructural)
   private val canonicalRules  = tier(Canonical)
+  private val spellingRules   = canonicalRules.filter(_.replacement.nonEmpty)
   private val perCinemaRules: Map[String, Seq[TitleRule]] =
     effectiveRules.iterator.filter(_.scope == PerCinema).toSeq
       .groupBy(_.cinemaId.getOrElse(""))
@@ -75,6 +76,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
   // ConcurrentHashMap for thread-safety (TitleNormalizer is shared, lock-free).
   private val structuralCache      = new ConcurrentHashMap[String, String]()
   private val canonicalCache       = new ConcurrentHashMap[String, String]()
+  private val spellingUnifiedCache = new ConcurrentHashMap[String, String]()
   private val perCinemaCache       = new ConcurrentHashMap[(String, String), String]()
   private val programmePrefixCache = new ConcurrentHashMap[String, Option[String]]()
   private val bannerBoundaryCache  = new ConcurrentHashMap[String, Option[Int]]()
@@ -97,6 +99,22 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  on their own. */
   def canonical(t: String): String =
     canonicalCache.computeIfAbsent(t, k => fold(canonicalRules, k.trim))
+
+  /** The REWRITING half of the canonical tier — the rules that replace one spelling of a
+   *  film with another (" & " → " i ", a lower-cased franchise prefix) rather than
+   *  deleting a decoration. That distinction is exactly `replacement.nonEmpty`, and it is
+   *  the half a DISPLAY title may safely take.
+   *
+   *  The stripping half must not reach a display title. Those rules exist so a decorated
+   *  scrape keys like the bare film — the Fellini retrospective's "Federico Fellini:" /
+   *  "ciao a tutti!" family is the reason the tier is load-bearing at all — and a title
+   *  made ENTIRELY of such a banner reduces to nothing: applying the whole tier to
+   *  display renders "Federico Fellini: ciao a tutti!" as "" and renames its sibling
+   *  "Federico Fellini: Ciao a tutti! - Wałkonie …" to plain "Wałkonie …", collapsing a
+   *  deliberately separate programme row onto the base film's name. Measured, not
+   *  supposed. Identity keeps the full fold; only display takes this subset. */
+  def spellingUnified(t: String): String =
+    spellingUnifiedCache.computeIfAbsent(t, k => fold(spellingRules, k.trim))
 
   /** Per-cinema raw → clean cleanup (the old per-client `cleanTitle`). Unknown
    *  cinema → identity. NO implicit trim — clients that trimmed carry an explicit

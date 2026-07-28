@@ -327,19 +327,31 @@ object TitleNormalizer {
     }
   }
 
-  // Among a group of titles that merge to one schedule, pick the display form.
-  // When a merge happens (two or more distinct titles), always show the
-  // canonical form — " & " replaced with " i " and the "Gwiezdne Wojny: "
-  // prefix stripped — even when the canonical form isn't literally present in
-  // the input. That way "Mandalorian i Grogu" wins over both
-  // "Mandalorian & Grogu" and "Gwiezdne Wojny: Mandalorian i Grogu", regardless
-  // of which spellings the cinemas happened to ship.
-  // A single-title group is returned untouched to avoid mutating standalone
-  // titles like "Gwiezdne Wojny: A New Hope" or "Pizza & Pasta" that did not
-  // actually trigger a merge.
+  // Among a group of titles that merge to one schedule, pick the display form —
+  // spelling-unified, so " & " shows as " i " however the cinemas spelled it. That way
+  // "Mandalorian i Grogu" wins over "Mandalorian & Grogu" even when no cinema shipped the
+  // "i" form.
+  //
+  // The unification applies to a group of ONE as well. It used to be skipped there, on
+  // the reasoning that a standalone name had not triggered a merge — but the pool size is
+  // a property of who is asking, not of the film. The settle offers one variant (the
+  // cinema's spelling) and got "Arnie & barney"; a hydrate offers two and got
+  // "Arnie i barney". Neither is persisted, so the settle rewrote those rows after every
+  // boot until the two agreed.
+  //
+  // The two halves of the canonical tier are applied on different terms, because they do
+  // different things. A REWRITE (" & " → " i ") swaps one spelling of a film for another
+  // and is safe on any group, merge or not. A STRIP (a franchise or banner prefix, a year
+  // suffix) DELETES information, and only earns that when a merge actually happened — a
+  // standalone "Gwiezdne Wojny: A New Hope" that no other spelling joined would otherwise
+  // display as "A New Hope", losing the only name a cinema ever gave it.
+  //
+  // So: rewrites always, strips only for a genuine merge (the ladder branch below, which
+  // is what a merged group has always done). Neither may empty a title outright, which the
+  // banner strips do to a listing that is nothing BUT a banner.
   def preferredDisplay(titles: Iterable[String]): Option[String] = {
     val seq = titles.iterator.toSeq.distinct
-    if (seq.size <= 1) seq.headOption
+    if (seq.sizeIs <= 1) seq.headOption.map(unifySpelling)
     else {
       // After canonical (decoration stripping, & → i, Gwiezdne Wojny: removed),
       // a merged group typically reduces to a single canonical form — return
@@ -350,10 +362,25 @@ object TitleNormalizer {
       // by the caller (`MovieRecord.displayTitle` picks the dominant `sanitize`
       // key before calling here), so this ladder only ranks same-identity
       // spellings of one film.
-      val canonicals = seq.map(canonical).distinct
-      if (canonicals.size == 1) canonicals.headOption
+      val canonicals = seq.map(canonicalForDisplay).distinct
+      if (canonicals.sizeIs == 1) canonicals.headOption
       else canonicals.sortBy(displayLadderKey).headOption
     }
+  }
+
+  /** Full canonical fold for a MERGED group's display, never to nothing: a listing that is
+   *  nothing but a banner ("Federico Fellini: ciao a tutti!") reduces to "" under the
+   *  strips, which would leave a film with no name at all. Raw wins that argument. */
+  private def canonicalForDisplay(t: String): String = {
+    val folded = canonical(t)
+    if (folded.trim.nonEmpty) folded else t
+  }
+
+  /** The REWRITING half only — safe for a group of one, because it swaps a spelling rather
+   *  than deleting a decoration. See [[services.titlerules.TitleRuleSet.spellingUnified]]. */
+  private def unifySpelling(t: String): String = {
+    val unified = effective.spellingUnified(t)
+    if (unified.trim.nonEmpty) unified else t
   }
 
   // Deterministic preference ladder for same-identity title spellings. Pure

@@ -158,8 +158,14 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     preferredDisplay(Seq("Mandalorian i Grogu", "Mandalorian & Grogu")) shouldBe Some("Mandalorian i Grogu")
   }
 
-  it should "fall back to '&' form when no 'i' alternative exists" in {
-    preferredDisplay(Seq("Mandalorian & Grogu")) shouldBe Some("Mandalorian & Grogu")
+  // The ampersand unification applies to a group of ONE too. It used to be skipped there,
+  // on the reasoning that a lone title had not triggered a merge — but the pool size is a
+  // property of who is asking, not of the film: the settle offers one variant and the
+  // hydrate offers two, so the two disagreed forever and the settle rewrote those rows
+  // after every boot. ' & ' and ' i ' already share an identity (`sanitize` folds them),
+  // so this only decides which of one film's spellings is shown.
+  it should "unify ' & ' to ' i ' even when it is the only spelling" in {
+    preferredDisplay(Seq("Mandalorian & Grogu")) shouldBe Some("Mandalorian i Grogu")
   }
 
   it should "return None for an empty group" in {
@@ -202,12 +208,15 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     )) shouldBe Some("Mandalorian i Grogu")
   }
 
-  it should "leave a standalone 'Gwiezdne Wojny:' title untouched (no merge → no transformation)" in {
+  // A STRIP is different from a rewrite: it deletes information, and only a genuine merge
+  // earns that. A lone "Gwiezdne Wojny: A New Hope" no other spelling joined must keep the
+  // only name a cinema ever gave it.
+  it should "leave a standalone 'Gwiezdne Wojny:' title untouched (no merge → no strip)" in {
     preferredDisplay(Seq("Gwiezdne Wojny: A New Hope")) shouldBe Some("Gwiezdne Wojny: A New Hope")
   }
 
-  it should "leave a standalone '&' title untouched (no merge → no transformation)" in {
-    preferredDisplay(Seq("Pizza & Pasta")) shouldBe Some("Pizza & Pasta")
+  it should "unify a standalone '&' title, which shares an identity with its 'i' spelling anyway" in {
+    preferredDisplay(Seq("Pizza & Pasta")) shouldBe Some("Pizza i Pasta")
   }
 
   // ── preferredDisplay for punctuation-only duplicates ──────────────────────
