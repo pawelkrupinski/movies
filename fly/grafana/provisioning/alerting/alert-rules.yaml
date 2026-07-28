@@ -855,11 +855,19 @@ groups:
       # multi-hour bleed the reference falls with the metric and the ratio never
       # trips. The fix is a baseline LONGER than the incident.
       #
-      # max_over_time (not avg) is the baseline on purpose: the gauge is
-      # published on partial corpus scans too (see WorkerShowtimesMetrics —
-      # publish() ignores scanComplete), so a truncated pass reads LOW and never
-      # high. The peak of the window is therefore the trustworthy sample, and an
+      # max_over_time (not avg) is the baseline on purpose: a restart walks the
+      # gauge up from a cold scan, so the series carries low samples that are not
+      # losses. The peak of the window is therefore the trustworthy sample, and an
       # averaged baseline would be dragged down by exactly that noise.
+      #
+      # WHAT THIS RULE CAN NO LONGER SEE: a truncated corpus pass. It used to
+      # publish what it had read, so a read fault dragged the gauge down and this
+      # ratio with it. WorkerShowtimesMetrics.publish() now gates on scanComplete
+      # and publishes NOTHING on a partial pass, so the gauge FREEZES at its last
+      # complete value — and a frozen numerator over a frozen max_over_time
+      # denominator is a flat 1.0 that never trips. That failure mode moved to
+      # kinowo-corpus-census-stuck below; the two rules are complements, not
+      # overlaps, and neither covers the other's shape.
       #
       # Per country, never fleet-wide: the UK's 63% loss was only a 27% dent in
       # sum(kinowo_worker_showtimes) because PL and DE were healthy. Backtested
@@ -903,6 +911,66 @@ groups:
               conditions:
                 - type: query
                   evaluator: { type: lt, params: [0.6] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- A country's corpus census stopped reading (gauges frozen) --------
+      # Every census gauge on the Fly-health dashboard — kinowo_worker_corpus_movies,
+      # kinowo_worker_movies_served, kinowo_worker_showtimes — comes from ONE paged
+      # scan of `movies` every 5 min, and each of them now SKIPS its publish when
+      # that scan could not read every row. That is the right call for the gauges
+      # (a partial count is fewer rows read, not a smaller corpus, and 2026-07-27's
+      # `Missing field: sourceData` decode bug published total=0 for ~50 min while
+      # the corpus sat intact at 943 films) — but it means a total read failure now
+      # renders as three flat, plausible, entirely stale lines and pages nobody:
+      # the swing/floor rules see no swing, and the collapse rule above sees a
+      # frozen ratio of 1.0. This counter is the only remaining evidence, so it is
+      # the only thing that can carry the alert.
+      #
+      # Any incomplete pass at all is worth a page: the scan is read-only and
+      # keyset-paged over a collection the worker reads constantly, so a batch that
+      # fails is a real fault (decode, connection, timeout), not routine noise. The
+      # counter is materialized at 0 per country from boot, so `increase` has a
+      # baseline to move off immediately rather than only once it has gone wrong.
+      # `for: 10m` over a 30m window means two consecutive failed 5-min passes, not
+      # one — a single transient miss self-heals on the next tick and the gauges
+      # were only one sample stale.
+      - uid: kinowo-corpus-census-stuck
+        title: Corpus census stuck (country)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.country }} corpus census cannot read the whole collection — its census gauges are frozen'
+          description: 'kinowo_worker_corpus_scan_incomplete_total is rising for "{{ $labels.country }}": the 5-minute corpus scan is failing to read every row, so kinowo_worker_corpus_movies / _movies_served / _showtimes have STOPPED publishing and are showing their last complete values. Treat every census panel on the Fly-health dashboard as stale until this clears — including the ones the showtime-collapse and films-served alerts read, which cannot fire on a frozen gauge. Check the worker logs for `worker-corpus-scan: corpus scan incomplete` and for the decode/read error underneath it (2026-07-27 was a required-field decode bug failing every batch; see reference_failed_read_is_not_data).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 1800, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (country) (increase(kinowo_worker_corpus_scan_incomplete_total[30m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [1] }
                   operator: { type: and }
                   query: { params: [] }
                   reducer: { type: last, params: [] }

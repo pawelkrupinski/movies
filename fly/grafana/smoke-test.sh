@@ -16,7 +16,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 IMG="$(grep '^FROM ' "$DIR/Dockerfile" | tail -1 | awk '{print $2}')"
 NAME="kinowo-grafana-smoke"
 PORT="${SMOKE_PORT:-3999}"
-EXPECTED_RULES=22
+EXPECTED_RULES=23
 
 # Mount a FRESH copy, not the source tree directly: Docker Desktop's macOS
 # bind-mount cache can keep serving a file's pre-edit bytes after you edit it,

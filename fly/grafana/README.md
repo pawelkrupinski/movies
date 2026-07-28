@@ -15,7 +15,7 @@ external cinema scrape targets, not our own VMs).
   an external account + series caps. Self-hosting keeps everything as code here.
 
 Everything is **config-as-code** under `provisioning/` — a fresh machine comes up
-fully wired (datasource, 13 alert rules, Telegram contact point, overview
+fully wired (datasource, every alert rule, Telegram contact point, overview
 dashboard). No click-ops.
 
 Most rules read Fly's host metrics. The **app-uptime** group is different: it
@@ -133,7 +133,7 @@ dashboard (the `Deploys` annotation query). Until the secrets exist, the
 fly/grafana/smoke-test.sh      # needs Docker
 ```
 Boots the real Grafana image with this provisioning and asserts the datasource,
-all 13 alert rules, the Telegram contact point and the dashboard load cleanly. No
+every alert rule, the Telegram contact point and the dashboard load cleanly. No
 network to Fly needed (dummy token). Break any provisioning file and it fails —
 this is the test gate for changes here.
 

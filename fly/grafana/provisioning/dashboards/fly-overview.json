@@ -365,7 +365,7 @@
     {
       "id": 37,
       "title": "kinowo — films the movies collection would serve per city (all future)",
-      "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by — exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus — a stuck projection or a malformed/pruned web_movies row.",
+      "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by — exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus — a stuck projection or a malformed/pruned web_movies row. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 131 },
@@ -377,7 +377,7 @@
     {
       "id": 38,
       "title": "kinowo — films the movies collection would serve per city (showing tomorrow)",
-      "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair.",
+      "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 131 },
@@ -389,7 +389,7 @@
     {
       "id": 36,
       "title": "Worker — movies corpus coverage (records, ids, ratings)",
-      "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog.",
+      "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 140 },
@@ -425,7 +425,7 @@
     {
       "id": 41,
       "title": "kinowo — total upcoming showtimes served (all cities)",
-      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing.",
+      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 157 },
@@ -437,7 +437,7 @@
     {
       "id": 42,
       "title": "kinowo — upcoming showtimes served per city",
-      "description": "Per-city breakdown of the panel to the left: individual upcoming showtimes (single dated slots) the source `movies` collection would serve on each /:city/ page, from kinowo_worker_showtimes{city} (worker-side, projected from `movies`, sampled every 5 min, upcoming-only, readyToProject-gated). Every slot belongs to exactly one city, so these series sum to the total panel. A single city's showtime volume cratering while its film count holds is a venue that lost screens/sessions.",
+      "description": "Per-city breakdown of the panel to the left: individual upcoming showtimes (single dated slots) the source `movies` collection would serve on each /:city/ page, from kinowo_worker_showtimes{city} (worker-side, projected from `movies`, sampled every 5 min, upcoming-only, readyToProject-gated). Every slot belongs to exactly one city, so these series sum to the total panel. A single city's showtime volume cratering while its film count holds is a venue that lost screens/sessions. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 157 },
@@ -447,12 +447,61 @@
       ]
     },
     {
+      "id": 50,
+      "title": "Worker — corpus census: passes that could not read the whole corpus (per hour)",
+      "description": "READ THIS BEFORE READING ANY CENSUS PANEL ABOVE. The corpus census (one paged scan every 5 min feeding kinowo_worker_corpus_movies, kinowo_worker_movies_served and kinowo_worker_showtimes) publishes NOTHING when a batch read fails mid-scan — a partial count is fewer rows READ, not a smaller corpus, and as a gauge value the two are identical. So those gauges hold their last complete values and a read fault looks like a flat, plausible, perfectly healthy line. This counter is the only thing that tells the two apart: above zero, every census panel on this dashboard is STALE and its flatness means nothing. Named for the 2026-07-27 outage, where a `Missing field: sourceData` decode bug failed every batch and the censuses published total=0 for ~50 min while the corpus sat intact at 943 films — the panels then read as a corpus collapse; today they would read as calm. Pairs with the kinowo-corpus-census-stuck alert.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 165 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 25 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (country) (rate(kinowo_worker_corpus_scan_incomplete_total{country=~\"$country\"}[$__rate_interval])) * 3600", "legendFormat": "{{country}}" }
+      ]
+    },
+    {
+      "id": 51,
+      "title": "Worker — read-model prunes: films removed & sweeps that removed something (per min)",
+      "description": "The DELETION side of the read model, which the size gauges above cannot show: they tell you the corpus is smaller, never which mechanism shrank it. films-pruned = derived documents removed during reconcile because their source row vanished or was re-keyed (kinowo_worker_readmodel_films_pruned — the event that can briefly 404 a film deep-link until the new key propagates; pair with the merges/splits panel for the re-key cause). prune sweeps that removed something = kinowo_worker_readmodel_reconcile_sweeps{did_work=\"true\"}, the cheap id-only orphan prune actually finding orphans — deletes and re-keys the change stream cannot deliver. A burst here under a flat film count is the shape a slot/showtime loss makes now that slots live in movie_slots and the read model is projected from them.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 165 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(kinowo_worker_readmodel_films_pruned_total{country=~\"$country\"}[$__rate_interval])) * 60", "legendFormat": "films pruned" },
+        { "refId": "B", "expr": "sum(rate(kinowo_worker_readmodel_reconcile_sweeps_total{country=~\"$country\", did_work=\"true\"}[$__rate_interval])) * 60", "legendFormat": "prune sweeps that removed something" }
+      ]
+    },
+    {
+      "id": 52,
+      "title": "Worker — cache backstop rehydrate: rows the change stream missed (per min)",
+      "description": "What the MovieCache's periodic full-reload backstop caught that the INCREMENTAL change stream did not deliver, by kind: changed = a cached value that differed from Mongo (a missed upsert), deleted = a key gone from Mongo the delete-apply never dropped. With resume-token persistence + cache delete-apply this should sit at ~0 in steady state, and a rate flat at 0 is the evidence the 30-min rehydrate could be retired; anything sustained above 0 means the change-stream path — the same path the read-model projector and every panel derived from it trust — is losing writes. NOTE: the one-time BOOT hydrate counts EVERY row as changed, so read the steady state after a restart, not the spike at it.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 173 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (kind) (rate(kinowo_worker_cache_rehydrate_changes_total{country=~\"$country\"}[$__rate_interval])) * 60", "legendFormat": "{{kind}}" }
+      ]
+    },
+    {
+      "id": 53,
+      "title": "Worker — read-model metadata: reused vs recomputed (per min)",
+      "description": "Which HALF of a projection actually ran, from kinowo_worker_readmodel_metadata_projections{outcome}. reused = a showtime-only change at an already-present cinema, so only the cheap screenings half re-ran; recomputed = a rating / synopsis / new-cinema change, or a first projection, so the expensive metadata half (resolve + synopsisByCity + ratingsFor) ran too. This is the read-model's split of scrape churn into \"slots moved\" versus \"the film itself changed\" — the projection-side counterpart to source_data on the change-stream UPDATE-kinds panel above. rate(reused) / rate(reused+recomputed) is the reuse hit ratio; high reuse under heavy churn is the CPU win the metadata cache exists for, and a collapse in it explains a projection-CPU climb that the trigger rate alone does not.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 173 },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum by (outcome) (rate(kinowo_worker_readmodel_metadata_projections_total{country=~\"$country\"}[$__rate_interval])) * 60", "legendFormat": "{{outcome}}" }
+      ]
+    },
+    {
       "id": 43,
       "title": "Worker — JVM heap & host free memory (vs -Xmx)",
       "description": "kinowo-worker heap detail + how much RAM the machine has left, scaled to the heap band (RSS and the 1GB machine-total line are omitted so this reads at ~0-320MB). JVM heap / old-gen / non-heap are the worker's own exports (app-metrics-live), scoped to $country by an `and on(app)` data join; host FREE is a Fly host metric (fly-prometheus, ~15-25min lag), scoped to $country through the hidden $worker_host_app variable — fly_instance_* carries no country label and sits on a different datasource, so a data join cannot reach it and the derived app list is the only way to narrow it. Old gen (tenured) rides ~205MB of the ~309MB max heap (-Xmx320m), i.e. ~90% full at rest — so a whole-corpus read-model reprojection's transient allocation tips it into a SerialGC full-GC thrash (VM Thread ~0.6 core) that drains CPU credit to the floor (seen 2026-07-03 20:40). 'Host free' is the machine's remaining RAM: hovering ~200MB, it leaves little room to raise -Xmx on this box. Its twin to the right is the same view of the WEB app.",
       "type": "timeseries",
       "datasource": { "type": "datasource", "uid": "-- Mixed --" },
-      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 165 },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 181 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$worker_host_app\"}", "legendFormat": "Host free — {{app}}" },
@@ -468,7 +517,7 @@
       "description": "The WEB app's heap, read exactly like the worker panel to its left. The web JVM's own jvm_* exports carry no country label (one process per country, so the app label already implies it) — they are scoped to $country by intersecting with kinowo_web_movies_served{country}, the same `and on(app)` data join the worker panel uses against kinowo_worker_throttled. Host FREE is narrowed to $country through the hidden $web_host_app variable, the mirror of the worker panel's $worker_host_app — fly_instance_* has no country label, so that derived app list is what scopes it. Different tuning from the worker, so read the shape differently: web runs G1 at -Xmx384m (fly.toml JAVA_OPTS), so 'Old gen (G1)' sawtooths as concurrent cycles reclaim rather than sitting pinned ~90% full, and a rising floor across cycles — not a single spike — is the leak signal.",
       "type": "timeseries",
       "datasource": { "type": "datasource", "uid": "-- Mixed --" },
-      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 165 },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 181 },
       "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "spanNulls": 300000, "drawStyle": "line", "fillOpacity": 0, "lineWidth": 1 } }, "overrides": [ { "matcher": { "id": "byName", "options": "Host free" }, "properties": [ { "id": "custom.lineWidth", "value": 3 }, { "id": "custom.fillOpacity", "value": 8 } ] }, { "matcher": { "id": "byName", "options": "Heap cap (-Xmx)" }, "properties": [ { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [ 8, 6 ] } }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "semi-dark-gray" } } ] } ] },
       "targets": [
         { "refId": "B", "datasource": { "type": "prometheus", "uid": "fly-prometheus" }, "expr": "fly_instance_memory_mem_available{app=~\"$web_host_app\"}", "legendFormat": "Host free — {{app}}" },
@@ -484,7 +533,7 @@
       "description": "Worker CPU in centi-cores (100 = 1 core). 'java (fresh)' is the JVM's own process CPU from the app-metrics sidecar (~15s fresh, leading); 'host busy (authoritative)' is sum(rate(fly_instance_cpu{mode!=idle|steal})) — what Fly actually bills credit against (~15-25min lagged). The dashed breakeven line (~13cc) is the shared-cpu-2x credit EARN rate (empirical): while CPU sits ABOVE it the credit bucket drains, below it refills. Dead-flat CPU pinned above the line with no dips = a spin (the JDK-NIO2 epoll wedge) OR a structural overload — a reboot re-grant just re-drains; a bursty CPU that dips well under the line rebuilds credit. Pair with 'CPU credit balance'.",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "app-metrics-live" },
-      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 182 },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 198 },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -507,7 +556,7 @@
       "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the ~30cc daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_duration_seconds_sum)*100 — the pure ReadModelProjection.projectAll CPU (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it. The ~13cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped: ~30cc daytime, ~5cc overnight (schedules static → no screenings changes → no projection). Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 191},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 207},
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -577,7 +626,7 @@
       "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. change-events/s is the projection TRIGGER (a movies/screenings write); projection-calls/s is how many rows projectAll ran on; readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU and the duration metric above was needed).",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 200},
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 216},
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -614,7 +663,7 @@
       "description": "How hard the read-model projection works. Over-triggering shows as high projection calls/s (the reproject/enrich churn re-projecting rows); an expensive-film tail shows as high p99 ms (one row whose resolve/synopsis work is costly). p50/p95/p99 are per-projection wall-clock in ms (LEFT axis); projections/s is the trigger rate (RIGHT axis). After the metadata-reuse cache, showtime-only churn keeps the percentiles low even when calls/s is high.",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 207},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 223},
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
@@ -661,7 +710,7 @@
       "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half).",
       "type": "heatmap",
       "datasource": {"type": "prometheus", "uid": "app-metrics-live"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 216},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 232},
       "options": {
         "calculate": false,
         "cellGap": 1,
