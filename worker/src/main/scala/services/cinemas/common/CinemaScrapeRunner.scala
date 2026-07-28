@@ -5,6 +5,9 @@ import play.api.Logging
 import services.events.{EventBus, MovieDetailsComplete}
 import services.movies.{CacheKey, MovieCache}
 import services.cinemas.pl.FilmwebShowtimesClient
+import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
+
+import java.time.Instant
 
 /**
  * The per-cinema scrape core: fetch a cinema's current listings, write them
@@ -31,13 +34,32 @@ import services.cinemas.pl.FilmwebShowtimesClient
 class CinemaScrapeRunner(
   movieCache:      MovieCache,
   bus:             EventBus,
-  deferredCinemas: Set[Cinema]
+  deferredCinemas: Set[Cinema],
+  // Keeps each cinema's last consolidated listing so it can be replayed later
+  // (into a test, into an empty database) without re-scraping. Defaults to the
+  // no-op store so specs and scripts that don't care needn't wire one.
+  scrapeArchive:   ScrapeArchiveRepository = ScrapeArchiveRepository.empty
 ) extends Logging {
 
   def run(scraper: CinemaScraper): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     val cinema: Cinema = scraper.cinema
     val t0      = System.currentTimeMillis()
-    val movies  = scraper.fetch()
+    // A throw is archived as a barren attempt and then rethrown untouched, so
+    // callers keep deciding what a failure means while the archive still records
+    // that the cinema was tried and failed.
+    val movies  =
+      try scraper.fetch()
+      catch {
+        case failure: Throwable =>
+          archive(scraper, Seq.empty, Some(messageOf(failure)))
+          throw failure
+      }
+    // Archive BEFORE the cache fold, so what lands is the client's own output
+    // rather than anything the corpus merge did to it — that is what a replay
+    // needs. Both scrape paths reach here: a non-chunked `fetch()` is the live
+    // scrape, and a chunked one arrives as a `PreScrapedCinemaScraper` wrapping
+    // the already-reduced chunks.
+    archive(scraper, movies, error = None)
     val touched = movieCache.recordCinemaScrape(cinema, movies, scraper.listingIsComplete)
     val events   = classify(cinema, touched)
     val elapsed  = System.currentTimeMillis() - t0
@@ -46,6 +68,21 @@ class CinemaScrapeRunner(
     events.foreach(bus.publish)
     touched
   }
+
+  private def archive(scraper: CinemaScraper, movies: Seq[CinemaMovie], error: Option[String]): Unit =
+    scrapeArchive.record(ScrapeAttempt(
+      cinema          = scraper.cinema,
+      city            = Cinema.cityOf(scraper.cinema),
+      at              = Instant.now(),
+      listingComplete = scraper.listingIsComplete,
+      films           = movies,
+      error           = error
+    ))
+
+  /** Exception messages are often null (NPE, some driver errors); fall back to
+   *  the class name so a red row always says something. */
+  private def messageOf(failure: Throwable): String =
+    Option(failure.getMessage).filter(_.nonEmpty).getOrElse(failure.getClass.getName)
 
   /** For each genuinely-new `(cinema, title, year)` in `touched`, decide its
    *  enrichment trigger. As a side effect, marks `detailPending = true` on the

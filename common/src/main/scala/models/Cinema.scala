@@ -1897,6 +1897,13 @@ object Cinema {
 
   val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 
+  /** Resolve a cinema from the `displayName` it is stored under — the wire key
+   *  every per-cinema row uses (`movie_slots`, `screenings`, `cinema_scrapes`).
+   *  Unambiguous by construction: `GermanRoster` qualifies any generated venue
+   *  whose name would collide with a hand-declared one, and `SourceWireKeySpec`
+   *  fails the build on a duplicate. */
+  val byDisplayName: Map[String, Cinema] = all.map(c => c.displayName -> c).toMap
+
   /** Synthetic chain-detail sources → the venue cinemas whose per-film detail
    *  they hold. A chain (only Cinema City today) fetches a film's
    *  synopsis/cast/… ONCE network-wide into its [[CinemaCityChain]] slot rather

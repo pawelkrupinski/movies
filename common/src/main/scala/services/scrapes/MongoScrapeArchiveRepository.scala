@@ -1,0 +1,197 @@
+package services.scrapes
+
+import com.mongodb.WriteConcern
+import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import org.bson.codecs.configuration.CodecRegistry
+import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
+import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
+import org.mongodb.scala.bson.codecs.Macros
+import org.mongodb.scala.model.{Filters, Indexes, Updates}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import play.api.Logging
+import services.movies.JavaTimeCodecs
+
+import java.time.Instant
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
+
+/** Storage mirror of one `CinemaMovie`. Identical to the domain type minus
+ *  `cinema` — every film in a row belongs to the row's cinema, so repeating it
+ *  10-30 times per document would be pure waste, and `Cinema` is a sealed
+ *  hierarchy the driver could not encode anyway. Re-attached on read from
+ *  `Cinema.byDisplayName`. */
+case class ArchivedFilmDto(
+  movie:       Movie,
+  posterUrl:   Option[String],
+  filmUrl:     Option[String],
+  synopsis:    Option[String],
+  cast:        Seq[String],
+  director:    Seq[String],
+  showtimes:   Seq[Showtime],
+  externalIds: Map[String, String],
+  trailerUrl:  Option[String],
+  ageRating:   Option[String]
+)
+
+/** The newest attempt that produced nothing, stored beside the listing it failed
+ *  to refresh. `outcome` is the wire label of a [[ScrapeOutcome]]. */
+case class BarrenAttemptDto(
+  at:      Instant,
+  outcome: String,
+  error:   Option[String]
+)
+
+/** Storage DTO for one cinema's archive row — the macro codec target for the
+ *  `cinema_scrapes` collection. `_id` is the cinema's `displayName`, the same
+ *  wire key every per-cinema row is stored under elsewhere.
+ *
+ *  `scrapedAt` / `listingComplete` / `films` describe the last scrape WITH
+ *  content and are absent only on a row that has never had any — hence optional,
+ *  so a barren-only row (a cinema failing since before the archive began) still
+ *  decodes. */
+case class StoredScrapeDto(
+  _id:             String,
+  city:            Option[String],
+  scrapedAt:       Option[Instant],
+  listingComplete: Option[Boolean],
+  films:           Option[Seq[ArchivedFilmDto]],
+  lastBarren:      Option[BarrenAttemptDto]
+)
+
+object StoredScrapeDto {
+
+  def toFilmDto(f: CinemaMovie): ArchivedFilmDto =
+    ArchivedFilmDto(f.movie, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
+      f.showtimes, f.externalIds, f.trailerUrl, f.ageRating)
+
+  def fromSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): StoredScrapeDto =
+    StoredScrapeDto(
+      _id             = cinema.displayName,
+      city            = city,
+      scrapedAt       = Some(scrape.at),
+      listingComplete = Some(scrape.listingComplete),
+      films           = Some(scrape.films.map(toFilmDto)),
+      // A scrape that just succeeded is by definition the newest thing that has
+      // happened to this cinema, so nothing barren can still apply.
+      lastBarren      = None
+    )
+
+  /** `None` for a row whose cinema no longer exists in the catalog — a venue that
+   *  was renamed or dropped. Its films can't be attributed to anything, so the
+   *  row is skipped rather than guessed at. */
+  def toDomain(dto: StoredScrapeDto): Option[ArchivedScrape] =
+    Cinema.byDisplayName.get(dto._id).map { cinema =>
+      ArchivedScrape(
+        cinema      = cinema,
+        city        = dto.city,
+        lastSuccess = dto.scrapedAt.map(at => SuccessfulScrape(
+          at              = at,
+          listingComplete = dto.listingComplete.getOrElse(true),
+          films           = dto.films.getOrElse(Seq.empty).map(f => CinemaMovie(
+            f.movie, cinema, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
+            f.showtimes, f.externalIds, f.trailerUrl, f.ageRating))
+        )),
+        lastBarren  = dto.lastBarren.flatMap(b =>
+          ScrapeOutcome.byLabel(b.outcome).map(o => BarrenAttempt(b.at, o, b.error)))
+      )
+    }
+}
+
+/** BSON wiring for `cinema_scrapes`. `IgnoreNone` throughout so an absent
+ *  `synopsis`/`room`/`ageRating` costs nothing on the wire and decodes back to
+ *  `None` — the same trade `MovieCodecs` makes for `Showtime`. */
+object ScrapeArchiveCodecs {
+  val registry: CodecRegistry = fromRegistries(
+    fromCodecs(JavaTimeCodecs.localDateTime),
+    fromProviders(
+      Macros.createCodecProviderIgnoreNone[Showtime](),
+      Macros.createCodecProviderIgnoreNone[Movie](),
+      Macros.createCodecProviderIgnoreNone[ArchivedFilmDto](),
+      Macros.createCodecProviderIgnoreNone[BarrenAttemptDto](),
+      Macros.createCodecProviderIgnoreNone[StoredScrapeDto]()
+    ),
+    DEFAULT_CODEC_REGISTRY
+  )
+}
+
+/**
+ * Mongo-backed `ScrapeArchiveRepository`, collection `cinema_scrapes` — one row
+ * per cinema, its listing replaced on every scrape that has content.
+ *
+ * Exactly one worker writes a given country's database, so a successful scrape
+ * replaces its row outright. A barren attempt is a CONDITIONAL update instead
+ * (`scrapedAt < at`), which both enforces the "only if newer" rule and keeps it
+ * atomic — the alternative, read-then-write, could drop a listing that landed in
+ * between.
+ *
+ * Relaxed write concern, and every operation `Try`-guarded: this collection is a
+ * side-record of a scrape that has already happened, so a failed write must
+ * never break the scrape that produced it. The next scrape rewrites the row.
+ */
+class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends ScrapeArchiveRepository with Logging {
+
+  private lazy val coll: Option[MongoCollection[StoredScrapeDto]] = sharedDb.map { db =>
+    val c = db.withCodecRegistry(ScrapeArchiveCodecs.registry)
+      .getCollection[StoredScrapeDto](ScrapeArchiveRepository.Collection)
+      .withWriteConcern(WriteConcern.W1.withJournal(false))
+    // Supports "which cinemas have gone stale / are failing" reads without
+    // scanning; the collection is small enough that nothing else needs an index.
+    Try(Await.result(c.createIndex(Indexes.ascending("scrapedAt")).toFuture(), 10.seconds))
+    Try(Await.result(c.createIndex(Indexes.ascending("lastBarren.at")).toFuture(), 10.seconds))
+    c
+  }
+
+  def enabled: Boolean = coll.isDefined
+
+  protected def storeSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): Unit =
+    coll.foreach { c =>
+      val dto = StoredScrapeDto.fromSuccess(cinema, city, scrape)
+      guard(cinema, "record") {
+        Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 30.seconds)
+      }
+    }
+
+  protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit =
+    coll.foreach { c =>
+      // Upsert on `_id` alone, then let the `scrapedAt` guard live in the update
+      // itself: `$max`-style conditional writes don't exist for sub-documents, so
+      // the filter carries the ordering rule and a no-match is simply a no-op.
+      // The upsert branch (first-ever sighting of a cinema that has only failed)
+      // creates a content-less row, which decodes as `lastSuccess = None`.
+      guard(cinema, "recordBarren") {
+        val existing = Await.result(c.find(Filters.eq("_id", cinema.displayName)).headOption(), 30.seconds)
+        val stale    = existing.flatMap(_.scrapedAt).exists(_.isAfter(attempt.at))
+        if (!stale) {
+          val marker = Updates.set("lastBarren", BarrenAttemptDto(attempt.at, attempt.outcome.label, attempt.error))
+          val update = city.fold(marker)(name => Updates.combine(marker, Updates.setOnInsert("city", name)))
+          Await.result(
+            c.updateOne(Filters.eq("_id", cinema.displayName), update, new UpdateOptions().upsert(true)).toFuture(),
+            30.seconds)
+        }
+      }
+    }
+
+  def find(cinema: Cinema): Option[ArchivedScrape] = coll.flatMap { c =>
+    guard(cinema, "find")(Await.result(c.find(Filters.eq("_id", cinema.displayName)).headOption(), 30.seconds))
+      .flatten.flatMap(StoredScrapeDto.toDomain)
+  }
+
+  def findAll(): Seq[ArchivedScrape] = coll.toSeq.flatMap { c =>
+    Try(Await.result(c.find().toFuture(), 120.seconds))
+      .recover { case e => logger.warn(s"ScrapeArchiveRepository.findAll failed: ${e.getMessage}"); Seq.empty }
+      .getOrElse(Seq.empty)
+      .flatMap(StoredScrapeDto.toDomain)
+  }
+
+  /** Every archive operation is best-effort: it records something that already
+   *  happened, so its failure must not propagate into the scrape. */
+  private def guard[A](cinema: Cinema, op: String)(body: => A): Option[A] =
+    Try(body) match {
+      case Success(value) => Some(value)
+      case Failure(e)     =>
+        logger.warn(s"ScrapeArchiveRepository.$op(${cinema.displayName}) failed: ${e.getMessage}")
+        None
+    }
+}

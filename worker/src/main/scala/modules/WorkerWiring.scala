@@ -16,6 +16,7 @@ import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMoni
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, WriteThroughResolutionCache}
+import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.cinemas._
 import services.enrichment._
 import services.cinemas.common._
@@ -823,7 +824,11 @@ class WorkerWiring(
   // ScrapeCinemaHandler. Detail enqueue is event-driven (DetailTaskEnqueuer off
   // CinemaMovieAdded) plus the DetailReaper backstop; the runner publishes
   // MovieDetailsComplete only for rows that don't await deferred detail.
-  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas)
+  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(movieCache, eventBus, deferredDetailCinemas, scrapeArchive)
+
+  /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
+   *  per cinema in THIS country's database, replaced on each successful scrape. */
+  lazy val scrapeArchive: ScrapeArchiveRepository = new MongoScrapeArchiveRepository(mongoConnection.database)
 
   // ── Chunked (map-reduce) scrape machinery ──────────────────────────────────
   // A chunked cinema (ChunkedCinemaScraper) is scraped as one ScrapeChunk task
