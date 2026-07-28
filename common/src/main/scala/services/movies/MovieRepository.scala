@@ -197,8 +197,14 @@ trait MovieRepository {
    *
    *  Rows already at `newId` are kept, with the moved ones taking precedence on a shared
    *  slot key (the same direction `rekey`'s record merge carries state forward).
-   *  Best-effort and a no-op without side collections wired. */
-  def moveFilm(oldId: String, newId: String): Unit = ()
+   *  Best-effort and a no-op without side collections wired.
+   *
+   *  Returns whether the rename may now PROCEED — i.e. whether `oldId` is safe to delete.
+   *  `false` means a read or write the move depends on did not happen, so the caller must
+   *  leave the film where it is and try again next pass; deleting `oldId` on the strength
+   *  of a move that didn't land destroys the film's only copy. See [[SideCollectionMove]]
+   *  for the rule. A store with no side collections has nothing to move and reports true. */
+  def moveFilm(oldId: String, newId: String): Boolean = true
 
   /** Write-through upsert. Best-effort — failures are logged, never thrown. */
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit
@@ -691,35 +697,24 @@ class MongoMovieRepository(
   }
 
   /** Carry a film's screenings + slots across a re-key, so the rename doesn't strand them
-   *  under an id that is about to be deleted. See the trait doc for what it cost. */
-  override def moveFilm(oldId: String, newId: String): Unit = if (oldId != newId) {
-    // VERIFY, then delete. The copy has to be seen at the destination before the source
-    // goes, because `ScreeningsRepository.replaceFilm` returns `Unit` and swallows its own
-    // failures — a copy can silently not happen while the delete proceeds, and the film's
-    // showtimes are then gone with nothing thrown and nothing logged. A Mongo transaction
-    // would not help: there is no exception and no rollback to trigger. Leaving the old
-    // rows in place instead costs a duplicate that `scripts.ReapOrphanedFilmRows` clears,
-    // which is the recoverable direction.
-    screenings.foreach { s =>
-      val moving = s.findForFilm(oldId)
-      if (moving.nonEmpty) {
-        s.replaceFilm(newId, s.findForFilm(newId) ++ moving)
-        if (moving.keySet.subsetOf(s.findForFilm(newId).keySet)) {
-          s.deleteFilm(oldId)
-          logger.info(s"re-key $oldId -> $newId: carried ${moving.size} screenings slot(s) across.")
-        } else
-          logger.warn(s"re-key $oldId -> $newId: the screenings copy did not land — keeping the " +
-            "old rows rather than deleting the film's only copy.")
-      }
-    }
-    slots.foreach { sl =>
-      val moving = sl.findForFilm(oldId)
-      if (moving.nonEmpty) {
-        val landed = sl.replaceFilm(newId, sl.findForFilm(newId) ++ moving)
-        if (landed && moving.keySet.subsetOf(sl.findForFilm(newId).keySet)) sl.deleteFilm(oldId)
-        else logger.warn(s"re-key $oldId -> $newId: the slots copy did not land — keeping the old rows.")
-      }
-    }
+   *  under an id that is about to be deleted. The read/verify/delete rule is
+   *  [[SideCollectionMove]]'s, shared with the in-memory fake so a re-key spec cannot pass
+   *  against rules production doesn't follow. See the trait doc for what it cost. */
+  override def moveFilm(oldId: String, newId: String): Boolean = if (oldId == newId) true else {
+    val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[Showtime]](
+      oldId, newId,
+      read       = s.findForFilmChecked,
+      replace    = (id, rows) => { s.replaceFilm(id, rows); true },
+      deleteFilm = s.deleteFilm,
+      onSkip     = message => logger.warn(s"re-key $oldId -> $newId (screenings): $message."),
+      onMoved    = moved => logger.info(s"re-key $oldId -> $newId: carried $moved screenings slot(s) across.")))
+    val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
+      oldId, newId,
+      read       = sl.findForFilmChecked,
+      replace    = sl.replaceFilm,
+      deleteFilm = sl.deleteFilm,
+      onSkip     = message => logger.warn(s"re-key $oldId -> $newId (slots): $message.")))
+    screeningsMoved && slotsMoved
   }
 
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>

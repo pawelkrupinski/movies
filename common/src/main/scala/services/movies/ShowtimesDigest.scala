@@ -35,12 +35,21 @@ object ShowtimesDigest {
   def slotDigest(sd: SourceData): Int =
     if (sd.showtimes.nonEmpty) digest(sd.showtimes) else sd.showtimesDigest.getOrElse(EmptyDigest)
 
+  /** A slot's effective showtime COUNT: from resident showtimes when present, else the
+   *  stripped slot's stamped `showtimesCount`. The digest's counterpart — a hash can say
+   *  "these differ", only a count can say "there are a third as many", which is what the
+   *  degraded-scrape depth guard has to decide. `0` for a slot stripped before this field
+   *  existed, which reads as "nothing held" and simply lets the tick through. */
+  def slotShowtimeCount(sd: SourceData): Int =
+    if (sd.showtimes.nonEmpty) sd.showtimes.size else sd.showtimesCount.getOrElse(0)
+
   /** Strip a record for cache residency: drop each slot's showtime LIST (they live in Mongo
-   *  `screenings`), keep only its digest. Idempotent + authoritative. */
+   *  `screenings`), keep only its digest and count. Idempotent + authoritative. */
   def stripForCache(record: MovieRecord): MovieRecord =
     record.copy(data = record.data.view.mapValues { sd =>
       if (sd.showtimes.isEmpty && sd.showtimesDigest.isDefined) sd
-      else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)))
+      else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)),
+                   showtimesCount = Some(sd.showtimes.size))
     }.toMap)
 
   /** Whole-record content digest, for a VIEWER that has to decide "did anything I

@@ -23,6 +23,11 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
 
   private val expectedParams = Set("country", "director", "cast", "genre")
 
+  /** The names these axes carried until the rename, still bound so links minted before it
+   *  keep filtering. Every browse URL in the wild — a bookmark, a shared link, anything
+   *  already crawled — spells them this way. */
+  private val legacyParams = Set("kraj", "rezyser", "aktor", "gatunek")
+
   private implicit val poznan: City = City.bySlug("poznan").get
 
   "the browse hrefs" should "use English query-param names" in {
@@ -45,14 +50,17 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
     // bound name except the `city` path param.
     val bound = """(\w+):\s*Option\[String\]""".r
       .findAllMatchIn(line.get).map(_.group(1)).toSet
-    bound shouldBe expectedParams
+    bound shouldBe (expectedParams ++ legacyParams)
 
     val emitted = Seq(
       BrowseHref.country("x"), BrowseHref.director("x"),
       BrowseHref.actor("x"),   BrowseHref.genre("x"),
     ).map(_.split('?').last.split('=').head).toSet
     withClue("BrowseHref emits a param the routes file does not bind: ") {
-      emitted shouldBe bound
+      emitted shouldBe expectedParams
+    }
+    withClue("a legacy param must stay BOUND but must never be EMITTED again: ") {
+      emitted intersect legacyParams shouldBe empty
     }
   }
 
@@ -97,5 +105,33 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
         cases.map(_._3).filterNot(_ == expectedFilm).foreach(html should not include _)
       }
     }
+  }
+
+  /** The rename dropped the Polish bindings outright, and an unbound param does NOT 404 —
+   *  all four options arrive `None` and `browse` falls through to `renderIndex`, so an old
+   *  link returns 200 with the whole city listing instead of the facet it asked for. Wrong
+   *  content under a success status is the failure nobody reports. */
+  "a legacy Polish param" should "still filter on the axis it named" in {
+    val request = FakeRequest(GET, "/poznan/filmy")
+    val cases = Seq(
+      ("kraj",    controller().browse("poznan", None, None, None, None, kraj    = Some("Polska")),   "Country Match"),
+      ("rezyser", controller().browse("poznan", None, None, None, None, rezyser = Some("Jane Doe")), "Director Match"),
+      ("aktor",   controller().browse("poznan", None, None, None, None, aktor   = Some("John Roe")), "Cast Match"),
+      ("gatunek", controller().browse("poznan", None, None, None, None, gatunek = Some("Komedia")),  "Genre Match"),
+    )
+    cases.foreach { case (axis, action, expectedFilm) =>
+      val html = contentAsString(action.apply(request))
+      withClue(s"the legacy $axis param: ") {
+        html should include(expectedFilm)
+        cases.map(_._3).filterNot(_ == expectedFilm).foreach(html should not include _)
+      }
+    }
+  }
+
+  it should "lose to the English one when a link somehow carries both" in {
+    val html = contentAsString(
+      controller().browse("poznan", country = Some("Polska"), None, None, None, kraj = Some("Nonsense"))
+        .apply(FakeRequest(GET, "/poznan/filmy")))
+    html should include("Country Match")
   }
 }

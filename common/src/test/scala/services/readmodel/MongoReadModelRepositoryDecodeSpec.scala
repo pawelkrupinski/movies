@@ -65,4 +65,44 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
 
     repo.decodeTolerant(Seq(older), codec, "test").map(_._id) shouldBe Seq("b|2")
   }
+
+  // `DefaultingCodec` fills the fields of the document it is handed and nothing deeper, so
+  // wrapping `ResolvedMovie` alone left the NESTED case throwing inside `ResolvedRatings`'s
+  // own codec — before the wrapper ever saw it. That is the case that has actually bitten:
+  // `ResolvedRatings` carries three required non-`Option` strings, and a stored `ratings`
+  // sub-document missing any one of them took the film out of the served corpus behind a
+  // single WARN. `ReadModelCodecs` now defaults the nested type too and derives the outer
+  // codec from a registry that already holds it.
+  it should "SERVE a document whose NESTED ratings sub-document lacks a required field" in {
+    val older = encode(movie("b|2"))
+    older.getDocument("ratings").remove("filmwebUrl")
+
+    repo.decodeTolerant(Seq(older), codec, "test").map(_._id) shouldBe Seq("b|2")
+  }
+
+  it should "restore the missing nested field from the empty template, not invent one" in {
+    val older = encode(movie("b|2"))
+    older.getDocument("ratings").remove("filmwebUrl")
+    older.getDocument("ratings").remove("metacriticUrl")
+
+    val decoded = repo.decodeTolerant(Seq(older), codec, "test").head
+    decoded.ratings.filmwebUrl    shouldBe ""     // the empty instance's value
+    decoded.ratings.metacriticUrl shouldBe ""
+    decoded.ratings.rottenTomatoesUrl shouldBe "https://rt"  // present fields survive untouched
+  }
+
+  // The deliberate limit of the same mechanism: a screening with no `dateTime` has no
+  // honest default, so `Showtime` is NOT defaulted and such a row is still skipped. A row
+  // written under an older SHAPE is worth serving; a screening with no time is corrupt.
+  it should "still SKIP a screening document that lacks its dateTime" in {
+    val screeningCodec = ReadModelCodecs.registry.get(classOf[models.CityScreening])
+    val out = new BsonDocument()
+    screeningCodec.encode(new BsonDocumentWriter(out),
+      models.CityScreening(_id = "s1", filmId = "b|2", city = "poznan", cinema = "Kino", filmUrl = None,
+        showtimes = Seq(models.Showtime(java.time.LocalDateTime.parse("2027-01-01T18:00"), None))),
+      EncoderContext.builder().build())
+    out.getArray("showtimes").get(0).asDocument().remove("dateTime")
+
+    repo.decodeTolerant(Seq(out), screeningCodec, "test") shouldBe empty
+  }
 }

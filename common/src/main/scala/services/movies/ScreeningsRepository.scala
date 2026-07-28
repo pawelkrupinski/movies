@@ -52,9 +52,6 @@ trait ScreeningsRepository {
    *  row stayed intact. */
   def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean)
 
-  /** Every film's screenings: `filmId -> (slotKey -> showtimes)`. For the boot
-   *  hydrate / `findAll` read-stitch. */
-
   /** The rows of SEVERAL films in ONE round-trip, plus whether the read succeeded.
    *
    *  The corpus scan used to preload this entire collection before it began paging
@@ -70,6 +67,8 @@ trait ScreeningsRepository {
      results.forall { case (_, (_, ok)) => ok })
   }
 
+  /** Every film's screenings: `filmId -> (slotKey -> showtimes)`. For the boot
+   *  hydrate / `findAll` read-stitch. */
   def findAll(): Map[String, Map[String, Seq[Showtime]]]
 
   /** Set a film's screenings to EXACTLY `slots` — upsert those present, delete any
@@ -303,8 +302,13 @@ class MongoScreeningsRepository(
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
+  // No collection wired at all reports COMPLETE, not failed — there is simply nothing to
+  // read, which is not the same as having failed to read it. Matches
+  // `MongoSlotsRepository.findForFilmChecked`, its sibling under `SlotKeyed`; the two
+  // answered opposite things for the same state, and a caller that treats "unreadable" as
+  // "defer" would have deferred forever against a Mongo-less stack.
   def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
-    coll.fold((Map.empty[String, Seq[Showtime]], false)) { c =>
+    coll.fold((Map.empty[String, Seq[Showtime]], true)) { c =>
       Try(Await.result(c.find(Filters.eq("filmId", filmId)).toFuture(), 30.seconds)) match {
         case Success(docs) => (docs.map(d => d.slotKey -> d.showtimes).toMap, true)
         case Failure(exception) =>

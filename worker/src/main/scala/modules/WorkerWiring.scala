@@ -642,7 +642,7 @@ class WorkerWiring(
     // Same WikidataClient ImdbIdResolver uses — lets a tmdbId-less row with a
     // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.
     wikidata = Some(wikidataClient))
-  lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache, slotsRepository)
+  lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache, movieRepository)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
   // Hold the first scrape back from boot so the cold-boot scrape burst doesn't

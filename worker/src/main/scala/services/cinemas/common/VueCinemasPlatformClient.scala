@@ -18,7 +18,7 @@ import tools.HttpFetch
  *
  *   - `GET {base}/api/microservice/showings/cinemas` — the venue roster
  *     (`cinemaId` + `fullName` + `whatsOnUrl`). Unauthenticated; used offline to
- *     build the id↔`Cinema` map (`VUE-VENUE-MAP.tsv` at the repository root),
+ *     build the id↔`Cinema` map (`docs/venue-maps/VUE-VENUE-MAP.tsv`),
  *     NOT at scrape time — the venue id is wired in per client.
  *   - `GET {base}/api/microservice/showings/cinemas/{cinemaId}/films` — every
  *     film with its `showingGroups[].sessions[]`, months out in one call. This
@@ -100,7 +100,7 @@ object VueCinemasPlatformClient {
     s"${baseUrl.stripSuffix("/")}/api/microservice/auth/token"
 
   /** The unauthenticated venue roster. Not fetched by `fetch()` — kept here so
-   *  the offline `VUE-VENUE-MAP.tsv` refresh and the client agree on one URL. */
+   *  the offline `docs/venue-maps/VUE-VENUE-MAP.tsv` refresh and the client agree on one URL. */
   def cinemasUrlFor(baseUrl: String): String =
     s"${baseUrl.stripSuffix("/")}/api/microservice/showings/cinemas"
 }

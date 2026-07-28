@@ -31,19 +31,29 @@ import scala.util.Try
  * way out. The tell was that removals tracked BOOT COUNT, not the calendar:
  * 0 films dropped on each of 07-24/25/26 (1–3 boots), 32 on 07-27 (29 boots).
  *
- * So the in-memory view only NOMINATES a row; `SlotsRepository` corroborates.
+ * So the in-memory view only NOMINATES a row; the REPOSITORY corroborates.
  * A row dies only when the durable store also reports no cinemas AND that read
  * actually succeeded — a FAILED read is not evidence of emptiness (it cannot
  * tell "no cinemas" from "Mongo did not answer"), which is why we take the
- * `*Checked` variant and not the bare `findForFilm`. Both refusals are logged
+ * `*Checked` variant and not the bare `findById`. Both refusals are logged
  * via `RemovalAudit.cleanupSkipped` so a boot race that WOULD have deleted rows
  * stays visible even though nothing was removed.
+ *
+ * The witness is `MovieRepository.findByIdChecked` rather than `movie_slots`
+ * directly, because mid-migration `movie_slots` is not the whole truth: a film
+ * whose slots have not been rewritten since the split landed still carries its
+ * cinemas in the `movies` document's embedded `sourceData`, and asking only the
+ * slot store would convict it on the strength of a collection it was never
+ * written to. `findByIdChecked` returns the row every other reader sees — the
+ * UNION of `movie_slots` and the embedded map, per `SlotsRepository.merge` — and
+ * reports a failed slot read as unreadable rather than as a film with no cinemas.
+ * Exactly the rows a delete would clear, from exactly the read a serve would use.
  *
  * Lifecycle owned by `AppLoader` (`start()` schedules the daily tick;
  * `stop()` is registered as a shutdown hook). Per CLAUDE.md, the class
  * never self-subscribes or self-schedules.
  */
-class UnscreenedCleanup(cache: MovieCache, slots: SlotsRepository) extends Stoppable with Logging {
+class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends Stoppable with Logging {
 
   private val scheduler = DaemonExecutors.scheduler("unscreened-cleanup")
 
@@ -58,21 +68,23 @@ class UnscreenedCleanup(cache: MovieCache, slots: SlotsRepository) extends Stopp
    *  can invoke a one-shot pass; the daily scheduler calls the same method.
    *
    *  An empty in-memory `cinemaData` only NOMINATES a row — it never convicts
-   *  it. Every candidate is corroborated against the durable slot store, and a
-   *  row dies only when `movie_slots` agrees, on a read that actually
+   *  it. Every candidate is corroborated against the durable record, and a row
+   *  dies only when THAT reports no cinemas either, on a read that actually
    *  succeeded. See the class doc for why. */
   def removeUnscreened(): Int = {
     val candidates = cache.entries.collect { case (k, e) if e.cinemaData.isEmpty => k }
-    val checked    = candidates.map(key => key -> slots.findForFilmChecked(idOf(key)))
+    val checked    = candidates.map(key => key -> repository.findByIdChecked(idOf(key)))
 
-    val orphans    = checked.collect { case (k, (stored, true)) if stored.isEmpty  => k }
-    val stillHeld  = checked.collect { case (k, (stored, true)) if stored.nonEmpty => k }
+    // An ABSENT row (`None`, read fine) is nothing to keep and nothing to lose: the cache
+    // holds a key the corpus doesn't, so dropping it is the whole point of this pass.
+    val orphans    = checked.collect { case (k, (row, true)) if !holdsCinemas(row) => k }
+    val stillHeld  = checked.collect { case (k, (row, true)) if holdsCinemas(row)  => k }
     val unreadable = checked.collect { case (k, (_, false))                        => k }
 
     RemovalAudit.cleanupSkipped("unscreened-cleanup", stillHeld.map(label),
-      reason = "slot-store-still-holds-cinemas")
+      reason = "stored-record-still-holds-cinemas")
     RemovalAudit.cleanupSkipped("unscreened-cleanup", unreadable.map(label),
-      reason = "slot-store-read-failed")
+      reason = "stored-record-read-failed")
 
     if (orphans.nonEmpty) {
       logger.info(s"Unscreened-row cleanup: dropping ${orphans.size} row(s) with no current screenings.")
@@ -82,9 +94,15 @@ class UnscreenedCleanup(cache: MovieCache, slots: SlotsRepository) extends Stopp
     orphans.size
   }
 
+  /** Does the stored row still name a cinema? The same `cinemaData` view the cache
+   *  nominated on, so the two witnesses answer the same question of different stores
+   *  rather than two questions of one. */
+  private def holdsCinemas(row: Option[StoredMovieRecord]): Boolean =
+    row.exists(_.record.cinemaData.nonEmpty)
+
   /** The `_id` the delete would cascade against — the same formula
    *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by, so the
-   *  slots we corroborate against are exactly the ones the delete would clear. */
+   *  record we corroborate against is exactly the one the delete would clear. */
   private def idOf(key: CacheKey): String = StoredMovieRecord.idFor(key.cleanTitle, key.year)
 
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"

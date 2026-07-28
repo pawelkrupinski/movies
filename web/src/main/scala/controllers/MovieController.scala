@@ -494,10 +494,19 @@ class MovieController( cc: ControllerComponents,
     )).withCookies(cityCookie(city))
   }
 
-  def browse(city: String, country: Option[String], director: Option[String], cast: Option[String], genre: Option[String]): Action[AnyContent] = Action { request =>
+  /** The four legacy Polish param names (`kraj`/`rezyser`/`aktor`/`gatunek`) are still
+   *  bound and still filter. They were the only spelling until the facets were renamed to
+   *  English for the shared route table, so every link minted before that — a bookmark, a
+   *  shared URL, anything already crawled — carries them. Dropping the binding did not 404
+   *  those; it fell through to the no-axis case and rendered the UNFILTERED city listing,
+   *  a 200 with the wrong content, which is the failure mode nobody reports. The English
+   *  name wins when both are present. */
+  def browse(city: String, country: Option[String], director: Option[String], cast: Option[String], genre: Option[String],
+             kraj: Option[String] = None, rezyser: Option[String] = None,
+             aktor: Option[String] = None, gatunek: Option[String] = None): Action[AnyContent] = Action { request =>
     withCity(city) { c =>
       val all = movieControllerService.toSchedules(c)
-      (country, director, cast, genre) match {
+      (country.orElse(kraj), director.orElse(rezyser), cast.orElse(aktor), genre.orElse(gatunek)) match {
         case (Some(name), _, _, _) => renderBrowse(c, name, all.filter(_.movie.countries.contains(name)), request)
         case (_, Some(name), _, _) => renderBrowse(c, name, all.filter(_.director.contains(name)),        request)
         case (_, _, Some(name), _) => renderBrowse(c, name, all.filter(_.cast.contains(name)),            request)

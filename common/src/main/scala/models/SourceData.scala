@@ -73,6 +73,16 @@ case class SourceData(
   // in Mongo `screenings`) and keeps this digest so the write-guard + screenings-diff
   // still detect showtime changes without the lists resident. `None` everywhere else.
   showtimesDigest: Option[Int]    = None,
+  // CACHE-ONLY, NEVER PERSISTED, alongside `showtimesDigest` and stamped by the same
+  // `ShowtimesDigest.stripForCache`. The digest answers "did the showtimes change?";
+  // it cannot answer "how MANY are there", and one guard needs exactly that: the
+  // degraded-scrape DEPTH check compares a fresh tick's showtime count against what
+  // the cinema is already holding. Reading that from `showtimes.size` made the guard
+  // dead code the moment the read-split turned on — every resident slot is stripped
+  // to `Nil`, so the count was always 0 and the guard's floor never engaged. Its
+  // specs all ran without a screenings repository, which is the one shape that keeps
+  // the lists resident, so they passed while production was unguarded.
+  showtimesCount:  Option[Int]    = None,
   // Age rating / certificate as the source labels it, verbatim per source (UK BBFC
   // "U"/"PG"/"12A"/"12"/"15"/"18"/"TBC"; other countries their own scheme). Cinema
   // slots carry it (the UK chains + Flicks expose it); `MovieRecord.ageRating` takes
@@ -86,7 +96,7 @@ case class SourceData(
   // fresh scrape is full, so a showtime-sensitive `==` would make them differ forever
   // (endless re-divert/re-fold churn). Showtime-CHANGE detection routes through the
   // digest (`ShowtimesDigest.leanEqual` / `slotOps`), never `==`. So `showtimes` and the
-  // transient `showtimesDigest` are excluded from equals/hashCode.
+  // transient `showtimesDigest` / `showtimesCount` are excluded from equals/hashCode.
   //
   // `language` IS included, unlike those two: the cache write-guard skips the
   // repository write when the new record `==` the stored one, so a re-resolve that

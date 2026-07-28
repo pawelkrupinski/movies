@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie}
+import models.CinemaMovie
 import play.api.Logging
 import tools.HostScrapeStats
 
@@ -31,10 +31,7 @@ class AdaptiveTimeoutScraper(
   delegate: CinemaScraper,
   stats:    HostScrapeStats,
   executor: ExecutorService
-) extends CinemaScraper with Logging {
-
-  val cinema: Cinema = delegate.cinema
-  def scrapeHosts: Set[String] = delegate.scrapeHosts
+) extends DelegatingCinemaScraper(delegate) with Logging {
 
   /** The stats key: the delegate's whole host set (so all of a chain's venues
    *  pool together), or the cinema name as a fallback for the degenerate case

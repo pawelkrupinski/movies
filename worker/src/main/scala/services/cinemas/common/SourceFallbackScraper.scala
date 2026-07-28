@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie}
+import models.CinemaMovie
 import services.UptimeMonitor
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
 
@@ -60,6 +60,14 @@ import scala.util.control.NonFatal
  * (exponential, capped). State + history persist via `FallbackStore` for
  * the /uptime/fallback page; `onEvent` fires on ENTER / PROBE_FAILED / RECOVERED
  * for alerting.
+ *
+ * `listingIsComplete` stays the PRIMARY's answer (via [[DelegatingCinemaScraper]])
+ * even on a tick served from the fallback, where what we actually returned is the
+ * fallback's always-whole listing. The two errors are not symmetric: reporting a short
+ * listing as whole lets the cache prune films it never looked at, while reporting a
+ * whole one as short only defers a prune by one tick. Delegating unconditionally takes
+ * the recoverable side and needs no per-tick state, which a `fetch()`-then-
+ * `listingIsComplete` read would otherwise have to carry between two calls.
  */
 class SourceFallbackScraper(
   primary:         CinemaScraper,
@@ -73,12 +81,10 @@ class SourceFallbackScraper(
   maxBackoff:      FiniteDuration = SourceFallbackScraper.DefaultMaxBackoff,
   fallbackAfter:   FiniteDuration = SourceFallbackScraper.DefaultFallbackAfter,
   onEvent:         (FallbackState, FallbackEvent) => Unit = (_, _) => ()
-) extends CinemaScraper {
+) extends DelegatingCinemaScraper(primary) {
   import SourceFallbackScraper._
 
-  val cinema: Cinema           = primary.cinema
-  def scrapeHosts: Set[String] = primary.scrapeHosts
-  private val service          = cinema.displayName
+  private val service = cinema.displayName
 
   def fetch(): Seq[CinemaMovie] = {
     val previous      = store.get(service)

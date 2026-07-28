@@ -72,11 +72,14 @@ trait MovieCacheReader {
  */
 trait MovieCache extends MovieCacheReader {
   /** Apply one cinema's fresh scrape to the cache. Returns one
-   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie. */
-  /** `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked
-   *  scrape reduced from only some of its date-chunks. The prune below is then skipped
-   *  outright, because a film missing from a listing nobody finished is not evidence that
-   *  it stopped screening. */
+   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie.
+   *
+   *  `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked
+   *  scrape reduced from only some of its date-chunks. The prune is then skipped outright,
+   *  because a film missing from a listing nobody finished is not evidence that it stopped
+   *  screening. Every scrape DECORATOR must forward this
+   *  ([[services.cinemas.common.DelegatingCinemaScraper]]); one that answers the default
+   *  instead silently turns the guard off. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
                          listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)]
 
@@ -541,11 +544,18 @@ class CaffeineMovieCache(
         // for. `positive.invalidate` does exactly that and touches no stored row.
         val victims = keys.filterNot(_ == canonical)
         // A victim IS going away, so carry its cinemas onto the winner first — same rule
-        // as the fold and the re-key.
+        // as the fold and the re-key. Only a victim whose rows ACTUALLY reached the winner
+        // may then be deleted: `moveFilm` reports false when a read or write it depended on
+        // didn't happen, and deleting on that basis destroys the film's only copy. A victim
+        // left behind is a duplicate row the next pass folds again (and
+        // `scripts.ReapOrphanedFilmRows` clears), which is the recoverable direction.
         val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year)
-        victims.foreach(v =>
+        val (moved, stranded) = victims.partition(v =>
           repository.moveFilm(StoredMovieRecord.idFor(v.cleanTitle, v.year), canonicalId))
-        victims.foreach(invalidate)
+        if (stranded.nonEmpty)
+          logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
+            "cinemas could not be carried onto the winner — they fold again on the next pass.")
+        moved.foreach(invalidate)
         keys.filter(_ == canonical).foreach(positive.invalidate)
         put(canonical, merged)
       }
@@ -745,20 +755,27 @@ class CaffeineMovieCache(
     // which looks under the id it is WRITING to — would find nothing and store nothing, and
     // the delete below would then destroy the only copy. Same rule as the re-key in
     // `MovieCache.rekey`; a `movies` row disappearing almost never means the film left.
+    // Only a victim whose rows actually reached the canonical id is then deleted below —
+    // `moveFilm` reports false when a read or write it depended on didn't happen, and the
+    // delete would otherwise destroy the film's only copy. A stranded victim stays a
+    // duplicate row that folds again next pass, which is the recoverable direction.
     val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year)
-    victims.foreach(victim =>
+    val (moved, stranded) = victims.partition(victim =>
       repository.moveFilm(StoredMovieRecord.idFor(victim.cleanTitle, victim.year), canonicalId))
     persist(canonical, merged)
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
     retriggerChangedEnrichments(siblingRecord, siblingKey, merged, canonical)
-    victims.foreach { victim =>
+    moved.foreach { victim =>
       positive.invalidate(victim)
       repository.delete(victim.cleanTitle, victim.year)
     }
-    if (victims.nonEmpty) {
-      mergeMetrics.recordMerge(MergeReason.TmdbIdentity, victims.size)
-      logger.info(s"Folded duplicate(s) ${victims.map(v => s"'${v.cleanTitle}' (${v.year.getOrElse("—")})").mkString(", ")} " +
+    if (stranded.nonEmpty)
+      logger.warn(s"Fold into '${canonical.cleanTitle}': keeping ${stranded.size} duplicate row(s) whose " +
+        "cinemas could not be carried across — they fold again on the next pass.")
+    if (moved.nonEmpty) {
+      mergeMetrics.recordMerge(MergeReason.TmdbIdentity, moved.size)
+      logger.info(s"Folded duplicate(s) ${moved.map(v => s"'${v.cleanTitle}' (${v.year.getOrElse("—")})").mkString(", ")} " +
                   s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRecord.tmdbId.get}.")
     }
   }
@@ -903,12 +920,23 @@ class CaffeineMovieCache(
           // side rows with it) is deleted. Without this the rename destroys them: `upsert`
           // re-stitches showtimes from the id it writes to, finds none at the new id, and
           // stores none — see `MovieRepository.moveFilm`.
-          if (oldKey != newKey) {
-            repository.moveFilm(StoredMovieRecord.idFor(oldKey.cleanTitle, oldKey.year),
-                                StoredMovieRecord.idFor(newKey.cleanTitle, newKey.year))
-            invalidate(oldKey)
+          //
+          // A move that did NOT land defers the whole re-key, for the same reason the
+          // unreadable branch above does: writing at `newKey` and invalidating `oldKey`
+          // would leave the film keyed where its cinemas aren't and delete the id where
+          // they are. Deferring leaves everything exactly as it was, and the settle asks
+          // again next tick.
+          if (oldKey != newKey &&
+              !repository.moveFilm(StoredMovieRecord.idFor(oldKey.cleanTitle, oldKey.year),
+                                   StoredMovieRecord.idFor(newKey.cleanTitle, newKey.year))) {
+            logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
+              s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): its screenings/slots could not " +
+              "be carried to the new id, and re-keying without them empties the film.")
+            skippedUnreadable.incrementAndGet()
+          } else {
+            if (oldKey != newKey) invalidate(oldKey)
+            put(newKey, updated)
           }
-          put(newKey, updated)
       }
     }
   }
@@ -957,10 +985,6 @@ class CaffeineMovieCache(
       .collect { case (s, sd) if Source.cinemaOf(s).contains(cinema) => (s, sd) }
   }
 
-  /** `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked
-   *  scrape reduced from only some of its date-chunks. The prune below is then skipped
-   *  outright, because a film missing from a listing nobody finished is not evidence that
-   *  it stopped screening. */
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
                          listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)] = {
     // Empty `movies` is almost always a silent scraper failure (Cloudflare
@@ -991,7 +1015,14 @@ class CaffeineMovieCache(
     // false positive — and still catches the incident with room to spare.
     // `MinShowtimesForDepthGuard` keeps it off boards small enough for a halving to
     // be real: a two-screen venue genuinely can go from three showings to one.
-    val knownCinemaShowtimes = heldSlotsOf(cinema).map(_._2.showtimes.size).sum
+    //
+    // Count via `slotShowtimeCount`, NOT `showtimes.size`: under the read-split every
+    // resident slot has been through `stripForCache` and carries `Nil` showtimes, so a
+    // direct `.size` reads 0 for every cinema and the floor below never engages. That is
+    // production's shape and it made this guard dead code; the specs, which wire no
+    // screenings repository, kept their lists resident and passed regardless.
+    val knownCinemaShowtimes = heldSlotsOf(cinema).map { case (_, sd) =>
+      ShowtimesDigest.slotShowtimeCount(sd) }.sum
     val batchShowtimes       = movies.iterator.map(_.showtimes.size).sum
     if (knownCinemaShowtimes >= MinShowtimesForDepthGuard &&
         batchShowtimes < knownCinemaShowtimes * PruneFloorRatio) {

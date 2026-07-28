@@ -25,7 +25,7 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private def client(http: tools.HttpFetch = fake) =
     new CineworldClient(http, Sheffield, CineworldSheffield, today)
 
-  // ── the chain roster CINEWORLD-VENUE-MAP.tsv is built from ────────────────
+  // ── the chain roster docs/venue-maps/CINEWORLD-VENUE-MAP.tsv is built from ────────────────
   "parseVenues" should "read every venue in the chain roster with its id and name" in {
     val venues = CineworldParser.parseVenues(fake.get(CineworldClient.venuesUrl(LocalDate.of(2026, 8, 31))))
     venues.size shouldBe 87

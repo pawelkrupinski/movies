@@ -190,4 +190,28 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     cb.get(urlB) shouldBe "ok"
     a[CircuitOpenException] should be thrownBy cb.get(urlA)
   }
+
+  it should "close on a half-open probe that 404s — the host ANSWERED, so it is back" in {
+    // `admit` re-arms the open window as it hands out the half-open probe, so a probe whose
+    // outcome is recorded NOWHERE leaves the host blocked for another full cooldown. A 404
+    // is not trip-worthy (the host replied), and it used to fall through both the success
+    // and the failure branch — so the one reply that proves recovery bought another 60s of
+    // fast-fail, and a host answering 404s could never be re-probed back to life.
+    var clock = Instant.parse("2026-06-23T00:00:00Z")
+    val delegate = new FakeDelegate(timeout)
+    val cb = breaker(delegate, () => clock)
+
+    (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    cb.openRemainingMillis(hostA) should be > 0L
+
+    clock = clock.plusSeconds(61)          // cooldown elapsed → this call is the probe
+    delegate.respond = notFound
+    a[HttpStatusException] should be thrownBy cb.get(urlA)
+
+    withClue("a 404 from the probe means the host is serving again: ")(
+      cb.openRemainingMillis(hostA) shouldBe 0L)
+    // …and the very next call reaches the wire rather than fast-failing.
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+  }
 }

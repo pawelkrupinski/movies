@@ -25,6 +25,14 @@ import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter, BsonReade
  *
  * A field the template also lacks (an `Option` that encodes to nothing under
  * `IgnoreNone`) needs no default: the macro codec already reads its absence as `None`.
+ *
+ * ONE LEVEL ONLY. This fills the fields of the document it is handed and nothing deeper —
+ * a nested sub-document missing one of ITS required fields still throws inside the nested
+ * codec, before this ever sees it. Covering a nested type means wrapping that type too AND
+ * deriving the outer codec from a registry that already holds the wrapper, so the outer
+ * macro codec's nested lookup finds it; see `ReadModelCodecs.withDefaultedLeaves`, which
+ * does exactly that for `ResolvedRatings` — the nested type both read-model outages
+ * actually involved.
  */
 final class DefaultingCodec[A](inner: Codec[A], template: BsonDocument) extends Codec[A] {
 

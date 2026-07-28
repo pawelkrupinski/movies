@@ -29,7 +29,7 @@ object OdeonParser {
 
   /** One venue in the `sites` roster — id + display name. The roster carries no
    *  public slug, so it's used to self-check which `siteId`s exist (against
-   *  `ODEON-VENUE-MAP.tsv`), not to build URLs. */
+   *  `docs/venue-maps/ODEON-VENUE-MAP.tsv`), not to build URLs. */
   case class OdeonSite(id: String, name: String)
 
   def parseSites(json: String): Seq[OdeonSite] =

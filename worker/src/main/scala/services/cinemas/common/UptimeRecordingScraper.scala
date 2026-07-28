@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie}
+import models.CinemaMovie
 import services.UptimeMonitor
 
 import scala.util.control.NonFatal
@@ -28,11 +28,7 @@ class UptimeRecordingScraper(
   delegate: CinemaScraper,
   monitor:  UptimeMonitor,
   listener: ScrapeOutcomeListener = ScrapeOutcomeListener.NoOp
-) extends CinemaScraper {
-
-  val cinema: Cinema = delegate.cinema
-
-  def scrapeHosts: Set[String] = delegate.scrapeHosts
+) extends DelegatingCinemaScraper(delegate) {
 
   // Forward the tick's outcome to the listener alongside the monitor stamp,
   // defensively — a cross-cutting watcher must never drop a cinema from the cache.

@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie}
+import models.CinemaMovie
 import tools.RetryWithBackoff
 
 import scala.concurrent.duration._
@@ -35,11 +35,7 @@ class RetryingCinemaScraper(
   delegate:       CinemaScraper,
   maxAttempts:    Int            = 3,
   initialBackoff: FiniteDuration = 1.second
-) extends CinemaScraper {
-
-  val cinema: Cinema = delegate.cinema
-
-  def scrapeHosts: Set[String] = delegate.scrapeHosts
+) extends DelegatingCinemaScraper(delegate) {
 
   def fetch(): Seq[CinemaMovie] =
     RetryWithBackoff(

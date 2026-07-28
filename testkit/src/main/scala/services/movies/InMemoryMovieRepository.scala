@@ -151,20 +151,28 @@ class InMemoryMovieRepository(
     notifyWatcher(t, y, e)
   }
 
-  /** Carry a film's screenings AND slots across a re-key / fold, mirroring
-   *  `MongoMovieRepository.moveFilm` — rows already at `newId` are kept, the moved ones
-   *  winning a shared slot key. Both stores move, or a fold keeps the showtimes and loses
-   *  the cinema metadata that names them. */
-  override def moveFilm(oldId: String, newId: String): Unit = if (oldId != newId) lock.synchronized {
-    screenings.foreach { s =>
-      val moving = s.findForFilm(oldId)
-      if (moving.nonEmpty) { s.replaceFilm(newId, s.findForFilm(newId) ++ moving); s.deleteFilm(oldId) }
+  /** Carry a film's screenings AND slots across a re-key / fold. Both stores move, or a
+   *  fold keeps the showtimes and loses the cinema metadata that names them.
+   *
+   *  The read/verify/delete rule is `SideCollectionMove`'s — the SAME object
+   *  `MongoMovieRepository.moveFilm` calls, not a re-statement of it. This fake used to
+   *  replace-and-delete with no verification at all, so every re-key spec passed against a
+   *  move production performs far more carefully, and the one condition that made the real
+   *  move destructive (an unreadable destination) could not be expressed here at all. */
+  override def moveFilm(oldId: String, newId: String): Boolean =
+    if (oldId == newId) true else lock.synchronized {
+      val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[models.Showtime]](
+        oldId, newId,
+        read       = s.findForFilmChecked,
+        replace    = (id, rows) => { s.replaceFilm(id, rows); true },
+        deleteFilm = s.deleteFilm))
+      val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
+        oldId, newId,
+        read       = sl.findForFilmChecked,
+        replace    = sl.replaceFilm,
+        deleteFilm = sl.deleteFilm))
+      screeningsMoved && slotsMoved
     }
-    slots.foreach { sl =>
-      val moving = sl.findForFilm(oldId)
-      if (moving.nonEmpty) { sl.replaceFilm(newId, sl.findForFilm(newId) ++ moving); sl.deleteFilm(oldId) }
-    }
-  }
 
   def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
     val id = idOf(t, y)
@@ -228,6 +236,18 @@ class InMemoryMovieRepository(
   }
 
   def close(): Unit = ()
+
+  /** Out-of-band write straight to the store, bypassing `upsert`'s split routing AND the
+   *  change notification.
+   *
+   *  It is the only way to produce a film whose cinemas are still EMBEDDED in the `movies`
+   *  document — the state of every row nothing has rewritten since the slots split landed.
+   *  `upsert` cannot make one, because it moves the slots out and empties the embedded map
+   *  by design. A running cache is deliberately NOT notified: the point of the state is a
+   *  cache whose view disagrees with the store. */
+  def putEmbeddedOutOfBand(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
+    store.put(idOf(t, y), StoredMovieRecord(t, y, e)); ()
+  }
 
   /** Out-of-band edit: drop the `filmwebUrl` + `filmwebRating` for the row.
    *  Used by tests that simulate `FilmwebUrlAudit` mutating Mongo while a

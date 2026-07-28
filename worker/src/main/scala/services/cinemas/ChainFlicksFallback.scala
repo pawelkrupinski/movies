@@ -9,7 +9,8 @@ import models._
  *
  * `CinemaScraperCatalog.flicksFallbackSlugs` exposes this to `WorkerWiring`, which
  * builds a fallback `FlicksClient` on demand when a chain venue's own scrape has
- * been failing for the grace window. GENERATED from the *-VENUE-MAP.tsv files
+ * been failing for the grace window. GENERATED from the per-chain venue maps under
+ * `docs/venue-maps`
  * alongside the chain-primary catalogue entries — every cinema here is catalogued
  * under its chain client, never under `flicks(...)`, so it is primary + fallback
  * without being double-wired.

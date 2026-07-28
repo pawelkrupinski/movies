@@ -67,8 +67,11 @@ PKG="net.pawel.kinowo"
 ACT="pl.kinowo.MainActivity"
 AVD="${AVD:-kinowo_xl}"                         # Pixel 9 Pro XL 1344×2992 — coords assume this
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# Read by scripts/store-screenshots-common.sh (sourced below) — it builds every
+# candidates/ path from these two. SHOT_CLASS is not set here: the shared lib already
+# defaults it to gradle-play-publisher's phone ImageType.dirName, and repeating the
+# value gave two places to change it.
 LISTINGS="$REPO_ROOT/android/app/src/main/play/listings"
-SHOT_CLASS="phone-screenshots"                  # gradle-play-publisher's ImageType.dirName
 # Countries, ranking, split-city lookup, candidates/ numbering and the --top
 # table are shared with ios/scripts/store-screenshots.sh — only the emulator pool
 # and the tap-driving below are Android's own.

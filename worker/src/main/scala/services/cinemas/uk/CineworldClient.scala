@@ -21,7 +21,7 @@ import scala.util.Try
  *
  * One instance serves one venue — its numeric Cineworld site code (`cinemaId`,
  * e.g. "031" = Sheffield) plus the [[Cinema]] it feeds, mirroring
- * [[FlicksClient]]. `CINEWORLD-VENUE-MAP.tsv` at the repository root maps every
+ * [[FlicksClient]]. `docs/venue-maps/CINEWORLD-VENUE-MAP.tsv` maps every
  * API venue id to its case object. Parsing lives in [[CineworldParser]].
  *
  * The venue roster itself (`cinemas/with-event/until/<date>` → `body.cinemas[]`)
@@ -131,7 +131,7 @@ object CineworldClient {
     s"$BaseApiUrl/film-events/in-cinema/$cinemaId/at-date/$date$Query"
 
   /** The chain roster — every venue with a screening between now and `until`.
-   *  Read by `CineworldParser.parseVenues` to build `CINEWORLD-VENUE-MAP.tsv`. */
+   *  Read by `CineworldParser.parseVenues` to build `docs/venue-maps/CINEWORLD-VENUE-MAP.tsv`. */
   def venuesUrl(until: LocalDate): String =
     s"$BaseApiUrl/cinemas/with-event/until/$until$Query"
 }

@@ -65,14 +65,6 @@ trait SlotsRepository {
    *  `findAll` read-stitch. */
   def findAll(): Map[String, Map[String, SourceData]] = findAllChecked()._1
 
-  /** Every film's slots, PLUS whether the scan actually completed.
-   *
-   *  The distinction is load-bearing once the embedded copy is retired. An empty map
-   *  can mean "the collection is genuinely empty" (early in the lazy migration —
-   *  harmless) or "the read failed" (every migrated film looks like it has no cinemas —
-   *  catastrophic if a pruning caller believes it). Only the repository knows which, so
-   *  it says so rather than making callers guess from the emptiness. */
-
   /** The rows of SEVERAL films in ONE round-trip, plus whether the read succeeded.
    *
    *  The corpus scan used to preload this entire collection before it began paging
@@ -88,6 +80,13 @@ trait SlotsRepository {
      results.forall { case (_, (_, ok)) => ok })
   }
 
+  /** Every film's slots, PLUS whether the scan actually completed.
+   *
+   *  The distinction is load-bearing once the embedded copy is retired. An empty map
+   *  can mean "the collection is genuinely empty" (early in the lazy migration —
+   *  harmless) or "the read failed" (every migrated film looks like it has no cinemas —
+   *  catastrophic if a pruning caller believes it). Only the repository knows which, so
+   *  it says so rather than making callers guess from the emptiness. */
   def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean)
 
   /** Set a film's slots to EXACTLY `slots` — upsert those present, delete any no
@@ -264,10 +263,6 @@ class MongoSlotsRepository(
       }
     }
 
-  /** Every film's slots, keyset-paged by `_id` — see [[MongoScreeningsRepository.findAll]]
-   *  for why a single unbounded cursor is not safe here. An INCOMPLETE scan returns an
-   *  empty map so a caller can treat it as "unknown" rather than "the film has no slots"
-   *  and prune on it. */
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
   override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, SourceData]], Boolean) =
     if (filmIds.isEmpty) (Map.empty, true)
@@ -282,6 +277,10 @@ class MongoSlotsRepository(
       }
     }
 
+  /** Every film's slots, keyset-paged by `_id` — see [[MongoScreeningsRepository.findAll]]
+   *  for why a single unbounded cursor is not safe here. An INCOMPLETE scan returns an
+   *  empty map so a caller can treat it as "unknown" rather than "the film has no slots"
+   *  and prune on it. */
   def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) = coll match {
     case Some(c) =>
       val buf = Vector.newBuilder[StoredSlotDto]

@@ -155,7 +155,16 @@ class HostCircuitBreakerHttpFetch(
       val remaining = admit(host)
       if (remaining > 0L) throw new CircuitOpenException(host, remaining)
       try { val result = block; onSuccess(host); result }
-      catch { case e: Throwable if isTripWorthy(e) => onFailure(host); throw e }
+      // A NON-trip-worthy throw — a 404, a parse error — means the host ANSWERED, so it is
+      // alive and the breaker closes exactly as a 200 would close it. Letting it fall
+      // through unrecorded used to be harmless when the open check was a pure read, but
+      // `admit` now re-arms the window as it hands out the half-open probe: a probe that
+      // came back 404 would leave the host blocked for another full `openDuration` on the
+      // strength of a reply that proves it recovered.
+      catch {
+        case e: Throwable if isTripWorthy(e) => onFailure(host); throw e
+        case e: Throwable                    => onSuccess(host); throw e
+      }
   }
 
   override def get(url: String): String = guarded(url)(delegate.get(url))
@@ -171,7 +180,12 @@ class HostCircuitBreakerHttpFetch(
       if (remaining > 0L) CompletableFuture.failedFuture(new CircuitOpenException(host, remaining))
       else delegate.getAsync(url).handle[String]((result, throwable) => {
         if (throwable == null) { onSuccess(host); result }
-        else { if (isTripWorthy(unwrap(throwable))) onFailure(host); throw throwable }
+        // Same rule as `guarded`: a non-trip-worthy failure is the host answering, which
+        // closes the breaker rather than leaving a re-armed window in place.
+        else {
+          if (isTripWorthy(unwrap(throwable))) onFailure(host) else onSuccess(host)
+          throw throwable
+        }
       })
   }
 }

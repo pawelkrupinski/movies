@@ -20,7 +20,7 @@ import scala.util.Try
 object CineworldParser {
 
   /** One venue off the chain roster (`cinemas/with-event/until/<date>`). The
-   *  checked-in `CINEWORLD-VENUE-MAP.tsv` — which pairs each API venue id with
+   *  checked-in `docs/venue-maps/CINEWORLD-VENUE-MAP.tsv` — which pairs each API venue id with
    *  the `Cinema` case object it feeds — is built from this list, so the reader
    *  lives in code and is pinned by the spec: a roster shape change (a renamed
    *  venue, a new site, a dropped one) then surfaces as a test failure instead

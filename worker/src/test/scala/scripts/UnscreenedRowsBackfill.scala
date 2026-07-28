@@ -1,7 +1,7 @@
 package scripts
 
 import org.mongodb.scala.MongoClient
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoSlotsRepository, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, UnscreenedCleanup}
 import tools.Env
 
 /**
@@ -24,12 +24,14 @@ object UnscreenedRowsBackfill {
     val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
     val client = MongoClient(uri)
     val db     = client.getDatabase(dbName)
-    val repository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false)
+    // The cleanup corroborates every candidate against the durable RECORD before deleting
+    // it, and under the storage split a film's cinemas live in `movie_slots`, not in the
+    // `movies` document. A repository wired without them reads every migrated film as
+    // cinema-less — i.e. the script would reproduce the very bug the guard exists to stop.
+    val repository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+      screenings = Some(new MongoScreeningsRepository(Some(db))),
+      slots      = Some(new MongoSlotsRepository(Some(db))))
     require(repository.enabled, s"movies repository not enabled for $dbName")
-    // The cleanup corroborates every candidate against the durable slot store
-    // before deleting it, so the script must hand it the real `movie_slots` —
-    // an empty stub here would reproduce the very bug the guard exists to stop.
-    val slotsRepository = new MongoSlotsRepository(Some(db))
 
     val before    = repository.findAll()
     val orphans   = before.filter(_.record.cinemaData.isEmpty)
@@ -42,7 +44,7 @@ object UnscreenedRowsBackfill {
     if (orphans.size > Sample) println(s"  (+ ${orphans.size - Sample} more)")
 
     val cache   = new CaffeineMovieCache(repository)
-    val cleanup = new UnscreenedCleanup(cache, slotsRepository)
+    val cleanup = new UnscreenedCleanup(cache, repository)
     val removed = cleanup.removeUnscreened()
     repository.close()
     client.close()
