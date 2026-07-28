@@ -55,7 +55,15 @@ object StoredMovieRecord {
    *  identity), so `displayTitle(prefix)` sanitizes back to it — the rebuilt key
    *  recomputes to the same `_id`, no re-keying churn. (The in-memory repository keeps
    *  the full record in memory and returns its title verbatim, so it needs no
-   *  recovery step; for realistic rows the two agree.) */
+   *  recovery step; for realistic rows the two agree.)
+   *
+   *  CALL IT WITH A COMPLETE RECORD. `displayTitle` names the film from its SLOTS,
+   *  so a record whose slots have not been stitched back in yet has nothing to name
+   *  it with and falls through to the `_id` prefix — a real title only by accident
+   *  ("Interstellar"), otherwise a mangled "Thecabinetofdrcaligari". That is exactly
+   *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
+   *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
+   *  once the record is whole. */
   def fromStorage(id: String, record: MovieRecord): StoredMovieRecord = {
     val sep      = id.lastIndexOf('|')
     val idPrefix = if (sep >= 0) id.substring(0, sep) else id
@@ -352,10 +360,26 @@ class MongoMovieRepository(
    *  An EMPTY `storedSlots` still means "fall back to the embedded map", but it no longer
    *  has to carry the weight of distinguishing a genuinely slot-less film from a failed
    *  read: [[SlotsRepository.findForFilmChecked]] answers that directly, and callers
-   *  refuse to build a record at all when the read failed. */
+   *  refuse to build a record at all when the read failed.
+   *
+   *  Re-derives the DISPLAY TITLE from the stitched record, because
+   *  `StoredMovieDto.toDomain` could not: it named the film from the `movies`
+   *  document's own `sourceData`, which the slot split leaves EMPTY, so
+   *  `displayTitle` fell through to its fallback — the sanitized `_id` prefix —
+   *  and every hydrated row came back as "Thecabinetofdrcaligari". The cache keyed
+   *  the corpus under those mangled spellings (harmless for lookups, since
+   *  `CacheKey` compares by `sanitize`), and the first `SettleReaper` pass after
+   *  each boot then "re-spelled" every one of them back to the real title: 1240 of
+   *  1603 UK rows rewritten under byte-identical `_id`s per deploy (prod,
+   *  2026-07-28), plus the change-stream and read-model fan-out behind them. Only
+   *  a single-word ASCII title ("Interstellar") round-tripped `sanitize` and stayed
+   *  quiet — which is why ~22% of the corpus never churned. */
   private def stitchSlots(r: StoredMovieRecord, storedSlots: Map[String, SourceData]): StoredMovieRecord =
     if (storedSlots.isEmpty) r
-    else r.copy(record = r.record.copy(data = SlotsRepository.merge(r.record.data, storedSlots)))
+    else {
+      val stitched = r.record.copy(data = SlotsRepository.merge(r.record.data, storedSlots))
+      r.persistedId.fold(r.copy(record = stitched))(StoredMovieRecord.fromStorage(_, stitched))
+    }
 
   /** Decode one stored row and re-inject its slots from `movie_slots` and its showtimes
    *  from `screenings` — the per-film read-stitch shared by [[findById]] and the

@@ -64,7 +64,10 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
 
       allReads.set(0); batchedReads.set(0)
       var seen = 0
-      val complete = repository.foreachRecord(r => if (r.title.startsWith("Scanpaging")) seen += 1)
+      // Recognise the sentinels by tmdbId, not by the derived title: the title comes from
+      // the stitched slot ("Scan 1"), not from the `_id` prefix, and tying the count to
+      // either spelling makes this paging spec fail for a naming reason.
+      val complete = repository.foreachRecord(r => if (r.record.tmdbId.exists(t => t > 6000 && t <= 6005)) seen += 1)
 
       complete shouldBe true
       withClue("the scan preloaded a whole side collection: ")(allReads.get() shouldBe 0)

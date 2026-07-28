@@ -37,7 +37,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
-    "tt0000078", "tt0000079", "tt0000080", "tt0000081"
+    "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -691,6 +691,43 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       split.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id)
         scanned = r.record.cinemaData.get(Multikino).flatMap(_.posterUrl))
       scanned shouldBe Some("https://poster/split.png")
+    } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
+  }
+
+  // The DISPLAY TITLE has to survive the slot split too. `StoredMovieDto.toDomain`
+  // derives it from the document's own `sourceData` — which the split leaves EMPTY —
+  // so every read fell back to the sanitized `_id` prefix ("Integrationtestslottitledrno")
+  // and the stitch that repairs the record never re-derived the name. The cache then
+  // hydrated the whole corpus under mangled keys and the settle 16 minutes later
+  // "re-spelled" each one back, rewriting 1240 of 1603 UK rows per boot under
+  // byte-identical `_id`s (prod, 2026-07-28 06:29Z). The title must come from the
+  // STITCHED record, not the hollow document.
+  it should "derive the display title from the stitched slots, not the sanitized _id prefix" in {
+    import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val slots  = new MongoSlotsRepository(Some(db))
+    val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
+    // Spaces and a dot, so `sanitize` (which strips both) cannot round-trip the title —
+    // exactly the shape 78% of the corpus has, and the reason single-word films
+    // ("Interstellar") were the only ones the settle left alone.
+    val title  = "Integration Test Slottitle Dr. No"
+    val year   = Some(1909)
+    val id     = StoredMovieRecord.idFor(title, year)
+    try {
+      val slot = SourceData(title = Some(title), posterUrl = Some("https://poster/st.png"),
+        showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 3, 19, 0), Some("https://book/st-1"))))
+      split.upsert(title, year, MovieRecord(imdbId = Some("tt0000024"),
+        data = Map[Source, SourceData](Multikino -> slot)))
+      // the slots really did move out of `movies`, so this is the split's read path
+      slots.findForFilm(id) should not be empty
+
+      split.findById(id).map(_.title)                              shouldBe Some(title)
+      split.findAll().find(r => StoredMovieRecord.idOf(r) == id).map(_.title) shouldBe Some(title)
+      var scanned: Option[String] = None
+      split.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id) scanned = Some(r.title))
+      scanned shouldBe Some(title)
     } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
   }
 
