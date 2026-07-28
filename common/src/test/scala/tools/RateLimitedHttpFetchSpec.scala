@@ -113,10 +113,12 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "read the pace for a real paced host off the HostPolicies table" in {
     // The production lookup, not the fixture's stub — guards the wiring between
     // the policy row and the decorator.
-    // 1000ms: pace-report measurement showed 250ms and 500ms both throttled
-    // under German daytime load (Filmstarts tolerates ~1 req/s), so the pace
-    // stepped down to ~1 req/s for 0 throttled. See the policy's comment.
-    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
+    // 1400ms: 250ms and 500ms both throttled under German daytime load, and
+    // 1000ms turned out to as well — a flat 60 req/min until 4 consecutive 429s
+    // tripped the breaker into a ~5min DE-wide blackout, on a ~20min cycle.
+    // ~43 req/min sits under the ~45 req/min Filmstarts actually let through.
+    // See the policy's comment.
+    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1400.millis)
     RateLimitedHttpFetch.configuredInterval(Unpaced) shouldBe None
   }
 
@@ -142,17 +144,17 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     withProperty("KINOWO_FILMSTARTS_PACE_MS", "900") {
       RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(900.millis)
     }
-    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
+    RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1400.millis)
   }
 
   it should "ignore a non-positive knob rather than unpacing the host" in {
     // 0 would read as "no gap at all" — the burst behaviour that drew the 429s
     // in the first place. Env.positiveLong drops it back to the compiled default.
     withProperty("KINOWO_FILMSTARTS_PACE_MS", "0") {
-      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
+      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1400.millis)
     }
     withProperty("KINOWO_FILMSTARTS_PACE_MS", "not-a-number") {
-      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1000.millis)
+      RateLimitedHttpFetch.configuredInterval(Paced) shouldBe Some(1400.millis)
     }
   }
 

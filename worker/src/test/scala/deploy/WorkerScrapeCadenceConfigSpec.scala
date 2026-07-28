@@ -24,6 +24,20 @@ import scala.concurrent.duration.*
  * `FreshnessStoreSpec`; this spec covers the deployed VALUES.
  */
 class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
+
+  /** Filmstarts requests one German venue costs per sweep: the venue page
+   *  `planChunks` reads `data-showtimes-dates` off, plus one day-page per day
+   *  that attribute advertises.
+   *
+   *  It used to be modelled as a flat 7 — the fixed day grid the client fetched
+   *  before it became `data-showtimes-dates`-driven. That constant now BOTH
+   *  overstates the cost (a venue advertises far fewer populated days than a
+   *  week) and understates the ceiling (`MaxHorizonDays` is 34), so it measured
+   *  nothing real. 5 is the production figure rounded up: over 24h the DE worker
+   *  ran 14,862 venue sweeps and 51,973 day-chunks — ~3.5 days plus the one
+   *  listing fetch per venue — leaving ~11% headroom for a busier week. */
+  private val RequestsPerGermanVenue = 5
+
   private def cadenceOf(toml: String): Option[String] =
     RepoFile
       .read(toml)
@@ -33,7 +47,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
       .collectFirst { case s"KINOWO_SCRAPE_FRESHNESS_MINUTES$rest" => rest.dropWhile(_ != '\'').filter(_.isDigit) }
 
   "the DE worker" should "scrape on a 3-hour cadence, not the fleet's hourly default" in {
-    // 180, coupled to the 1000ms Filmstarts pace — a ~179min sweep needs a budget
+    // 180, coupled to the 1400ms Filmstarts pace — a ~179min sweep needs a budget
     // that fits it. See the invariant test below and fly.worker.de.toml.
     cadenceOf("fly.worker.de.toml") shouldBe Some("180")
   }
@@ -48,8 +62,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // sweep still fits.
     val pace     = RateLimitedHttpFetch.configuredInterval("https://www.filmstarts.de/kinoprogramm/kino/A0006/")
     val cadence  = cadenceOf("fly.worker.de.toml").map(_.toInt).map(_.minutes)
-    // One request per day-page per venue; WebediaShowtimesClient fetches 7 days.
-    val requests = Country.Germany.cities.flatMap(_.cinemas).distinct.size * 7
+    val requests = Country.Germany.cities.flatMap(_.cinemas).distinct.size * RequestsPerGermanVenue
 
     withClue("Filmstarts must stay paced — unpaced fan-out is what drew the 429s: ") {
       pace should not be empty

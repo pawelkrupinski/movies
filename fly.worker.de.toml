@@ -30,12 +30,14 @@ primary_region = 'arn'
   KINOWO_CREDIT_THROTTLE_EXIT_ABOVE  = '14000'
   # 180, not the fleet default of 60. DE's roster is ~1,533 cinemas across 158
   # Filmstarts regions (~5x PL), all swept by this one worker, and Filmstarts 429s
-  # us above ~1 req/s. So the RealHttpFetch pace holds filmstarts.de to 1000ms
-  # (~1 req/s) to reach 0 throttled — which makes a full sweep ~179min. This
-  # cadence is the budget that sweep must fit inside: it's coupled to the pace,
-  # not an independent freshness choice, and WorkerScrapeCadenceConfigSpec asserts
-  # sweep ≤ cadence so a change to either alone fails the build. German showtimes
-  # don't churn fast enough for 3h staleness to matter.
+  # us above ~0.75 req/s. So the RealHttpFetch pace holds filmstarts.de to 1400ms
+  # (~43 req/min) to reach 0 throttled — which makes a full sweep ~179min, since a
+  # venue costs ~5 requests (its listing page plus the days that page advertises),
+  # not the 7 the old fixed day-grid client fetched. This cadence is the budget
+  # that sweep must fit inside: it's coupled to the pace, not an independent
+  # freshness choice, and WorkerScrapeCadenceConfigSpec asserts sweep ≤ cadence so
+  # a change to either alone fails the build. German showtimes don't churn fast
+  # enough for 3h staleness to matter.
   KINOWO_SCRAPE_FRESHNESS_MINUTES = '180'
   # JVM sizing: Xms=Xmx=640m on a 1280 MB box. This is the bump the previous note
   # here said to make only once measured, and 2026-07-18 supplied the measurement:

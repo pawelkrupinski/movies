@@ -344,16 +344,17 @@ object RealHttpFetch {
     // given time. 40s covers the handshake; the read budget stays the default.
     HostPolicy(Set("iluzjon.fn.org.pl"), connectTimeout = Duration.ofSeconds(40)),
 
-    // Filmstarts (Webedia DE). Germany's 1,533 venues × 7 days = ~10.7k requests
-    // per sweep onto ONE origin, and with no pacing the worker's fan-out delivers
-    // them in bursts the host answers with 429. That was our steady state, not an
-    // anomaly: ThrottledHttpFetch's reactive 5s gate then parked the venue past
-    // AdaptiveTimeoutScraper's budget, so the scrape was cut and DE went stale.
-    // 250ms (~4 req/s) was that starting pace, and the 429s never stopped: one
-    // live worker.log carried 3,118 of them, and 429 was the ONLY HTTP status in
-    // it — no 403s, no 5xx, so this is purely self-inflicted, not a Fly-ASN block.
+    // Filmstarts (Webedia DE). Germany's 1,533 venues each fan out one listing
+    // fetch plus one request per advertised day onto ONE origin, and with no
+    // pacing the worker's fan-out delivers them in bursts the host answers with
+    // 429. That was our steady state, not an anomaly: ThrottledHttpFetch's
+    // reactive 5s gate then parked the venue past AdaptiveTimeoutScraper's
+    // budget, so the scrape was cut and DE went stale. 250ms (~4 req/s) was that
+    // starting pace, and the 429s never stopped: one live worker.log carried
+    // 3,118 of them, and 429 was the ONLY HTTP status in it — no 403s, no 5xx,
+    // so this is purely self-inflicted, not a Fly-ASN block.
     // The cost is worse than the lost request: a 429 trips
-    // HostCircuitBreakerHttpFetch, whose 60s open window fast-fails all 7 of a
+    // HostCircuitBreakerHttpFetch, whose 60s open window fast-fails all of a
     // venue's day requests at once ("all 7 showtime requests ... failed"), and
     // RetryWithBackoff then re-runs the whole cinema up to 3x. So the fast pace
     // spent its budget three times over on requests that could never land, and
@@ -361,17 +362,29 @@ object RealHttpFetch {
     // The pace-report logging (see ThrottledHttpFetch, surfaced at INFO in the
     // worker's logback-base.xml) turned that search into measurement. 500ms was
     // 100% clean overnight but only ~95% under German morning load — a steady
-    // ~4-5% throttle with bursts to ~35%, i.e. Filmstarts' tolerance sits right
-    // around our 2 req/s. Halving again to 1000ms (~1 req/s) drops under it for
-    // 0 throttled. The cost is the sweep: 1,533 venues × 7 day-pages × 1000ms =
-    // ~179min, which no longer fits a 2h cadence — so DE moved to a 180min cadence
-    // in lockstep (fly.worker.de.toml). The two are coupled: pace sets sweep
-    // length, cadence sets the budget, and WorkerScrapeCadenceConfigSpec asserts
-    // sweep ≤ cadence so neither can drift alone. KINOWO_FILMSTARTS_PACE_MS still
-    // overrides this live (per request) for re-tuning without a redeploy.
+    // ~4-5% throttle with bursts to ~35%. 1000ms (~1 req/s) looked clean at the
+    // time, but panel-14 of kinowo-worker-diag over 2026-07-27/28 showed it was
+    // not: a metronome-flat 60 req/min for ~15min, then 4 consecutive 429s, then
+    // a ~5min DE-wide scrape blackout, on a ~20min cycle. The blackout is the
+    // breaker doing its job — during it we sent 1-4 req/min and Filmstarts 429'd
+    // EVERY one, so it blocks us outright for minutes once tripped — but it cost
+    // ~25% of DE's scrape wall-clock and 9,648 rescheduled ScrapeChunk tasks a
+    // day. 1 req/s simply sits above what Filmstarts tolerates sustained: the
+    // long-run rate we actually got through, blackouts included, was ~45 req/min.
+    // 1400ms (~43 req/min) drops just under that ceiling for 0 throttled.
+    // The cost is the sweep, but less than the old ×7 arithmetic suggested: the
+    // client reads `data-showtimes-dates` and fetches only ADVERTISED days
+    // (production counters: 51,973 day-chunks over 14,862 venue sweeps = ~3.5
+    // days/venue), so a sweep is ~6.9k requests, not 10.7k — ~161min at 1400ms,
+    // still inside DE's 180min cadence (fly.worker.de.toml), which therefore does
+    // NOT move with this. Pace and cadence stay coupled all the same — pace sets
+    // sweep length, cadence sets the budget, and WorkerScrapeCadenceConfigSpec
+    // asserts sweep ≤ cadence so neither can drift alone.
+    // KINOWO_FILMSTARTS_PACE_MS still overrides this live (per request) for
+    // re-tuning without a redeploy.
     HostPolicy(
       Set("filmstarts.de"),
-      minRequestInterval = Some(Duration.ofMillis(1000)),
+      minRequestInterval = Some(Duration.ofMillis(1400)),
       paceKnob           = Some("KINOWO_FILMSTARTS_PACE_MS"),
     ),
 
