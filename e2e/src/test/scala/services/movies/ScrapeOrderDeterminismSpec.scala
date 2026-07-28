@@ -187,7 +187,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
       (1 until IterationsPerMovie).foreach { i =>
         val (recordI, rowsI) = replay(group, seed(mi, i))
         if (recordI != record0)
-          divergences += s"RECORD '${group.cleanTitle}' iter $i:\n${recordDiff(record0, recordI)}"
+          divergences += s"RECORD '${group.cleanTitle}' iter $i:\n${CorpusDiff.records(record0, recordI, "iter0", s"iter$i")}"
         if (rowsI != rows0)
           divergences += s"ROW '${group.cleanTitle}' iter $i (cinemas=${group.cinemaCount})"
       }
@@ -280,7 +280,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     val divergences = mutable.ListBuffer.empty[String]
     (1 until CorpusIterations).foreach { i =>
       val (recordI, rowsI) = replays(i)
-      if (recordI != record0) divergences += s"RECORD iter $i:\n${recordDiff(record0, recordI)}"
+      if (recordI != record0) divergences += s"RECORD iter $i:\n${CorpusDiff.records(record0, recordI, "iter0", s"iter$i")}"
       if (rowsI != rows0) {
         val d = rows0.zipAll(rowsI, null, null).collect { case (x, y) if x != y => s"  0=${String.valueOf(x).take(600)}\n  i=${String.valueOf(y).take(600)}" }
         divergences += s"ROW iter $i differs (${rows0.size} vs ${rowsI.size}):\n${d.take(2).mkString("\n")}"
@@ -357,43 +357,6 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   /** Concise field-level diff of two persisted record sets — pinpoints the
    *  exact (record, source, field) that diverged instead of dumping the whole
    *  (huge) record, so the failure clue is actionable. */
-  private def recordDiff(a: Seq[StoredMovieRecord], b: Seq[StoredMovieRecord]): String = {
-    def short(x: Any): String = { val t = x.toString; if (t.length > 140) s"${t.take(140)}…(len ${t.length})" else t }
-    val ka = a.map(r => (r.title, r.year)).toSet
-    val kb = b.map(r => (r.title, r.year)).toSet
-    if (ka != kb) return s"record keys differ: only0=${ka -- kb} only1=${kb -- ka}"
-    val byKey = b.map(r => (r.title, r.year) -> r.record).toMap
-    a.flatMap { ra =>
-      val ea = ra.record; val eb = byKey((ra.title, ra.year))
-      val scalars = Seq[(String, Any, Any)](
-        ("tmdbId", ea.tmdbId, eb.tmdbId), ("imdbId", ea.imdbId, eb.imdbId),
-        ("imdbRating", ea.imdbRating, eb.imdbRating), ("metascore", ea.metascore, eb.metascore),
-        ("rottenTomatoes", ea.rottenTomatoes, eb.rottenTomatoes), ("filmwebRating", ea.filmwebRating, eb.filmwebRating),
-        ("filmwebUrl", ea.filmwebUrl, eb.filmwebUrl), ("metacriticUrl", ea.metacriticUrl, eb.metacriticUrl),
-        ("rottenTomatoesUrl", ea.rottenTomatoesUrl, eb.rottenTomatoesUrl)
-      ).collect { case (n, x, y) if x != y => s"  scalar $n: 0=${short(x)} 1=${short(y)}" }
-      val srcDiffs = (ea.data.keySet ++ eb.data.keySet).toSeq.sortBy(_.displayName).flatMap { src =>
-        (ea.data.get(src), eb.data.get(src)) match {
-          case (Some(da), Some(db)) if da != db =>
-            val fields = Seq[(String, Any, Any)](
-              ("title", da.title, db.title),
-              ("synopsis.len", da.synopsis.map(_.length), db.synopsis.map(_.length)),
-              ("cast", da.cast, db.cast), ("director", da.director, db.director),
-              ("posterUrl", da.posterUrl, db.posterUrl), ("releaseYear", da.releaseYear, db.releaseYear),
-              ("runtimeMinutes", da.runtimeMinutes, db.runtimeMinutes), ("countries", da.countries, db.countries),
-              ("genres", da.genres, db.genres), ("filmUrl", da.filmUrl, db.filmUrl),
-              ("showtimes.size", da.showtimes.size, db.showtimes.size), ("showtimes", da.showtimes, db.showtimes)
-            ).collect { case (n, x, y) if x != y => s"      $n: 0=${short(x)} 1=${short(y)}" }
-            Some(s"  source '${src.displayName}' differs:\n${fields.mkString("\n")}")
-          case (Some(_), None) => Some(s"  source '${src.displayName}': only in iter0")
-          case (None, Some(_)) => Some(s"  source '${src.displayName}': only in iter1")
-          case _               => None
-        }
-      }
-      if (scalars.isEmpty && srcDiffs.isEmpty) Nil
-      else Seq(s"record '${ra.title}' (${ra.year}):") ++ scalars ++ srcDiffs
-    }.mkString("\n")
-  }
 
   private def renderRows(rows: Seq[FilmSchedule]): String =
     rows.map { s =>

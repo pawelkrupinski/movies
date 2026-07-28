@@ -26,6 +26,36 @@ object IsolatedMongoDatabase {
   /** Prefix every isolated database shares, so a sweep can find strays. */
   val Prefix: String = "kinowo_isolated"
 
+  // Databases handed out by `open`, so a suite can drop them all at the end.
+  // One suite per JVM here, so a process-wide list is the right scope.
+  private val opened = scala.collection.mutable.ListBuffer.empty[(MongoClient, MongoDatabase)]
+
+  /** A uniquely-named database that outlives a single block — for a suite whose
+   *  tests SHARE one expensive fixture and so cannot each wrap their own scope.
+   *  The caller must call [[closeAll]] when the suite ends; until then the
+   *  database is left in place deliberately.
+   *
+   *  Prefer [[withDatabase]] whenever the work fits inside one block: it cannot
+   *  leak, because the drop is in a `finally`. */
+  def open(uri: String, purpose: String): MongoDatabase = {
+    IntegrationMongo.requireThrowaway(uri, Env.get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
+    val client   = MongoClient(uri)
+    val database = client.getDatabase(nameFor(purpose))
+    opened.synchronized(opened += (client -> database))
+    database
+  }
+
+  /** Drop every database handed out by [[open]] and close their clients. Safe to
+   *  call twice, and safe to call when nothing was opened. */
+  def closeAll(): Unit = opened.synchronized {
+    opened.foreach { case (client, database) =>
+      try Await.result(database.drop().toFuture(), 60.seconds)
+      catch { case _: Throwable => () }   // a suite that failed early must still close its client
+      finally client.close()
+    }
+    opened.clear()
+  }
+
   /** Open a uniquely-named database on `uri`, run `body` against it, and drop it
    *  afterwards — dropped even when `body` throws, since the alternative is an
    *  orphan database per failed run. */

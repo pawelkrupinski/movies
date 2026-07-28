@@ -57,7 +57,15 @@ jobs:
                     - { country: germany,        code: de, cmd: convergenceGermany }
                     - { country: united-kingdom, code: uk, cmd: convergenceUk }
         runs-on: ubuntu-latest
-        timeout-minutes: 45
+        # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
+        # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
+        # because the corpus was mis-sized (Poland's films-per-venue ratio applied
+        # to every country — see CountryScrapeCorpus.shapeOf). The sizing is fixed,
+        # but a CI runner is a good deal slower than the machine these are timed on,
+        # so the ceiling now sits well clear of the expected run rather than just
+        # above it. A leg that approaches this is a signal to re-measure the shape,
+        # not to raise the number again.
+        timeout-minutes: 75
         permissions:
             contents: read
             checks: write

@@ -38,25 +38,43 @@ import java.time.LocalDateTime
  */
 object CountryScrapeCorpus {
 
-  /** Films each venue lists. Set from the real per-country ratio measured off
-   *  production (`/api/repertoire`, 2026-07-28): Poland ~24 films per venue,
-   *  Germany ~12, the UK ~31. Deep enough that a venue's listing looks like a
-   *  week's repertoire rather than a handful of rows. */
-  private def filmsPerCinema(country: Country): Int = country match {
-    case Country.Germany => 12
-    case Country.UnitedKingdom => 31
-    case _ => 24
+  /** The shape of a country's repertoire, as `(films per venue, distinct films
+   *  per 10 venues)` — both measured off production on 2026-07-28 via
+   *  `/api/repertoire`:
+   *
+   *    PL   274 venues, 1,129 films, 6,510 pairs -> 24 per venue, 4.1 films/venue
+   *    DE 1,083 venues, 1,161 films, 13,248 pairs -> 12 per venue, 1.1 films/venue
+   *    UK   778 venues, 1,695 films, 24,156 pairs -> 31 per venue, 2.2 films/venue
+   *
+   *  Both are RATIOS rather than counts, so the corpus grows and shrinks with the
+   *  catalogue instead of being pinned to a constant — the whole reason a fixed
+   *  title list was wrong. The two numbers are very different per country (a
+   *  German venue lists half what a British one does, and Germany's 1,083 venues
+   *  share barely more films than Poland's 274) and using one country's shape for
+   *  all three both misrepresents the others and, for Germany, generated five
+   *  times production's film count and a 27-minute run. */
+  private def shapeOf(country: Country): (Int, Int) = country match {
+    case Country.Germany       => (12, 11)
+    case Country.UnitedKingdom => (31, 22)
+    case _                     => (24, 41)
   }
 
-  /** How many DISTINCT films the country's repertoire holds.
-   *
-   *  Derived from the catalogue, never a constant: a fixed pool is saturated by
-   *  the first few hundred venues, after which every country settles to the same
-   *  number of films no matter how many cinemas it has — which is exactly the
-   *  tell that the figure describes the generator rather than the country.
-   *  Production sits near four films per venue (PL 1,129 films over 274 venues,
-   *  DE 1,161 over 1,083, UK 1,695 over 778), so that is the shape used here. */
-  private def titlePool(country: Country): Int = cinemasOf(country).size * 4
+  /** Films each venue lists. */
+  private def filmsPerCinema(country: Country): Int = shapeOf(country)._1
+
+  /** How many DISTINCT films the country's repertoire holds. Derived from the
+   *  catalogue, never a constant: a fixed pool is saturated by the first few
+   *  hundred venues, after which every country settles to the same number of
+   *  films however many cinemas it has — which is the tell that the figure
+   *  describes the generator rather than the country. */
+  private def titlePool(country: Country): Int =
+    // Halved, because the pool counts BASE titles and each base settles as TWO
+    // films: itself (which every spelling but one folds into) and its ampersand
+    // edition, which is a genuinely different title and rightly keeps its own row.
+    // Sizing the pool at the measured film count therefore produced twice
+    // production's corpus — 3,382 UK films against 1,695, 1,869 Polish against
+    // 1,129 — and the surplus is pure runtime in the fold, projection and render.
+    math.max(1, cinemasOf(country).size * shapeOf(country)._2 / 20)
 
   // Titles are COMPOSED, not listed, so the pool can be however large the country
   // needs. 24 x 24 x 8 = 4,608 distinct titles — comfortably past the largest

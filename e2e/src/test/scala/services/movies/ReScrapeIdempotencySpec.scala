@@ -135,9 +135,11 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
         retrigger = enrichmentRetrigger, mergeMetrics = merges)
     }
     w.bootStartup()
+    // ONE settle. Settling twice would let a corpus that needs two passes to stop
+    // moving look identical to one that never moved — the assertions only ever
+    // see the state after the last of them.
     w.movieService.settle()
     w.drainStaging()
-    w.movieService.settle()
     (w, merges)
   }
 
@@ -170,6 +172,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     val (w, merges) = settled
     val before       = keySet(w)
     val cinemasBefore = cinemasByFilm(w)
+    val recordsBefore = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     val mergesBefore = merges.total
     info(s"settled corpus: ${before.size} films")
 
@@ -188,6 +191,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
 
     val after = keySet(w)
     val cinemasAfter = cinemasByFilm(w)
+    val recordsAfter = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     withClue(
       s"a settle on a settled corpus folded ${merges.total - mergesBefore} row(s); " +
         s"keys APPEARED=${(after -- before).take(8).mkString(", ")} VANISHED=${(before -- after).take(8).mkString(", ")}\n") {
@@ -202,6 +206,12 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
           s"  $k lost=${cinemasBefore.getOrElse(k, Set.empty) -- cinemasAfter.getOrElse(k, Set.empty)} " +
           s"gained=${cinemasAfter.getOrElse(k, Set.empty) -- cinemasBefore.getOrElse(k, Set.empty)}").mkString("\n") + "\n") {
       moved shouldBe empty
+    }
+    // The keys and cinema sets above say the SHAPE didn't change; this says the
+    // DATA didn't. A settle that rewrote a synopsis, a runtime or a slot's
+    // showtimes in place would leave every key exactly where it was.
+    withClue(s"a settle on a settled corpus CHANGED the stored records:\n${CorpusDiff.records(recordsBefore, recordsAfter, "before", "after")}\n") {
+      recordsAfter shouldBe recordsBefore
     }
     withClue(s"a settle on a corpus that has cleared staging and folded wrote ${emissions.get} time(s) — " +
              "it should have had nothing to do\n")(emissions.get shouldBe 0)
@@ -302,15 +312,16 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     // Seeded so every tick re-scrapes in a different but REPRODUCIBLE cinema order
     // (one `rnd`, advancing per tick) — an order-dependent regression fails
     // deterministically here, never as a flake.
-    val rnd = new Random(0x2026_06_23L)
-    val MaxTicks = 12
+    val rnd      = new Random(0x2026_06_23L)
     val churn    = mutable.ListBuffer.empty[String]
     val keyDrift = mutable.ListBuffer.empty[String]
-    val perTick  = mutable.ListBuffer.empty[Int]      // emissions per tick, for the clue
-    var consecutiveZeroEmission = 0
-    var t = 0
-    while (consecutiveZeroEmission < 2 && t < MaxTicks) {
-      t += 1
+    val perTick  = mutable.ListBuffer.empty[Int]
+    // A FIXED two ticks, both of which must be completely clean. The question is
+    // whether the FIRST identical re-scrape is already a no-op, and searching for
+    // "two consecutive quiet ticks within twelve" could not tell a corpus that
+    // never moved from one that thrashed for ten and then settled. The second
+    // tick catches a two-state oscillation; it is not slack.
+    (1 to 2).foreach { t =>
       val mergesBefore    = merges.byReason
       val emissionsBefore = emissions.get
       val diversions = settleTick(w, rnd)
@@ -321,15 +332,15 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
       val removed = settledKeys -- keysNow
 
       perTick += emissionsDelta
-      consecutiveZeroEmission = if (emissionsDelta == 0) consecutiveZeroEmission + 1 else 0
       mergesDelta.foreach { case (r, n) => churn += f"tick $t%d: ${n}%3d merge(s) reason=${r.label}" }
       if (diversions.nonEmpty)
         churn += s"tick $t: ${diversions.size} known film(s) RE-DIVERTED to staging: ${diversions.take(12).mkString(", ")}"
+      if (emissionsDelta != 0)
+        churn += s"tick $t: $emissionsDelta persisted write(s) — an identical re-scrape must write nothing"
       if (added.nonEmpty)   keyDrift += s"tick $t: keys APPEARED: ${added.take(8).mkString(", ")}"
       if (removed.nonEmpty) keyDrift += s"tick $t: keys VANISHED: ${removed.take(8).mkString(", ")}"
     }
-    info(s"per-tick change-stream emissions until fixpoint: ${perTick.mkString(", ")}")
-
+    info(s"per-tick change-stream emissions: ${perTick.mkString(", ")}")
     if (keyDrift.nonEmpty)
       info(s"key-spelling drift (informational, no merge/freshness cost):\n${keyDrift.mkString("\n")}")
 
@@ -338,13 +349,6 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
       s"A settled corpus must not re-fold or re-divert under identical re-scrape, but:\n" +
         s"${churn.mkString("\n")}\n") {
       churn.toList shouldBe empty
-    }
-    // 2) Re-scrape reaches an emission-free fixpoint — the same-slot ping-pong
-    //    would keep it churning forever, never hitting two zero-emission ticks.
-    withClue(
-      s"Re-scrape never reached a two-tick emission-free fixpoint within $MaxTicks ticks " +
-        s"(per-tick emissions: ${perTick.mkString(", ")}) — a slot is being rewritten on every tick.\n") {
-      consecutiveZeroEmission should be >= 2
     }
   }
 }

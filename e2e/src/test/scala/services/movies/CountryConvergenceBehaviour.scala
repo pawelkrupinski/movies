@@ -2,6 +2,7 @@ package services.movies
 
 import controllers.{FilmSchedule, MovieControllerService}
 import models.{Cinema, Country, Showtime}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
@@ -48,7 +49,9 @@ import scala.util.{Random, Try}
  * The database is uniquely named per run (see `IsolatedMongoDatabase`), which is
  * what lets the three legs — and anything else on the `it` layer — run at once.
  */
-abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec with Matchers {
+abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+
+  override def afterAll(): Unit = { IsolatedMongoDatabase.closeAll(); super.afterAll() }
 
   // Deliberately NOT `assume`. A cancelled test reports as SUCCESS, so a leg that
   // lost its Mongo would go green having verified nothing at all — and these run
@@ -60,9 +63,6 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     throw new IllegalStateException(
       "MONGODB_URI is not set. The country convergence specs round-trip their corpus through a real " +
       "cinema_scrapes collection and must never silently skip — point it at a throwaway Mongo.")
-
-  /** Bound on re-scrape ticks before we declare the corpus non-convergent. */
-  private val MaxTicks = 12
 
   /** Independent random-order passes compared against each other. Three is enough
    *  to catch an order dependency while keeping the heaviest country (Germany,
@@ -93,6 +93,40 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     w.movieRepository.findAll().map(r =>
       StoredMovieRecord.idOf(r) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
 
+  /** ONE seeded archive + booted corpus, shared by the convergence test and the
+   *  no-loss test.
+   *
+   *  Both want the same thing — this country's archive replayed and settled, with
+   *  the read model projected — and booting it twice doubled the leg for nothing.
+   *  That is not free at this scale: Germany replays 1,533 venues and ~18k
+   *  listings per boot, and five boots per leg is what pushed its CI job past the
+   *  45-minute ceiling.
+   *
+   *  Safe to share by construction, the same argument `ReScrapeIdempotencySpec`
+   *  makes: the convergence test asserts the corpus is a FIXPOINT — a further
+   *  settle changes nothing and identical re-scrapes write nothing — so whichever
+   *  test runs first hands the other exactly the state it expected. Merge counts
+   *  are read as deltas inside each test, so a no-op pass cannot pollute the
+   *  other's baseline. The database is dropped when the suite ends. */
+  private lazy val shared: (ArchiveReplayWiring, CountingMergeMetrics, MongoScrapeArchiveRepository) = {
+    val database = IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, s"convergence-${country.code}")
+    val archive  = new MongoScrapeArchiveRepository(Some(database))
+    val seeded   = seedArchive(archive)
+    val merges   = new CountingMergeMetrics
+    val w = new ArchiveReplayWiring(country, archive) {
+      override lazy val movieCache = new CaffeineMovieCache(
+        movieRepository, eventBus, staging = Some(stagingRepository),
+        retrigger = enrichmentRetrigger, mergeMetrics = merges)
+    }
+    withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
+      w.cinemaScrapers.size shouldBe seeded
+    }
+    info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
+         s"${w.archivedListings.values.map(_.size).sum} film listings")
+    bootSettled(w)
+    (w, merges, archive)
+  }
+
   /** Boot the corpus to the steady state production reaches, settle it, and get
    *  it into the read model.
    *
@@ -103,9 +137,11 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  the read model while the corpus itself was complete. */
   private def bootSettled(w: ArchiveReplayWiring): Unit = {
     w.bootCorpus()
+    // ONE settle, deliberately. Settling twice here would let a corpus that needs
+    // two passes to stop moving look identical to one that never moved, because
+    // the assertion below only ever sees the state after the last of them.
     w.movieService.settle()
     w.drainStaging()
-    w.movieService.settle()
     w.concludeEnrichment()
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
@@ -172,28 +208,14 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     // — which is how a German rule set reached `FilmScheduleEndToEndSpec` and
     // failed it. A test body runs only when the test does.
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
-    IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, s"convergence-${country.code}") { database =>
-      val archive = new MongoScrapeArchiveRepository(Some(database))
-      val seeded  = seedArchive(archive)
-
-      val merges = new CountingMergeMetrics
-      val w = new ArchiveReplayWiring(country, archive) {
-        override lazy val movieCache = new CaffeineMovieCache(
-          movieRepository, eventBus, staging = Some(stagingRepository),
-          retrigger = enrichmentRetrigger, mergeMetrics = merges)
-      }
-
-      withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
-        w.cinemaScrapers.size shouldBe seeded
-      }
-      info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
-           s"${w.archivedListings.values.map(_.size).sum} film listings")
-
-      bootSettled(w)
+    {
+      val (w, merges, _) = shared
 
       // ── 1) The settle is a fixpoint of itself ────────────────────────────────
       val before        = keySet(w)
       val cinemasBefore = cinemasByFilm(w)
+      val recordsBefore = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+      val screeningsBefore = w.screeningsRepository.findAll()
       val mergesBefore  = merges.total
       info(s"${country.displayName}: settled corpus of ${before.size} films")
       before should not be empty
@@ -206,6 +228,8 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
       val after        = keySet(w)
       val cinemasAfter = cinemasByFilm(w)
+      val recordsAfter = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+      val screeningsAfter = w.screeningsRepository.findAll()
       withClue(
         s"a settle on a settled ${country.displayName} corpus folded ${merges.total - mergesBefore} row(s); " +
           s"keys APPEARED=${(after -- before).take(8).mkString(", ")} " +
@@ -222,6 +246,17 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
             s"gained=${cinemasAfter.getOrElse(k, Set.empty) -- cinemasBefore.getOrElse(k, Set.empty)}").mkString("\n") + "\n") {
         moved shouldBe empty
       }
+      // Keys and cinema sets say the SHAPE is unchanged; these say the DATA is.
+      // A settle that rewrote a synopsis, a runtime, or a slot's showtimes in
+      // place would leave every key and every cinema set exactly where it was.
+      withClue(s"a settle on a settled ${country.displayName} corpus CHANGED the stored records:\n" +
+               s"${CorpusDiff.records(recordsBefore, recordsAfter, "before", "after")}\n") {
+        recordsAfter shouldBe recordsBefore
+      }
+      withClue(s"a settle on a settled ${country.displayName} corpus CHANGED the screenings:\n" +
+               s"${CorpusDiff.slots(screeningsBefore, screeningsAfter, "before", "after")}\n") {
+        screeningsAfter shouldBe screeningsBefore
+      }
       withClue(s"a settle on a ${country.displayName} corpus that has cleared staging wrote " +
                s"${emissions.get} time(s) — it should have had nothing to do\n") {
         emissions.get shouldBe 0
@@ -229,14 +264,17 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
       // ── 2+3) Identical re-scrapes are churn-free and reach a fixpoint ─────────
       val settledKeys = before
-      val rnd         = new Random(0x2026_07_28L)
-      val churn       = mutable.ListBuffer.empty[String]
-      val keyDrift    = mutable.ListBuffer.empty[String]
-      val perTick     = mutable.ListBuffer.empty[Int]
-      var consecutiveZeroEmission = 0
-      var t = 0
-      while (consecutiveZeroEmission < 2 && t < MaxTicks) {
-        t += 1
+      val rnd      = new Random(0x2026_07_28L)
+      val churn    = mutable.ListBuffer.empty[String]
+      val keyDrift = mutable.ListBuffer.empty[String]
+      val perTick  = mutable.ListBuffer.empty[Int]
+      // A FIXED two ticks, both of which must be completely clean. The bounded
+      // search this replaced ("keep ticking until two consecutive quiet ones,
+      // give up after twelve") could not tell a corpus that never moved from one
+      // that thrashed for ten ticks and then went quiet — and the whole question
+      // is whether the FIRST identical re-scrape is already a no-op. The second
+      // tick is there to catch a two-state oscillation, not to grant slack.
+      (1 to 2).foreach { t =>
         val mergesBeforeTick    = merges.byReason
         val emissionsBeforeTick = emissions.get
         val diversions   = settleTick(w, rnd)
@@ -247,14 +285,15 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
         val vanished = settledKeys -- keysNow
 
         perTick += emissionsDelta
-        consecutiveZeroEmission = if (emissionsDelta == 0) consecutiveZeroEmission + 1 else 0
         mergesDelta.foreach { case (r, n) => churn += f"tick $t%d: $n%3d merge(s) reason=${r.label}" }
         if (diversions.nonEmpty)
           churn += s"tick $t: ${diversions.size} known film(s) RE-DIVERTED to staging: ${diversions.take(12).mkString(", ")}"
+        if (emissionsDelta != 0)
+          churn += s"tick $t: $emissionsDelta persisted write(s) — an identical re-scrape must write nothing"
         if (appeared.nonEmpty) keyDrift += s"tick $t: keys APPEARED: ${appeared.take(8).mkString(", ")}"
         if (vanished.nonEmpty) keyDrift += s"tick $t: keys VANISHED: ${vanished.take(8).mkString(", ")}"
       }
-      info(s"${country.displayName}: per-tick change-stream emissions until fixpoint: ${perTick.mkString(", ")}")
+      info(s"${country.displayName}: per-tick change-stream emissions: ${perTick.mkString(", ")}")
       if (keyDrift.nonEmpty)
         info(s"${country.displayName}: key-spelling drift (informational):\n${keyDrift.mkString("\n")}")
 
@@ -262,11 +301,6 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
         s"A settled ${country.displayName} corpus must not re-fold or re-divert under identical " +
           s"re-scrape, but:\n${churn.mkString("\n")}\n") {
         churn.toList shouldBe empty
-      }
-      withClue(
-        s"${country.displayName} never reached a two-tick emission-free fixpoint within $MaxTicks ticks " +
-          s"(per-tick emissions: ${perTick.mkString(", ")}) — something is rewritten on every tick.\n") {
-        consecutiveZeroEmission should be >= 2
       }
     }
   }
@@ -325,7 +359,10 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       val archive = new MongoScrapeArchiveRepository(Some(database))
       seedArchive(archive)
 
-      val passes = (0 until Passes).map(i => replay(archive, OrderSeed + i))
+      // Concurrently: the passes are independent whole-corpus replays and running
+      // them back-to-back made this the leg's long pole (three boots serially, on
+      // top of the shared one). Same helper the fixture determinism specs use.
+      val passes = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong))(replay(archive, _))
       val (records0, screenings0, rows0) = passes.head
       info(s"${country.displayName}: $Passes passes over ${records0.size} films, " +
            s"${screenings0.values.map(_.size).sum} slots, ${rows0.size} rendered rows")
@@ -335,8 +372,8 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       val divergences = mutable.ListBuffer.empty[String]
       (1 until Passes).foreach { i =>
         val (recordsI, screeningsI, rowsI) = passes(i)
-        if (recordsI != records0) divergences += s"FILMS differ on pass $i:\n${recordDiff(records0, recordsI)}"
-        if (screeningsI != screenings0) divergences += s"SCREENINGS differ on pass $i:\n${slotDiff(screenings0, screeningsI)}"
+        if (recordsI != records0) divergences += s"FILMS differ on pass $i:\n${CorpusDiff.records(records0, recordsI, "pass0", s"pass$i")}"
+        if (screeningsI != screenings0) divergences += s"SCREENINGS differ on pass $i:\n${CorpusDiff.slots(screenings0, screeningsI, "pass0", s"pass$i")}"
         if (rowsI != rows0) {
           val first = rows0.zipAll(rowsI, null, null).collectFirst { case (a, b) if a != b =>
             s"  pass0=${String.valueOf(a).take(400)}\n  pass$i=${String.valueOf(b).take(400)}" }.getOrElse("")
@@ -370,14 +407,8 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   s"the ${country.displayName} read model" should
     "emit every cinema, showtime and film the archive holds" in {
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
-    IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, s"emit-${country.code}") { database =>
-      val archive = new MongoScrapeArchiveRepository(Some(database))
-      seedArchive(archive)
-
-      val w = new ArchiveReplayWiring(country, archive) {
-        override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
-      }
-      bootSettled(w)
+    {
+      val (w, _, archive) = shared
 
       // ── what the DATABASE holds ──────────────────────────────────────────────
       val stored          = archive.findAll()
@@ -429,54 +460,4 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     }
   }
 
-  /** The first few films whose stored record differs, reported FIELD BY FIELD.
-   *  A truncated `toString` is useless here — two records that differ in one
-   *  slot's runtime print an identical first 300 characters — so this walks the
-   *  record's own fields and each per-cinema slot's fields and names the ones
-   *  that actually disagree. */
-  private def recordDiff(a: Seq[StoredMovieRecord], b: Seq[StoredMovieRecord]): String = {
-    def byKey(rs: Seq[StoredMovieRecord]) = rs.map(r => (r.title, r.year) -> r).toMap
-    val (left, right) = (byKey(a), byKey(b))
-    val keys = (left.keySet ++ right.keySet).filter(k => left.get(k) != right.get(k)).toList.sortBy(_._1)
-    val detail = keys.take(3).map { k =>
-      (left.get(k), right.get(k)) match {
-        case (None, _)          => s"    $k: absent in pass0"
-        case (_, None)          => s"    $k: absent in passN"
-        case (Some(l), Some(r)) =>
-          val ls = l.record.data
-          val rs = r.record.data
-          val onlyLeft  = ls.keySet -- rs.keySet
-          val onlyRight = rs.keySet -- ls.keySet
-          val shared    = (ls.keySet intersect rs.keySet).filter(slot => ls(slot) != rs(slot))
-          val fields = shared.take(2).map { slot =>
-            val (x, y) = (ls(slot), rs(slot))
-            val diffs = Seq(
-              ("title", x.title.toString, y.title.toString),
-              ("rawTitle", x.rawTitle.toString, y.rawTitle.toString),
-              ("synopsis", x.synopsis.toString, y.synopsis.toString),
-              ("runtimeMinutes", x.runtimeMinutes.toString, y.runtimeMinutes.toString),
-              ("releaseYear", x.releaseYear.toString, y.releaseYear.toString),
-              ("showtimes", x.showtimes.size.toString, y.showtimes.size.toString)
-            ).filter { case (_, p, q) => p != q }
-              .map { case (f, p, q) => s"$f: pass0=$p passN=$q" }
-            s"      slot ${slot.displayName}: ${if (diffs.isEmpty) "(differs outside the sampled fields)" else diffs.mkString("; ")}"
-          }
-          s"    $k:" +
-            (if (onlyLeft.nonEmpty)  s"\n      slots only in pass0: ${onlyLeft.map(_.displayName).take(4).mkString(", ")}" else "") +
-            (if (onlyRight.nonEmpty) s"\n      slots only in passN: ${onlyRight.map(_.displayName).take(4).mkString(", ")}" else "") +
-            (if (fields.nonEmpty) "\n" + fields.mkString("\n") else "")
-      }
-    }
-    s"  ${keys.size} film(s) differ:\n${detail.mkString("\n")}"
-  }
-
-  /** First few slots whose showtimes differ, rendered for the clue. */
-  private def slotDiff(a: Map[String, Map[String, Seq[Showtime]]],
-                       b: Map[String, Map[String, Seq[Showtime]]]): String = {
-    val films = (a.keySet ++ b.keySet).filter(f => a.get(f) != b.get(f))
-    s"  ${films.size} film(s) differ; first: " + films.take(3).map { f =>
-      s"$f\n    pass0=${a.getOrElse(f, Map.empty).view.mapValues(_.size).toMap}" +
-      s"\n    passN=${b.getOrElse(f, Map.empty).view.mapValues(_.size).toMap}"
-    }.mkString("\n  ")
-  }
 }
