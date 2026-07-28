@@ -362,6 +362,24 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 2
   }
 
+  // Both bounds above are checked BEFORE the fan-out exists, so on an EMPTY queue they
+  // still wave through a full batch of venues that becomes ~36x that many tasks a
+  // moment later — the sawtooth visible on kinowo-worker-uk 2026-07-28, where
+  // ScrapeCinema draining 19 -> 0 put ScrapeChunk 244 -> 791 in one step. Budgeting in
+  // tasks only works if the venue count is converted at ADMISSION time, which means
+  // knowing what a venue costs: ~36 tasks for a UK Flicks venue, ~16 for a German one,
+  // 1 for an unchunked Polish one.
+  it should "admit venues by what they will FAN OUT to, not by their own count" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20, tasksPerVenue = 10)
+
+    // Empty queue, 5 cinemas due, a 20-task budget and 10 tasks per venue → 2 venues.
+    // Without the conversion this admits all 5, i.e. ~50 tasks against a budget of 20.
+    reaper.tick() shouldBe 2
+  }
+
   // Parse-wave smoothing: a healthy tick's due batch otherwise hits the queue at one
   // instant, so the scrapes fetch in parallel and their payloads PARSE together — a
   // CPU spike that floors the shared-CPU credit balance. `planSlices` splits the

@@ -56,6 +56,11 @@ primary_region = 'arn'
   # steal all that day. 420 restores the idle. If you want fresher UK listings,
   # 180min is the next stop (67% headroom); do not go to 60 without first cutting
   # the per-sweep request count or loosening the Flicks pace.
+  # What one venue costs the scrape queue, in TASKS — the unit
+  # KINOWO_SCRAPE_MAX_OUTSTANDING_TASKS is denominated in. ~36 = one ScrapeChunk per advertised day of a Flicks venue's horizon.
+  # Without it the reaper admits venues by COUNT and discovers the fan-out
+  # only once the planners run, which is the burst that floors CPU credit.
+  KINOWO_SCRAPE_TASKS_PER_VENUE = '36'
   KINOWO_SCRAPE_FRESHNESS_MINUTES = '420'
   # JVM sizing: Xms=Xmx=448m on the 1 GB box — the UK corpus is ~half the former
   # combined set that needed 480m, and 448 + ~290 MB non-heap ≈ 738 MB RSS leaves

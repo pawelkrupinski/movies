@@ -1150,12 +1150,16 @@ class WorkerWiring(
   def maxOutstandingScrapeTasks: Int =
     Env.positiveInt("KINOWO_SCRAPE_MAX_OUTSTANDING_TASKS",
       services.tasks.ScrapeCadence.MaxOutstandingScrapeTasks)
+  // What one venue costs in scrape tasks, so the budget above can be spent in the unit
+  // it is written in. Per country because the fan-out is a property of that country's
+  // scrapers — see ScrapeReaper's `tasksPerVenue`. Default 1 (unchunked).
+  def scrapeTasksPerVenue: Int = Env.positiveInt("KINOWO_SCRAPE_TASKS_PER_VENUE", 1)
   lazy val scrapeReaper =
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
       throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
-      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks,
+      maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, tasksPerVenue = scrapeTasksPerVenue,
       enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing

@@ -115,6 +115,20 @@ class ScrapeReaper(
   // actually needs — same total work and freshness, no burst. Default unbounded so
   // callers/tests that don't wire it keep the old behaviour.
   maxOutstandingScrapeTasks: Int = Int.MaxValue,
+  // What one venue COSTS, in scrape tasks, so `maxOutstandingScrapeTasks` can be spent
+  // in the unit it is denominated in. A chunked venue's ScrapeCinema task is only the
+  // planner; the fetches it fans out arrive a moment later, so a bound checked at
+  // admission time sees ~1/36th of what it is about to authorise. That is the sawtooth:
+  // on 2026-07-28 kinowo-worker-uk's ScrapeCinema draining 19 -> 0 put ScrapeChunk
+  // 244 -> 791 in a single step, from a reaper that believed it was under budget.
+  //
+  // Per country, because the fan-out is a property of the scrapers a country wires:
+  // ~36 for a UK Flicks venue (one chunk per advertised day), ~16 for a German
+  // Filmstarts one, 1 for an unchunked Polish venue. Set in each worker app's toml via
+  // `KINOWO_SCRAPE_TASKS_PER_VENUE`. It only has to be right to within a factor of
+  // two — it sizes a burst bound, not a schedule. Default 1 = unchunked, which leaves
+  // the bound behaving exactly as a venue count for callers that don't set it.
+  tasksPerVenue: Int = 1,
   // SPREAD the (non-throttled) per-tick batch across the tick interval instead of
   // dumping it all at the tick instant. The reaper enqueues a clump of due cinemas
   // each tick; they fetch in parallel and their HTML/JSON payloads PARSE together —
@@ -216,8 +230,13 @@ class ScrapeReaper(
     // bounded trickle still serves the stalest cinemas.
     val outstanding = ScrapeReaper.ScrapeWorkTypes.map(queue.waitingCount).sum
     // The smoothing bound, applied whatever the throttle says: never pile a fresh batch
-    // onto work that is still draining. See `maxOutstandingScrapeTasks`.
-    val backlogRoom = math.max(0, maxOutstandingScrapeTasks - outstanding)
+    // onto work that is still draining, and spend the remaining budget in TASKS by
+    // converting through what a venue fans out to. Integer division floors, so a room
+    // smaller than one venue's fan-out admits nothing rather than overshooting.
+    // See `maxOutstandingScrapeTasks` and `tasksPerVenue`.
+    val backlogRoom =
+      if (maxOutstandingScrapeTasks == Int.MaxValue) Int.MaxValue
+      else math.max(0, maxOutstandingScrapeTasks - outstanding) / math.max(1, tasksPerVenue)
 
     if (throttle.isThrottled) {
       val cap      = math.min(backlogRoom, math.max(0, throttledMaxEnqueuePerTick - outstanding))
