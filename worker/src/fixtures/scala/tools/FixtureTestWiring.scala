@@ -3,7 +3,7 @@ package tools
 import clients.tools.FakeHttpFetch
 
 import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
-import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter, WebReadModel}
+import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter}
 
 class FixtureTestWiring(val fixture: String) extends TestWiring {
   override lazy val httoFetch: HttpFetch = new FakeHttpFetch(fixture)
@@ -32,7 +32,6 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // worker→read-model→web seam as production, minus Mongo. Specs build their
   // `MovieControllerService` from `webReadModel` (not the raw cache).
   override lazy val readModelRepository: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepository()
-  lazy val webReadModel = new WebReadModel(readModelRepository)
 
   // The fixture's capture day, parsed from a `dd-MM-yyyy` directory name (e.g.
   // "08-06-2026" → 2026-06-08). `None` for fixtures named for something else

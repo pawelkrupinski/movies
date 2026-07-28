@@ -3,7 +3,6 @@ package tools
 import models.{Cinema, CinemaMovie, Country, Movie, Showtime}
 
 import java.time.LocalDateTime
-import scala.util.Random
 
 /**
  * A deterministic, country-shaped scrape corpus — one consolidated listing per
@@ -33,7 +32,8 @@ import scala.util.Random
  *   - a case/diacritic variant of a title another venue spells cleanly,
  *   - the same film across many venues, which is what creates merge pressure.
  *
- * Fully deterministic: the seed is derived from the country code, so a failure
+ * Fully deterministic by CONSTRUCTION — every field is a pure function of
+ * (film, venue), with no RNG whose consumption order could matter — so a failure
  * reproduces exactly rather than as a flake.
  */
 object CountryScrapeCorpus {
@@ -45,11 +45,19 @@ object CountryScrapeCorpus {
   private val FilmsPerCinema = 6
 
   /** Base titles the variants below decorate. Deliberately mundane and
-   *  language-neutral — the corpus tests title MECHANICS, not vocabulary. */
+   *  language-neutral — the corpus tests title MECHANICS, not vocabulary — but
+   *  broad enough that the settled corpus isn't a handful of rows every venue
+   *  piles onto. */
   private val BaseTitles = Vector(
     "Ścieżki życia", "Nocny kurier", "Blue Harvest", "Der lange Sommer",
     "The Quiet Coast", "Anora", "Nosferatu", "Diuna", "Wicked", "Konklawe",
-    "Sonic 3", "Vermiglio", "Grand Tour", "Flow", "September 5", "Babygirl"
+    "Sonic 3", "Vermiglio", "Grand Tour", "Flow", "September 5", "Babygirl",
+    "Zimna wojna", "Ostatni seans", "Harvest Moon", "Die Blechtrommel",
+    "The Long Walk Home", "Perfect Days", "Past Lives", "Aftersun",
+    "Cicha noc", "Zielona granica", "Broker", "Drive My Car",
+    "Der Vorleser", "Das Boot", "Northern Lights", "The Salt Path",
+    "Chłopi", "Kos", "Iluzja", "Fremont",
+    "La Chimera", "Tár", "Saltburn", "Poor Things"
   )
 
   private val Formats  = Vector(List("2D"), List("2D", "NAP"), List("IMAX", "2D"), List("3D"), Nil)
@@ -77,57 +85,81 @@ object CountryScrapeCorpus {
    *  independent rows), each venue spelling them its own way. */
   def listings(country: Country, day: LocalDateTime): Map[Cinema, Seq[CinemaMovie]] = {
     val cinemas = cinemasOf(country)
-    val random  = new Random(seedFor(country))
-
     cinemas.zipWithIndex.map { case (cinema, cinemaIndex) =>
-      // Rotate the base-title window per venue so neighbouring cinemas overlap
-      // heavily but not identically — films spread across the catalogue the way
-      // a real week's repertoire does.
+      // Which film, and how this venue spells it, both come from a MIXING hash of
+      // (venue, slot) rather than from arithmetic on the indices. The arithmetic
+      // version — `(3c+s) % 16` and `(c+5s) % 8` — silently locked the two
+      // together: both reduce to `(c+s) mod 2`, so a variant only ever landed on
+      // base titles of its own parity. Half the (title, spelling) combinations
+      // were unreachable, the reachable half saturated after ~32 venues, and every
+      // country therefore settled to the SAME 24 films no matter how many cinemas
+      // it had — a number that looked like a pipeline invariant and was really an
+      // artefact of the generator. Mixed, all combinations occur.
       val films = (0 until FilmsPerCinema).flatMap { slot =>
-        val base    = BaseTitles((cinemaIndex * 3 + slot) % BaseTitles.size)
-        val variant = Variants((cinemaIndex + slot * 5) % Variants.size)
-        val primary = film(cinema, variant.render(base), random)
+        val base    = BaseTitles(Math.floorMod(mix(cinemaIndex, slot), BaseTitles.size))
+        val variant = Variants(Math.floorMod(mix(slot * 31 + 7, cinemaIndex) >>> 3, Variants.size))
+        val primary = film(cinema, cinemaIndex, base, variant.render(base))
         // Every fourth (cinema, film) also lists the SAME film under a second
         // spelling at the SAME venue — the year-less-slot collision that the
         // re-scrape ping-pong rode in on. One cinema, one film, two titles.
-        if ((cinemaIndex + slot) % 4 == 0) Seq(primary, film(cinema, Dubbed.render(base), random))
+        if ((cinemaIndex + slot) % 4 == 0) Seq(primary, film(cinema, cinemaIndex, base, Dubbed.render(base)))
         else Seq(primary)
       }
       cinema -> films
     }.toMap
   }
 
-  /** A seed pinned to the country, so each leg is reproducible on its own and
-   *  two countries never generate the identical stream. */
-  private def seedFor(country: Country): Long =
-    country.code.foldLeft(0x5DEECE66DL)((acc, ch) => acc * 31 + ch.toLong)
+  /** Mixing hash over two small integers — enough avalanche that low bits of the
+   *  inputs don't survive into the output, which is what the old index arithmetic
+   *  got wrong. Pure Int arithmetic (wrapping, like the reference implementation),
+   *  so it is identical on every JVM and the corpus stays reproducible. */
+  private def mix(a: Int, b: Int): Int = {
+    var h = a * 0x9E3779B1
+    h ^= (b + 0x85EBCA6B) + (h << 6) + (h >>> 2)
+    h ^= h >>> 15
+    h * 0x27D4EB2F
+  }
 
-  private def film(cinema: Cinema, title: String, random: Random): CinemaMovie = {
-    val showtimeCount = 1 + random.nextInt(4)
+  /** One film as one cinema lists it.
+   *
+   *  Everything except the TITLE is derived from the BASE film, not from the
+   *  spelling and not from a running RNG. That is deliberate and load-bearing: a
+   *  venue that lists the same film twice (the dub twin below) puts both rows on
+   *  ONE year-less slot key, so if the two carried different runtimes the winner
+   *  would be whichever arrived last — manufacturing an order dependency that no
+   *  real corpus has, and that the order-independence spec would then report as a
+   *  pipeline fault. A film has one runtime everywhere; only how a venue SPELLS
+   *  it varies.
+   *
+   *  The year is the one field allowed to disagree, and only ACROSS venues: some
+   *  cinemas publish it and some don't, which is exactly the yearless-into-yeared
+   *  fold the settle has to get right. Both twins at a venue agree, because it is
+   *  keyed on (film, venue). */
+  private def film(cinema: Cinema, cinemaIndex: Int, base: String, title: String): CinemaMovie = {
+    val baseKey       = base.hashCode
+    val showtimeCount = 1 + Math.floorMod(mix(cinemaIndex, baseKey), 4)
     CinemaMovie(
       movie = Movie(
         title          = title,
-        runtimeMinutes = Some(90 + random.nextInt(60)),
-        // Deliberately mixed: a yearless film beside a yeared one is the
-        // disagreement the canonical key has to settle.
-        releaseYear    = if (random.nextBoolean()) Some(2026) else None,
+        runtimeMinutes = Some(80 + Math.floorMod(mix(baseKey, 0), 80)),
+        releaseYear    = Option.when(Math.floorMod(mix(baseKey, cinemaIndex + 1), 3) != 0)(2026),
         countries      = Seq("USA"),
         genres         = Seq("Dramat"),
         originalTitle  = None,
         rawTitle       = Some(title)
       ),
       cinema      = cinema,
-      posterUrl   = Some(s"https://poster.test/${slug(title)}.jpg"),
-      filmUrl     = Some(s"https://${slug(cinema.displayName)}.test/film/${slug(title)}"),
-      synopsis    = Some(s"Opis filmu $title."),
+      posterUrl   = Some(s"https://poster.test/${slug(base)}.jpg"),
+      filmUrl     = Some(s"https://${slug(cinema.displayName)}.test/film/${slug(base)}"),
+      synopsis    = Some(s"Opis filmu $base."),
       cast        = Seq("Actor One", "Actor Two"),
       director    = Seq("Some Director"),
       showtimes   = (0 until showtimeCount).map { i =>
         Showtime(
           dateTime   = LocalDateTime.of(2026, 8, 1, 10, 0).plusHours(i * 3L).plusDays(i % 3L),
-          bookingUrl = Some(s"https://${slug(cinema.displayName)}.test/book/${slug(title)}/$i"),
-          room       = Rooms((i + title.length) % Rooms.size),
-          format     = Formats((i + title.length) % Formats.size)
+          bookingUrl = Some(s"https://${slug(cinema.displayName)}.test/book/${slug(base)}/$i"),
+          room       = Rooms(Math.floorMod(mix(baseKey, i), Rooms.size)),
+          format     = Formats(Math.floorMod(mix(i, baseKey), Formats.size))
         )
       },
       externalIds = Map.empty,

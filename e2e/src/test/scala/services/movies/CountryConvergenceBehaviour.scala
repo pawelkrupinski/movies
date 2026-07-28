@@ -1,12 +1,13 @@
 package services.movies
 
-import models.{Cinema, Country}
+import controllers.{FilmSchedule, MovieControllerService}
+import models.{Cinema, Country, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, CountryScrapeCorpus, Env, IsolatedMongoDatabase}
+import tools.{ArchiveReplayWiring, CountryScrapeCorpus, Env, IsolatedMongoDatabase, SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -29,7 +30,11 @@ import scala.util.{Random, Try}
  *   3. the corpus reaches an emission-free FIXPOINT — two consecutive ticks with
  *      zero persisted writes, within a bounded number of ticks. A pipeline that
  *      oscillates (the square-wave class of bug) never gets there, so the bound
- *      is the discriminator.
+ *      is the discriminator;
+ *   4. and it is ORDER-INDEPENDENT: several independent passes, each taking the
+ *      cinemas in a different random order AND each cinema's films in a different
+ *      random order, land on byte-identical `movies` records, byte-identical
+ *      `screenings`, and a byte-identical rendered read model.
  *
  * Each country runs in its OWN JVM — one spec class per country, one CI leg each —
  * because the leg installs that country's `TitleRuleSet` process-globally. Two
@@ -47,6 +52,20 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
   /** Bound on re-scrape ticks before we declare the corpus non-convergent. */
   private val MaxTicks = 12
+
+  /** Independent random-order passes compared against each other. Three is enough
+   *  to catch an order dependency while keeping the heaviest country (Germany,
+   *  1,533 venues) inside its CI leg's budget. */
+  private val Passes = 3
+
+  /** Fixed, so an order-dependent regression fails the same way every run rather
+   *  than surfacing as a flake. */
+  private val OrderSeed = 0x2026_07_28L
+
+  /** The instant the rendered rows are taken at. Pinned so a row can never differ
+   *  between passes merely because the wall clock moved mid-test — the corpus's
+   *  showtimes are all after it, so every pass renders the same window. */
+  private val RenderAt = LocalDateTime.of(2026, 8, 1, 0, 0)
 
   /** Counts merges by reason so a per-tick delta is observable. */
   private final class CountingMergeMetrics extends MergeMetrics {
@@ -227,5 +246,133 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
         consecutiveZeroEmission should be >= 2
       }
     }
+  }
+
+  /** One whole-corpus pass in a seeded-random order, returning everything a
+   *  divergence could hide in: the persisted film records, the per-slot
+   *  screenings, and the rows the web would actually render.
+   *
+   *  Two orders are shuffled, because they fail differently. CINEMA order is the
+   *  one production varies every tick (the reaper enqueues by due-time, not by
+   *  catalogue position). FILM order WITHIN a cinema is the one a scraper varies
+   *  whenever a site reorders its listing — and it decides which of a venue's two
+   *  spellings of the same film reaches the shared slot key first, which is the
+   *  seam the same-slot ping-pong rode in on.
+   *
+   *  `SameThreadExecutionBudget` pins enrichment to the calling thread so the
+   *  only nondeterminism left is the seeded shuffle — otherwise a thread race,
+   *  not an order dependency, would decide the outcome and the test would flake
+   *  rather than fail. */
+  private def replay(archive: ScrapeArchiveRepository, seed: Long)
+      : (Seq[StoredMovieRecord], Map[String, Map[String, Seq[Showtime]]], Seq[FilmSchedule]) = {
+    val rnd = new Random(seed)
+    val w = new ArchiveReplayWiring(country, archive) {
+      override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
+    }
+    val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
+    rnd.shuffle(w.cinemaScrapers.toList).foreach { scraper =>
+      Try(scraper.fetch()).toOption.foreach { films =>
+        val touched = w.movieCache.recordCinemaScrape(scraper.cinema, rnd.shuffle(films.toList))
+        ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
+      }
+    }
+    // Publish in a shuffled order too: production publishes inline as each cinema
+    // lands, so the enrichment stage sees an arbitrary cross-film order.
+    rnd.shuffle(ready.toList).foreach(w.eventBus.publish)
+    w.drainServices()
+    w.drainStaging()
+    w.movieService.settle()
+    w.drainStaging()
+    w.movieService.settle()
+    w.readModelProjector.reconcile()
+    w.webReadModel.reload()
+
+    val records = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+    val screenings = w.screeningsRepository.findAll()
+    val service = new MovieControllerService(w.webReadModel)
+    val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, RenderAt))
+    (records, screenings, rows)
+  }
+
+  s"the ${country.displayName} corpus" should
+    "come out identical — films, screenings and rendered rows — whatever order it arrives in" in {
+    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
+    IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, s"order-${country.code}") { database =>
+      val archive = new MongoScrapeArchiveRepository(Some(database))
+      seedArchive(archive)
+
+      val passes = (0 until Passes).map(i => replay(archive, OrderSeed + i))
+      val (records0, screenings0, rows0) = passes.head
+      info(s"${country.displayName}: $Passes passes over ${records0.size} films, " +
+           s"${screenings0.values.map(_.size).sum} slots, ${rows0.size} rendered rows")
+      records0 should not be empty
+      rows0     should not be empty
+
+      val divergences = mutable.ListBuffer.empty[String]
+      (1 until Passes).foreach { i =>
+        val (recordsI, screeningsI, rowsI) = passes(i)
+        if (recordsI != records0) divergences += s"FILMS differ on pass $i:\n${recordDiff(records0, recordsI)}"
+        if (screeningsI != screenings0) divergences += s"SCREENINGS differ on pass $i:\n${slotDiff(screenings0, screeningsI)}"
+        if (rowsI != rows0) {
+          val first = rows0.zipAll(rowsI, null, null).collectFirst { case (a, b) if a != b =>
+            s"  pass0=${String.valueOf(a).take(400)}\n  pass$i=${String.valueOf(b).take(400)}" }.getOrElse("")
+          divergences += s"RENDERED ROWS differ on pass $i (${rows0.size} vs ${rowsI.size}):\n$first"
+        }
+      }
+      withClue(s"${divergences.size} order-dependent divergence(s):\n${divergences.take(10).mkString("\n")}\n") {
+        divergences.toList shouldBe empty
+      }
+    }
+  }
+
+  /** The first few films whose stored record differs, reported FIELD BY FIELD.
+   *  A truncated `toString` is useless here — two records that differ in one
+   *  slot's runtime print an identical first 300 characters — so this walks the
+   *  record's own fields and each per-cinema slot's fields and names the ones
+   *  that actually disagree. */
+  private def recordDiff(a: Seq[StoredMovieRecord], b: Seq[StoredMovieRecord]): String = {
+    def byKey(rs: Seq[StoredMovieRecord]) = rs.map(r => (r.title, r.year) -> r).toMap
+    val (left, right) = (byKey(a), byKey(b))
+    val keys = (left.keySet ++ right.keySet).filter(k => left.get(k) != right.get(k)).toList.sortBy(_._1)
+    val detail = keys.take(3).map { k =>
+      (left.get(k), right.get(k)) match {
+        case (None, _)          => s"    $k: absent in pass0"
+        case (_, None)          => s"    $k: absent in passN"
+        case (Some(l), Some(r)) =>
+          val ls = l.record.data
+          val rs = r.record.data
+          val onlyLeft  = ls.keySet -- rs.keySet
+          val onlyRight = rs.keySet -- ls.keySet
+          val shared    = (ls.keySet intersect rs.keySet).filter(slot => ls(slot) != rs(slot))
+          val fields = shared.take(2).map { slot =>
+            val (x, y) = (ls(slot), rs(slot))
+            val diffs = Seq(
+              ("title", x.title.toString, y.title.toString),
+              ("rawTitle", x.rawTitle.toString, y.rawTitle.toString),
+              ("synopsis", x.synopsis.toString, y.synopsis.toString),
+              ("runtimeMinutes", x.runtimeMinutes.toString, y.runtimeMinutes.toString),
+              ("releaseYear", x.releaseYear.toString, y.releaseYear.toString),
+              ("showtimes", x.showtimes.size.toString, y.showtimes.size.toString)
+            ).filter { case (_, p, q) => p != q }
+              .map { case (f, p, q) => s"$f: pass0=$p passN=$q" }
+            s"      slot ${slot.displayName}: ${if (diffs.isEmpty) "(differs outside the sampled fields)" else diffs.mkString("; ")}"
+          }
+          s"    $k:" +
+            (if (onlyLeft.nonEmpty)  s"\n      slots only in pass0: ${onlyLeft.map(_.displayName).take(4).mkString(", ")}" else "") +
+            (if (onlyRight.nonEmpty) s"\n      slots only in passN: ${onlyRight.map(_.displayName).take(4).mkString(", ")}" else "") +
+            (if (fields.nonEmpty) "\n" + fields.mkString("\n") else "")
+      }
+    }
+    s"  ${keys.size} film(s) differ:\n${detail.mkString("\n")}"
+  }
+
+  /** First few slots whose showtimes differ, rendered for the clue. */
+  private def slotDiff(a: Map[String, Map[String, Seq[Showtime]]],
+                       b: Map[String, Map[String, Seq[Showtime]]]): String = {
+    val films = (a.keySet ++ b.keySet).filter(f => a.get(f) != b.get(f))
+    s"  ${films.size} film(s) differ; first: " + films.take(3).map { f =>
+      s"$f\n    pass0=${a.getOrElse(f, Map.empty).view.mapValues(_.size).toMap}" +
+      s"\n    passN=${b.getOrElse(f, Map.empty).view.mapValues(_.size).toMap}"
+    }.mkString("\n  ")
   }
 }

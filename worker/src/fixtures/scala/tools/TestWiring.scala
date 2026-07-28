@@ -171,6 +171,12 @@ trait TestWiring extends WorkerWiring {
    *  in prod. Production drains these as queue tasks on the `TaskWorker`; the
    *  harness doesn't run the worker, so it drives the same refresh inline (after
    *  the async TMDB + IMDb-id cascade has settled in `drainServices`). */
+  /** The web's read seam over whatever read model this harness wired. Lives here
+   *  rather than on one harness because every end-to-end shape — fixture replay
+   *  and archive replay alike — has to be able to render through the SAME seam
+   *  the web app serves from, not through the raw worker cache. */
+  lazy val webReadModel = new services.readmodel.WebReadModel(readModelRepository)
+
   /** One scrape tick over every wired cinema, recording ALL of them before
    *  publishing any enrichment event.
    *
