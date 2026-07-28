@@ -358,7 +358,12 @@ def ensureLocalMongo(state: State, uri: String): Unit = {
 // first failing module. `testUnit` is the full local alias; keeping the
 // aggregating aliases means new modules join the existing CI jobs rather than
 // spawning new ones.
-addCommandAlias("testUnit", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test e2e/Test/test")
+addCommandAlias("testUnit", "; all common/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
+// The e2e module MINUS the country-scoped specs. Those install a country's
+// TitleRuleSet into the process-global TitleNormalizer, so sharing a JVM with the
+// Polish whole-corpus specs (or with each other) silently normalises the wrong
+// corpus — see CountryScoped.java. They run one-per-JVM via the convergence* aliases.
+addCommandAlias("e2eShared", "e2e/Test/testOnly * -- -l services.movies.CountryScoped")
 addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
 // `testUnit` is the full local alias. In CI the modules are spread across
 // parallel jobs to keep each off the deploy-gating critical path, all under the
@@ -378,4 +383,18 @@ addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Tes
 addCommandAlias("e2eScrape",   "e2e/Test/testOnly services.movies.ScrapeOrderDeterminismSpec")
 addCommandAlias("e2eStaging",  "e2e/Test/testOnly services.movies.StagingOrderDeterminismSpec")
 addCommandAlias("e2eReScrape", "e2e/Test/testOnly services.movies.ReScrapeIdempotencySpec")
-addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay")
+addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay -l services.movies.CountryScoped")
+
+// Per-country convergence legs, one per country, run by `.github/workflows/
+// country-convergence.yml` — NOT by ci.yml, which is already at its 20-runner
+// cap. They carry @CountryScoped, which `e2eShared` and `e2eRest` both exclude,
+// so they never share a JVM with the Polish corpus specs or with each other; the
+// dedicated workflow is what guarantees they run at all. Each
+// needs a throwaway MONGODB_URI (the corpus round-trips through a real
+// `cinema_scrapes`) and its own JVM: each spec installs its country's rules
+// into `TitleNormalizer`, which is process-global, so two countries in one JVM
+// would overwrite each other's normalisation. Hence no `convergenceAll` alias —
+// running them together is exactly the thing that would silently mis-test.
+addCommandAlias("convergencePoland",  "e2e/Test/testOnly services.movies.PolandConvergenceSpec")
+addCommandAlias("convergenceGermany", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec")
+addCommandAlias("convergenceUk",      "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec")

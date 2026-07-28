@@ -1,0 +1,123 @@
+#
+# Per-country pipeline convergence.
+#
+# Asks, for each country independently: does the scrape → fold → settle loop
+# reach a fixpoint on THIS country's cinema catalogue and country-scoped title
+# rules? The corpus is written into a real `cinema_scrapes` collection and
+# replayed back out, so the archive's round-trip is on the path too.
+#
+# One leg per country, in parallel. They must be separate JOBS, not threads in
+# one JVM: each leg installs its country's `TitleRuleSet` into `TitleNormalizer`
+# process-globally, so two countries sharing a process would overwrite each
+# other's normalisation and silently test the wrong rules. Each leg also gets its
+# own MongoDB container and — inside it — a uniquely named database per run
+# (`IsolatedMongoDatabase`), so nothing here can collide with anything else,
+# including a re-run of itself.
+#
+# Deliberately NOT part of ci.yml: that workflow runs against a hard 20-runner
+# budget (1 test + 1 integration + 4 e2e + 1 mobile + 13 page-tests), and three
+# more legs would have meant re-cutting the existing shards. This runs on its
+# own on pushes that touch the pipeline, and nightly to catch drift that lands
+# through a data or dependency change rather than a code one.
+#
+name: Country convergence
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'common/src/main/**'
+            - 'worker/src/main/**'
+            - 'worker/src/fixtures/**'
+            - 'e2e/src/test/**'
+            - 'testkit/src/main/**'
+            - 'build.sbt'
+            - '.github/workflows/country-convergence.yml'
+    schedule:
+        # 04:20 UTC — after the nightly country-fixture recorder, before the day starts.
+        - cron: '20 4 * * *'
+    workflow_dispatch:
+
+concurrency:
+    # A push supersedes an in-flight run of the same ref; the nightly and manual
+    # runs keep their own lane so a scheduled run is never cancelled by a push.
+    group: country-convergence-${{ github.ref }}-${{ github.event_name }}
+    cancel-in-progress: true
+
+jobs:
+    convergence:
+        name: convergence (${{ matrix.country }})
+        strategy:
+            # Every country reports independently — one country's flap must not
+            # hide whether the other two converged.
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl, cmd: convergencePoland }
+                    - { country: germany,        code: de, cmd: convergenceGermany }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk }
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@v5
+
+            # Single-node replica set, not a standalone: the pipeline's repository
+            # layer opens change streams, which a standalone mongod rejects (40573).
+            - name: Start MongoDB (single-node replica set, for change streams)
+              run: |
+                  docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0
+                  until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
+                  docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+                  until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+            - uses: sbt/setup-sbt@v1
+
+            - uses: actions/cache@v5
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}
+                  restore-keys: |
+                      sbt-target-convergence-${{ runner.os }}-
+                      sbt-target-e2e-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+
+            - run: sbt ${{ matrix.cmd }}
+              env:
+                  # No MONGODB_DB: each run names its own throwaway database via
+                  # `IsolatedMongoDatabase`, and drops it on the way out.
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+                  # The spec installs this country's TitleRuleSet itself; naming the
+                  # country here too means anything that reads the environment
+                  # directly (`Country.soleFromEnv`) agrees with it rather than
+                  # falling back to the Poland default.
+                  KINOWO_COUNTRY:   ${{ matrix.code }}
+                  KINOWO_COUNTRIES: ${{ matrix.code }}
+
+            - name: Publish convergence test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'target/test-reports/unit/**/*.xml'
+                  check_name: convergence (${{ matrix.country }})
+                  detailed_summary: true
+                  include_passed: false
+
+            # A leaked database means the drop didn't run — worth seeing in the log
+            # rather than discovering as a slowly filling disk.
+            - name: Report any leaked isolated databases
+              if: always()
+              run: |
+                  docker exec mongo mongosh --quiet --eval \
+                    'db.adminCommand({listDatabases:1,nameOnly:true}).databases
+                       .map(d => d.name).filter(n => n.startsWith("kinowo_isolated")).join("\n")'
