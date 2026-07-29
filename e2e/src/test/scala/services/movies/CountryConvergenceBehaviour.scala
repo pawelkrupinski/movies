@@ -101,7 +101,19 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    */
   private lazy val enrichmentCacheStore: Option[MongoEnrichmentCacheStore] =
     if (TmdbClient.ApiKey.isEmpty) None
-    else Env.get("MONGODB_URI").map(uri => MongoEnrichmentCacheStore.open(uri, country))
+    else cacheUri.map(uri => MongoEnrichmentCacheStore.open(uri, country))
+
+  /** Where the cache lives, which is NOT where the corpus lives.
+   *
+   *  The corpus wants a throwaway (`MONGODB_URI` — a container in CI, a local
+   *  Mongo on a dev box) because it is rebuilt from scratch every run and dropped
+   *  afterwards. The cache wants the opposite: somewhere durable and shared, so
+   *  the run after this one starts warm. In CI those are different machines
+   *  entirely — the corpus in a per-leg container, the cache on the production
+   *  cluster over a tunnel — so the cache gets its own variable and falls back to
+   *  `MONGODB_URI` only for the local case where one Mongo serves both. */
+  private def cacheUri: Option[String] =
+    Env.get("KINOWO_CONVERGENCE_CACHE_URI").orElse(Env.get("MONGODB_URI"))
 
   /** ONE cache for every replay in the suite, preloaded whole before the first of
    *  them boots. Shared deliberately: the order-independence test drives three

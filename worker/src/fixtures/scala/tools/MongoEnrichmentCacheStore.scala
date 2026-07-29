@@ -116,16 +116,26 @@ object MongoEnrichmentCacheStore {
    *  manual drop. */
   val Ttl: FiniteDuration = 1.day
 
-  /** Open the shared convergence database on `uri` and return this country's store,
-   *  owning the client it opened.
+  /**
+   * Open the shared convergence database on `uri` and return this country's store,
+   * owning the client it opened.
    *
-   *  Guarded like every other test-owned database, and with more reason than most:
-   *  `.env.local` points `MONGODB_URI` at the PROD tunnel on a dev box, and unlike
-   *  the isolated corpus databases this one is never dropped — a mistake here would
-   *  leave a `convergence_test` database sitting on the real cluster. */
+   * Deliberately NOT behind `IntegrationMongo.requireThrowaway`, unlike every other
+   * database this suite opens. That guard asks "is this cluster disposable?", and
+   * for the cache the answer is meant to be NO: CI starts a fresh Mongo container
+   * per leg, so a cache confined to disposable clusters is cold on every run and
+   * buys nothing. It is supposed to live somewhere durable and shared.
+   *
+   * A narrower guarantee replaces it. The database is the [[DatabaseName]] constant
+   * rather than a parameter, so this cannot open anything else — pointed at the
+   * production cluster it creates and writes `convergence_test` and is structurally
+   * unable to reach `kinowo`, `kinowo_uk` or `kinowo_de`. The credential it runs
+   * under is scoped the same way (`readWrite` on `convergence_test`, `read` on the
+   * country databases), so the rule is enforced on both sides instead of trusted on
+   * one — and a bug that tried to write a country database would be refused by the
+   * server, not just by this comment.
+   */
   def open(uri: String, country: Country, ttl: FiniteDuration = Ttl): MongoEnrichmentCacheStore = {
-    IntegrationMongo.requireThrowaway(
-      uri, Env.get(IntegrationMongo.OverrideVar).exists(value => value == "1" || value.equalsIgnoreCase("true")))
     val client = MongoClient(uri)
     new MongoEnrichmentCacheStore(client.getDatabase(DatabaseName), country, ttl, owned = Some(client))
   }

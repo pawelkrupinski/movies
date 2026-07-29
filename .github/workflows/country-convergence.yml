@@ -87,6 +87,27 @@ jobs:
                   docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
                   until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
 
+            # Prod Mongo has NO public IP — it lives on the Fly private network and
+            # is reachable only through a proxy. The legs need it for two things:
+            # the real `cinema_scrapes` corpus they replay (read-only) and the
+            # enrichment cache they share (`convergence_test`, read-write).
+            #
+            # Port 27018, not 27017: the throwaway corpus container above already
+            # holds 27017, and the two must not collide. The `CONVERGENCE_MONGODB_URI`
+            # secret names 27018 for the same reason.
+            #
+            # `convergence_ci` is scoped to `read` on the country databases and
+            # `readWrite` on `convergence_test` alone, so a leg cannot write prod
+            # film data even if the code tried to.
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - name: Tunnel to prod Mongo (corpus source + shared enrichment cache)
+              run: |
+                  flyctl proxy 27018:27017 --app kinowo-mongo &
+                  for _ in $(seq 1 60); do nc -z 127.0.0.1 27018 && break; sleep 1; done
+                  nc -z 127.0.0.1 27018 || { echo "prod Mongo tunnel never came up"; exit 1; }
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
@@ -117,6 +138,23 @@ jobs:
                   # falling back to the Poland default.
                   KINOWO_COUNTRY:   ${{ matrix.code }}
                   KINOWO_COUNTRIES: ${{ matrix.code }}
+                  # Replay this country's REAL repertoire instead of the generated
+                  # corpus. The generated one cannot exercise enrichment at all —
+                  # every row carries `director = Seq("Some Director")`, which sends
+                  # resolution down the director-walk branch and guarantees a miss —
+                  # so without this the enrichment fields sit the convergence claim
+                  # out as None. `_DB` defaults to the country's own database.
+                  KINOWO_CONVERGENCE_SCRAPES_URI: ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  # The enrichment cache, on the shared cluster rather than in this
+                  # leg's throwaway container: a container-local cache would be cold
+                  # every run, which is a full live sweep against TMDB/IMDb/Filmweb/
+                  # RT/Metacritic each time. Shared, the first run fills it and the
+                  # rest replay it until the 1-day TTL turns it over.
+                  KINOWO_CONVERGENCE_CACHE_URI:   ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  # Without a real key TmdbClient short-circuits and nothing resolves,
+                  # so the cache would have nothing to hold and the real corpus would
+                  # buy nothing over the generated one.
+                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
 
             - name: Publish convergence test report
               if: always()
