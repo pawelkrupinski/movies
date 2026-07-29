@@ -114,6 +114,12 @@ trait StagingRepository {
 }
 
 object StagingRepository {
+
+  /** Rows per keyset page for [[MongoStagingRepository.findAll]]. `pending_movies`
+   *  rows are whole `MovieRecord`s, so this is sized well under the read-model's
+   *  500 to keep a page comfortably small. */
+  val FindAllBatchSize = 300
+
   /** The staging collection — see [[services.DebugMirror]] for why the name is a
    *  constant rather than an inline literal. */
   val Collection = "pending_movies"
@@ -199,17 +205,44 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
 
   def enabled: Boolean = coll.isDefined
 
+  /**
+   * Keyset-paged, not one unbounded cursor: `pending_movies` is corpus-shaped
+   * (every newcomer awaiting its fold), and an unbounded `find()` over a big
+   * collection recurses the async driver into `StackOverflowError` on an I/O
+   * thread — which the caller never sees, because it lands off the `Await` and
+   * surfaces only as a timeout. See [[services.movies.KeysetScan]].
+   *
+   * The silent-empty degradation matters more here than the crash, because
+   * nothing downstream deletes on this read — it STALLS instead, invisibly.
+   * `StagingReaper` enqueues nothing, `stepCounts` reports zeros to Prometheus,
+   * and `StagingStuckAlerter` finds nothing stuck: the alarm for "staging is
+   * wedged" goes quiet at exactly the moment Mongo is unwell. So an incomplete
+   * scan now says so at WARN with the count it managed, rather than returning a
+   * confident empty list.
+   */
   def findAll(): Seq[StagingRecord] = coll match {
     case None => Seq.empty
     case Some(c) =>
-      Try {
-        Await.result(c.find().sort(Sorts.ascending("_id")).toFuture(), 60.seconds)
-          .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record))
-      }.recover {
-        case exception: Throwable =>
-          logger.warn(s"StagingRepository.findAll failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          Seq.empty
-      }.getOrElse(Seq.empty)
+      val buf = Vector.newBuilder[StagingRecord]
+      val complete = services.movies.KeysetScan.scan[StoredMovieDto](
+        label          = "StagingRepository.findAll",
+        batchSize      = StagingRepository.FindAllBatchSize,
+        maxAttempts    = 3,
+        initialBackoff = 500.millis,
+        keyOf          = _._id,
+        fetchPage      = (afterId, limit) => {
+          val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
+          Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+        },
+        onIncomplete   = exception =>
+          logger.warn(s"StagingRepository.findAll keyset scan failed: ${exception.getClass.getSimpleName}: " +
+            s"${exception.getMessage} — callers will see a SHORT staging view this tick (the reaper enqueues " +
+            "less, the stuck-alerter reports less); it is not evidence that staging is empty")
+      )(batch => buf ++= batch.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record)))
+
+      val records = buf.result()
+      if (!complete) logger.warn(s"StagingRepository.findAll returned ${records.size} record(s) from an INCOMPLETE scan")
+      records
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {

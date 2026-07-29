@@ -3,9 +3,10 @@ package services
 import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
 import java.util.concurrent.TimeUnit
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes, Updates}
+import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import org.mongodb.scala.bson.conversions.Bson
 import play.api.Logging
+import services.movies.KeysetScan
 import tools.RetryWithBackoff
 
 import java.util.concurrent.{ConcurrentHashMap, Executors, ScheduledExecutorService}
@@ -264,14 +265,39 @@ class UptimeMonitor(
    *  so a slower cadence only delays a newly tagged cinema appearing, never
    *  corrupts the map. */
   private def loadTags(c: MongoCollection[Document]): Unit = Try {
-    val documents = Await.result(c.find().toFuture(), HydrateTimeout)
-    documents.foreach { document =>
-      Option(document.getString("service")).foreach { service =>
-        val tags = Try(document.getList("tags", classOf[String])).toOption.flatMap(Option(_))
-          .map(_.asScala.toSet).getOrElse(Set.empty[String])
-        if (tags.nonEmpty) serviceTags.put(service, tags) else serviceTags.remove(service)
+    // Keyset-paged rather than one cursor. The comment above already counts 2,687
+    // documents for Poland alone and says it grows with every cinema in every
+    // country — which is precisely the size at which an unbounded `find()` stops
+    // being merely slow and recurses the async driver into `StackOverflowError` on
+    // an I/O thread (see services.movies.KeysetScan). This runs every 5 minutes,
+    // forever, in BOTH the web and the worker, so it is the highest-frequency
+    // unbounded read we had.
+    //
+    // `$set`-style application per document means a partial load is harmless: tags
+    // that did not arrive are simply not refreshed this cycle, and the next one
+    // picks them up. That is why an incomplete scan stays at debug here rather than
+    // warning like the staging read, where a short result silences an alarm.
+    KeysetScan.scan[Document](
+      label          = "UptimeMonitor tag load",
+      batchSize      = 1000,
+      maxAttempts    = 2,
+      initialBackoff = 500.millis,
+      keyOf          = _.getString("_id"),
+      fetchPage      = (afterId, limit) => {
+        val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
+        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), HydrateTimeout)
+      },
+      onIncomplete   = exception => logger.debug(s"Uptime tag load incomplete: ${exception.getMessage}")
+    ) { documents =>
+      documents.foreach { document =>
+        Option(document.getString("service")).foreach { service =>
+          val tags = Try(document.getList("tags", classOf[String])).toOption.flatMap(Option(_))
+            .map(_.asScala.toSet).getOrElse(Set.empty[String])
+          if (tags.nonEmpty) serviceTags.put(service, tags) else serviceTags.remove(service)
+        }
       }
     }
+    ()
   }.recover { case exception => logger.debug(s"Uptime tag load failed: ${exception.getMessage}") }
 
   private def currentBucket(service: String): Bucket = {

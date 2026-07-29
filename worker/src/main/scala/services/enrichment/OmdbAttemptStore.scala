@@ -2,7 +2,7 @@ package services.enrichment
 
 import com.mongodb.client.model.ReplaceOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes}
+import org.mongodb.scala.model.{Filters, Indexes, Sorts}
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import play.api.Logging
 
@@ -85,12 +85,33 @@ class MongoOmdbAttemptStore(db: Option[MongoDatabase], clock: Clock = Clock.syst
    *  sweep to avoid a per-row `get`; on a read failure returns empty so the sweep
    *  fails OPEN (every film eligible) rather than wedging. */
   def all(): Map[String, OmdbAttempt] = coll.map { c =>
-    Try(Await.result(c.find().toFuture(), 30.seconds)).toOption.getOrElse(Seq.empty).flatMap { d =>
+    // Keyset-paged: one row per film under a 90-day TTL makes this corpus-sized,
+    // and an unbounded `find()` at that scale recurses the async driver into
+    // `StackOverflowError` on an I/O thread, reaching the caller only as an
+    // unexplained timeout (see services.movies.KeysetScan). Fail-open is still the
+    // contract — a short read just makes more films eligible for a re-probe, which
+    // costs OMDb calls rather than correctness — but it should be short because
+    // Mongo was slow, not because one cursor died halfway.
+    val entries = Map.newBuilder[String, OmdbAttempt]
+    services.movies.KeysetScan.scan[Document](
+      label          = "OmdbAttemptStore.all",
+      batchSize      = 2000,
+      maxAttempts    = 3,
+      initialBackoff = 500.millis,
+      keyOf          = _.getString("_id"),
+      fetchPage      = (afterId, limit) => {
+        val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
+        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 30.seconds)
+      },
+      onIncomplete   = exception => logger.warn(s"OmdbAttemptStore.all keyset scan failed: ${exception.getMessage} — " +
+        "the sweep will treat unread films as eligible (fail-open)")
+    )(batch => entries ++= batch.flatMap { d =>
       for {
         key  <- Option(d.getString("_id"))
         date <- Option(d.getDate("at"))
       } yield key -> OmdbAttempt(Instant.ofEpochMilli(date.getTime), d.getInteger("level", 0))
-    }.toMap
+    })
+    entries.result()
   }.getOrElse(Map.empty)
 
   def record(filmKey: String, level: Int, at: Instant): Unit = coll.foreach { c =>
