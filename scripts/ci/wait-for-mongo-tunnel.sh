@@ -51,11 +51,38 @@ PROBE="$HERE/mongo-ping.py"
 # of seconds the driver's own retries ride straight over.
 LOG="${TUNNEL_LOG:-/tmp/mongo-tunnel.log}"
 SUPERVISOR="${TMPDIR:-/tmp}/mongo-tunnel-supervisor.sh"
+# Restarts the proxy when it EXITS *and* when it merely stops answering. Today's
+# stall was the second kind: the process stayed alive, held its port, and served
+# nothing, so an exit-only supervisor sat happily beside a dead tunnel while every
+# query timed out. The liveness check is the same handshake the readiness probe
+# uses, so "supervised" and "ready" mean exactly the same thing.
 cat > "$SUPERVISOR" <<SUPERVISE
 #!/usr/bin/env bash
 while true; do
-  flyctl proxy "$PORT:27017" --app "$APP" >>"$LOG" 2>&1 || true
-  echo "[tunnel] proxy exited — restarting" >>"$LOG"
+  flyctl proxy "$PORT:27017" --app "$APP" >>"$LOG" 2>&1 &
+  proxy=\$!
+
+  # Give it a moment to bind, then watch. A first failure is tolerated — the
+  # tunnel takes ~30s to become usable from cold — but two consecutive silent
+  # checks mean it is wedged rather than starting.
+  sleep 20
+  misses=0
+  while kill -0 "\$proxy" 2>/dev/null; do
+    if python3 "$PROBE" "$PORT" 2>/dev/null; then
+      misses=0
+    else
+      misses=\$((misses + 1))
+      if [ "\$misses" -ge 2 ]; then
+        echo "[tunnel] proxy alive but not answering — killing it" >>"$LOG"
+        kill "\$proxy" 2>/dev/null || true
+        break
+      fi
+    fi
+    sleep 10
+  done
+
+  wait "\$proxy" 2>/dev/null || true
+  echo "[tunnel] proxy gone — restarting" >>"$LOG"
   sleep 2
 done
 SUPERVISE
