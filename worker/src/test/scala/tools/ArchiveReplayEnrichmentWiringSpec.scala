@@ -1,0 +1,83 @@
+package tools
+
+import models.Country
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.scrapes.InMemoryScrapeArchiveRepository
+
+/**
+ * That the convergence suite's wiring actually ROUTES enrichment through the
+ * cache — the seam the cache exists for, as opposed to the cache's own behaviour
+ * (which `CachingEnrichmentFetchSpec` covers).
+ *
+ * Worth its own spec because the failure mode is silent in both directions: a
+ * wiring that quietly kept `OfflineHttpFetch` would leave every enrichment field
+ * `None` and the convergence specs would still pass, having verified nothing new;
+ * a wiring that put the cache UNDER the throttle would replay every hit through a
+ * rate limiter and turn a warm run into a slow one.
+ */
+class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
+
+  /** Stands in for the real network at the very bottom of the wiring's enrich-phase
+   *  chain, so what a test counts is genuine wire attempts. */
+  private class CountingLeaf extends HttpFetch {
+    var calls: Int = 0
+    override def get(url: String): String = { calls += 1; s"body for $url" }
+    override def post(url: String, body: String, contentType: String): String = { calls += 1; "posted" }
+  }
+
+  private def wiringWith(cache: Option[EnrichmentCache], leaf: HttpFetch): ArchiveReplayWiring =
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache) {
+      override protected def realHttpLeaf: HttpFetch = leaf
+    }
+
+  "the archive replay wiring" should "refuse enrichment HTTP when it has no cache" in {
+    val leaf = new CountingLeaf
+    val wiring = wiringWith(None, leaf)
+
+    a [UnsupportedOperationException] should be thrownBy wiring.enrichmentFetch.get("https://api.themoviedb.org/3/x")
+    leaf.calls shouldBe 0
+  }
+
+  it should "keep the SCRAPE side offline even when enrichment is cached" in {
+    val leaf = new CountingLeaf
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+
+    // The corpus comes from the archive; a scraper reaching for HTTP is a bug.
+    a [UnsupportedOperationException] should be thrownBy wiring.httoFetch.get("https://cinema.test/listing")
+    leaf.calls shouldBe 0
+  }
+
+  it should "answer a repeated enrichment call from the cache instead of the wire" in {
+    val leaf = new CountingLeaf
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+
+    wiring.enrichmentFetch.get("https://api.themoviedb.org/3/search?query=dune") shouldBe
+      "body for https://api.themoviedb.org/3/search?query=dune"
+    wiring.enrichmentFetch.get("https://api.themoviedb.org/3/search?query=dune")
+
+    leaf.calls shouldBe 1
+  }
+
+  // The TMDB client is what every downstream rating source hangs off; if it were
+  // left on the offline fetch nothing would enrich however good the cache was.
+  it should "point the TMDB client at the cached fetch" in {
+    val leaf = new CountingLeaf
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+
+    wiring.cachedEnrichmentFetch should not be empty
+    wiring.enrichmentFetch shouldBe wiring.cachedEnrichmentFetch.get
+  }
+
+  // Three concurrent replays each build their own wiring; sharing the cache is what
+  // stops them disagreeing about what the live service said.
+  it should "share one cache's answers across separate wirings" in {
+    val leaf  = new CountingLeaf
+    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore())
+
+    wiringWith(Some(cache), leaf).enrichmentFetch.get("https://api.themoviedb.org/3/shared")
+    wiringWith(Some(cache), leaf).enrichmentFetch.get("https://api.themoviedb.org/3/shared")
+
+    leaf.calls shouldBe 1
+  }
+}

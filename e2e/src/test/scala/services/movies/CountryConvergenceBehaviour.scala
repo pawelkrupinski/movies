@@ -1,5 +1,6 @@
 package services.movies
 
+import clients.TmdbClient
 import controllers.{FilmSchedule, MovieControllerService}
 import models.{Cinema, Country, Showtime}
 import org.scalatest.BeforeAndAfterAll
@@ -8,7 +9,8 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, CountryScrapeCorpus, Env, IsolatedMongoDatabase, SameThreadExecutionBudget}
+import tools.{ArchiveReplayWiring, CountryScrapeCorpus, EnrichmentCache, Env, IsolatedMongoDatabase,
+  MongoEnrichmentCacheStore, SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -48,10 +50,70 @@ import scala.util.{Random, Try}
  * `cinema_scrapes` collection, so the archive's own round-trip is on the path.
  * The database is uniquely named per run (see `IsolatedMongoDatabase`), which is
  * what lets the three legs — and anything else on the `it` layer — run at once.
+ *
+ * ENRICHMENT is on the path too when a real `TMDB_API_KEY` is present, replayed
+ * through this country's `EnrichmentCache` so what a pass sees is fixed rather than
+ * whatever the live services felt like saying that minute. Without a key — which is
+ * what CI gets — the replay stays offline and the enrichment fields sit the claim
+ * out as `None`, exactly as they did before the cache existed. See
+ * `enrichmentCacheStore` below.
  */
 abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  override def afterAll(): Unit = { IsolatedMongoDatabase.closeAll(); super.afterAll() }
+  override def afterAll(): Unit = {
+    enrichmentCacheStore.foreach(_.close())
+    IsolatedMongoDatabase.closeAll()
+    super.afterAll()
+  }
+
+  /**
+   * This country's enrichment cache — the one thing in this suite that deliberately
+   * OUTLIVES the run.
+   *
+   * Everything else here is thrown away: the corpus goes into a `kinowo_isolated_*`
+   * database that is dropped in `finally`, which is exactly right for data whose
+   * whole purpose is to be reconstructed identically next time. The enrichment
+   * answers are the opposite — expensive to obtain, stable for a day, and the only
+   * way the enrichment fields can take part in a fixpoint claim at all. So they
+   * live in a fixed `convergence_test` database with a per-country collection and a
+   * 1-day TTL, and nothing here drops it.
+   *
+   * Present only when a real `TMDB_API_KEY` is. Without a key `TmdbClient.search`
+   * short-circuits to `None`, so nothing downstream would resolve and there would be
+   * nothing to cache — the replay stays offline exactly as it was before, which is
+   * also what CI's `country-convergence` workflow gets, since it sets `MONGODB_URI`
+   * and no key.
+   *
+   * That gate is silent by design, and the trap it sets is worth naming: `Env` reads
+   * `.env.local` from the WORKING DIRECTORY, so a run from a fresh worktree finds no
+   * key and quietly takes the offline path. To exercise the cached one, give the
+   * worktree the key and point Mongo at a throwaway:
+   *
+   * {{{
+   *   ln -s /path/to/movies/.env.local .env.local     # gitignored
+   *   MONGODB_URI="mongodb://127.0.0.1:28017/?directConnection=true" sbt convergencePoland
+   * }}}
+   *
+   * Expect ~25 min on a cold cache (~3.3k live fills for Poland) and ~1 min warm —
+   * the run prints both the preload count and the hit/fill split, so which one
+   * happened is never a guess.
+   */
+  private lazy val enrichmentCacheStore: Option[MongoEnrichmentCacheStore] =
+    if (TmdbClient.ApiKey.isEmpty) None
+    else Env.get("MONGODB_URI").map(uri => MongoEnrichmentCacheStore.open(uri, country))
+
+  /** ONE cache for every replay in the suite, preloaded whole before the first of
+   *  them boots. Shared deliberately: the order-independence test drives three
+   *  concurrent passes over the same corpus, and three private caches would let
+   *  them each fill the same URL from the live service — any disagreement between
+   *  those answers would read as an order-dependence that isn't one. */
+  private lazy val enrichmentCache: Option[EnrichmentCache] = enrichmentCacheStore.map { store =>
+    val cache  = new EnrichmentCache(store)
+    val loaded = cache.preload()
+    info(s"${country.displayName}: enrichment cache ${store.collectionName} preloaded with $loaded entries " +
+         s"(db ${MongoEnrichmentCacheStore.DatabaseName}, TTL ${MongoEnrichmentCacheStore.Ttl.toHours}h)")
+    cache
+  }
 
   // Deliberately NOT `assume`. A cancelled test reports as SUCCESS, so a leg that
   // lost its Mongo would go green having verified nothing at all — and these run
@@ -113,7 +175,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     val archive  = new MongoScrapeArchiveRepository(Some(database))
     val seeded   = seedArchive(archive)
     val merges   = new CountingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive) {
+    val w = new ArchiveReplayWiring(country, archive, enrichmentCache) {
       override lazy val movieCache = new CaffeineMovieCache(
         movieRepository, eventBus, staging = Some(stagingRepository),
         retrigger = enrichmentRetrigger, mergeMetrics = merges)
@@ -124,6 +186,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     bootSettled(w)
+    enrichmentCache.foreach(cache => info(s"${country.displayName}: enrichment cache after boot — ${cache.statistics}"))
     (w, merges, archive)
   }
 
@@ -323,7 +386,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   private def replay(archive: ScrapeArchiveRepository, seed: Long)
       : (Seq[StoredMovieRecord], Map[String, Map[String, Seq[Showtime]]], Seq[FilmSchedule]) = {
     val rnd = new Random(seed)
-    val w = new ArchiveReplayWiring(country, archive) {
+    val w = new ArchiveReplayWiring(country, archive, enrichmentCache) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]

@@ -116,7 +116,10 @@ class WorkerWiring(
   // rating client and fallback-scraper client legitimately live on opposite phases.
   protected def realHttpLeaf: HttpFetch = new RealHttpFetch()
   private lazy val sharedRealHttpLeaf: HttpFetch = realHttpLeaf
-  private def phaseFetch(phase: String): HttpFetch =
+  // `protected`, not private: the archive-replay wiring rebuilds the enrich-phase
+  // chain to hang its own cache OUTSIDE it (a cache hit must not be metered,
+  // throttled or rate-limited — it never touches the wire).
+  protected def phaseFetch(phase: String): HttpFetch =
     new MonitoringHttpFetch(
       new ThrottledHttpFetch(
         new HostCircuitBreakerHttpFetch(

@@ -24,25 +24,45 @@ import services.scrapes.ScrapeArchiveRepository
  * whole reason this type exists rather than a `FixtureTestWiring` subclass.
  */
 class ArchiveReplayWiring(
-  country:  Country,
-  archive:  ScrapeArchiveRepository
+  country:          Country,
+  archive:          ScrapeArchiveRepository,
+  enrichmentCache:  Option[EnrichmentCache] = None
 ) extends WorkerWiring(country) with TestWiring {
 
-  /** No network at all. Every cinema listing comes from the archive, and any
-   *  enrichment call (TMDB and friends) is a deliberate miss: this spec asserts
-   *  that the SCRAPE→fold→settle loop reaches a fixpoint, and a live or recorded
-   *  metadata lookup would make the answer depend on data the country may not
-   *  have. Failing loudly beats silently reaching the real network. */
+  /** No network on the SCRAPE side, ever. Every cinema listing comes from the
+   *  archive, so a scraper reaching for HTTP is a bug that should announce itself
+   *  rather than quietly fetch a live repertoire the corpus never claimed. */
   override lazy val httoFetch: HttpFetch = OfflineHttpFetch
-  override lazy val enrichmentFetch: HttpFetch = httoFetch
   override lazy val multikinoFetch: HttpFetch  = httoFetch
   override lazy val biletynaFetch: HttpFetch   = httoFetch
   override lazy val zyteFetch: HttpFetch       = httoFetch
   override lazy val flicksFetch: HttpFetch     = httoFetch
 
-  // No API key either, so the TMDB client short-circuits rather than shaping a
-  // request it can never send.
-  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, apiKey = None)
+  /** Enrichment runs against the per-country cache when one is supplied, and is
+   *  offline otherwise.
+   *
+   *  Live enrichment used to be refused here on the grounds that a metadata lookup
+   *  answers on its own schedule and would make the fixpoint depend on data the
+   *  country may not have. The cache is what retires that objection: the first
+   *  pass fills it, every later pass replays it — failures included — so the
+   *  enrichment fields are as reproducible as the scraped ones and can take part
+   *  in the convergence claim rather than sitting it out as `None`.
+   *
+   *  The cache wraps the FULL enrich-phase chain (metering, throttle, breaker,
+   *  rate limit) rather than sitting under it, so a live fill is throttled exactly
+   *  as production would throttle it while a hit costs nothing. */
+  lazy val cachedEnrichmentFetch: Option[CachingEnrichmentFetch] =
+    enrichmentCache.map(cache =>
+      new CachingEnrichmentFetch(cache, phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)))
+
+  override lazy val enrichmentFetch: HttpFetch = cachedEnrichmentFetch.getOrElse(OfflineHttpFetch)
+
+  /** With a cache, the real key and the country's own language — the enrichment is
+   *  meant to be the one production would do. Without one, no key at all, so the
+   *  client short-circuits rather than shaping a request it can never send. */
+  override lazy val tmdbClient: TmdbClient =
+    if (enrichmentCache.isDefined) new TmdbClient(enrichmentFetch, language = country.language)
+    else new TmdbClient(enrichmentFetch, apiKey = None)
 
   // Production's storage shape, minus Mongo — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. Same reasoning as

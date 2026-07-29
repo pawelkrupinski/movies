@@ -148,6 +148,9 @@ lazy val worker = (project in file("worker"))
     // worker's own specs still construct TestWiring/FixtureTestWiring directly —
     // make Fixtures' compiled output visible on worker's Test classpath.
     Test / unmanagedClasspath ++= (Fixtures / exportedProducts).value,
+    // …and on `it`'s, for the fixtures-side stores whose Mongo round-trip can only
+    // be tested against a real Mongo (MongoEnrichmentCacheStore's TTL index).
+    IntegrationTest / unmanagedClasspath ++= (Fixtures / exportedProducts).value,
     // A handful of enrichment specs (MetacriticClientSpec, RottenTomatoesClientSpec,
     // ImdbClientSpec, ImdbIdResolverSpec) read fixtures off the CLASSPATH via
     // `getResourceAsStream("/fixtures/…")`, but those HTML captures live in the
