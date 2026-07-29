@@ -87,4 +87,18 @@ class ClientSupportSpec extends AnyFlatSpec with Matchers {
     ClientSupport.android.minimumVersion.foreach(v => ClientVersion.parse(v) should not be None)
     ClientSupport.android.storeUrl.foreach(_ should startWith("https://"))
   }
+
+  it should "gate BOTH platforms, now that iOS has a published App Store id" in {
+    // The one assertion here that is about configuration rather than behaviour, and
+    // it earns that: ios.storeUrl sat empty from the day the gate was written,
+    // because sending people to an App Store id that did not exist yet would strand
+    // them on a 404. The id exists now, so a half-configured gate is a regression —
+    // an iOS build below the minimum would silently keep talking to a server that
+    // had stopped supporting it. Still no VALUE assertions, for the same reason as
+    // the Android test above.
+    ClientSupport.android.isGated shouldBe true
+    ClientSupport.ios.isGated shouldBe true
+    ClientSupport.ios.minimumVersion.foreach(v => ClientVersion.parse(v) should not be None)
+    ClientSupport.ios.storeUrl.foreach(_ should startWith("https://apps.apple.com/"))
+  }
 }

@@ -30,8 +30,10 @@ object ClientSupport {
   /**
    * One platform's rule. GATED only when both halves are present: a minimum with
    * nowhere to send people would strand them in a dead app, and a store URL with
-   * no minimum gates nobody. Either missing means "everything is supported", which
-   * is why an unpublished iOS app simply never nags.
+   * no minimum gates nobody. Either missing means "everything is supported" — the
+   * state iOS sat in until its App Store id existed. Both platforms are gated now,
+   * so the half-configured case survives only as the safe default for the next
+   * platform to be added.
    */
   final case class Platform(minimumVersion: Option[String], storeUrl: Option[String]) {
     val isGated: Boolean = minimumVersion.isDefined && storeUrl.isDefined
@@ -47,7 +49,7 @@ object ClientSupport {
   }
 
   /** A trimmed property, or None when absent or blank — blank is how the file says
-   *  "not set yet" (see ios.storeUrl). */
+   *  "not set yet", which is what an unadded platform's storeUrl looks like. */
   private def opt(key: String): Option[String] =
     Option(props.getProperty(key)).map(_.trim).filter(_.nonEmpty)
 
