@@ -186,7 +186,10 @@ object MongoEnrichmentCacheStore {
    * server, not just by this comment.
    */
   def open(uri: String, country: Country, ttl: FiniteDuration = Ttl): MongoEnrichmentCacheStore = {
-    val client = MongoClient(uri)
+    // Tuned for the tunnel: the cache lives across a flyctl proxy that dies and
+    // restarts, and the driver must fail fast into the retry rather than block on a
+    // dead pool. See TunnelTunedUri.
+    val client = MongoClient(TunnelTunedUri(uri))
     new MongoEnrichmentCacheStore(client.getDatabase(DatabaseName), country, ttl, owned = Some(client))
   }
 

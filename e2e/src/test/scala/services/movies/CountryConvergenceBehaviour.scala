@@ -264,7 +264,9 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    */
   private lazy val realScrapeSource: Option[ScrapeArchiveRepository] =
     Env.get("KINOWO_CONVERGENCE_SCRAPES_URI").map { uri =>
-      val database = MongoClient(uri).getDatabase(
+      // Tuned for the tunnel — see TunnelTunedUri. Without it a proxy restart costs
+      // 30s of server selection per attempt and the corpus read stalls at 0% CPU.
+      val database = MongoClient(tools.TunnelTunedUri(uri)).getDatabase(
         Env.get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb))
       new MongoScrapeArchiveRepository(Some(database))
     }
