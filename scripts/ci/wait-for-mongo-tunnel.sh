@@ -38,23 +38,44 @@ PROBE="$HERE/mongo-ping.py"
 
 [ -f "$PROBE" ] || { echo "[tunnel] missing probe script at $PROBE" >&2; exit 1; }
 
-for attempt in $(seq 1 "$ATTEMPTS"); do
-  echo "[tunnel] attempt $attempt/$ATTEMPTS: flyctl proxy $PORT:27017 --app $APP"
-  flyctl proxy "$PORT:27017" --app "$APP" &
-  PROXY_PID=$!
+# SUPERVISED, not started-and-trusted. `flyctl proxy` does not merely come up
+# unusable — it DIES mid-job, and everything after it sees `Connection refused`
+# for the rest of the run:
+#
+#   attempt 1/3 failed: MongoSocketReadException: Prematurely reached end of stream
+#   attempt 2/3 failed: ConnectException: Connection refused
+#
+# A convergence leg holds this tunnel open for tens of minutes across tens of
+# thousands of queries, so "it was alive when the step finished" says nothing. The
+# supervisor restarts it whenever it exits, which turns a fatal drop into a couple
+# of seconds the driver's own retries ride straight over.
+LOG="${TUNNEL_LOG:-/tmp/mongo-tunnel.log}"
+SUPERVISOR="${TMPDIR:-/tmp}/mongo-tunnel-supervisor.sh"
+cat > "$SUPERVISOR" <<SUPERVISE
+#!/usr/bin/env bash
+while true; do
+  flyctl proxy "$PORT:27017" --app "$APP" >>"$LOG" 2>&1 || true
+  echo "[tunnel] proxy exited — restarting" >>"$LOG"
+  sleep 2
+done
+SUPERVISE
+chmod +x "$SUPERVISOR"
 
-  for _ in $(seq 1 "$PROBE_TRIES"); do
-    if python3 "$PROBE" "$PORT" 2>/dev/null; then
-      echo "[tunnel] ready on :$PORT — Mongo answered a handshake (pid $PROXY_PID)"
-      exit 0
-    fi
-    sleep 2
-  done
+# `setsid` + `nohup`, not a plain `&`: the supervisor has to outlive BOTH this
+# script and the step's shell, because the reads it exists for happen several
+# steps later. A backgrounded child stays in the shell's process group and dies
+# with it — which is exactly what happened when this was tested, leaving the probe
+# passing and the tunnel gone moments afterwards.
+setsid nohup "$SUPERVISOR" >/dev/null 2>&1 < /dev/null &
+echo "[tunnel] supervisor detached, log $LOG"
 
-  echo "[tunnel] attempt $attempt bound :$PORT but Mongo never answered — restarting"
-  kill "$PROXY_PID" 2>/dev/null || true
-  wait "$PROXY_PID" 2>/dev/null || true
+for _ in $(seq 1 $((ATTEMPTS * PROBE_TRIES))); do
+  if python3 "$PROBE" "$PORT" 2>/dev/null; then
+    echo "[tunnel] ready on :$PORT — Mongo answered a handshake"
+    exit 0
+  fi
+  sleep 2
 done
 
-echo "[tunnel] prod Mongo tunnel never became usable after $ATTEMPTS attempts" >&2
+echo "[tunnel] prod Mongo tunnel never answered a handshake on :$PORT" >&2
 exit 1

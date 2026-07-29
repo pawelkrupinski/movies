@@ -68,8 +68,10 @@ class MongoEnrichmentCacheStore(
     val complete  = services.movies.KeysetScan.scan[Document](
       label          = s"$collectionName preload batch",
       batchSize      = MongoEnrichmentCacheStore.PreloadBatchSize,
-      maxAttempts    = 3,
-      initialBackoff = 1.second,
+      // Same reasoning as the archive read: survive a tunnel restart rather than
+      // degrade to a partial preload, which costs a full live enrichment sweep.
+      maxAttempts    = 5,
+      initialBackoff = 2.seconds,
       keyOf          = _.getString("_id"),
       fetchPage      = (afterId, limit) => {
         val fresh  = Filters.gte("fetchedAt", floor)
@@ -144,12 +146,18 @@ object MongoEnrichmentCacheStore {
 
   val CollectionPrefix = "enrichment_cache"
 
-  /** Entries per preload page. Sized by BYTES, not rows: an entry is a whole HTTP
-   *  response body (~30 KB average, HTML rating pages being the fat ones), so 100
-   *  is roughly a 3 MB page — small enough for a proxied connection to deliver
-   *  well inside the per-page timeout, large enough that a country is ~100 pages
-   *  rather than thousands. */
-  val PreloadBatchSize = 100
+  /**
+   * Entries per preload page — sized by BYTES, not rows: an entry is a whole HTTP
+   * response body (~25–45 KB average, HTML rating pages being the fat ones).
+   *
+   * 30 keeps a page near 1 MB. The first attempt at 100 (~3 MB) was reasoned about
+   * as "small enough for a proxied connection", which turned out to be the same
+   * guess that failed for the archive at 9 MB — the driver's completion chain
+   * recurses per SOCKET READ, so a multi-megabyte message across a tunnel is what
+   * overflows it, whatever the row count. Sized to the evidence rather than to the
+   * intuition this time.
+   */
+  val PreloadBatchSize = 30
 
   /** How long a remembered answer — success or failure — is allowed to stand in for
    *  the live service. A day: long enough that a morning's iteration on a country

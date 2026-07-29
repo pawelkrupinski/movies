@@ -207,8 +207,12 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
     services.movies.KeysetScan.scan[StoredScrapeDto](
       label          = "ScrapeArchiveRepository keyset batch",
       batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
-      maxAttempts    = 3,
-      initialBackoff = 1.second,
+      // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run
+      // and its supervisor brings it back within a couple of seconds; 3 attempts at
+      // 1s backoff could expire inside that window, turning a blip into an empty
+      // corpus. 5 attempts backing off 2s→32s covers it with room to spare.
+      maxAttempts    = 5,
+      initialBackoff = 2.seconds,
       keyOf          = _._id,
       fetchPage      = (afterId, limit) => {
         val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
@@ -235,8 +239,20 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
 }
 
 object MongoScrapeArchiveRepository {
-  /** Rows per keyset page. Small enough to keep the driver's completion chain
-   *  shallow (the whole point — see `findAll`), large enough that even the biggest
-   *  country archive is a handful of round-trips rather than hundreds. */
-  val FindAllBatchSize = 200
+  /**
+   * Rows per keyset page — sized by BYTES, not by row count.
+   *
+   * 200 was chosen as "a handful of round-trips" and still overflowed the driver.
+   * An archive row is a whole venue's listing with every showtime, averaging 26–60
+   * KB (measured: PL 44, UK 60, DE 26), so 200 rows is a 9–12 MB page. The
+   * recursion this paging exists to avoid is per SOCKET READ, not per document, so
+   * what matters is how many partial reads one message takes to arrive — and across
+   * a `flyctl proxy` a multi-megabyte message takes plenty. Poland's entire
+   * collection is only 12.9 MB, which is why 200 barely paged it at all and it
+   * failed exactly as the unpaged version had.
+   *
+   * 25 keeps a page near 1 MB for every country. That is more round-trips than is
+   * strictly elegant on a LAN, and irrelevant next to a read that does not complete.
+   */
+  val FindAllBatchSize = 25
 }
