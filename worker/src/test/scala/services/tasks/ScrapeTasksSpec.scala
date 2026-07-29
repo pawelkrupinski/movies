@@ -380,6 +380,29 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 2
   }
 
+  // A chunked venue is stamped by whichever step TERMINATES its scrape, not by the
+  // ScrapeCinema task that starts it — so it stays "most overdue" for the whole
+  // duration of its own run, and most-overdue-first ordering re-admits it every tick.
+  // Those re-admissions no-op against the run mutex, burning the admission budget
+  // without advancing anything. Prod 2026-07-29: ~139 ScrapeCinema/h completed but
+  // only ~30-45/h stamped, against ~120/h needed, so the oldest UK cinema aged in a
+  // straight diagonal to 14.6h against a 7h window.
+  it should "leave a cinema whose scrape is already running out of the due set" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val running  = scala.collection.mutable.Set(Multikino.displayName, KinoApollo.displayName)
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue,
+      inFlight = (name: String) => running.contains(name))
+
+    // All 5 are due, but two are mid-run → only the other three are admitted.
+    reaper.tick() shouldBe 3
+
+    // The run finishes; the venue is still unstamped, so now it may be admitted.
+    running.clear()
+    reaper.tick() shouldBe 2
+  }
+
   // A venue whose planner has been admitted but has NOT run yet is 36 tasks of work
   // that exist only as an intention. Counting it as the one task it currently is lets
   // the reaper keep admitting against a budget it has already committed: prod showed

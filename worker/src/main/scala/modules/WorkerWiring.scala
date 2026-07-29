@@ -14,7 +14,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import clients.TmdbClient
 import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
-import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, WriteThroughResolutionCache}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.cinemas._
@@ -1160,7 +1160,13 @@ class WorkerWiring(
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
       throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, tasksPerVenue = scrapeTasksPerVenue,
+      inFlight = chunkRunInFlight,
       enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
+  /** A chunked venue is mid-scrape while its run doc is live and not yet abandoned.
+   *  Keeps the reaper from re-admitting it into a no-op — see [[ScrapeInFlight]]. */
+  lazy val chunkRunInFlight: ScrapeInFlight = (cinemaName: String) =>
+    chunkScrapeStore.activeRun(cinemaName)
+      .exists(!_.isStale(java.time.Instant.now(), ChunkScrapePlanner.DefaultRunTimeout))
   // Logs queue depth every minute so a CPU-credit/steal episode can be correlated
   // with the scrape/enrich backlog that drove it (the diagnostic that was missing
   // when the 2026-06-12 worker-steal episode had to be reconstructed from metrics).

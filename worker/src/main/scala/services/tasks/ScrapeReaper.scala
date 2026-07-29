@@ -129,6 +129,11 @@ class ScrapeReaper(
   // two — it sizes a burst bound, not a schedule. Default 1 = unchunked, which leaves
   // the bound behaving exactly as a venue count for callers that don't set it.
   tasksPerVenue: Int = 1,
+  // Cinemas whose scrape is already running are left OUT of the due set. A chunked
+  // venue is not stamped until its run terminates (deliberately — see
+  // [[ScrapeInFlight]]), so without this it stays most-overdue for its own duration
+  // and the reaper re-admits it every tick into a no-op against the run mutex.
+  inFlight: ScrapeInFlight = ScrapeInFlight.Never,
   // SPREAD the (non-throttled) per-tick batch across the tick interval instead of
   // dumping it all at the tick instant. The reaper enqueues a clump of due cinemas
   // each tick; they fetch in parallel and their HTML/JSON payloads PARSE together —
@@ -213,6 +218,7 @@ class ScrapeReaper(
     val due = scrapers.iterator
       .map(s => (ScrapeCinemaHandler.dedupKey(s.cinema), s.cinema.displayName))
       .filter { case (key, _) => dueWindow.isDue(key, freshness.lastFetchedAt(key), now) }
+      .filterNot { case (_, cinemaName) => inFlight.isRunning(cinemaName) }
       .toVector
       // Oldest-fetched first; never-fetched (None) sorts ahead of any timestamp.
       .sortBy { case (key, _) =>

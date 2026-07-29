@@ -56,6 +56,14 @@ class ChunkScrapePlanner(
   def plan(cinema: String): Int = chunkScrapers.get(cinema) match {
     case None => 0
     case Some(scraper) =>
+      // Bail BEFORE planChunks() when a run is already active. `startRun` below is
+      // the real mutex, but reaching it costs a nav fetch of the venue's programme
+      // page purely to discover keys we are about to throw away — and a duplicate
+      // ScrapeCinema is the COMMON case, not a rare race, because a chunked venue
+      // stays due for its whole run (see [[ScrapeInFlight]]). Prod 2026-07-29: ~90-110
+      // such no-ops an hour on the UK worker, each paying that fetch.
+      if (store.activeRun(cinema).exists(!_.isStale(clock.instant(), staleAfter))) return 0
+
       val keys =
         try scraper.planChunks()
         catch { case e: Exception => publishFailure(scraper, e); return 0 }
