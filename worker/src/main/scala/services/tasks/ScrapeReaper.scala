@@ -188,13 +188,19 @@ class ScrapeReaper(
    *
    *  Derived from the roster, the window and the spread rather than configured, so it
    *  cannot drift from them. The configured value still wins when it is larger. */
-  private val spreadAwareOutstandingBudget: Int = {
+  /** Outstanding TASKS needed for the roster to be swept once per freshness window,
+   *  accounting for the spread: a venue occupies budget for the whole `chunkSpread`,
+   *  so holding cadence needs `venuesPerTick x spreadTicks` of them in flight at once,
+   *  not `venuesPerTick`. Both budgets floor at this — falling under it means the
+   *  roster ages without bound, which is not "backing off", it is falling behind. */
+  private val cadenceTaskFloor: Int = {
     val spreadTicks = math.max(1L, chunkSpread.toMillis / math.max(1L, interval.toMillis))
-    val concurrent  = cadenceVenuesPerTick * spreadTicks.toInt
-    val floor       = concurrent * math.max(1, tasksPerVenue)
-    if (maxOutstandingScrapeTasks == Int.MaxValue) Int.MaxValue
-    else math.max(maxOutstandingScrapeTasks, floor)
+    cadenceVenuesPerTick * spreadTicks.toInt * math.max(1, tasksPerVenue)
   }
+
+  private val spreadAwareOutstandingBudget: Int =
+    if (maxOutstandingScrapeTasks == Int.MaxValue) Int.MaxValue
+    else math.max(maxOutstandingScrapeTasks, cadenceTaskFloor)
   // Instant of the first tick, anchoring the post-boot ramp; set once, then read-only.
   private val rampAnchor = new AtomicReference[Option[Instant]](None)
 
@@ -302,7 +308,7 @@ class ScrapeReaper(
       // trickle collapse to one venue a tick on a chunked country, which is below the
       // rate its own freshness window implies, so the roster aged without bound while
       // the queue sat empty. Backing off must not mean falling behind for ever.
-      val cap      = venuesWithin(math.max(throttledMaxEnqueuePerTick, cadenceVenuesPerTick * perVenue))
+      val cap      = venuesWithin(math.max(throttledMaxEnqueuePerTick, cadenceTaskFloor))
       val enqueued = enqueueUpTo(due, cap)
       if (enqueued > 0)
         logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +

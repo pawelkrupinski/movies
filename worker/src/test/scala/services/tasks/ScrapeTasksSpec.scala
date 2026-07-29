@@ -416,6 +416,27 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 5
   }
 
+  // The throttled floor had the SAME spread blindness the healthy budget did: it
+  // allowed cadenceVenuesPerTick worth of TASKS, as if a venue freed its budget within
+  // the tick, when it holds it for the whole spread. UK's floor came out at 3 x 36 =
+  // 108 tasks = 108/(36 x 300s) = 36 venues/h against the 120 its roster needs, so a
+  // throttled worker still aged the roster — prod 2026-07-29 logged "backlog-capped to
+  // 1 new (66 already waiting)" once a tick while the oldest cinema sat at 15.9h.
+  it should "make the throttled floor spread-aware too, not just the healthy budget" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
+    // 5 cinemas / 2-tick window = 3 venues per tick, each holding budget for 3 ticks of
+    // spread → 9 concurrent venues → 90 tasks at 10 per venue. Without the spread term
+    // the floor is 3 x 10 = 30 tasks = 3 venues; with it, all 5 due venues fit.
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      dueWindow = new DueWindow(2.minutes), interval = 1.minute,
+      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 10,
+      tasksPerVenue = 10, chunkSpread = 3.minutes, throttle = throttled)
+
+    reaper.tick() shouldBe 5
+  }
+
   it should "keep the throttled trickle wide enough to sweep the roster in one window" in {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue
