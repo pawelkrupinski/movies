@@ -156,18 +156,43 @@ object MovieRecordMerge {
    * `CountryConvergenceBehaviour` fails on against the real archive. Nothing was
    * "last write wins"; the ordering simply ran out of discriminators.
    *
-   * So the poster joins the rank, and it does so in the same shape as
-   * [[dedupShowtimes]]'s: prefer the entry that HAS one — an entry with no poster
-   * must never beat one with a real image, which was previously a coin toss — then
-   * fall back to the URL itself, a pure function of the data that cannot depend on
-   * arrival order. `filmUrl` and `title` keep their existing precedence so this
-   * changes nothing for slots that were already decided.
+   * Both links are therefore ranked PRESENCE FIRST, the same shape
+   * [[dedupShowtimes]] uses for `bookingUrl`: an entry carrying a real value must
+   * never lose to one carrying nothing, and only then does the value itself break
+   * the tie — a pure function of the data that cannot depend on arrival order.
+   *
+   * Presence-first matters for `filmUrl` as much as for the poster, and it did not
+   * used to hold. The key was `filmUrl.getOrElse("")`, and `""` sorts before every
+   * real URL, so a listing with NO detail link beat one that had it. That costs
+   * twice over: the cinema renders as plain text instead of a deep link, and
+   * `DetailReaper` never enriches the slot at all, because a slot with no `filmUrl`
+   * has nothing to fetch — so the film silently loses its synopsis and cast.
    */
   def slotRepresentative(group: Seq[models.CinemaMovie]): models.CinemaMovie =
     group.minBy(slotRepresentativeRank)
 
-  private def slotRepresentativeRank(cm: models.CinemaMovie): (String, String, Boolean, String) =
-    (cm.filmUrl.getOrElse(""), cm.movie.title, cm.posterUrl.isEmpty, cm.posterUrl.getOrElse(""))
+  /**
+   * Richest first, then TOTAL.
+   *
+   * The preference keys are the fields whose absence is visible: a detail link, a
+   * poster, a synopsis (longest wins, as [[mergeRetainedSynopses]] already does
+   * across sources). Those say which duplicate is the better representative.
+   *
+   * The last key says something different and is the load-bearing one. Enumerating
+   * fields cannot make an ordering total — this rank was extended twice, once for
+   * the poster and once for the detail link, and each time the next un-enumerated
+   * field (synopsis, found by the convergence suite against KinoGram's duplicated
+   * "Spider-Man") quietly took its place as the thing that decided by arrival
+   * order instead. `toString` is a pure function of the WHOLE listing, so two
+   * candidates can tie only if they are genuinely identical — at which point the
+   * choice cannot matter. That closes the class of bug rather than its latest
+   * instance.
+   */
+  private def slotRepresentativeRank(cm: models.CinemaMovie): (Boolean, String, String, Boolean, String, Int, String) =
+    (cm.filmUrl.isEmpty, cm.filmUrl.getOrElse(""), cm.movie.title,
+     cm.posterUrl.isEmpty, cm.posterUrl.getOrElse(""),
+     -cm.synopsis.map(_.length).getOrElse(0),
+     cm.toString)
 
   /** Canonical TOTAL order for a cinema slot's showtimes. Sorting at the
    *  ingestion boundary means a re-scrape that returns the same showings in a

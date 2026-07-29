@@ -18,14 +18,15 @@ import scala.util.Random
  */
 class SlotRepresentativeSpec extends AnyFlatSpec with Matchers {
 
-  private def listing(poster: Option[String], filmUrl: Option[String] = None, title: String = "Ghost in the Shell") =
+  private def listing(poster: Option[String], filmUrl: Option[String] = None, title: String = "Ghost in the Shell",
+                      synopsis: Option[String] = None, cast: Seq[String] = Nil) =
     CinemaMovie(
       movie     = Movie(title, None, None, Nil, Nil, None, None),
       cinema    = Cinema.all.head,
       posterUrl = poster,
       filmUrl   = filmUrl,
-      synopsis  = None,
-      cast      = Nil,
+      synopsis  = synopsis,
+      cast      = cast,
       director  = Nil,
       showtimes = Seq(Showtime(LocalDateTime.parse("2026-03-22T18:00"), bookingUrl = None))
     )
@@ -60,13 +61,45 @@ class SlotRepresentativeSpec extends AnyFlatSpec with Matchers {
     MovieRecordMerge.slotRepresentative(Seq(withPoster, without)).posterUrl shouldBe withPoster.posterUrl
   }
 
-  // filmUrl and title keep the precedence they always had, so slots that were
-  // already decided by them are untouched by this change.
-  it should "still let filmUrl decide before the poster does" in {
-    val linked   = listing(Some("https://kinokultura.pl/z.jpg"), filmUrl = Some("https://kinokultura.pl/a"))
-    val unlinked = listing(Some("https://kinokultura.pl/a.jpg"))
+  // filmUrl outranks the poster, so a slot's detail link is decided first.
+  it should "let filmUrl decide before the poster does" in {
+    val linkedDullPoster = listing(Some("https://kinokultura.pl/z.jpg"), filmUrl = Some("https://kinokultura.pl/a"))
+    val unlinked         = listing(Some("https://kinokultura.pl/a.jpg"))
 
-    // "" (no filmUrl) sorts before any URL, so the unlinked entry still wins.
-    MovieRecordMerge.slotRepresentative(Seq(linked, unlinked)) shouldBe unlinked
+    MovieRecordMerge.slotRepresentative(Seq(linkedDullPoster, unlinked)) shouldBe linkedDullPoster
+  }
+
+  // The counterpart of the poster rule, and it costs more: a slot that keeps the
+  // link-less duplicate renders the cinema as plain text instead of a deep link,
+  // AND is never detail-enriched — DetailReaper has no page to fetch — so the film
+  // silently loses its synopsis and cast.
+  it should "prefer a listing that has a detail link over one that has none" in {
+    val linked   = listing(None, filmUrl = Some("https://kinokultura.pl/ghost-in-the-shell"))
+    val unlinked = listing(None)
+
+    MovieRecordMerge.slotRepresentative(Seq(unlinked, linked)).filmUrl shouldBe linked.filmUrl
+    MovieRecordMerge.slotRepresentative(Seq(linked, unlinked)).filmUrl shouldBe linked.filmUrl
+  }
+
+  // The convergence suite found this one against KinoGram's duplicated "Spider-Man":
+  // one listing carried a 242-character synopsis, the other none, and the winner was
+  // whichever arrived first. Longest wins, as `mergeRetainedSynopses` already does.
+  it should "keep the longest synopsis among same-slot listings" in {
+    val blurbed = listing(None, synopsis = Some("A" * 242))
+    val bare    = listing(None)
+
+    MovieRecordMerge.slotRepresentative(Seq(bare, blurbed)).synopsis shouldBe blurbed.synopsis
+    MovieRecordMerge.slotRepresentative(Seq(blurbed, bare)).synopsis shouldBe blurbed.synopsis
+  }
+
+  // The point of the total tie-break. This rank was extended twice — for the poster,
+  // then the detail link — and each time the next un-enumerated field silently took
+  // over as the one decided by arrival order. A field nobody ranked must still not
+  // be able to do that.
+  it should "stay order-independent on a field the rank never mentions" in {
+    val one = listing(None, cast = Seq("Scarlett Johansson"))
+    val two = listing(None, cast = Seq("Takeshi Kitano"))
+
+    MovieRecordMerge.slotRepresentative(Seq(one, two)) shouldBe MovieRecordMerge.slotRepresentative(Seq(two, one))
   }
 }

@@ -16,7 +16,6 @@ import tools.{ArchiveReplayWiring, CountryScrapeCorpus, EnrichmentCache, Env, Is
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.util.{Random, Try}
 
 /**
@@ -273,43 +272,27 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   /**
    * The real corpus, read ONCE and shared by everything that needs it.
    *
-   * Read cinema BY CINEMA rather than with one `findAll`, which is the difference
-   * between this working and not. Over the CI tunnel a whole-collection scan of
-   * Germany's 1,533 rows never once finished inside `findAll`'s 120s ceiling — the
-   * first run logged nine consecutive timeouts (three tests × three attempts, 18
-   * minutes) and then failed. A proxied connection does not survive streaming a
-   * collection of that size; it survives point reads, and `find(cinema)` is an
-   * `_id`-indexed lookup that returns in milliseconds. We only ever wanted the
-   * cinemas this country's catalogue still lists, so the scan was never necessary
-   * — asking for exactly those turns one fragile operation into many robust ones.
+   * Read ONCE, because the read is expensive and doing it twice — as an earlier
+   * version did, separately for the render instant and for the seeding — doubles a
+   * whole-collection round trip for nothing.
    *
-   * Modestly parallel because the round-trips dominate: 1,533 sequential lookups
-   * across a tunnel is minutes of pure latency, and a small fixed pool is this
-   * repo's standing shape for network-bound fan-out.
-   *
-   * It still FAILS LOUDLY when the result is empty. `findAll` and `find` are both
-   * best-effort by design — a timeout is logged and yields nothing — which is right
-   * for the production archive, where a scrape must not die because its side-record
-   * didn't save, and exactly wrong for a corpus source. A failed read is not data:
-   * an empty corpus would let the suite pass having verified nothing.
+   * It FAILS LOUDLY when the result is empty. The archive's reads are best-effort
+   * by design — a failure is logged and yields nothing — which is right for the
+   * production archive, where a scrape must not die because its side-record didn't
+   * save, and exactly wrong for a corpus source. A failed read is not data: an
+   * empty corpus would let the suite pass having verified nothing. That guard is
+   * what turned Germany's silent "0 venues, 0 listings" into a diagnosis, and it
+   * stays even though the read underneath it is now sound.
    */
   private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
-    val known = CountryScrapeCorpus.cinemasOf(country)
-    val pool  = java.util.concurrent.Executors.newFixedThreadPool(8)
-    val rows =
-      try {
-        implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
-        scala.concurrent.Await.result(
-          scala.concurrent.Future.traverse(known)(cinema => scala.concurrent.Future(source.find(cinema))),
-          10.minutes
-        ).flatten.filter(_.films.nonEmpty)
-      } finally pool.shutdown()
+    val known = CountryScrapeCorpus.cinemasOf(country).toSet
+    val rows  = source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
 
     if (rows.isEmpty)
       throw new IllegalStateException(
         s"KINOWO_CONVERGENCE_SCRAPES_URI is set but ${country.displayName}'s cinema_scrapes read came back " +
-        s"empty across all ${known.size} of the catalogue's cinemas. The archive reads are best-effort — a " +
-        "timeout is logged and yields nothing — so this is far more likely a slow or dropped connection " +
+        s"empty across all ${known.size} of the catalogue's cinemas. The archive's reads are best-effort — a " +
+        "failure is logged and yields nothing — so this is far more likely a slow or dropped connection " +
         "than a genuinely empty archive, and seeding an empty corpus would let the suite pass having " +
         "verified nothing.")
     info(s"${country.displayName}: read ${rows.size} archived scrapes from ${known.size} catalogue cinemas")

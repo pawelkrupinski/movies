@@ -178,11 +178,49 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
       .flatten.flatMap(StoredScrapeDto.toDomain)
   }
 
+  /**
+   * Every archived scrape, read in keyset-paged batches rather than through one
+   * unbounded `find()`.
+   *
+   * The unbounded form did not merely run slowly on a large archive — it CRASHED.
+   * A single cursor over a big collection recurses the async driver's per-message
+   * completion chain deep enough to throw `StackOverflowError` on a driver I/O
+   * thread (see [[services.movies.KeysetScan]], which exists because `movies` and
+   * `screenings` hit exactly this). The crash lands on an uncaught I/O thread, not
+   * on the caller's `Await`, so nothing here catches it: the future simply never
+   * completes and the caller sees a 120s timeout with no cause attached. That is
+   * precisely what the country-convergence legs saw against Germany's 1,533-row
+   * archive — nine consecutive timeouts and two `StackOverflowError`s in threads
+   * nobody was watching — and it will reach any caller as a country's archive grows.
+   *
+   * Paging caps how many rows one cursor delivers, keeping the completion chain
+   * shallow. Each batch is an independently retried, idempotent `_id > afterId`
+   * query, so a partial failure costs a page rather than the whole read.
+   *
+   * Still best-effort, like every read here: an incomplete scan logs and returns
+   * what it got. Callers that cannot tolerate a short read must check for
+   * emptiness themselves — `CountryConvergenceBehaviour` refuses to seed a corpus
+   * from one.
+   */
   def findAll(): Seq[ArchivedScrape] = coll.toSeq.flatMap { c =>
-    Try(Await.result(c.find().toFuture(), 120.seconds))
-      .recover { case e => logger.warn(s"ScrapeArchiveRepository.findAll failed: ${e.getMessage}"); Seq.empty }
-      .getOrElse(Seq.empty)
-      .flatMap(StoredScrapeDto.toDomain)
+    val collected = Seq.newBuilder[StoredScrapeDto]
+    services.movies.KeysetScan.scan[StoredScrapeDto](
+      label          = "ScrapeArchiveRepository keyset batch",
+      batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
+      maxAttempts    = 3,
+      initialBackoff = 1.second,
+      keyOf          = _._id,
+      fetchPage      = (afterId, limit) => {
+        val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+        Await.result(
+          c.find(filter).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).toFuture(),
+          60.seconds)
+      },
+      onIncomplete   = exception =>
+        logger.warn(s"ScrapeArchiveRepository.findAll incomplete after retries: " +
+          s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
+    )(batch => collected ++= batch)
+    collected.result().flatMap(StoredScrapeDto.toDomain)
   }
 
   /** Every archive operation is best-effort: it records something that already
@@ -194,4 +232,11 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
         logger.warn(s"ScrapeArchiveRepository.$op(${cinema.displayName}) failed: ${e.getMessage}")
         None
     }
+}
+
+object MongoScrapeArchiveRepository {
+  /** Rows per keyset page. Small enough to keep the driver's completion chain
+   *  shallow (the whole point — see `findAll`), large enough that even the biggest
+   *  country archive is a handful of round-trips rather than hundreds. */
+  val FindAllBatchSize = 200
 }
