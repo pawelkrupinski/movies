@@ -23,8 +23,8 @@
 name: Country convergence
 
 on:
-    # Runs AFTER `Deploy to Fly.io` finishes, the same way the Lighthouse audit
-    # does — not on push. These legs are minutes long (Poland 3, Germany 9, the UK
+    # Runs AFTER `Deploy to Fly.io` finishes — not on push. These legs are
+    # minutes long (Poland 3, Germany 9, the UK
     # 14) and firing them in parallel with the deploy workflow put three
     # heavyweight jobs on the runner pool at exactly the moment the deploy needed
     # it, for a signal nobody gates the deploy on anyway. Chaining keeps the

@@ -18,7 +18,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be crawlable — no robots noindex (it's the site's public entry point)" in {
-    // Lighthouse SEO flagged `/` as blocked from indexing because of a
+    // `/` was once blocked from indexing by a
     // `<meta name="robots" content="noindex">`. The landing page is the
     // homepage; it must be indexable.
     html.toLowerCase should not include "noindex"
@@ -26,8 +26,8 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry a meta description for search-result snippets" in {
-    // The landing now gets its description via _ogTagsApp (same partial as the
-    // other pages), which also covers the Lighthouse SEO "missing description".
+    // The landing gets its description via _ogTagsApp, the same partial as the
+    // other pages — without it search results have no snippet.
     html should include ("""<meta name="description"""")
     html should include ("Repertuar wszystkich kin w jednym miejscu")
   }

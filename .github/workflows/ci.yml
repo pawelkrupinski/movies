@@ -38,9 +38,6 @@ on:
 # the Play universal-stage dist for deploy, uploaded as the `stage` artifact —
 # deploy.yml's deploy job downloads it from this run.
 #
-# Lighthouse moved to lighthouse.yml — runs on `workflow_run` after
-# the deploy workflow finishes (plus the every-6-h schedule).
-#
 # `page-tests` is the only job that needs a browser: PageJsBehaviourSpec
 # drives a real headless Chrome over CDP to exercise the JS on the
 # rendered pages. Kept out of `test` so the main unit job stays
