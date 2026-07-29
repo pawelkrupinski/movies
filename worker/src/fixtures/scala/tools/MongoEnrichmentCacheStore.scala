@@ -39,19 +39,54 @@ class MongoEnrichmentCacheStore(
 
   ensureTtlIndex()
 
+  /**
+   * The whole cache, read in keyset-paged batches.
+   *
+   * Paged because this collection is BIG in bytes even when it is small in rows:
+   * every entry holds a full HTTP response body, so 13k entries is ~380 MB at
+   * ~30 KB apiece. One unbounded `find()` over that never finished inside the
+   * 120s ceiling across CI's tunnel — and because a failed preload degrades to
+   * "no entries", the cache silently looked EMPTY on every run. The legs then
+   * missed on every lookup, swept the live services for an hour, wrote thousands
+   * of entries back, and the next run repeated it: the collection grew steadily
+   * while never once being read. Exactly the shape
+   * [[services.movies.KeysetScan]] exists for, and the same one that bit
+   * `MongoScrapeArchiveRepository.findAll`.
+   *
+   * Smaller pages than the archive's: at ~30 KB a document these are megabytes
+   * apiece, so the batch size is chosen by BYTES-per-page rather than rows.
+   *
+   * Still degrades to what it managed to read — a short preload costs live fills,
+   * never correctness — but now says so, and no longer silently returns nothing.
+   */
   override def loadAll(): Map[String, CachedResponse] = {
     // Belt-and-braces `fetchedAt` floor on top of the TTL index: Mongo's reaper
     // runs on a ~60s cadence, so an entry can outlive its TTL on disk. Reading it
     // back would resurrect a day-old failure the run was entitled to retry.
-    val floor = new java.util.Date(System.currentTimeMillis() - ttl.toMillis)
-    Try(Await.result(collection.find(Filters.gte("fetchedAt", floor)).toFuture(), 120.seconds))
-      .recover { case failure =>
-        logger.warn(s"Enrichment cache preload failed for $collectionName: ${failure.getMessage}")
-        Seq.empty
-      }
-      .get
-      .flatMap(document => MongoEnrichmentCacheStore.decode(document).map(document.getString("_id") -> _))
-      .toMap
+    val floor     = new java.util.Date(System.currentTimeMillis() - ttl.toMillis)
+    val collected = Map.newBuilder[String, CachedResponse]
+    val complete  = services.movies.KeysetScan.scan[Document](
+      label          = s"$collectionName preload batch",
+      batchSize      = MongoEnrichmentCacheStore.PreloadBatchSize,
+      maxAttempts    = 3,
+      initialBackoff = 1.second,
+      keyOf          = _.getString("_id"),
+      fetchPage      = (afterId, limit) => {
+        val fresh  = Filters.gte("fetchedAt", floor)
+        val filter = afterId.fold(fresh)(id => Filters.and(fresh, Filters.gt("_id", id)))
+        Await.result(
+          collection.find(filter).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit).toFuture(),
+          120.seconds)
+      },
+      onIncomplete   = failure =>
+        logger.warn(s"Enrichment cache preload incomplete for $collectionName: " +
+          s"${failure.getClass.getSimpleName}: ${failure.getMessage} — the run will re-fetch what is missing")
+    )(batch => collected ++= batch.flatMap(document =>
+        MongoEnrichmentCacheStore.decode(document).map(document.getString("_id") -> _)))
+
+    val entries = collected.result()
+    if (!complete) logger.warn(s"Enrichment cache preload for $collectionName stopped early with ${entries.size} entries")
+    entries
   }
 
   /** Written synchronously, unlike `MongoCachingDetailFetch`'s fire-and-forget: the
@@ -108,6 +143,13 @@ object MongoEnrichmentCacheStore {
   val DatabaseName = "convergence_test"
 
   val CollectionPrefix = "enrichment_cache"
+
+  /** Entries per preload page. Sized by BYTES, not rows: an entry is a whole HTTP
+   *  response body (~30 KB average, HTML rating pages being the fat ones), so 100
+   *  is roughly a 3 MB page — small enough for a proxied connection to deliver
+   *  well inside the per-page timeout, large enough that a country is ~100 pages
+   *  rather than thousands. */
+  val PreloadBatchSize = 100
 
   /** How long a remembered answer — success or failure — is allowed to stand in for
    *  the live service. A day: long enough that a morning's iteration on a country

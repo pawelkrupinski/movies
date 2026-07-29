@@ -107,4 +107,23 @@ class EnrichmentCacheStoreIntegrationSpec extends AnyFlatSpec with Matchers {
       withClue("…but must not be served: ") { store.loadAll() shouldBe empty }
     }
   }
+
+  // The preload is the whole point of the shared cache, and it silently did
+  // nothing for weeks: one unbounded find over ~380 MB of cached response bodies
+  // never finished inside the timeout, and a failed preload degrades to "no
+  // entries" — so every CI leg saw an empty cache, swept the live services, wrote
+  // thousands of entries back, and the next run repeated it. A page-boundary test
+  // is the reachable half of that: prove the paged read returns EVERY entry.
+  it should "preload every entry, not just the first keyset page" in {
+    withStore(Country.Poland) { store =>
+      val entries = MongoEnrichmentCacheStore.PreloadBatchSize + 37
+      (1 to entries).foreach(i => store.put(f"GET https://example.test/$i%05d", CachedResponse.Body(s"body $i")))
+
+      val loaded = store.loadAll()
+
+      withClue(s"paged preload returned ${loaded.size} of $entries: ") { loaded should have size entries }
+      loaded("GET https://example.test/00001") shouldBe CachedResponse.Body("body 1")
+      loaded(f"GET https://example.test/$entries%05d") shouldBe CachedResponse.Body(s"body $entries")
+    }
+  }
 }
