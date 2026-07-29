@@ -83,6 +83,23 @@ class DetailReaper(
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("detail-reaper")
 
+  /** Enrichers indexed by the venue they enrich, so a row is matched against only the
+   *  venues that actually carry it instead of against every enricher there is.
+   *
+   *  `enrichers` is one instance PER VENUE (Cineworld alone is 87; 185 across the
+   *  catalogue), while a row carries a handful of cinema slots — 0.34 on average
+   *  across the live UK corpus. Asking every enricher about every row was therefore
+   *  ~296k questions per tick to answer ~540 real ones, and since `nativeDetailRef`
+   *  rebuilds `cinemaData` per call it paid a sort + Map build for each. That loop
+   *  was 7.93cc of the UK worker's 12.46cc — 64% of its CPU — to produce 0.3
+   *  EnrichDetails/min.
+   *
+   *  A Seq per cinema, not a single enricher: `toMap` would silently drop a second
+   *  enricher on the same venue, quietly changing behaviour rather than preserving
+   *  the original loop's "ask them all". */
+  private val enrichersByCinema: Map[models.Cinema, Seq[DetailEnricher]] =
+    enrichers.groupBy(_.cinema)
+
   def start(): Unit = {
     if (enrichers.isEmpty) { logger.info("DetailReaper: no deferred cinemas; not starting."); return }
     scheduleNext(initialDelay)
@@ -129,11 +146,18 @@ class DetailReaper(
     val rows = cache.entries.iterator
     while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
-      val es = enrichers.iterator
-      while (es.hasNext && enqueued < cap) {
-        val e = es.next()
-        e.nativeDetailRef(record).foreach { ref =>
-          if (EnrichDetailsTasks.enqueueIfDue(queue, freshness, dueWindow, e, key, ref, now)) enqueued += 1
+      // Drive off the row's OWN venues, not the whole enricher list — see
+      // `enrichersByCinema`. `cinemaData` is computed once here and reused, because
+      // it sorts + rebuilds a Map on every call.
+      val cinemaData = record.cinemaData
+      val venues = cinemaData.keysIterator
+      while (venues.hasNext && enqueued < cap) {
+        val es = enrichersByCinema.getOrElse(venues.next(), Nil).iterator
+        while (es.hasNext && enqueued < cap) {
+          val e = es.next()
+          e.nativeDetailRefIn(cinemaData).foreach { ref =>
+            if (EnrichDetailsTasks.enqueueIfDue(queue, freshness, dueWindow, e, key, ref, now)) enqueued += 1
+          }
         }
       }
     }
@@ -169,11 +193,15 @@ class DetailReaper(
    *  the row legitimately stays `detailPending` (and `tick` keeps the fetch
    *  enqueued). A Filmweb-fallback row's filmweb.pl URL is NOT native, so such a
    *  row is never "outstanding" and `reapStuckPending` releases it. */
-  private def detailOutstanding(key: CacheKey, record: MovieRecord): Boolean =
-    enrichers.exists { e =>
-      e.nativeDetailRef(record).isDefined &&
-        !freshness.isFresh(EnrichDetailsTasks.dedupKey(e.detailGroup, key), FreshnessKind.DetailEnrich)
+  private def detailOutstanding(key: CacheKey, record: MovieRecord): Boolean = {
+    val cinemaData = record.cinemaData // once, and only the row's own venues — see `tick`
+    cinemaData.keysIterator.exists { venue =>
+      enrichersByCinema.getOrElse(venue, Nil).exists { e =>
+        e.nativeDetailRefIn(cinemaData).isDefined &&
+          !freshness.isFresh(EnrichDetailsTasks.dedupKey(e.detailGroup, key), FreshnessKind.DetailEnrich)
+      }
     }
+  }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
 }
