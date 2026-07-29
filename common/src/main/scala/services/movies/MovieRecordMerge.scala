@@ -139,6 +139,36 @@ object MovieRecordMerge {
     sortShowtimes(showtimes.groupBy(identity).values.map(_.minBy(rank)).toSeq)
   }
 
+  /**
+   * Which of a venue's same-slot listings supplies the scalar film fields —
+   * poster, detail link, runtime, year.
+   *
+   * A cinema can list one film twice in a single scrape: Kino Kultura publishes
+   * "Ghost in the Shell" as two screening series, each with its own poster image
+   * and its own showings. Both collapse to the slot key `sanitize(title)`, and one
+   * of them has to speak for the slot.
+   *
+   * The rank must be a TOTAL order over the competing data, and previously it was
+   * not: `(filmUrl, title)` is identical for both of Kino Kultura's entries — same
+   * title, neither carrying a detail link — so `minBy` fell through to whichever
+   * the scraper happened to emit first. Shuffle the venue's films and a different
+   * poster won, which is exactly the order-dependence
+   * `CountryConvergenceBehaviour` fails on against the real archive. Nothing was
+   * "last write wins"; the ordering simply ran out of discriminators.
+   *
+   * So the poster joins the rank, and it does so in the same shape as
+   * [[dedupShowtimes]]'s: prefer the entry that HAS one — an entry with no poster
+   * must never beat one with a real image, which was previously a coin toss — then
+   * fall back to the URL itself, a pure function of the data that cannot depend on
+   * arrival order. `filmUrl` and `title` keep their existing precedence so this
+   * changes nothing for slots that were already decided.
+   */
+  def slotRepresentative(group: Seq[models.CinemaMovie]): models.CinemaMovie =
+    group.minBy(slotRepresentativeRank)
+
+  private def slotRepresentativeRank(cm: models.CinemaMovie): (String, String, Boolean, String) =
+    (cm.filmUrl.getOrElse(""), cm.movie.title, cm.posterUrl.isEmpty, cm.posterUrl.getOrElse(""))
+
   /** Canonical TOTAL order for a cinema slot's showtimes. Sorting at the
    *  ingestion boundary means a re-scrape that returns the same showings in a
    *  different order stores a byte-identical slot, so `MovieCache`'s write-through

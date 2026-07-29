@@ -1125,7 +1125,7 @@ class CaffeineMovieCache(
         .map { case (_, group) =>
           if (group.lengthCompare(1) == 0) group.head
           else {
-            val rep = group.minBy(cm => (cm.filmUrl.getOrElse(""), cm.movie.title))
+            val rep = MovieRecordMerge.slotRepresentative(group)
             // Dedup by *physical* screening identity (dateTime/room/format), not
             // by the whole Showtime: a cinema that lists one film under several
             // event pages (Kino Nowe Horyzonty's `op.s?id=…`) reports the same
