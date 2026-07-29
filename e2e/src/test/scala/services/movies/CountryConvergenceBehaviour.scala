@@ -3,6 +3,7 @@ package services.movies
 import clients.TmdbClient
 import controllers.{FilmSchedule, MovieControllerService}
 import models.{Cinema, Country, MovieRecord, Showtime}
+import org.mongodb.scala.MongoClient
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -137,8 +138,15 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
   /** The instant the rendered rows are taken at. Pinned so a row can never differ
    *  between passes merely because the wall clock moved mid-test — the corpus's
-   *  showtimes are all after it, so every pass renders the same window. */
-  private val RenderAt = LocalDateTime.of(2026, 8, 1, 0, 0)
+   *  showtimes are all after it, so every pass renders the same window.
+   *
+   *  The generated corpus builds its showtimes around a fixed day, so the constant
+   *  is right for it. A REAL corpus's showtimes sit around whenever it was scraped,
+   *  and rendering a live dump at a hard-coded 2026-08-01 would put the whole
+   *  repertoire in the past and emit nothing — so that case takes its instant from
+   *  the corpus instead (see `realCorpusRenderAt`). Still a fixed value for the
+   *  run's duration either way, which is all the passes need. */
+  private lazy val renderAt: LocalDateTime = realCorpusRenderAt.getOrElse(LocalDateTime.of(2026, 8, 1, 0, 0))
 
   /** Counts merges by reason so a per-tick delta is observable. */
   private final class CountingMergeMetrics extends MergeMetrics {
@@ -228,10 +236,65 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     w.webReadModel.reload()
   }
 
+  /**
+   * A REAL `cinema_scrapes` collection to replay instead of the generated corpus,
+   * when `KINOWO_CONVERGENCE_SCRAPES_URI` (+ `_DB`) names one.
+   *
+   * The generated corpus encodes the flap-prone title SHAPES but no real film, so
+   * enrichment can only ever refuse it: every generated row carries
+   * `director = Seq("Some Director")`, which sends resolution down the
+   * director-walk branch and guarantees a miss whatever the title says. Pointing
+   * the suite at a production dump is what lets the enrichment fields carry weight
+   * — real titles, real years, real directors.
+   *
+   * Read-only: the rows are copied into the run's own isolated archive and the
+   * source is never written to, so a live mirror can safely be the source.
+   */
+  private lazy val realScrapeSource: Option[ScrapeArchiveRepository] =
+    Env.get("KINOWO_CONVERGENCE_SCRAPES_URI").map { uri =>
+      val database = MongoClient(uri).getDatabase(
+        Env.get("KINOWO_CONVERGENCE_SCRAPES_DB").getOrElse(country.mongoDb))
+      new MongoScrapeArchiveRepository(Some(database))
+    }
+
+  /** The real corpus's own render instant: the start of the day its OLDEST listed
+   *  showtime falls on, so every screening the dump holds is in the future and the
+   *  read model renders all of it. Taken from the corpus rather than the clock so
+   *  the three passes still agree. */
+  private lazy val realCorpusRenderAt: Option[LocalDateTime] =
+    realScrapeSource.flatMap { source =>
+      source.findAll().flatMap(_.films).flatMap(_.showtimes).map(_.dateTime).minOption
+        .map(_.toLocalDate.atStartOfDay)
+    }
+
   /** Seed the archive with this country's corpus, exactly as a real scrape would
    *  have filed it — through `ScrapeAttempt`, so the archive's own "content only"
    *  rule and its BSON round-trip are both on the path to the pipeline. */
-  private def seedArchive(archive: ScrapeArchiveRepository): Int = {
+  private def seedArchive(archive: ScrapeArchiveRepository): Int =
+    realScrapeSource.map(seedFromRealScrapes(archive, _)).getOrElse(seedGeneratedCorpus(archive))
+
+  /** Copy a real `cinema_scrapes` dump in, restricted to the cinemas this country's
+   *  catalogue still knows — a dump can outlive a venue, and `ArchiveReplayWiring`
+   *  drops what the catalogue no longer lists, which would otherwise make the
+   *  seeded/replayed counts disagree for a reason that isn't loss. */
+  private def seedFromRealScrapes(archive: ScrapeArchiveRepository, source: ScrapeArchiveRepository): Int = {
+    val known = CountryScrapeCorpus.cinemasOf(country).toSet
+    val rows  = source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
+    rows.foreach { row =>
+      archive.record(ScrapeAttempt(
+        cinema          = row.cinema,
+        city            = row.city.orElse(Cinema.cityOf(row.cinema)),
+        at              = row.lastSuccess.map(_.at).getOrElse(Instant.parse("2026-07-28T06:00:00Z")),
+        listingComplete = row.lastSuccess.exists(_.listingComplete),
+        films           = row.films
+      ))
+    }
+    info(s"${country.displayName}: seeded from REAL cinema_scrapes — ${rows.size} venues, " +
+         s"${rows.map(_.films.size).sum} listings, rendering at $renderAt")
+    rows.size
+  }
+
+  private def seedGeneratedCorpus(archive: ScrapeArchiveRepository): Int = {
     val listings = CountryScrapeCorpus.listings(country, LocalDateTime.of(2026, 8, 1, 0, 0))
     listings.foreach { case (cinema, films) =>
       archive.record(ScrapeAttempt(
@@ -429,7 +492,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     val records = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     val screenings = w.screeningsRepository.findAll()
     val service = new MovieControllerService(w.webReadModel)
-    val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, RenderAt))
+    val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt))
     (records, screenings, rows)
   }
 
@@ -500,7 +563,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
       // ── what the WEB would render ────────────────────────────────────────────
       val rows = country.cities.sortBy(_.slug).flatMap(c =>
-        new MovieControllerService(w.webReadModel).toSchedules(c, RenderAt))
+        new MovieControllerService(w.webReadModel).toSchedules(c, renderAt))
       val shown        = rows.flatMap(_.showings.flatMap(_._2))
       val shownCinemas = shown.map(_.cinema.displayName).toSet
       val shownScreenings = shown.flatMap(cs => cs.showtimes.map(st => (cs.cinema.displayName, st.dateTime))).toSet
