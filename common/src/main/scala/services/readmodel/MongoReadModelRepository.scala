@@ -127,27 +127,57 @@ class MongoReadModelRepository(
   // worker's 30-min reconcile from decoding the whole read model onto the heap —
   // the transient that, stacked on the resident corpus, exhausted the 320m heap.
 
-  override def findAllMovieIds(): Seq[String] = movies match {
+  /**
+   * Keyset-paged id projection — [[pagedFindAll]]'s shape, minus the payload decode.
+   *
+   * These read the same large collections `pagedFindAll` does and were the last
+   * unpaged reads in this file. That is not merely a slow query: one unbounded
+   * cursor over a big collection recurses the async driver's completion chain into
+   * `StackOverflowError` on an I/O thread, which never reaches the caller's
+   * `Await` — the read just times out with no cause, exactly as `movies` and
+   * `screenings` did before [[KeysetScan]] existed. `web_screenings` is the
+   * largest collection we hold (a country's showtimes, hundreds of thousands of
+   * rows), so it is the likeliest of all of them to hit it.
+   *
+   * An incomplete scan yields `Seq.empty`, which is the SAFE direction here: the
+   * prune deletes read-model rows absent from the source, so fewer ids means fewer
+   * deletions, never spurious ones. It is logged loudly all the same, because the
+   * quiet version of this failure is a prune that stops working and lets stale
+   * cards accumulate with nothing but a `warn` to show for it.
+   */
+  private def pagedIds[A](
+    collection: Option[MongoCollection[?]],
+    label:      String,
+    projection: org.bson.conversions.Bson
+  )(decode: BsonDocument => A): Seq[A] = collection match {
     case Some(c) =>
-      Try(Await.result(c.find[BsonDocument]().projection(Projections.include("_id")).toFuture(), 60.seconds)
-        .map(_.getString("_id").getValue)).recover {
-        case exception: Throwable =>
-          logger.warn(s"ReadModelRepository.findAllMovieIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          Seq.empty
-      }.getOrElse(Seq.empty)
+      val buf = Vector.newBuilder[A]
+      val complete = KeysetScan.scan[BsonDocument](
+        label          = label,
+        batchSize      = findAllBatchSize,
+        maxAttempts    = findAllBatchAttempts,
+        initialBackoff = findAllBatchBackoff,
+        keyOf          = _.getString("_id").getValue,
+        fetchPage      = (afterId, limit) => {
+          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+          Await.result(
+            c.find[BsonDocument](filter).projection(projection).sort(Sorts.ascending("_id")).limit(limit).toFuture(),
+            60.seconds)
+        },
+        onIncomplete   = exception =>
+          logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: " +
+            s"${exception.getMessage} — returning empty, so this tick's prune will under-delete rather than over-delete")
+      )(batch => buf ++= batch.map(decode))
+      if (complete) buf.result() else Seq.empty
     case None => Seq.empty
   }
 
-  override def findAllScreeningRefs(): Seq[ScreeningRef] = screenings match {
-    case Some(c) =>
-      Try(Await.result(c.find[BsonDocument]().projection(Projections.include("_id", "filmId")).toFuture(), 60.seconds)
-        .map(d => ScreeningRef(d.getString("_id").getValue, d.getString("filmId").getValue))).recover {
-        case exception: Throwable =>
-          logger.warn(s"ReadModelRepository.findAllScreeningRefs failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          Seq.empty
-      }.getOrElse(Seq.empty)
-    case None => Seq.empty
-  }
+  override def findAllMovieIds(): Seq[String] =
+    pagedIds(movies, "ReadModelRepository.findAllMovieIds", Projections.include("_id"))(_.getString("_id").getValue)
+
+  override def findAllScreeningRefs(): Seq[ScreeningRef] =
+    pagedIds(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId"))(d =>
+      ScreeningRef(d.getString("_id").getValue, d.getString("filmId").getValue))
 
   // Server-side document counts — the read model's cheap integrity probe. These
   // count index entries (no payload decode), so the web's backstop can detect

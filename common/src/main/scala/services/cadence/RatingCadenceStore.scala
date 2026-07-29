@@ -211,12 +211,28 @@ object RatingCadenceReader {
 class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceReader with Logging {
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(RatingCadenceReader.Collection))
 
+  /** Keyset-paged, matching the hydrate path in this same file — that one was given
+   *  the treatment when `rating_cadence` grew; this reader was missed. An unbounded
+   *  cursor over a corpus-sized collection recurses the async driver into
+   *  `StackOverflowError` on an I/O thread, which the caller sees only as an
+   *  unexplained timeout. */
   override def all(): Seq[(String, RatingChangeStats)] = coll match {
     case None => Seq.empty
     case Some(c) =>
-      Try(Await.result(c.find().toFuture(), 30.seconds).flatMap(MongoRatingCadenceStore.decodeRecord))
-        .recover { case e => logger.warn(s"Rating-cadence read failed: ${e.getMessage}"); Seq.empty }
-        .getOrElse(Seq.empty)
+      val buf = Vector.newBuilder[(String, RatingChangeStats)]
+      KeysetScan.scan[Document](
+        label          = "RatingCadenceStore all",
+        batchSize      = 2000,
+        maxAttempts    = 3,
+        initialBackoff = 500.millis,
+        keyOf          = _.getString("_id"),
+        fetchPage      = (afterId, limit) => {
+          val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
+          Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+        },
+        onIncomplete   = exception => logger.warn(s"Rating-cadence read keyset scan failed: ${exception.getMessage}")
+      )(batch => buf ++= batch.flatMap(MongoRatingCadenceStore.decodeRecord))
+      buf.result()
   }
 
   override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] =

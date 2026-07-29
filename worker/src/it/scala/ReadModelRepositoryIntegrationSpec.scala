@@ -58,4 +58,25 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
       got shouldBe ids            // all 5, _id-sorted, no dup or skip across the 3 keyset pages
     } finally ids.foreach(paged.deleteScreening)
   }
+
+  // The id-only projections the PRUNE reads were the last unpaged reads in the file.
+  // findAllScreenings got KeysetScan when its single cursor timed out at corpus scale;
+  // findAllScreeningRefs did not, over that same largest collection. Same mechanism
+  // guard — every ref back exactly once across page boundaries — because a SHORT read
+  // here silently shrinks the prune instead of failing. `findAllMovieIds` goes through
+  // the same `pagedIds` helper, so this covers both.
+  "findAllScreeningRefs" should "page across batch boundaries, returning every ref exactly once" in {
+    import models.CityScreening
+    val paged = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)
+    val ids   = (0 until 5).map(i => s"__it-rm-ref-${i}__")
+    val docs  = ids.map(id => CityScreening(_id = id, filmId = "__it-rm-ref-film__",
+      city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
+    try {
+      docs.foreach(paged.upsertScreening)
+      val refs = paged.findAllScreeningRefs().filter(_._id.startsWith("__it-rm-ref-"))
+      refs.map(_._id) shouldBe ids
+      refs.map(_.filmId).distinct shouldBe Seq("__it-rm-ref-film__")
+    } finally ids.foreach(paged.deleteScreening)
+  }
+
 }
