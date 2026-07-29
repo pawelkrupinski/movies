@@ -40,9 +40,14 @@ on:
     workflow_dispatch:
 
 concurrency:
-    # A push supersedes an in-flight run of the same ref; the nightly and manual
-    # runs keep their own lane so a scheduled run is never cancelled by a push.
-    group: country-convergence-${{ github.event.workflow_run.head_sha || github.ref }}-${{ github.event_name }}
+    # One lane for the whole workflow, so a new run always supersedes the one
+    # still in flight. Keying on the head SHA and the event name (as this did)
+    # gave every deploy, nightly and manual run its own lane, which meant
+    # nothing ever cancelled anything: three legs of up to 75 minutes each piled
+    # up on the runner pool while the only run whose result anyone reads is the
+    # newest one. All three triggers land on `main`, so the ref keeps a lane per
+    # branch for the rare dispatch from somewhere else without splitting main's.
+    group: country-convergence-${{ github.ref }}
     cancel-in-progress: true
 
 jobs:
