@@ -269,29 +269,60 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       new MongoScrapeArchiveRepository(Some(database))
     }
 
+  /**
+   * The real corpus, read ONCE and shared by everything that needs it.
+   *
+   * Once because the read is expensive and fragile: over the CI tunnel this is a
+   * whole collection (1,533 rows for Germany) crossing a flyctl proxy, and doing it
+   * twice — as an earlier version did, separately for the render instant and for the
+   * seeding — is what pushed it past the repository's 120s ceiling.
+   *
+   * And it FAILS LOUDLY when it comes back empty, because `findAll` cannot tell the
+   * difference. It is best-effort by design (a timeout is logged and returns
+   * `Seq.empty`), which is right for the production archive — a scrape must not die
+   * because its side-record didn't save — and exactly wrong for a corpus source. On
+   * the first CI run the timeout returned no rows, the suite seeded an empty corpus
+   * and reported "0 venues, 0 listings" through two tests that then failed for the
+   * wrong reason. A failed read is not data: retry it, and if it is still empty say
+   * so rather than testing nothing.
+   */
+  private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
+    val known = CountryScrapeCorpus.cinemasOf(country).toSet
+    def read(): Seq[services.scrapes.ArchivedScrape] =
+      source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
+
+    val rows = Iterator.continually(read()).take(3).find(_.nonEmpty).getOrElse(Seq.empty)
+    if (rows.isEmpty)
+      throw new IllegalStateException(
+        s"KINOWO_CONVERGENCE_SCRAPES_URI is set but ${country.displayName}'s cinema_scrapes read came back " +
+        "empty after 3 attempts. `findAll` swallows a timeout and returns nothing, so this is far more " +
+        "likely a slow/dropped connection than a genuinely empty archive — and seeding an empty corpus " +
+        "would let the suite pass having verified nothing.")
+    rows
+  }
+
   /** The real corpus's own render instant: the start of the day its OLDEST listed
    *  showtime falls on, so every screening the dump holds is in the future and the
    *  read model renders all of it. Taken from the corpus rather than the clock so
    *  the three passes still agree. */
   private lazy val realCorpusRenderAt: Option[LocalDateTime] =
-    realScrapeSource.flatMap { source =>
-      source.findAll().flatMap(_.films).flatMap(_.showtimes).map(_.dateTime).minOption
-        .map(_.toLocalDate.atStartOfDay)
+    Option.when(realScrapeSource.isDefined)(realScrapeRows).flatMap { rows =>
+      rows.flatMap(_.films).flatMap(_.showtimes).map(_.dateTime).minOption.map(_.toLocalDate.atStartOfDay)
     }
 
   /** Seed the archive with this country's corpus, exactly as a real scrape would
    *  have filed it — through `ScrapeAttempt`, so the archive's own "content only"
    *  rule and its BSON round-trip are both on the path to the pipeline. */
   private def seedArchive(archive: ScrapeArchiveRepository): Int =
-    realScrapeSource.map(seedFromRealScrapes(archive, _)).getOrElse(seedGeneratedCorpus(archive))
+    if (realScrapeSource.isDefined) seedFromRealScrapes(archive) else seedGeneratedCorpus(archive)
 
-  /** Copy a real `cinema_scrapes` dump in, restricted to the cinemas this country's
-   *  catalogue still knows — a dump can outlive a venue, and `ArchiveReplayWiring`
-   *  drops what the catalogue no longer lists, which would otherwise make the
-   *  seeded/replayed counts disagree for a reason that isn't loss. */
-  private def seedFromRealScrapes(archive: ScrapeArchiveRepository, source: ScrapeArchiveRepository): Int = {
-    val known = CountryScrapeCorpus.cinemasOf(country).toSet
-    val rows  = source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
+  /** Copy the real `cinema_scrapes` dump in. Already restricted to the cinemas this
+   *  country's catalogue still knows (see [[realScrapeRows]]) — a dump can outlive a
+   *  venue, and `ArchiveReplayWiring` drops what the catalogue no longer lists, which
+   *  would otherwise make the seeded/replayed counts disagree for a reason that isn't
+   *  loss. */
+  private def seedFromRealScrapes(archive: ScrapeArchiveRepository): Int = {
+    val rows = realScrapeRows
     rows.foreach { row =>
       archive.record(ScrapeAttempt(
         cinema          = row.cinema,
