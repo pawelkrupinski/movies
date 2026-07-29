@@ -66,6 +66,37 @@ object CorpusDiff {
     }.mkString("\n")
   }
 
+  /**
+   * The first rendered row that differs, pinpointed at the character where the two
+   * renderings part company.
+   *
+   * A rendered row is one enormous `toString`, and printing its first N characters
+   * is worse than useless: the divergence that started all this differed in a
+   * poster URL some 700 characters in, so both sides printed an identical-looking
+   * 400-character prefix and the clue said, in effect, "these two identical things
+   * are different". Seeking to the first differing offset and showing a window
+   * around it turns that into the field name and both values.
+   */
+  def rows(a: Seq[Any], b: Seq[Any], labelA: String = "0", labelB: String = "1"): String = {
+    val sizes = if (a.size == b.size) "" else s"  sizes differ: $labelA=${a.size} $labelB=${b.size}\n"
+    val firstDiff = a.iterator.zip(b.iterator).zipWithIndex
+      .collectFirst { case ((x, y), index) if x != y => index -> pinpoint(String.valueOf(x), String.valueOf(y), labelA, labelB) }
+    sizes + firstDiff.map { case (index, detail) => s"  row $index differs:\n$detail" }
+      .getOrElse("  no row differs pairwise — the difference is in row COUNT or ORDER alone")
+  }
+
+  /** A window around the first character two renderings disagree on, so the clue
+   *  shows the difference rather than a common prefix that hides it. */
+  private def pinpoint(x: String, y: String, labelA: String, labelB: String): String = {
+    val common = x.iterator.zip(y.iterator).takeWhile { case (c, d) => c == d }.size
+    val from   = math.max(0, common - 70)
+    val to     = math.min(math.max(x.length, y.length), common + 90)
+    def window(s: String) = s"${if (from > 0) "…" else ""}${s.slice(from, to)}${if (to < s.length) "…" else ""}"
+    s"    common prefix: $common chars; first differs at char $common\n" +
+    s"    $labelA=${window(x)}\n" +
+    s"    $labelB=${window(y)}"
+  }
+
   /** Films whose per-slot showtimes differ, by slot-key sizes. The screenings
    *  collection is keyed `filmId -> slotKey -> showtimes`. */
   def slots(a: Map[String, Map[String, Seq[Showtime]]],

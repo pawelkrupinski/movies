@@ -16,6 +16,7 @@ import tools.{ArchiveReplayWiring, CountryScrapeCorpus, EnrichmentCache, Env, Is
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.util.{Random, Try}
 
 /**
@@ -272,32 +273,46 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   /**
    * The real corpus, read ONCE and shared by everything that needs it.
    *
-   * Once because the read is expensive and fragile: over the CI tunnel this is a
-   * whole collection (1,533 rows for Germany) crossing a flyctl proxy, and doing it
-   * twice — as an earlier version did, separately for the render instant and for the
-   * seeding — is what pushed it past the repository's 120s ceiling.
+   * Read cinema BY CINEMA rather than with one `findAll`, which is the difference
+   * between this working and not. Over the CI tunnel a whole-collection scan of
+   * Germany's 1,533 rows never once finished inside `findAll`'s 120s ceiling — the
+   * first run logged nine consecutive timeouts (three tests × three attempts, 18
+   * minutes) and then failed. A proxied connection does not survive streaming a
+   * collection of that size; it survives point reads, and `find(cinema)` is an
+   * `_id`-indexed lookup that returns in milliseconds. We only ever wanted the
+   * cinemas this country's catalogue still lists, so the scan was never necessary
+   * — asking for exactly those turns one fragile operation into many robust ones.
    *
-   * And it FAILS LOUDLY when it comes back empty, because `findAll` cannot tell the
-   * difference. It is best-effort by design (a timeout is logged and returns
-   * `Seq.empty`), which is right for the production archive — a scrape must not die
-   * because its side-record didn't save — and exactly wrong for a corpus source. On
-   * the first CI run the timeout returned no rows, the suite seeded an empty corpus
-   * and reported "0 venues, 0 listings" through two tests that then failed for the
-   * wrong reason. A failed read is not data: retry it, and if it is still empty say
-   * so rather than testing nothing.
+   * Modestly parallel because the round-trips dominate: 1,533 sequential lookups
+   * across a tunnel is minutes of pure latency, and a small fixed pool is this
+   * repo's standing shape for network-bound fan-out.
+   *
+   * It still FAILS LOUDLY when the result is empty. `findAll` and `find` are both
+   * best-effort by design — a timeout is logged and yields nothing — which is right
+   * for the production archive, where a scrape must not die because its side-record
+   * didn't save, and exactly wrong for a corpus source. A failed read is not data:
+   * an empty corpus would let the suite pass having verified nothing.
    */
   private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
-    val known = CountryScrapeCorpus.cinemasOf(country).toSet
-    def read(): Seq[services.scrapes.ArchivedScrape] =
-      source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
+    val known = CountryScrapeCorpus.cinemasOf(country)
+    val pool  = java.util.concurrent.Executors.newFixedThreadPool(8)
+    val rows =
+      try {
+        implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
+        scala.concurrent.Await.result(
+          scala.concurrent.Future.traverse(known)(cinema => scala.concurrent.Future(source.find(cinema))),
+          10.minutes
+        ).flatten.filter(_.films.nonEmpty)
+      } finally pool.shutdown()
 
-    val rows = Iterator.continually(read()).take(3).find(_.nonEmpty).getOrElse(Seq.empty)
     if (rows.isEmpty)
       throw new IllegalStateException(
         s"KINOWO_CONVERGENCE_SCRAPES_URI is set but ${country.displayName}'s cinema_scrapes read came back " +
-        "empty after 3 attempts. `findAll` swallows a timeout and returns nothing, so this is far more " +
-        "likely a slow/dropped connection than a genuinely empty archive — and seeding an empty corpus " +
-        "would let the suite pass having verified nothing.")
+        s"empty across all ${known.size} of the catalogue's cinemas. The archive reads are best-effort — a " +
+        "timeout is logged and yields nothing — so this is far more likely a slow or dropped connection " +
+        "than a genuinely empty archive, and seeding an empty corpus would let the suite pass having " +
+        "verified nothing.")
+    info(s"${country.displayName}: read ${rows.size} archived scrapes from ${known.size} catalogue cinemas")
     rows
   }
 
@@ -561,13 +576,15 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
         val (recordsI, screeningsI, rowsI) = passes(i)
         if (recordsI != records0) divergences += s"FILMS differ on pass $i:\n${CorpusDiff.records(records0, recordsI, "pass0", s"pass$i")}"
         if (screeningsI != screenings0) divergences += s"SCREENINGS differ on pass $i:\n${CorpusDiff.slots(screenings0, screeningsI, "pass0", s"pass$i")}"
-        if (rowsI != rows0) {
-          val first = rows0.zipAll(rowsI, null, null).collectFirst { case (a, b) if a != b =>
-            s"  pass0=${String.valueOf(a).take(400)}\n  pass$i=${String.valueOf(b).take(400)}" }.getOrElse("")
-          divergences += s"RENDERED ROWS differ on pass $i (${rows0.size} vs ${rowsI.size}):\n$first"
-        }
+        if (rowsI != rows0)
+          divergences += s"RENDERED ROWS differ on pass $i (${rows0.size} vs ${rowsI.size}):\n" +
+                         CorpusDiff.rows(rows0, rowsI, "pass0", s"pass$i")
       }
-      withClue(s"${divergences.size} order-dependent divergence(s):\n${divergences.take(10).mkString("\n")}\n") {
+      // Name the seeds: each pass's arrival order is a pure function of its seed, so
+      // quoting them makes a CI-only divergence reproducible on a laptop instead of
+      // something you re-run and hope to see again.
+      val seeds = (0 until Passes).map(i => s"pass$i=0x${(OrderSeed + i.toLong).toHexString}").mkString(", ")
+      withClue(s"${divergences.size} order-dependent divergence(s) [$seeds]:\n${divergences.take(10).mkString("\n")}\n") {
         divergences.toList shouldBe empty
       }
     }
