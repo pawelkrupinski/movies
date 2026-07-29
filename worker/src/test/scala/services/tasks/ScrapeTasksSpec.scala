@@ -387,6 +387,27 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   // without advancing anything. Prod 2026-07-29: ~139 ScrapeCinema/h completed but
   // only ~30-45/h stamped, against ~120/h needed, so the oldest UK cinema aged in a
   // straight diagonal to 14.6h against a 7h window.
+  // The throttled trickle exists to back off, but it must still sweep the roster
+  // once per freshness window — that is what ScrapeCadence sizes it for. Expressed
+  // in VENUES that held; once the budget became task-denominated, dividing it by a
+  // chunked country's fan-out collapsed it to ONE venue a tick: UK max(26,36)/36 = 1
+  // against the 2.01/tick its 843-venue, 420-min roster needs, and DE max(26,16)/16
+  // = 1 against 8.52. Both countries' oldest-scrape age then climbed in a straight
+  // diagonal (UK to 15h against a 7h window) while the queue sat EMPTY.
+  it should "keep the throttled trickle wide enough to sweep the roster in one window" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
+    // 5 cinemas over a 2-tick window → 3 venues/tick to keep pace. At 10 tasks per
+    // venue a flat 10-task throttled budget would admit 1; the cadence floor lifts it.
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      dueWindow = new DueWindow(2.minutes), interval = 1.minute,
+      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 10,
+      tasksPerVenue = 10, throttle = throttled)
+
+    reaper.tick() shouldBe 3
+  }
+
   it should "leave a cinema whose scrape is already running out of the due set" in {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue

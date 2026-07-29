@@ -151,6 +151,20 @@ class ScrapeReaper(
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
+
+  /** Venues this tick must admit for the roster to be swept once per freshness
+   *  window — `corpus / ticksPerWindow`, rounded up. The floor under the THROTTLED
+   *  trickle: backing off is meant to slow the pool down, not to park the corpus, and
+   *  [[ScrapeCadence.ThrottledMaxEnqueuePerTick]] is sized on exactly this reasoning
+   *  ("must still clear the whole catalogue within one freshness window"). It just
+   *  could not survive being divided by a chunked country's fan-out — 26 tasks / 36
+   *  per UK venue is one venue a tick against the 2.01 its 843-venue, 420-min roster
+   *  needs; DE's 26 / 16 is one against 8.52. Derived rather than configured, so it
+   *  tracks the roster and the window instead of drifting from them. */
+  private val cadenceVenuesPerTick: Int = {
+    val ticksPerWindow = math.max(1L, dueWindow.period.toMillis / math.max(1L, interval.toMillis))
+    math.max(1, math.ceil(scrapers.size.toDouble / ticksPerWindow).toInt)
+  }
   // Instant of the first tick, anchoring the post-boot ramp; set once, then read-only.
   private val rampAnchor = new AtomicReference[Option[Instant]](None)
 
@@ -253,10 +267,12 @@ class ScrapeReaper(
 
     if (throttle.isThrottled) {
       // The throttled budget is a venue count from a time when a venue was a task, so
-      // floor it at one venue's fan-out — otherwise a chunked country can never admit
-      // anything at all while throttled and its corpus parks indefinitely, rather than
-      // trickling. One venue per tick IS the trickle for a chunked country.
-      val cap      = venuesWithin(math.max(throttledMaxEnqueuePerTick, perVenue))
+      // floor it at what one WINDOW's sweep needs — see `cadenceVenuesPerTick`.
+      // Flooring at a single venue's fan-out instead (the first attempt) let the
+      // trickle collapse to one venue a tick on a chunked country, which is below the
+      // rate its own freshness window implies, so the roster aged without bound while
+      // the queue sat empty. Backing off must not mean falling behind for ever.
+      val cap      = venuesWithin(math.max(throttledMaxEnqueuePerTick, cadenceVenuesPerTick * perVenue))
       val enqueued = enqueueUpTo(due, cap)
       if (enqueued > 0)
         logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
