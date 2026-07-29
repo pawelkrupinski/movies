@@ -394,6 +394,28 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   // against the 2.01/tick its 843-venue, 420-min roster needs, and DE max(26,16)/16
   // = 1 against 8.52. Both countries' oldest-scrape age then climbed in a straight
   // diagonal (UK to 15h against a 7h window) while the queue sat EMPTY.
+  // A chunked venue's fan-out is deliberately staggered over ChunkEnqueueSpread so it
+  // can't monopolise the pool, which means a venue takes the WHOLE spread window to
+  // finish however fast the pool is. Throughput is therefore concurrent-venues divided
+  // by the spread — so the outstanding budget, which decides how many venues can be in
+  // flight, has to account for it. A flat 150 tasks gave UK 4 concurrent venues over a
+  // 5min spread = 48 venues/h against the 120 its roster needs, and DE 9 = 108/h
+  // against 511. Prod 2026-07-29 showed the signature: pool worked_on=0 (IDLE) beside
+  // 116 waiting tasks, because the waiting chunks were not yet ELIGIBLE.
+  it should "size the outstanding budget for the spread, so venues can run concurrently" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
+    val queue    = new InMemoryTaskQueue
+    // 5 cinemas / 2-tick window = 3 venues per tick, each dripping over a 3-tick
+    // spread → 9 venues must be in flight at once. At 10 tasks a venue a flat 20-task
+    // budget would admit 2; the spread floor lifts it to cover all 5 that are due.
+    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
+      dueWindow = new DueWindow(2.minutes), interval = 1.minute,
+      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20,
+      tasksPerVenue = 10, chunkSpread = 3.minutes)
+
+    reaper.tick() shouldBe 5
+  }
+
   it should "keep the throttled trickle wide enough to sweep the roster in one window" in {
     val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
     val queue    = new InMemoryTaskQueue

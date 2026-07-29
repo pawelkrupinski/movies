@@ -134,6 +134,14 @@ class ScrapeReaper(
   // [[ScrapeInFlight]]), so without this it stays most-overdue for its own duration
   // and the reaper re-admits it every tick into a no-op against the run mutex.
   inFlight: ScrapeInFlight = ScrapeInFlight.Never,
+  // How long a chunked venue's fan-out is staggered over
+  // ([[ScrapeCadence.ChunkEnqueueSpread]]). The reaper needs it because that spread
+  // sets how long a venue OCCUPIES the budget: its chunks only become eligible
+  // gradually, so the venue takes the whole window to finish however idle the pool
+  // is. Throughput is concurrent-venues / spread, which makes the spread a term in
+  // how big the outstanding budget must be — see `spreadAwareOutstandingBudget`.
+  // Default zero = no spread, leaving unchunked callers and tests unaffected.
+  chunkSpread: FiniteDuration = Duration.Zero,
   // SPREAD the (non-throttled) per-tick batch across the tick interval instead of
   // dumping it all at the tick instant. The reaper enqueues a clump of due cinemas
   // each tick; they fetch in parallel and their HTML/JSON payloads PARSE together —
@@ -164,6 +172,28 @@ class ScrapeReaper(
   private val cadenceVenuesPerTick: Int = {
     val ticksPerWindow = math.max(1L, dueWindow.period.toMillis / math.max(1L, interval.toMillis))
     math.max(1, math.ceil(scrapers.size.toDouble / ticksPerWindow).toInt)
+  }
+
+  /** The outstanding-task budget actually used: at least enough for the venues that
+   *  must be IN FLIGHT AT ONCE to hold cadence.
+   *
+   *  A venue's chunks are released gradually across `chunkSpread`, so a venue occupies
+   *  the budget for that whole window regardless of how fast the pool drains — making
+   *  throughput `concurrentVenues / chunkSpread`, not `pool capacity`. A flat budget
+   *  therefore silently caps the sweep rate: 150 tasks over UK's 36-per-venue fan-out
+   *  is 4 concurrent venues over a 5min spread = 48 venues/h against the 120 its
+   *  843-venue, 420-min roster needs; DE's 9 concurrent = 108/h against 511. Prod
+   *  2026-07-29 showed it as an IDLE pool (`worked_on`=0) beside 116 waiting tasks —
+   *  queued but not yet eligible — while the oldest cinema aged past 15h.
+   *
+   *  Derived from the roster, the window and the spread rather than configured, so it
+   *  cannot drift from them. The configured value still wins when it is larger. */
+  private val spreadAwareOutstandingBudget: Int = {
+    val spreadTicks = math.max(1L, chunkSpread.toMillis / math.max(1L, interval.toMillis))
+    val concurrent  = cadenceVenuesPerTick * spreadTicks.toInt
+    val floor       = concurrent * math.max(1, tasksPerVenue)
+    if (maxOutstandingScrapeTasks == Int.MaxValue) Int.MaxValue
+    else math.max(maxOutstandingScrapeTasks, floor)
   }
   // Instant of the first tick, anchoring the post-boot ramp; set once, then read-only.
   private val rampAnchor = new AtomicReference[Option[Instant]](None)
@@ -281,7 +311,7 @@ class ScrapeReaper(
       enqueued
     } else if (enqueueSpread <= 1) {
       // Un-spread healthy path (the default): enqueue the whole capped batch now.
-      val enqueued = enqueueUpTo(due, math.min(rampedCap(now), venuesWithin(maxOutstandingScrapeTasks)))
+      val enqueued = enqueueUpTo(due, math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget)))
       if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s) ($outstanding scrape task(s) already waiting).")
       enqueued
     } else {
@@ -290,7 +320,7 @@ class ScrapeReaper(
       // offsets. The queue dedups, so a slice landing near the next tick can't
       // double-enqueue. `tick` returns only what it enqueued SYNCHRONOUSLY (slice 0),
       // matching the un-spread contract for the first-of-batch.
-      val plan = planSlices(due.take(math.min(rampedCap(now), venuesWithin(maxOutstandingScrapeTasks))), enqueueSpread)
+      val plan = planSlices(due.take(math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget))), enqueueSpread)
       val enqueuedNow = plan.headOption.map { case (_, first) => enqueueUpTo(first, first.size) }.getOrElse(0)
       plan.drop(1).foreach { case (offset, group) =>
         scheduleSlice(offset, () => {

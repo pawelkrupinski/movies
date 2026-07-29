@@ -1160,6 +1160,7 @@ class WorkerWiring(
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
       throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, tasksPerVenue = scrapeTasksPerVenue,
+      chunkSpread = services.tasks.ScrapeCadence.ChunkEnqueueSpread,
       inFlight = chunkRunInFlight,
       enqueueSpread = scrapeEnqueueSpreadSlices, runStore = scheduledRunStore)
   /** A chunked venue is mid-scrape while its run doc is live and not yet abandoned.
