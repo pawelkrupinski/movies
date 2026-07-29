@@ -117,29 +117,41 @@ jobs:
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
-            # Restore the corpus + enrichment fixtures recorded out of band by
-            # `Record convergence fixtures`. Restore-only and prefix-matched, so a
-            # leg takes the newest available capture and simply proceeds without one
-            # when none exists — the spec then falls back to fetching live and
-            # persisting, which is what produces the next capture.
-            - name: Restore recorded convergence fixtures
+            # Restore BOTH recorded fixture sets, each from its own workflow and its
+            # own cache key: the corpus from the nightly `Record scrape fixtures`, the
+            # enrichment answers from `Record enrichment fixtures`, which runs after
+            # every convergence. Restore-only and prefix-matched, so a leg always takes
+            # the newest capture of each and simply proceeds without one when none
+            # exists — the spec then falls back to fetching live and persisting, which
+            # is what produces the next capture.
+            - name: Restore recorded scrape fixtures
               uses: actions/cache/restore@v5
               with:
-                  path: fixture-archive
-                  key: convergence-fixtures-${{ matrix.code }}-
-                  restore-keys: convergence-fixtures-${{ matrix.code }}-
+                  path: scrape-archive
+                  key: scrape-fixtures-${{ matrix.code }}-
+                  restore-keys: scrape-fixtures-${{ matrix.code }}-
 
-            - name: Unpack them if present
+            - name: Restore recorded enrichment fixtures
+              uses: actions/cache/restore@v5
+              with:
+                  path: enrichment-archive
+                  key: enrichment-fixtures-${{ matrix.code }}-
+                  restore-keys: enrichment-fixtures-${{ matrix.code }}-
+
+            - name: Unpack whichever fixtures are present
               run: |
                   set -euo pipefail
-                  ARCHIVE="fixture-archive/convergence-fixtures-${{ matrix.code }}.tar.gz"
-                  if [ -f "$ARCHIVE" ]; then
-                      tar -xzf "$ARCHIVE"
-                      echo "restored $(du -h "$ARCHIVE" | cut -f1) of fixtures"
-                      find test/resources/fixtures/corpus -type f 2>/dev/null | head -3 || true
-                  else
-                      echo "no recorded fixtures — this leg will fetch live and capture for the next one"
-                  fi
+                  for archive in "scrape-archive/scrapes-${{ matrix.code }}.tar.gz" \
+                                 "enrichment-archive/enrichment-${{ matrix.code }}.tar.gz"; do
+                      if [ -f "$archive" ]; then
+                          tar -xzf "$archive"
+                          echo "restored $archive ($(du -h "$archive" | cut -f1))"
+                      else
+                          echo "no $archive — this leg fetches live for it and the recorder captures it next"
+                      fi
+                  done
+                  find test/resources/fixtures/corpus test/resources/fixtures/enrichment-${{ matrix.code }} \
+                       -type f 2>/dev/null | wc -l | xargs echo "fixture files available:"
 
             - uses: actions/setup-java@v5
               with:

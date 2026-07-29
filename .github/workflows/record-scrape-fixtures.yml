@@ -1,0 +1,114 @@
+#
+# Nightly capture of every country's REAL `cinema_scrapes` into a fixture file,
+# stored in the actions cache for the convergence legs to replay.
+#
+# Separate from the enrichment capture because the two have nothing in common but
+# a destination. This one reads one Mongo collection and is done in minutes; the
+# enrichment capture depends on what a convergence run discovered and therefore
+# runs after it. Bundling them meant recording a corpus cost a full convergence
+# run — scrape, fold, settle, project, enrich, three order-independence passes —
+# to obtain something a single collection read produces.
+#
+# Fetching the corpus INSIDE a leg is what every convergence failure traced back
+# to: prod Mongo has no public IP, so the only route is a `flyctl proxy`, and the
+# leg met pages large enough to overflow the Mongo driver's completion chain, a
+# proxy that exited mid-run, a proxy that wedged while holding its port, and a
+# driver that noticed neither for 30s at a time. Recording out of band leaves the
+# legs reading local files.
+#
+# It also pins the corpus. Prod drifts under a running test — the same Polish
+# corpus measured 7,044, then 7,055, then 7,063 listings inside an hour as venues
+# rescraped — so a divergence found in one run could not be re-examined in the
+# next. A recorded fixture makes a failing corpus keepable.
+#
+name: Record scrape fixtures
+
+on:
+    # Midnight Warsaw, year-round. GitHub cron is UTC-only and DST-unaware, and
+    # Warsaw is UTC+1 (CET) / UTC+2 (CEST); 23:01 UTC is the latest instant that is
+    # still just-after-midnight Warsaw in winter, and lands 01:01 in summer. Both
+    # are after midnight, so one plain cron covers the year with no DST gate — the
+    # same reasoning `country-fixture-artifact.yml` documents.
+    schedule:
+        - cron: '1 23 * * *'
+    workflow_dispatch:
+
+concurrency:
+    group: record-scrape-fixtures-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    record:
+        name: scrapes (${{ matrix.country }})
+        strategy:
+            # Parallel and independent: one country's tunnel trouble must not cost
+            # the other two their capture.
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl }
+                    - { country: germany,        code: de }
+                    - { country: united-kingdom, code: uk }
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - name: Tunnel to prod Mongo
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+            - uses: sbt/setup-sbt@v1
+            - uses: actions/cache@v5
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}
+                  restore-keys: |
+                      sbt-target-convergence-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+
+            # Refuses an empty read rather than writing a fixture from one, and
+            # `findAll` discards an incomplete keyset scan — a fixture is
+            # AUTHORITATIVE, and a truncated one already slipped through once at 236
+            # of 281 Polish venues.
+            - name: Record ${{ matrix.country }}'s corpus
+              run: sbt "worker/Test/runMain scripts.RecordCorpusFixture ${{ matrix.code }}"
+              env:
+                  KINOWO_COUNTRY:                 ${{ matrix.code }}
+                  KINOWO_COUNTRIES:               ${{ matrix.code }}
+                  KINOWO_CONVERGENCE_SCRAPES_URI: ${{ secrets.CONVERGENCE_MONGODB_URI }}
+
+            - name: Pack
+              run: |
+                  set -euo pipefail
+                  mkdir -p scrape-archive
+                  tar -czf "scrape-archive/scrapes-${{ matrix.code }}.tar.gz" \
+                      "test/resources/fixtures/corpus/cinema-scrapes-${{ matrix.code }}.json.gz"
+                  ls -l scrape-archive/
+
+            # Run-id-suffixed so each capture is a new entry; the legs restore by
+            # prefix and so always take the newest.
+            - uses: actions/cache/save@v5
+              with:
+                  path: scrape-archive
+                  key: scrape-fixtures-${{ matrix.code }}-${{ github.run_id }}
+
+            - uses: actions/upload-artifact@v6
+              with:
+                  name: scrape-fixtures-${{ matrix.code }}
+                  path: scrape-archive/scrapes-${{ matrix.code }}.tar.gz
+                  retention-days: 3
+                  overwrite: true
+                  if-no-files-found: warn

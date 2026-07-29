@@ -1,0 +1,106 @@
+#
+# Dumps the shared enrichment cache to fixture files after EVERY convergence run,
+# and stores them in the actions cache for the next run to replay.
+#
+# Runs after convergence because convergence is what discovers which answers
+# matter: the legs write every live fill through to `convergence_test` as they go.
+# This job then does a pure TRANSFORMATION of that cache into files — one Mongo
+# read, no TMDB, IMDb, Filmweb, RT or Metacritic calls at all. That is why it can
+# run every time without a rate-limit budget or an hour of runtime.
+#
+# ── Any conclusion, deliberately ─────────────────────────────────────────────
+# A FAILED leg has usually still done most of the enriching before it failed, so
+# gating on success would discard the capture precisely on the runs that populated
+# the cache most. `workflow_run` fires on completion regardless, which is also how
+# convergence itself chains off the deploy.
+#
+name: Record enrichment fixtures
+
+on:
+    workflow_run:
+        workflows: [Country convergence]
+        types: [completed]
+        branches: [main]
+    workflow_dispatch:
+
+concurrency:
+    group: record-enrichment-fixtures-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    record:
+        name: enrichment (${{ matrix.country }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl }
+                    - { country: germany,        code: de }
+                    - { country: united-kingdom, code: uk }
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - name: Tunnel to prod Mongo
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+            - uses: sbt/setup-sbt@v1
+            - uses: actions/cache@v5
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}
+                  restore-keys: |
+                      sbt-target-convergence-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+
+            # Writes the layout `FakeHttpFetch` already replays, so the legs need no
+            # new mechanism to read it. Cached FAILURES are skipped on purpose: a
+            # missing fixture falls through to the live leg, which re-asks and
+            # re-decides, whereas writing a body would fabricate an answer the
+            # service never gave.
+            - name: Dump ${{ matrix.country }}'s enrichment cache to fixtures
+              run: sbt "worker/Test/runMain scripts.DumpEnrichmentFixtures ${{ matrix.code }}"
+              env:
+                  KINOWO_COUNTRY:                         ${{ matrix.code }}
+                  KINOWO_COUNTRIES:                       ${{ matrix.code }}
+                  KINOWO_CONVERGENCE_CACHE_URI:           ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
+
+            # One tarball rather than the raw tree. actions/cache compresses what it
+            # stores, so gzip buys little on SIZE — the win is FILE COUNT: this is
+            # thousands of small files and cache save/restore is dominated by
+            # per-file overhead, not bytes.
+            - name: Pack
+              run: |
+                  set -euo pipefail
+                  mkdir -p enrichment-archive
+                  tar -czf "enrichment-archive/enrichment-${{ matrix.code }}.tar.gz" \
+                      "test/resources/fixtures/enrichment-${{ matrix.code }}"
+                  ls -l enrichment-archive/
+
+            - uses: actions/cache/save@v5
+              with:
+                  path: enrichment-archive
+                  key: enrichment-fixtures-${{ matrix.code }}-${{ github.run_id }}
+
+            - uses: actions/upload-artifact@v6
+              with:
+                  name: enrichment-fixtures-${{ matrix.code }}
+                  path: enrichment-archive/enrichment-${{ matrix.code }}.tar.gz
+                  retention-days: 3
+                  overwrite: true
+                  if-no-files-found: warn
