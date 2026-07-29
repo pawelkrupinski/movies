@@ -1,0 +1,144 @@
+#
+# Records the two inputs a convergence leg needs — the CORPUS (a country's real
+# `cinema_scrapes`) and the ENRICHMENT answers — into GitHub's actions cache, so
+# the legs themselves never have to fetch either.
+#
+# Why a separate workflow. Both captures need prod, and prod Mongo has no public
+# IP: it is reachable only through a `flyctl proxy`. Every convergence failure
+# this suite has had traces to doing that work INSIDE the leg — pages large enough
+# to overflow the Mongo driver's completion chain, a proxy that exits mid-run, a
+# proxy that wedges while holding its port, a driver that notices neither for 30s
+# at a time. Recording once, out of band, leaves the legs reading local files.
+#
+# It also makes a leg REPRODUCIBLE. Prod drifts under a running test — the same
+# Polish corpus measured 7,044, then 7,055, then 7,063 listings inside an hour as
+# venues rescraped — so a divergence found in one run could not be re-examined in
+# the next. A recorded fixture pins it.
+#
+# ── Why it runs after convergence, on ANY conclusion ─────────────────────────
+# The legs are the thing that discovers which enrichment answers matter, and they
+# write every live fill through to the shared cache as they go. A FAILED leg has
+# usually still done most of that work, so gating on success would throw away the
+# capture precisely on the runs that populated it most.
+#
+name: Record convergence fixtures
+
+on:
+    workflow_run:
+        workflows: [Country convergence]
+        types: [completed]
+        branches: [main]
+    # Daily, so a cache that expired (7-day eviction) or a corpus that drifted is
+    # refreshed without waiting for someone to push.
+    schedule:
+        - cron: '40 3 * * *'
+    workflow_dispatch:
+
+concurrency:
+    # One lane per ref: a newer recording supersedes one still running, since only
+    # the freshest capture is ever restored.
+    group: record-convergence-fixtures-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    record:
+        name: record (${{ matrix.country }})
+        strategy:
+            # In parallel, and independent: one country's tunnel trouble must not
+            # cost the other two their capture.
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl, spec: PolandConvergenceSpec }
+                    - { country: germany,       code: de, spec: GermanyConvergenceSpec }
+                    - { country: united-kingdom, code: uk, spec: UnitedKingdomConvergenceSpec }
+        runs-on: ubuntu-latest
+        timeout-minutes: 90
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+
+            # --network host so the container can also reach the prod tunnel on the
+            # runner's loopback. The capture writes its corpus through a real
+            # `cinema_scrapes` round-trip, exactly as a leg does.
+            - name: Start MongoDB (single-node replica set, for change streams)
+              run: |
+                  docker run -d --name mongo --network host mongo:7 --replSet rs0
+                  until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
+                  docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+                  until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
+
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - name: Tunnel to prod Mongo
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+            - uses: sbt/setup-sbt@v1
+
+            - uses: actions/cache@v5
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  key: sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}
+                  restore-keys: |
+                      sbt-target-convergence-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+
+            # Capturing IS running the spec: `CountryConvergenceBehaviour` writes the
+            # corpus fixture on the fallback path (no fixture present → fetch, and
+            # capture on the way through), and every enrichment miss writes through to
+            # the shared cache. So one run produces both artefacts, and refuses to
+            # capture a corpus from an incomplete read.
+            - name: Capture corpus + enrichment for ${{ matrix.country }}
+              run: sbt "e2e/Test/testOnly services.movies.${{ matrix.spec }}"
+              continue-on-error: true
+              env:
+                  MONGODB_URI:                    mongodb://127.0.0.1:27017/?directConnection=true
+                  KINOWO_COUNTRY:                 ${{ matrix.code }}
+                  KINOWO_COUNTRIES:               ${{ matrix.code }}
+                  KINOWO_CONVERGENCE_SCRAPES_URI: ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  KINOWO_CONVERGENCE_CACHE_URI:   ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  TMDB_API_KEY:                   ${{ secrets.TMDB_API_KEY }}
+
+            # One tar.gz rather than the raw tree. actions/cache compresses what it
+            # stores, so the gzip buys little on SIZE — the win is FILE COUNT: an
+            # enrichment corpus is tens of thousands of small files, and cache
+            # save/restore is dominated by per-file overhead, not bytes.
+            - name: Pack the fixtures
+              id: pack
+              run: |
+                  set -euo pipefail
+                  mkdir -p fixture-archive
+                  tar -czf "fixture-archive/convergence-fixtures-${{ matrix.code }}.tar.gz" \
+                      $( [ -d test/resources/fixtures/corpus ] && echo test/resources/fixtures/corpus || echo ) \
+                      $( [ -d test/resources/fixtures/enrichment-${{ matrix.code }} ] && echo test/resources/fixtures/enrichment-${{ matrix.code }} || echo )
+                  ls -l fixture-archive/
+                  echo "size=$(du -h fixture-archive/convergence-fixtures-${{ matrix.code }}.tar.gz | cut -f1)" >> "$GITHUB_OUTPUT"
+
+            # Day-stamped key so a fresh capture always writes a new entry, with the
+            # prefix left for the convergence legs to restore the newest available.
+            - name: Save to the actions cache
+              uses: actions/cache/save@v5
+              with:
+                  path: fixture-archive
+                  key: convergence-fixtures-${{ matrix.code }}-${{ github.run_id }}
+
+            # Also as a downloadable artifact, so a developer can pull the same
+            # capture rather than re-recording it against live upstreams.
+            - name: Upload as an artifact
+              uses: actions/upload-artifact@v6
+              with:
+                  name: convergence-fixtures-${{ matrix.code }}
+                  path: fixture-archive/convergence-fixtures-${{ matrix.code }}.tar.gz
+                  retention-days: 2
+                  overwrite: true
+                  if-no-files-found: warn

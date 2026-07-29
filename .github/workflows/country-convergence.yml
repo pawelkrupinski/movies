@@ -117,6 +117,30 @@ jobs:
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
+            # Restore the corpus + enrichment fixtures recorded out of band by
+            # `Record convergence fixtures`. Restore-only and prefix-matched, so a
+            # leg takes the newest available capture and simply proceeds without one
+            # when none exists — the spec then falls back to fetching live and
+            # persisting, which is what produces the next capture.
+            - name: Restore recorded convergence fixtures
+              uses: actions/cache/restore@v5
+              with:
+                  path: fixture-archive
+                  key: convergence-fixtures-${{ matrix.code }}-
+                  restore-keys: convergence-fixtures-${{ matrix.code }}-
+
+            - name: Unpack them if present
+              run: |
+                  set -euo pipefail
+                  ARCHIVE="fixture-archive/convergence-fixtures-${{ matrix.code }}.tar.gz"
+                  if [ -f "$ARCHIVE" ]; then
+                      tar -xzf "$ARCHIVE"
+                      echo "restored $(du -h "$ARCHIVE" | cut -f1) of fixtures"
+                      find test/resources/fixtures/corpus -type f 2>/dev/null | head -3 || true
+                  else
+                      echo "no recorded fixtures — this leg will fetch live and capture for the next one"
+                  fi
+
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin

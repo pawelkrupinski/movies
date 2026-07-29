@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, CountryScrapeCorpus, EnrichmentCache, Env, IsolatedMongoDatabase,
+import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, EnrichmentCache, Env, IsolatedMongoDatabase,
   MongoEnrichmentCacheStore, SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -286,7 +286,25 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * what turned Germany's silent "0 venues, 0 listings" into a diagnosis, and it
    * stays even though the read underneath it is now sound.
    */
-  private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
+  private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] =
+    if (CorpusFixture.exists(country.code)) {
+      // The checked-in corpus. Preferred over the live read whenever it exists: it
+      // needs no tunnel, costs milliseconds, and — unlike prod — does not move
+      // under the test. Prod drifts as venues rescrape (the same Polish corpus
+      // measured 7,044, then 7,055, then 7,063 listings inside an hour), so a
+      // divergence found against the live read could not be re-examined afterwards.
+      val rows = CorpusFixture.read(country.code)
+      info(s"${country.displayName}: replayed ${rows.size} archived scrapes from ${CorpusFixture.pathFor(country.code)}")
+      rows
+    } else fetchAndCaptureCorpus
+
+  /** Fall back to FETCHING the corpus from a live archive, and write the fixture on
+   *  the way through so the next run does not have to.
+   *
+   *  Self-healing rather than a chore: a country with no fixture yet, or one whose
+   *  fixture was deliberately deleted to refresh it, pays the tunnel once and
+   *  leaves the file behind. */
+  private def fetchAndCaptureCorpus: Seq[services.scrapes.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
     val known = CountryScrapeCorpus.cinemasOf(country).toSet
     val rows  = source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
 
@@ -297,7 +315,13 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
         "failure is logged and yields nothing — so this is far more likely a slow or dropped connection " +
         "than a genuinely empty archive, and seeding an empty corpus would let the suite pass having " +
         "verified nothing.")
-    info(s"${country.displayName}: read ${rows.size} archived scrapes from ${known.size} catalogue cinemas")
+
+    // Only a COMPLETE read is worth capturing — the guard above already refused an
+    // empty one, and a short read would bake a truncated corpus into the repo.
+    val path = CorpusFixture.write(country.code, rows)
+    info(s"${country.displayName}: read ${rows.size} archived scrapes from ${known.size} catalogue cinemas — " +
+         s"captured ${CorpusFixture.renderedBytes(rows) / 1048576} MB of JSON to $path " +
+         s"(${java.nio.file.Files.size(path) / 1048576} MB gzipped); future runs replay it without a tunnel")
     rows
   }
 

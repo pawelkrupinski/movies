@@ -204,7 +204,7 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
    */
   def findAll(): Seq[ArchivedScrape] = coll.toSeq.flatMap { c =>
     val collected = Seq.newBuilder[StoredScrapeDto]
-    services.movies.KeysetScan.scan[StoredScrapeDto](
+    val complete  = services.movies.KeysetScan.scan[StoredScrapeDto](
       label          = "ScrapeArchiveRepository keyset batch",
       batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
       // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run
@@ -224,7 +224,20 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
         logger.warn(s"ScrapeArchiveRepository.findAll incomplete after retries: " +
           s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
     )(batch => collected ++= batch)
-    collected.result().flatMap(StoredScrapeDto.toDomain)
+
+    // Empty on an INCOMPLETE scan, matching `MongoReadModelRepository.pagedFindAll`.
+    // Returning what a partial scan happened to collect is the subtler half of "a
+    // failed read is not data": it looks like a smaller archive rather than a
+    // failure, and callers cannot tell. It nearly wrote a corpus FIXTURE missing 45
+    // of 281 venues — a truncated read that would then have been replayed as
+    // authoritative on every future run. A caller that wants what it managed to get
+    // should ask for pages itself.
+    if (complete) collected.result().flatMap(StoredScrapeDto.toDomain)
+    else {
+      logger.warn(s"ScrapeArchiveRepository.findAll discarding ${collected.result().size} row(s) from an " +
+        "incomplete scan — returning empty so a partial archive is never mistaken for a smaller one")
+      Seq.empty
+    }
   }
 
   /** Every archive operation is best-effort: it records something that already

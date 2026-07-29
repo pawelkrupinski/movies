@@ -6,7 +6,22 @@ import java.net.URI
 import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.CompletableFuture
 
-class FakeHttpFetch(fixtureDirectory: String) extends HttpFetch {
+/**
+ * @param strict   throw on EVERY miss, including a TMDB search. The default
+ *        synthesises an empty TMDB search result so a client falls through to its
+ *        next resolution strategy — right for the recorded fixture corpus, and
+ *        fatal for a fixture-FIRST fetch with a live fallback behind it: a
+ *        synthesised empty is indistinguishable from success, so the fallback
+ *        never fires and every unrecorded query silently resolves to nothing.
+ *        That is the same "everything is tmdbNoMatch" failure the convergence
+ *        suite exists to catch, arriving via the replay layer instead.
+ * @param foldYear fold `year`/`primary_release_year` out of the fixture key. The
+ *        default matches `RecordingHttpFetch`'s, which folds them deliberately
+ *        for the cinema corpus. Enrichment fixtures must NOT: the year-scoped and
+ *        yearless TMDB searches return materially different bodies (measured:
+ *        0 results vs 16) and `TmdbClient` depends on the difference.
+ */
+class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear: Boolean = true) extends HttpFetch {
   val fixtureRoot = FakeHttpFetch.rootFor(fixtureDirectory)
 
   override def get(url: String): String = new String(readBytes(url, body = None), "UTF-8")
@@ -61,7 +76,7 @@ class FakeHttpFetch(fixtureDirectory: String) extends HttpFetch {
     // one with the `.0` suffix (existing TMDB fixtures) and one bare
     // (existing IMDb / cinema-HTML fixtures).
     val rawQuery     = Option(uri.getRawQuery)
-    val querySuffix  = s".${RecordingHttpFetch.stableQueryFingerprint(rawQuery.getOrElse(""))}"
+    val querySuffix  = s".${RecordingHttpFetch.stableQueryFingerprint(rawQuery.getOrElse(""), foldYear)}"
     val bodySuffix   = body.map(b => s".${b.hashCode.toHexString}").getOrElse("")
     val key          = s"$querySuffix$bodySuffix"
     val bareKey      = bodySuffix  // no query → no fingerprint, just body hash (if any)
@@ -122,7 +137,7 @@ class FakeHttpFetch(fixtureDirectory: String) extends HttpFetch {
    *  PageSnapshot/e2e flake). Every other endpoint still throws — a missing
    *  detail / ratings / cinema-HTML fixture is a real recording gap. */
   private def missingFixture(host: String, path: String, url: String, candidates: Seq[String]): Array[Byte] =
-    if (host == "api.themoviedb.org" && path.startsWith("3/search/"))
+    if (!strict && host == "api.themoviedb.org" && path.startsWith("3/search/"))
       """{"page":1,"results":[],"total_pages":1,"total_results":0}""".getBytes("UTF-8")
     else throw new java.io.FileNotFoundException(
       s"No fixture file for $url — tried:\n  ${candidates.mkString("\n  ")}")

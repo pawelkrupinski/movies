@@ -153,11 +153,30 @@ object RecordingHttpFetch {
    *  Shared between `RecordingHttpFetch` (write side) and
    *  `FakeHttpFetch` (read side) so writer and reader agree on which
    *  file to look up. */
-  def stableQueryFingerprint(rawQuery: String): String = {
+  def stableQueryFingerprint(rawQuery: String): String = stableQueryFingerprint(rawQuery, foldYear = true)
+
+  /**
+   * `foldYear = false` keeps `year` / `primary_release_year` in the fingerprint.
+   *
+   * The default folds them, for the reason argued above: the cinema-scrape corpus
+   * emits a year that varies with scrape order, and the TMDB responses did not
+   * materially differ. That reasoning does NOT hold for the enrichment corpus,
+   * where the two forms are the whole mechanism — measured on Poland,
+   * `?query=Cicha+noc&year=2026` returns `total_results: 0` while the yearless
+   * form returns 16 results, and `TmdbClient` relies on exactly that difference
+   * (`searchUnique` falls back to yearless, `searchYearExactTop` requires the
+   * year-scoped hit). Folding them there would collapse two materially different
+   * responses onto one file and let whichever won be replayed for both, which can
+   * resolve a film the year-scoped search was refusing.
+   */
+  def stableQueryFingerprint(rawQuery: String, foldYear: Boolean): String = {
+    val ignored    = if (foldYear) IgnoredParameters else IgnoredParameters -- YearParameters
     val meaningful = rawQuery
       .split("&")
-      .filterNot(p => IgnoredParameters.exists(name => p.startsWith(s"$name=")))
+      .filterNot(p => ignored.exists(name => p.startsWith(s"$name=")))
       .sorted  // canonicalise parameter order so URL-builder differences don't matter
     meaningful.mkString("&").hashCode.toHexString
   }
+
+  private val YearParameters = Set("year", "primary_release_year")
 }
