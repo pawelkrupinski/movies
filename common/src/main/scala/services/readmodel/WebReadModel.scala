@@ -98,6 +98,32 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
 
   private def liveScreeningCount: Int = byCity.values.asScala.iterator.map(_.size).sum
 
+  /** Cold-retry tick — the guard `reload`'s cannot be.
+   *
+   *  `reload` protects a WARM cache from a failed read, but at boot the cache is empty, so an
+   *  unreachable Mongo hands `start()` an empty corpus indistinguishable from a corpus that
+   *  really is empty (`pagedFindAll` returns `Seq.empty` on an incomplete keyset scan). The
+   *  model then serves nothing until the next backstop — 1800s away. On 2026-07-29 a Mongo
+   *  OOM-kill did exactly that: the web tier restarted into the outage window and every PL
+   *  and UK city served zero films until an unrelated health-check restart happened to land
+   *  on a recovered Mongo.
+   *
+   *  So while the model holds nothing, keep asking. The probe is the cheap server-side count,
+   *  not a reload: serving nothing while `web_movies` holds films is unambiguous — either a
+   *  read failed or a boot raced the database, and both want the same answer. A warm model
+   *  costs one field read (drift is the backstop's job), and a genuinely empty corpus costs
+   *  one count. A negative count means the count itself is unavailable, which is no evidence
+   *  there is anything to load. */
+  private[readmodel] def coldRetryTick(): Unit = {
+    if (!movies.isEmpty) return
+    val dbMovies = reader.countMovies()
+    if (dbMovies > 0) {
+      logger.warn(s"WebReadModel cold-retry: serving an empty corpus while web_movies holds " +
+        s"$dbMovies movie(s) — the boot hydrate read failed; reloading.")
+      reload()
+    }
+  }
+
   /** Periodic backstop tick. While both change streams are live they keep the
    *  model current, so re-reading and re-decoding the whole corpus every tick is
    *  wasted CPU on the single-vCPU serving box — and that decode burst is what
@@ -125,6 +151,9 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
 
   private val scheduler       = DaemonExecutors.scheduler("web-read-model")
   private val BackstopSeconds  = Env.positiveLong("KINOWO_READMODEL_RELOAD_SECONDS", 1800L)
+  // Far tighter than the backstop because the state it recovers from is a blank site, not
+  // drift. Cheap enough to run at this cadence precisely because it probes with a count.
+  private val ColdRetrySeconds = Env.positiveLong("KINOWO_READMODEL_COLD_RETRY_SECONDS", 30L)
   @volatile private var movieWatch:     Option[StreamSubscription] = None
   @volatile private var screeningWatch: Option[StreamSubscription] = None
 
@@ -135,7 +164,11 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
     scheduler.scheduleAtFixedRate(
       () => Try(backstopTick()).recover { case exception => logger.warn(s"WebReadModel backstop tick failed: ${exception.getMessage}") },
       BackstopSeconds, BackstopSeconds, TimeUnit.SECONDS)
+    scheduler.scheduleAtFixedRate(
+      () => Try(coldRetryTick()).recover { case exception => logger.warn(s"WebReadModel cold-retry tick failed: ${exception.getMessage}") },
+      ColdRetrySeconds, ColdRetrySeconds, TimeUnit.SECONDS)
     logger.info(s"WebReadModel started; backstop reload every ${BackstopSeconds}s; " +
+      s"cold retry every ${ColdRetrySeconds}s; " +
       s"change-stream watches ${if (movieWatch.isDefined) "active" else "unavailable — backstop only"}.")
   }
 

@@ -93,4 +93,56 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.findAllScreeningsCalls.get() should be >= 1
     rm.stop()
   }
+
+  // ── Cold retry: a failed boot read must not become an empty corpus ───────────
+  //
+  // The 2026-07-29 outage: prod Mongo was OOM-killed, the web tier restarted while it was
+  // unreachable, and `start()`'s single hydrate came back empty. `reload`'s "empty result on
+  // a warm cache is a Mongo hiccup" guard cannot apply at boot — the cache IS empty then — so
+  // the failed read was accepted as the corpus and all 41 PL + 79 UK cities served zero films.
+  // Nothing re-read until the 1800s backstop, so the board stayed blank until an unrelated
+  // health-check restart happened to land on a recovered Mongo.
+
+  "coldRetryTick" should "re-read while serving an empty corpus the database does not have" in {
+    val repository = new UnreadableReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+
+    val rm = new WebReadModel(repository)
+    rm.reload()
+    // The failure this pins: the read failed, so there is nothing to serve — while the
+    // database demonstrably holds a film.
+    rm.allMovies() shouldBe empty
+    repository.countMovies().shouldBe(1L)
+
+    // Mongo comes back. No restart, no 1800s backstop — the cold retry must notice that
+    // it is serving nothing while the database holds films, and rehydrate.
+    repository.healReads()
+    rm.coldRetryTick()
+
+    rm.allMovies().map(_._id) shouldBe Seq("belle|2021")
+    rm.screeningsForCity("wroclaw").map(_._id) shouldBe Seq("s1")
+  }
+
+  it should "cost nothing once the model is warm" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    val rm = started(repository)
+
+    rm.coldRetryTick()
+
+    // A warm model is the backstop's business; drift is not the cold retry's to chase.
+    repository.findAllMoviesCalls.get().shouldBe(0)
+    rm.stop()
+  }
+
+  it should "not re-read when the database really is empty" in {
+    val repository = new InMemoryReadModelRepository
+    val rm = started(repository)
+
+    rm.coldRetryTick()
+
+    repository.findAllMoviesCalls.get().shouldBe(0)
+    rm.stop()
+  }
 }
