@@ -193,12 +193,25 @@ object MongoEnrichmentCacheStore {
     new MongoEnrichmentCacheStore(client.getDatabase(DatabaseName), country, ttl, owned = Some(client))
   }
 
+  /**
+   * Bodies are stored GZIPPED, which is what makes the preload possible at all.
+   *
+   * Poland's cache is 6,450 bodies totalling 361 MB — 57 KB on average, and a
+   * Metacritic page is 750 KB of HTML. Dragging that across a `flyctl proxy` is
+   * what left the preload grinding for ten minutes at 0% CPU after the paging and
+   * tunnel faults were fixed: nothing was broken by then, there was simply far too
+   * much of it. HTML and JSON are exactly the shapes that compress ~10-20x, so the
+   * same cache crosses the wire as tens of megabytes instead of hundreds.
+   *
+   * Legacy uncompressed rows stay readable (see [[decode]]) and disappear on their
+   * own as the 1-day TTL turns the collection over.
+   */
   private[tools] def encode(response: CachedResponse): Seq[org.bson.conversions.Bson] = response match {
     case CachedResponse.Body(text) =>
-      Seq(Updates.set("kind", "body"), Updates.set("text", text),
+      Seq(Updates.set("kind", "body"), Updates.set("gz", gzip(text)), Updates.unset("text"),
           Updates.unset("status"), Updates.unset("method"), Updates.unset("message"))
     case CachedResponse.Bytes(base64) =>
-      Seq(Updates.set("kind", "bytes"), Updates.set("text", base64),
+      Seq(Updates.set("kind", "bytes"), Updates.set("gz", gzip(base64)), Updates.unset("text"),
           Updates.unset("status"), Updates.unset("method"), Updates.unset("message"))
     case CachedResponse.Failed(status, method, message) =>
       Seq(Updates.set("kind", "failed"), Updates.unset("text"),
@@ -206,10 +219,29 @@ object MongoEnrichmentCacheStore {
           Updates.set("method", method), Updates.set("message", message))
   }
 
+
+  /** Compressed first, then the legacy plain field — so entries written before
+   *  compression keep working until the TTL retires them. */
+  private[tools] def payload(document: Document): Option[String] =
+    document.get("gz").flatMap(value => Try(gunzip(value.asBinary().getData)).toOption)
+      .orElse(Option(document.getString("text")))
+
+  private[tools] def gzip(text: String): Array[Byte] = {
+    val bytes = new java.io.ByteArrayOutputStream()
+    val out   = new java.util.zip.GZIPOutputStream(bytes)
+    try out.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8)) finally out.close()
+    bytes.toByteArray
+  }
+
+  private[tools] def gunzip(data: Array[Byte]): String = {
+    val in = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(data))
+    try new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8) finally in.close()
+  }
+
   private[tools] def decode(document: Document): Option[CachedResponse] =
     Option(document.getString("kind")).flatMap {
-      case "body"   => Option(document.getString("text")).map(CachedResponse.Body.apply)
-      case "bytes"  => Option(document.getString("text")).map(CachedResponse.Bytes.apply)
+      case "body"   => payload(document).map(CachedResponse.Body.apply)
+      case "bytes"  => payload(document).map(CachedResponse.Bytes.apply)
       case "failed" => Some(CachedResponse.Failed(
         status  = Try(document.getInteger("status").toInt).toOption,
         method  = Option(document.getString("method")).getOrElse("GET"),

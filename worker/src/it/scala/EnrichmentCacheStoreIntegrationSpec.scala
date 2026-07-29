@@ -126,4 +126,31 @@ class EnrichmentCacheStoreIntegrationSpec extends AnyFlatSpec with Matchers {
       loaded(f"GET https://example.test/$entries%05d") shouldBe CachedResponse.Body(s"body $entries")
     }
   }
+
+  // Bodies are gzipped on the wire: 6,450 Polish entries are 361 MB raw, which is
+  // what left the preload grinding across the tunnel once everything else was fixed.
+  it should "store bodies compressed, and still read entries written before it did" in {
+    withStore(Country.Poland) { store =>
+      val html = "<html><body>" + ("<div class=\"rating\">7.4</div>" * 4000) + "</body></html>"
+      store.put("GET https://metacritic.test/big", CachedResponse.Body(html))
+
+      // Round-trips intact...
+      store.loadAll()("GET https://metacritic.test/big") shouldBe CachedResponse.Body(html)
+
+      // ...and is genuinely smaller on disk than the text it came from.
+      val stored = Await.result(
+        store.database.getCollection(store.collectionName)
+          .find(Filters.eq("_id", "GET https://metacritic.test/big")).toFuture(), 30.seconds).head
+      val compressed = stored.get("gz").map(_.asBinary().getData.length).getOrElse(Int.MaxValue)
+      withClue(s"gzip length $compressed vs raw ${html.length}: ") { compressed should be < (html.length / 5) }
+
+      // A row written the old way (plain `text`, no `gz`) must still decode.
+      Await.result(store.database.getCollection(store.collectionName).insertOne(Document(
+        "_id" -> "GET https://legacy.test/plain", "kind" -> "body", "text" -> "written before compression",
+        "fetchedAt" -> new java.util.Date()
+      )).toFuture(), 30.seconds)
+      store.loadAll()("GET https://legacy.test/plain") shouldBe CachedResponse.Body("written before compression")
+    }
+  }
 }
+
