@@ -187,6 +187,9 @@ jobs:
                   # Without a real key TmdbClient short-circuits and nothing resolves,
                   # so the cache would have nothing to hold and the real corpus would
                   # buy nothing over the generated one.
+                  # Replay recorded enrichment answers first; anything new falls through
+                  # to the cache/live chain and is recorded for the next run.
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
 
             - name: Publish convergence test report

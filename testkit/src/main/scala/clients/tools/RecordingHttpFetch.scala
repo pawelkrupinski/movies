@@ -27,8 +27,15 @@ import java.nio.file.Files
  *  Wrapping the whole chain instead records the response keyed by the request
  *  (target) URL regardless of which leg served it. See `RecorderZyteCaptureSpec`.
  */
-class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch) extends HttpFetch {
-  val fixtureRoot = "test/resources/fixtures/" + fixtureDirectory
+/** @param foldYear fold `year`/`primary_release_year` out of the fixture key. The
+ *        default matches the cinema corpus, where the year varies with scrape
+ *        order and the responses do not materially differ. ENRICHMENT fixtures
+ *        must pass `false`: the year-scoped and yearless TMDB searches return
+ *        materially different bodies (measured: 0 results vs 16) and `TmdbClient`
+ *        depends on the difference, so folding them would collapse two answers
+ *        onto one file. Must match the `FakeHttpFetch` that reads them back. */
+class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch, foldYear: Boolean = true) extends HttpFetch {
+  val fixtureRoot = FakeHttpFetch.rootFor(fixtureDirectory)
 
   // Record the RAW wire bytes, not the UTF-8-decoded String. A legacy
   // single-byte page (Kino Charlie / Kino Pod Baranami ship raw ISO-8859-2
@@ -65,7 +72,7 @@ class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch) extends 
     // fixture files instead of overwriting each other. `RecordingHttpFetch`
     // used to key by path alone — Prada's search response was therefore
     // lost when the next query overwrote `/3/search/movie`.
-    val querySuffix = Option(uri.getRawQuery).map(q => s".${stableQueryFingerprint(q)}").getOrElse("")
+    val querySuffix = Option(uri.getRawQuery).map(q => s".${RecordingHttpFetch.stableQueryFingerprint(q, foldYear)}").getOrElse("")
     val bodySuffix  = body.map(b => s".${b.hashCode.toHexString}").getOrElse("")
     new File(s"$fixtureRoot/${uri.getHost}/$path$querySuffix$bodySuffix")
   }

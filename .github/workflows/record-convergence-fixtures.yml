@@ -107,6 +107,9 @@ jobs:
                   KINOWO_COUNTRIES:               ${{ matrix.code }}
                   KINOWO_CONVERGENCE_SCRAPES_URI: ${{ secrets.CONVERGENCE_MONGODB_URI }}
                   KINOWO_CONVERGENCE_CACHE_URI:   ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  # Recording target: every live enrichment answer lands here as a
+                  # fixture file, in the layout the test classes already replay.
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
                   TMDB_API_KEY:                   ${{ secrets.TMDB_API_KEY }}
 
             # One tar.gz rather than the raw tree. actions/cache compresses what it

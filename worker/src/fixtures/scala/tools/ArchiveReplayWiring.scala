@@ -55,7 +55,42 @@ class ArchiveReplayWiring(
     enrichmentCache.map(cache =>
       new CachingEnrichmentFetch(cache, phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)))
 
-  override lazy val enrichmentFetch: HttpFetch = cachedEnrichmentFetch.getOrElse(OfflineHttpFetch)
+  /**
+   * On-disk enrichment fixtures FIRST, live behind them, and whatever the live leg
+   * fetched recorded on the way through.
+   *
+   * `KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES` names a directory under
+   * `test/resources/fixtures/`. When it is set the leg replays every answer already
+   * recorded there — no Mongo, no tunnel, no third-party call — and only genuinely
+   * new URLs reach the live chain. Those are then written into the same tree, so a
+   * run both consumes and extends the corpus and a partial fixture set converges on
+   * a complete one instead of having to be recorded in one perfect pass.
+   *
+   * Three details are load-bearing, and each was a bug first:
+   *
+   *  - `strict = true`. `FakeHttpFetch` normally SYNTHESISES an empty TMDB search
+   *    result on a miss so a client falls through to its next strategy. Behind a
+   *    fallback that is indistinguishable from success, so the live leg would never
+   *    be reached and every unrecorded query would resolve to nothing — the
+   *    "everything is tmdbNoMatch" failure, arriving via the replay layer.
+   *  - `foldYear = false` on BOTH sides. The default key folds `year` away, which is
+   *    right for cinema scrapes and wrong here: `?query=Cicha+noc&year=2026` returns
+   *    0 results where the yearless form returns 16, and `TmdbClient` depends on
+   *    exactly that difference.
+   *  - The recorder wraps the WHOLE chain, not just the live leg, so a response is
+   *    keyed by the request regardless of which leg served it (the same reasoning
+   *    `RecordingHttpFetch`'s own doc gives for the Zyte chain).
+   */
+  override lazy val enrichmentFetch: HttpFetch = {
+    val live = cachedEnrichmentFetch.getOrElse(OfflineHttpFetch)
+    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty).fold(live) { directory =>
+      val replay = new clients.tools.FakeHttpFetch(directory, strict = true, foldYear = false)
+      new clients.tools.RecordingHttpFetch(
+        directory,
+        new FallbackHttpFetch(Seq("enrichment-fixtures" -> replay, "live" -> live)),
+        foldYear = false)
+    }
+  }
 
   /** With a cache, the real key and the country's own language — the enrichment is
    *  meant to be the one production would do. Without one, no key at all, so the
