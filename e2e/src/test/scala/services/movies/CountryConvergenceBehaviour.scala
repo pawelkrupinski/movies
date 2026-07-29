@@ -2,7 +2,7 @@ package services.movies
 
 import clients.TmdbClient
 import controllers.{FilmSchedule, MovieControllerService}
-import models.{Cinema, Country, Showtime}
+import models.{Cinema, Country, MovieRecord, Showtime}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -187,7 +187,25 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     bootSettled(w)
     enrichmentCache.foreach(cache => info(s"${country.displayName}: enrichment cache after boot — ${cache.statistics}"))
+    info(s"${country.displayName}: enrichment coverage — ${enrichmentCoverage(w)}")
     (w, merges, archive)
+  }
+
+  /** How far each enrichment source actually got across the settled corpus.
+   *
+   *  Printed on every run, including the offline one, where the all-zero line is
+   *  itself the assertion's context: it says out loud that the fixpoint just proved
+   *  was proved with no metadata in it. With the cache on, the ladder is legible —
+   *  a source can only reach the rows the source above it resolved, so a collapse
+   *  between two rungs localises which resolver stopped answering.
+   */
+  private def enrichmentCoverage(w: ArchiveReplayWiring): String = {
+    val records = w.movieRepository.findAll().map(_.record)
+    def count(predicate: MovieRecord => Boolean): Int = records.count(predicate)
+    s"${records.size} films — tmdbId ${count(_.tmdbId.isDefined)}, tmdbNoMatch ${count(_.tmdbNoMatch)}, " +
+    s"imdbId ${count(_.imdbId.isDefined)}, imdbRating ${count(_.imdbRating.isDefined)}, " +
+    s"filmwebRating ${count(_.filmwebRating.isDefined)}, metascore ${count(_.metascore.isDefined)}, " +
+    s"rottenTomatoes ${count(_.rottenTomatoes.isDefined)}"
   }
 
   /** Boot the corpus to the steady state production reaches, settle it, and get
