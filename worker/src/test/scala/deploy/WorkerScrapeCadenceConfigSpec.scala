@@ -30,14 +30,19 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
    *  `planChunks` reads `data-showtimes-dates` off, plus one day-page per day
    *  that attribute advertises.
    *
-   *  It used to be modelled as a flat 7 — the fixed day grid the client fetched
-   *  before it became `data-showtimes-dates`-driven. That constant now BOTH
-   *  overstates the cost (a venue advertises far fewer populated days than a
-   *  week) and understates the ceiling (`MaxHorizonDays` is 34), so it measured
-   *  nothing real. 5 is the production figure rounded up: over 24h the DE worker
-   *  ran 14,862 venue sweeps and 51,973 day-chunks — ~3.5 days plus the one
-   *  listing fetch per venue — leaving ~11% headroom for a busier week. */
-  private val RequestsPerGermanVenue = 5
+   *  Was 5, measured back when `MaxHorizonDays` was 34 — a venue advertised ~3.5
+   *  days plus its listing fetch. `ScrapeHorizon.MaxDays` went to 730 on
+   *  2026-07-27, and a German venue now advertises far more of its programme: the
+   *  DE worker ran 13.4 day-chunks per venue sweep over 6h on 2026-07-29 (range
+   *  11.2-15.5). 14 is that rounded up.
+   *
+   *  The stale 5 is why this guard stayed green through a cadence that had become
+   *  unreachable: at 5 the sweep computes to 3.0h and fits the old 180min window,
+   *  while the real sweep is 1533 x 13.4 x 1400ms = 7.9h. DE's oldest cinema sat
+   *  at ~12.8h and climbing, with the guard reporting everything fine. A constant
+   *  measured against one horizon does not survive the horizon changing — the
+   *  invariant below is only as honest as this number. */
+  private val RequestsPerGermanVenue = 14
 
   /** UK venues whose scrape actually reaches the PACED flicks.co.uk origin on the
    *  happy path. The chain venues (Cineworld, Vue, Odeon, Everyman, Showcase) went
@@ -66,10 +71,13 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
       .filterNot(_.startsWith("#"))
       .collectFirst { case s"KINOWO_SCRAPE_FRESHNESS_MINUTES$rest" => rest.dropWhile(_ != '\'').filter(_.isDigit) }
 
-  "the DE worker" should "scrape on a 3-hour cadence, not the fleet's hourly default" in {
-    // 180, coupled to the 1400ms Filmstarts pace — a ~179min sweep needs a budget
-    // that fits it. See the invariant test below and fly.worker.de.toml.
-    cadenceOf("fly.worker.de.toml") shouldBe Some("180")
+  "the DE worker" should "scrape on a cadence its paced Filmstarts sweep can drain within" in {
+    // Was 180, on the old 5-requests-per-venue figure. At the real 13.4 the paced
+    // sweep is 7.9h, so 180min was unreachable and DE's roster simply aged — the
+    // invariant below now fails at 180 instead of passing on a stale constant.
+    // 600 clears the ~8.4h sweep with ~17% headroom, matching the margin DE was
+    // originally sized for. See the invariant test below and fly.worker.de.toml.
+    cadenceOf("fly.worker.de.toml") shouldBe Some("600")
   }
 
   it should "pace Filmstarts slowly enough to stop the 429s, yet still sweep inside that cadence" in {

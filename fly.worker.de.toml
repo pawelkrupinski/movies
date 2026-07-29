@@ -42,8 +42,8 @@ primary_region = 'arn'
   # KINOWO_SCRAPE_MAX_OUTSTANDING_TASKS is denominated in. ~16 = one ScrapeChunk per day a Filmstarts venue advertises.
   # Without it the reaper admits venues by COUNT and discovers the fan-out
   # only once the planners run, which is the burst that floors CPU credit.
-  KINOWO_SCRAPE_TASKS_PER_VENUE = '16'
-  KINOWO_SCRAPE_FRESHNESS_MINUTES = '180'
+  KINOWO_SCRAPE_TASKS_PER_VENUE = '14'
+  KINOWO_SCRAPE_FRESHNESS_MINUTES = '600'
   # JVM sizing: Xms=Xmx=640m on a 1280 MB box. This is the bump the previous note
   # here said to make only once measured, and 2026-07-18 supplied the measurement:
   # with the full 158-region / 1,533-cinema Filmstarts roster live, 448m did NOT
