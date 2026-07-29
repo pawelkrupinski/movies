@@ -239,6 +239,33 @@ assert "worker + web memory panels share one row, half width each" \
   "api/dashboards/uid/fly-overview" \
   "(lambda ps: len(ps)==2 and len({p['gridPos']['y'] for p in ps})==1 and {p['gridPos']['x'] for p in ps}=={0,12} and all(p['gridPos']['w']==12 for p in ps))([p for p in d['dashboard']['panels'] if p.get('id') in (43,44)])"
 
+# Disk had no panel at all until 2026-07-29, when mongo OOMed and the first
+# question asked was one the dashboard could not answer. These two are the whole
+# answer: percent (comparable across a 3GB volume and four 1GB ones) beside bytes
+# (what actually runs out). Pin both expressions, because the pair only works if
+# they read the SAME mounts two ways.
+assert "volume used-% panel reads every real volume as a percentage" \
+  "api/dashboards/uid/fly-overview" \
+  "any(t.get('expr')=='100 * (1 - fly_instance_filesystem_blocks_avail{mount!=\"/.fly-upper-layer\"} / fly_instance_filesystem_blocks{mount!=\"/.fly-upper-layer\"})' for p in d['dashboard']['panels'] if p.get('id')==60 for t in p.get('targets',[]))"
+
+assert "volume free-space panel reads the same mounts in bytes" \
+  "api/dashboards/uid/fly-overview" \
+  "any(t.get('expr')=='fly_instance_filesystem_blocks_avail{mount!=\"/.fly-upper-layer\"} * fly_instance_filesystem_block_size{mount!=\"/.fly-upper-layer\"}' for p in d['dashboard']['panels'] if p.get('id')==61 for t in p.get('targets',[]))"
+
+# Excluding the ephemeral container root is what makes the panels readable: every
+# machine reports /.fly-upper-layer, so including it buries the five real volumes
+# under fourteen lines that say nothing about durable storage. Excluding it BY
+# NAME (rather than listing the three known mounts) is also what lets a
+# newly-provisioned volume appear without a dashboard edit — so pin the negative
+# matcher, not just the absence of the noise.
+assert "both volume panels exclude the ephemeral container root by name" \
+  "api/dashboards/uid/fly-overview" \
+  "(lambda ps: len(ps)==2 and all(t['expr'].count('mount!=\"/.fly-upper-layer\"')==2 for p in ps for t in p.get('targets',[])))([p for p in d['dashboard']['panels'] if p.get('id') in (60,61)])"
+
+assert "volume disk panels share one row, half width each" \
+  "api/dashboards/uid/fly-overview" \
+  "(lambda ps: len(ps)==2 and len({p['gridPos']['y'] for p in ps})==1 and {p['gridPos']['x'] for p in ps}=={0,12} and all(p['gridPos']['w']==12 for p in ps))([p for p in d['dashboard']['panels'] if p.get('id') in (60,61)])"
+
 # \$country is the only variable anyone can PICK. The hand-selectable \$worker_app
 # it replaced twice caused silent cross-country leakage — its value lived in the
 # URL independently of the country, so a bookmarked link happily showed country=uk
