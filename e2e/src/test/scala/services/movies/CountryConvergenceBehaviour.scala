@@ -122,7 +122,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  those answers would read as an order-dependence that isn't one. */
   private lazy val enrichmentCache: Option[EnrichmentCache] = enrichmentCacheStore.map { store =>
     val cache  = new EnrichmentCache(store)
-    val loaded = cache.preload()
+    val loaded = step("preloadEnrichmentCache")(cache.preload())
     info(s"${country.displayName}: enrichment cache ${store.collectionName} preloaded with $loaded entries " +
          s"(db ${MongoEnrichmentCacheStore.DatabaseName}, TTL ${MongoEnrichmentCacheStore.Ttl.toHours}h)")
     cache
@@ -237,15 +237,33 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  exactly how 32 of 80 films, 44 cinemas and 360 screenings went missing from
    *  the read model while the corpus itself was complete. */
   private def bootSettled(w: ArchiveReplayWiring): Unit = {
-    w.bootCorpus()
+    step("bootCorpus")(w.bootCorpus())
     // ONE settle, deliberately. Settling twice here would let a corpus that needs
     // two passes to stop moving look identical to one that never moved, because
     // the assertion below only ever sees the state after the last of them.
-    w.movieService.settle()
-    w.drainStaging()
-    w.concludeEnrichment()
-    w.readModelProjector.reconcile()
-    w.webReadModel.reload()
+    step("settle")(w.movieService.settle())
+    step("drainStaging")(w.drainStaging())
+    step("concludeEnrichment")(w.concludeEnrichment())
+    step("project")(w.readModelProjector.reconcile())
+    step("reloadReadModel")(w.webReadModel.reload())
+  }
+
+  /**
+   * Announce a phase to STDOUT as it starts and finishes, with its duration.
+   *
+   * `println`, not `info`: ScalaTest buffers `info` until the test COMPLETES, so a
+   * leg that spends twenty minutes booting a country prints nothing at all until it
+   * is over — and a CI log with a twenty-minute silence is indistinguishable from a
+   * hang. That ambiguity cost real time this week, twice: once on a leg that was
+   * genuinely wedged on a dead tunnel, once on a leg that was working fine. The
+   * elapsed time is what separates the two, so it goes to the stream that flushes.
+   */
+  private def step[A](label: String)(body: => A): A = {
+    val started = System.nanoTime()
+    println(s"[${country.code}] $label …")
+    val result = body
+    println(f"[${country.code}] $label done in ${(System.nanoTime() - started) / 1e9}%.1fs")
+    result
   }
 
   /**
@@ -293,7 +311,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       // under the test. Prod drifts as venues rescrape (the same Polish corpus
       // measured 7,044, then 7,055, then 7,063 listings inside an hour), so a
       // divergence found against the live read could not be re-examined afterwards.
-      val rows = CorpusFixture.read(country.code)
+      val rows = step("readCorpusFixture")(CorpusFixture.read(country.code))
       info(s"${country.displayName}: replayed ${rows.size} archived scrapes from ${CorpusFixture.pathFor(country.code)}")
       rows
     } else fetchAndCaptureCorpus
@@ -306,7 +324,8 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  leaves the file behind. */
   private def fetchAndCaptureCorpus: Seq[services.scrapes.ArchivedScrape] = realScrapeSource.toSeq.flatMap { source =>
     val known = CountryScrapeCorpus.cinemasOf(country).toSet
-    val rows  = source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty)
+    val rows  = step("fetchCorpusFromArchive")(
+      source.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))
 
     if (rows.isEmpty)
       throw new IllegalStateException(
@@ -347,6 +366,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  loss. */
   private def seedFromRealScrapes(archive: ScrapeArchiveRepository): Int = {
     val rows = realScrapeRows
+    println(s"[${country.code}] seeding ${rows.size} venues into the archive …")
     rows.foreach { row =>
       archive.record(ScrapeAttempt(
         cinema          = row.cinema,
