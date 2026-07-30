@@ -10,8 +10,8 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, EnrichmentCache, Env,
-  MongoEnrichmentCacheStore, SameThreadExecutionBudget}
+import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, EnrichmentCache, EnrichmentCacheStore,
+  Env, FileEnrichmentCacheStore, MongoEnrichmentCacheStore, SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -99,43 +99,59 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * the run prints both the preload count and the hit/fill split, so which one
    * happened is never a guess.
    */
-  private lazy val enrichmentCacheStore: Option[MongoEnrichmentCacheStore] =
-    if (TmdbClient.ApiKey.isEmpty) None
-    else cacheUri.map(uri => MongoEnrichmentCacheStore.open(uri, country))
-
-  /** Where the cache lives, which is NOT where the corpus lives.
+  /**
+   * The FILE store wins wherever a fixture tree is configured, and Mongo is the
+   * fallback for a run that has no tree at all.
    *
-   *  The corpus wants a throwaway (`MONGODB_URI` — a container in CI, a local
-   *  Mongo on a dev box) because it is rebuilt from scratch every run and dropped
-   *  afterwards. The cache wants the opposite: somewhere durable and shared, so
-   *  the run after this one starts warm. In CI those are different machines
-   *  entirely — the corpus in a per-leg container, the cache on the production
-   *  cluster over a tunnel — so the cache gets its own variable and falls back to
-   *  `MONGODB_URI` only for the local case where one Mongo serves both. */
+   * That order round, deliberately. The file cache lives inside the tree, so it
+   * travels in the same artifact and is warm on the next run by construction — no
+   * URI, no cluster, no tunnel, and nothing that can be pointed at a socket nobody
+   * is listening to. Mongo first meant a `MONGODB_URI` sitting in someone's
+   * `.env.local` silently took over from it: a local run then spent its whole sweep
+   * logging `not authorized on convergence_test` and wrote no cache at all, while the
+   * store designed for exactly that run went unused.
+   */
+  private lazy val enrichmentCacheStore: Option[EnrichmentCacheStore] =
+    if (TmdbClient.ApiKey.isEmpty) None
+    else fixtureDirectory.map(dir => new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(dir)))
+      .orElse(cacheUri.map(uri => MongoEnrichmentCacheStore.open(uri, country)))
+
+  /** A Mongo cache, for a run with no fixture tree to keep one beside. */
   private def cacheUri: Option[String] =
     Env.get("KINOWO_CONVERGENCE_CACHE_URI").orElse(Env.get("MONGODB_URI"))
 
-  /** ONE cache for every replay in the suite, preloaded whole before the first of
-   *  them boots. Shared deliberately: the order-independence test drives three
-   *  concurrent passes over the same corpus, and three private caches would let
-   *  them each fill the same URL from the live service — any disagreement between
-   *  those answers would read as an order-dependence that isn't one. */
+  private def fixtureDirectory: Option[String] =
+    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
+
+  /**
+   * ONE cache for every replay in the suite, preloaded whole before the first of
+   * them boots. Shared deliberately: the order-independence test drives three
+   * concurrent passes over the same corpus, and three private caches would let them
+   * each fill the same URL from the live service — any disagreement between those
+   * answers would read as an order-dependence that isn't one.
+   *
+   * The preload is NOT skipped when the fixture tree is present, though it was, on
+   * the reasoning that the tree already holds the answers. It holds the answers that
+   * ARRIVED. `RecordingHttpFetch` writes down a successful fetch; a 404 is not a
+   * successful fetch, and roughly half a country's films never resolve to a TMDB id
+   * and still cost three or four rating-slug guesses apiece that all miss. Those are
+   * the entries only a cache has ever held — and with the preload skipped and the
+   * Mongo cache unreachable, every one of them was re-asked live, paced and
+   * single-file, on every run. A profile of a 22-minute Poland leg finds its one
+   * application thread parked in `RealHttpFetch.getBytes` in all 15 samples, and the
+   * fixture tree five files larger at the end than at the start.
+   */
   private lazy val enrichmentCache: Option[EnrichmentCache] = enrichmentCacheStore.map { store =>
-    val cache = new EnrichmentCache(store)
-    // Don't preload when the enrichment FIXTURES are on disk: they already hold the
-    // answers, so pulling the same corpus out of Mongo across a tunnel is duplicated
-    // work — and it is the expensive kind. A leg was spending minutes in this phase
-    // re-reading ~8.7k entries it could already replay from local files. Writes still
-    // go through to the shared cache, which is what lets the recorder dump the
-    // fixtures for the NEXT run, so skipping the read costs nothing but the read.
-    val fixtures = Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
-      .exists(dir => java.nio.file.Files.isDirectory(java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(dir))))
-    val loaded =
-      if (fixtures) { println(s"[${country.code}] enrichment fixtures present — skipping the cache preload"); 0 }
-      else step("preloadEnrichmentCache")(cache.preload())
-    info(s"${country.displayName}: enrichment cache ${store.collectionName} preloaded with $loaded entries " +
-         s"(db ${MongoEnrichmentCacheStore.DatabaseName}, TTL ${MongoEnrichmentCacheStore.Ttl.toHours}h)")
+    val cache  = new EnrichmentCache(store)
+    val loaded = step("preloadEnrichmentCache")(cache.preload())
+    info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${describe(store)}")
     cache
+  }
+
+  private def describe(store: EnrichmentCacheStore): String = store match {
+    case mongo: MongoEnrichmentCacheStore => s"${MongoEnrichmentCacheStore.DatabaseName}.${mongo.collectionName}"
+    case file:  FileEnrichmentCacheStore  => file.root.toString
+    case other                            => other.getClass.getSimpleName
   }
 
   /** Independent random-order passes compared against each other. Three is enough
@@ -220,8 +236,33 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     bootSettled(w)
     enrichmentCache.foreach(cache => info(s"${country.displayName}: enrichment cache after boot — ${cache.statistics}"))
     info(s"${country.displayName}: enrichment coverage — ${enrichmentCoverage(w)}")
+    requireEnrichmentReached(w)
     (w, merges, archive)
   }
+
+  /**
+   * A run that HAS an enrichment source must actually have enriched something.
+   *
+   * The coverage line above was informational, and that let the suite pass green
+   * having proved nothing: with the TMDB key gated on the wrong condition, a leg
+   * resolved 0 of 892 films and all three specs still passed — the fixpoint holds
+   * trivially over a corpus with no metadata in it. The offline run is still allowed
+   * to resolve nothing (it has nowhere to ask); a run with a cache or a fixture tree
+   * is not.
+   *
+   * Deliberately a floor of ONE rather than a ratio. Any real collapse — a missing
+   * key, a stale tree, a resolver that stopped answering — lands at exactly zero,
+   * and a ratio would need re-tuning per country as each corpus drifts, which is how
+   * a guard becomes a flake and then gets deleted.
+   */
+  private def requireEnrichmentReached(w: ArchiveReplayWiring): Unit =
+    if (w.enrichmentAvailable) {
+      val resolved = w.movieRepository.findAll().count(_.record.tmdbId.isDefined)
+      withClue(s"${country.displayName} has an enrichment source but resolved NOTHING — " +
+               s"${enrichmentCoverage(w)}. A fixpoint over an unenriched corpus proves nothing: ") {
+        resolved should be > 0
+      }
+    }
 
   /** How far each enrichment source actually got across the settled corpus.
    *
@@ -253,7 +294,19 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     // ONE settle, deliberately. Settling twice here would let a corpus that needs
     // two passes to stop moving look identical to one that never moved, because
     // the assertion below only ever sees the state after the last of them.
+    //
+    // The settle is the PAIR, though — `settle()` then `canonicalizeBySanitize()`,
+    // exactly what the periodic settle runs in production and exactly what the
+    // fixpoint assertion below re-applies. Booting with only the first half left the
+    // corpus in a state production never rests in, so the assertion's canonicalize
+    // was the FIRST one the corpus had ever seen and legitimately collapsed three
+    // stranded same-film duplicates ("Ghost in shell" / "Ghost in the Shell -
+    // Ponownie Na Wielkim Ekranie" / "Uwierz w ducha"). That read as the pipeline
+    // failing to converge when it was the boot never finishing a settle — and it was
+    // unreachable for as long as the TMDB key was gated wrong and nothing enriched,
+    // because the duplicates are only discoverable once a shared `tmdbId` exists.
     step("settle")(w.movieService.settle())
+    step("canonicalize")(w.movieCache.canonicalizeBySanitize())
     step("drainStaging")(w.drainStaging())
     step("concludeEnrichment")(w.concludeEnrichment())
     step("project")(w.readModelProjector.reconcile())
