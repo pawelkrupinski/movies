@@ -17,10 +17,11 @@
 name: Record enrichment fixtures
 
 on:
-    workflow_run:
-        workflows: [Country convergence]
-        types: [completed]
-        branches: [main]
+    # Dispatched explicitly by `Country convergence` when its legs finish, on any
+    # conclusion — see the `record-enrichment` job there. Not a `workflow_run` chain:
+    # convergence is itself token-dispatched by the deploy, and GitHub suppresses some
+    # event cascades out of token-started runs, so that link is one that can silently
+    # never fire.
     workflow_dispatch:
 
 concurrency:

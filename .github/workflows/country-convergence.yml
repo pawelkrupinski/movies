@@ -30,10 +30,6 @@ on:
     # it, for a signal nobody gates the deploy on anyway. Chaining keeps the
     # deploy's "all green" arriving as early as it always did and still runs the
     # convergence check against the very commit that shipped.
-    workflow_run:
-        workflows: [Deploy to Fly.io]
-        types: [completed]
-        branches: [main]
     schedule:
         # 04:20 UTC — after the nightly country-fixture recorder, before the day starts.
         - cron: '20 4 * * *'
@@ -48,26 +44,15 @@ concurrency:
     # newest one. All three triggers land on `main`, so the ref keeps a lane per
     # branch for the rare dispatch from somewhere else without splitting main's.
     group: country-convergence-${{ github.ref }}
-    # Cancel only when this run is going to DO something. Concurrency is evaluated
-    # at run level, before the job-level `if` below, so a chain run from a failed or
-    # cancelled deploy — which will immediately skip — was still claiming the lane
-    # and killing whatever was genuinely running. That is how a leg 21.5 minutes into
-    # real work died at the hands of a run that then did nothing, and why no
-    # convergence run completed for a whole day: every push spawns a deploy, plenty
-    # of those fail, and each failure's chain run skipped-but-cancelled the last real
-    # attempt.
-    #
-    # The predicate is deliberately the SAME one the job gate uses, so "will cancel"
-    # and "will run" cannot drift apart.
-    cancel-in-progress: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    # Unconditional again, and safe now: every run of this workflow is either a
+    # deploy-triggered dispatch or a deliberate one, so there are no runs that exist
+    # only to skip. Previously a skipped `workflow_run` run took the lane and
+    # cancelled a leg 21.5 minutes into real work; the deploy dispatching us
+    # explicitly removes that class of run entirely.
+    cancel-in-progress: true
 
 jobs:
     convergence:
-        # workflow_run fires on ANY conclusion, including a failed or cancelled
-        # deploy — gate to success so a broken build doesn't spend 26 runner
-        # minutes proving its own corpus converges. Schedule and manual runs have
-        # no upstream conclusion and always proceed.
-        if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
         name: convergence (${{ matrix.country }})
         strategy:
             # Every country reports independently — one country's flap must not
@@ -280,3 +265,33 @@ jobs:
                   docker exec mongo mongosh --quiet --eval \
                     'db.adminCommand({listDatabases:1,nameOnly:true}).databases
                        .map(d => d.name).filter(n => n.startsWith("kinowo_isolated")).join("\n")'
+
+    # Kick the enrichment recorder off explicitly, for the same reason the deploy now
+    # kicks US off explicitly rather than by `workflow_run`.
+    #
+    # Two problems with chaining here. GitHub suppresses some event cascades from runs
+    # started by `GITHUB_TOKEN`, and this workflow is now token-dispatched by the
+    # deploy — so a `workflow_run` chain out of it is exactly the kind of link that
+    # silently never fires. And `workflow_run` cannot filter on conclusion, so gating
+    # inside the recorder would create runs that exist only to skip, which is what
+    # cancelled a leg 21.5 minutes into real work.
+    #
+    # `always()`: the recorder must run whether the legs passed or failed. A FAILED leg
+    # has usually still enriched most of the corpus and written it through to the
+    # shared cache, so gating on success would discard the capture precisely on the
+    # runs that populated it most.
+    record-enrichment:
+        needs: convergence
+        if: always()
+        runs-on: ubuntu-latest
+        permissions:
+            actions: write
+        steps:
+            - name: Start the enrichment fixture recorder
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  echo "convergence finished (${{ needs.convergence.result }}) — dispatching the enrichment recorder"
+                  gh workflow run "Record enrichment fixtures" --ref "${GITHUB_REF_NAME}"

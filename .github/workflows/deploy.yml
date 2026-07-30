@@ -190,6 +190,37 @@ jobs:
     # loop, made legible. Runs once after BOTH app legs finish. No-ops (doesn't
     # fail the deploy) until the Grafana secrets are set, so it's safe to land
     # before kinowo-grafana exists.
+    # Kick the convergence suite off HERE, on a successful deploy, rather than
+    # letting it chain off this workflow with a `workflow_run` trigger.
+    #
+    # `workflow_run` fires on ANY completion, including `failure` and `cancelled`,
+    # and GitHub gives no way to filter on conclusion in `on:` — so the only gate
+    # available was a job-level `if`, which still CREATES a run that then skips.
+    # Those skipped runs are not merely noise: concurrency is evaluated at run
+    # level, before the `if`, so a run destined to skip claimed the lane and
+    # cancelled whatever was genuinely in flight. One killed a leg 21.5 minutes into
+    # real work, and because every push cancels the previous deploy, a burst of
+    # pushes produced a burst of skipped-but-cancelling runs and NOTHING ever
+    # completed for a day.
+    #
+    # An explicit dispatch inverts that: a failed or cancelled deploy simply does not
+    # dispatch, so no run is created, so nothing is cancelled.
+    kick-convergence:
+        needs: deploy
+        if: ${{ !cancelled() && needs.deploy.result == 'success' }}
+        runs-on: ubuntu-latest
+        permissions:
+            actions: write
+        steps:
+            - name: Start the country convergence suite
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  echo "deploy succeeded for ${GITHUB_SHA:0:9} — dispatching Country convergence"
+                  gh workflow run "Country convergence" --ref "${GITHUB_REF_NAME}"
+
     annotate:
         needs: deploy
         if: ${{ !cancelled() && needs.deploy.result == 'success' }}
