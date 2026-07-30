@@ -249,8 +249,17 @@ jobs:
             # publish and upload steps below run normally with the remaining ~10 minutes
             # rather than on borrowed time. The leg still reports failure, loudly; it
             # just doesn't throw away the work first.
-            - run: sbt ${{ matrix.cmd }}
+            # `tee`d so the findings can be republished as a report below. `pipefail`
+            # explicitly, because the default shell is `bash -e` without it and the
+            # pipeline would otherwise report `tee`'s exit status and pass a failing
+            # suite.
+            - name: Run the convergence suite
+              id: suite
+              shell: bash
               timeout-minutes: 62
+              run: |
+                  set -o pipefail
+                  sbt ${{ matrix.cmd }} 2>&1 | tee convergence.log
               env:
                   # The spec installs this country's TitleRuleSet itself; naming the
                   # country here too means anything that reads the environment
@@ -283,6 +292,12 @@ jobs:
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
 
+            # `include_passed: true` — these tests are the report. A convergence leg that
+            # PASSES is the interesting case: the run's whole value is the numbers it
+            # prints on the way (coverage per rating source, per-tick emissions, films in
+            # versus films out), and suppressing passed tests hid every one of them. A
+            # suite whose output is only visible when it breaks tells you nothing about
+            # the day it worked.
             - name: Publish convergence test report
               if: always()
               uses: mikepenz/action-junit-report@v5
@@ -290,7 +305,44 @@ jobs:
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: convergence (${{ matrix.country }})
                   detailed_summary: true
-                  include_passed: false
+                  include_passed: true
+
+            # The findings, on the run's summary page, per country.
+            #
+            # ScalaTest's `info(...)` lines carry everything worth knowing about a leg —
+            # enrichment coverage down the whole ladder, cache hits versus live fills,
+            # cinemas and screenings in versus out, per-tick change-stream emissions —
+            # and they were reachable only by downloading a 5 MB job log and grepping it.
+            # Three countries' worth of that is a report nobody reads. Rendered here it is
+            # the first thing on the page, for a passing run as much as a failing one.
+            - name: Report the convergence findings
+              if: always()
+              shell: bash
+              run: |
+                  set -uo pipefail
+                  if [ ! -s convergence.log ]; then
+                      echo "### convergence (${{ matrix.country }})" >> "$GITHUB_STEP_SUMMARY"
+                      echo "The suite produced no output — see the job log." >> "$GITHUB_STEP_SUMMARY"
+                      exit 0
+                  fi
+                  # sbt colours its output; the escapes are noise in markdown.
+                  clean=$(sed -E 's/\x1b\[[0-9;]*m//g' convergence.log)
+                  totals=$(printf '%s\n' "$clean" | grep -E '^\[info\] Tests: ' | tail -1 | sed 's/^\[info\] //')
+                  {
+                      echo "### convergence (${{ matrix.country }})"
+                      echo
+                      if [ -n "$totals" ]; then echo "**$totals**"; else echo "**No test totals — the suite did not finish.**"; fi
+                      echo
+                      echo '```'
+                      # The spec's own structure: suite name, the `should` clauses, and the
+                      # `+` info lines hanging off them. Everything else on stdout is
+                      # application logging, which is not a report.
+                      printf '%s\n' "$clean" \
+                        | grep -E '^\[info\] ([A-Za-z0-9]+Spec:|- should |  \+ |the )' \
+                        | sed 's/^\[info\] //' \
+                        | head -150
+                      echo '```'
+                  } >> "$GITHUB_STEP_SUMMARY"
 
             # The leg both CONSUMES and EXTENDS the fixture tree: `ArchiveReplayWiring`
             # wraps the live leg in a `RecordingHttpFetch` pointed at the same
