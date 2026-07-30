@@ -16,6 +16,7 @@ import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, Enrichmen
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.util.{Random, Try}
 
 /**
@@ -349,7 +350,12 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  read model renders all of it. Taken from the corpus rather than the clock so
    *  the three passes still agree. */
   private lazy val realCorpusRenderAt: Option[LocalDateTime] =
-    Option.when(realScrapeSource.isDefined)(realScrapeRows).flatMap { rows =>
+    // Same condition as `seedArchive`: a real corpus is a real corpus whether it came
+    // from a fixture or a live archive. Gating on `realScrapeSource` alone left a
+    // fixture-driven run rendering at the hard-coded generated-corpus instant, which
+    // put 12 venues' entire repertoire in the past and reported them as "never reach
+    // the read model" — a loss that was really a clock mismatch.
+    Option.when(CorpusFixture.exists(country.code) || realScrapeSource.isDefined)(realScrapeRows).flatMap { rows =>
       rows.flatMap(_.films).flatMap(_.showtimes).map(_.dateTime).minOption.map(_.toLocalDate.atStartOfDay)
     }
 
@@ -357,7 +363,13 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  have filed it — through `ScrapeAttempt`, so the archive's own "content only"
    *  rule and its BSON round-trip are both on the path to the pipeline. */
   private def seedArchive(archive: ScrapeArchiveRepository): Int =
-    if (realScrapeSource.isDefined) seedFromRealScrapes(archive) else seedGeneratedCorpus(archive)
+    // A committed fixture is enough on its own — it must NOT need a live source
+    // configured alongside it. Dispatching on `realScrapeSource` alone meant a
+    // checked-in corpus was silently ignored unless the tunnel env var happened to be
+    // set too, which is backwards: the fixture exists precisely so a run needs no
+    // tunnel.
+    if (CorpusFixture.exists(country.code) || realScrapeSource.isDefined) seedFromRealScrapes(archive)
+    else seedGeneratedCorpus(archive)
 
   /** Copy the real `cinema_scrapes` dump in. Already restricted to the cinemas this
    *  country's catalogue still knows (see [[realScrapeRows]]) — a dump can outlive a
@@ -366,15 +378,26 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  loss. */
   private def seedFromRealScrapes(archive: ScrapeArchiveRepository): Int = {
     val rows = realScrapeRows
-    println(s"[${country.code}] seeding ${rows.size} venues into the archive …")
-    rows.foreach { row =>
-      archive.record(ScrapeAttempt(
+    // Concurrent, with a bounded pool: each venue is an independent `replaceOne` on
+    // its own `_id`, so there is no ordering between them, and sequentially they are
+    // 282-1,533 round-trips of latency for no reason. Deliberately still through
+    // `record` rather than a bulk write — that is what keeps the archive's own
+    // "content is never replaced by nothing" rule and its BSON round-trip on the
+    // path, which is the entire reason the corpus goes through Mongo at all.
+    step(s"seed ${rows.size} venues into the archive") {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(8)
+    try {
+      implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
+      scala.concurrent.Await.result(scala.concurrent.Future.traverse(rows) { row =>
+        scala.concurrent.Future(archive.record(ScrapeAttempt(
         cinema          = row.cinema,
         city            = row.city.orElse(Cinema.cityOf(row.cinema)),
         at              = row.lastSuccess.map(_.at).getOrElse(Instant.parse("2026-07-28T06:00:00Z")),
         listingComplete = row.lastSuccess.exists(_.listingComplete),
         films           = row.films
-      ))
+        )))
+      }, 10.minutes)
+    } finally pool.shutdown()
     }
     info(s"${country.displayName}: seeded from REAL cinema_scrapes — ${rows.size} venues, " +
          s"${rows.map(_.films.size).sum} listings, rendering at $renderAt")
