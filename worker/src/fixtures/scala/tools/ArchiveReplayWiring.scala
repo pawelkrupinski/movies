@@ -81,9 +81,16 @@ class ArchiveReplayWiring(
    *    keyed by the request regardless of which leg served it (the same reasoning
    *    `RecordingHttpFetch`'s own doc gives for the Zyte chain).
    */
-  override lazy val enrichmentFetch: HttpFetch = {
-    val live = cachedEnrichmentFetch.getOrElse(OfflineHttpFetch)
-    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty).fold(live) { directory =>
+  override lazy val enrichmentFetch: HttpFetch =
+    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
+      .fold(cachedEnrichmentFetch.getOrElse(OfflineHttpFetch): HttpFetch) { directory =>
+      // The live leg is the CACHE when there is one, and the enrich-phase chain
+      // itself when there isn't. Without that second case "no cache" meant "offline
+      // behind the fixtures", so every URL the tree didn't already hold failed
+      // outright and was never recorded — which is precisely the state CI is now in,
+      // with the Mongo cache removed from the leg and the tree carrying determinism
+      // on its own. A tree that cannot grow re-misses the same URLs for ever.
+      val live   = cachedEnrichmentFetch.getOrElse(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich))
       val replay = new clients.tools.FakeHttpFetch(directory, strict = true, foldYear = false)
       // The recorder wraps ONLY the live leg, not the whole chain. Wrapping the chain
       // meant every fixture HIT was written straight back to disk byte-identically —
@@ -100,7 +107,6 @@ class ArchiveReplayWiring(
         "enrichment-fixtures" -> replay,
         "live"                -> new clients.tools.RecordingHttpFetch(directory, live, foldYear = false)))
     }
-  }
 
   /** With a cache, the real key and the country's own language — the enrichment is
    *  meant to be the one production would do. Without one, no key at all, so the

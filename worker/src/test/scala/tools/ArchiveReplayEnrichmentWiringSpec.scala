@@ -69,6 +69,36 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
     wiring.enrichmentFetch shouldBe wiring.cachedEnrichmentFetch.get
   }
 
+  // CI runs with the fixture tree and NO Mongo cache — the cache URI named a tunnel
+  // the job never started, so it was removed. The tree is then the whole determinism
+  // mechanism, and it only works if it can GROW: a miss has to reach live and be
+  // recorded, or the same miss recurs on every run for ever. Left as it was, "no
+  // cache" meant "offline behind the fixtures" and every unrecorded URL simply
+  // failed.
+  it should "reach live and record it when fixtures are configured but no cache is" in {
+    val leaf      = new CountingLeaf
+    val directory = s"enrichment-wiring-${ProcessHandle.current().pid()}"
+    val root      = java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(directory))
+    System.setProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES", directory)
+    try {
+      val wiring = wiringWith(None, leaf)
+
+      wiring.enrichmentFetch.get("https://api.themoviedb.org/3/search?query=dune") shouldBe
+        "body for https://api.themoviedb.org/3/search?query=dune"
+      withClue("a fixture miss must reach the live leg: ") { leaf.calls shouldBe 1 }
+
+      withClue("and be recorded, so the next run replays it: ") {
+        java.nio.file.Files.exists(root) shouldBe true
+        java.nio.file.Files.walk(root).filter(java.nio.file.Files.isRegularFile(_)).count() should be > 0L
+      }
+    } finally {
+      System.clearProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES")
+      if (java.nio.file.Files.exists(root))
+        java.nio.file.Files.walk(root).sorted(java.util.Comparator.reverseOrder())
+          .forEach(path => java.nio.file.Files.deleteIfExists(path))
+    }
+  }
+
   // Three concurrent replays each build their own wiring; sharing the cache is what
   // stops them disagreeing about what the live service said.
   it should "share one cache's answers across separate wirings" in {

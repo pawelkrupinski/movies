@@ -129,16 +129,29 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -uo pipefail
-                  RUN=$(gh run list --workflow "Record enrichment fixtures" --status success \
-                        --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
-                  if [ -z "${RUN:-}" ]; then
-                      echo "no successful enrichment recording yet — this leg fetches live"
-                      exit 0
-                  fi
-                  echo "downloading enrichment fixtures from recording run $RUN"
-                  gh run download "$RUN" --name "enrichment-fixtures-${{ matrix.code }}" \
-                     --dir enrichment-archive || echo "no artifact for ${{ matrix.code }} in run $RUN"
-                  ls -l enrichment-archive/ 2>/dev/null || true
+                  # Newest capture wins, and a leg now publishes its own — so the
+                  # normal source is the PREVIOUS convergence run. `Record enrichment
+                  # fixtures` stays in the list as the bootstrap/rescue source: it is
+                  # what seeded the tree before the legs published it themselves, and
+                  # it is still the way to rebuild the tree from the shared Mongo cache
+                  # by hand if a country's fixtures ever have to be re-cut.
+                  #
+                  # Conclusion is deliberately NOT filtered. A leg that failed or was
+                  # cancelled still recorded everything it enriched before it stopped,
+                  # and discarding that is what makes the next run repeat the work.
+                  for workflow in "Country convergence" "Record enrichment fixtures"; do
+                      for run in $(gh run list --workflow "$workflow" --limit 10 \
+                                   --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+                          [ "$run" = "${{ github.run_id }}" ] && continue
+                          if gh run download "$run" --name "enrichment-fixtures-${{ matrix.code }}" \
+                             --dir enrichment-archive 2>/dev/null; then
+                              echo "enrichment fixtures from $workflow run $run"
+                              ls -l enrichment-archive/
+                              exit 0
+                          fi
+                      done
+                  done
+                  echo "no enrichment capture found for ${{ matrix.code }} — this leg fetches live and publishes the result"
 
             - name: Unpack whichever fixtures are present
               run: |
@@ -190,24 +203,28 @@ jobs:
                   # falling back to the Poland default.
                   KINOWO_COUNTRY:   ${{ matrix.code }}
                   KINOWO_COUNTRIES: ${{ matrix.code }}
-                  # Replay this country's REAL repertoire instead of the generated
-                  # corpus. The generated one cannot exercise enrichment at all —
-                  # every row carries `director = Seq("Some Director")`, which sends
-                  # resolution down the director-walk branch and guarantees a miss —
-                  # so without this the enrichment fields sit the convergence claim
-                  # out as None. `_DB` defaults to the country's own database.
-                  KINOWO_CONVERGENCE_SCRAPES_URI: ${{ secrets.CONVERGENCE_MONGODB_URI }}
-                  # The enrichment cache, on the shared cluster rather than in this
-                  # leg's throwaway container: a container-local cache would be cold
-                  # every run, which is a full live sweep against TMDB/IMDb/Filmweb/
-                  # RT/Metacritic each time. Shared, the first run fills it and the
-                  # rest replay it until the 1-day TTL turns it over.
-                  KINOWO_CONVERGENCE_CACHE_URI:   ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  # NO Mongo here, deliberately — not the corpus, not the cache.
+                  #
+                  # Both URIs used to be set to the shared cluster, reached over a
+                  # `flyctl proxy` this job starts nowhere. Every enrichment cache
+                  # write therefore blocked for the driver's 5s server selection and
+                  # then failed `Connection refused` on 127.0.0.1:27018, and the write
+                  # sits on the fetch path — so each of the ~780 live fills cost 5.6s
+                  # instead of 0.6s and all three legs were cancelled at the 75-minute
+                  # ceiling, still inside `bootCorpus`. (`EnrichmentCache` now suspends
+                  # write-through after three refusals, so this can never cost more
+                  # than a handful of timeouts again — but the right number of round
+                  # trips to a cluster this job cannot reach is zero.)
+                  #
+                  # Neither one is needed. The corpus comes from the committed fixture
+                  # (`CorpusFixture`), and the enrichment answers come from the fixture
+                  # tree restored above — which this leg also EXTENDS as it runs and
+                  # uploads below, so the loop closes without a tunnel in it.
+                  #
                   # Without a real key TmdbClient short-circuits and nothing resolves,
-                  # so the cache would have nothing to hold and the real corpus would
-                  # buy nothing over the generated one.
-                  # Replay recorded enrichment answers first; anything new falls through
-                  # to the cache/live chain and is recorded for the next run.
+                  # so the real corpus would buy nothing over the generated one.
+                  # Replay recorded enrichment answers first; anything genuinely new
+                  # falls through to the live chain and is recorded for the next run.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
 
@@ -220,41 +237,45 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-            # A leaked database means the drop didn't run — worth seeing in the log
-            # rather than discovering as a slowly filling disk.
-            - name: Report any leaked isolated databases
+            # The leg both CONSUMES and EXTENDS the fixture tree: `ArchiveReplayWiring`
+            # wraps the live leg in a `RecordingHttpFetch` pointed at the same
+            # directory, so whatever wasn't already recorded is on disk by the time
+            # the run ends. Publishing it here is what closes the loop — a partial
+            # capture converges on a complete one over successive runs, with no Mongo
+            # cache to write through and no tunnel to dump it back out of.
+            #
+            # `always()` because a leg that FAILED or was cancelled has usually still
+            # enriched most of the corpus, and that capture is exactly what stops the
+            # next run repeating the work. `if-no-files-found: ignore` for the first
+            # run on a new country, where nothing has been recorded yet.
+            - name: Publish the enrichment fixtures this leg recorded
               if: always()
               run: |
-                  docker exec mongo mongosh --quiet --eval \
-                    'db.adminCommand({listDatabases:1,nameOnly:true}).databases
-                       .map(d => d.name).filter(n => n.startsWith("kinowo_isolated")).join("\n")'
-
-    # Kick the enrichment recorder off explicitly, for the same reason the deploy now
-    # kicks US off explicitly rather than by `workflow_run`.
-    #
-    # Two problems with chaining here. GitHub suppresses some event cascades from runs
-    # started by `GITHUB_TOKEN`, and this workflow is now token-dispatched by the
-    # deploy — so a `workflow_run` chain out of it is exactly the kind of link that
-    # silently never fires. And `workflow_run` cannot filter on conclusion, so gating
-    # inside the recorder would create runs that exist only to skip, which is what
-    # cancelled a leg 21.5 minutes into real work.
-    #
-    # `always()`: the recorder must run whether the legs passed or failed. A FAILED leg
-    # has usually still enriched most of the corpus and written it through to the
-    # shared cache, so gating on success would discard the capture precisely on the
-    # runs that populated it most.
-    record-enrichment:
-        needs: convergence
-        if: always()
-        runs-on: ubuntu-latest
-        permissions:
-            actions: write
-        steps:
-            - name: Start the enrichment fixture recorder
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  GH_REPO: ${{ github.repository }}
-              run: |
                   set -euo pipefail
-                  echo "convergence finished (${{ needs.convergence.result }}) — dispatching the enrichment recorder"
-                  gh workflow run "Record enrichment fixtures" --ref "${GITHUB_REF_NAME}"
+                  DIR="test/resources/fixtures/enrichment-${{ matrix.code }}"
+                  if [ ! -d "$DIR" ]; then
+                      echo "nothing recorded — no $DIR"
+                      exit 0
+                  fi
+                  echo "recorded fixture files: $(find "$DIR" -type f | wc -l)"
+                  mkdir -p enrichment-upload
+                  tar -czf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" "$DIR"
+                  du -h "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz"
+
+            - name: Upload the enrichment fixtures
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: enrichment-fixtures-${{ matrix.code }}
+                  path: enrichment-upload/enrichment-${{ matrix.code }}.tar.gz
+                  if-no-files-found: ignore
+                  retention-days: 14
+
+    # There is no `record-enrichment` job any more. It dispatched `Record enrichment
+    # fixtures`, which opens a tunnel to the shared Mongo cache and dumps it back out
+    # as files — a round trip that only made sense while the legs wrote their fills
+    # INTO that cache. They no longer do (see the env block above); each leg now
+    # publishes the fixture tree it recorded directly, so the recorder would have
+    # dumped an ever-staler snapshot over a tunnel, on top of a capture that is
+    # already newer. The workflow itself stays, dispatch-only, as the way to re-cut a
+    # country's fixtures from the cache by hand.
