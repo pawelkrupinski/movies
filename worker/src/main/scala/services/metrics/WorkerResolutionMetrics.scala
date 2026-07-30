@@ -21,10 +21,13 @@ import services.resolution.{ResolutionOutcome, ResolutionOutcomeRecorder}
  *  - `hit_store` alone — how much of that saving survives a restart, i.e. what
  *    the durable Mongo half (5 collections + TTL index reconciliation) buys over
  *    a plain in-process Caffeine.
- *  - `miss_unresolved` — chains run that produced nothing. Hits-only means these
- *    are never cached, so this rate is the load the cache does NOT absorb. If it
- *    dominates, caching negative results is the change worth making, not
- *    deleting the cache.
+ *  - `miss_unresolved` — chains run that produced nothing. For a source on
+ *    [[services.resolution.UnresolvedPolicy.Retry]] (TMDB, IMDb) these are never
+ *    cached, so the rate is load the cache does NOT absorb. The rating-link
+ *    sources are on `Remember` and should show hits instead; if one of them
+ *    still sits at a high `miss_unresolved` rate, its hint keys are churning
+ *    rather than repeating, which is a different bug from a cache that is too
+ *    small.
  *
  * Registered ONCE on the shared [[WorkerMetrics]] registry with a leading
  * `country` label, and seeded to 0 across the full country × source × outcome

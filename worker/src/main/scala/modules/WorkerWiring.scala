@@ -15,7 +15,7 @@ import clients.TmdbClient
 import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
-import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, WriteThroughResolutionCache}
+import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.cinemas._
 import services.enrichment._
@@ -569,9 +569,15 @@ class WorkerWiring(
   // Named (not inline) so the forced re-enrich can reach every one of them to
   // forget a film's memoised resolutions — and so each is ONE instance rather
   // than a fresh Caffeine per call site.
-  lazy val rtLinkCache: ResolutionCache      = resolutionCache("resolve_rt")
-  lazy val mcLinkCache: ResolutionCache      = resolutionCache("resolve_mc")
-  lazy val filmwebLinkCache: ResolutionCache = resolutionCache("resolve_filmweb")
+  //
+  // The three rating-LINK caches remember empty answers as well as hits: "this
+  // site has no page for this film" is the common outcome and a stable one, and
+  // re-deriving it costs a full probe ladder every four hours. The two IDENTITY
+  // caches (TMDB, IMDb) keep retrying, because there an empty answer is expected
+  // to become a real one on its own once the upstream indexes the film.
+  lazy val rtLinkCache: ResolutionCache      = resolutionCache("resolve_rt",      UnresolvedPolicy.Remember)
+  lazy val mcLinkCache: ResolutionCache      = resolutionCache("resolve_mc",      UnresolvedPolicy.Remember)
+  lazy val filmwebLinkCache: ResolutionCache = resolutionCache("resolve_filmweb", UnresolvedPolicy.Remember)
   /** Every per-source resolution cache — what a forced re-enrich clears. */
   lazy val resolutionCaches: Seq[ResolutionCache] =
     Seq(tmdbIdCache, imdbIdCache, rtLinkCache, mcLinkCache, filmwebLinkCache)
@@ -617,13 +623,17 @@ class WorkerWiring(
   // TTL): the same hints resolve once instead of hitting the upstream each cycle.
   // One factory so the test wiring can swap in a passthrough (the fixture harness
   // proves the pipeline is a pure function of the corpus, with no shared cache).
-  protected def resolutionCache(collection: String): ResolutionCache =
+  protected def resolutionCache(
+    collection: String,
+    unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry
+  ): ResolutionCache =
     new WriteThroughResolutionCache(
       new MongoResolutionStore(mongoConnection.database, collection),
       // Labels the counter with the source this collection serves (`resolve_rt` →
       // `rt`), so `kinowo_worker_resolution_total` breaks the saving down per
       // rating source rather than lumping all five together.
-      workerMetrics.resolutionMetrics.recorderFor(country.code, ResolutionOutcome.sourceOf(collection)))
+      workerMetrics.resolutionMetrics.recorderFor(country.code, ResolutionOutcome.sourceOf(collection)),
+      unresolved)
   lazy val tmdbIdCache: ResolutionCache = resolutionCache("resolve_tmdb")
   lazy val movieService: MovieService = new MovieService(
     movieCache, eventBus, tmdbClient,

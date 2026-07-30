@@ -172,7 +172,7 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
       ResolutionOutcome.HitStore)
   }
 
-  it should "report an uncached miss on EVERY repeat, since hits-only never memoises it" in {
+  it should "report an uncached miss on EVERY repeat, since Retry never memoises it" in {
     val recorded = scala.collection.mutable.ListBuffer.empty[String]
     val cache = new WriteThroughResolutionCache(
       new InMemoryResolutionStore, (o: String) => { recorded += o; () })
@@ -187,5 +187,103 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
   "sourceOf" should "label a counter by the source its collection serves" in {
     ResolutionOutcome.sourceOf("resolve_rt") shouldBe "rt"
     ResolutionOutcome.sourceOf("resolve_filmweb") shouldBe "filmweb"
+  }
+
+  // ── UnresolvedPolicy.Remember ──────────────────────────────────────────────
+  //
+  // The rating-link caches carry this policy. In production 97% of Metacritic
+  // resolutions come back empty, and under Retry each one re-walked a ~20-GET
+  // probe ladder every four hours. Remembering "this site has no page for this
+  // film" for the store's TTL turns that into once a day.
+
+  private def rememberingCache(
+    store:    ResolutionStore = new InMemoryResolutionStore(),
+    recorder: ResolutionOutcomeRecorder = ResolutionOutcomeRecorder.noop
+  ) = new WriteThroughResolutionCache(store, recorder, UnresolvedPolicy.Remember)
+
+  "UnresolvedPolicy.Remember" should "run the chain once and answer None from memory after" in {
+    val calls = new AtomicInteger(0)
+    val cache = rememberingCache()
+    def resolve(): Option[String] = { calls.incrementAndGet(); None }
+
+    cache.getOrResolve("k")(resolve()) shouldBe None
+    cache.getOrResolve("k")(resolve()) shouldBe None
+    cache.getOrResolve("k")(resolve()) shouldBe None
+    calls.get() shouldBe 1
+  }
+
+  it should "remember the miss durably, so a restarted process doesn't re-probe" in {
+    val store = new InMemoryResolutionStore()
+    rememberingCache(store).getOrResolve("k")(None) shouldBe None
+
+    val calls = new AtomicInteger(0)
+    // Fresh Caffeine over the same store — a cold worker after a deploy.
+    rememberingCache(store).getOrResolve("k") { calls.incrementAndGet(); None } shouldBe None
+    calls.get() shouldBe 0
+  }
+
+  it should "expire the remembered miss on the store's TTL and probe again" in {
+    val clock = new MutableClock(Instant.parse("2026-07-30T12:00:00Z"))
+    val store = new InMemoryResolutionStore(clock)
+    val calls = new AtomicInteger(0)
+    def resolve(): Option[String] = { calls.incrementAndGet(); None }
+
+    rememberingCache(store).getOrResolve("k")(resolve())
+    clock.advance(java.time.Duration.ofHours(25))
+    // Fresh Caffeine so the expiry under test is the store's, not the in-memory one.
+    rememberingCache(store).getOrResolve("k")(resolve()) shouldBe None
+
+    calls.get() shouldBe 2
+  }
+
+  // The operator's escape hatch has to keep working: a forced re-enrich must
+  // genuinely re-probe, not replay a remembered "no page for this film".
+  it should "drop a remembered miss on forget, so a forced re-enrich really re-probes" in {
+    val cache = rememberingCache()
+    val calls = new AtomicInteger(0)
+    def resolve(): Option[String] = { calls.incrementAndGet(); None }
+
+    cache.getOrResolve(ResolutionKeys.mc("Odyseja", None, Some(2026)))(resolve())
+    cache.forget("Odyseja")
+    cache.getOrResolve(ResolutionKeys.mc("Odyseja", None, Some(2026)))(resolve())
+
+    calls.get() shouldBe 2
+  }
+
+  it should "drop remembered misses on forgetAll too" in {
+    val cache = rememberingCache()
+    val calls = new AtomicInteger(0)
+    def resolve(): Option[String] = { calls.incrementAndGet(); None }
+
+    cache.getOrResolve("k")(resolve())
+    cache.forgetAll()
+    cache.getOrResolve("k")(resolve())
+
+    calls.get() shouldBe 2
+  }
+
+  it should "still resolve and cache a hit normally" in {
+    val store = new InMemoryResolutionStore()
+    rememberingCache(store).getOrResolve("k")(Some("https://www.metacritic.com/movie/dune")) shouldBe
+      Some("https://www.metacritic.com/movie/dune")
+    store.get("k") shouldBe Some("https://www.metacritic.com/movie/dune")
+  }
+
+  // The marker for a remembered miss is the empty string, so a resolver that
+  // hands back Some("") must not be mistaken for a real answer on the way out.
+  it should "treat an empty resolution as unresolved rather than a cacheable value" in {
+    rememberingCache().getOrResolve("k")(Some("")) shouldBe None
+    newCache().getOrResolve("k")(Some("")) shouldBe None
+  }
+
+  it should "count the chain once, then report hits — a remembered miss avoids a probe" in {
+    val recorded = scala.collection.mutable.ListBuffer.empty[String]
+    val store = new InMemoryResolutionStore()
+    val recorder: ResolutionOutcomeRecorder = (o: String) => { recorded += o; () }
+
+    rememberingCache(store, recorder).getOrResolve("k")(None)
+    rememberingCache(store, recorder).getOrResolve("k")(None)  // cold Caffeine, warm store
+
+    recorded.toList shouldBe List(ResolutionOutcome.MissUnresolved, ResolutionOutcome.HitStore)
   }
 }

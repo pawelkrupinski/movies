@@ -19,9 +19,10 @@ import scala.util.Try
  * a cold (just-restarted) process reads on a Caffeine miss, and what gives the
  * resolution its persistence across restarts and across the worker fleet.
  *
- * Only HITS are stored — a resolver that found nothing writes nothing, so an
- * unresolvable film re-resolves next cycle rather than being remembered as a
- * permanent miss.
+ * A store holds whatever its [[ResolutionCache]] hands it. Under
+ * [[UnresolvedPolicy.Remember]] that includes an EMPTY value, meaning "the chain
+ * ran and found nothing" — an ordinary entry in every other respect, so it
+ * expires on the same TTL and the removal methods below drop it too.
  *
  * Both implementations honour the same freshness contract (a value older than
  * [[ResolutionStore.Ttl]] reads as absent), so the cache semantics are

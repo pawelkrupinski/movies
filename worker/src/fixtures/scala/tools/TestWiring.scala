@@ -7,7 +7,7 @@ import services.{MongoConnection, Stoppable}
 import services.events.{DomainEvent, EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.MovieService
-import services.resolution.ResolutionCache
+import services.resolution.{ResolutionCache, UnresolvedPolicy}
 import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, HandlerOutcome, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType}
 
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
@@ -56,7 +56,7 @@ trait TestWiring extends WorkerWiring {
   // hint key is fixed by whichever row populates it first) would make a shuffled
   // re-enrich sweep order-dependent — exactly what `ScrapeOrderDeterminismSpec`
   // guards against. The caches' own behaviour is covered by their unit specs.
-  override protected def resolutionCache(collection: String): ResolutionCache = ResolutionCache.passthrough
+  override protected def resolutionCache(collection: String, unresolved: UnresolvedPolicy): ResolutionCache = ResolutionCache.passthrough
 
   // In-memory task queue + freshness store so the queue-driven wiring boots
   // without Mongo: the reapers and the detail enqueuers (when deferred detail is

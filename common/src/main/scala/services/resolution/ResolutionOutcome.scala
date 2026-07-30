@@ -14,10 +14,14 @@ package services.resolution
  *    is carrying little and could go.
  *  - `miss_resolved` — the chain ran and produced an answer, now cached. Each of
  *    these mints a future `hit_*`.
- *  - `miss_unresolved` — the chain ran and produced NOTHING. Hits-only means this
- *    is not cached, so the same film burns the same full chain (up to ~30 GETs
- *    for RT/Metacritic) on every subsequent cycle. This is the category the
- *    cache gives zero protection to, and the one worth watching.
+ *  - `miss_unresolved` — the chain ran and produced NOTHING. Under
+ *    [[UnresolvedPolicy.Retry]] that answer isn't cached, so the same film burns
+ *    the same full chain (up to ~20 GETs for RT/Metacritic, ~55 for Filmweb) on
+ *    every subsequent cycle — the category the cache gives zero protection to,
+ *    and the one worth watching. Under `Remember` the miss is cached like a hit,
+ *    so it fires once and then shows up as `hit_*`; a source that stays pinned
+ *    at a high `miss_unresolved` rate with no hits is one whose keys are churning
+ *    (different hints every cycle), not one the policy failed to help.
  *
  * Kept in `common` alongside the cache because the taxonomy is generic; the
  * worker supplies the [[ResolutionOutcomeRecorder]] that turns an outcome into a
@@ -28,7 +32,7 @@ object ResolutionOutcome {
   val HitMemory      = "hit_memory"       // served by Caffeine; loader never ran
   val HitStore       = "hit_store"        // Caffeine cold, served by the durable store
   val MissResolved   = "miss_resolved"    // resolved live, written through
-  val MissUnresolved = "miss_unresolved"  // resolved live to None — NOT cached, will retry
+  val MissUnresolved = "miss_unresolved"  // resolved live to None (cached or not, per UnresolvedPolicy)
 
   /** Every outcome, for seeding the metric at 0 so no Grafana line pops in when a
    *  category first fires. */
