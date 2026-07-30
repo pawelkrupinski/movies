@@ -104,20 +104,21 @@ object FileEnrichmentCacheStore {
    *  neither has to be restored separately from the other. Dot-prefixed so it can't
    *  be mistaken for a recorded host directory. */
   def beside(fixtureDirectory: String): Path =
-    Paths.get(clients.tools.FakeHttpFetch.rootFor(fixtureDirectory)).resolve(".enrichment-cache")
+    Paths.get(clients.tools.FakeHttpFetch.rootFor(fixtureDirectory)).resolve(CacheDirectoryName)
+
+  /** Named once, because two other things depend on it: the workflow greps the tarball
+   *  for it, and [[EnrichmentFreshness.prune]] must skip it. */
+  val CacheDirectoryName = ".enrichment-cache"
 
   /**
    * How long a remembered answer stands in for the live service.
    *
-   * A week, where Mongo's was a day. The Mongo cache was written continuously by
-   * every run against one shared cluster, so a day bounded how long a wrong answer
-   * — a rate-limited 429 pinned as a verdict — could persist. This one travels in a
-   * CI artifact between runs that may be a day apart on the schedule alone, and a
-   * TTL that expires between runs is a TTL that never hits. A week keeps the legs
-   * warm while still healing a 404 that became a 200, and the recorded successes it
-   * sits beside have no expiry at all.
+   * Deferred to [[EnrichmentFreshness]], which is the single answer for the whole
+   * mechanism. This used to be a week against Mongo's day, while the recorded
+   * responses sitting beside it in the same tree expired never — three different
+   * lifetimes for one question. The reasoning for the number lives with the constant.
    */
-  val Ttl: FiniteDuration = 7.days
+  val Ttl: FiniteDuration = EnrichmentFreshness.Ttl
 
   private def hash(key: String): String = {
     val digest = java.security.MessageDigest.getInstance("SHA-256")

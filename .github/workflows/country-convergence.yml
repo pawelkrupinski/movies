@@ -93,13 +93,9 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            # Restore BOTH recorded fixture sets, each from its own workflow and its
-            # own cache key: the corpus from the nightly `Record scrape fixtures`, the
-            # enrichment answers from `Record enrichment fixtures`, which runs after
-            # every convergence. Restore-only and prefix-matched, so a leg always takes
-            # the newest capture of each and simply proceeds without one when none
-            # exists — the spec then falls back to fetching live and persisting, which
-            # is what produces the next capture.
+            # The scrape corpus, from the nightly `Record scrape fixtures`. Restore-only
+            # and prefix-matched, so a leg always takes the newest capture and simply
+            # proceeds without one when none exists.
             - name: Restore recorded scrape fixtures
               uses: actions/cache/restore@v5
               with:
@@ -156,17 +152,15 @@ jobs:
                   # enriched before it stopped, and today's largest captures came from
                   # cancelled legs.
                   echo "no asset in release $TAG — falling back to the newest artifact"
-                  for workflow in "Country convergence" "Record enrichment fixtures"; do
-                      for run in $(gh run list --workflow "$workflow" --limit 10 \
-                                   --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+                  for run in $(gh run list --workflow "Country convergence" --limit 10 \
+                               --json databaseId --jq '.[].databaseId' 2>/dev/null); do
                           [ "$run" = "${{ github.run_id }}" ] && continue
                           if gh run download "$run" --name "enrichment-fixtures-${{ matrix.code }}" \
                              --dir enrichment-archive 2>/dev/null; then
-                              echo "enrichment fixtures from $workflow run $run"
+                              echo "enrichment fixtures from run $run"
                               ls -l enrichment-archive/
                               exit 0
                           fi
-                      done
                   done
                   echo "no enrichment capture found for ${{ matrix.code }} — this leg fetches live and publishes the result"
 

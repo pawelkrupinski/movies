@@ -11,7 +11,7 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, EnrichmentCache, EnrichmentCacheStore,
-  Env, FileEnrichmentCacheStore, MongoEnrichmentCacheStore, SameThreadExecutionBudget}
+  EnrichmentFreshness, Env, FileEnrichmentCacheStore, SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -48,17 +48,16 @@ import scala.util.{Random, Try}
  * countries in one JVM would overwrite each other's normalisation, so there is
  * deliberately no alias that runs them together.
  *
- * Requires MONGODB_URI: the corpus is written to and read back from a real
- * `cinema_scrapes` collection, so the archive's own round-trip is on the path.
- * The database is uniquely named per run (see `IsolatedMongoDatabase`), which is
- * what lets the three legs — and anything else on the `it` layer — run at once.
+ * Needs no database. The corpus comes from a committed fixture and is replayed through
+ * an in-memory archive; the enrichment answers come from a recorded fixture tree with a
+ * remembered-verdict cache beside it. Every Mongo the suite once required — a container
+ * for the corpus, a tunnelled cluster for the cache — is gone, along with the failures
+ * they caused.
  *
- * ENRICHMENT is on the path too when a real `TMDB_API_KEY` is present, replayed
- * through this country's `EnrichmentCache` so what a pass sees is fixed rather than
- * whatever the live services felt like saying that minute. Without a key — which is
- * what CI gets — the replay stays offline and the enrichment fields sit the claim
- * out as `None`, exactly as they did before the cache existed. See
- * `enrichmentCacheStore` below.
+ * ENRICHMENT is on the path whenever a real `TMDB_API_KEY` is present, replayed so that
+ * what a pass sees is fixed rather than whatever the live services felt like saying that
+ * minute. Without a key nothing resolves, and the suite says so rather than passing
+ * quietly — see `requireEnrichmentReached`.
  */
 abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -71,57 +70,53 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * This country's enrichment cache — the one thing in this suite that deliberately
    * OUTLIVES the run.
    *
-   * Everything else here is thrown away: the corpus goes into a `kinowo_isolated_*`
-   * database that is dropped in `finally`, which is exactly right for data whose
-   * whole purpose is to be reconstructed identically next time. The enrichment
-   * answers are the opposite — expensive to obtain, stable for a day, and the only
-   * way the enrichment fields can take part in a fixpoint claim at all. So they
-   * live in a fixed `convergence_test` database with a per-country collection and a
-   * 1-day TTL, and nothing here drops it.
+   * Everything else here is thrown away: the corpus is rebuilt from a committed fixture
+   * every time, which is exactly right for data whose whole purpose is to be
+   * reconstructed identically. The enrichment answers are the opposite — expensive to
+   * obtain, and the only way the enrichment fields can take part in a fixpoint claim at
+   * all. So they live in a directory INSIDE the fixture tree, which travels between runs
+   * in the release asset the leg publishes, and expire on [[EnrichmentFreshness.Ttl]].
+   *
+   * There is no Mongo option any more, and no URI to point anywhere. The cache began in
+   * a `convergence_test` database reachable only over a `flyctl proxy`, and that tunnel
+   * caused every serious failure this suite has had: three legs cancelled at the
+   * 75-minute ceiling paying a 5-second server-selection timeout per cache miss, a
+   * preload that never once completed inside its 120-second ceiling, and a local run
+   * that spent its whole sweep logging `not authorized`. A directory beside the fixtures
+   * needs no cluster, no credential and no proxy, and is warm on the next run by
+   * construction.
    *
    * Present only when a real `TMDB_API_KEY` is. Without a key `TmdbClient.search`
    * short-circuits to `None`, so nothing downstream would resolve and there would be
-   * nothing to cache — the replay stays offline exactly as it was before, which is
-   * also what CI's `country-convergence` workflow gets, since it sets `MONGODB_URI`
-   * and no key.
+   * nothing to cache.
    *
    * That gate is silent by design, and the trap it sets is worth naming: `Env` reads
-   * `.env.local` from the WORKING DIRECTORY, so a run from a fresh worktree finds no
-   * key and quietly takes the offline path. To exercise the cached one, give the
-   * worktree the key and point Mongo at a throwaway:
+   * `.env.local` from the WORKING DIRECTORY, so a run from a fresh worktree finds no key
+   * and quietly enriches nothing. Symlink it in to exercise the real path:
    *
    * {{{
    *   ln -s /path/to/movies/.env.local .env.local     # gitignored
-   *   MONGODB_URI="mongodb://127.0.0.1:28017/?directConnection=true" sbt convergencePoland
+   *   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES=enrichment-pl sbt convergencePoland
    * }}}
    *
-   * Expect ~25 min on a cold cache (~3.3k live fills for Poland) and ~1 min warm —
-   * the run prints both the preload count and the hit/fill split, so which one
-   * happened is never a guess.
-   */
-  /**
-   * The FILE store wins wherever a fixture tree is configured, and Mongo is the
-   * fallback for a run that has no tree at all.
-   *
-   * That order round, deliberately. The file cache lives inside the tree, so it
-   * travels in the same artifact and is warm on the next run by construction — no
-   * URI, no cluster, no tunnel, and nothing that can be pointed at a socket nobody
-   * is listening to. Mongo first meant a `MONGODB_URI` sitting in someone's
-   * `.env.local` silently took over from it: a local run then spent its whole sweep
-   * logging `not authorized on convergence_test` and wrote no cache at all, while the
-   * store designed for exactly that run went unused.
+   * The run prints the preload count and the hit/fill split, so whether it was warm is
+   * never a guess.
    */
   private lazy val enrichmentCacheStore: Option[EnrichmentCacheStore] =
     if (TmdbClient.ApiKey.isEmpty) None
     else fixtureDirectory.map(dir => new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(dir)))
-      .orElse(cacheUri.map(uri => MongoEnrichmentCacheStore.open(uri, country)))
-
-  /** A Mongo cache, for a run with no fixture tree to keep one beside. */
-  private def cacheUri: Option[String] =
-    Env.get("KINOWO_CONVERGENCE_CACHE_URI").orElse(Env.get("MONGODB_URI"))
 
   private def fixtureDirectory: Option[String] =
     Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
+
+  /** Age the recorded responses out before anything reads them, so a rating captured
+   *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
+   *  half nothing used to expire at all. */
+  private lazy val expireStaleFixtures: Int =
+    fixtureDirectory.fold(0) { dir =>
+      step("expireStaleEnrichment")(
+        EnrichmentFreshness.prune(java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(dir))))
+    }
 
   /**
    * ONE cache for every replay in the suite, preloaded whole before the first of
@@ -142,6 +137,10 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * fixture tree five files larger at the end than at the start.
    */
   private lazy val enrichmentCache: Option[EnrichmentCache] = enrichmentCacheStore.map { store =>
+    val expired = expireStaleFixtures
+    if (expired > 0)
+      info(s"${country.displayName}: expired $expired recorded response(s) older than " +
+           s"${EnrichmentFreshness.Ttl.toDays}d — they refetch and record fresh")
     // Successes are persisted only when NOTHING else is recording them. With a fixture
     // tree present, `RecordingHttpFetch` already writes every response there and the
     // tree is consulted first, so a copy in the cache is never read — it only made the
@@ -154,9 +153,8 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   }
 
   private def describe(store: EnrichmentCacheStore): String = store match {
-    case mongo: MongoEnrichmentCacheStore => s"${MongoEnrichmentCacheStore.DatabaseName}.${mongo.collectionName}"
-    case file:  FileEnrichmentCacheStore  => file.root.toString
-    case other                            => other.getClass.getSimpleName
+    case file: FileEnrichmentCacheStore => file.root.toString
+    case other                          => other.getClass.getSimpleName
   }
 
   /** Independent random-order passes compared against each other. Three is enough

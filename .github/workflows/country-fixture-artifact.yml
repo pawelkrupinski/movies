@@ -41,8 +41,8 @@ on:
         # WEEKLY (Sundays), not nightly. This records the live scrape HTML *and* a
         # full TMDB->IMDb->Metacritic->RT->Filmweb cascade against live upstreams, and
         # the enrichment half of that is now paid for anyway: the convergence legs
-        # enrich as they run and `Record enrichment fixtures` dumps the result from the
-        # shared cache for free, with no third-party calls at all. What only this job
+        # enrich as they run and publish the recorded tree themselves, with no
+        # third-party calls beyond what they were making regardless. What only this job
         # produces is the scrape HTML under `fixtures/today/`, consumed by the local
         # stack and RecorderZyteCaptureSpec — and that changes far more slowly than
         # nightly. Nightly also spent ~90 minutes a day of live-upstream budget, and
