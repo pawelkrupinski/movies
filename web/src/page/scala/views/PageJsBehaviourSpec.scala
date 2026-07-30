@@ -1760,6 +1760,57 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Truncation and filtering are separate channels ──────────────────────────
+  //
+  // A card caps its showings at ~10 lines and puts the rest behind "… +N
+  // seansów". That folding owns the `.truncated` class; the filters own inline
+  // `style.display` (`setVisible`). They interleave constantly — every
+  // `applyFilters` unfolds, re-decides, then re-folds — so they must not share a
+  // channel: one writer per property is what keeps either from silently undoing
+  // the other's decision.
+
+  "a row folded away to keep a card short" should "still carry the filter's own verdict" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+
+      withClue("no card in the corpus overflows its line budget: ") {
+        page.evalInt("document.querySelectorAll('.truncated').length") should be > 0
+      }
+      withClue("a folded row is hidden by the class alone, never through the filter's channel: ") {
+        page.evalBool(
+          "[...document.querySelectorAll('.truncated')].every(g => g.style.display !== 'none')"
+        ) shouldBe true
+      }
+
+      // So unfolding alone puts them back on screen — no filter pass needed.
+      page.eval("undoTruncation()")
+      page.evalInt("document.querySelectorAll('.truncated').length") shouldBe 0
+      page.evalBool(
+        "[...document.querySelectorAll('#film-grid .col[data-title]')]" +
+          ".filter(c => c.style.display !== 'none')" +
+          ".flatMap(c => [...c.querySelectorAll('.date-group[data-date]')])" +
+          ".every(g => g.offsetParent !== null)"
+      ) shouldBe true
+    }
+  }
+
+  it should "not follow the clone into a day-carousel preview, which shows one day" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+      page.evalInt("document.querySelectorAll('.truncated').length") should be > 0
+
+      enableSlideAnimation(page)
+      page.eval("const s = document.getElementById('date-filter'); s.value = 'today'; onDateSelect()")
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      withClue("a preview carried the live grid's folded rows: ") {
+        page.evalInt("document.querySelectorAll('#day-track > .day-col .truncated').length") shouldBe 0
+      }
+    }
+  }
+
   // ── Anti-FOUC grid cloak ────────────────────────────────────────────────────
   //
   // The server renders every film for every date (no server-side day filter);

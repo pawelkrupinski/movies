@@ -63,4 +63,11 @@
     border-radius: 10px;
   }
   .showings-more:hover { color: #9df; background: rgba(255,255,255,.1); }
+
+  @* Rows a card folded away to stay inside its ~10-line budget (the "… +N
+     seansów" link reveals them). Truncation owns THIS class and nothing else;
+     the filters own inline `style.display`. Two channels, so neither can
+     silently undo the other — a row hidden here still carries the filter's own
+     verdict, and `undoTruncation` hands it back untouched. *@
+  .truncated { display: none; }
 </style>

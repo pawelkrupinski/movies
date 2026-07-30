@@ -703,10 +703,15 @@
     return forms[_pluralCategory(n)] || forms.other || forms.many;
   }
 
+  // Truncation folds rows away with the `.truncated` CLASS; the filters hide
+  // them with inline `style.display` (`setVisible`). Keeping the two on separate
+  // channels is what makes them safe to interleave: neither can undo the other's
+  // decision by accident, and unfolding a row hands it straight back to whatever
+  // the filter had decided for it. Nothing here reads or writes inline display.
+  const TRUNCATED = 'truncated';
+
   function undoTruncation() {
-    document.querySelectorAll('.date-group, .cinema-group').forEach(element => {
-      if (element._truncated) { element.style.display = ''; element._truncated = false; }
-    });
+    document.querySelectorAll('.' + TRUNCATED).forEach(element => element.classList.remove(TRUNCATED));
   }
   window.undoTruncation = undoTruncation;
 
@@ -738,8 +743,7 @@
 
         if (capped) {
           hidden += visibleBadges;
-          cinemaGroup.style.display = 'none';
-          cinemaGroup._truncated = true;
+          cinemaGroup.classList.add(TRUNCATED);
           continue;
         }
 
@@ -747,13 +751,12 @@
         const cinemaLines = (hasCinemaHeaders ? 1 : 0) + pillRows;
 
         if (lineCount + dayLines + cinemaLines <= _MAX_SHOWINGS_ROWS) {
-          if (cinemaGroup._truncated) { cinemaGroup.style.display = ''; cinemaGroup._truncated = false; }
+          cinemaGroup.classList.remove(TRUNCATED);
           dayHasVisible = true;
           dayLines += cinemaLines;
         } else {
           hidden += visibleBadges;
-          cinemaGroup.style.display = 'none';
-          cinemaGroup._truncated = true;
+          cinemaGroup.classList.add(TRUNCATED);
           capped = true;
         }
       }
@@ -761,10 +764,7 @@
       if (dayHasVisible) {
         lineCount += dayLines;
       } else if (capped) {
-        if (dateGroup.style.display !== 'none') {
-          dateGroup.style.display = 'none';
-          dateGroup._truncated = true;
-        }
+        dateGroup.classList.add(TRUNCATED);
       }
     }
 
@@ -772,12 +772,12 @@
       link.textContent = '… +' + hidden + ' ' + _showtimeNoun(hidden);
       link.style.display = '';
     } else {
+      // Too few folded away to be worth a link — unfold them again.
       if (hidden > 0) {
         for (const dateGroup of dateGroups) {
-          if (dateGroup._truncated) { dateGroup.style.display = ''; dateGroup._truncated = false; }
-          for (const cinemaGroup of dateGroup.querySelectorAll('.cinema-group')) {
-            if (cinemaGroup._truncated) { cinemaGroup.style.display = ''; cinemaGroup._truncated = false; }
-          }
+          dateGroup.classList.remove(TRUNCATED);
+          for (const cinemaGroup of dateGroup.querySelectorAll('.cinema-group'))
+            cinemaGroup.classList.remove(TRUNCATED);
         }
       }
       link.style.display = 'none';
@@ -2109,6 +2109,11 @@
     // The clone is a transient preview — strip ids so nothing inside collides
     // with the live DOM the filter helpers query by id.
     clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+    // The live grid's folded-away rows come along in the clone. A preview is
+    // untruncated (it shows one day, not ten), and `applyFiltersForDay` only
+    // speaks inline display — so drop the class rather than leave rows hidden
+    // by a decision that was made for a different day's budget.
+    clone.querySelectorAll('.' + TRUNCATED).forEach(element => element.classList.remove(TRUNCATED));
     col.appendChild(clone);
     if (typeof applyFiltersForDay === 'function') applyFiltersForDay(clone, dayValue);
     return col;
