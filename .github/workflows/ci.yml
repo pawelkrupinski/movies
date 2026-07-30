@@ -226,6 +226,21 @@ jobs:
             # Boot the fixture server in the background ONCE for both mobile
             # suites. Binds a kernel-assigned free port, writes it to a file we
             # busy-wait for, then exports the URL both test steps read.
+            # Build BEFORE booting, as its own step, so the boot's ceiling only has to
+            # cover booting.
+            #
+            # The two were one step, and the 300s below had to stretch over both. That
+            # holds until the caches go cold together — a Renovate dependency bump
+            # invalidates coursier while a source change invalidates sbt-target — and
+            # then the runner spends the entire window fetching the sbt launcher and
+            # compiling, reaching only "set current project to movies" by the time it is
+            # killed. It reports as `FixtureServerMain never wrote a port file`, which
+            # points at the server rather than at the build that never finished making
+            # it. Split, a slow build is just a slow build, a compile error says so, and
+            # the ceiling below measures the one thing it names.
+            - name: Compile the fixture server
+              run: sbt web/PageTest/compile
+
             - name: Boot FixtureServerMain
               run: |
                   set -euo pipefail
@@ -235,10 +250,10 @@ jobs:
                   nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
                   echo "SERVER_PID=$!" >> "$GITHUB_ENV"
 
-                  # 300s ceiling: ~110s of CPU-bound bootStartup (the whole
+                  # 300s ceiling over ~110s of CPU-bound bootStartup (the whole
                   # ~1000-film fixture corpus through scrape→enrich→fold against
-                  # in-memory fixtures — processing cost, not retries) plus, on a
-                  # cold sbt-target cache, a full recompile before bootStartup.
+                  # in-memory fixtures — processing cost, not retries) plus sbt's own
+                  # startup. The compile is no longer inside this window.
                   for _ in $(seq 1 150); do
                       if [ -s "$PORT_FILE" ]; then break; fi
                       sleep 2
