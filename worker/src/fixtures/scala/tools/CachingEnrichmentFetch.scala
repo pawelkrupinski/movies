@@ -124,7 +124,7 @@ object CachingEnrichmentFetch {
    *  code — `retryAfter` deliberately dropped, since a cached 429's original hint
    *  expired with the run that saw it. */
   def revive(failed: CachedResponse.Failed, url: String): RuntimeException = failed.status match {
-    case Some(code) => new HttpStatusException(code, failed.method, url, retryAfter = None)
+    case Some(code) => new RememberedHttpStatusException(code, failed.method, url)
     case None       => new CachedEnrichmentFailure(failed.message)
   }
 
@@ -144,3 +144,19 @@ object CachingEnrichmentFetch {
  *  so a confusing test failure names the cache rather than pretending to be a live
  *  socket error. */
 class CachedEnrichmentFailure(message: String) extends RuntimeException(message)
+
+/**
+ * A replayed HTTP failure, saying so.
+ *
+ * Still an [[HttpStatusException]] carrying the original code, because callers branch
+ * on it — a 404 is a permanent miss, a 5xx is worth a retry — and pass 2 has to behave
+ * exactly as pass 1 did. Only the MESSAGE differs, and that matters more than it
+ * sounds: a remembered 404 and a live one were textually identical in the log, so a
+ * fully-cached run making no network calls whatsoever was indistinguishable from one
+ * hammering Rotten Tomatoes on every film. That ambiguity is what made "is the 404
+ * actually cached?" impossible to answer without correlating cache statistics.
+ */
+class RememberedHttpStatusException(code: Int, method: String, url: String)
+  extends HttpStatusException(code, method, url, retryAfter = None) {
+  override def getMessage: String = s"${super.getMessage} (remembered — not re-fetched)"
+}

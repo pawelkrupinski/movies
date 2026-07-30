@@ -81,6 +81,11 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     val replayed = the [HttpStatusException] thrownBy fetch.get("https://api.themoviedb.org/3/search?q=nope")
     replayed.code shouldBe 404
     replayed.url  shouldBe "https://api.themoviedb.org/3/search?q=nope"
+    // A remembered 404 and a live one used to read identically in the log, which made
+    // a fully-cached run indistinguishable from one re-fetching every miss.
+    withClue("a replayed failure must say it was replayed: ") {
+      replayed.getMessage should include ("remembered")
+    }
 
     withClue("a remembered failure must not re-ask the live service: ") { delegate.calls shouldBe 1 }
   }

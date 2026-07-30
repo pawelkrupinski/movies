@@ -103,9 +103,12 @@ class ArchiveReplayWiring(
       // about the Zyte-routed SCRAPE chain, where an inner leg fetches through its own
       // client and would otherwise bypass the recorder. There is no such leg here: the
       // live side is the only thing that reaches the network.)
+      // Named for what it IS. Labelled "live", every cached 404 was reported as
+      // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
+      // exactly like one re-fetching every one of them.
       new FallbackHttpFetch(Seq(
         "enrichment-fixtures" -> replay,
-        "live"                -> new clients.tools.RecordingHttpFetch(directory, live, foldYear = false)))
+        "remembered-or-live"  -> new clients.tools.RecordingHttpFetch(directory, live, foldYear = false)))
     }
 
   /** Whether enrichment has anywhere to get an answer from — a cache, a recorded

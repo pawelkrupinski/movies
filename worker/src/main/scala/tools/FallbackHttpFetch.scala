@@ -6,9 +6,9 @@ import scala.collection.mutable
 
 /**
  * Tries each backend in order, returning the first successful body.
- * Logs each failure as a warning and falls through to the next one;
- * if every backend fails, throws a single composite exception that
- * names each failure.
+ * A backend that fails is recorded at DEBUG and the chain falls through
+ * to the next one; only when every backend has failed does it warn, and
+ * throw a single composite exception naming each failure.
  *
  * Used by Multikino's composition: Zyte primary → direct fetch as
  * last resort. None of the backends know about each other — each is
@@ -52,15 +52,26 @@ class FallbackHttpFetch(
         case t: Throwable =>
           val message = s"$name: ${t.getClass.getSimpleName}: ${t.getMessage}"
           safeOutcome(name, Some(message))
-          logger.warn(s"FallbackHttpFetch $verb $url — $message; trying next backend")
+          // DEBUG, not WARN: falling through is what a fallback chain is FOR, and a
+          // chain that then answers has nothing wrong with it. At warning volume the
+          // convergence legs emitted thousands of nine-line misses per run — every
+          // film that never resolves misses the fixture backend by construction, since
+          // a 404 leaves no response to record — on runs making no network calls at
+          // all. It read as a broken cache, was reported as one, and drowned the
+          // warnings that meant something. The detail is kept for whoever is actually
+          // diagnosing a fall-through, and every failure is still named in the warning
+          // below if the chain runs out of backends.
+          logger.debug(s"FallbackHttpFetch $verb $url — $message; trying next backend")
           failures += message
       }
     }
     result.getOrElse {
-      throw new RuntimeException(
-        s"All ${backends.size} backends failed for $verb $url:\n  " +
-        failures.mkString("\n  ")
-      )
+      val detail = s"All ${backends.size} backends failed for $verb $url:\n  " + failures.mkString("\n  ")
+      // NOW it is a warning: nothing answered. Logged as well as thrown because
+      // callers routinely catch this to degrade gracefully, and a swallowed
+      // exception is how a chain fails silently.
+      logger.warn(s"FallbackHttpFetch $detail")
+      throw new RuntimeException(detail)
     }
   }
 
