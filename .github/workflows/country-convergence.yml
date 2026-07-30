@@ -54,6 +54,12 @@ concurrency:
     # explicitly removes that class of run entirely.
     cancel-in-progress: true
 
+env:
+    # The rolling release the per-country fixture trees live in. One tag, three assets,
+    # each replaced in place — a store, not a history. Marked as a prerelease when
+    # created so it never reads as a shipped version of anything.
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+
 jobs:
     convergence:
         name: convergence (${{ matrix.country }})
@@ -77,9 +83,12 @@ jobs:
         # not to raise the number again.
         timeout-minutes: 75
         permissions:
-            contents: read
+            # `contents: write` for the rolling release the fixture trees live in —
+            # see "Publish" below for why that, rather than an artifact.
+            contents: write
             checks: write
-            # `gh run download` needs to list runs and read artifacts of this repo.
+            # `gh run download` still reads artifacts, for the one-off bootstrap when
+            # the release doesn't exist yet.
             actions: read
         steps:
             - uses: actions/checkout@v5
@@ -98,50 +107,55 @@ jobs:
                   key: scrape-fixtures-${{ matrix.code }}-
                   restore-keys: scrape-fixtures-${{ matrix.code }}-
 
-            # Enrichment fixtures come from the ARTIFACT, not the cache. They are
-            # 84-152 MB per country, and this repo's actions cache already sits at
-            # 9.46 GB of a 10 GB ceiling (mostly sbt-target entries), so three
-            # enrichment tarballs were evicted the moment they were written — with
+            # The enrichment tree — recorded responses AND the remembered-answer cache —
+            # lives in a ROLLING RELEASE, one asset per country, overwritten in place.
+            #
+            # Three storage options, and only one of them fits. The actions CACHE is out
+            # on space: this repo already sits at 9.46 GB of a 10 GB ceiling, so these
+            # tarballs were evicted the moment they were written — with
             # `actions/cache/save` still reporting success, because a save succeeding
-            # says nothing about whether the entry SURVIVES. Worse, pushing 370 MB
-            # through that ceiling evicts the sbt caches that keep every job from
-            # cold-compiling. Artifacts have their own retention and cannot evict a
-            # build cache.
+            # says nothing about whether the entry SURVIVES — and forcing them through
+            # that ceiling evicts the sbt caches every job depends on. MONGO has the
+            # space and is where this cache started, but it is only reachable over a
+            # `flyctl proxy`, which is the single component that has broken more runs
+            # this week than everything else combined (three legs cancelled at the
+            # 75-minute ceiling paying 5s a write to a socket nobody was listening to).
+            # ARTIFACTS work, and are what this used to use, but they are per-run: three
+            # countries at 84-434 MB every deploy, retained for days, when the only copy
+            # anyone ever reads is the newest one.
             #
-            # `continue-on-error` because a missing artifact is the normal first-run
-            # state: the leg fetches live and the recorder captures it afterwards.
-            # Enrichment fixtures come from the ARTIFACT of the latest successful
-            # recording, not from the cache. They are 84-152 MB per country and this
-            # repo's actions cache already sits at 9.46 GB of a 10 GB ceiling (mostly
-            # sbt-target entries), so three enrichment tarballs were evicted the moment
-            # they were written — with `actions/cache/save` still reporting success,
-            # because a save succeeding says nothing about whether the entry SURVIVES.
-            # Worse, forcing 370 MB through that ceiling evicts the sbt caches that keep
-            # every job off a cold compile.
+            # A release asset is 2 GB per file, doesn't touch the Actions storage quota,
+            # comes off the CDN with no tunnel in the path, and `--clobber` replaces it
+            # in place — so there is exactly one copy per country and no history to
+            # prune. It is also a far simpler read than scanning runs for an artifact.
             #
-            # Resolved with `gh` rather than `actions/download-artifact`, which can only
-            # address a run id — and the id available here belongs to the DEPLOY that
-            # triggered this workflow, not to the recorder. Asking for "the newest
-            # successful recording" is what we actually mean.
-            #
-            # A missing artifact is the normal first-run state, so this never fails the
-            # leg: it falls through to fetching live, and the recorder captures it after.
-            - name: Download the latest recorded enrichment fixtures
+            # Never fails the leg: no release yet is the normal first-run state, and the
+            # leg then falls through to the artifact bootstrap, and failing that to
+            # fetching live and publishing what it learns.
+            - name: Restore the enrichment tree and remembered answers
               continue-on-error: true
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -uo pipefail
-                  # Newest capture wins, and a leg now publishes its own — so the
-                  # normal source is the PREVIOUS convergence run. `Record enrichment
-                  # fixtures` stays in the list as the bootstrap/rescue source: it is
-                  # what seeded the tree before the legs published it themselves, and
-                  # it is still the way to rebuild the tree from the shared Mongo cache
-                  # by hand if a country's fixtures ever have to be re-cut.
-                  #
-                  # Conclusion is deliberately NOT filtered. A leg that failed or was
-                  # cancelled still recorded everything it enriched before it stopped,
-                  # and discarding that is what makes the next run repeat the work.
+                  # FIXTURE_RELEASE_TAG comes from the workflow-level `env`, which is
+                  # exported into every step's shell.
+                  TAG="$FIXTURE_RELEASE_TAG"
+                  mkdir -p enrichment-archive
+                  if gh release download "$TAG" --pattern "enrichment-${{ matrix.code }}.tar.gz" \
+                     --dir enrichment-archive --clobber 2>/dev/null; then
+                      echo "enrichment tree from release $TAG"
+                      ls -l enrichment-archive/
+                      exit 0
+                  fi
+
+                  # One-off bootstrap: before the release existed, legs published
+                  # artifacts. Read the newest of those so the switch doesn't throw away
+                  # captures already paid for. Conclusion deliberately NOT filtered — a
+                  # leg that failed or was cancelled still recorded everything it
+                  # enriched before it stopped, and today's largest captures came from
+                  # cancelled legs.
+                  echo "no asset in release $TAG — falling back to the newest artifact"
                   for workflow in "Country convergence" "Record enrichment fixtures"; do
                       for run in $(gh run list --workflow "$workflow" --limit 10 \
                                    --json databaseId --jq '.[].databaseId' 2>/dev/null); do
@@ -311,18 +325,42 @@ jobs:
                   if [ -d "$DIR/.enrichment-cache" ] && \
                      ! tar -tzf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" \
                        | grep -q '/\.enrichment-cache/'; then
-                      echo "::error::the enrichment cache exists on disk but is NOT in the artifact"
+                      echo "::error::the enrichment cache exists on disk but is NOT in the tarball"
                       exit 1
                   fi
 
-            - name: Upload the enrichment fixtures
+            # Replaces the country's asset IN PLACE, so the release holds one copy per
+            # country and never a history — the newest capture is the only one anyone
+            # reads, and keeping the rest was pure storage.
+            #
+            # `always()` for the same reason the tar above is: a leg that failed or was
+            # cancelled has usually still enriched most of the corpus, and that capture
+            # is exactly what stops the next run repeating the work. Today's two largest
+            # captures (301 MB and 434 MB) both came from CANCELLED legs.
+            #
+            # `create ... || true` because three country legs race to create the release
+            # on the very first run and exactly one of them can win; the other two find
+            # it already there, which is the outcome they wanted anyway.
+            - name: Publish the tree to the rolling release
               if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: enrichment-fixtures-${{ matrix.code }}
-                  path: enrichment-upload/enrichment-${{ matrix.code }}.tar.gz
-                  if-no-files-found: ignore
-                  retention-days: 14
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -uo pipefail
+                  TAG="$FIXTURE_RELEASE_TAG"
+                  ARCHIVE="enrichment-upload/enrichment-${{ matrix.code }}.tar.gz"
+                  if [ ! -f "$ARCHIVE" ]; then
+                      echo "nothing to publish — no $ARCHIVE"
+                      exit 0
+                  fi
+                  gh release view "$TAG" >/dev/null 2>&1 || \
+                    gh release create "$TAG" --prerelease \
+                      --title "Convergence fixture trees (rolling)" \
+                      --notes "Recorded enrichment responses and remembered answers per country.
+                  Replaced in place by every convergence leg — one copy each, no history.
+                  Not a version of anything; do not treat as a release." || true
+                  gh release upload "$TAG" "$ARCHIVE" --clobber
+                  echo "published $ARCHIVE to release $TAG"
 
     # There is no `record-enrichment` job any more. It dispatched `Record enrichment
     # fixtures`, which opens a tunnel to the shared Mongo cache and dumps it back out
