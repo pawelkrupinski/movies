@@ -147,17 +147,18 @@ object MongoEnrichmentCacheStore {
   val CollectionPrefix = "enrichment_cache"
 
   /**
-   * Entries per preload page — sized by BYTES, not rows: an entry is a whole HTTP
-   * response body (~25–45 KB average, HTML rating pages being the fat ones).
+   * Entries per preload page.
    *
-   * 30 keeps a page near 1 MB. The first attempt at 100 (~3 MB) was reasoned about
-   * as "small enough for a proxied connection", which turned out to be the same
-   * guess that failed for the archive at 9 MB — the driver's completion chain
-   * recurses per SOCKET READ, so a multi-megabyte message across a tunnel is what
-   * overflows it, whatever the row count. Sized to the evidence rather than to the
-   * intuition this time.
+   * 30 was sized for UNCOMPRESSED bodies at 25-45 KB apiece, to keep a page near
+   * 1 MB. Gzipping the bodies made that stale on the same day and nobody revisited
+   * it: an entry is now ~9 KB, so 30 rows is a ~250 KB page and a country becomes
+   * ~290 round-trips across a proxied connection — which is why a CI leg sat in
+   * `preloadEnrichmentCache` for minutes with nothing wrong.
+   *
+   * 300 restores roughly the same ~2.5 MB page the original reasoning wanted, at a
+   * tenth of the round-trips. Sized by bytes, as the archive read had to learn too.
    */
-  val PreloadBatchSize = 30
+  val PreloadBatchSize = 300
 
   /** How long a remembered answer — success or failure — is allowed to stand in for
    *  the live service. A day: long enough that a morning's iteration on a country

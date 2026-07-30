@@ -122,8 +122,18 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  them each fill the same URL from the live service — any disagreement between
    *  those answers would read as an order-dependence that isn't one. */
   private lazy val enrichmentCache: Option[EnrichmentCache] = enrichmentCacheStore.map { store =>
-    val cache  = new EnrichmentCache(store)
-    val loaded = step("preloadEnrichmentCache")(cache.preload())
+    val cache = new EnrichmentCache(store)
+    // Don't preload when the enrichment FIXTURES are on disk: they already hold the
+    // answers, so pulling the same corpus out of Mongo across a tunnel is duplicated
+    // work — and it is the expensive kind. A leg was spending minutes in this phase
+    // re-reading ~8.7k entries it could already replay from local files. Writes still
+    // go through to the shared cache, which is what lets the recorder dump the
+    // fixtures for the NEXT run, so skipping the read costs nothing but the read.
+    val fixtures = Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
+      .exists(dir => java.nio.file.Files.isDirectory(java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(dir))))
+    val loaded =
+      if (fixtures) { println(s"[${country.code}] enrichment fixtures present — skipping the cache preload"); 0 }
+      else step("preloadEnrichmentCache")(cache.preload())
     info(s"${country.displayName}: enrichment cache ${store.collectionName} preloaded with $loaded entries " +
          s"(db ${MongoEnrichmentCacheStore.DatabaseName}, TTL ${MongoEnrichmentCacheStore.Ttl.toHours}h)")
     cache
