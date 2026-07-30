@@ -23867,13 +23867,7 @@ INDEX = [...grid.querySelectorAll('.col[data-title]')].map((col, i) => {
 col.dataset.idx = String(i);
 return {
 element: col,
-title: col.dataset.title.toLowerCase(),
-rawTitle: col.dataset.title,
-rating: parseFloat(col.dataset.rating) || 0,
-countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
-genres: new Set((col.dataset.genres || '').split('|').filter(Boolean)),
-directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
-cast: new Set((col.dataset.cast || '').split(',').map(s => s.trim()).filter(Boolean)),
+...cardFacts(col),
 visible: null,
 groups: [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
 element: group,
@@ -23883,26 +23877,83 @@ cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg =
 element: cg,
 cinema: cg.dataset.cinema,
 visible: null,
-badges: [...cg.querySelectorAll('.badge-time')].map(b => {
-const t = (b.dataset.time || '').trim();
-const colon = t.indexOf(':');
-const timeMin = colon > 0
-? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
-: -1;
-const room = b.dataset.room || '';
-return {
+badges: [...cg.querySelectorAll('.badge-time')].map(b => ({
 element: b,
-time: t,
-timeMin: timeMin,
-formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
-roomKey: room ? (cg.dataset.cinema + '|' + room) : '',
+...badgeFacts(b, cg.dataset.cinema),
 visible: null
-};
-})
+}))
 }))
 }))
 };
 });
+}
+function cardFacts(col) {
+return {
+title: col.dataset.title.toLowerCase(),
+rawTitle: col.dataset.title,
+rating: parseFloat(col.dataset.rating) || 0,
+countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
+genres: new Set((col.dataset.genres || '').split('|').filter(Boolean)),
+directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
+cast: new Set((col.dataset.cast || '').split(',').map(s => s.trim()).filter(Boolean))
+};
+}
+function badgeFacts(badge, cinema) {
+const time = (badge.dataset.time || '').trim();
+const colon = time.indexOf(':');
+const room = badge.dataset.room || '';
+return {
+time: time,
+timeMin: colon > 0
+? parseInt(time.slice(0, colon), 10) * 60 + parseInt(time.slice(colon + 1), 10)
+: -1,
+formats: new Set((badge.dataset.format || '').split(' ').filter(Boolean)),
+roomKey: room ? (cinema + '|' + room) : ''
+};
+}
+function readFilters() {
+const fmtTokens = getFormatFilter();
+const fromMin = getFromMinutes();
+const roomList = getSubmenuFilter('room');
+return {
+query: (document.getElementById('search-input')?.value || '').trim().toLowerCase(),
+hidden: new Set(getHidden()),
+disabled: new Set(getDisabledCinemas()),
+fmtTokens: fmtTokens,
+hasFmt: fmtTokens.length > 0,
+fromMin: fromMin,
+hasFrom: fromMin !== null,
+roomSet: roomList !== null ? new Set(roomList) : null,
+countries: getCountryFilter(),
+genres: getSubmenuFilter('genre'),
+directors: getDirectorFilter(),
+cast: getCastFilter()
+};
+}
+function missesAll(filter, has) { return filter !== null && !filter.some(has); }
+function cardExcluded(state, card) {
+return state.hidden.has(card.rawTitle)
+|| (state.query && !card.title.includes(state.query))
+|| missesAll(state.countries, c => card.countries.has(c))
+|| missesAll(state.genres, g => card.genres.has(g))
+|| missesAll(state.directors, d => card.directors.has(d))
+|| missesAll(state.cast, a => card.cast.has(a));
+}
+function badgeAllowed(state, badge) {
+return (!state.hasFmt || badgeFormatMatch(badge.formats, state.fmtTokens))
+&& (!state.hasFrom || badge.timeMin < 0 || badge.timeMin >= state.fromMin)
+&& (state.roomSet === null || (badge.roomKey && state.roomSet.has(badge.roomKey)));
+}
+function needsBadgeLoop(state) {
+return state.hasFmt || state.hasFrom || state.roomSet !== null;
+}
+function dayPredicate(value) {
+const { today, tomorrow, in7Days } = dateBounds();
+if (value === 'today') return d => d === today;
+if (value === 'tomorrow') return d => d === tomorrow;
+if (value === 'week') return d => d >= today && d <= in7Days;
+if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return d => d === value;
+return _ => true;
 }
 function setVisible(node, want) {
 if (node.visible !== want) {
@@ -23915,41 +23966,14 @@ function applyFilters() {
 if (!INDEX) return;
 syncDateToURL();
 undoTruncation();
-const filter = document.getElementById('date-filter')?.value || 'anytime';
-const query = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
-const hidden = new Set(getHidden());
-const disabled = new Set(getDisabledCinemas());
-const fmtTokens = getFormatFilter();
-const hasFmt = fmtTokens.length > 0;
-const fromMin = getFromMinutes();
-const hasFrom = fromMin !== null;
-const countryFilter = getCountryFilter();
-const hasCountry = countryFilter !== null;
-const genreFilter = getSubmenuFilter('genre');
-const hasGenre = genreFilter !== null;
-const directorFilter = getDirectorFilter();
-const hasDirector = directorFilter !== null;
-const castFilter = getCastFilter();
-const hasCast = castFilter !== null;
-const roomList = getSubmenuFilter('room');
-const hasRoom = roomList !== null;
-const roomSet = hasRoom ? new Set(roomList) : null;
-const { today, tomorrow, in7Days } = dateBounds();
-const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
-const dateOk = filter === 'today' ? d => d === today :
-filter === 'tomorrow' ? d => d === tomorrow :
-filter === 'week' ? d => d >= today && d <= in7Days :
-isSpecific ? d => d === filter :
-_ => true;
+const state = readFilters();
+const dateOk = dayPredicate(document.getElementById('date-filter')?.value || 'anytime');
+const perBadge = needsBadgeLoop(state);
 let visibleCount = 0;
 const earlyMap = new Array(INDEX.length);
 for (let i = 0; i < INDEX.length; i++) {
 const col = INDEX[i];
-if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))
-|| (hasCountry && !countryFilter.some(c => col.countries.has(c)))
-|| (hasGenre && !genreFilter.some(g => col.genres.has(g)))
-|| (hasDirector && !directorFilter.some(d => col.directors.has(d)))
-|| (hasCast && !castFilter.some(a => col.cast.has(a)))) {
+if (cardExcluded(state, col)) {
 setVisible(col, false);
 earlyMap[i] = null;
 continue;
@@ -23959,15 +23983,11 @@ for (const group of col.groups) {
 if (!dateOk(group.date)) { setVisible(group, false); continue; }
 let groupVisible = false;
 for (const cg of group.cinemaGroups) {
-if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
+if (state.disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
 let cgVisibleCount = 0, cgFirstTime = null;
-const needsBadgeLoop = hasFmt || hasFrom || hasRoom;
-if (needsBadgeLoop) {
+if (perBadge) {
 for (const badge of cg.badges) {
-const fmtOk = !hasFmt || badgeFormatMatch(badge.formats, fmtTokens);
-const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
-const roomOk = !hasRoom || (badge.roomKey && roomSet.has(badge.roomKey));
-const ok = fmtOk && timeOk && roomOk;
+const ok = badgeAllowed(state, badge);
 setVisible(badge, ok);
 if (ok) {
 cgVisibleCount++;
@@ -24030,64 +24050,30 @@ grid.appendChild(frag);
 }
 function applyFiltersForDay(gridEl, dayValue) {
 if (!gridEl) return;
-const query = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
-const hidden = new Set(getHidden());
-const disabled = new Set(getDisabledCinemas());
-const fmtTokens = getFormatFilter();
-const hasFmt = fmtTokens.length > 0;
-const fromMin = getFromMinutes();
-const hasFrom = fromMin !== null;
-const countryFilter = getCountryFilter();
-const genreFilter = getSubmenuFilter('genre');
-const directorFilter = getDirectorFilter();
-const castFilter = getCastFilter();
-const roomList = getSubmenuFilter('room');
-const roomSet = roomList !== null ? new Set(roomList) : null;
-const { today, tomorrow, in7Days } = dateBounds();
-const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(dayValue);
-const dateOk = dayValue === 'today' ? d => d === today :
-dayValue === 'tomorrow' ? d => d === tomorrow :
-dayValue === 'week' ? d => d >= today && d <= in7Days :
-isSpecific ? d => d === dayValue :
-_ => true;
-const has = (filter, get) => filter !== null && !filter.some(get);
-const sortBy = (document.getElementById('sort-by')?.value === 'rating') ? 'rating' : 'earliest';
+const state = readFilters();
+const dateOk = dayPredicate(dayValue);
+const sortBy = getSortBy();
 const visible = [];
 const cols = [...gridEl.querySelectorAll('.col[data-title]')];
 cols.forEach((col, pos) => {
 const idx = col.dataset.idx !== undefined ? parseInt(col.dataset.idx, 10) : pos;
-const countries = new Set((col.dataset.countries || '').split('|').filter(Boolean));
-const genres = new Set((col.dataset.genres || '').split('|').filter(Boolean));
-const directors = new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean));
-const cast = new Set((col.dataset.cast || '').split(',').map(s => s.trim()).filter(Boolean));
-const titleLc = (col.dataset.title || '').toLowerCase();
+const card = cardFacts(col);
 let colVisible = false;
 let colEarliest = null;
-if (!(hidden.has(col.dataset.title) || (query && !titleLc.includes(query))
-|| has(countryFilter, c => countries.has(c))
-|| has(genreFilter, g => genres.has(g))
-|| has(directorFilter, d => directors.has(d))
-|| has(castFilter, a => cast.has(a)))) {
+if (!cardExcluded(state, card)) {
 col.querySelectorAll('.date-group[data-date]').forEach(group => {
 let groupVisible = false;
 if (dateOk(group.dataset.date)) {
 group.querySelectorAll('.cinema-group[data-cinema]').forEach(cg => {
-if (disabled.has(cg.dataset.cinema)) { cg.style.display = 'none'; return; }
+if (state.disabled.has(cg.dataset.cinema)) { cg.style.display = 'none'; return; }
 let cgVisible = 0;
 cg.querySelectorAll('.badge-time').forEach(b => {
-const formats = new Set((b.dataset.format || '').split(' ').filter(Boolean));
-const t = (b.dataset.time || '').trim();
-const colon = t.indexOf(':');
-const timeMin = colon > 0 ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10) : -1;
-const room = b.dataset.room || '';
-const roomKey = room ? (cg.dataset.cinema + '|' + room) : '';
-const ok = (!hasFmt || badgeFormatMatch(formats, fmtTokens))
-&& (!hasFrom || timeMin < 0 || timeMin >= fromMin)
-&& (roomSet === null || (roomKey && roomSet.has(roomKey)));
+const badge = badgeFacts(b, cg.dataset.cinema);
+const ok = badgeAllowed(state, badge);
 b.style.display = ok ? '' : 'none';
 if (ok) {
 cgVisible++;
-const key = group.dataset.date + 'T' + t;
+const key = group.dataset.date + 'T' + badge.time;
 if (colEarliest === null || key < colEarliest) colEarliest = key;
 }
 });
@@ -24101,14 +24087,10 @@ if (groupVisible) colVisible = true;
 }
 col.style.display = colVisible ? '' : 'none';
 if (colVisible) {
-visible.push({ element: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
+visible.push({ element: col, earliest: colEarliest || '', rating: card.rating, idx });
 }
 });
-visible.sort((a, b) => {
-if (sortBy === 'rating' && a.rating !== b.rating) return b.rating - a.rating;
-if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
-return a.idx - b.idx;
-});
+visible.sort((a, b) => compareCards(sortBy, a, b));
 const frag = document.createDocumentFragment();
 for (const v of visible) frag.appendChild(v.element);
 gridEl.appendChild(frag);

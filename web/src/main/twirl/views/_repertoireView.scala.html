@@ -48,54 +48,128 @@
       // earliest cards snap into place the frame the preview is committed.
       col.dataset.idx = String(i);
       return {
-      element:       col,
-      title:    col.dataset.title.toLowerCase(),
-      rawTitle: col.dataset.title,
-      // Sort key, parsed once: the server-computed weighted rating average
-      // (0 when the film has no ratings).
-      rating:    parseFloat(col.dataset.rating) || 0,
-      countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
-      genres:    new Set((col.dataset.genres    || '').split('|').filter(Boolean)),
-      directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
-      cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean)),
+      element:  col,
+      ...cardFacts(col),
       visible:  null,  // remembered so we only write style.display on changes
       groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
-        element:           group,
+        element:      group,
         date:         group.dataset.date,
         visible:      null,
         cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
-          element:      cg,
+          element: cg,
           cinema:  cg.dataset.cinema,
           visible: null,
-          // Pre-parse each badge's format tokens into a Set + a numeric
-          // minutes-since-midnight for the time filter. Re-reading
-          // dataset.format / parsing "HH:MM" on every filter pass adds up —
-          // these never change.
-          badges:  [...cg.querySelectorAll('.badge-time')].map(b => {
-            const t = (b.dataset.time || '').trim();
-            const colon = t.indexOf(':');
-            const timeMin = colon > 0
-              ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10)
-              : -1;
-            const room = b.dataset.room || '';
-            return {
-              element:          b,
-              time:        t,
-              timeMin:     timeMin,
-              formats:     new Set((b.dataset.format || '').split(' ').filter(Boolean)),
-              // Pre-compose the room-filter key so the applyFilters inner
-              // loop doesn't pay a string-concat per badge per pass. Empty
-              // when the badge carries no `data-room` — those badges fall
-              // out of view as soon as the user picks any room (the filter
-              // is an include-list and can't include "no room").
-              roomKey:     room ? (cg.dataset.cinema + '|' + room) : '',
-              visible:     null
-            };
-          })
+          badges:  [...cg.querySelectorAll('.badge-time')].map(b => ({
+            element: b,
+            ...badgeFacts(b, cg.dataset.cinema),
+            visible: null
+          }))
         }))
       }))
       };
     });
+  }
+
+  // ── What a filter pass decides from ───────────────────────────────────────
+  //
+  // Two passes run over this grid: `applyFilters` on the live DOM (reading the
+  // INDEX above) and `applyFiltersForDay` on a throwaway clone, previewing the
+  // neighbouring day mid-swipe. They must reach the SAME verdict — the preview
+  // is what the release commits — so the facts, the state and the three
+  // predicates live here once instead of once per pass.
+
+  // Per-card facts, parsed off the DOM. `buildIndex` caches them for the live
+  // grid; the preview parses them per pass (it has no index to cache in).
+  function cardFacts(col) {
+    return {
+      title:     col.dataset.title.toLowerCase(),
+      rawTitle:  col.dataset.title,
+      // Sort key: the server-computed weighted rating average (0 when unrated).
+      rating:    parseFloat(col.dataset.rating) || 0,
+      countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
+      genres:    new Set((col.dataset.genres    || '').split('|').filter(Boolean)),
+      directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
+      cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean))
+    };
+  }
+
+  // Per-slot facts. Re-reading dataset.format / re-parsing "HH:MM" on every
+  // pass adds up over ~1500 badges, and none of it ever changes.
+  function badgeFacts(badge, cinema) {
+    const time  = (badge.dataset.time || '').trim();
+    const colon = time.indexOf(':');
+    const room  = badge.dataset.room || '';
+    return {
+      time:    time,
+      timeMin: colon > 0
+        ? parseInt(time.slice(0, colon), 10) * 60 + parseInt(time.slice(colon + 1), 10)
+        : -1,
+      formats: new Set((badge.dataset.format || '').split(' ').filter(Boolean)),
+      // Pre-composed so the inner loop doesn't pay a string-concat per badge per
+      // pass. Empty when the badge carries no `data-room` — those fall out of
+      // view as soon as any room is picked (the filter is an include-list and
+      // can't include "no room").
+      roomKey: room ? (cinema + '|' + room) : ''
+    };
+  }
+
+  // Everything the user has chosen, read once per pass.
+  function readFilters() {
+    const fmtTokens = getFormatFilter();
+    const fromMin   = getFromMinutes();
+    const roomList  = getSubmenuFilter('room');
+    return {
+      query:     (document.getElementById('search-input')?.value || '').trim().toLowerCase(),
+      hidden:    new Set(getHidden()),
+      disabled:  new Set(getDisabledCinemas()),
+      fmtTokens: fmtTokens,
+      hasFmt:    fmtTokens.length > 0,
+      fromMin:   fromMin,
+      hasFrom:   fromMin !== null,
+      roomSet:   roomList !== null ? new Set(roomList) : null,
+      countries: getCountryFilter(),
+      genres:    getSubmenuFilter('genre'),
+      directors: getDirectorFilter(),
+      cast:      getCastFilter()
+    };
+  }
+
+  // An unset submenu filter (null) constrains nothing; a set one is an
+  // include-list the card has to intersect.
+  function missesAll(filter, has) { return filter !== null && !filter.some(has); }
+
+  // Decided per CARD — the whole card goes when it fails, without either pass
+  // looking at a single showtime.
+  function cardExcluded(state, card) {
+    return state.hidden.has(card.rawTitle)
+      || (state.query && !card.title.includes(state.query))
+      || missesAll(state.countries, c => card.countries.has(c))
+      || missesAll(state.genres,    g => card.genres.has(g))
+      || missesAll(state.directors, d => card.directors.has(d))
+      || missesAll(state.cast,      a => card.cast.has(a));
+  }
+
+  // Decided per SLOT. Skippable wholesale when no badge-level filter is on —
+  // see `needsBadgeLoop`, which is most passes.
+  function badgeAllowed(state, badge) {
+    return (!state.hasFmt  || badgeFormatMatch(badge.formats, state.fmtTokens))
+        && (!state.hasFrom || badge.timeMin < 0 || badge.timeMin >= state.fromMin)
+        && (state.roomSet === null || (badge.roomKey && state.roomSet.has(badge.roomKey)));
+  }
+
+  function needsBadgeLoop(state) {
+    return state.hasFmt || state.hasFrom || state.roomSet !== null;
+  }
+
+  // Decided per DAY. `value` is a `#date-filter` option (today/tomorrow/week/
+  // anytime) or an explicit YYYY-MM-DD.
+  function dayPredicate(value) {
+    const { today, tomorrow, in7Days } = dateBounds();
+    if (value === 'today')    return d => d === today;
+    if (value === 'tomorrow') return d => d === tomorrow;
+    if (value === 'week')     return d => d >= today && d <= in7Days;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return d => d === value;
+    return _ => true;
   }
 
   // ── Master filter ─────────────────────────────────────────────────────────
@@ -125,44 +199,16 @@
     // the `stepDate` arrows, and the URL-driven day-step keyboard shortcut.
     syncDateToURL();
     undoTruncation();
-    const filter    = document.getElementById('date-filter')?.value || 'anytime';
-    const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
-    const hidden    = new Set(getHidden());
-    const disabled  = new Set(getDisabledCinemas());
-    const fmtTokens     = getFormatFilter();
-    const hasFmt        = fmtTokens.length > 0;
-    const fromMin       = getFromMinutes();
-    const hasFrom       = fromMin !== null;
-    const countryFilter  = getCountryFilter();
-    const hasCountry     = countryFilter !== null;
-    const genreFilter    = getSubmenuFilter('genre');
-    const hasGenre       = genreFilter !== null;
-    const directorFilter = getDirectorFilter();
-    const hasDirector    = directorFilter !== null;
-    const castFilter     = getCastFilter();
-    const hasCast        = castFilter !== null;
-    const roomList       = getSubmenuFilter('room');
-    const hasRoom        = roomList !== null;
-    const roomSet        = hasRoom ? new Set(roomList) : null;
-    const { today, tomorrow, in7Days } = dateBounds();
-
-    const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(filter);
-    const dateOk = filter === 'today'    ? d => d === today :
-                   filter === 'tomorrow' ? d => d === tomorrow :
-                   filter === 'week'     ? d => d >= today && d <= in7Days :
-                   isSpecific            ? d => d === filter :
-                                           _  => true;
+    const state  = readFilters();
+    const dateOk = dayPredicate(document.getElementById('date-filter')?.value || 'anytime');
+    const perBadge = needsBadgeLoop(state);
 
     let visibleCount = 0;
     const earlyMap = new Array(INDEX.length);
 
     for (let i = 0; i < INDEX.length; i++) {
       const col = INDEX[i];
-      if (hidden.has(col.rawTitle) || (query && !col.title.includes(query))
-          || (hasCountry  && !countryFilter.some(c  => col.countries.has(c)))
-          || (hasGenre    && !genreFilter.some(g    => col.genres.has(g)))
-          || (hasDirector && !directorFilter.some(d => col.directors.has(d)))
-          || (hasCast     && !castFilter.some(a     => col.cast.has(a)))) {
+      if (cardExcluded(state, col)) {
         setVisible(col, false);
         earlyMap[i] = null;
         continue;
@@ -174,18 +220,12 @@
 
         let groupVisible = false;
         for (const cg of group.cinemaGroups) {
-          if (disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
+          if (state.disabled.has(cg.cinema)) { setVisible(cg, false); continue; }
 
           let cgVisibleCount = 0, cgFirstTime = null;
-          const needsBadgeLoop = hasFmt || hasFrom || hasRoom;
-          if (needsBadgeLoop) {
+          if (perBadge) {
             for (const badge of cg.badges) {
-              const fmtOk  = !hasFmt  || badgeFormatMatch(badge.formats, fmtTokens);
-              const timeOk = !hasFrom || badge.timeMin < 0 || badge.timeMin >= fromMin;
-              // Empty roomKey (badge with no `data-room`) can't match any
-              // include-list entry; treat as a miss when the room filter is on.
-              const roomOk = !hasRoom || (badge.roomKey && roomSet.has(badge.roomKey));
-              const ok = fmtOk && timeOk && roomOk;
+              const ok = badgeAllowed(state, badge);
               setVisible(badge, ok);
               if (ok) {
                 cgVisibleCount++;
@@ -279,41 +319,21 @@
   // The day carousel (shared.js) reveals the prev/next day's grid by cloning
   // `#film-grid` and filtering the clone to a SINGLE fixed day, honouring every
   // OTHER active filter (search / cinema / format / from-hour / submenus) the
-  // same way the live `applyFilters` does. Clones carry no INDEX, so this walks
+  // same way the live `applyFilters` does — same state, same three predicates,
+  // so preview and commit cannot disagree. Clones carry no INDEX, so this walks
   // the DOM directly. `dayValue` is a `#date-filter` option value
-  // (today/tomorrow/week/anytime/YYYY-MM-DD); the predicate matches `applyFilters`'
-  // `dateOk`. The visible cards are re-ordered to the SAME earliest-showtime
-  // (or rating) order the commit lands on — otherwise the preview shows the
-  // current day's order and the cards visibly jump on release. No
-  // truncation/URL sync — a neighbour column is a static preview that only
-  // needs the right cards, in the right order, at the right scroll offset.
+  // (today/tomorrow/week/anytime/YYYY-MM-DD). The visible cards are re-ordered
+  // to the SAME earliest-showtime (or rating) order the commit lands on —
+  // otherwise the preview shows the current day's order and the cards visibly
+  // jump on release. No truncation/URL sync — a neighbour column is a static
+  // preview that only needs the right cards, in the right order, at the right
+  // scroll offset.
   function applyFiltersForDay(gridEl, dayValue) {
     if (!gridEl) return;
-    const query     = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
-    const hidden    = new Set(getHidden());
-    const disabled  = new Set(getDisabledCinemas());
-    const fmtTokens     = getFormatFilter();
-    const hasFmt        = fmtTokens.length > 0;
-    const fromMin       = getFromMinutes();
-    const hasFrom       = fromMin !== null;
-    const countryFilter  = getCountryFilter();
-    const genreFilter    = getSubmenuFilter('genre');
-    const directorFilter = getDirectorFilter();
-    const castFilter     = getCastFilter();
-    const roomList       = getSubmenuFilter('room');
-    const roomSet        = roomList !== null ? new Set(roomList) : null;
-    const { today, tomorrow, in7Days } = dateBounds();
-    const isSpecific = /^\d{4}-\d{2}-\d{2}$/.test(dayValue);
-    const dateOk = dayValue === 'today'    ? d => d === today :
-                   dayValue === 'tomorrow' ? d => d === tomorrow :
-                   dayValue === 'week'     ? d => d >= today && d <= in7Days :
-                   isSpecific              ? d => d === dayValue :
-                                             _  => true;
+    const state  = readFilters();
+    const dateOk = dayPredicate(dayValue);
+    const sortBy = getSortBy();
 
-    const has = (filter, get) => filter !== null && !filter.some(get);
-    // The active sort axis, read the same way shared.js's getSortBy does — the
-    // neighbour preview must commit-match, including under 'rating'.
-    const sortBy = (document.getElementById('sort-by')?.value === 'rating') ? 'rating' : 'earliest';
     // Visible cards with their commit sort key: earliest visible showtime
     // ("<date>T<HH:MM>", matching applyFilters) + rating + original DOM index.
     const visible = [];
@@ -323,39 +343,24 @@
       // never the clone's current DOM order — the clone is cloned from the
       // live grid, already reordered to the previously-shown day. Falling
       // back to `pos` only if the stamp is somehow absent.
-      const idx = col.dataset.idx !== undefined ? parseInt(col.dataset.idx, 10) : pos;
-      const countries = new Set((col.dataset.countries || '').split('|').filter(Boolean));
-      const genres    = new Set((col.dataset.genres    || '').split('|').filter(Boolean));
-      const directors = new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean));
-      const cast      = new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean));
-      const titleLc   = (col.dataset.title || '').toLowerCase();
+      const idx  = col.dataset.idx !== undefined ? parseInt(col.dataset.idx, 10) : pos;
+      const card = cardFacts(col);
       let colVisible = false;
       let colEarliest = null;   // earliest visible "<date>T<HH:MM>" for the sort
-      if (!(hidden.has(col.dataset.title) || (query && !titleLc.includes(query))
-            || has(countryFilter,  c => countries.has(c))
-            || has(genreFilter,    g => genres.has(g))
-            || has(directorFilter, d => directors.has(d))
-            || has(castFilter,     a => cast.has(a)))) {
+      if (!cardExcluded(state, card)) {
         col.querySelectorAll('.date-group[data-date]').forEach(group => {
           let groupVisible = false;
           if (dateOk(group.dataset.date)) {
             group.querySelectorAll('.cinema-group[data-cinema]').forEach(cg => {
-              if (disabled.has(cg.dataset.cinema)) { cg.style.display = 'none'; return; }
+              if (state.disabled.has(cg.dataset.cinema)) { cg.style.display = 'none'; return; }
               let cgVisible = 0;
               cg.querySelectorAll('.badge-time').forEach(b => {
-                const formats = new Set((b.dataset.format || '').split(' ').filter(Boolean));
-                const t = (b.dataset.time || '').trim();
-                const colon = t.indexOf(':');
-                const timeMin = colon > 0 ? parseInt(t.slice(0, colon), 10) * 60 + parseInt(t.slice(colon + 1), 10) : -1;
-                const room = b.dataset.room || '';
-                const roomKey = room ? (cg.dataset.cinema + '|' + room) : '';
-                const ok = (!hasFmt || badgeFormatMatch(formats, fmtTokens))
-                        && (!hasFrom || timeMin < 0 || timeMin >= fromMin)
-                        && (roomSet === null || (roomKey && roomSet.has(roomKey)));
+                const badge = badgeFacts(b, cg.dataset.cinema);
+                const ok = badgeAllowed(state, badge);
                 b.style.display = ok ? '' : 'none';
                 if (ok) {
                   cgVisible++;
-                  const key = group.dataset.date + 'T' + t;
+                  const key = group.dataset.date + 'T' + badge.time;
                   if (colEarliest === null || key < colEarliest) colEarliest = key;
                 }
               });
@@ -369,20 +374,14 @@
       }
       col.style.display = colVisible ? '' : 'none';
       if (colVisible) {
-        visible.push({ element: col, earliest: colEarliest || '', rating: parseFloat(col.dataset.rating) || 0, idx });
+        visible.push({ element: col, earliest: colEarliest || '', rating: card.rating, idx });
       }
     });
 
-    // Re-order the visible cards into the committed order. Mirrors
-    // applyFilters' compareCards: rating biggest-first (earliest tiebreak),
-    // else earliest-showtime ascending, with the original DOM index as the
-    // stable final tiebreak. Without this the preview keeps the CURRENT day's
-    // order and the cards jump on release.
-    visible.sort((a, b) => {
-      if (sortBy === 'rating' && a.rating !== b.rating) return b.rating - a.rating;
-      if (a.earliest !== b.earliest) return a.earliest < b.earliest ? -1 : 1;
-      return a.idx - b.idx;
-    });
+    // Re-order into the order the commit lands on — the same comparator
+    // `sortByEarliestVisible` uses. Without this the preview keeps the CURRENT
+    // day's order and the cards jump on release.
+    visible.sort((a, b) => compareCards(sortBy, a, b));
     const frag = document.createDocumentFragment();
     for (const v of visible) frag.appendChild(v.element);
     gridEl.appendChild(frag);

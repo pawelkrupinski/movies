@@ -2094,40 +2094,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // A left drag from 'anytime' reveals the NEXT day in the ring, which wraps
       // to 'today'. Capture which day the mounted neighbour is for so we commit
       // to the SAME day (otherwise the counts/order wouldn't be comparable).
-      coarsePointer(page)
-      page.eval(synthDrag("pointerdown", 300, 500))
-      page.eval(synthDrag("pointermove", 240, 505))   // dx = -60 → lock + arm (reveals NEXT day)
-      page.eval(synthDrag("pointermove", 120, 505))   // keep dragging left, stay held
-
-      // The NEXT-day neighbour is the `.day-col` to the right of `#view-root`.
-      val neighbourSel =
-        """(() => {
-          |  const root = document.getElementById('view-root');
-          |  if (!root) return null;
-          |  let element = root.nextElementSibling;
-          |  while (element && !element.classList.contains('day-col')) element = element.nextElementSibling;
-          |  return element;
-          |})()""".stripMargin
-      val neighbourOrder = page.evalString(
-        s"""(() => {
-          |  const element = $neighbourSel;
-          |  if (!element) return '';
-          |  return [...element.querySelectorAll('.col[data-title]')]
-          |    .filter(c => c.style.display !== 'none')
-          |    .map(c => c.dataset.title).join('|');
-          |})()""".stripMargin
-      )
-      // Which day the neighbour preview is for = the day after 'anytime' wraps:
-      // read it from the ring so the commit below targets the same day.
-      val neighbourDay = page.evalString(
-        "(() => { const sel = document.getElementById('date-filter');" +
-        "  const ring = window.dayRing ? window.dayRing() : " +
-        "    [...sel.options].map(o => o.value);" +
-        "  const n = ring.length; return ring[((sel.selectedIndex + 1) % n + n) % n]; })()"
-      )
-      // Release below threshold → snap back, leaving the real day unchanged.
-      page.eval(synthDrag("pointerup", 120, 505))
-      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      dragLeftAndHold(page)
+      val neighbourOrder = neighbourColumnTitles(page)
+      val neighbourDay   = neighbourDayValue(page)
+      releaseBelowThreshold(page)
 
       // The committed order for that SAME day: select it and read `#film-grid`.
       page.eval(
@@ -2137,6 +2107,41 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Both must be non-empty and identical — the preview can't reorder on
       // release.
+      committedOrder.nonEmpty shouldBe true
+      neighbourOrder shouldBe committedOrder
+    }
+  }
+
+  /**
+   * The same must hold with the OTHER filters engaged — the preview and the
+   * commit are two passes over the same rules (search, cinema, format, from-hour,
+   * submenus), and a visitor mid-swipe is looking at the one to check the other
+   * against. They read one set of predicates for exactly this reason; before
+   * that they were two hand-kept copies, free to drift apart a filter at a time.
+   */
+  it should "match the committed grid with a search and a cinema filter engaged" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval("document.getElementById('date-filter').value = 'anytime'; onDateChange()")
+      page.waitFor("document.querySelector('#film-grid > .col[data-title]') !== null")
+
+      // Narrow on two axes at once: one cinema off, and a query broad enough to
+      // leave several cards standing.
+      page.eval(
+        "localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.slice(0, 1))); " +
+        "document.getElementById('search-input').value = 'a'; applyFilters()")
+      visibleCardCount(page) should be > 1
+
+      dragLeftAndHold(page)
+      val neighbourOrder = neighbourColumnTitles(page)
+      val neighbourDay   = neighbourDayValue(page)
+      releaseBelowThreshold(page)
+
+      page.eval(
+        s"document.getElementById('date-filter').value = ${jsString(neighbourDay)}; applyFilters()"
+      )
+      val committedOrder = visibleTitleOrder(page)
+
       committedOrder.nonEmpty shouldBe true
       neighbourOrder shouldBe committedOrder
     }
@@ -3555,6 +3560,48 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       "[...document.querySelectorAll('#film-grid > .col[data-title]')]" +
       "  .filter(c => c.style.display !== 'none').map(c => c.dataset.title).join('|')"
     )
+
+  /** Drag left far enough to lock and arm the carousel, and keep the finger
+   *  down: the NEXT day's preview column stays mounted for inspection. */
+  private def dragLeftAndHold(page: CdpPage): Unit = {
+    coarsePointer(page)
+    page.eval(synthDrag("pointerdown", 300, 500))
+    page.eval(synthDrag("pointermove", 240, 505))   // dx = -60 → lock + arm (reveals NEXT day)
+    page.eval(synthDrag("pointermove", 120, 505))   // keep dragging left, stay held
+  }
+
+  /** The visible cards of the NEXT-day preview — the `.day-col` mounted to the
+   *  right of `#view-root` — in the order releasing the drag would commit. */
+  private def neighbourColumnTitles(page: CdpPage): String =
+    page.evalString(
+      """(() => {
+        |  const root = document.getElementById('view-root');
+        |  if (!root) return '';
+        |  let element = root.nextElementSibling;
+        |  while (element && !element.classList.contains('day-col')) element = element.nextElementSibling;
+        |  if (!element) return '';
+        |  return [...element.querySelectorAll('.col[data-title]')]
+        |    .filter(c => c.style.display !== 'none')
+        |    .map(c => c.dataset.title).join('|');
+        |})()""".stripMargin
+    )
+
+  /** Which day that preview column is for — the next entry in the day ring, so
+   *  a commit can target the SAME day the preview showed. */
+  private def neighbourDayValue(page: CdpPage): String =
+    page.evalString(
+      "(() => { const sel = document.getElementById('date-filter');" +
+      "  const ring = window.dayRing ? window.dayRing() : " +
+      "    [...sel.options].map(o => o.value);" +
+      "  const n = ring.length; return ring[((sel.selectedIndex + 1) % n + n) % n]; })()"
+    )
+
+  /** Release below the commit threshold: the track snaps back and the clones
+   *  are torn down, leaving the real day unchanged. */
+  private def releaseBelowThreshold(page: CdpPage): Unit = {
+    page.eval(synthDrag("pointerup", 120, 505))
+    page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+  }
 
   /** While a directed slide is armed, `animateToDay` mounts the TARGET day's
    *  populated `.day-col` on just one flank of `#view-root` (the other flank is
