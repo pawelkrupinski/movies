@@ -349,8 +349,14 @@ jobs:
                       exit 0
                   fi
                   # sbt colours its output; the escapes are noise in markdown.
+                  # `|| true` on every grep. The step declares `shell: bash`, which runs
+                  # with `-e`, and grep exits 1 when it matches NOTHING — so a run with no
+                  # `Tests:` line killed this step before it printed a character. That is
+                  # precisely the cancelled-or-crashed run whose partial output the report
+                  # exists to salvage: it failed only when it was most needed, and blamed
+                  # the reporting rather than the run.
                   clean=$(sed -E 's/\x1b\[[0-9;]*m//g' convergence.log)
-                  totals=$(printf '%s\n' "$clean" | grep -E '^\[info\] Tests: ' | tail -1 | sed 's/^\[info\] //')
+                  totals=$(printf '%s\n' "$clean" | { grep -E '^\[info\] Tests: ' || true; } | tail -1 | sed 's/^\[info\] //')
                   {
                       echo "### convergence (${{ matrix.country }})"
                       echo
@@ -361,7 +367,7 @@ jobs:
                       # `+` info lines hanging off them. Everything else on stdout is
                       # application logging, which is not a report.
                       printf '%s\n' "$clean" \
-                        | grep -E '^\[info\] ([A-Za-z0-9]+Spec:|- should |  \+ |the )' \
+                        | { grep -E '^\[info\] ([A-Za-z0-9]+Spec:|- should |  \+ |the )' || true; } \
                         | sed 's/^\[info\] //' \
                         | head -150
                       echo '```'
