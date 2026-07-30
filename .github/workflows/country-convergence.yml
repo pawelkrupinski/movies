@@ -23,11 +23,14 @@
 name: Country convergence
 
 on:
-    # Runs AFTER `Deploy to Fly.io` finishes — not on push. These legs are
-    # minutes long (Poland 3, Germany 9, the UK
-    # 14) and firing them in parallel with the deploy workflow put three
-    # heavyweight jobs on the runner pool at exactly the moment the deploy needed
-    # it, for a signal nobody gates the deploy on anyway. Chaining keeps the
+    # Runs AFTER `Deploy to Fly.io` finishes — not on push. These legs are TENS of
+    # minutes long once enrichment actually runs (Poland 12 warm, ~22 on a cache it
+    # has to build first; Germany and the UK carry 1.6x and 2.2x Poland's films). The
+    # numbers this comment used to quote — 3, 9 and 14 — were measured while the TMDB
+    # key was gated wrong and every leg resolved 0 films, so they described a suite
+    # doing no enrichment at all. Firing that in parallel with the deploy put three
+    # heavyweight jobs on the runner pool at exactly the moment the deploy needed it,
+    # for a signal nobody gates the deploy on anyway. Chaining keeps the
     # deploy's "all green" arriving as early as it always did and still runs the
     # convergence check against the very commit that shipped.
     schedule:
@@ -176,6 +179,28 @@ jobs:
                                       -type f 2>/dev/null || true; } | wc -l )
                   echo "fixture files available: $available"
 
+                  # Count the REMEMBERED-ANSWER cache separately from the recorded
+                  # responses, because they fail independently and only one of them is
+                  # visible in the file count above.
+                  #
+                  # The tree records what a fetch RETURNED. Half a country's films never
+                  # resolve and still cost three or four rating-slug guesses that 404,
+                  # and a 404 returns nothing to record — so those verdicts live only in
+                  # `.enrichment-cache`, and a leg that arrives without it re-asks every
+                  # one of them live and rate-paced. That is a 22-minute Poland leg
+                  # versus a 12-minute one, and the ONLY symptom is the clock: nothing
+                  # errors, coverage is identical, and the run still passes. Printing the
+                  # entry count on both sides of the artifact hop is what makes the
+                  # difference between "warm" and "silently cold" legible in the log.
+                  cache="test/resources/fixtures/enrichment-${{ matrix.code }}/.enrichment-cache"
+                  remembered=$( { find "$cache" -name '*.entry' 2>/dev/null || true; } | wc -l )
+                  if [ "$remembered" -gt 0 ]; then
+                      echo "remembered enrichment answers restored: $remembered"
+                  else
+                      echo "NO remembered-answer cache in the artifact — this leg re-asks every"
+                      echo "unresolved film's rating slugs live, and publishes the cache it builds."
+                  fi
+
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
@@ -195,7 +220,23 @@ jobs:
                       sbt-target-e2e-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
 
+            # Bounded BELOW the job's 75, on purpose — the single most important line
+            # in this file for a leg that runs long.
+            #
+            # A job that hits its own `timeout-minutes` is CANCELLED, and a cancelled
+            # job runs its remaining `always()` steps only inside a short grace window.
+            # The steps that have to run here tar and upload 84-152 MB, and losing that
+            # race loses the whole point: the cache and the newly recorded responses
+            # this leg just spent an hour building, which are exactly what would have
+            # made the NEXT run fast enough not to time out. A timeout that discards its
+            # own progress cannot converge — every run repeats the same cold sweep.
+            #
+            # Failing the STEP instead keeps the job alive and un-cancelled, so the
+            # publish and upload steps below run normally with the remaining ~10 minutes
+            # rather than on borrowed time. The leg still reports failure, loudly; it
+            # just doesn't throw away the work first.
             - run: sbt ${{ matrix.cmd }}
+              timeout-minutes: 62
               env:
                   # The spec installs this country's TitleRuleSet itself; naming the
                   # country here too means anything that reads the environment
@@ -257,10 +298,22 @@ jobs:
                       echo "nothing recorded — no $DIR"
                       exit 0
                   fi
-                  echo "recorded fixture files: $(find "$DIR" -type f | wc -l)"
+                  echo "recorded fixture files: $(find "$DIR" -type f -not -path '*/.enrichment-cache/*' | wc -l)"
+                  echo "remembered enrichment answers: $( { find "$DIR/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l )"
                   mkdir -p enrichment-upload
                   tar -czf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" "$DIR"
                   du -h "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz"
+                  # The cache is dot-prefixed and lives INSIDE the tree, so `tar` carries
+                  # it along with the recorded responses and one artifact restores both.
+                  # Asserted rather than assumed: if a future change to this tar drops
+                  # hidden paths, the loss is invisible — every leg simply gets slower and
+                  # still passes.
+                  if [ -d "$DIR/.enrichment-cache" ] && \
+                     ! tar -tzf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" \
+                       | grep -q '/\.enrichment-cache/'; then
+                      echo "::error::the enrichment cache exists on disk but is NOT in the artifact"
+                      exit 1
+                  fi
 
             - name: Upload the enrichment fixtures
               if: always()
