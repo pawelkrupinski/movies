@@ -80,6 +80,8 @@ jobs:
         permissions:
             contents: read
             checks: write
+            # `gh run download` needs to list runs and read artifacts of this repo.
+            actions: read
         steps:
             - uses: actions/checkout@v5
 
@@ -131,12 +133,50 @@ jobs:
                   key: scrape-fixtures-${{ matrix.code }}-
                   restore-keys: scrape-fixtures-${{ matrix.code }}-
 
-            - name: Restore recorded enrichment fixtures
-              uses: actions/cache/restore@v5
-              with:
-                  path: enrichment-archive
-                  key: enrichment-fixtures-${{ matrix.code }}-
-                  restore-keys: enrichment-fixtures-${{ matrix.code }}-
+            # Enrichment fixtures come from the ARTIFACT, not the cache. They are
+            # 84-152 MB per country, and this repo's actions cache already sits at
+            # 9.46 GB of a 10 GB ceiling (mostly sbt-target entries), so three
+            # enrichment tarballs were evicted the moment they were written — with
+            # `actions/cache/save` still reporting success, because a save succeeding
+            # says nothing about whether the entry SURVIVES. Worse, pushing 370 MB
+            # through that ceiling evicts the sbt caches that keep every job from
+            # cold-compiling. Artifacts have their own retention and cannot evict a
+            # build cache.
+            #
+            # `continue-on-error` because a missing artifact is the normal first-run
+            # state: the leg fetches live and the recorder captures it afterwards.
+            # Enrichment fixtures come from the ARTIFACT of the latest successful
+            # recording, not from the cache. They are 84-152 MB per country and this
+            # repo's actions cache already sits at 9.46 GB of a 10 GB ceiling (mostly
+            # sbt-target entries), so three enrichment tarballs were evicted the moment
+            # they were written — with `actions/cache/save` still reporting success,
+            # because a save succeeding says nothing about whether the entry SURVIVES.
+            # Worse, forcing 370 MB through that ceiling evicts the sbt caches that keep
+            # every job off a cold compile.
+            #
+            # Resolved with `gh` rather than `actions/download-artifact`, which can only
+            # address a run id — and the id available here belongs to the DEPLOY that
+            # triggered this workflow, not to the recorder. Asking for "the newest
+            # successful recording" is what we actually mean.
+            #
+            # A missing artifact is the normal first-run state, so this never fails the
+            # leg: it falls through to fetching live, and the recorder captures it after.
+            - name: Download the latest recorded enrichment fixtures
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -uo pipefail
+                  RUN=$(gh run list --workflow "Record enrichment fixtures" --status success \
+                        --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)
+                  if [ -z "${RUN:-}" ]; then
+                      echo "no successful enrichment recording yet — this leg fetches live"
+                      exit 0
+                  fi
+                  echo "downloading enrichment fixtures from recording run $RUN"
+                  gh run download "$RUN" --name "enrichment-fixtures-${{ matrix.code }}" \
+                     --dir enrichment-archive || echo "no artifact for ${{ matrix.code }} in run $RUN"
+                  ls -l enrichment-archive/ 2>/dev/null || true
 
             - name: Unpack whichever fixtures are present
               run: |
@@ -150,8 +190,16 @@ jobs:
                           echo "no $archive — this leg fetches live for it and the recorder captures it next"
                       fi
                   done
-                  find test/resources/fixtures/corpus test/resources/fixtures/enrichment-${{ matrix.code }} \
-                       -type f 2>/dev/null | wc -l | xargs echo "fixture files available:"
+                  # `|| true` and a subshell: a MISSING fixture directory is the normal
+                  # fallback path, not an error — the leg then fetches live and the
+                  # recorder captures it next. Without this, `find` exiting non-zero on
+                  # an absent path tripped `set -euo pipefail` and failed the whole leg
+                  # AFTER printing the count, which is how three legs died 40 seconds in
+                  # with both restores reporting success.
+                  available=$( { find test/resources/fixtures/corpus \
+                                      "test/resources/fixtures/enrichment-${{ matrix.code }}" \
+                                      -type f 2>/dev/null || true; } | wc -l )
+                  echo "fixture files available: $available"
 
             - uses: actions/setup-java@v5
               with:
