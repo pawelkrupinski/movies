@@ -38,7 +38,16 @@ name: Daily country fixture artifact
 # rate budget, rather than nightly against a host we already pace carefully.
 on:
     schedule:
-        - cron: '1 23 * * *'   # 00:01 Warsaw (CET) / 01:01 Warsaw (CEST)
+        # WEEKLY (Sundays), not nightly. This records the live scrape HTML *and* a
+        # full TMDB->IMDb->Metacritic->RT->Filmweb cascade against live upstreams, and
+        # the enrichment half of that is now paid for anyway: the convergence legs
+        # enrich as they run and `Record enrichment fixtures` dumps the result from the
+        # shared cache for free, with no third-party calls at all. What only this job
+        # produces is the scrape HTML under `fixtures/today/`, consumed by the local
+        # stack and RecorderZyteCaptureSpec — and that changes far more slowly than
+        # nightly. Nightly also spent ~90 minutes a day of live-upstream budget, and
+        # collided at 23:01 with the scrape recorder.
+        - cron: '1 23 * * 0'   # Sundays, 00:01 Warsaw (CET) / 01:01 (CEST)
     workflow_dispatch:
         inputs:
             country:

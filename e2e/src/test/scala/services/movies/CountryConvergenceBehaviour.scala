@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, EnrichmentCache, Env, IsolatedMongoDatabase,
+import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, EnrichmentCache, Env,
   MongoEnrichmentCacheStore, SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -64,7 +64,6 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
   override def afterAll(): Unit = {
     enrichmentCacheStore.foreach(_.close())
-    IsolatedMongoDatabase.closeAll()
     super.afterAll()
   }
 
@@ -139,17 +138,6 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     cache
   }
 
-  // Deliberately NOT `assume`. A cancelled test reports as SUCCESS, so a leg that
-  // lost its Mongo would go green having verified nothing at all — and these run
-  // in their own workflow where nobody is reading the log line by line. They are
-  // only ever invoked by name (the `convergence*` aliases, the country-convergence
-  // workflow), and every one of those hands them a throwaway Mongo, so a missing
-  // URI is a broken invocation rather than a reason to skip.
-  if (Env.get("MONGODB_URI").isEmpty)
-    throw new IllegalStateException(
-      "MONGODB_URI is not set. The country convergence specs round-trip their corpus through a real " +
-      "cinema_scrapes collection and must never silently skip — point it at a throwaway Mongo.")
-
   /** Independent random-order passes compared against each other. Three is enough
    *  to catch an order dependency while keeping the heaviest country (Germany,
    *  1,533 venues) inside its CI leg's budget. */
@@ -201,9 +189,22 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  test runs first hands the other exactly the state it expected. Merge counts
    *  are read as deltas inside each test, so a no-op pass cannot pollute the
    *  other's baseline. The database is dropped when the suite ends. */
-  private lazy val shared: (ArchiveReplayWiring, CountingMergeMetrics, MongoScrapeArchiveRepository) = {
-    val database = IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, s"convergence-${country.code}")
-    val archive  = new MongoScrapeArchiveRepository(Some(database))
+  private lazy val shared: (ArchiveReplayWiring, CountingMergeMetrics, ScrapeArchiveRepository) = {
+    // In-memory archive: the leg no longer needs a Mongo at all.
+    //
+    // The corpus used to be READ from `cinema_scrapes`, so routing it back through a
+    // real collection put the archive's BSON round-trip on the path for free. The
+    // corpus now comes from a fixture file, so that round-trip tests
+    // `MongoScrapeArchiveRepository`'s codecs rather than anything about the corpus —
+    // and `ScrapeArchiveIntegrationSpec` already owns exactly that, plus the keyset
+    // page-boundary case. The "content is never replaced by nothing" rule lives in
+    // `ScrapeArchiveRepository.record` ABOVE the storage seam, so the in-memory
+    // implementation still exercises it.
+    //
+    // What this removes from every leg: a mongo:7 container, a replica-set init, a
+    // uniquely-named throwaway database per run, and the `MONGODB_URI` requirement
+    // that has broken more runs this week than the archive round-trip ever caught.
+    val archive = new services.scrapes.InMemoryScrapeArchiveRepository
     val seeded   = seedArchive(archive)
     val merges   = new CountingMergeMetrics
     val w = new ArchiveReplayWiring(country, archive, enrichmentCache) {
@@ -619,8 +620,8 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   s"the ${country.displayName} corpus" should
     "come out identical — films, screenings and rendered rows — whatever order it arrives in" in {
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
-    IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, s"order-${country.code}") { database =>
-      val archive = new MongoScrapeArchiveRepository(Some(database))
+    {
+      val archive = new services.scrapes.InMemoryScrapeArchiveRepository
       seedArchive(archive)
 
       // Concurrently: the passes are independent whole-corpus replays and running
