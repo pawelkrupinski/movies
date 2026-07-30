@@ -27,8 +27,19 @@
 
   let INDEX = null;
 
+  // Every `visible` below starts UNKNOWN (`null`), never `true`. The index is
+  // rebuilt mid-life — `pruneExpiredShowtimes` re-runs it once a slot lapses —
+  // against a DOM the last filter pass already wrote `display:none` all over.
+  // Seeding the flags `true` there would claim "already shown" for nodes that
+  // are in fact hidden, and `setVisible` (which only writes on a change) would
+  // then skip the write that brings them back: a card whose day the user next
+  // switches to renders with EVERY showtime stuck hidden. `null` matches
+  // nothing, so the first pass after a rebuild writes every node and the flags
+  // start honest. The order cache is per-index too — it addresses cards by
+  // INDEX position, which a rebuild renumbers.
   function buildIndex() {
     const grid = document.getElementById('film-grid');
+    _prevVisibleOrder = [];
     INDEX = [...grid.querySelectorAll('.col[data-title]')].map((col, i) => {
       // Stamp the original server position onto the DOM so the day-carousel
       // preview (applyFiltersForDay, working off a clone with no INDEX) breaks
@@ -47,15 +58,15 @@
       genres:    new Set((col.dataset.genres    || '').split('|').filter(Boolean)),
       directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
       cast:      new Set((col.dataset.cast     || '').split(',').map(s => s.trim()).filter(Boolean)),
-      visible:  true,  // remembered so we only write style.display on changes
+      visible:  null,  // remembered so we only write style.display on changes
       groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
         element:           group,
         date:         group.dataset.date,
-        visible:      true,
+        visible:      null,
         cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
           element:      cg,
           cinema:  cg.dataset.cinema,
-          visible: true,
+          visible: null,
           // Pre-parse each badge's format tokens into a Set + a numeric
           // minutes-since-midnight for the time filter. Re-reading
           // dataset.format / parsing "HH:MM" on every filter pass adds up —
@@ -78,7 +89,7 @@
               // out of view as soon as the user picks any room (the filter
               // is an include-list and can't include "no room").
               roomKey:     room ? (cg.dataset.cinema + '|' + room) : '',
-              visible:     true
+              visible:     null
             };
           })
         }))
@@ -90,7 +101,9 @@
   // ── Master filter ─────────────────────────────────────────────────────────
 
   // Helper: only write style.display when the visibility actually changed —
-  // avoids triggering layout when nothing moved.
+  // avoids triggering layout when nothing moved. A freshly built node's flag is
+  // `null` (unknown), which differs from both wants, so the first pass over a
+  // new index always writes.
   function setVisible(node, want) {
     if (node.visible !== want) {
       node.element.style.display = want ? '' : 'none';
@@ -423,10 +436,9 @@
     // shared.js helpers `applyFilters` calls exist yet either. `bootView` will
     // index and filter the already-pruned DOM itself a moment later.
     if (removed > 0 && INDEX) {
-      // Cards dropped out of the middle of the grid, so the last applied order
-      // no longer indexes anything; force the sort to rebuild rather than
-      // mistake the shorter list for a subsequence of the old one.
-      _prevVisibleOrder = [];
+      // Cards dropped out of the middle of the grid: `buildIndex` renumbers
+      // them and forgets both the applied sort order and every remembered
+      // visibility, so the pass below re-decides the whole grid from scratch.
       buildIndex();
       applyFilters();
     }

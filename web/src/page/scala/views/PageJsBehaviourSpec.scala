@@ -3263,6 +3263,71 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  /**
+   * A prune re-indexes the grid, and it does so against a DOM the previous
+   * filter pass has already written `display:none` all over. The rebuilt index
+   * used to claim every node was on screen, which made `setVisible` — a no-op
+   * when the flag already matches — skip the write that brings a row back. The
+   * rows that stayed stale were the ones under a card the pass never descends
+   * into: a card excluded by the SEARCH BOX (or genre/country/hidden) is
+   * dismissed whole, its date- and cinema-groups untouched. Relax the filters
+   * afterwards and the card returns with every showtime permanently hidden.
+   *
+   * Reported from prod: "/poznan/?date=tomorrow, type spider → I see no
+   * screenings, only the movie card".
+   */
+  it should "not strand a card's showtimes hidden when the search box was narrowing the grid" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+
+      val card = page.evalString("document.querySelector('#film-grid .col[data-title]').dataset.title")
+      card should not be empty
+      val badgesOfCard =
+        s"[...document.querySelectorAll('#film-grid .col[data-title]')]" +
+          s".find(c => c.dataset.title === ${jsString(card)})"
+      val baselineBadges = page.evalInt(s"$badgesOfCard.querySelectorAll('.badge-time').length")
+      baselineBadges should be > 0
+
+      // 1. A cinema filter hides the rows INSIDE every card (cinema-groups, and
+      //    the date-groups left with nothing in them).
+      page.eval(
+        "localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS)); applyFilters()"
+      )
+      // 2. A search that matches nothing then excludes every card at the CARD
+      //    level — the pass stops there and never revisits those hidden rows.
+      page.eval("document.getElementById('search-input').value = 'zzzzz-no-such-film'; applyFilters()")
+
+      // 3. A slot lapses: removeExpired → buildIndex → applyFilters, all while
+      //    the search is still narrowing the grid.
+      page.evalInt(
+        "document.querySelector('.badge-time').dataset.expires = String(showtimeNow() - 1); " +
+        "pruneExpiredShowtimes()") shouldBe 1
+
+      // 4. The user clears both filters — everything must come back.
+      page.eval("localStorage.setItem('disabledCinemas', '[]'); " +
+        "document.getElementById('search-input').value = ''; applyFilters()")
+
+      withClue(s"card '$card' is on screen: ") {
+        page.evalBool(s"$badgesOfCard.style.display !== 'none'") shouldBe true
+      }
+      withClue(s"showtimes visible under card '$card': ") {
+        page.evalInt(
+          s"[...$badgesOfCard.querySelectorAll('.badge-time')].filter(b => b.offsetParent !== null).length"
+        ) should be > 0
+      }
+      // The invariant the report is an instance of: a card is only ever on
+      // screen because something under it is.
+      withClue("every visible card shows at least one showtime: ") {
+        page.evalBool(
+          "[...document.querySelectorAll('#film-grid .col[data-title]')]" +
+            ".filter(c => c.style.display !== 'none')" +
+            ".every(c => [...c.querySelectorAll('.badge-time')].some(b => b.offsetParent !== null))"
+        ) shouldBe true
+      }
+    }
+  }
+
   // ── Midnight day rollover ─────────────────────────────────────────────────
   //
   // "Today" is baked into the render — the day pills, the default date filter,

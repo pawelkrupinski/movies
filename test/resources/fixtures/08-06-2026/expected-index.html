@@ -23860,6 +23860,7 @@
 let INDEX = null;
 function buildIndex() {
 const grid = document.getElementById('film-grid');
+_prevVisibleOrder = [];
 INDEX = [...grid.querySelectorAll('.col[data-title]')].map((col, i) => {
 col.dataset.idx = String(i);
 return {
@@ -23871,15 +23872,15 @@ countries: new Set((col.dataset.countries || '').split('|').filter(Boolean)),
 genres: new Set((col.dataset.genres || '').split('|').filter(Boolean)),
 directors: new Set((col.dataset.director || '').split(',').map(s => s.trim()).filter(Boolean)),
 cast: new Set((col.dataset.cast || '').split(',').map(s => s.trim()).filter(Boolean)),
-visible: true,
+visible: null,
 groups: [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
 element: group,
 date: group.dataset.date,
-visible: true,
+visible: null,
 cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg => ({
 element: cg,
 cinema: cg.dataset.cinema,
-visible: true,
+visible: null,
 badges: [...cg.querySelectorAll('.badge-time')].map(b => {
 const t = (b.dataset.time || '').trim();
 const colon = t.indexOf(':');
@@ -23893,7 +23894,7 @@ time: t,
 timeMin: timeMin,
 formats: new Set((b.dataset.format || '').split(' ').filter(Boolean)),
 roomKey: room ? (cg.dataset.cinema + '|' + room) : '',
-visible: true
+visible: null
 };
 })
 }))
@@ -24130,7 +24131,6 @@ return removed;
 function pruneExpiredShowtimes() {
 const removed = removeExpired(showtimeNow());
 if (removed > 0 && INDEX) {
-_prevVisibleOrder = [];
 buildIndex();
 applyFilters();
 }
