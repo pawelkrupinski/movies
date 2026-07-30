@@ -108,11 +108,25 @@ class ArchiveReplayWiring(
         "live"                -> new clients.tools.RecordingHttpFetch(directory, live, foldYear = false)))
     }
 
-  /** With a cache, the real key and the country's own language — the enrichment is
-   *  meant to be the one production would do. Without one, no key at all, so the
-   *  client short-circuits rather than shaping a request it can never send. */
+  /** Whether enrichment has anywhere to get an answer from — a cache, a recorded
+   *  fixture tree, or both. Exactly the condition under which [[enrichmentFetch]] is
+   *  something other than [[OfflineHttpFetch]], and asked that way so the two can
+   *  never drift apart again. */
+  lazy val enrichmentAvailable: Boolean = enrichmentFetch ne OfflineHttpFetch
+
+  /** With somewhere to fetch from, the real key and the country's own language — the
+   *  enrichment is meant to be the one production would do. With nowhere, no key at
+   *  all, so the client short-circuits rather than shaping a request it can never
+   *  send.
+   *
+   *  This asked `enrichmentCache.isDefined` until the fixture tree became a source in
+   *  its own right, and the drift was invisible: `search` is `authHeader.flatMap`, so
+   *  a keyless client returns `None` without ever reaching the fetch. A leg with 6,906
+   *  recorded fixtures and no cache therefore resolved 0 of 892 films — in 55 seconds,
+   *  all three specs GREEN, having proved a fixpoint over a corpus with no metadata in
+   *  it. A silent pass is worse than the hour-long failure it replaced. */
   override lazy val tmdbClient: TmdbClient =
-    if (enrichmentCache.isDefined) new TmdbClient(enrichmentFetch, language = country.language)
+    if (enrichmentAvailable) new TmdbClient(enrichmentFetch, language = country.language)
     else new TmdbClient(enrichmentFetch, apiKey = None)
 
   // Production's storage shape, minus Mongo — showtimes in `screenings`, slots in

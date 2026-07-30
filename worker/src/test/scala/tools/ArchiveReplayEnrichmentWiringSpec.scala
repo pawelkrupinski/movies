@@ -99,6 +99,40 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The gate that decides whether TMDB gets a key at all. It asked about the CACHE,
+  // so a leg running on the fixture tree alone handed `TmdbClient` `apiKey = None` —
+  // and `search` is `authHeader.flatMap`, so every title came back `None` without the
+  // fetch being touched. 892 films, 0 resolved, three specs green in 55 seconds.
+  it should "give TMDB a real key when fixtures are its source and no cache is" in {
+    val directory = s"enrichment-gate-${ProcessHandle.current().pid()}"
+    val root      = java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(directory))
+    System.setProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES", directory)
+    try {
+      // Germany, so the language actually discriminates the two branches: the enabled
+      // one passes the country's locale, the short-circuiting one takes the default.
+      val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None) {
+        override protected def realHttpLeaf: HttpFetch = new CountingLeaf
+      }
+
+      wiring.enrichmentAvailable shouldBe true
+      wiring.tmdbClient.language shouldBe Country.Germany.language
+    } finally {
+      System.clearProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES")
+      if (java.nio.file.Files.exists(root))
+        java.nio.file.Files.walk(root).sorted(java.util.Comparator.reverseOrder())
+          .forEach(path => java.nio.file.Files.deleteIfExists(path))
+    }
+  }
+
+  it should "know it has no enrichment source when it has neither cache nor fixtures" in {
+    wiringWith(None, new CountingLeaf).enrichmentAvailable shouldBe false
+  }
+
+  it should "know it has an enrichment source when it has a cache" in {
+    wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), new CountingLeaf)
+      .enrichmentAvailable shouldBe true
+  }
+
   // Three concurrent replays each build their own wiring; sharing the cache is what
   // stops them disagreeing about what the live service said.
   it should "share one cache's answers across separate wirings" in {
