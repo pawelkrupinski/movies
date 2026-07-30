@@ -57,15 +57,14 @@
 
 @_minified(devMode) {
 <script>
+  @* shared.js's `bootView` indexes before it filters. This listing has nothing
+     to index — one axis, re-decided from the DOM on every pass — so the hook is
+     a no-op here rather than a second index to keep honest. *@
   function buildIndex() {}
 
-  function setVisible(node, want) {
-    if (node.visible !== want) {
-      node.el.style.display = want ? '' : 'none';
-      node.visible = want;
-    }
-  }
-
+  @* One axis: the hidden-films set. Every card's verdict is written every pass,
+     so there's no remembered visibility to go stale and no reason to carry a
+     copy of the repertoire view's `setVisible`. *@
   function applyFilters() {
     undoTruncation();
     var cols = document.querySelectorAll('#film-grid > .col[data-title]');

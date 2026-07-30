@@ -138,6 +138,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         isLargeCity = controllers.MovieControllerService.totalShowtimes(manyShowtimesSchedules) >
           controllers.MovieControllerService.LargeCityShowtimeThreshold
       ).body
+      // The facet listing (`/{city}/filmy?country=…|director=…|cast=…|genre=…`).
+      // Same cards as `/`, but its own inline `applyFilters` — no day, cinema or
+      // format axes, just the hidden-films set — so it needs its own coverage;
+      // nothing else on the page-test side renders this template.
+      val browseHtml: String = views.html.browse(
+        schedules, "Filmy", devMode = false, oauthProviders = noOauth
+      ).body
       // The signed-in index — WHICH IS THE SAME HTML AS THE SIGNED-OUT ONE.
       // Nothing server-rendered names a visitor any more (that is what lets the
       // real listing carry an `s-maxage`), so "logged in" is not a render at all:
@@ -231,6 +238,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
           case p if sub(p).startsWith("/movie/") =>
             renderFilm(sub(p).stripPrefix("/movie/"))
+          case p if sub(p).startsWith("/filmy") => browseHtml
           case p if sub(p) == "/li"           => loggedInHtml
           case p if p == "/api/me"            => meJson
           case p if p == "/api/me/state"      => userStateJson
@@ -4217,6 +4225,59 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       ) shouldBe (others - 1)
       // …and never falls back to the full grid filter.
       page.evalInt("window.__afCalls") shouldBe 0
+    }
+  }
+
+  // ── The facet listing (/{city}/filmy) ──────────────────────────────────────
+  //
+  // `browse.scala.html` is its own view with its own inline `applyFilters`: the
+  // hidden-films set is the only axis it has (no day, cinema, format or
+  // submenus), and it exposes no single-card hook, so `hideFilm` takes the
+  // fall-back path through that pass. Until now nothing exercised the file at
+  // all — which is how a second, unused copy of the repertoire's `setVisible`
+  // sat in it referencing a field (`node.el`) the shape hasn't had in a while.
+
+  "the facet listing's own filter pass" should "drop a hidden card and keep the rest" in {
+    onPath("/filmy?country=Polska") { page =>
+      clearLocalStorage(page)
+      val before = page.evalInt(
+        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
+      )
+      before should be > 1
+
+      val title = page.evalString("document.querySelector('#film-grid > .col[data-title]').dataset.title")
+      page.eval(
+        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .hide-btn');" +
+        "  hideFilm(btn); })()"
+      )
+
+      page.evalString(
+        s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
+      ) shouldBe "none"
+      page.evalInt(
+        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
+      ) shouldBe (before - 1)
+    }
+  }
+
+  it should "show the empty state once every film is hidden, and clear it again" in {
+    onPath("/filmy?country=Polska") { page =>
+      clearLocalStorage(page)
+      page.eval(
+        "localStorage.setItem('hiddenFilms', JSON.stringify(" +
+        "  [...document.querySelectorAll('#film-grid > .col[data-title]')].map(c => c.dataset.title)));" +
+        "applyFilters()"
+      )
+      page.evalBool("document.getElementById('no-films').style.display !== 'none'") shouldBe true
+      page.evalInt(
+        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
+      ) shouldBe 0
+
+      page.eval("localStorage.setItem('hiddenFilms', '[]'); applyFilters()")
+      page.evalBool("document.getElementById('no-films').style.display === 'none'") shouldBe true
+      page.evalInt(
+        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
+      ) should be > 0
     }
   }
 
