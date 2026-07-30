@@ -276,6 +276,58 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A 404 is a VERDICT about the URL: Rotten Tomatoes has no such slug, and it will
+  // not have one tomorrow either. Worth keeping — it is the bulk of what makes a warm
+  // run fast.
+  it should "persist a 404, which is a verdict about the URL rather than the moment" in {
+    val delegate = new ScriptedHttpFetch(Map(
+      "https://www.rottentomatoes.com/m/nope" ->
+        (() => throw new HttpStatusException(404, "GET", "https://www.rottentomatoes.com/m/nope", None))))
+    val (fetch, _, store) = cacheOver(delegate)
+
+    the [HttpStatusException] thrownBy fetch.get("https://www.rottentomatoes.com/m/nope")
+
+    store.writes shouldBe 1
+  }
+
+  // A 429 / 503 / socket timeout says nothing about the URL — only about the moment.
+  // Persisting one pins a rate-limit as though it were an answer, and every later run
+  // replays "this film has no rating" without ever asking again. The corpus quietly
+  // loses coverage and the suite still passes, because a remembered failure looks
+  // exactly like a remembered verdict.
+  private def transientCases: Seq[(String, () => Nothing)] = Seq(
+    "rate limited"  -> (() => throw new HttpStatusException(429, "GET", "https://example.test/t", None)),
+    "server error"  -> (() => throw new HttpStatusException(503, "GET", "https://example.test/t", None)),
+    "blocked"       -> (() => throw new HttpStatusException(403, "GET", "https://example.test/t", None)),
+    "timed out"     -> (() => throw new java.net.SocketTimeoutException("read timed out")))
+
+  transientCases.foreach { case (label, boom) =>
+    it should s"NOT persist a $label failure, so the next run retries it" in {
+      val (fetch, _, store) = cacheOver(new ScriptedHttpFetch(Map("https://example.test/t" -> boom)))
+
+      the [Exception] thrownBy fetch.get("https://example.test/t")
+
+      withClue(s"a '$label' failure must not become a remembered verdict: ") { store.writes shouldBe 0 }
+      store.loadAll() shouldBe empty
+    }
+  }
+
+  // It must still be remembered for THIS run. Three concurrent passes share one cache,
+  // and if a rate-limited URL were simply re-asked, one pass could get the 429 and
+  // another the 200 — which the order-independence test would report as an
+  // order-dependence that isn't one.
+  it should "still replay a transient failure within the run it happened in" in {
+    val delegate = new ScriptedHttpFetch(Map(
+      "https://example.test/t" -> (() => throw new HttpStatusException(429, "GET", "https://example.test/t", None))))
+    val (fetch, cache, _) = cacheOver(delegate)
+
+    the [HttpStatusException] thrownBy fetch.get("https://example.test/t")
+    the [HttpStatusException] thrownBy fetch.get("https://example.test/t")
+
+    withClue("a transient failure must not be re-asked mid-run: ") { delegate.calls shouldBe 1 }
+    cache.statistics.transient shouldBe 1
+  }
+
   it should "resume writing through once the store answers again" in {
     val store = new IntermittentEnrichmentCacheStore(failFirst = EnrichmentCache.MaxConsecutiveWriteFailures - 1)
     val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), new AlwaysAnswering)

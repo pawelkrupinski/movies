@@ -33,6 +33,7 @@ class EnrichmentCache(store: EnrichmentCacheStore, clock: () => Long = () => Sys
   private val fillCount    = new AtomicInteger(0)
   private val failureCount = new AtomicInteger(0)
 
+  private val transientCount           = new AtomicInteger(0)
   private val consecutiveWriteFailures = new AtomicInteger(0)
   private val writesSuspendedUntil     = new AtomicLong(Long.MinValue)
 
@@ -58,7 +59,25 @@ class EnrichmentCache(store: EnrichmentCacheStore, clock: () => Long = () => Sys
     found
   }
 
-  /** Write through: the run's memory AND the store, so the next run starts warm. */
+  /**
+   * Write through: the run's memory ALWAYS, and the store only when the answer is one
+   * the next run should be held to.
+   *
+   * The distinction is between a verdict and a moment. A 404 from Rotten Tomatoes is a
+   * fact about the URL — there is no such slug, and there won't be one tomorrow — and
+   * remembering it across runs is most of what makes a warm run fast. A 429, a 503, a
+   * Cloudflare 403 or a socket timeout is a fact about the instant it happened in.
+   * Persisting one of those pins it as though it were an answer: every later run
+   * replays "this film has no rating" without ever asking again, the corpus quietly
+   * loses coverage, and nothing looks wrong — a remembered failure is indistinguishable
+   * from a remembered verdict once it is in the store. Left unpersisted, the next run
+   * simply asks again, which is the whole point of a transient error.
+   *
+   * It is still remembered IN MEMORY for the rest of this run. Three passes of the
+   * order-independence test share one cache, and a URL that answered 429 to one pass
+   * and 200 to another would surface as an order-dependence that isn't one — the exact
+   * thing the shared cache exists to prevent.
+   */
   def remember(key: String, response: CachedResponse): Unit = {
     entries.put(key, response)
     fillCount.incrementAndGet()
@@ -66,7 +85,8 @@ class EnrichmentCache(store: EnrichmentCacheStore, clock: () => Long = () => Sys
       case _: CachedResponse.Failed => failureCount.incrementAndGet()
       case _                        => ()
     }
-    writeThrough(key, response)
+    if (EnrichmentCache.isDurable(response)) writeThrough(key, response)
+    else transientCount.incrementAndGet()
   }
 
   /**
@@ -128,10 +148,35 @@ class EnrichmentCache(store: EnrichmentCacheStore, clock: () => Long = () => Sys
    *  rate-limited shows up here as a failure count out of all proportion to the
    *  corpus, rather than as a quietly under-enriched read model nobody questions. */
   def statistics: EnrichmentCache.Statistics =
-    EnrichmentCache.Statistics(hitCount.get(), fillCount.get(), failureCount.get(), entries.size())
+    EnrichmentCache.Statistics(hitCount.get(), fillCount.get(), failureCount.get(), entries.size(),
+      transientCount.get())
 }
 
 object EnrichmentCache {
+
+  /**
+   * The failure statuses that are a VERDICT about the URL rather than a report about
+   * the moment, and so the only ones worth carrying to the next run.
+   *
+   * Deliberately a short allow-list rather than a list of things to exclude. A new
+   * status nobody anticipated — a 451, a 425, whatever a CDN invents next — is far
+   * more likely to be environmental than to be a permanent statement about a film,
+   * and the cost of guessing wrong is asymmetric: an unremembered verdict costs one
+   * live fetch on the next run, while a remembered non-verdict silently removes a
+   * film's rating for as long as the entry lives.
+   *
+   * 404 is "no such slug", which is half a country's corpus. 410 is the same thing
+   * said more definitely. 403 is NOT here: on these hosts it is a Cloudflare block,
+   * which is exactly the kind of thing that clears by tomorrow.
+   */
+  private val DurableFailureStatuses = Set(404, 410)
+
+  /** Whether an outcome should outlive the run that saw it. Successes always;
+   *  failures only when the status says something permanent about the URL. */
+  def isDurable(response: CachedResponse): Boolean = response match {
+    case CachedResponse.Failed(status, _, _) => status.exists(DurableFailureStatuses.contains)
+    case _                                   => true
+  }
 
   /** How many consecutive write failures mean the store is GONE rather than
    *  momentarily busy. Three, because the information stops arriving after the
@@ -145,8 +190,13 @@ object EnrichmentCache {
    *  which dropped and reconnected is picked back up within the same phase. */
   val WriteSuspension: FiniteDuration = 1.minute
 
-  final case class Statistics(hits: Int, fills: Int, failures: Int, entries: Int) {
+  /** `transient` is the count of failures deliberately NOT carried to the next run.
+   *  Reported because a run whose transient count is out of all proportion to its
+   *  corpus was rate-limited, and that explains a coverage dip that would otherwise
+   *  look like a resolver regression. */
+  final case class Statistics(hits: Int, fills: Int, failures: Int, entries: Int, transient: Int = 0) {
     override def toString: String =
-      s"$hits hits, $fills live fills ($failures failed), $entries entries held"
+      s"$hits hits, $fills live fills ($failures failed, $transient transient — not remembered), " +
+      s"$entries entries held"
   }
 }
