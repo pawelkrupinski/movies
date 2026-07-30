@@ -322,9 +322,24 @@ jobs:
                   # Asserted rather than assumed: if a future change to this tar drops
                   # hidden paths, the loss is invisible — every leg simply gets slower and
                   # still passes.
-                  if [ -d "$DIR/.enrichment-cache" ] && \
-                     ! tar -tzf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" \
-                       | grep -q '/\.enrichment-cache/'; then
+                  # `grep -c`, which reads to EOF, NOT `grep -q`, which doesn't.
+                  #
+                  # `tar -tzf … | grep -q` exits the moment it matches and closes the
+                  # pipe; GNU tar is still streaming, takes SIGPIPE and returns 141, and
+                  # under `set -euo pipefail` the PIPELINE is then a failure even though
+                  # the pattern was found. The `!` turned that into "the cache is
+                  # missing", so this guard failed all three legs on a tarball that
+                  # contained the cache perfectly — the published asset had 3,745 cache
+                  # paths in it. Reading the listing to the end removes the race
+                  # entirely, and the count is worth printing anyway.
+                  #
+                  # (BSD tar on macOS absorbs the SIGPIPE, so this could not be
+                  # reproduced locally — it needs a Linux runner. Verified instead by
+                  # inspecting the asset the same run published.)
+                  cached=$(tar -tzf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" \
+                           | grep -c '/\.enrichment-cache/.*\.entry' || true)
+                  echo "remembered answers inside the archive: $cached"
+                  if [ -d "$DIR/.enrichment-cache" ] && [ "$cached" -eq 0 ]; then
                       echo "::error::the enrichment cache exists on disk but is NOT in the tarball"
                       exit 1
                   fi
