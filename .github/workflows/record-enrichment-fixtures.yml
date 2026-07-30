@@ -45,12 +45,6 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            - uses: superfly/flyctl-actions/setup-flyctl@master
-            - name: Tunnel to prod Mongo
-              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
@@ -73,6 +67,16 @@ jobs:
             # missing fixture falls through to the live leg, which re-asks and
             # re-decides, whereas writing a body would fabricate an answer the
             # service never gave.
+            # Opened LAST, immediately before the step that uses it. flyctl proxies
+            # wedge while idle (see wait-for-mongo-tunnel.sh), and establishing it before
+            # a JDK install and a possibly-cold sbt compile left it rotting for 5-10
+            # minutes before anything touched it.
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - name: Tunnel to prod Mongo
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
             - name: Dump ${{ matrix.country }}'s enrichment cache to fixtures
               run: sbt "worker/Test/runMain scripts.DumpEnrichmentFixtures ${{ matrix.code }}"
               env:
@@ -93,11 +97,12 @@ jobs:
                       "test/resources/fixtures/enrichment-${{ matrix.code }}"
                   ls -l enrichment-archive/
 
-            - uses: actions/cache/save@v5
-              with:
-                  path: enrichment-archive
-                  key: enrichment-fixtures-${{ matrix.code }}-${{ github.run_id }}
-
+            # NO actions/cache save here, deliberately. Nothing reads such an entry —
+            # convergence takes the ARTIFACT below — and writing it was actively
+            # harmful: 3 x 84-152 MB per cycle at a 9.46/10 GB ceiling evicted the
+            # sbt-target caches that keep every job off a cold compile, costing far
+            # more than it ever saved. Small and hot belongs in the cache; large and
+            # periodic belongs in an artifact.
             - uses: actions/upload-artifact@v6
               with:
                   name: enrichment-fixtures-${{ matrix.code }}

@@ -85,10 +85,20 @@ class ArchiveReplayWiring(
     val live = cachedEnrichmentFetch.getOrElse(OfflineHttpFetch)
     Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty).fold(live) { directory =>
       val replay = new clients.tools.FakeHttpFetch(directory, strict = true, foldYear = false)
-      new clients.tools.RecordingHttpFetch(
-        directory,
-        new FallbackHttpFetch(Seq("enrichment-fixtures" -> replay, "live" -> live)),
-        foldYear = false)
+      // The recorder wraps ONLY the live leg, not the whole chain. Wrapping the chain
+      // meant every fixture HIT was written straight back to disk byte-identically —
+      // `RecordingHttpFetch` writes on every call — so a corpus that is already fully
+      // recorded still paid a disk write per URL per pass, and the order-independence
+      // test runs four enrichment sweeps over the same films. Only a live fetch has
+      // anything new to record.
+      //
+      // (`RecordingHttpFetch`'s own doc argues for wrapping a whole chain, but that is
+      // about the Zyte-routed SCRAPE chain, where an inner leg fetches through its own
+      // client and would otherwise bypass the recorder. There is no such leg here: the
+      // live side is the only thing that reaches the network.)
+      new FallbackHttpFetch(Seq(
+        "enrichment-fixtures" -> replay,
+        "live"                -> new clients.tools.RecordingHttpFetch(directory, live, foldYear = false)))
     }
   }
 

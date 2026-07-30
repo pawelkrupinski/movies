@@ -30,7 +30,11 @@ on:
     # are after midnight, so one plain cron covers the year with no DST gate — the
     # same reasoning `country-fixture-artifact.yml` documents.
     schedule:
-        - cron: '1 23 * * *'
+        # 23:31, not 23:01: `country-fixture-artifact.yml` already fires at 23:01,
+        # and both are multi-job live-recording workflows — running them in the same
+        # minute put four heavyweight jobs on the pool at once, competing for the
+        # same prod tunnel that is documented to wedge under load.
+        - cron: '31 23 * * *'
     workflow_dispatch:
 
 concurrency:
@@ -56,12 +60,6 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
-            - uses: superfly/flyctl-actions/setup-flyctl@master
-            - name: Tunnel to prod Mongo
-              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
@@ -83,6 +81,16 @@ jobs:
             # `findAll` discards an incomplete keyset scan — a fixture is
             # AUTHORITATIVE, and a truncated one already slipped through once at 236
             # of 281 Polish venues.
+            # Opened LAST, immediately before the step that uses it. flyctl proxies
+            # wedge while idle (see wait-for-mongo-tunnel.sh), and establishing it before
+            # a JDK install and a possibly-cold sbt compile left it rotting for 5-10
+            # minutes before anything touched it.
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - name: Tunnel to prod Mongo
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
             - name: Record ${{ matrix.country }}'s corpus
               run: sbt "worker/Test/runMain scripts.RecordCorpusFixture ${{ matrix.code }}"
               env:
