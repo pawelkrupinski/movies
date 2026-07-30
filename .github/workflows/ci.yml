@@ -108,6 +108,21 @@ jobs:
             # staged dist links, then expire after a day.
             - run: sbt "web/stage" "worker/stage"
 
+            # Guards build.sbt's `noApiDocs`. Play's dist and native-packager
+            # both ship a `share/doc/api` tree by default, which put dotty's
+            # scaladoc on the deploy critical path — it NPE'd here on JDK 25
+            # and failed a deploy whose only diff was a workflow file. Nothing
+            # reads these docs, so their reappearance is a regression: fail
+            # loudly rather than let an unread artefact break deploys again.
+            - name: Deploy artefacts carry no generated Scaladoc
+              run: |
+                  found=$(find web/target/universal/stage worker/target/universal/stage \
+                              -type d -name doc -print -quit)
+                  if [ -n "$found" ]; then
+                      echo "::error::staged dist ships generated Scaladoc at $found — see noApiDocs in build.sbt"
+                      exit 1
+                  fi
+
             - uses: actions/upload-artifact@v6
               with:
                   name: stage-web

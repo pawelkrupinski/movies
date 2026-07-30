@@ -41,6 +41,24 @@ ThisBuild / scalacOptions ++= Seq(
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
 
+// Nobody reads this build's Scaladoc — there is no published API and no docs
+// site — but `stage` built it anyway: Play's dist ships `share/doc/api`, and
+// native-packager pulls the same for worker, so a deploy generated docs for
+// FOUR modules (web, common, testkit, worker) including a test-support one.
+// That put dotty's scaladoc on the deploy critical path, and it fell off it:
+// CI's JDK-25 runner NPE'd inside `SignatureBuilder` rendering common's search
+// index, on a commit whose only diff was a workflow file. An unread artefact
+// must not be able to fail a deploy, so don't build it — emptying `doc`'s
+// sources is enough to drop `share/doc` from both dists. To generate docs on
+// demand, hand the sources back for one run:
+//
+//   sbt 'set common/Compile/doc/sources := (common/Compile/sources).value' common/doc
+//
+// A CI step in ci.yml re-checks that neither staged dist carries a `doc` tree.
+lazy val noApiDocs = Seq(
+  Compile / doc / sources := Nil,
+)
+
 // Integration tests (it/scala) and page-regression tests (page/scala) run under
 // their own sbt configurations so CI can dispatch them as separate jobs. Both
 // `extend Test` to reuse helpers from test/scala. Defined here because both the
@@ -97,6 +115,7 @@ lazy val common = (project in file("common"))
     )
   )
   .settings(unitReportSettings)
+  .settings(noApiDocs)
 
 // ── Shared test support (not deployed) ───────────────────────────────────────
 //
@@ -114,6 +133,7 @@ lazy val testkit = (project in file("testkit"))
     publish / skip := true,
     libraryDependencies += scalatestPlay,
   )
+  .settings(noApiDocs)
 
 // ── Worker app (scrape + enrich) ─────────────────────────────────────────────
 //
@@ -181,6 +201,7 @@ lazy val worker = (project in file("worker"))
   )
   .settings(unitReportSettings)
   .settings(itReportSettings)
+  .settings(noApiDocs)
 
 // ── Web app (content serving) ────────────────────────────────────────────────
 
@@ -256,6 +277,7 @@ lazy val web = (project in file("web"))
   )
   .settings(unitReportSettings)
   .settings(itReportSettings)
+  .settings(noApiDocs)
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
 //
@@ -275,6 +297,7 @@ lazy val e2e = (project in file("e2e"))
     publish / skip := true,
     libraryDependencies += scalatestPlay % Test,
   )
+  .settings(noApiDocs)
   .settings(unitReportSettings)
 
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
