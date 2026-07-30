@@ -2,7 +2,7 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
-import tools.{HttpFetch, TextNormalization}
+import tools.{HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -52,7 +52,37 @@ class RottenTomatoesClient(http: HttpFetch) {
     title:    String,
     fallback: Option[String] = None,
     year:     Option[Int]    = None
+  ): Option[String] = urlForAny(Seq(title), fallback, year)
+
+  /** Resolve across several candidate titles, best-first, as ONE attempt.
+   *
+   *  `RottenTomatoesRatings` has three titles to try — TMDB's original title,
+   *  its en-US title, and the US release title — and used to run [[urlFor]]
+   *  once per title, so slugs an earlier title had already probed were probed
+   *  again against the live site ("The Sting" and "Sting" both end at
+   *  `/m/sting`). Threading all the titles through one call lets the whole
+   *  attempt share a [[MemoizedHttpFetch]], which fetches each URL at most
+   *  once.
+   *
+   *  The order is exactly what the chained [[urlFor]] calls produced — each
+   *  title's full ladder in turn, `fallback` belonging to the first title — so
+   *  this removes repeat requests without changing which page wins. */
+  def urlForAny(
+    titles:   Seq[String],
+    fallback: Option[String] = None,
+    year:     Option[Int]    = None
   ): Option[String] = {
+    val attempt = new RottenTomatoesClient(new MemoizedHttpFetch(http))
+    titles.iterator.zipWithIndex
+      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year) }
+      .nextOption()
+  }
+
+  /** One title's ladder: its slug probes, the fallback's slug probes, then the
+   *  search-page scrape for each. Private because the memo that makes the
+   *  ladder cheap lives in [[urlForAny]] — calling this directly would bypass
+   *  it. */
+  private def probeLadder(title: String, fallback: Option[String], year: Option[Int]): Option[String] = {
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
     canonicalUrl(title, year)
       .orElse(effectiveFallback.flatMap(canonicalUrl(_, year)))

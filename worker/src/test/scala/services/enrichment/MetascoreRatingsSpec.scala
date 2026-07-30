@@ -25,7 +25,9 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   private def mcStub(scores: Map[String, Option[Int]]): MetacriticClient = {
     new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
-        scores.get(url) match {
+        // MC 301s /movie/<slug> to /movie/<slug>/, so the client requests the
+        // trailing-slash form; the page it lands on is the same one either way.
+        scores.get(url.stripSuffix("/")) match {
           case Some(Some(s)) => scorePage(s)
           case Some(None) =>
             // Page exists but no aggregated score yet — JSON-LD omits aggregateRating.
@@ -183,13 +185,15 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository)
     // MC stub: 404 for both philosophers slug variants, 200 + JSON-LD for sorcerers.
     val mc = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+      def get(rawUrl: String): String = {
+        val url = rawUrl.stripSuffix("/")
         if (url == sorcerers)
           """<html><head><script type="application/ld+json">
             |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":64,"bestRating":100,"worstRating":0,"reviewCount":10}}
             |</script></head><body></body></html>""".stripMargin
         else if (url == philosophers || url.contains("/search/") || url.contains("/movie/")) throw new RuntimeException("HTTP 404")
         else throw new RuntimeException(s"unstubbed MC url: $url")
+      }
     })
     val rates = new MetascoreRatings(cache, tmdb, mc)
 
@@ -243,7 +247,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = {
         gets.incrementAndGet()
-        if (url == TheSting) throw new RuntimeException("HTTP 404")
+        if (url.stripSuffix("/") == TheSting) throw new RuntimeException("HTTP 404")
         else scorePage(70)   // /movie/sting (and any score re-fetch of it)
       }
     })

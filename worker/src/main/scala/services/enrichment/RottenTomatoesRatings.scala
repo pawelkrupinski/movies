@@ -73,11 +73,13 @@ class RottenTomatoesRatings(
         .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
         .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
       // Cache the whole slug-probe chain keyed by the primary identity, so a
-      // cache hit skips the RT HTTP probes entirely (hits-only).
+      // cache hit skips the RT HTTP probes entirely.
       val resolved = rtLinkCache.getOrResolve(ResolutionKeys.rt(linkTitle, rtFallback, year)) {
-        Try(rt.urlFor(linkTitle, rtFallback, year)).toOption.flatten
-          .orElse(englishTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
-          .orElse(usTitle.flatMap(t => Try(rt.urlFor(t, None, year)).toOption.flatten))
+        // One attempt across all three candidate titles rather than three
+        // independent ones: same ladder, same order, but the titles share a
+        // fetch memo so a slug an earlier title already probed isn't probed
+        // again ("The Sting" and "Sting" both end at /m/sting).
+        Try(rt.urlForAny(Seq(linkTitle) ++ englishTitle ++ usTitle, rtFallback, year)).toOption.flatten
       }
 
       resolved.foreach { url =>

@@ -2,7 +2,7 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
-import tools.{HttpFetch, TextNormalization}
+import tools.{HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -17,7 +17,7 @@ import scala.util.Try
  * cached for years, and the view layer synthesises one on the fly for display
  * when `metacriticUrl` is None.
  *
- * Resolution order in `urlFor`:
+ * Resolution order, per candidate title:
  *   1. Slug probe on the primary title (and de-articled variant).
  *   2. Slug probe on the `fallback` title (e.g. cleanTitle when TMDB's
  *      original_title slugs poorly — Japanese, Cyrillic, wrong-language).
@@ -25,6 +25,11 @@ import scala.util.Try
  *      the best `/movie/{slug}` link by title + year. Necessary for films
  *      whose canonical slug deviates from MC's published convention (subtitle
  *      stripped, year suffix appended, etc.).
+ *
+ * [[resolveAcross]] runs that ladder over several candidate titles as ONE
+ * attempt sharing a fetch memo — how `MetascoreRatings` tries TMDB's original,
+ * English and US titles without re-probing the slugs they have in common.
+ * [[requestUrl]] governs the exact URL each probe GETs.
  *
  * A probed slug is REJECTED when its page `datePublished` year conflicts with
  * the film's release year (both known, more than [[YearMatchTolerance]] apart).
@@ -62,7 +67,37 @@ class MetacriticClient(http: HttpFetch) {
     title:    String,
     fallback: Option[String] = None,
     year:     Option[Int]    = None
+  ): Option[Resolved] = resolveAcross(Seq(title), fallback, year)
+
+  /** Resolve across several candidate titles, best-first, as ONE attempt.
+   *
+   *  `MetascoreRatings` has three titles to try — TMDB's original title, its
+   *  en-US title, and the US release title — and used to run [[resolve]] once
+   *  per title. Each run walked its own ladder against the live site, so slugs
+   *  the earlier titles had already probed were probed again: "The Sting" and
+   *  "Sting" both end at `/movie/sting`. Threading all the titles through one
+   *  call lets the whole attempt share a [[MemoizedHttpFetch]], which fetches
+   *  each URL at most once.
+   *
+   *  The order is exactly what the chained [[resolve]] calls produced — each
+   *  title's full ladder in turn, `fallback` belonging to the first title — so
+   *  this removes repeat requests without changing which page wins. */
+  def resolveAcross(
+    titles:   Seq[String],
+    fallback: Option[String] = None,
+    year:     Option[Int]    = None
   ): Option[Resolved] = {
+    val attempt = new MetacriticClient(new MemoizedHttpFetch(http))
+    titles.iterator.zipWithIndex
+      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year) }
+      .nextOption()
+  }
+
+  /** One title's ladder: its slug probes, the fallback's slug probes, then the
+   *  search-page scrape for each. Private because the memo that makes the
+   *  ladder cheap lives in [[resolveAcross]] — calling this directly would
+   *  bypass it. */
+  private def probeLadder(title: String, fallback: Option[String], year: Option[Int]): Option[Resolved] = {
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
     canonicalResolve(title, year)
       .orElse(effectiveFallback.flatMap(t => canonicalResolve(t, year)))
@@ -94,7 +129,7 @@ class MetacriticClient(http: HttpFetch) {
   def canonicalResolve(title: String, year: Option[Int] = None): Option[Resolved] =
     candidateSlugs(title, year).iterator
       .flatMap { slug =>
-        Try(http.get(s"$Site/movie/$slug")).toOption
+        Try(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug"))).toOption
           .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
           .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
       }
@@ -208,11 +243,29 @@ class MetacriticClient(http: HttpFetch) {
    *  far more stable than the visual HTML — the score block's CSS classes
    *  drift across redesigns. */
   def metascoreFor(movieUrl: String): Option[Int] =
-    Try(http.get(movieUrl)).toOption.flatMap(MetacriticClient.parseMetascore)
+    Try(http.get(MetacriticClient.requestUrl(movieUrl))).toOption.flatMap(MetacriticClient.parseMetascore)
 }
 
 object MetacriticClient {
   private val Site = "https://www.metacritic.com"
+
+  /** The form of an MC movie URL we actually GET.
+   *
+   *  Metacritic 301-redirects `/movie/<slug>` to `/movie/<slug>/` — for a real
+   *  page and a nonexistent one alike — so probing the slash-less form costs
+   *  TWO round trips per candidate, and a failed resolution probes up to eight
+   *  of them. Measured against the live site on 2026-07-30: every slash-less
+   *  `/movie/<slug>` answered 301, the trailing-slash form answered directly.
+   *  `RealHttpFetch` follows redirects, so the wasted hop never showed up as an
+   *  error — only as latency (`McRating` p95 sat at 15-24s against `RtRating`'s
+   *  2.7s).
+   *
+   *  We keep STORING and displaying the slash-less URL — that is what every
+   *  existing row and the read model already carry — and add the slash only
+   *  here, at the request boundary. That way rows written long before this
+   *  change stop paying the redirect too, with no data migration. */
+  private[enrichment] def requestUrl(movieUrl: String): String =
+    if (movieUrl.endsWith("/")) movieUrl else s"$movieUrl/"
   private val YearRegex = "\\b(19\\d{2}|20\\d{2})\\b".r
 
   case class SearchHit(slug: String, title: String, year: Option[Int])

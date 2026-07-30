@@ -5,6 +5,8 @@ import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
 import tools.GetOnlyHttpFetch
 
+import scala.collection.mutable
+
 class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   "slugify" should "use underscores instead of hyphens" in {
@@ -336,5 +338,46 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     // /search?... URL we should bail with None rather than try to parse it.
     val c = new RottenTomatoesClient(stub(Set.empty))
     c.scoreFor("https://www.rottentomatoes.com/search?search=foo") shouldBe None
+  }
+
+  // ── Request economy ────────────────────────────────────────────────────────
+  //
+  // RottenTomatoesRatings has three candidate titles to try, and their slug
+  // lists overlap — "The Sting" de-articles to the same "sting" its cleanTitle
+  // slugs to directly. One attempt across all three probes each URL once.
+
+  /** Records every URL fetched, and answers each one from `respond`. */
+  private class RecordingFetch(respond: String => String) extends GetOnlyHttpFetch {
+    val requested: mutable.ListBuffer[String] = mutable.ListBuffer.empty
+    def get(url: String): String = { requested += url; respond(url) }
+  }
+
+  private def notFound: String => String = url => throw new RuntimeException(s"HTTP 404 for $url")
+
+  "a resolution attempt" should "probe a slug shared by two candidate titles only once" in {
+    val fetch = new RecordingFetch(notFound)
+    new RottenTomatoesClient(fetch).urlFor("The Sting", Some("Sting"), Some(1973))
+
+    val probes = fetch.requested.filter(_.contains("/m/")).toList
+    probes.distinct shouldBe probes
+    probes should contain ("https://www.rottentomatoes.com/m/sting")
+  }
+
+  "urlForAny" should "walk each title's ladder in turn, fetching no URL twice" in {
+    val fetch = new RecordingFetch(notFound)
+    new RottenTomatoesClient(fetch).urlForAny(Seq("The Sting", "Sting", "The Sting"), Some("Sting"), Some(1973))
+
+    fetch.requested.distinct shouldBe fetch.requested
+  }
+
+  it should "return the first title that resolves and stop there" in {
+    val fetch = new RecordingFetch(url =>
+      if (url.endsWith("/m/inception")) rtMoviePage(2010)
+      else throw new RuntimeException("HTTP 404"))
+    val c = new RottenTomatoesClient(fetch)
+
+    c.urlForAny(Seq("Poczatek", "Inception", "Never Reached")) shouldBe
+      Some("https://www.rottentomatoes.com/m/inception")
+    fetch.requested.exists(_.contains("never_reached")) shouldBe false
   }
 }

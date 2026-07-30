@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import tools.{HttpFetch, SynopsisSimilarity, TextNormalization}
+import tools.{HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -62,7 +62,13 @@ class FilmwebClient(http: HttpFetch) {
     val variants = searchQueryVariants(title)
     val effectiveFallback = fallback.filter(f => !f.equalsIgnoreCase(title) && !variants.exists(_.equalsIgnoreCase(f)))
     val queries = (title +: (variants ++ effectiveFallback.toSeq)).distinct
-    queries.view.flatMap(q => lookupWithQuery(q, year, directors, referenceSynopsis)).headOption
+    // One attempt, one fetch memo. The query variants are distinct but their
+    // SEARCH RESULTS routinely aren't — "Film | Cykl: X" and the bare "Film"
+    // return the same top candidates — and every candidate costs an `/info`
+    // plus, when directors are being verified, a `/preview`. Without the memo
+    // each shared candidate is fetched once per variant.
+    val attempt = new FilmwebClient(new MemoizedHttpFetch(http))
+    queries.view.flatMap(q => attempt.lookupWithQuery(q, year, directors, referenceSynopsis)).headOption
   }
 
   private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String]): Option[FilmwebInfo] =

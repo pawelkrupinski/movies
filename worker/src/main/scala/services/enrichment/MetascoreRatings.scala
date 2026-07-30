@@ -90,9 +90,12 @@ class MetascoreRatings(
       // None, and the caller reads the score via `metascoreFor`.
       var freshScore: Option[Int] = None
       val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(linkTitle, mcFallback, year)) {
-        val resolved = Try(metacritic.resolve(linkTitle, mcFallback, year)).toOption.flatten
-          .orElse(englishTitle.flatMap(t => Try(metacritic.resolve(t, None, year)).toOption.flatten))
-          .orElse(usTitle.flatMap(t => Try(metacritic.resolve(t, None, year)).toOption.flatten))
+        // One attempt across all three candidate titles rather than three
+        // independent ones: same ladder, same order, but the titles share a
+        // fetch memo so a slug an earlier title already probed isn't probed
+        // again ("The Sting" and "Sting" both end at /movie/sting).
+        val resolved = Try(metacritic.resolveAcross(
+          Seq(linkTitle) ++ englishTitle ++ usTitle, mcFallback, year)).toOption.flatten
         freshScore = resolved.flatMap(_.metascore)
         resolved.map(_.url)
       }

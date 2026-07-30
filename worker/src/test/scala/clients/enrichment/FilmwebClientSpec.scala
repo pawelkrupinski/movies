@@ -543,6 +543,33 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     r.get.url should include ("-7")
   }
 
+  // Filmweb's fuzzy search returns much the same top candidates for a banner-
+  // decorated title and its bare variant, and each candidate costs an /info
+  // (plus a /preview when directors are being verified). One lookup is one
+  // attempt, so a candidate shared by two queries is fetched once, not twice.
+  it should "fetch a candidate shared by two query variants only once" in {
+    val requested = scala.collection.mutable.ListBuffer.empty[String]
+    val fw = new FilmwebClient(new GetOnlyHttpFetch {
+      override def get(url: String): String = {
+        requested += url
+        // Both queries surface the same candidate 7, which never clears the
+        // title bar — so the lookup walks every variant and returns None.
+        if (url.contains("/live/search"))       """{"searchHits":[{"id":7,"type":"film","matchedTitle":"Something Else"}]}"""
+        else if (url.contains("/film/7/info"))  """{"title":"Something Else","year":2015}"""
+        else if (url.contains("/film/7/preview")) """{"directors":[{"name":"Nobody"}]}"""
+        else throw new RuntimeException(s"HTTP 404 for $url")
+      }
+    })
+
+    fw.lookup("Reze Arc | 26. Festiwal Filmowy", Some(2025), directors = Set("Jane Doe")) shouldBe None
+
+    requested.count(_.contains("/film/7/info"))    shouldBe 1
+    requested.count(_.contains("/film/7/preview")) shouldBe 1
+    // All three queries (raw + both pipe segments) were genuinely tried — the
+    // dedup is on shared candidates, not on giving up early.
+    requested.count(_.contains("/live/search")) shouldBe 3
+  }
+
   // ── searchQueryVariants: banner / decoration stripping ───────────────────────
 
   "searchQueryVariants" should "expose the bare film title behind a pipe-separated cycle banner" in {
