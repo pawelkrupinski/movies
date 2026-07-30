@@ -56,3 +56,9 @@ logs/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .claude/worktrees/
+
+# Recorded enrichment fixture trees. 7k-17k files and 84-152 MB per country,
+# restored from a CI artifact or a local recorder run and EXTENDED in place by
+# every convergence run — never committed. Ignored so an `add -A` in a worktree
+# that has run a convergence leg can't drag the whole tree into a commit.
+test/resources/fixtures/enrichment-*/

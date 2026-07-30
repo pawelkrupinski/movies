@@ -114,7 +114,7 @@ class MongoEnrichmentCacheStore(
 
   /** Close the client this store opened, if it opened one. Dropping nothing — the
    *  cache is the artefact that outlives the run. */
-  def close(): Unit = owned.foreach(_.close())
+  override def close(): Unit = owned.foreach(_.close())
 
   /** `createIndex` can never ALTER an existing TTL, so a changed [[ttl]] is pushed
    *  through with `collMod` — otherwise the first run's value is pinned forever and

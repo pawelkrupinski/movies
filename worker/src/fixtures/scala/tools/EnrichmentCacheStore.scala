@@ -34,6 +34,12 @@ trait EnrichmentCacheStore {
   def loadAll(): Map[String, CachedResponse]
 
   def put(key: String, response: CachedResponse): Unit
+
+  /** Release whatever this store holds open. A no-op for the stores that hold
+   *  nothing — a directory and a map both close themselves — and the Mongo one's
+   *  client shutdown. Here rather than on the concrete class so a caller can hold
+   *  the abstraction and still tidy up after it. */
+  def close(): Unit = ()
 }
 
 /** The test double. Holds what it was given; no expiry, because a spec that wants
