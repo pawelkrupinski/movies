@@ -59,3 +59,36 @@ class InMemoryEnrichmentCacheStore(initial: Map[String, CachedResponse] = Map.em
     ()
   }
 }
+
+/** A store nothing can reach — the CI shape where the cache URI names a tunnel that
+ *  was never started, so the driver blocks for its server-selection timeout and then
+ *  throws. Counts what it was ASKED, which is the number that matters: the point of
+ *  the write circuit is that the count stops climbing. */
+class UnreachableEnrichmentCacheStore(message: String = "no server available") extends EnrichmentCacheStore {
+  private val attemptCount = new java.util.concurrent.atomic.AtomicInteger(0)
+
+  def attempts: Int = attemptCount.get()
+
+  override def loadAll(): Map[String, CachedResponse] = throw new RuntimeException(message)
+
+  override def put(key: String, response: CachedResponse): Unit = {
+    attemptCount.incrementAndGet()
+    throw new RuntimeException(message)
+  }
+}
+
+/** Fails its first `failFirst` writes and accepts everything after — the tunnel that
+ *  drops and comes back, which is why the circuit reopens rather than latching. */
+class IntermittentEnrichmentCacheStore(failFirst: Int) extends EnrichmentCacheStore {
+  private val attemptCount = new java.util.concurrent.atomic.AtomicInteger(0)
+  private val writeCount   = new java.util.concurrent.atomic.AtomicInteger(0)
+
+  def attempts: Int = attemptCount.get()
+  def writes: Int   = writeCount.get()
+
+  override def loadAll(): Map[String, CachedResponse] = Map.empty
+
+  override def put(key: String, response: CachedResponse): Unit =
+    if (attemptCount.incrementAndGet() <= failFirst) throw new RuntimeException("store not ready")
+    else writeCount.incrementAndGet()
+}

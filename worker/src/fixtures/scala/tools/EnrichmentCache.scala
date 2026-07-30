@@ -1,7 +1,11 @@
 package tools
 
+import play.api.Logging
+
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
  * A country's remembered enrichment answers, held in memory for the run and
@@ -21,12 +25,16 @@ import java.util.concurrent.atomic.AtomicInteger
  * storage boundary, so the Mongo store and the in-memory one cannot disagree about
  * any of it. A store only holds bytes.
  */
-class EnrichmentCache(store: EnrichmentCacheStore) {
+class EnrichmentCache(store: EnrichmentCacheStore, clock: () => Long = () => System.currentTimeMillis())
+  extends Logging {
 
   private val entries      = new ConcurrentHashMap[String, CachedResponse]()
   private val hitCount     = new AtomicInteger(0)
   private val fillCount    = new AtomicInteger(0)
   private val failureCount = new AtomicInteger(0)
+
+  private val consecutiveWriteFailures = new AtomicInteger(0)
+  private val writesSuspendedUntil     = new AtomicLong(Long.MinValue)
 
   /**
    * Pull the country's WHOLE cache into memory before the replay starts.
@@ -58,8 +66,46 @@ class EnrichmentCache(store: EnrichmentCacheStore) {
       case _: CachedResponse.Failed => failureCount.incrementAndGet()
       case _                        => ()
     }
-    store.put(key, response)
+    writeThrough(key, response)
   }
+
+  /**
+   * Write to the store, and STOP writing to one that keeps refusing.
+   *
+   * The write sits on the fetch path — `remember` runs inside the key's
+   * single-flight lock — so its cost is paid per cache miss, serially. That is
+   * fine against a store that answers in a millisecond and ruinous against one
+   * that doesn't answer at all: pointed at a Mongo tunnel that was never started,
+   * every write blocked for the driver's 5-second server selection before failing,
+   * and three convergence legs were cancelled at the 75-minute ceiling having spent
+   * the entire run waiting on a socket nobody was listening to. Thousands of
+   * timeouts carry no more information than the first three.
+   *
+   * Suspended rather than latched off, because the tunnel these run over dies and
+   * comes BACK: after the cooldown one write probes the store, and a success clears
+   * the circuit entirely. So a fault that heals in seconds costs a minute of
+   * write-through, not the rest of the run.
+   *
+   * The policy lives here, above the storage seam, so the Mongo store and the
+   * in-memory one cannot disagree about it — and so a store only ever has to
+   * report that it failed.
+   */
+  private def writeThrough(key: String, response: CachedResponse): Unit =
+    if (clock() >= writesSuspendedUntil.get()) {
+      try {
+        store.put(key, response)
+        if (consecutiveWriteFailures.getAndSet(0) > 0)
+          logger.info("Enrichment cache store answered again — resuming write-through")
+      } catch {
+        case NonFatal(failure) =>
+          if (consecutiveWriteFailures.incrementAndGet() >= EnrichmentCache.MaxConsecutiveWriteFailures) {
+            writesSuspendedUntil.set(clock() + EnrichmentCache.WriteSuspension.toMillis)
+            logger.warn(s"Enrichment cache write failed ${EnrichmentCache.MaxConsecutiveWriteFailures} times in a " +
+              s"row (last: $key — ${failure.getMessage}) — suspending write-through for " +
+              s"${EnrichmentCache.WriteSuspension.toSeconds}s; the run continues from memory")
+          } else logger.warn(s"Enrichment cache write failed for $key: ${failure.getMessage}")
+      }
+    }
 
   /**
    * Run `work` with no other caller working on the SAME key at the same time.
@@ -86,6 +132,19 @@ class EnrichmentCache(store: EnrichmentCacheStore) {
 }
 
 object EnrichmentCache {
+
+  /** How many consecutive write failures mean the store is GONE rather than
+   *  momentarily busy. Three, because the information stops arriving after the
+   *  first: a fourth `Connection refused` says exactly what the third one did, and
+   *  costs another server-selection timeout to hear it. */
+  val MaxConsecutiveWriteFailures = 3
+
+  /** How long write-through stays suspended before one write probes the store
+   *  again. A minute: long enough that a dead cluster costs a handful of timeouts
+   *  across an hour-long sweep rather than one per miss, short enough that a tunnel
+   *  which dropped and reconnected is picked back up within the same phase. */
+  val WriteSuspension: FiniteDuration = 1.minute
+
   final case class Statistics(hits: Int, fills: Int, failures: Int, entries: Int) {
     override def toString: String =
       s"$hits hits, $fills live fills ($failures failed), $entries entries held"

@@ -218,4 +218,72 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
 
     delegate.calls shouldBe 1
   }
+
+  /** Answers anything, so a test about the STORE isn't limited by a script. */
+  private class AlwaysAnswering extends HttpFetch {
+    override def get(url: String): String = "answer"
+    override def post(url: String, body: String, contentType: String): String = "answer"
+  }
+
+  /** `round` keeps the URLs distinct between calls: a repeat of the same URL is an
+   *  in-memory HIT and never reaches the store at all, so a second sweep over the
+   *  same list would silently assert nothing. */
+  private def fill(fetch: CachingEnrichmentFetch, count: Int, round: Int = 1): Unit =
+    (1 to count).foreach(index => fetch.get(s"https://example.test/miss-$round-$index"))
+
+  // The failure this exists to prevent, in full: CI pointed the cache at a tunnel
+  // that was never started, so every write blocked for the driver's 5s server
+  // selection and then failed. The writes are on the fetch path — `remember` holds
+  // the key's single-flight lock — so a thousand misses cost well over an hour, and
+  // all three convergence legs were cancelled at the 75-minute ceiling having done
+  // nothing but wait. A store that cannot be reached has to stop being asked.
+  it should "stop writing through to a store that keeps failing, rather than pay its timeout on every miss" in {
+    val store = new UnreachableEnrichmentCacheStore
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), new AlwaysAnswering)
+
+    fill(fetch, 40)
+
+    store.attempts shouldBe EnrichmentCache.MaxConsecutiveWriteFailures
+  }
+
+  // Degrading to "no cache" is the whole allowance: the run costs live fills, never
+  // correctness. It must not also start failing the fetches.
+  it should "keep answering from memory while its store is unreachable" in {
+    val delegate = new ScriptedHttpFetch(Map("https://example.test/a" -> (() => "body")))
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(new UnreachableEnrichmentCacheStore), delegate)
+
+    fetch.get("https://example.test/a") shouldBe "body"
+    fetch.get("https://example.test/a") shouldBe "body"
+
+    withClue("an unwritable store must not cost the in-memory hit: ") { delegate.calls shouldBe 1 }
+  }
+
+  // The tunnel these run over dies and RESTARTS, so tripping permanently would give
+  // up a warm cache for the rest of a run over a fault that healed in seconds.
+  it should "probe the store again once the suspension has elapsed" in {
+    val store = new UnreachableEnrichmentCacheStore
+    var now   = 0L
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store, () => now), new AlwaysAnswering)
+
+    fill(fetch, 10)
+    store.attempts shouldBe EnrichmentCache.MaxConsecutiveWriteFailures
+
+    now += EnrichmentCache.WriteSuspension.toMillis + 1
+    fill(fetch, 10, round = 2)
+
+    withClue("one probe after the cooldown, then suspended again: ") {
+      store.attempts shouldBe EnrichmentCache.MaxConsecutiveWriteFailures + 1
+    }
+  }
+
+  it should "resume writing through once the store answers again" in {
+    val store = new IntermittentEnrichmentCacheStore(failFirst = EnrichmentCache.MaxConsecutiveWriteFailures - 1)
+    val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), new AlwaysAnswering)
+
+    fill(fetch, 10)
+
+    withClue("a recovered store must be written to, not left tripped by old failures: ") {
+      store.writes shouldBe 10 - (EnrichmentCache.MaxConsecutiveWriteFailures - 1)
+    }
+  }
 }

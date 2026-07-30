@@ -94,17 +94,23 @@ class MongoEnrichmentCacheStore(
   /** Written synchronously, unlike `MongoCachingDetailFetch`'s fire-and-forget: the
    *  only writer is a run that is about to close its client, and a dropped tail
    *  would silently re-fetch on the next run. A miss has just paid for a network
-   *  round-trip, so the local write is noise beside it. */
+   *  round-trip, so the local write is noise beside it.
+   *
+   *  A failure is THROWN rather than swallowed here. Swallowing made this store the
+   *  only thing that knew the cluster was unreachable, and it forgot immediately —
+   *  so a run pointed at a dead tunnel paid the driver's full server-selection
+   *  timeout on every one of ~780 misses and was cancelled at the CI ceiling. The
+   *  policy for a store that keeps refusing belongs above the storage seam, in
+   *  [[EnrichmentCache.writeThrough]], which is where both stores share it; this one
+   *  only has to say that it failed. */
   override def put(key: String, response: CachedResponse): Unit =
-    Try(Await.result(
+    Await.result(
       collection.updateOne(
         Filters.eq("_id", key),
         Updates.combine((MongoEnrichmentCacheStore.encode(response) :+
           Updates.set("fetchedAt", new java.util.Date(System.currentTimeMillis())))*),
         new UpdateOptions().upsert(true)
-      ).toFuture(), 30.seconds))
-      .recover { case failure => logger.warn(s"Enrichment cache write failed for $key: ${failure.getMessage}") }
-      .fold(_ => (), _ => ())
+      ).toFuture(), 30.seconds)
 
   /** Close the client this store opened, if it opened one. Dropping nothing — the
    *  cache is the artefact that outlives the run. */
