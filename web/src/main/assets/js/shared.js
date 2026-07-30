@@ -1371,11 +1371,29 @@
 
   let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
 
+  // The calendar day the PAGE is on. Two things it deliberately is not:
+  //
+  //  - the visitor's timezone. Showtimes, their expiry stamps and the midnight
+  //    rollover are all resolved in `city.zoneId` server-side, so the day filter
+  //    reads the same city clock (`window.CITY_TIMEZONE`) — a Londoner at 23:30
+  //    is still on today's listings, though Warsaw has already turned over.
+  //  - the visitor's wall clock. `showtimeNow()` is the server's render instant
+  //    carried forward by elapsed browser time, which is what the expiry prune
+  //    counts on; a device clock set days out can't drag the day filter away
+  //    from the listings the page actually shipped with. Only the repertoire
+  //    view defines it — elsewhere (/plan, /film, /browse) there is no expiry to
+  //    stay in step with, so the browser clock is answer enough.
+  //
+  // `window.KINOWO_PINNED_TODAY` is set ONLY in page-test renders (fixture data
+  // carries absolute past dates; a live clock would age the day filters out).
+  function pageToday() {
+    if (window.KINOWO_PINNED_TODAY) return window.KINOWO_PINNED_TODAY;
+    const nowMs = typeof window.showtimeNow === 'function' ? window.showtimeNow() : Date.now();
+    return new Date(nowMs).toLocaleDateString('sv', { timeZone: window.CITY_TIMEZONE });
+  }
+
   function dateBounds() {
-    // `window.KINOWO_PINNED_TODAY` is set ONLY in page-test renders (fixture data
-    // carries absolute past dates; a real `new Date()` would age the day filters
-    // out). Prod leaves it undefined → the real clock, correct across midnight.
-    const today = window.KINOWO_PINNED_TODAY || new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    const today = pageToday();
     if (today !== _cachedDay) {
       _cachedDay      = today;
       _cachedToday    = today;
@@ -2031,7 +2049,7 @@
     const element = document.getElementById('swipe-hint');
     if (!element) return;                                        // not the listing page
     if (_hintGet(SWIPE_HINT_DONE)) return;                 // retired by a past swipe
-    const today = window.KINOWO_PINNED_TODAY || new Date().toLocaleDateString('sv', { timeZone: 'Europe/Warsaw' });
+    const today = pageToday();                            // the city's day, see dateBounds
     if (_hintGet(SWIPE_HINT_DAY) === today) return;        // already shown today
     _hintSet(SWIPE_HINT_DAY, today);
     element.classList.add('visible');

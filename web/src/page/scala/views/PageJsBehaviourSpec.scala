@@ -1708,6 +1708,58 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  /**
+   * Every other clock the page keeps is the CITY's: each slot's expiry stamp
+   * and `#view-root[data-next-day]` are resolved server-side in `city.zoneId`.
+   * The day filter used to measure its own today/tomorrow in a hardcoded
+   * Europe/Warsaw, so for a London city the two disagreed for the hour before
+   * local midnight — "Today" listed tomorrow while the expiry prune and the
+   * midnight reload still had the page on today.
+   *
+   * Both tests move the page's clock (`showtimeNow`, the same anchor expiry
+   * counts from) to 22:30 UTC on the fixture's day: 23:30 in London, but
+   * already 00:30 the NEXT day in Warsaw.
+   */
+  "the day filter's today/tomorrow" should "be measured on the city's clock, not Warsaw's" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval(
+        // The fixture render pins "today"; drop it so the bounds are measured.
+        "delete window.KINOWO_PINNED_TODAY; " +
+        "window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30);")
+
+      page.eval("window.CITY_TIMEZONE = 'Europe/London'")
+      page.evalString("dateBounds().today")    shouldBe "2026-06-08"
+      page.evalString("dateBounds().tomorrow") shouldBe "2026-06-09"
+
+      // Same instant, a zone an hour ahead: the day has already turned over.
+      page.eval("window.CITY_TIMEZONE = 'Europe/Warsaw'")
+      page.evalString("dateBounds().today")    shouldBe "2026-06-09"
+    }
+  }
+
+  it should "leave a London visitor on today's listings at 23:30 local" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval(
+        "delete window.KINOWO_PINNED_TODAY; " +
+        "window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30); " +
+        "window.CITY_TIMEZONE = 'Europe/London';")
+      page.eval("document.getElementById('date-filter').value = 'today'; applyFilters()")
+
+      visibleCardCount(page) should be > 0
+      withClue("every day-row on screen under 'today' is the city's today: ") {
+        page.evalBool(
+          "[...document.querySelectorAll('#film-grid .col[data-title]')]" +
+            ".filter(c => c.style.display !== 'none')" +
+            ".flatMap(c => [...c.querySelectorAll('.date-group[data-date]')])" +
+            ".filter(g => g.style.display !== 'none')" +
+            ".every(g => g.dataset.date === '2026-06-08')"
+        ) shouldBe true
+      }
+    }
+  }
+
   // ── Anti-FOUC grid cloak ────────────────────────────────────────────────────
   //
   // The server renders every film for every date (no server-side day filter);
@@ -3318,12 +3370,76 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       }
       // The invariant the report is an instance of: a card is only ever on
       // screen because something under it is.
+      // (Also asserted below over the reported journey itself.)
       withClue("every visible card shows at least one showtime: ") {
         page.evalBool(
           "[...document.querySelectorAll('#film-grid .col[data-title]')]" +
             ".filter(c => c.style.display !== 'none')" +
             ".every(c => [...c.querySelectorAll('.badge-time')].some(b => b.offsetParent !== null))"
         ) shouldBe true
+      }
+    }
+  }
+
+  /**
+   * The reported journey, end to end: "/poznan/?date=tomorrow, type spider → I
+   * see no screenings, only the movie card". The test above reaches the same
+   * defect through the cinema filter; this one walks the route the user took —
+   * a tab open long enough for a slot to lapse, then the "Jutro" pill, then the
+   * search box.
+   *
+   * The detail that makes it bite: the search box has to be narrowing the grid
+   * at the moment the slot lapses. A card excluded at the CARD level is the one
+   * case `applyFilters` dismisses whole without descending into it, so its rows
+   * keep whatever the rebuilt index fabricated for them. With no filter in play
+   * the prune's own pass visits every row and the flags come out honest.
+   *
+   * (The fixture render pins "today" to the corpus date, so today/tomorrow here
+   * are the corpus's own days rather than the wall clock's.)
+   */
+  it should "keep the searched film's showtimes through a day change on a long-open tab" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+
+      // A film playing tomorrow — the one we'll search for once we get there.
+      val film = page.evalString(
+        "(() => { const t = dateBounds().tomorrow;" +
+        "  const col = [...document.querySelectorAll('#film-grid .col[data-title]')]" +
+        "    .find(c => c.querySelector(`.date-group[data-date='${t}']`));" +
+        "  return col ? col.dataset.title : ''; })()")
+      withClue("no fixture film plays tomorrow: ") { film should not be empty }
+
+      // On "today", with the search box narrowed to something else — our film is
+      // off screen and its tomorrow rows are hidden.
+      page.eval("document.getElementById('date-filter').value = 'today'; " +
+        "document.getElementById('search-input').value = 'zzzzz-no-such-film'; applyFilters()")
+
+      // The tab has been open a while: a slot lapses and the grid re-indexes.
+      // The slot belongs to ANOTHER film — expiring one of this film's own would
+      // cascade its card out of the DOM entirely when it's a one-screening event.
+      page.evalInt(
+        "(() => { const slot = [...document.querySelectorAll('.badge-time')]" +
+        s"    .find(b => b.closest('.col[data-title]').dataset.title !== ${jsString(film)});" +
+        "  slot.dataset.expires = String(showtimeNow() - 1);" +
+        "  return pruneExpiredShowtimes(); })()") shouldBe 1
+
+      // "Jutro", then the film's name in the search box.
+      page.eval("document.getElementById('date-filter').value = 'tomorrow'; applyFilters()")
+      page.eval(s"document.getElementById('search-input').value = ${jsString(film)}; applyFilters()")
+
+      withClue(s"'$film' is on screen: ") {
+        page.evalBool(
+          s"[...document.querySelectorAll('#film-grid .col[data-title]')]" +
+            s".some(c => c.dataset.title === ${jsString(film)} && c.style.display !== 'none')"
+        ) shouldBe true
+      }
+      withClue(s"showtimes visible under '$film': ") {
+        page.evalInt(
+          s"[...document.querySelectorAll('#film-grid .col[data-title]')]" +
+            s".filter(c => c.dataset.title === ${jsString(film)})" +
+            ".flatMap(c => [...c.querySelectorAll('.badge-time')])" +
+            ".filter(b => b.offsetParent !== null).length"
+        ) should be > 0
       }
     }
   }

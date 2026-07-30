@@ -23,6 +23,15 @@
      (not a lexical const) so buildCinemaPanel reads it and tests can override. *@
   window.CINEMA_AREAS       = @Html(play.api.libs.json.Json.toJson(city.areas.map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))).toString);
   const CURRENT_CITY        = "@city.slug";
+  @* The clock every day boundary this page draws is measured on — the city's,
+     never the visitor's device. It matches what the server already resolves in
+     `city.zoneId` (each showtime's expiry stamp, `#view-root[data-next-day]`),
+     so "today" can't mean one day to the day filter and another to the expiry
+     prune. London sits an hour behind Warsaw, which is exactly the window the
+     old hardcoded Europe/Warsaw got wrong: between 23:00 and midnight local,
+     "Today" listed tomorrow. `window.`-scoped (not a lexical const) so tests
+     can move a rendered page to another zone. *@
+  window.CITY_TIMEZONE      = "@city.zoneId.getId";
   const ALL_CITIES          = @Html(city.country.allJson);
   @* Per-deployment locale for shared.js: weekday/month arrays, empty-state /
      swipe-hint / clear strings, and the showtime plural rule + forms. Replaces
