@@ -4,8 +4,7 @@ import clients.TmdbClient
 import models.{Cinema, CinemaMovie, Country}
 import modules.WorkerWiring
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
-import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
-import services.readmodel.{InMemoryReadModelRepository, ReadModelReader, ReadModelWriter}
+import services.readmodel.{ReadModelReader, ReadModelWriter}
 import services.scrapes.ScrapeArchiveRepository
 
 /**
@@ -26,7 +25,13 @@ import services.scrapes.ScrapeArchiveRepository
 class ArchiveReplayWiring(
   country:          Country,
   archive:          ScrapeArchiveRepository,
-  enrichmentCache:  Option[EnrichmentCache] = None
+  enrichmentCache:  Option[EnrichmentCache] = None,
+  // Where the state this suite makes claims about actually lives. In memory by
+  // default, because most callers want the fast deterministic thing; a real
+  // MongoDB when one is supplied, which puts the persistence layer — codecs,
+  // paged full scans, transactional staging folds — on the path the assertions
+  // run over. Same assertions either way; see [[ConvergenceStorage]].
+  storage:          ConvergenceStorage = ConvergenceStorage.inMemory
 ) extends WorkerWiring(country) with TestWiring {
 
   /** No network on the SCRAPE side, ever. Every cinema listing comes from the
@@ -132,15 +137,41 @@ class ArchiveReplayWiring(
     if (enrichmentAvailable) new TmdbClient(enrichmentFetch, language = country.language)
     else new TmdbClient(enrichmentFetch, apiKey = None)
 
-  // Production's storage shape, minus Mongo — showtimes in `screenings`, slots in
-  // `movie_slots`, neither inlined on the `movies` row. Same reasoning as
-  // `FixtureTestWiring`: a merge is a rename, and a fake that inlines everything
-  // carries showtimes across a rename for free and so can't express the bug.
-  override lazy val screeningsRepository = new InMemoryScreeningsRepository
-  override lazy val slotsRepository      = new InMemorySlotsRepository
-  override lazy val movieRepository =
-    new InMemoryMovieRepository(screenings = Some(screeningsRepository), slots = Some(slotsRepository))
-  override lazy val readModelRepository: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepository()
+  // Production's storage SHAPE either way — showtimes in `screenings`, slots in
+  // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything
+  // would carry showtimes across a rename for free, and a merge is a rename, so it
+  // could not express the bug. Which IMPLEMENTATION sits behind that shape is the
+  // storage's choice, so the same assertions run over memory and over Mongo.
+  override lazy val screeningsRepository = storage.screenings
+  override lazy val slotsRepository      = storage.slots
+  override lazy val movieRepository      = storage.movies
+  override lazy val readModelRepository: ReadModelReader & ReadModelWriter = storage.readModel
+
+  // `TestWiring` pins these in memory because its Mongo is disabled; with a real
+  // database they must follow the storage, or the staging fold — the half of the
+  // pipeline that needs a transaction — silently stays fake while everything around
+  // it is real.
+  override lazy val mongoConnection      = storage.connection
+  override lazy val stagingRepository    = storage.staging
+  override lazy val stagingFolder        = storage.stagingFolder(movieRepository)
+
+  // The collections production keeps BESIDE the pipeline's own state. None of them is
+  // what an assertion reads, which is why they were the easiest things to leave faked —
+  // and why leaving them faked narrowed the claim without looking as though it did: a
+  // settle that enqueues a task, stamps freshness, coordinates a chunk or records an
+  // OMDb attempt does real writes in production and none at all against a fake.
+  override lazy val taskQueue            = storage.tasks
+  override lazy val freshnessStore       = storage.freshness
+  override lazy val chunkScrapeStore     = storage.chunkScrape
+  override lazy val omdbAttemptStore     = storage.omdbAttempt
+
+  // The ONE store deliberately left faked on BOTH paths, inherited from `TestWiring`:
+  // `resolutionCache` stays a passthrough. A shared, stateful resolution cache fixes the
+  // value for a hint key by whichever row populates it first, so a shuffled re-enrich
+  // sweep would resolve differently from an unshuffled one and the order-independence
+  // test would fail for a reason that is not an ordering bug. Production really does
+  // carry that statefulness, so this is a genuine narrowing of the claim rather than an
+  // equivalent substitute — named here rather than left to be discovered.
 
   /** The archived listing per cinema, read ONCE. Every tick re-serves this same
    *  `Seq[CinemaMovie]`, which is precisely the "identical re-scrape" the

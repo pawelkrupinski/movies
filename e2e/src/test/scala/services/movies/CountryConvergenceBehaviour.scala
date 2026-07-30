@@ -10,8 +10,8 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, CorpusFixture, CountryScrapeCorpus, EnrichmentCache, EnrichmentCacheStore,
-  EnrichmentFreshness, Env, FileEnrichmentCacheStore, SameThreadExecutionBudget}
+import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusFixture, CountryScrapeCorpus, EnrichmentCache,
+  EnrichmentCacheStore, EnrichmentFreshness, Env, FileEnrichmentCacheStore, SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -63,8 +63,22 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
   override def afterAll(): Unit = {
     enrichmentCacheStore.foreach(_.close())
+    storage.close()
     super.afterAll()
   }
+
+  /**
+   * Where this run keeps the state it makes claims about: a real MongoDB when
+   * `MONGODB_URI` names one, memory otherwise. CI names one, so the persistence layer
+   * — codecs, keyset-paged full scans, transactional staging folds — is on the path the
+   * assertions run over; a local run gets whichever it asks for.
+   *
+   * Every assertion is identical across the two. That is the point: if a claim holds in
+   * memory and not in Mongo, the difference IS the finding, and until now the suite
+   * could not produce it because the database was never there to disagree.
+   */
+  private lazy val storage: ConvergenceStorage =
+    ConvergenceStorage.fromEnv(s"convergence-${country.code}")
 
   /**
    * This country's enrichment cache — the one thing in this suite that deliberately
@@ -220,13 +234,10 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     // `ScrapeArchiveRepository.record` ABOVE the storage seam, so the in-memory
     // implementation still exercises it.
     //
-    // What this removes from every leg: a mongo:7 container, a replica-set init, a
-    // uniquely-named throwaway database per run, and the `MONGODB_URI` requirement
-    // that has broken more runs this week than the archive round-trip ever caught.
-    val archive = new services.scrapes.InMemoryScrapeArchiveRepository
+    val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new CountingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, enrichmentCache) {
+    val w = new ArchiveReplayWiring(country, archive, enrichmentCache, storage) {
       override lazy val movieCache = new CaffeineMovieCache(
         movieRepository, eventBus, staging = Some(stagingRepository),
         retrigger = enrichmentRetrigger, mergeMetrics = merges)
@@ -234,6 +245,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
     }
+    info(s"${country.displayName}: storage — ${storage.describe}")
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     bootSettled(w)
@@ -677,6 +689,9 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     "come out identical — films, screenings and rendered rows — whatever order it arrives in" in {
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
+      // The order passes keep their OWN in-memory archive whatever the shared storage
+      // is: they run concurrently over the same corpus, and three passes writing one
+      // `cinema_scrapes` collection would be testing the collection, not the ordering.
       val archive = new services.scrapes.InMemoryScrapeArchiveRepository
       seedArchive(archive)
 

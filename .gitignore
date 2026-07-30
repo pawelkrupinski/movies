@@ -61,4 +61,7 @@ logs/
 # restored from a CI artifact or a local recorder run and EXTENDED in place by
 # every convergence run — never committed. Ignored so an `add -A` in a worktree
 # that has run a convergence leg can't drag the whole tree into a commit.
+# Both forms: the trailing-slash pattern matches a real directory but NOT a symlink
+# to one, which is how a local run that links the tree in leaves it stageable.
 test/resources/fixtures/enrichment-*/
+test/resources/fixtures/enrichment-*

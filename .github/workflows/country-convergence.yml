@@ -93,6 +93,29 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
+            # A real database under the assertions, because the suite spent its whole
+            # life claiming a pipeline fixpoint with every repository faked out. Nothing
+            # in those runs could have caught a BSON codec that drops a field, a
+            # `findAll` that recurses the async driver into a StackOverflowError once a
+            # collection grows, a required DTO field that fails a whole batch's decode,
+            # or a staging fold that needs a real transaction — all of which this
+            # repository has actually shipped.
+            #
+            # A CONTAINER, emphatically not a tunnel. The `flyctl proxy` to a production
+            # cluster is what cancelled three legs at the 75-minute ceiling and hung a
+            # preload past its 120-second budget; this is on localhost, needs no
+            # credential, holds nothing anyone would miss, and dies with the runner.
+            #
+            # Single-node REPLICA SET rather than standalone: change streams (the
+            # read-model projector) and multi-document transactions (the staging fold)
+            # are both rejected by a standalone mongod, and both are on the path.
+            - name: Start MongoDB (single-node replica set, for change streams)
+              run: |
+                  docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0
+                  until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
+                  docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+                  until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
+
             # The scrape corpus, from the nightly `Record scrape fixtures`. Restore-only
             # and prefix-matched, so a leg always takes the newest capture and simply
             # proceeds without one when none exists.
@@ -285,6 +308,12 @@ jobs:
                   # falls through to the live chain and is recorded for the next run.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  # Names the container above, which is what puts every repository on a
+                  # real database. Absent, the suite runs in memory and says so — the
+                  # storage it chose is printed in the report, because a suite that can
+                  # silently fall back to memory is one that quietly stops testing what
+                  # it claims.
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it
