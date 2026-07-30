@@ -142,7 +142,12 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * fixture tree five files larger at the end than at the start.
    */
   private lazy val enrichmentCache: Option[EnrichmentCache] = enrichmentCacheStore.map { store =>
-    val cache  = new EnrichmentCache(store)
+    // Successes are persisted only when NOTHING else is recording them. With a fixture
+    // tree present, `RecordingHttpFetch` already writes every response there and the
+    // tree is consulted first, so a copy in the cache is never read — it only made the
+    // artifact three times larger. Without a tree, the cache is the sole store and must
+    // hold everything.
+    val cache  = new EnrichmentCache(store, persistSuccesses = fixtureDirectory.isEmpty)
     val loaded = step("preloadEnrichmentCache")(cache.preload())
     info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${describe(store)}")
     cache

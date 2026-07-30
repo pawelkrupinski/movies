@@ -25,8 +25,17 @@ import scala.util.control.NonFatal
  * storage boundary, so the Mongo store and the in-memory one cannot disagree about
  * any of it. A store only holds bytes.
  */
-class EnrichmentCache(store: EnrichmentCacheStore, clock: () => Long = () => System.currentTimeMillis())
-  extends Logging {
+class EnrichmentCache(
+  store: EnrichmentCacheStore,
+  clock: () => Long = () => System.currentTimeMillis(),
+  // False where a recording fixture tree is already writing every successful response
+  // to disk, which makes a second copy here pure duplication: the fixtures are
+  // consulted BEFORE the cache, so a URL the tree holds never reaches this lookup at
+  // all. It tripled a country's tarball — the UK reached 434 MB — to store answers
+  // nothing would ever read. What only the cache can hold is a verdict no response
+  // ever arrived for, and those are still persisted either way.
+  persistSuccesses: Boolean = true
+) extends Logging {
 
   private val entries      = new ConcurrentHashMap[String, CachedResponse]()
   private val hitCount     = new AtomicInteger(0)
@@ -85,8 +94,21 @@ class EnrichmentCache(store: EnrichmentCacheStore, clock: () => Long = () => Sys
       case _: CachedResponse.Failed => failureCount.incrementAndGet()
       case _                        => ()
     }
-    if (EnrichmentCache.isDurable(response)) writeThrough(key, response)
-    else transientCount.incrementAndGet()
+    if (worthPersisting(response)) writeThrough(key, response)
+    else response match {
+      // Counted only for a failure deliberately left retryable. A success skipped
+      // because the fixture tree holds it isn't "not remembered" in any lossy sense,
+      // and counting it here would read as a coverage problem.
+      case _: CachedResponse.Failed => transientCount.incrementAndGet(); ()
+      case _                        => ()
+    }
+  }
+
+  /** Whether this outcome earns a place in the store: a failure only when its status is
+   *  a verdict about the URL, a success only when nothing else is already recording it. */
+  private def worthPersisting(response: CachedResponse): Boolean = response match {
+    case failed: CachedResponse.Failed => EnrichmentCache.isDurable(failed)
+    case _                             => persistSuccesses
   }
 
   /**

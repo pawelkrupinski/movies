@@ -328,6 +328,42 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     cache.statistics.transient shouldBe 1
   }
 
+  // Where a recording fixture tree is on disk, every successful response is already
+  // written there — `RecordingHttpFetch` covers get, getBytes and post, and `getAsync`
+  // delegates to `get`. Keeping a second copy in the cache tripled a country's tarball
+  // (the UK reached 434 MB) for something the fixtures are consulted for FIRST and the
+  // cache is therefore never asked about. What only the cache can hold is the verdict a
+  // response never arrived for.
+  it should "leave successes to the fixture tree when one is recording them" in {
+    val store = new InMemoryEnrichmentCacheStore()
+    val cache = new EnrichmentCache(store, persistSuccesses = false)
+    val delegate = new ScriptedHttpFetch(Map("https://example.test/a" -> (() => "body")))
+    val fetch = new CachingEnrichmentFetch(cache, delegate)
+
+    fetch.get("https://example.test/a") shouldBe "body"
+
+    withClue("the tree already holds this response: ") { store.writes shouldBe 0 }
+    withClue("but the run must still answer from memory: ") {
+      fetch.get("https://example.test/a") shouldBe "body"
+      delegate.calls shouldBe 1
+    }
+  }
+
+  // The whole point of the cache in that arrangement. A 404 produces no response for
+  // the recorder to write, so if this isn't persisted nothing is, and every run re-asks
+  // every unresolved film's rating slugs.
+  it should "still persist a 404 when successes are left to the tree" in {
+    val store = new InMemoryEnrichmentCacheStore()
+    val cache = new EnrichmentCache(store, persistSuccesses = false)
+    val fetch = new CachingEnrichmentFetch(cache, new ScriptedHttpFetch(Map(
+      "https://www.rottentomatoes.com/m/nope" ->
+        (() => throw new HttpStatusException(404, "GET", "https://www.rottentomatoes.com/m/nope", None)))))
+
+    the [HttpStatusException] thrownBy fetch.get("https://www.rottentomatoes.com/m/nope")
+
+    store.writes shouldBe 1
+  }
+
   it should "resume writing through once the store answers again" in {
     val store = new IntermittentEnrichmentCacheStore(failFirst = EnrichmentCache.MaxConsecutiveWriteFailures - 1)
     val fetch = new CachingEnrichmentFetch(new EnrichmentCache(store), new AlwaysAnswering)
