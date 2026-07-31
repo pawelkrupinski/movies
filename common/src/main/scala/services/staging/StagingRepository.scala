@@ -4,7 +4,7 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.{MovieRecord, Source}
-import org.mongodb.scala.model.{Filters, Sorts}
+import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{MovieCodecs, StoredMovieDto, TitleNormalizer}
@@ -264,9 +264,25 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
    *  range can't bleed into a different film whose prefix is a superstring. */
   private def siblingIds(id: String): Seq[String] = coll.toSeq.flatMap { c =>
     val prefix = StagingRepository.cinemaTitlePrefix(id)
+    // Projected to `_id`, and read as a raw `Document` rather than a `StoredMovieDto`,
+    // because the `_id` is the only thing this uses — it exists solely to decide whether
+    // to log a duplicate-entry warning.
+    //
+    // Fetching whole documents made that log line cost a full decode of every sibling,
+    // showtimes array and all, on EVERY fresh insert — so the cost grows with the staged
+    // backlog. A convergence leg stages a whole country before folding it: ~6,975 rows
+    // each decoding ~250 neighbours is on the order of 1.7M document decodes. It took
+    // `bootCorpus` from 30 seconds against in-memory repositories to 3,360 against Mongo
+    // and timed the leg out at CI's ceiling. Measured over one such range: 19,748 bytes
+    // returned unprojected, 311 projected.
     Try(Await.result(
-      c.find(Filters.and(Filters.gte("_id", prefix), Filters.lt("_id", prefix + "\uffff"))).toFuture(), 10.seconds))
-      .toOption.getOrElse(Seq.empty).map(_._id).filterNot(_ == id)
+      c.withDocumentClass[org.mongodb.scala.Document]()
+        .find(Filters.and(Filters.gte("_id", prefix), Filters.lt("_id", prefix + "\uffff")))
+        .projection(Projections.include("_id"))
+        .toFuture(), 10.seconds))
+      .toOption.getOrElse(Seq.empty)
+      .flatMap(document => document.get("_id").filter(_.isString).map(_.asString().getValue))
+      .filterNot(_ == id)
   }
 
   override def upsertRow(row: StagingRecord): Unit = upsertId(row.id, row.record)
