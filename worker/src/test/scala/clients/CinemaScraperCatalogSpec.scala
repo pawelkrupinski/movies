@@ -163,14 +163,15 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     seamChain(ex) should include ("SEAM:VUE")
   }
 
-  // KinoPort lost its gcsw.pl/kino/ programme alias in a 2026-06 site rebuild
-  // (the old KinoPortClient 404'd in prod), so it's now served off Filmweb's
-  // seances API for the Gdańsk venue. Guard the seam: it must read filmweb.pl,
-  // never the retired gcsw.pl host.
-  it should "scrape KinoPort off Filmweb, not the retired gcsw.pl alias" in {
+  // KinoPort was moved onto Filmweb (id 1735) when a 2026-06 rebuild retired its
+  // gcsw.pl/kino/ programme alias — and Filmweb then went silently empty for it,
+  // serving `[]` on every date while the venue screened five films a day. It now
+  // reads GCSW's own repertoire post again, via the WP REST route. Guard the
+  // seam: it must read gcsw.pl, never fall back to the empty Filmweb source.
+  it should "scrape KinoPort off gcsw.pl, not the silently-empty Filmweb source" in {
     val scraper = catalog(biletyna = "kino-kameralne").all.find(_.cinema == KinoPort).value
-    scraper.scrapeHosts should contain ("www.filmweb.pl")
-    scraper.scrapeHosts should not contain "gcsw.pl"
+    scraper.scrapeHosts should contain ("gcsw.pl")
+    scraper.scrapeHosts should not contain "www.filmweb.pl"
   }
 
   // A `Cinema` that's modelled (so it shows on the web/in a city) but has no

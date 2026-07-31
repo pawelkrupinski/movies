@@ -1266,6 +1266,7 @@ cinemaScrapes:
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
   Kino Wisła / Zawieście czerwone latarnie - pokazy specjalne / 1991
   Kino Żak / Zawieście czerwone latarnie / 1991
+  KinoPort / Zawieście czerwone latarnie / 1991
   Kinoteka / Zawieście czerwone latarnie / 2026
 showings:
   2026-06-13  Kino Apollo                   17:30
@@ -2987,6 +2988,7 @@ cinemaScrapes:
   Kino Twierdza / Ojczyzna / —
   Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
   KinoGram / Ojczyzna / —
+  KinoPort / Ojczyzna / 2026
   Kinomax / Ojczyzna / —
   Kinoteatr Rialto / Ojczyzna - pokaz przedpremierowy / —
   Kinoteka / Ojczyzna | Zobacz przedpremierowo / 2026
@@ -4935,6 +4937,7 @@ cinemaScrapes:
   Kino Pod Baranami / Milczenie owiec / —
   Kino Sfinks / MILCZENIE OWIEC / —
   Kino Studyjne Kadr / Milczenie owiec / —
+  KinoPort / Milczenie owiec / 1991
   OKF Iluzja / Milczenie owiec / —
   Planet Cinema / Milczenie owiec / —
 showings:
@@ -5403,6 +5406,7 @@ cinemaScrapes:
   Kino Awangarda 2 / Monterey Pop / —
   Kino Pionier 1907 / MONTEREY POP / 1968
   Kino Rialto / MONTEREY POP / 1968
+  KinoPort / Monterey Pop / 1968
 showings:
   2026-06-16  Kino Apollo                   19:30
   2026-06-16  Kino Rialto                   20:45
@@ -6236,6 +6240,7 @@ cinemaScrapes:
   Kino Twierdza / Ojczyzna / —
   Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
   KinoGram / Ojczyzna / —
+  KinoPort / Ojczyzna / 2026
   Kinomax / Ojczyzna / —
   Kinoteatr Rialto / Ojczyzna - pokaz przedpremierowy / —
   Kinoteka / Ojczyzna | Zobacz przedpremierowo / 2026
@@ -7846,6 +7851,7 @@ cinemaScrapes:
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
   Kino Studyjne Kadr / Pucio / —
   Kino Tur / Pucio / —
+  KinoPort / Pucio / 2026
   Służewski Dom Kultury / Pucio / —
   Teatr Elektryczny / Pucio / —
 showings:
@@ -8428,6 +8434,7 @@ cinemaScrapes:
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
   Kino Studyjne Kadr / Pucio / —
   Kino Tur / Pucio / —
+  KinoPort / Pucio / 2026
   Służewski Dom Kultury / Pucio / —
   Teatr Elektryczny / Pucio / —
 showings:
@@ -10650,6 +10657,7 @@ cinemaScrapes:
   Kino U-jazdowski / Zawieście czerwone latarnie / 1991
   Kino Wisła / Zawieście czerwone latarnie - pokazy specjalne / 1991
   Kino Żak / Zawieście czerwone latarnie / 1991
+  KinoPort / Zawieście czerwone latarnie / 1991
   Kinoteka / Zawieście czerwone latarnie / 2026
 showings:
   2026-06-09  Kino Malta Charlie Monroe     16:45 Sala Charlie

@@ -32,8 +32,8 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
 
   it should "mark a widely-reused platform client as shared, naming the client" in {
     // FilmwebShowtimesClient still backs the venues Filmweb hasn't been migrated
-    // off (KinoPort among them) — unambiguously shared.
-    markers("KinoPort") shouldBe "shared:FilmwebShowtimesClient"
+    // off (Kino Zachęta and DKF Politechnika) — more than one, so shared.
+    markers("Kino Zachęta") shouldBe "shared:FilmwebShowtimesClient"
     // Kino Studyjne Kadr was migrated off Filmweb onto the reusable VisualTicket
     // platform client; only one cinema uses it so far, so it's a custom marker.
     markers("Kino Studyjne Kadr") shouldBe "custom:VisualTicketClient"
@@ -62,7 +62,7 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     // The PURE catalog map carries the no-network `/cinema/-<id>` fallback; the
     // worker upgrades it to the canonical `/showtimes/<City>/<Name>-<id>` at boot
     // (FilmwebShowtimesClient.resolveAll, covered in FilmwebShowtimesClientSpec).
-    sourceUrls("KinoPort") shouldBe "https://www.filmweb.pl/cinema/-1735"
+    sourceUrls("Kino Zachęta") shouldBe "https://www.filmweb.pl/cinema/-2405"
   }
 
   it should "link an own-site-migrated venue (Kino Tatry) to its own repertoire page" in {
@@ -70,6 +70,16 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     // venue's homepage (which carries the whole current slate), not a
     // /cinema/-<id> Filmweb fallback.
     sourceUrls("Kino Tatry") shouldBe "https://kinotatrylodz.pl/"
+  }
+
+  it should "link KinoPort to GCSW's own site, not the Filmweb source that went empty" in {
+    // KinoPort was pulled back off Filmweb (id 1735 serves `[]` on every date)
+    // onto GCSW's own repertoire post. The /uptime link must follow it, so a
+    // white bar is one click from the page that proves the venue IS screening.
+    // GCSW's homepage rather than a cinema sub-page: it links the current
+    // repertoire post, and every stabler-looking candidate 404s or 302s to a
+    // stale post (see KinoPortClient.ProgrammePageUrl).
+    sourceUrls("KinoPort") shouldBe "https://gcsw.pl/"
   }
 
   it should "link a Cinema City venue to its public venue page by externalCode" in {

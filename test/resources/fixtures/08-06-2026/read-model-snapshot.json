@@ -699,6 +699,30 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
+    "_id" : "angelsegg|1985",
+    "title" : "Angel's Egg",
+    "originalTitle" : "天使のたまご",
+    "posterUrl" : "https://image.tmdb.org/t/p/w500/axYxKgxsKrcOa8dPyUaWbrAbCVi.jpg",
+    "fallbackPosterUrls" : [ "https://m.media-amazon.com/images/M/MV5BYmU1ZDEyNzEtMWYyZi00OTc2LTgxMmEtZWU3YzMxNTUwM2YzXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 71,
+    "releaseYear" : 1985,
+    "genres" : [ "Animacja", "Fantasy", "Tajemnica", "Sci-Fi" ],
+    "countries" : [ "Japonia" ],
+    "directors" : [ "Mamoru Oshii" ],
+    "cast" : [ "野田圭一", "兵藤まこ", "Jinpachi Nezu" ],
+    "synopsis" : "Dziwny, jakby martwy świat, w którym ludzie zamienili się w posągi goniące za cieniami dawnego życia, w którym już nigdy nie zagości słońce i wiecznie będzie padał deszcz. A w tym świecie dwie istoty wyróżniające się z ciemności: chłopak dzierżący broń o kształcie krzyża i dziewczynka o śnieżnobiałej cerze, niosąca ze sobą jajko. Ich drogi właśnie się skrzyżowały. Teraz będą wędrować razem, dwoje wędrowców, którzy nie pamiętają, skąd pochodzą i nie wiedzą, dokąd idą. Ich podróży będą towarzyszyły surrealistyczne obrazy i niejednoznaczne rozważania o życiu człowieka nawiązujące do Biblii.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt0208502/",
+      "metacriticUrl" : "https://www.metacritic.com/movie/angels-egg-1985",
+      "rottenTomatoes" : 100,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/angels_egg_1985",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=%E5%A4%A9%E4%BD%BF%E3%81%AE%E3%81%9F%E3%81%BE%E3%81%94"
+    },
+    "weightedRating" : 8.75,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "aniolmorski|2026",
     "title" : "Anioł morski",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/qw98EMWgMY59sXLbEuuDSNVg0OG.jpg",
@@ -758,6 +782,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Arco/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arco",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Arco"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
+    "_id" : "arekmamapanorama|2026",
+    "title" : "Arek. Mama. Panorama",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 72,
+    "releaseYear" : 2026,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ "Mikołaj Janik" ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Arek.+Mama.+Panorama/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arek.+Mama.+Panorama",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Arek.+Mama.+Panorama"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -2620,6 +2662,33 @@
     "synopsisByCity" : { },
     "ageRating" : "16"
   }, {
+    "_id" : "czasapokalipsy|1979",
+    "title" : "Czas Apokalipsy",
+    "originalTitle" : "Apocalypse Now",
+    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czas_apokalipsy_01_1080_x_1080.png?h=9d82a385&itok=tklpXXK4",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/1L2mrAKFHPvj2w4Y8Wcfe06Mglx.jpg", "https://m.media-amazon.com/images/M/MV5BZDhiMTljYjYtODc1Yy00MmEwLTg2OTYtYmE1YTRmNDE4MmEwXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 183,
+    "releaseYear" : 1979,
+    "genres" : [ "Dramat", "Wojenny" ],
+    "countries" : [ "USA" ],
+    "directors" : [ "Francis Ford Coppola" ],
+    "cast" : [ "Martin Sheen", "Marlon Brando", "Frederic Forrest", "Albert Hall", "Laurence Fishburne" ],
+    "synopsis" : "Scenariusz oparty jest na opowiadaniu Josepha Conrada \"Jądro ciemności\" i relacjonuje historię wyprawy kapitana Benjamina Willarda. Bohaterowi polecono zlikwidowanie szalonego pułkownika Kurtza, który na własną rękę rozpoczął morderczą wojnę na pograniczu wietnamsko-kambodżańskim. Po odnalezieniu pułkownika Willard ma według własnego uznania go zabić bądź wezwać bombowce, które zniszczą obóz. Wraz z grupką żołnierzy kapitan rusza łodzią patrolową w górę Mekongu.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 8.4,
+      "imdbUrl" : "https://www.imdb.com/title/tt0078788/",
+      "metascore" : 94,
+      "metacriticUrl" : "https://www.metacritic.com/movie/apocalypse-now",
+      "rottenTomatoes" : 91,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/apocalypse_now",
+      "filmweb" : 8.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Czas+Apokalipsy-1979-1092"
+    },
+    "weightedRating" : 8.775,
+    "synopsisByCity" : { },
+    "ageRating" : "16"
+  }, {
     "_id" : "czlowiekdowszystkiego|2026",
     "title" : "Człowiek do wszystkiego",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/k8Kh23Z34d0BxFcRQKUTnOzhZpt.jpg",
@@ -2628,7 +2697,7 @@
     "releaseYear" : 2026,
     "genres" : [ "Dramat" ],
     "countries" : [ "Polska", "Wielka Brytania" ],
-    "directors" : [ "Wilhelm Sasnal", "Anka Sasnal" ],
+    "directors" : [ "Wilhelm Sasnal", "Anna Sasnal" ],
     "cast" : [ "Piotr Trojan", "Agnieszka Żulewska", "Andrzej Konopka", "Juliusz Chrząstowski", "Roman Gancarczyk" ],
     "synopsis" : "Opowiada o losach młodego, imającego się rozmaitych zajęć Josepha Martiego. Otrzymuje on posadę w biurze, a zarazem willi Carla Toblera, inżyniera-fantasty, tworzącego osobliwe i raczej nikomu nieprzydatne wynalazki, które zamiast przynosić mu sławę i pieniądze, wpędzają rodzinę w długi. Marti zostaje zatrudniony jako pomocnik nieudacznego przedsiębiorcy, ale pełnione przez niego funkcje zmieniają się nieustannie.",
     "trailerUrls" : [ ],
@@ -3358,6 +3427,24 @@
     "weightedRating" : 6.1,
     "synopsisByCity" : { }
   }, {
+    "_id" : "dmuchawce|2026",
+    "title" : "Dmuchawce",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 76,
+    "releaseYear" : 2026,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Dmuchawce/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dmuchawce",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Dmuchawce"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "dobrychlopiec|2026",
     "title" : "Dobry chłopiec",
     "originalTitle" : "Good Boy",
@@ -3548,6 +3635,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Do+utraty+tchu+%E2%80%93+jean-luc+godard/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Do+utraty+tchu+%E2%80%93+jean-luc+godard",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Do+utraty+tchu+%E2%80%93+jean-luc+godard"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
+    "_id" : "doutratytchu|1960",
+    "title" : "Do utraty tchu",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 90,
+    "releaseYear" : 1960,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ "Jean-Luc Godard" ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Do+utraty+tchu/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Do+utraty+tchu",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Do+utraty+tchu"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -5183,6 +5288,24 @@
     "synopsisByCity" : { },
     "ageRating" : "16"
   }, {
+    "_id" : "francesha|2012",
+    "title" : "Frances Ha",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 86,
+    "releaseYear" : 2012,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ "Noah Baumbach" ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Frances+Ha/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Frances+Ha",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Frances+Ha"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "frankenstein|2025",
     "title" : "Frankenstein",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/oiw5wMwYH3GzHXhvim5kPRWBDw6.jpg",
@@ -5255,6 +5378,24 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Frida+Kahlo-2020-874372"
     },
     "weightedRating" : 7.1,
+    "synopsisByCity" : { }
+  }, {
+    "_id" : "ghostintheshell|1995",
+    "title" : "Ghost in the Shell",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 82,
+    "releaseYear" : 1995,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ "Mamoru Oshii" ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Ghost+in+the+Shell/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ghost+in+the+Shell",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ghost+in+the+Shell"
+    },
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "giuliettaiduchyprzedfilmemwykladprofmarkahendrykowskiego|1965",
@@ -8659,22 +8800,29 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "malaamelia|",
-    "title" : "Mała amelia",
+    "_id" : "malaamelia|2025",
+    "title" : "Mała Amelia",
+    "originalTitle" : "Amélie et la métaphysique des tubes",
     "posterUrl" : "https://kinobajka.pl/wp-content/uploads/2026/01/8219848.10.webp",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/xx9cOvV8EuVkU65QNlNQwF6b8OF.jpg", "https://m.media-amazon.com/images/M/MV5BNjMxMDU3ZGEtMzMyMi00OGZiLWFlZTAtMTAyMmYwOWYxZmIxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 75,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
+    "releaseYear" : 2025,
+    "genres" : [ "Animacja", "Dramat", "Familijny" ],
+    "countries" : [ "Francja", "Belgia" ],
+    "directors" : [ "Maïlys Vallade", "Liane-cho Han" ],
+    "cast" : [ "Loïse Charpentier", "Victoria Grobois", "Yumi Fujimori", "Cathy Cerda", "Marc Arnaud" ],
+    "synopsis" : "Amelia to mała belgijska dziewczynka urodzona w Japonii. Dzięki jej przyjacielowi Nishio-san świat jest pełen przygód i odkryć. Jednak w dniu jej trzecich urodzin pewne wydarzenie zmienia bieg jej życia. Ponieważ dla Amelii w tym wieku stawką jest wszystko: i szczęście, i tragedia.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Ma%C5%82a+amelia/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ma%C5%82a+amelia",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ma%C5%82a+amelia"
+      "imdb" : 7.6,
+      "imdbUrl" : "https://www.imdb.com/title/tt29313285/",
+      "metascore" : 82,
+      "metacriticUrl" : "https://www.metacritic.com/movie/little-amelie-or-the-character-of-rain",
+      "rottenTomatoes" : 97,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/little_amelie_or_the_character_of_rain",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Am%C3%A9lie+et+la+m%C3%A9taphysique+des+tubes"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 8.5,
     "synopsisByCity" : { }
   }, {
     "_id" : "malemilosci|2024",
@@ -10302,10 +10450,11 @@
     "title" : "Nagi instynkt",
     "posterUrl" : "https://kinotatrylodz.pl/wp-content/uploads/2026/05/628810490_122164688630871629_1920286268684427616_n-764x1080.jpg",
     "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 127,
     "releaseYear" : 1992,
     "genres" : [ ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Paul Verhoeven" ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
@@ -12400,6 +12549,24 @@
     "weightedRating" : 8.225,
     "synopsisByCity" : { }
   }, {
+    "_id" : "patiiklatwaposejdona|2022",
+    "title" : "Pati i klątwa Posejdona",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 95,
+    "releaseYear" : 2022,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Pati+i+kl%C4%85twa+Posejdona/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pati+i+kl%C4%85twa+Posejdona",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pati+i+kl%C4%85twa+Posejdona"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "paulrobienczlowiekktorynieklanialsiehydroplanom|",
     "title" : "Paul Robien – człowiek, który nie kłaniał się hydroplanom",
     "fallbackPosterUrls" : [ ],
@@ -14267,6 +14434,24 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Pr%C3%B3ba+orkiestry-1978-30823"
     },
     "weightedRating" : 7.433333333333334,
+    "synopsisByCity" : { }
+  }, {
+    "_id" : "proces|1962",
+    "title" : "Proces",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 118,
+    "releaseYear" : 1962,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ "Orson Welles" ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Proces/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Proces",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Proces"
+    },
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "projekthailmarykinotekadlarodzica|2026",
@@ -21922,6 +22107,19 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "angelsegg|1985|trojmiasto|KinoPort",
+    "filmId" : "angelsegg|1985",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-01T18:00:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-02T18:20:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "aniolmorski|2026|szczecin|Kino Zamek",
     "filmId" : "aniolmorski|2026",
     "city" : "szczecin",
@@ -22009,6 +22207,19 @@
     }, {
       "dateTime" : "2026-06-25T19:00:00",
       "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1159-arco-157491?id=937748",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "arekmamapanorama|2026|trojmiasto|KinoPort",
+    "filmId" : "arekmamapanorama|2026",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-30T18:00:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-21T19:45:00",
       "format" : [ ]
     } ]
   }, {
@@ -29765,6 +29976,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "chungkingexpress|1994|trojmiasto|KinoPort",
+    "filmId" : "chungkingexpress|1994",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-06T19:45:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "chungkingexpress|1994|warszawa|Kino Muranów",
     "filmId" : "chungkingexpress|1994",
     "city" : "warszawa",
@@ -29995,6 +30216,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "czasapokalipsywersjarezyserska|1979|trojmiasto|KinoPort",
+    "filmId" : "czasapokalipsywersjarezyserska|1979",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-08T14:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "czasapokalipsywersjarezyserska|1979|warszawa|Kino Muranów",
     "filmId" : "czasapokalipsywersjarezyserska|1979",
     "city" : "warszawa",
@@ -30006,6 +30237,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "czasapokalipsy|1979|trojmiasto|KinoPort",
+    "filmId" : "czasapokalipsy|1979",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-09T17:30:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "czlowiekdowszystkiego|2026|rzeszow|Kino za Rogiem Cafe",
     "filmId" : "czlowiekdowszystkiego|2026",
     "city" : "rzeszow",
@@ -30013,6 +30254,22 @@
     "filmUrl" : "https://kzrcafe.pl/film/czlowiek-do-wszystkiego-2/",
     "showtimes" : [ {
       "dateTime" : "2026-06-12T18:30:00",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "czlowiekdowszystkiego|2026|trojmiasto|KinoPort",
+    "filmId" : "czlowiekdowszystkiego|2026",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-02T16:00:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-07T17:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-15T17:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -34849,6 +35106,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "dmuchawce|2026|trojmiasto|KinoPort",
+    "filmId" : "dmuchawce|2026",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-21T18:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "dobrychlopiec|2026|warszawa|Kino Cytadela",
     "filmId" : "dobrychlopiec|2026",
     "city" : "warszawa",
@@ -34957,6 +35224,25 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-09T19:00:00",
       "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35048&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "doutratytchu|1960|trojmiasto|KinoPort",
+    "filmId" : "doutratytchu|1960",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-06T18:00:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-07T19:50:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-08T19:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-09T14:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -57493,6 +57779,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "francesha|2012|trojmiasto|KinoPort",
+    "filmId" : "francesha|2012",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-20T18:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "frankenstein|2025|szczecin|Kino Pionier 1907",
     "filmId" : "frankenstein|2025",
     "city" : "szczecin",
@@ -57528,6 +57824,22 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-11T19:15:00",
       "bookingUrl" : "https://www.kinonh.pl/bilet.s?eventId=192714&forwardback=https://www.kinonh.pl/program.s",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ghostintheshell|1995|trojmiasto|KinoPort",
+    "filmId" : "ghostintheshell|1995",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-31T17:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-01T19:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-02T20:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -58070,6 +58382,16 @@
       "dateTime" : "2026-06-11T19:00:00",
       "bookingUrl" : "https://estradapoznan.bilety24.pl/kup-bilety/?id=934178#total",
       "room" : "Sala 3",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "happytogether|1997|trojmiasto|KinoPort",
+    "filmId" : "happytogether|1997",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-20T19:45:00",
       "format" : [ ]
     } ]
   }, {
@@ -68387,8 +68709,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "malaamelia||lublin|Kino Bajka",
-    "filmId" : "malaamelia|",
+    "_id" : "malaamelia|2025|lublin|Kino Bajka",
+    "filmId" : "malaamelia|2025",
     "city" : "lublin",
     "cinema" : "Kino Bajka",
     "filmUrl" : "https://kinobajka.pl/film_do_repertuaru/mala-amelia/",
@@ -68415,6 +68737,16 @@
     }, {
       "dateTime" : "2026-07-31T10:00:00",
       "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "malaamelia|2025|trojmiasto|KinoPort",
+    "filmId" : "malaamelia|2025",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-01T12:30:00",
       "format" : [ ]
     } ]
   }, {
@@ -84422,6 +84754,19 @@
       "dateTime" : "2026-06-28T15:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/178da6da-44fd-48ff-8bd4-66f7d65f838d?cinemaId=0bdb21cd-cf7d-4efb-829f-d1913a666b83",
       "format" : [ "2D", "NAP" ]
+    } ]
+  }, {
+    "_id" : "milczenieowiec|1991|trojmiasto|KinoPort",
+    "filmId" : "milczenieowiec|1991",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-30T19:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-14T19:45:00",
+      "format" : [ ]
     } ]
   }, {
     "_id" : "milczenieowiec|1991|tychy|Planet Cinema",
@@ -103289,6 +103634,19 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "montereypop|1968|trojmiasto|KinoPort",
+    "filmId" : "montereypop|1968",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-09T15:45:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-16T15:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "montereypop|1968|warszawa|KINOMUZEUM",
     "filmId" : "montereypop|1968",
     "city" : "warszawa",
@@ -104099,6 +104457,19 @@
     "filmUrl" : "https://kinotatrylodz.pl/repertuar/nagi-instynkt/",
     "showtimes" : [ {
       "dateTime" : "2026-06-21T19:30:00",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "nagiinstynkt|1992|trojmiasto|KinoPort",
+    "filmId" : "nagiinstynkt|1992",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-31T19:15:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-13T17:30:00",
       "format" : [ ]
     } ]
   }, {
@@ -118011,6 +118382,19 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "ojczyzna|2026|trojmiasto|KinoPort",
+    "filmId" : "ojczyzna|2026",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-01T16:15:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-02T14:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "ojczyzna|2026|tychy|Planet Cinema",
     "filmId" : "ojczyzna|2026",
     "city" : "tychy",
@@ -121681,6 +122065,19 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-29T18:00:00",
       "bookingUrl" : "https://kinomuranow.pl/tickets/26081/buy",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "patiiklatwaposejdona|2022|trojmiasto|KinoPort",
+    "filmId" : "patiiklatwaposejdona|2022",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-08T12:00:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-15T12:30:00",
       "format" : [ ]
     } ]
   }, {
@@ -127610,6 +128007,22 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "proces|1962|trojmiasto|KinoPort",
+    "filmId" : "proces|1962",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-14T17:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-15T14:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-16T16:45:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "projekthailmarykinotekadlarodzica|2026|warszawa|Kinoteka",
     "filmId" : "projekthailmarykinotekadlarodzica|2026",
     "city" : "warszawa",
@@ -128900,6 +129313,19 @@
       "format" : [ "2D", "DUB" ]
     } ]
   }, {
+    "_id" : "pucio|2026|trojmiasto|KinoPort",
+    "filmId" : "pucio|2026",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-09T13:00:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-16T14:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "pucio|2026|warszawa|Cinema City Galeria Północna",
     "filmId" : "pucio|2026",
     "city" : "warszawa",
@@ -129125,6 +129551,19 @@
     }, {
       "dateTime" : "2026-07-26T20:00:00",
       "bookingUrl" : "https://klubzak.com.pl/pl/kalendarz/Rambo-Pierwsza-krew~z3648",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "rambopierwszakrew|1982|trojmiasto|KinoPort",
+    "filmId" : "rambopierwszakrew|1982",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-08T17:45:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-15T19:30:00",
       "format" : [ ]
     } ]
   }, {
@@ -183143,6 +183582,16 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
+    "_id" : "upadleanioly|1995|trojmiasto|KinoPort",
+    "filmId" : "upadleanioly|1995",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-13T20:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "upadleanioly|1995|warszawa|Kino Muranów",
     "filmId" : "upadleanioly|1995",
     "city" : "warszawa",
@@ -194329,6 +194778,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "zawiescieczerwonelatarnie|1991|trojmiasto|KinoPort",
+    "filmId" : "zawiescieczerwonelatarnie|1991",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-16T19:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "zawiescieczerwonelatarnie|1991|warszawa|KINOMUZEUM",
     "filmId" : "zawiescieczerwonelatarnie|1991",
     "city" : "warszawa",
@@ -199511,6 +199970,19 @@
     "filmUrl" : "https://kzrcafe.pl/film/ziemia-obiecana/",
     "showtimes" : [ {
       "dateTime" : "2026-11-11T18:00:00",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "zimnawojna|2018|trojmiasto|KinoPort",
+    "filmId" : "zimnawojna|2018",
+    "city" : "trojmiasto",
+    "cinema" : "KinoPort",
+    "filmUrl" : "https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/",
+    "showtimes" : [ {
+      "dateTime" : "2026-08-01T14:15:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-02T12:00:00",
       "format" : [ ]
     } ]
   }, {
