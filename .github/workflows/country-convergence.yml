@@ -81,7 +81,7 @@ jobs:
         # so the ceiling now sits well clear of the expected run rather than just
         # above it. A leg that approaches this is a signal to re-measure the shape,
         # not to raise the number again.
-        timeout-minutes: 75
+        timeout-minutes: 135
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
             # see "Publish" below for why that, rather than an artifact.
@@ -272,8 +272,12 @@ jobs:
                       sbt-target-e2e-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
 
-            # Bounded BELOW the job's 75, on purpose — the single most important line
-            # in this file for a leg that runs long.
+            # Bounded BELOW the job's 135, on purpose — the single most important line
+            # in this file for a leg that runs long. Both numbers moved up together (from
+            # 62/75) when every collection went onto a real database: the UK replays alone
+            # went from ~10 minutes to over 30, and the gap between the two is what pays
+            # for the publish steps, so raising one without the other would reintroduce
+            # exactly the cancellation this comment exists to prevent.
             #
             # A job that hits its own `timeout-minutes` is CANCELLED, and a cancelled
             # job runs its remaining `always()` steps only inside a short grace window.
@@ -294,7 +298,7 @@ jobs:
             - name: Run the convergence suite
               id: suite
               shell: bash
-              timeout-minutes: 62
+              timeout-minutes: 120
               run: |
                   set -o pipefail
                   sbt ${{ matrix.cmd }} 2>&1 | tee convergence.log

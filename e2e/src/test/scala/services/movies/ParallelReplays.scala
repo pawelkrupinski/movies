@@ -33,7 +33,15 @@ object ParallelReplays {
   def apply[A](seeds: Seq[Long])(replay: Long => A): Seq[A] = {
     val pool = Executors.newFixedThreadPool(seeds.size.max(1))
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
-    try Await.result(Future.sequence(seeds.map(s => Future(replay(s)))), 30.minutes)
+    // 30 minutes was sized when a replay ran entirely in memory. Every collection is on
+    // a real database now, so a pass does the persistence work too — and the UK corpus is
+    // 788 venues / 24k listings, roughly 3.5x Poland's, with all `seeds.size` passes
+    // contending on one mongod. That leg's replays went from ~10 minutes to over 30 and
+    // died on this bound, taking a leg that had otherwise gone FASTER (the warm rating
+    // cache cut its boot by 18 minutes) down with them. The bound is a runaway guard, not
+    // a budget: it exists so a wedged replay fails instead of hanging until the job is
+    // cancelled, which would discard the recorded fixtures the next run needs.
+    try Await.result(Future.sequence(seeds.map(s => Future(replay(s)))), 75.minutes)
     finally pool.shutdown()
   }
 }
