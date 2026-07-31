@@ -49,7 +49,17 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
       case (Some(session), Some(movies), Some(staging)) =>
         try foldWithRetry(session, movies, staging, cleanTitle)
         finally session.close()
-      case _ => Seq.empty // Mongo disabled — nothing to fold
+      // NOT `Seq.empty`. An empty fold is the answer for "this group is already
+      // folded", and returning it here made "I could not even try" indistinguishable
+      // from "there was nothing to do". A convergence leg on a real database graduated
+      // nothing, logged nothing, and looked like a corpus with no work outstanding;
+      // three diagnoses went past it. The callers already treat a thrown fold as a
+      // reschedule — see the `Abandon` branch, which rethrows for exactly this reason —
+      // so failing loudly is the behaviour they are written for.
+      case _ =>
+        throw new IllegalStateException(
+          s"Staging fold '$cleanTitle' could not run: no Mongo session or collections " +
+          "(connection disabled or unreachable). Refusing to report this as an empty fold.")
     }
 
   private def foldWithRetry(
