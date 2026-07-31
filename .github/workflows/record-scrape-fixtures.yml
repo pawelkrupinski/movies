@@ -117,6 +117,13 @@ jobs:
               with:
                   name: scrape-fixtures-${{ matrix.code }}
                   path: scrape-archive/scrapes-${{ matrix.code }}.tar.gz
-                  retention-days: 3
+                  # 14 days, not 3. This artifact is now the ONLY durable copy a
+                  # convergence leg reads — the cache entry beside it is evicted within
+                  # hours by 7 GB of sbt-target builds, which is how the UK corpus went
+                  # missing and the leg silently replayed invented films instead. Three
+                  # days is two nights of slack on a nightly job: one failed run over a
+                  # weekend and every country's corpus expires at once. The three
+                  # tarballs together are ~12 MB, so the margin costs nothing.
+                  retention-days: 14
                   overwrite: true
                   if-no-files-found: warn
