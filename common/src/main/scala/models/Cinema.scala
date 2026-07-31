@@ -1890,19 +1890,29 @@ object Cinema {
     "Yorkshire" -> yorkshire,
   )
 
-  val byCity: Seq[(String, Seq[Cinema])] =
+  /** LAZY, along with everything derived from it, and that is load-bearing rather than a
+   *  micro-optimisation. `GermanRoster` reads `Cinema.polishAndUk` while building itself,
+   *  so `Cinema` and `GermanRoster` initialise each other. Forcing the German roster from
+   *  a strict field here made the outcome depend on which object the JVM happened to touch
+   *  first: enter through `Cinema` and `polishAndUk` is assigned in time, enter through
+   *  `GermanRoster` and it reads a null, dying with `ExceptionInInitializerError`. That is
+   *  why `CinemaScraperCatalogSpec` could not be run on its own — it passed only inside a
+   *  full suite where some earlier spec happened to touch `Cinema` first. Deferring the
+   *  roster means entering through `GermanRoster` completes `Cinema`'s own fields without
+   *  re-entering the roster, so either entry point works. */
+  lazy val byCity: Seq[(String, Seq[Cinema])] =
     polishAndUk ++ GermanRoster.byCity  // Germany: the full 158-region roster (data-driven)
 
-  val all: Seq[Cinema] = byCity.flatMap(_._2)
+  lazy val all: Seq[Cinema] = byCity.flatMap(_._2)
 
-  val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
+  lazy val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
 
   /** Resolve a cinema from the `displayName` it is stored under — the wire key
    *  every per-cinema row uses (`movie_slots`, `screenings`, `cinema_scrapes`).
    *  Unambiguous by construction: `GermanRoster` qualifies any generated venue
    *  whose name would collide with a hand-declared one, and `SourceWireKeySpec`
    *  fails the build on a duplicate. */
-  val byDisplayName: Map[String, Cinema] = all.map(c => c.displayName -> c).toMap
+  lazy val byDisplayName: Map[String, Cinema] = all.map(c => c.displayName -> c).toMap
 
   /** Synthetic chain-detail sources → the venue cinemas whose per-film detail
    *  they hold. A chain (only Cinema City today) fetches a film's
@@ -1914,14 +1924,14 @@ object Cinema {
    *  stable "Cinema City <branch>" naming every Cinema City venue follows
    *  (`CinemaCityChain` itself is "Cinema City", no trailing branch, and isn't in
    *  `all`), so a newly-added branch is picked up automatically. */
-  val chainDetailVenues: Map[Source, Set[Cinema]] = Map(
+  lazy val chainDetailVenues: Map[Source, Set[Cinema]] = Map(
     CinemaCityChain -> all.filter(_.displayName.startsWith("Cinema City ")).toSet
   )
 
   /** City display label for each cinema — derived from `byCity`, the single
    *  source of truth. Used by the debug source-data view to disambiguate
    *  same-named chains (e.g. the many "Helios" venues across cities). */
-  val cityByCinema: Map[Cinema, String] =
+  lazy val cityByCinema: Map[Cinema, String] =
     byCity.flatMap { case (city, cinemas) => cinemas.map(_ -> city) }.toMap
 
   def cityOf(cinema: Cinema): Option[String] = cityByCinema.get(cinema)
