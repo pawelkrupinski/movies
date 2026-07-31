@@ -64,8 +64,28 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // koeln, …), each an aggregation of nearby cities' cinemas (see data/germany/).
     Country.Germany.cities should have size 158
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every region carries cinemas; the roster totals 1,533 venues.
-    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1533
+    // Every region carries cinemas; the roster totals 1,529 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1529
+  }
+
+  // Four venues were DELISTED by Filmstarts: every scrape got HTTP 404 for
+  // `/kinoprogramm/kino/<id>/`, burning retries on every cycle and showing users a
+  // cinema that no longer exists. Checked 2026-07-31 against Filmstarts' own
+  // exhaustive city/state listings — none has been re-issued under a new id, and a
+  // live-but-idle venue returns 200 with `no.showtime.error`, never 404, so a 404
+  // means deletion rather than a quiet season:
+  //   A0743 Kino Kiste (Berlin-Hellersdorf) — closed 31.12.2025
+  //   G01C9 Inselkino Baltrum — no operator; the Gemeinde is advertising for one
+  //   A2843 Heppel - Ettlich (München) — venue open, but as a Kleinkunst stage
+  //   A2165 Kino Babenhausen — hall alive for theatre, no cinema programme
+  // NOTE: do NOT re-point Heppel to A1575 "Neues Rottmann" — that is a different
+  // operating cinema, not a rename.
+  it should "not carry the Filmstarts theater ids that were delisted upstream" in {
+    val delisted = Set("A0743", "G01C9", "A2843", "A2165")
+    GermanRoster.theaterIdByCinema.values.toSet intersect delisted shouldBe empty
+    val names = Country.Germany.cities.flatMap(_.cinemas).map(_.displayName).toSet
+    names should not contain "Kino Kiste"
+    names should not contain "Inselkino Baltrum"
   }
 
   "Country.Poland" should "keep the original kinowo database and Filmweb enabled" in {

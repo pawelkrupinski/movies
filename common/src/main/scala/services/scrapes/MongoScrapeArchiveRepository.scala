@@ -189,7 +189,7 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
    * `screenings` hit exactly this). The crash lands on an uncaught I/O thread, not
    * on the caller's `Await`, so nothing here catches it: the future simply never
    * completes and the caller sees a 120s timeout with no cause attached. That is
-   * precisely what the country-convergence legs saw against Germany's 1,533-row
+   * precisely what the country-convergence legs saw against Germany's 1,529-row
    * archive — nine consecutive timeouts and two `StackOverflowError`s in threads
    * nobody was watching — and it will reach any caller as a country's archive grows.
    *

@@ -36,13 +36,53 @@ class KinoStudioClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoStudioClient.BaseUrl)
   override def sourceUrl: Option[String] = Some(KinoStudioClient.RepertoireUrl)
 
-  def fetch(): Seq[CinemaMovie] = KinoStudioClient.parse(http.get(KinoStudioClient.RepertoireUrl), cinema, today)
+  def fetch(): Seq[CinemaMovie] = {
+    var lastFailure = Option.empty[Throwable]
+
+    // Take the FIRST page that actually rendered the CMS content div, fetching
+    // lazily so a healthy in-season page costs one request. MDK moves the cinema
+    // between two slugs (`kino-studio.html` in season, `kino-studio-przerwa.html`
+    // over a break) and serves a soft-404 — HTTP 200 carrying the site's
+    // "Błąd 404" body — for whichever one is currently dead. The status code
+    // therefore cannot pick between them; the content div can.
+    val content = KinoStudioClient.PageUrls.iterator.map { url =>
+      val body = Try(http.get(url))
+      body.failed.foreach(error => lastFailure = Some(error))
+      body.toOption.filter(KinoStudioClient.hasContent)
+    }.collectFirst { case Some(html) => html }
+
+    content match {
+      case Some(html) => KinoStudioClient.parse(html, cinema, today)
+      case None       =>
+        // NEITHER slug rendered content. That is a dead source, not a venue with
+        // no films — report it as a failure so it surfaces RED on /uptime rather
+        // than white, where it would be indistinguishable from a genuinely
+        // film-dormant venue. Same guard as MsiClient / KinoAwangarda2Client /
+        // KinoPatriaClient.
+        lastFailure.foreach(throw _)
+        throw new IllegalStateException(
+          s"No repertoire content at any of ${KinoStudioClient.PageUrls.mkString(", ")} " +
+          s"— every page rendered without a `div.${KinoStudioClient.ContentClass}` (soft-404?)")
+    }
+  }
 }
 
 object KinoStudioClient {
 
   val BaseUrl       = "https://mdk.opole.pl"
   val RepertoireUrl = s"$BaseUrl/kino-studio.html"
+  /** MDK parks the cinema on this slug while it is on a seasonal break, and
+   *  leaves `kino-studio.html` serving a soft-404 until the season restarts. */
+  val BreakUrl      = s"$BaseUrl/kino-studio-przerwa.html"
+  /** In-season slug first, so a live repertoire always wins over the break page. */
+  val PageUrls      = Seq(RepertoireUrl, BreakUrl)
+
+  /** The CMS content div. Its ABSENCE is how a soft-404 is told apart from a real
+   *  page — MDK's 404 body is a normal HTTP 200 page without one. */
+  val ContentClass = "ckeditor"
+
+  private def hasContent(html: String): Boolean =
+    Jsoup.parse(html, BaseUrl).selectFirst(s"div.$ContentClass") != null
 
   /** "DD.MM" at the start of an `<h3>` heading. */
   private val DatePat = """^(\d{1,2})\.(\d{1,2})\b""".r
@@ -61,9 +101,12 @@ object KinoStudioClient {
   )
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
-    val doc     = Jsoup.parse(html, BaseUrl)
-    val ckeditor = Option(doc.selectFirst("div.ckeditor")).getOrElse(doc.body())
-    val films   = extractFilms(ckeditor, today)
+    val doc = Jsoup.parse(html, BaseUrl)
+    // Only ever scan the CMS content div. The old fallback to the whole `<body>`
+    // meant a soft-404 (or any redesign) got the site's nav and footer fed to the
+    // date/title state machine, which can only manufacture junk films — never
+    // recover the real ones. `fetch` guarantees the div is present.
+    val films = Option(doc.selectFirst(s"div.$ContentClass")).toSeq.flatMap(extractFilms(_, today))
     films.map { f =>
       CinemaMovie(
         movie     = Movie(ScraperParse.stripFormatTags(f.title), genres = f.genres),

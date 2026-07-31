@@ -91,6 +91,36 @@ class MsiClientSpec
     intercept[HttpStatusException](client.fetch()).code shouldBe 503
   }
 
+  // `fetchUnfiltered` used to fetch exactly `YearMonth.from(today)` and
+  // `.plusMonths(1)` — a hard-coded two-month horizon cap across all ~12 MSI
+  // venues, which `ScrapeHorizon` ("we want ALL future screenings", MaxDays=730)
+  // forbids. Measured on 2026-07-31 it hid no films, purely by luck: every
+  // out-of-window title happened to be a concert or stand-up. It walks forward a
+  // month at a time now, stopping only after `MaxEmptyMonths` consecutive empty
+  // months. Serving the recorded month page ONLY at today+2 is the direct
+  // fail-before/pass-after: the old client never requested that month.
+  it should "reach a programme that starts beyond the old two-month window" in {
+    val movies = new MsiClient(new OnlyMonthHttpFetch("2026-08", "cinema1"),
+      "https://bilety.cinemaone.pl", Cinema1Gdansk, today = LocalDate.of(2026, 6, 7)).fetch()
+    // Finding ANY film is the whole assertion: this fetch answers only
+    // `date=2026-08`, so a client that stops at today+1 sees two empty bodies and
+    // returns nothing. (The showtimes keep the recorded page's own June dates —
+    // MSI month pages carry full dates, and `parseMonthWithYear`'s month is used
+    // only to infer a year for day-only rows. The month asked for is what matters
+    // here, not the dates that come back.)
+    movies should not be empty
+    movies.map(_.movie.title.toLowerCase).exists(_.contains("backrooms")) shouldBe true
+  }
+
+  it should "stop walking once MaxEmptyMonths consecutive months are empty" in {
+    // The bound must stay cheap: a dormant venue costs MaxEmptyMonths requests,
+    // not the two years ScrapeHorizon permits.
+    val counting = new CountingHttpFetch
+    new MsiClient(counting, "https://bilety.cinemaone.pl", Cinema1Gdansk,
+      today = LocalDate.of(2026, 6, 7)).fetch()
+    counting.requests shouldBe MsiClient.MaxEmptyMonths
+  }
+
   it should "strip MSI format suffixes and sentence-case titles" in {
     // Raw title in the cinema1 fixture: "BACKROOMS. BEZ WYJŚCIA (2D NAPISY)"
     val movies =
@@ -194,5 +224,22 @@ class MsiClientSpec
     val twierdza = mokKedzierzyn(KinoTwierdza, "TWIERDZA")
     chemik.exists(_.movie.title.toLowerCase.contains("toy story 5")) shouldBe true
     twierdza.exists(_.movie.title.toLowerCase.contains("toy story 5")) shouldBe true
+  }
+
+  /** Serves the `recorded` fixture's month page ONLY when the request asks for
+   *  `month`, and an empty body for every other month — so a client that never
+   *  requests `month` finds nothing at all. Real recorded bytes, re-labelled: the
+   *  fixture's own `date=` is substituted in so `FakeHttpFetch` still resolves it. */
+  private class OnlyMonthHttpFetch(month: String, recorded: String) extends tools.GetOnlyHttpFetch {
+    private val fixture = new FakeHttpFetch(recorded)
+    override def get(url: String): String =
+      if (url.contains(s"date=$month")) fixture.get(url.replaceAll("date=[0-9]{4}-[0-9]{2}", "date=2026-06"))
+      else ""
+  }
+
+  /** Every month is reachable but empty — counts how far the month walk goes. */
+  private class CountingHttpFetch extends tools.GetOnlyHttpFetch {
+    var requests = 0
+    override def get(url: String): String = { requests += 1; "" }
   }
 }

@@ -1,5 +1,5 @@
 // GENERATED from data/germany/regions.json by the DE roster generator — do NOT edit by hand.
-// Full German cinema roster: 158 regions / 1,533 cinemas (Filmstarts). Regenerate with
+// Full German cinema roster: 158 regions / 1,529 cinemas (Filmstarts). Regenerate with
 // the generator in data/germany/scripts after re-harvesting; see data/germany/README.md.
 package models
 
@@ -62,7 +62,6 @@ private[models] object GermanRosterData {
     ("Kino Central Open Air (Berlin)", "Kino Central Open Air (Berlin)", "A2760"),
     ("Kino International Berlin", "Kino International Berlin", "A0625"),
     ("Kino Intimes", "Kino Intimes", "A0627"),
-    ("Kino Kiste", "Kino Kiste", "A0743"),
     ("Kino Krokodil", "Kino Krokodil", "A0745"),
     ("Kino Spreehöfe Berlin", "Kino Spreehöfe Berlin", "A0753"),
     ("Kino Zukunft", "Kino Zukunft", "A2660"),
@@ -305,7 +304,6 @@ private[models] object GermanRosterData {
     ("Forum 2 - Kulturverein Olympiadorf e.V.", "Forum 2 - Kulturverein Olympiadorf e.V.", "A0654"),
     ("Gabriel Filmtheater", "Gabriel Filmtheater", "A0988"),
     ("Gloria Palast", "Gloria Palast", "A1443"),
-    ("Heppel - Ettlich", "Heppel - Ettlich", "A2843"),
     ("Instituto Cervantes - München", "Instituto Cervantes - München", "A2832"),
     ("Istituto Italiano di Cultura - München", "Istituto Italiano di Cultura - München", "A2847"),
     ("Kino Solln", "Kino Solln", "A1499"),
@@ -1144,7 +1142,6 @@ private[models] object GermanRosterData {
     ("Novum Kino", "Novum Kino", "A0112"),
     ("Kino Gelnhausen (Pali und Casino)", "Kino Gelnhausen (Pali und Casino)", "A1028"),
     ("Turmpalast", "Turmpalast", "A1650"),
-    ("Kino Babenhausen", "Kino Babenhausen", "A2165"),
     ("Passage Erlenbach am Main", "Passage Erlenbach am Main", "A1032")
   ))
   private def r_goerlitz: R = ("goerlitz", "Görlitz", 51.15518, 14.98853, Seq(
@@ -1764,8 +1761,7 @@ private[models] object GermanRosterData {
   ))
   private def r_langeoog: R = ("langeoog", "Langeoog", 53.74552, 7.48175, Seq(
     ("Windlicht", "Windlicht", "A2757"),
-    ("Inselkino Spiekeroog", "Inselkino Spiekeroog", "A2884"),
-    ("Inselkino Baltrum", "Inselkino Baltrum", "G01C9")
+    ("Inselkino Spiekeroog", "Inselkino Spiekeroog", "A2884")
   ))
   private def r_kleve: R = ("kleve", "Kleve", 51.78826, 6.13865, Seq(
     ("Tichelpark Kleve", "Tichelpark Kleve", "A1182"),

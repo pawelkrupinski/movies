@@ -5,7 +5,7 @@ import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, VueCinemasPlatformClient, ZyteFallback}
 import services.cinemas.de.WebediaShowtimesClient
 import services.cinemas.pl._
-import services.cinemas.uk.{CineworldClient, FlicksClient, OdeonClient}
+import services.cinemas.uk.{CineworldClient, FlicksClient, OdeonClient, TheOldCourtClient}
 
 import java.time.{LocalDate, ZoneId}
 import scala.concurrent.duration._
@@ -646,7 +646,11 @@ class CinemaScraperCatalog(
     showcase("X06KD", ShowcaseDeLuxReading),
     flicks("south-hill-park-arts-centre-bracknell", SouthHillParkArtsCentreBracknell),
     flicks("the-assembly-at-heckfield-place", TheAssemblyAtHeckfieldPlace),
-    flicks("the-screen-cinema-windsor", TheOldCourtWindsor),
+    // The Old Court is NOT on Flicks — it is absent from the whole
+    // `sitemap-cinemas.xml`, and `the-screen-cinema-windsor` (the only Windsor
+    // slug Flicks has) is a different venue, so this venue was reading someone
+    // else's page and scraping to zero. Its own site carries the programme.
+    new TheOldCourtClient(http, TheOldCourtWindsor, today),
     vueUk("10070", VueCinemasNewbury),
     vueUk("10020", VueCinemasReading),
   )
@@ -1431,7 +1435,7 @@ class CinemaScraperCatalog(
   // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
   private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
     new WebediaShowtimesClient(http, "www.filmstarts.de", theaterId, cinema, today = today)
-  // Germany — data-driven from the full GermanRoster (158 regions / 1,533 cinemas):
+  // Germany — data-driven from the full GermanRoster (158 regions / 1,529 cinemas):
   // one filmstarts scraper per cinema, keyed by region slug (the slug City.slug uses).
   // Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
   private val germanBaseByCity: Map[String, Seq[CinemaScraper]] =

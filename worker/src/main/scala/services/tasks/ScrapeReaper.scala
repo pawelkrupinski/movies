@@ -20,7 +20,7 @@ import scala.util.Try
  * successful scrape, or it has never been scraped. The window's period is the
  * freshness setting (`KINOWO_SCRAPE_FRESHNESS_MINUTES`, default 60min) — set per
  * country in that worker app's fly toml, so the rate is NOT uniform across the
- * fleet: DE runs 120min against its ~1,533-cinema roster while PL and UK stay
+ * fleet: DE runs 120min against its ~1,529-cinema roster while PL and UK stay
  * hourly (see `WorkerScrapeCadenceConfigSpec`). Each cinema's boundary sits at a
  * deterministic phase offset hashed from its key, so a country's cinemas spread
  * evenly across the period instead of all falling due together and scraping in a

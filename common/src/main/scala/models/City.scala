@@ -829,7 +829,7 @@ case object Yorkshire extends City("yorkshire",
 // ── Germany (also non-declining for our purposes). ───────────────────────────
 
 /** A German region — the data-driven `City` subtype. The full roster (158 regions
- *  / 1,533 cinemas) is generated into `GermanRosterData` and materialised by
+ *  / 1,529 cinemas) is generated into `GermanRosterData` and materialised by
  *  [[GermanRoster]]; each region groups the cinemas within ~35 km of a hub city
  *  (see `data/germany/`). Instances are built ONCE (in `GermanRoster`), so
  *  identity equality holds just like the hand-authored `case object` cities —

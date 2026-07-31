@@ -44,6 +44,38 @@ class KinoStudioClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.movie.genres should contain("dramat")
   }
 
+  // MDK parks the cinema on `kino-studio-przerwa.html` over a seasonal break and
+  // leaves `kino-studio.html` serving a SOFT-404 — HTTP 200 carrying the site's
+  // "Błąd 404" body, so the status code cannot tell the dead slug from the live
+  // one. Found 2026-07-31: the client was reading the soft-404 and reporting
+  // "no films", which is the white-bar-that-is-actually-our-bug shape.
+  "a soft-404 on the in-season slug" should "fall through to the break slug and still find the films" in {
+    val films = new KinoStudioClient(new FakeHttpFetch("kino-studio-opole-soft404"), KinoStudio, today).fetch()
+    films should not be empty
+    films.find(m => m.movie.title.contains("Lolita") || m.movie.title.contains("Lolitę"))
+      .value.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 25, 18, 0))
+  }
+
+  it should "report a real break page as zero films, not as a failure" in {
+    // The live break page renders normally, it just announces the hiatus
+    // ("W czasie wakacji nasze kino jest nieczynne. Startujemy już 3 września").
+    // That is a genuinely dormant venue — white is the CORRECT bar, so this must
+    // return empty rather than throw.
+    val films = new KinoStudioClient(new FakeHttpFetch("kino-studio-opole-break"), KinoStudio,
+                                     LocalDate.of(2026, 7, 31)).fetch()
+    films shouldBe empty
+  }
+
+  it should "fail loudly when NEITHER slug renders content, instead of reporting no films" in {
+    // Both slugs soft-404 ⇒ the source is dead, not the venue. Reporting zero
+    // films here would paint a white bar indistinguishable from a dormant venue;
+    // the scrape must surface red. Same guard as MsiClient / KinoPatriaClient.
+    val client = new KinoStudioClient(new FakeHttpFetch("kino-studio-opole-dead"), KinoStudio,
+                                      LocalDate.of(2026, 7, 31))
+    val error = intercept[IllegalStateException](client.fetch())
+    error.getMessage should include ("ckeditor")
+  }
+
   it should "capture the director and cast from the metadata block" in {
     // The same `gatunek/reżyseria/obsada` <br>-line carries director + cast;
     // `obsada` is `&nbsp;`-joined ("A,&nbsp;B,&nbsp;C") so the nbsp is normalised

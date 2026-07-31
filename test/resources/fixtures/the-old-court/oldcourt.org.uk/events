@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html style="visibility: hidden; --auth: 0; --name: 'undefined'; --admin: 0; --admin-bookings: 0;">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="21600">
+  <title>The Old Court</title>
+  <link rel="shortcut icon" href="/static/favicon.eee2ec7c.ico">
+  <link rel="icon" href="/static/favicon.7092f1b8.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.2c68f235.png">
+  <link href="/static/global.e2168ca2.css" rel="stylesheet">
+  <script src="/static/shared.2976444c.js" defer></script>
+</head>
+<body style="margin: 0 auto; background-color: var(--color-background);">
+  <header id="header" style="--auth: 0; --name: 'undefined'; --staff: 0;">
+  <style>
+    @scope {
+      :scope { background-color: var(--color-dark); }
+    }
+  </style>
+  <div>
+    <style>
+      @scope {
+        :scope { max-width: var(--full-width); margin: auto; display: flex; gap: 16px; padding-right: 16px; align-items: center; font-size: 18px; color: white; }
+        :scope>div { width: 100%; gap: 12px; justify-content: space-between; }
+        :scope>div>ul { display: flex; gap: 16px; justify-content: start; flex-wrap: wrap; }
+        :scope>a { height: 64px; }
+        img { height: 100%; }
+        ul { list-style: none; margin: 0; padding: 0; text-align: right; }
+        a { color: white; text-decoration: none; }
+        details { margin: 8px; }
+        summary { display: block; font-size: 26px; margin-bottom: 8px; text-align: right; }
+        ul div:before { content: var(--name); }
+        @container style(--auth: 1) { .no-auth { display: none; } }
+        @container style(--auth: 0) { .auth { display: none; } }
+        @container style(--staff: 0) { .staff { display: none; } }
+        @media (width < 800px) {
+          :scope { justify-content: space-between; }
+          :scope>div { display: none; }
+        }
+        @media (width >= 800px) {
+          :scope { justify-content: start; }
+          :scope>div { display: flex; }
+          details { display: none; }
+        }
+        @media (width >= 1346px) {
+          :scope { padding-left: 16px; }
+        }
+      }
+    </style>
+    <a href="/"><img src="/static/logo.195722cd.png"></a>
+    <div>
+      <ul>
+        <li><a href="/events">Events</a></li>
+        <li class="auth"><a href="/calendar">Calendar</a></li>
+        <li class="staff"><a href="/checklists">Checklists</a></li>
+        <li><a href="/hire">Hire</a></li>
+        <li><a href="/about">About</a></li>
+        <li class="staff"><a href="/export">Export</a></li>
+        <li class="staff"><a href="/hirers">Hirers</a></li>
+        <li class="staff"><a href="/artists">Artists</a></li>
+      </ul>
+      <ul>
+        <li><a class="no-auth login" href="#">Login</a></li>
+        <li class="auth"><div> (<a href="#" class="logout">Logout</a>)</div></li>
+      </ul>
+    </div>
+    <details>
+      <summary>☰</summary>
+      <ul>
+        <li><a href="/events">Events</a></li>
+        <li><a class="auth" href="/calendar">Calendar</a></li>
+        <li><a class="staff" href="/checklists">Checklists</a></li>
+        <li><a href="/hire">Hire</a></li>
+        <li><a href="/about">About</a></li>
+        <!-- <li><a class="staff" href="/bookings">Bookings</a></li> -->
+        <li><a class="staff" href="/export">Export</a></li>
+        <li><a class="staff" href="/hirers">Hirers</a></li>
+        <li><a class="staff" href="/artists">Artists</a></li>
+        <li><a class="no-auth login" href="#">Login</a></li>
+        <li><div class="auth"> (<a href="#" class="logout">Logout</a>)</div></li>
+      </ul>
+    </details>
+  </div>
+</header>
+<dialog id="dologin">
+  <form method="post" action="/">
+    <label style="display: none"><span>Username</span><input id="username" name="username" value="user"></label>
+    <label><span>Password</span><input type="password" id="password" name="password" required></label>
+    <hr>
+    <div><input type="submit" value="Log In"></div>
+  </form>
+</dialog>
+
+  <div>
+    <style>
+      @scope {
+        :scope { max-width: var(--full-width); margin: auto; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        :scope>*:not(style) { display: flex; justify-content: center; flex-wrap: wrap; }
+        @media (max-width: 500px) {
+          :scope { gap: 0; margin: 1px; border: none; padding: 0; }
+        }
+      }
+    </style>
+    <!-- EVENTS -->
+    <div>
+      <style>
+        @scope {
+          :scope { gap: 16px; }
+          :scope>div { width: 250px; display: flex; flex-direction: column; background-color: white; border: 2px solid white; border-radius: 0 0 10px 10px; }
+          :scope>div>a { display: block; }
+          :scope>div>a>img { display: block; width: 100%; }
+          :scope>div>div { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 16px; }
+          :scope>div>div>div { text-align: center; }
+          :scope>div>div>span { font-size: smaller; }
+          :scope>div>div>span>a { color: var(--color-background); }
+          hr { width: 100%; margin: 8px 0; border: 0.5px solid var(--color-background); }
+          @media (max-width: 500px) {
+            :scope { width: 100%; gap: 8px; padding: 8px; border: none; }
+            :scope>div { width: 100%; border-radius: 0 0 6vw 6vw; }
+          }
+        }
+      </style>
+      <!-- events -->
+      <div>
+        <a href="/event/11923"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=6b0029ed-3a8c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Three's a Crowd</div>
+          <hr>
+          <!-- bookings --><span>Fri 31st Jul 19:30-21:30 <a href="https://tickets.oldcourt.org/sales/events/threes-a-crowd---live-in-the-f">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10782"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=3c67858a-d679-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Bar Beats: DJ Little Kate</div>
+          <hr>
+          <!-- bookings --><span>Sat 1st Aug 19:00-23:00 <a href="https://tickets.oldcourt.org/sales/events/bar-beats-with-little-kate">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11281"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=697c4e01-5687-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The Love of Trees</div>
+          <hr>
+          <!-- bookings --><span>Sun 2nd Aug 12:00-19:00 <a href="https://tickets.oldcourt.org/sales/events/the-love-of-trees">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/6279"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=2d046a3d-a57e-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Mr Wilson's Funk and Soul Sunday Session</div>
+          <hr>
+          <!-- bookings --><span>Sun 2nd Aug 14:00-19:00 <a href="https://tickets.oldcourt.org/sales/events/mr-wilson-funk--soul-sunday-se">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/7855"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=46a14c62-79d6-f011-ba5b-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Sound Bath Healing</div>
+          <hr>
+          <!-- bookings --><span>Sun 2nd Aug 19:00-20:00 <a href="https://tickets.oldcourt.org/sales/events/sound-bath-healing/sunday-5-july-1900">(tickets)</a></span><span>Sun 6th Sep 19:00-20:00 <a href="https://tickets.oldcourt.org/sales/events/sound-bath-healing/sunday-5-july-1900">(info)</a></span><span>Sun 4th Oct 19:00-20:00 <a href="https://tickets.oldcourt.org/sales/events/sound-bath-healing/sunday-5-july-1900">(tickets)</a></span><span>Sun 6th Dec 19:00-20:00 <a href="https://tickets.oldcourt.org/sales/events/sound-bath-healing/sunday-5-july-1900">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11922"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=3dd200e7-da88-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Wednesday Club</div>
+          <hr>
+          <!-- bookings --><span>Wed 5th Aug 15:00-19:00 <a href="https://tickets.oldcourt.org/sales/events/wednesday-club-16-25-years">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11209"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=bab6da23-37f8-f011-ba5b-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Open Mic with Omari</div>
+          <hr>
+          <!-- bookings --><span>Wed 5th Aug 20:00-23:00</span><span>Wed 12th Aug 20:00-23:00</span><span>Wed 19th Aug 20:00-23:00</span><span>Wed 26th Aug 20:00-23:00</span><span>Wed 2nd Sep 20:00-23:00</span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11479"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=f1ef72fe-a365-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The Old Court Quiz Night</div>
+          <hr>
+          <!-- bookings --><span>Thu 6th Aug 19:30-21:00 <a href="https://tickets.oldcourt.org/sales/events/pub-quiz">(tickets)</a></span><span>Thu 20th Aug 19:30-21:00</span><span>Thu 3rd Sep 19:30-21:00</span><span>Thu 17th Sep 19:30-21:00</span><span>Thu 1st Oct 19:30-21:00</span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11947"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=c924f289-568c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Paint Your Parent Party</div>
+          <hr>
+          <!-- bookings --><span>Fri 7th Aug 16:00-17:30 <a href="https://tickets.oldcourt.org/sales/events/paint-your-parents">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11283"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=44448332-647c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Whilst she was gone (Independent film)</div>
+          <hr>
+          <!-- bookings --><span>Fri 7th Aug 20:30-21:15 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/whilst-she-was-gone">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10698"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=faac3c35-f88b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Mark Crowther Point Blank FM</div>
+          <hr>
+          <!-- bookings --><span>Sat 8th Aug 19:00-23:00 <a href="https://tickets.oldcourt.org/sales/events/bar-beats-mark-crowther">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11427"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=502246ec-7486-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Sip, Swap & Paint - A Soulful Creative Experience</div>
+          <hr>
+          <!-- bookings --><span>Sun 9th Aug 13:00-15:00 <a href="https://tickets.oldcourt.org/sales/events/sip-swap--paint---a-soulful-cr">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11130"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=01ffc55f-2767-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Thomas Allen live in the bar</div>
+          <hr>
+          <!-- bookings --><span>Sun 9th Aug 15:00-17:00 <a href="https://tickets.oldcourt.org/sales/events/live-music-in-the-bar-with-tho-1">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10819"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=e5f5c984-b54a-f111-ba5b-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Oasiz</div>
+          <hr>
+          <!-- bookings --><span>Fri 14th Aug 21:00-23:00 <a href="https://tickets.oldcourt.org/sales/events/oasiz-2026-uk-tour">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11553"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=6524f8e9-ae85-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Lucas and Miaya Live Music in the Bar</div>
+          <hr>
+          <!-- bookings --><span>Sun 16th Aug 15:00-17:00 <a href="https://tickets.oldcourt.org/sales/events/lucas-and-maiya-live-in-the-fi">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10960"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=ab520008-9d8a-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Nightcaps Live at The Old Court</div>
+          <hr>
+          <!-- bookings --><span>Fri 21st Aug 20:30-22:30 <a href="https://tickets.oldcourt.org/sales/events/nightcaps-live-at-the-old-cour">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11506"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=7bbb6f87-0283-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Three's A crowd</div>
+          <hr>
+          <!-- bookings --><span>Sun 23rd Aug 15:00-17:00 <a href="https://tickets.oldcourt.org/sales/events/threes-a-crowd-live-in-the-fir">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11932"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=121d5102-638b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The Sheep Detectives</div>
+          <hr>
+          <!-- bookings --><span>Thu 10th Sep 19:00-21:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/the-sheep-detectives">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11156"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=644d6a53-4287-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Release Radio Reunion Party-reserve your free ticket now!</div>
+          <hr>
+          <!-- bookings --><span>Sat 12th Sep 14:00-00:00 <a href="https://tickets.oldcourt.org/sales/events/release-radio-reunion">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11192"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=37d23446-fc82-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Karen Singing Soul</div>
+          <hr>
+          <!-- bookings --><span>Sun 13th Sep 15:00-17:00</span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11934"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=da9cdc8f-648b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Power Ballad</div>
+          <hr>
+          <!-- bookings --><span>Sun 13th Sep 17:00-19:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/power-ballad">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11533"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=fb41be11-668b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Tuner (The Old Courters)</div>
+          <hr>
+          <!-- bookings --><span>Wed 16th Sep 15:00-17:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/tuner">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11933"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=fb41be11-668b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Tuner </div>
+          <hr>
+          <!-- bookings --><span>Thu 17th Sep 19:00-21:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/tuner">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/6850"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=88fb85a8-52c5-f011-ba5b-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Jazz Sabbath with 2026 Grammy Award Winner Adam Wakeman</div>
+          <hr>
+          <!-- bookings --><span>Tue 22nd Sep 20:00-22:30 <a href="https://tickets.oldcourt.org/sales/events/jazz-sabbath-2026">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11935"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=e56e648e-688b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The Invite</div>
+          <hr>
+          <!-- bookings --><span>Thu 24th Sep 19:00-21:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/the-invite">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10277"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=2bb3acf0-5863-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Alice In Wonderland - The Ballet</div>
+          <hr>
+          <!-- bookings --><span>Sat 26th Sep 13:00-14:00 <a href="https://tickets.oldcourt.org/sales/events/alice-in-wonderland">(tickets)</a></span><span>Sat 26th Sep 15:00-16:00 <a href="https://tickets.oldcourt.org/sales/events/alice-in-wonderland">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11135"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=f5b69df2-067a-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Gin and Music</div>
+          <hr>
+          <!-- bookings --><span>Mon 28th Sep 19:00-22:00 <a href="https://tickets.oldcourt.org/sales/events/gin-and-music">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10809"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=6d8ac123-7270-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>MoonAge - Bowie Tribute</div>
+          <hr>
+          <!-- bookings --><span>Fri 2nd Oct 21:00-23:00 <a href="https://tickets.oldcourt.org/sales/events/moonage---the-best-of-bowie-tr">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11938"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=7d1b945c-6b8b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Disclosure Day</div>
+          <hr>
+          <!-- bookings --><span>Sun 11th Oct 17:00-20:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/disclosure-day">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11937"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=75666d14-6c8b-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The End of Oak Street</div>
+          <hr>
+          <!-- bookings --><span>Sun 18th Oct 17:00-19:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/the-end-of-oak-street">(tickets)</a></span><span>Thu 22nd Oct 19:30-21:30 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/the-end-of-oak-street">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11534"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=748cc456-328c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>500 Miles (The Old Courters)</div>
+          <hr>
+          <!-- bookings --><span>Wed 21st Oct 15:00-17:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/500-miles">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11936"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=f311ccfc-338c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Super Troopers 3</div>
+          <hr>
+          <!-- bookings --><span>Sun 25th Oct 17:00-19:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/super-troopers-3">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/6833"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=605c225c-0140-f111-ba5b-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Rocky Horror Night</div>
+          <hr>
+          <!-- bookings --><span>Sat 31st Oct 17:00-23:45 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/halloween-rocky-horror-night">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10303"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=035f3f40-0783-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>MiMo 17th Anniversary </div>
+          <hr>
+          <!-- bookings --><span>Sat 7th Nov 16:00-22:30 <a href="https://tickets.oldcourt.org/sales/events/mimo">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11939"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=625a9a2c-358c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The Dog Stars</div>
+          <hr>
+          <!-- bookings --><span>Sun 22nd Nov 17:00-19:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/the-dog-stars">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11543"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=2f3a7734-378c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Backrooms (The Old Courters)</div>
+          <hr>
+          <!-- bookings --><span>Wed 25th Nov 15:00-17:00 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/backrooms">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/11944"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=2f3a7734-378c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>Backrooms</div>
+          <hr>
+          <!-- bookings --><span>Thu 26th Nov 19:30-21:30 <a href="https://tickets.oldcourt.org/sales/the-old-court-cinema/backrooms">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10397"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=a82d417f-598c-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>AK-47 Live in the Firestation Bar</div>
+          <hr>
+          <!-- bookings --><span>Fri 27th Nov 19:30-22:00 <a href="https://tickets.oldcourt.org/sales/events/ak-47-live-in-the-firestation-">(info)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10366"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=49d6be16-3879-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>A Christmas Wish</div>
+          <hr>
+          <!-- bookings --><span>Fri 4th Dec 11:00-12:00 <a href="https://tickets.oldcourt.org/sales/events/a-christmas-wish">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10367"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=278011da-6778-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The Nutcracker </div>
+          <hr>
+          <!-- bookings --><span>Sat 5th Dec 13:00-14:00 <a href="https://tickets.oldcourt.org/sales/events/the-nutcracker">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+      <div>
+        <a href="/event/10656"><img src="https://tickets.oldcourt.org/Sales/Images/Image.ashx?ImageId=278011da-6778-f111-ba5c-0210bc7314a7&TargetWidth=870&TargetHeight=null"></a>
+        <div>
+          <div>The Nutcracker</div>
+          <hr>
+          <!-- bookings --><span>Sat 5th Dec 15:00-16:00 <a href="https://tickets.oldcourt.org/sales/events/the-nutcracker/saturday-5th-december-at-1500p">(tickets)</a></span>
+        </div>
+      </div>
+      <!-- events -->
+    </div>
+  </div>
+  <footer>
+  <style>
+    @scope {
+      :scope { background-color: var(--color-dark); }
+    }
+  </style>
+  <div>
+    <style>
+      @scope {
+        :scope { max-width: var(--full-width); margin: auto; color: white; display: flex; flex-wrap: wrap; padding: 16px; gap: 32px; }
+        pre { white-space: pre-line; font-family: 'NotoSans';  margin: 0;}
+        td+td { padding-left: 24px; }
+        a { color: white; text-decoration: none; }
+        @media (width < 800px) {
+          :scope { justify-content: space-evenly; }
+        }
+        @media (width >= 800px) {
+          :scope { justify-content: space-between; }
+        }
+      }
+    </style>
+    <pre>
+      The Old Court
+      St Leonard's Road
+      Windsor
+      SL4 3BL
+
+      <a href="tel:+441753911333">01753 911333</a>
+      <a href="mailto:info@oldcourt.org.uk">info@oldcourt.org.uk</a>
+      <a href="mailto:safeguarding@oldcourt.org.uk">safeguarding@oldcourt.org.uk</a>
+    </pre>
+    <table>
+      <tr><td>Monday:</td><td>5pm - 10pm</td></tr>
+      <tr><td>Tuesday:</td><td>3.30pm - 10pm</td></tr>
+      <tr><td>Wednesday:</td><td>5pm - 10pm</td></tr>
+      <tr><td>Thursday:</td><td>5pm - 10pm</td></tr>
+      <tr><td>Friday:</td><td>4pm - 11pm</td></tr>
+      <tr><td>Saturday:</td><td>1pm - 11pm</td></tr>
+      <tr><td>Sunday:</td><td>1pm - 8pm</td></tr>
+    </table>
+    <div>
+      <style>
+        @scope {
+          :scope { display: flex; flex-direction: column; gap: 8px; }
+          div { display: flex; justify-content: space-around; align-items: center; padding: 8px; width: 200px; }
+          input { width: 100%; padding: 8px; font-size: 18px; border: 2px solid white; border-radius: 6px; }
+          input[type="button"] { background-color: var(--color-background); }
+          svg { display: block; height: 40px; }
+        }
+      </style>
+      <input placeholder="Email Address">
+      <input id="subscribe" type="button" value="Subscribe">
+      <div>
+        <a href="https://www.facebook.com/OldCourtWin">
+          <style>
+            @scope {
+              path { stroke: white; fill: white; }
+            }
+          </style>
+          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="100%" viewBox="-40 -40 552 552">
+            <path style="display: inline;" d="M283.122,122.174c0,5.24,0,22.319,0,46.583h83.424l-9.045,74.367h-74.379 c0,114.688,0,268.375,0,268.375h-98.726c0,0,0-151.653,0-268.375h-51.443v-74.367h51.443c0-29.492,0-50.463,0-56.302 c0-27.82-2.096-41.02,9.725-62.578C205.948,28.32,239.308-0.174,297.007,0.512c57.713,0.711,82.04,6.263,82.04,6.263 l-12.501,79.257c0,0-36.853-9.731-54.942-6.263C293.539,83.238,283.122,94.366,283.122,122.174z"></path>
+          </svg>
+        </a>
+        <a href="https://x.com/OldCourtWin">
+          <style>
+            @scope {
+              path { stroke: white; fill: white; }
+            }
+          </style>
+          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="100%" viewBox="-30 -30 351 351">
+            <path d="M178.57 127.15 290.27 0h-26.46l-97.03 110.38L89.34 0H0l117.13 166.93L0 300.25h26.46l102.4-116.59 81.8 116.59h89.34M36.01 19.54H76.66l187.13 262.13h-40.66"/>
+          </svg>
+        </a>
+        <a href="https://www.instagram.com/oldcourtwin/">
+          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" height="100%" viewBox="-1 -1 33 33">
+            <g fill="none" fill-rule="evenodd">
+              <path d="m0 0h32v32h-32z"/>
+              <path d="m23.6190476.13999994.2518496.00400082c4.4330352.13698982 7.9850489 3.77162206 7.9891029 8.23707871v15.23796813l-.0040009.2518496c-.1369898 4.4330352-3.771622 7.9850489-8.2370787 7.9891029h-15.23796812l-.25184954-.0040009c-4.43303524-.1369898-7.98504891-3.771622-7.9891029-8.2370787v-15.23796812l.00400082-.25184954c.13698982-4.43303524 3.77162206-7.98504891 8.23707871-7.9891029zm0 2.00571434h-15.23809522l-.2285857.00411224c-3.33773425.12028135-6.0066524 2.86402399-6.0066524 6.23112586v15.23809522l.00411224.2285857c.12028135 3.3377343 2.86402399 6.0066524 6.23112586 6.0066524h15.23809522l.2285857-.0041122c3.3377343-.1202814 6.0066524-2.864024 6.0066524-6.2311259v-15.23809522l-.0041122-.2285857c-.1202814-3.33773425-2.864024-6.0066524-6.2311259-6.0066524zm-7.6191758 4.85142851.2653486.00407526c4.8475552.14463612 8.7331682 4.11734025 8.7376368 8.99891015 0 4.9720125-4.0307165 9.002729-9.0028572 9.002729s-9.00285716-4.0307165-9.00285716-9.0028572c0-4.8833525 3.88804756-8.8586028 8.73741066-8.99901883zm.0001282 2.00571437c-3.8644153 0-6.99714284 3.13272754-6.99714284 6.99714284s3.13272754 6.9971428 6.99714284 6.9971428 6.9971428-3.1327275 6.9971428-6.9971428-3.1327275-6.99714284-6.9971428-6.99714284zm8.7619048-3.91047622c.7642569 0 1.3838095.61955263 1.3838095 1.38380953s-.6195526 1.38380953-1.3838095 1.38380953c-.764257 0-1.3838096-.61955263-1.3838096-1.38380953s.6195526-1.38380953 1.3838096-1.38380953z" fill="#FFFFFF" fill-rule="nonzero"/>
+            </g>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

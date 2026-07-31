@@ -1491,7 +1491,7 @@ case object VueCinemasSheffield extends Cinema("Vue Cinemas Sheffield", "Vue She
 
 // ── Germany (Filmstarts) — data-driven from the full roster ──────────────────
 // `GermanRosterData` (generated from data/germany/regions.json) carries 158
-// regions / 1,533 cinemas. Each venue is a `GermanCinema` instance built ONCE in
+// regions / 1,529 cinemas. Each venue is a `GermanCinema` instance built ONCE in
 // `GermanRoster` and reused everywhere (the region's cinemas, `Cinema.byCity`, and
 // the scrape catalog) — so the same `Source` instance is used throughout and
 // identity equality holds like the hand-authored `case object` cinemas did.

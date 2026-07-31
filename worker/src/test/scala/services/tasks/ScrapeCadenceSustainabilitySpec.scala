@@ -34,7 +34,7 @@ class ScrapeCadenceSustainabilitySpec extends AnyFlatSpec with Matchers {
   // Post the per-country worker split each machine scrapes exactly ONE country's
   // cinemas (its own Mongo db + change-stream), so the binding constraint on the
   // shared caps is the LARGEST single country's corpus — NOT the global sum across
-  // every country. Germany (the full Filmstarts roster, ~1,533 venues) is currently
+  // every country. Germany (the full Filmstarts roster, ~1,529 venues) is currently
   // that max; if a bigger country lands, this recomputes and fails HERE.
   private val catalog = new CinemaScraperCatalog(NoFetch, LocalDate.of(2026, 6, 21))
   private val corpusSize: Int =

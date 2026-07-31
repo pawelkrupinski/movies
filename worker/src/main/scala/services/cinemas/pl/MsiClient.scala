@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import tools.HttpFetch
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
 
 import java.time.{LocalDate, YearMonth, ZoneId}
 import scala.util.Try
@@ -79,28 +79,59 @@ class MsiClient(
       .getOrElse(cleanTitle)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val thisMonth = YearMonth.from(today)
-    val nextMonth = thisMonth.plusMonths(1)
+    // Walk forward a month at a time instead of fetching a fixed two. MSI venues
+    // usually publish only 1–2 months ahead, but nothing in the portal promises
+    // that, and a hard two-month window silently hides every screening past it —
+    // the exact horizon cap `ScrapeHorizon` exists to forbid ("we want ALL future
+    // screenings"). The walk is bounded by `ScrapeHorizon.MaxDays` and stops after
+    // `MaxEmptyMonths` consecutive months that yielded nothing, so the typical
+    // venue still costs three or four requests rather than twenty-four.
+    //
+    // A month that FAILS to fetch counts as empty for the stop rule: we cannot
+    // tell a missing month from a quiet one, and treating failures as "keep
+    // going" would walk the full two years every time a portal blipped.
+    val lastMonth = YearMonth.from(today.plusDays(ScrapeHorizon.MaxDays))
 
-    // Fetch both months, tolerating a per-month failure so one reachable month
-    // still contributes its screenings. But if EVERY month fetch fails, the
-    // portal itself is down — propagate the error so the scrape surfaces as a
-    // failure (red on /uptime) instead of being swallowed into an empty list
-    // (white, indistinguishable from a genuinely film-dormant venue). Same guard
-    // as KinoAwangarda2Client / KinoPatriaClient.
-    val fetched = Seq(thisMonth, nextMonth)
-      .map(ym => ym -> Try(http.get(monthUrl(baseUrl, mvcPath, ym))))
-    if (fetched.forall(_._2.isFailure)) throw fetched.head._2.failed.get
+    var month     = YearMonth.from(today)
+    var emptyRun  = 0
+    val attempts  = Seq.newBuilder[Try[String]]
+    val slots     = Seq.newBuilder[MsiScraper.RawSlot]
 
-    val slots = fetched.flatMap { case (ym, html) =>
-      html.toOption.filter(_.nonEmpty).toSeq
-        .flatMap(MsiScraper.parseMonthWithYear(_, ym, baseUrl, titleCleaner))
+    while (!month.isAfter(lastMonth) && emptyRun < MaxEmptyMonths) {
+      val body = Try(http.get(monthUrl(baseUrl, mvcPath, month)))
+      attempts += body
+      val monthSlots = body.toOption.filter(_.nonEmpty).toSeq
+        .flatMap(MsiScraper.parseMonthWithYear(_, month, baseUrl, titleCleaner))
+      slots ++= monthSlots
+      emptyRun = if (monthSlots.isEmpty) emptyRun + 1 else 0
+      month = month.plusMonths(1)
     }
-    MsiScraper.toMovies(slots, cinema)
+
+    // Tolerate a per-month failure so one reachable month still contributes its
+    // screenings. But if EVERY month we attempted failed, the portal itself is
+    // down — propagate the error so the scrape surfaces as a failure (red on
+    // /uptime) instead of being swallowed into an empty list (white,
+    // indistinguishable from a genuinely film-dormant venue). Same guard as
+    // KinoAwangarda2Client / KinoPatriaClient.
+    val tried = attempts.result()
+    if (tried.forall(_.isFailure)) throw tried.head.failed.get
+
+    MsiScraper.toMovies(slots.result(), cinema)
   }
 }
 
 object MsiClient {
+
+  /** How many consecutive month pages may yield nothing before the walk gives up.
+   *
+   *  Three, not two. MSI venues were measured publishing one to two months ahead,
+   *  so a threshold of two cannot see a programme that resumes after a two-month
+   *  summer gap — exactly the situation half these venues are in right now. Three
+   *  clears that with headroom while a dormant venue still costs three requests.
+   *
+   *  This is a stop rule, not a horizon: the walk is bounded by
+   *  `ScrapeHorizon.MaxDays`, and a venue that keeps publishing keeps being read. */
+  val MaxEmptyMonths = 3
 
   def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth): String =
     s"$baseUrl$mvcPath?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"

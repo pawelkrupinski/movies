@@ -75,9 +75,25 @@ object TraktClient {
     else Some(TraktMovie((m \ "title").asOpt[String].getOrElse(""), (m \ "year").asOpt[Int], imdb, tmdb))
   }
 
-  /** Trakt requires client_id auth + an API version on every request. */
-  private def headers(key: String): Map[String, String] =
-    Map("trakt-api-key" -> key, "trakt-api-version" -> "2")
+  /** Identify as an application, not as Chrome. Trakt's docs list `User-Agent` as
+   *  required ("we suggest using your app and version like `MyAppName/1.0.0`") and
+   *  they announced enforcement in Dec 2025 alongside Cloudflare rules aimed at
+   *  bot traffic — a browser UA on a JSON API endpoint is exactly that shape.
+   *  `RealHttpFetch` sends a Chrome UA by default, so this override is what makes
+   *  us honest (and it now REPLACES rather than appends — see `buildRequest`). */
+  private[enrichment] val UserAgent = "kinowo/1.0 (+https://kinowo.fly.dev)"
+
+  /** Trakt requires client_id auth, an API version, a JSON content type and a
+   *  meaningful User-Agent on every request. A missing content type is a 412 and
+   *  a rejected key is a 403, so sending all four keeps the failure modes
+   *  distinguishable rather than collapsing them into one opaque 403. */
+  private[enrichment] def headers(key: String): Map[String, String] =
+    Map(
+      "trakt-api-key"     -> key,
+      "trakt-api-version" -> "2",
+      "Content-Type"      -> "application/json",
+      "User-Agent"        -> UserAgent
+    )
 
   private def enc(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 }

@@ -96,4 +96,29 @@ class TraktClientSpec extends AnyFlatSpec with Matchers {
   it should "swallow a network failure and return empty" in {
     client(_ => throw new RuntimeException("HTTP 503")).search("Dune", Some(2021)) shouldBe empty
   }
+
+  // Trakt's docs list FOUR required headers, and the status codes are only
+  // diagnosable if we send all of them: 403 means "invalid API key or unapproved
+  // app", 412 means "use application/json content type", 429 means rate-limited.
+  // We were sending two, so a missing content type and a rejected key were
+  // indistinguishable. `RealHttpFetch` also sends a Chrome User-Agent by default,
+  // which is the shape Trakt's Cloudflare bot rules (announced Dec 2025) target on
+  // a JSON API — so the client must identify itself as an application instead.
+  "every request" should "carry the four headers Trakt documents as required" in {
+    val fetch = new RecordingFetch(_ => "[]")
+    new TraktClient(fetch, apiKey = Some("cid")).search("Dune", Some(2021))
+    val sent = fetch.headers.head
+    sent("trakt-api-key")     shouldBe "cid"
+    sent("trakt-api-version") shouldBe "2"
+    sent("Content-Type")      shouldBe "application/json"
+    sent("User-Agent")        should startWith ("kinowo/")
+    sent("User-Agent")        should not include "Mozilla"
+  }
+
+  it should "send the same headers on the id-keyed lookup, not just on search" in {
+    val fetch = new RecordingFetch(_ => "[]")
+    new TraktClient(fetch, apiKey = Some("cid")).findByImdbId("tt0111161")
+    fetch.headers.head.keySet shouldBe Set(
+      "trakt-api-key", "trakt-api-version", "Content-Type", "User-Agent")
+  }
 }

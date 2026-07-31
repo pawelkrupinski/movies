@@ -33,8 +33,8 @@ object ScrapeCadence {
    *  ≥1.5× headroom (`cap × ticksPerWindow ≥ corpus × 1.5`). Post the per-country
    *  worker split each machine scrapes ONE country, so the binding corpus is the
    *  largest country, not the global sum. Rose 25→30 for the nationwide UK Flicks
-   *  roster, then 30→40 when the full German Filmstarts roster (1,533 cinemas) made
-   *  Germany the largest country (60 ticks × 40 = 2400 ≥ 1533 × 1.5 = 2300). */
+   *  roster, then 30→40 when the full German Filmstarts roster (1,529 cinemas) made
+   *  Germany the largest country (60 ticks × 40 = 2400 ≥ 1529 × 1.5 = 2294). */
   val MaxEnqueuePerTick: Int = 40
 
   /** Throttled cap for [[ScrapeReaper]] (`KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK`).
@@ -47,7 +47,7 @@ object ScrapeCadence {
    *  Greater-London + Manchester Flicks roster took it past 450, then 8→20 when the
    *  full nationwide UK Flicks roster (~850 venues) took the corpus past 1150, then
    *  20→26 when the full German Filmstarts roster made Germany the largest per-country
-   *  corpus at 1,533 — 60 ticks × 26 = 1560 ≥ 1533), so a
+   *  corpus at 1,529 — 60 ticks × 26 = 1560 ≥ 1529), so a
    *  credit-starved pool — which Fly caps to baseline, clearing only a scrape or two
    *  per minute — reaches idle as fast as the freshness guard permits. The old cap
    *  of 15 let a standing backlog of 15 keep the throttled pool pinned busy, so

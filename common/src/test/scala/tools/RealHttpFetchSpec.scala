@@ -140,4 +140,29 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy
       RealHttpFetch.ProxyConfig("isp.decodo.com", Seq.empty, "u", "p")
   }
+
+  // ── Caller-supplied headers must REPLACE the defaults ─────────────────────
+  // `HttpRequest.Builder.header` APPENDS. Applying caller overrides with it sent
+  // BOTH values — so `WikidataClient`, which exists to satisfy Wikimedia's
+  // "identify yourself" policy, was sending its polite UA *and* a Chrome string,
+  // and any API that judges us by our UA saw a browser claiming to be a browser
+  // twice. `setHeader` is the overwrite form.
+  "buildRequest" should "let a caller override a default header instead of sending both values" in {
+    val request = new RealHttpFetch().buildRequest(
+      "https://example.org/x", Map("User-Agent" -> "kinowo/1.0 (contact)"))
+    request.headers.allValues("User-Agent") should contain only "kinowo/1.0 (contact)"
+  }
+
+  it should "keep the defaults a caller did NOT override" in {
+    val request = new RealHttpFetch().buildRequest(
+      "https://example.org/x", Map("User-Agent" -> "kinowo/1.0 (contact)"))
+    request.headers.allValues("Accept-Encoding") should contain only "gzip"
+    request.headers.firstValue("Accept-Language").isPresent shouldBe true
+  }
+
+  it should "still send a caller header that has no default to collide with" in {
+    val request = new RealHttpFetch().buildRequest(
+      "https://api.trakt.tv/search/movie", Map("trakt-api-version" -> "2"))
+    request.headers.allValues("trakt-api-version") should contain only "2"
+  }
 }

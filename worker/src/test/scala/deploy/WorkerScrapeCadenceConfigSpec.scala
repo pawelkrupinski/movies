@@ -17,7 +17,7 @@ import scala.concurrent.duration.*
  * a running-JVM test can reach. That makes an accidental edit here silent: the
  * worker just scrapes at the wrong rate until someone reads a graph.
  *
- * DE is deliberately the slow one. Its roster is ~1,533 cinemas across 158
+ * DE is deliberately the slow one. Its roster is ~1,529 cinemas across 158
  * Filmstarts regions, ~5x PL, on the box with the least CPU credit and heap
  * headroom in the fleet (see the JVM sizing note in `fly.worker.de.toml`).
  *
@@ -38,7 +38,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
    *
    *  The stale 5 is why this guard stayed green through a cadence that had become
    *  unreachable: at 5 the sweep computes to 3.0h and fits the old 180min window,
-   *  while the real sweep is 1533 x 13.4 x 1400ms = 7.9h. DE's oldest cinema sat
+   *  while the real sweep is 1529 x 13.4 x 1400ms = 7.9h. DE's oldest cinema sat
    *  at ~12.8h and climbing, with the guard reporting everything fine. A constant
    *  measured against one horizon does not survive the horizon changing — the
    *  invariant below is only as honest as this number. */

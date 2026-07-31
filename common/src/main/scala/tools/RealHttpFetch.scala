@@ -194,7 +194,7 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     case other => other
   }
 
-  private def buildRequest(url: String, extraHeaders: Map[String, String] = Map.empty): HttpRequest = {
+  private[tools] def buildRequest(url: String, extraHeaders: Map[String, String] = Map.empty): HttpRequest = {
     val builder = HttpRequest.newBuilder()
       .uri(URI.create(url))
       .timeout(RealHttpFetch.requestTimeoutFor(url))
@@ -206,7 +206,12 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
       // negotiation explicit and shrinks the wire payload.
       .header("Accept-Encoding", "gzip")
       .GET()
-    extraHeaders.foreach { case (k, v) => builder.header(k, v) }
+    // `setHeader`, NOT `header`: the latter APPENDS, so a caller overriding one of
+    // the defaults above (most importantly `User-Agent`) got BOTH values sent —
+    // our identity plus a Chrome string, on the very requests where the override
+    // exists because the upstream cares what we claim to be. Wikimedia's UA policy
+    // and Trakt's ("use your app and version") are both that case.
+    extraHeaders.foreach { case (k, v) => builder.setHeader(k, v) }
 
     decorateBuilder(builder, url).build()
   }
@@ -350,7 +355,7 @@ object RealHttpFetch {
     // given time. 40s covers the handshake; the read budget stays the default.
     HostPolicy(Set("iluzjon.fn.org.pl"), connectTimeout = Duration.ofSeconds(40)),
 
-    // Filmstarts (Webedia DE). Germany's 1,533 venues each fan out one listing
+    // Filmstarts (Webedia DE). Germany's 1,529 venues each fan out one listing
     // fetch plus one request per advertised day onto ONE origin, and with no
     // pacing the worker's fan-out delivers them in bursts the host answers with
     // 429. That was our steady state, not an anomaly: ThrottledHttpFetch's
