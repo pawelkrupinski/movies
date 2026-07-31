@@ -63,6 +63,9 @@ re-tested adversarially and are confirmed NOT our bug.**
 > was reading a different venue's page.** See **"Follow-up pass"** at the end of
 > this entry; the sections above are the original investigation record, with
 > `→ fixed in the follow-up pass` markers where they were later actioned.
+>
+> **Both white-bar fixes are CONFIRMED GREEN in prod** (KinoPort 09:30 UTC,
+> The Old Court 10:30 UTC) — no verification is owed to the next run.
 
 ### ✅ Verification owed from 2026-07-28: the UK Flicks span-button fix WORKS
 
@@ -503,12 +506,19 @@ took an external investigation to diagnose rather than a log line.
   a genuinely dead source would now go red. **Re-check after 3 Sept**: if Studio
   is still white once its season restarts, the two-slug fallback needs another
   look.
-- **The Old Court Windsor — verification owed, do this FIRST next run.** UK venues
-  scrape on a slow chunked cadence (its buckets are ~7h apart: 13:30 / 20:30 /
-  03:30 UTC), so at hand-off its newest bucket still predated the deploy. Expect
-  **12 films / 15 showtimes**. If it is still white with `oldcourt.org.uk/events`
-  serving its usual listing, the client needs re-probing — most likely the
-  box-office path discriminator or the class-less DOM shifted.
+- **The Old Court Windsor — CONFIRMED GREEN.** UK venues scrape on a slow chunked
+  cadence (its buckets run ~7h apart: 13:30 / 20:30 / 03:30 UTC), so this needed
+  waiting out; the **10:30 UTC** bucket came back `succ=1, fail=0, zero=0` and
+  `kinowo_uk.web_screenings` now holds real rows keyed to `oldcourt.org.uk/event/…`
+  URLs. **No follow-up owed. Both of this run's white-bar fixes are verified in
+  prod.**
+  - Cosmetic, NOT a scraper bug, noted so nobody re-diagnoses it: the projected
+    row is `supertroopers3|2001` — enrichment bound the 2001 original rather than
+    the 2026 film. The client supplies no year (the venue's listing has none), so
+    this is the known year-disagreement class, resolved at enrichment, not here.
+  - Only 9 of the 12 films had projected at the time of checking; the rest were
+    still incubating in `pending_movies`. Expected for a venue whose entire slate
+    is new film+cinema pairs.
 
 ### Still open after this pass
 
