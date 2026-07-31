@@ -43,6 +43,313 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-07-31
+
+**All three countries swept.** Totals: **PL 18 white / 2 red**, **DE 167 white /
+4 red (of 1,538)**, **UK 57 white / 0 red (of 848)**. Newest bucket everywhere
+2026-07-31 07:30 UTC. **One real bug found and fixed — KinoPort (Gdańsk),
+`fixed` @385cfd9b5.** Discovery method unchanged (`/uptime` auth-gated): a mongosh
+replay of `UptimeController`'s predicate over prod `uptimeBuckets` via the
+running `flyctl proxy` on `127.0.0.1:27017`, iterated over `kinowo` /
+`kinowo_de` / `kinowo_uk` with `db.getSiblingDB`.
+
+**The headline is that both of the last run's open verification items closed
+cleanly, and the two remaining big cohorts (DE open-air, UK Flicks) were
+re-tested adversarially and are confirmed NOT our bug.**
+
+### ✅ Verification owed from 2026-07-28: the UK Flicks span-button fix WORKS
+
+@d618f3a86 (match the session button by CLASS, not tag, so `<span>`-only
+unbookable venues still yield showtimes) was shipped but unobserved at last
+hand-off. **All four target venues have gone GREEN** — Barn Cinema Dartington,
+Broadway Cinema Villa Marina, Watersmeet and Cube Cinema Bristol are all absent
+from today's UK white set, and all four still advertise day tabs on Flicks
+(7 / 7 / 3 / 4 `data-date` values respectively). Neuadd Dwyfor Pwllheli (last
+run's un-probed transient) also fell off. **Confirmed end-to-end; close this
+item.**
+
+### PL — 18 white (was 20)
+
+**Set changes vs 2026-07-28:**
+- **FELL OFF (4):** Kino Cytadela, Kino MOK Nowa Ruda, Kino ŚDK, Kozienicki Dom
+  Kultury. (Cytadela had been flagged "escalate if still white in 2+ runs" — it
+  recovered instead, so that escalation is void.)
+- **NEW (2):** **KinoPort** — a real bug, **`fixed`** (below). **Kino Zachęta** —
+  `unfixable` (below).
+- **Carried over (16, all re-probed live this run, all still dormant):** ADA Kino
+  Studyjne, Cyfrowe Kino, DKF Politechnika, Kino CK Lublin, Kino Chatka Żaka,
+  Kino Kuźnica, Kino PDK, Kino Sfinks (needs-human), Kino Tur, Kino Warszawa
+  (Przeworsk), Kino Wisła Brzeszcze, Kino Zamek (needs-human), Kino nad Wartą,
+  Kino Świt, Patria, Studio (Opole). **None recovered-but-broken** — every
+  parser is correctly reporting an empty venue. Evidence per venue in the
+  carried-over section below.
+
+### KinoPort (GCSW, formerly CSW Łaźnia, Gdańsk) — `fixed` @385cfd9b5
+
+- Old client: `FilmwebShowtimesClient(1735)`. **Classic "Filmweb went silently
+  empty for a small venue".** `/api/v1/cinema/1735/seances?date=…` returns
+  exactly `[]` (2 bytes) for all seven dates 2026-07-31 → 08-06, while
+  `/api/v1/cinema/1735/info` still resolves correctly to
+  `{"name":"KinoPort","city":"Gdańsk","street":"Strajku Dokerów 5"}` — the id is
+  right, the feed is abandoned. The e2e corpus had the same rot baked in: all
+  seven `08-06-2026/www.filmweb.pl/api/v1/cinema/1735/seances.*` fixtures were
+  `[]`, so the white bar was reproducible offline.
+- Meanwhile the venue is screening **five films a day**. `laznia.pl/kinoport/
+  repertuar/` is now only a pointer ("Obecnie informacje nt. kina i bieżącego
+  repertuaru znajdziecie na: www.gcsw.pl"). GCSW is WordPress + Elementor and
+  publishes the entire repertoire as ONE post under the `kino` category.
+- **The permalink rotates** (`/2026/07/22/repertuar-kinoport-gdansk/`), so the
+  client reads the stable WP REST route `**/wp-json/wp/v2/posts?categories=49**`
+  and takes `content.rendered`. (Checked the alternatives: `/category/kino/`,
+  `/kinoport/` and `/kino/` all 404, and `/repertuar/` 302s to whichever post the
+  alias was last pointed at — today a stale June one. So the `sourceUrl` /uptime
+  link is GCSW's homepage, which does link the live post.)
+- Markup: `<h3>…Lipiec 2026</h3>` month header (**year optional** — the next
+  header reads just "Sierpień"), `<h4>30.07 (czwartek)</h4>` day, one `<p>` per
+  screening as `<strong>18:00 – Title</strong> (72′)<br><em>2026, reż.
+  Director</em>`. The `′` is U+2032 PRIME, not an apostrophe.
+- **The trap that would have silently doubled the venue's listing:** the same
+  post continues below with an Elementor accordion titled **"ARCHIWALNE
+  SEANSE"** holding identically-shaped PAST screenings (2–25 July), in a second
+  long-form day format ("2 lipca (czwartek)"). The client drops any `<details>`
+  whose `<summary>` says ARCHIWALNE — structural, not a text offset — and the
+  spec pins that "Truposz" / "Mystery Train" (archive-only titles) never appear
+  and the earliest showtime is 2026-07-30 18:00.
+- Result: **23 films / 42 showtimes**, 2026-07-30 → 08-21, with runtime, release
+  year and director read off each paragraph. No booking deep-links exist (box
+  office only), so `Showtime.bookingUrl` is `None` by design.
+- **Fail-before / pass-after, at three layers.** (1) New `KinoPortClientSpec`,
+  8 cases over a real 2026-07-31 recorded fixture. (2) `CinemaScraperCatalogSpec`
+  had an explicit guard *"scrape KinoPort off Filmweb, not the retired gcsw.pl
+  alias"* — inverted to assert `gcsw.pl` and NOT `www.filmweb.pl`. (3) The e2e
+  corpus: `expected-schedules.txt` went from **0 to 8** KinoPort lines.
+  `CinemaClientMarkersSpec`'s Filmweb examples moved to Kino Zachęta (still
+  Filmweb-backed) and its KinoPort `sourceUrl` assertion now pins GCSW.
+- Snapshots: `read-model-snapshot.json` (+502 lines) and `expected-schedules.txt`
+  regenerated and re-run stable. **`expected-*.html` did NOT shift** — Gdańsk is
+  not one of the three snapshot cities and none of KinoPort's art-house slate
+  displaced a poster/source tail in Poznań / Wrocław / Warszawa / `/plan`.
+- Dead code removed in the same commit: the seven `[]` Filmweb-1735 corpus
+  fixtures.
+
+### Kino Zachęta (Kleczew) — `unfixable: the venue publishes its repertoire only as a JPEG`
+
+- Client: `FilmwebShowtimesClient(2405)`. Filmweb is genuinely empty — `[]` for
+  all seven dates 07-31 → 08-06 — and `/info` confirms the id still maps to
+  `{"name":"Kino Zachęta","city":"Kleczew","street":"Al. 600-lecia 33"}`. So this
+  is the same Filmweb-went-empty shape as KinoPort.
+- **But there is nothing to repoint to.** The operator is Biblioteka-Centrum
+  Kultury; `bckkleczew.pl/repertuar.html` (linked from the town site
+  `kleczew.pl/strona-2573-kino_zacheta.html`) has a content div consisting of a
+  **single `<img src="files/image/od2407.jpg">`** and nothing else. Reading the
+  JPEG: *Kino "Zachęta" w Kleczewie zaprasza*, columns **24.07–30.07** only —
+  Ekipa Zwierzaków 13.30, Vaiana 15.00/17.00, Odyseja 19.00. `Last-Modified`
+  Fri 24 Jul 2026. The venue runs a weekly Thu→Wed poster cadence, so the
+  published week **ended the day before this run**; guessed successors
+  (`od3107`, `od0108`, `od3007`, `od0208`.jpg) all 404.
+- `/130-godziny-otwarcia.html` confirms it is an operating cinema ("Kino jest
+  czynne od poniedziałku do niedzieli. Seanse … 15:30, 17:30 i 19:30"). No break
+  announced (BCK's news RSS, latest item 30 Jul, has no cinema-break post).
+  `kinozacheta.pl` / `zacheta.kleczew.pl` / `mgokis.kleczew.pl` /
+  `gokis.kleczew.pl` all fail DNS. Zero hits for "Kleczew"/"Zachęta" on
+  biletyna.pl, bilety24.pl, ekobilet.pl or systembiletowy.pl — no ticketing
+  portal we already have a client for carries it.
+- **No text scraper can be pointed at a JPEG**, so there is no fix a
+  fail-before/pass-after test could back. The only routes are OCR of
+  `bckkleczew.pl/files/image/*.jpg` (a new capability, and brittle against a
+  hand-made poster) or accepting the gap. **Left on Filmweb** — if BCK ever
+  restores its Filmweb feed the venue recovers for free.
+  **needs-human if we want Kleczew covered: decide whether an OCR path is worth
+  building for one small venue.**
+
+### DE — 167 white (was 323), 4 red — re-tested; still an upstream coverage gap
+
+The white count roughly halved, and what remains is **overwhelmingly open-air /
+Sommerkino / Kinomobil** by name — exactly the cohort last run flagged as
+under-carried by filmstarts. This run tested that hypothesis properly, including
+the one scenario that would have made it OUR bug.
+
+- **Control healthy:** `theater-A0076` returns `{"error":false}` with 100 904 /
+  123 817 / 6 028 bytes of `results` across three dates.
+- **Eight sampled white venues** (Landsberg `A2207`, Biesdorf `A1809`, Güstrow
+  `A2933`, Freibad Göttingen `A1788`, Filmnächte am Elbufer `A1801`, Autokino
+  Dillingen `A2926`, Kinomobil Löchgau `A0797`, Traumstern `A1190`): all three
+  dates each, **HTTP 200, exactly 776 bytes,
+  `{"error":true,"message":"no.showtime.error","nextDate":null,"results":[]}`**.
+  `nextDate:null` means filmstarts has no FUTURE showtime at all, not just none
+  that day. Their `/kinoprogramm/kino/<ID>/` pages are 200 with
+  `"itemListElement": []` (control: 12 elements).
+- **Three are provably screening on their own sites:** Filmnächte am Elbufer
+  ("52 Veranstaltungen in Dresden" — Nürnberg 03.08 21:00, Marty Supreme 04.08
+  21:00, Supergirl 05.08 21:00), Open Air Kino im Freibad Göttingen (12 dated
+  shows ≥31.07 in `OpenAirKino_2026-WEB.pdf`), and **Traumstern Lich — note, a
+  year-round arthouse, NOT open-air** ("Kinowoche: 30. Juli – 5. August 2026").
+  One — Open Air Kino Landsberg — is **correctly** empty: its own site's API
+  returns films for the indoor Olympia site only, the open-air site is dark.
+- **The decisive new test — is it a mis-mapped id on our side? NO.** Filmstarts'
+  own Dresden city page lists "Filmnächte am Elbufer" exactly once, as
+  `<a href="/kinoprogramm/kino/A1801/">` with `data-theater="{"id":"A1801"…}"` —
+  **the same id we use**, and no alternative exists. (`/suche/` is 410 Gone
+  site-wide, hence the city-page route.) Our request URL shape matches
+  `WebediaShowtimesClient` exactly.
+- **Verdict: `needs-human` — an aggregator coverage gap, unchanged but now
+  firmly evidenced.** Filmstarts does not carry open-air festival programmes or
+  some small arthouses; those publish only on their own sites. A fix means
+  bespoke own-site clients (the cohort is name-identifiable: `Autokino…`,
+  `Sommerkino…`, `Open Air…`, `Kinomobil…`), which is a project, not a
+  white-run change — and no fail-before/pass-after test can be written against a
+  source that correctly reports what it knows.
+- **DE red (4, down from 23, out of scope):** all still HTTP 404 on
+  `/kinoprogramm/kino/<ID>/` — Inselkino Baltrum `G01C9`, Kino Kiste `A0743`,
+  Heppel-Ettlich `A2843`, Kino Babenhausen `A2165`. Venues delisted from
+  filmstarts, correctly red rather than white. **needs-human: prune or re-resolve
+  these ids** — they will never recover on their own and burn retries every
+  cycle. (Standing item, second run running; the set shrank from ~11 ids to 4.)
+
+### UK — 57 white (was 63), 0 red — swept all 57; **zero client bugs**
+
+Method (same discriminator that found the span-button bug): a Flicks venue page
+with a programme carries `data-date` day tabs; 200-with-zero-tabs means Flicks
+holds no sessions at all. Slugs resolved against Flicks' authoritative
+848-entry `sitemap-cinemas.xml` rather than guessed — 17 of the 57 differ from
+the naive slug (e.g. Plaza Community Cinema Liverpool → `plaza-crosby`,
+Belmont Filmhouse → `belmont-filmhouse-aberdeen`).
+
+- **Control:** `curzon-soho` → 200, **24** `data-date` tabs. Method sound.
+- **56 of 57 resolved; every one HTTP 200 with ZERO `data-date` tabs.** The pages
+  are genuine, correctly-titled venue pages (~56 KB), not soft-404s or
+  redirects — healthy pages run 64 KB+.
+- **Venues with tabs while we recorded zero: NONE.** Last run's bug class is
+  fully cleared; there is no second one hiding behind it.
+- **1 unresolved:** **The Old Court Windsor** — absent from Flicks'
+  `sitemap-cinemas.xml` entirely; `the-old-court-windsor`, `old-court-windsor`,
+  `the-old-court` all 404 (the only Windsor entry is a different venue,
+  `the-screen-cinema-windsor`). Our config points at a slug Flicks no longer
+  publishes. **needs-human: re-resolve or retire that venue's slug** — it is the
+  one UK row that is arguably our config's fault rather than a coverage gap.
+- **Everyman Cinema Durham** is on `GatsbyBoxOfficeClient`, not Flicks (its
+  Flicks slug exists but is irrelevant); previously confirmed "closed until
+  further notice". `intentionally-dormant`.
+- Verdict for the other 55: **needs-human — aggregator coverage gap**, unchanged
+  from 2026-07-28. Several are genuinely closed (Belmont Filmhouse shut since
+  Oct 2022; Watermans Brentford closed Apr 2024), but Phoenix East Finchley, the
+  ICA and ARC Stockton are unambiguously operating and simply missing from
+  Flicks' backend. The only fix is per-venue own-site scrapers.
+
+### PL out-of-scope RED (not white — fetch failure, different mode)
+
+- **Wybrzeże** — 3-scrape-failing for the **fourth** run running (07-21, 07-24,
+  07-28, 07-31): `CircuitOpenException: circuit open for
+  bilety.rck.kolobrzeg.pl`, behind the TLS certificate that expired at the
+  source. The breaker is behaving correctly. **needs-human — four runs old; the
+  cinema must renew its cert, we cannot fix this from our side.** Worth deciding
+  whether to retire the venue rather than keep retrying it indefinitely.
+- **api.trakt.tv** — NEW red this run, and not a cinema: `HTTP 403` on
+  `/search/movie?query=…`. An enrichment source rejecting us, not a scrape.
+  Out of scope for a white run but **worth a human's eye** — a 403 (not 429)
+  suggests a key/permission problem rather than throttling.
+
+### Carried-over PL dormant — per-venue evidence (all re-probed live this run)
+
+All 16 still genuinely un-programmed; parsers correct. Counts quoted are from
+this run.
+
+- **ADA Kino Studyjne** — biletyna, `ScreeningEvent`=0, "Brak wydarzeń".
+- **Cyfrowe Kino (Środa Śląska)** — after stripping `<style>`/`<script>` (the
+  theme's CSS names the classes), the real DOM has only the empty container
+  `<div class="amy-movie-items"></div>`, **0** real items.
+- **DKF Politechnika** — Filmweb 1645 `[]` for 07-31, 08-01, 08-05. Academic break.
+- **Kino CK Lublin** — `ck-lublin.bilety24.pl`, `Kup bilet - Film:`=0, 2 concerts.
+- **Kino Chatka Żaka** — reads `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm`;
+  `h3.header-light`=0, `div.box-row`=0, "Brak wydarzeń".
+- **Kino Kuźnica** — `shd.systembiletowy.pl`; `repertoire.html` now redirects to
+  `/messages/noRepertoire` ("Sprzedaż online … jeszcze się nie rozpoczęła").
+- **Kino PDK (Pyrzyce)** — biletyna, `ScreeningEvent`=0; only 1 ComedyEvent +
+  1 TheaterEvent.
+- **Kino Sfinks (Kraków)** — `table.widok_listy`=0, `tr[onclick]`=0,
+  `.empty-results`=1, "Brak wydarzeń". Calendar has **not** repopulated, so
+  there is still no populated row shape to rebuild the parser against.
+  **needs-human, unchanged since 2026-07-11.**
+- **Kino Tur (Turek)** — biletyna `ScreeningEvent`=0 (only the ComedyEvent
+  "Mariusz Kałamaga"). Last run left a trigger: migrate to the venue's own
+  `mdk.turek.pl` **if** biletyna is still empty while mdk has a current monthly
+  article. **The trigger has NOT fired** — mdk.turek.pl's newest repertoire
+  article is still **czerwiec 2026**; `…-lipiec-2026` and `…-sierpien-2026` both
+  404. Both sources are empty, so the venue is simply not programming. Keep the
+  trigger armed for the next run.
+- **Kino Warszawa (Przeworsk)** — real host `bilety-kino.przeworsk.um.gov.pl`;
+  2026-07 and 2026-08 both 200 with an empty event list.
+- **Kino Wisła Brzeszcze** — bilety24 organiser 1539: `Film:`=0; 16 Koncert,
+  4 Spektakl, 2 Wydarzenie, 1 Wystawa.
+- **Kino Zamek (Szczecin)** — "Nie znaleziono wydarzeń spełniających kryteria";
+  only category links, **no individual film-title slugs**. Its MSI side for
+  2026-08 has concerts only. Standing `needs-human` festival filter-gap,
+  unchanged; likely self-resolves when normal repertoire returns.
+- **Kino nad Wartą (Koło)** — bilety24 organiser 1626: `Film:`=0; 22 Koncert,
+  6 Spektakl.
+- **Kino Świt (Warszawa)** — `div.cks-movie-card`=1 (container only), "Brak
+  nadchodzących seansów filmowych".
+- **Patria (Ruda Śląska)** — day tabs 31.07–06.08 all render "Brak filmu".
+- **Studio (Opole)** — break to **3 września 2026**, confirmed live. **See the
+  stale-URL heads-up below.**
+
+### Heads-up (NOT a white cause; left for a human): `KinoStudioClient` reads a soft-404
+
+`mok.opole.pl` now 403s; the live host is **`mdk.opole.pl`**. `KinoStudioClient
+.RepertoireUrl` → `mdk.opole.pl/kino-studio.html` returns **HTTP 200 but serves
+the CMS 404 page** (`<title>404 - Młodzieżowy Dom Kultury w Opolu`, no
+`div.ckeditor`), while the real page is `mdk.opole.pl/kino-studio-przerwa.html`
+(`<title>Kino STUDIO`, has `ckeditor`, "W czasie wakacji nasze kino jest
+nieczynne. Startujemy już 3 września :)").
+
+Not fixed this run, deliberately: the venue is on a confirmed break to 3 Sept,
+so the URL fix would surface **zero** films and there is no fail-before /
+pass-after behaviour test to write — the bar stays white either way. It is a
+latent trap though: **when the break ends on 3 September the scraper will keep
+reading a soft-404 and Studio will stay white for a reason that is entirely
+ours.** Follow-up: repoint the client (or make it follow whichever of the two
+pages carries `div.ckeditor`) and re-record its fixture. **Best done in the
+first run after 3 Sept, when a populated page exists to test against.**
+
+### Also worth recording (previous run's `MsiClient` 2-month horizon cap)
+
+Unchanged and still not actioned — see the 2026-07-28 entry. It causes no white
+bar; every out-of-window title measured was a concert / stand-up / theatre that
+`OnlyMovieEventsFilter` would drop anyway.
+
+### Test-infra note for the next run: how to run `itAll` locally here
+
+Worth 10 minutes of a future run's time. A fresh auto worktree has **no
+`.env.local`**, and `itAll` is only `addCommandAlias("itAll", "all
+web/IntegrationTest/test worker/IntegrationTest/test")` — it sets nothing up. So
+a bare `sbt itAll` aborts every Mongo-backed spec with *"MONGODB_URI not set"*.
+Run it as:
+
+```
+MONGODB_URI="mongodb://127.0.0.1:28017/?directConnection=true" \
+MONGODB_DB="kinowo_it_<something-unique>" \
+TMDB_API_KEY=$(grep '^TMDB_API_KEY=' /Users/pawel/projects/movies/.env.local | cut -d= -f2-) \
+sbt itAll
+```
+
+**:28017 is the local brew replica set, NOT :27017** — that is the `flyctl proxy`
+to prod. And **always pass a unique `MONGODB_DB`**: the specs default to
+`"kinowo"`, which on the local instance is full of residue from previous runs
+(that residue alone caused two spurious failures this run).
+
+Mid-run this layer also failed on `integration.StagingFoldIntegrationSpec` →
+*"should keep a retired key's screenings"* (`BsonInvalidOperationException:
+Missing field: updatedAt`) while passing when run alone. That was **not** this
+run's change — confirmed by running the same suite in a throwaway worktree at
+`origin/main`, which failed identically — and it has since been **fixed on main
+by someone else at @5cf7ce873** (a sibling spec was seeding an `updatedAt`-less
+row into a shared `pending_movies`; it now gets its own isolated database). The
+transferable lesson, which cost time here and there: **a spec passing alone says
+nothing about the suite** — when the it/ layer goes red, check `origin/main`
+before assuming it is yours.
+
+---
+
 ## 2026-07-28
 
 **This run covered ALL THREE countries** (previous runs were Poland-only).
