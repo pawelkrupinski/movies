@@ -492,6 +492,24 @@ so an invalid key is indistinguishable from "no match" at the call site. Not
 changed here (it would ripple through the enrichment ladder), but it is why this
 took an external investigation to diagnose rather than a log line.
 
+### Prod verification of this run's fixes
+
+- **KinoPort — CONFIRMED GREEN.** Its 2026-07-31 **09:30 UTC** bucket flipped to
+  green after the deploy (`succ=1`), ending five straight white buckets. Verified
+  in prod, not merely shipped — no follow-up owed.
+- **Kino Studio Opole — still white, and that is CORRECT.** The venue's break runs
+  to 3 September, so the (now correctly-read) live page carries zero films. The
+  fix's value is that it is reading the REAL page instead of a soft-404, and that
+  a genuinely dead source would now go red. **Re-check after 3 Sept**: if Studio
+  is still white once its season restarts, the two-slug fallback needs another
+  look.
+- **The Old Court Windsor — verification owed, do this FIRST next run.** UK venues
+  scrape on a slow chunked cadence (its buckets are ~7h apart: 13:30 / 20:30 /
+  03:30 UTC), so at hand-off its newest bucket still predated the deploy. Expect
+  **12 films / 15 showtimes**. If it is still white with `oldcourt.org.uk/events`
+  serving its usual listing, the client needs re-probing — most likely the
+  box-office path discriminator or the class-less DOM shifted.
+
 ### Still open after this pass
 
 - **Kino Zachęta (Kleczew)** — `unfixable` unless we build OCR; the venue
