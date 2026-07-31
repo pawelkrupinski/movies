@@ -495,6 +495,58 @@ so an invalid key is indistinguishable from "no match" at the call site. Not
 changed here (it would ripple through the enrichment ladder), but it is why this
 took an external investigation to diagnose rather than a log line.
 
+#### Correction + how much Trakt is actually worth (measured after the fact)
+
+**Correcting the diagnosis above.** I wrote that the 403 "most likely means the
+client_id is rejected". The uptime history undercuts that. Trakt's 24h bucket
+window is a **clean cutover, not a decay**: 40 successes and ZERO failures
+through **2026-07-30 16:15 UTC**, then 97 failures and zero successes from 18:30
+onward, with no mixed bucket anywhere. A credential that worked yesterday
+afternoon and stopped dead is as consistent with a WAF/IP block as with a revoked
+key — which promotes the Chrome User-Agent this pass removed from "hygiene" to a
+genuinely plausible culprit. **Check the response content-type before touching
+the key**: Trakt's own app layer returns a 9-byte JSON `Forbidden`, Cloudflare
+returns an HTML interstitial.
+
+**And it is worth very little either way.** Trakt supplies IDENTIFIERS, never
+ratings, and sits at the DEEPEST tier of the tmdbId ladder in `MovieService`. The
+branch is reachable only when ALL of: TMDB title/director search found nothing,
+the row still has no tmdbId, the row HAS an imdbId from a non-TMDB source, AND
+TMDB's own `/find` on that imdbId already missed. Letterboxd and Filmweb→Wikidata
+are then tried after it.
+
+Measured in prod 2026-07-31 across all three databases:
+
+| | films | no tmdbId | **Trakt-eligible** (no tmdbId **and** has imdbId) |
+|---|---|---|---|
+| `kinowo` (PL) | 909 | 237 | **1** |
+| `kinowo_de` | 1,246 | 35 | **1** |
+| `kinowo_uk` | 1,616 | 143 | **4** |
+| **total** | **3,771** | **415** | **6** |
+
+So Trakt's entire addressable population is **6 films, 0.16% of the corpus** — the
+other 409 tmdbId-less rows have no imdbId either, so the branch never even runs
+for them. Its realised yield right now is **zero**: those same 6 are still
+unresolved despite Trakt working normally until yesterday afternoon. They are
+exactly the long tail it was meant to catch and didn't — a K-pop VR concert
+(`tt38691436`), an Opera Australia broadcast, a Royal Ballet & Opera broadcast, a
+Tamil film (`kandan|2026`), a 2008 Polish film, and a 2025 "Blade". Cost is ~137
+calls/day.
+
+**Caveat, stated because it bounds the claim:** this is a SNAPSHOT. A film Trakt
+resolved in the past now carries a tmdbId and is invisible to the count, and
+there is **no provenance field recording which resolver bound an id and no metric
+counting Trakt hits** — so the ceiling above is exact, but historical yield
+cannot be reconstructed from the data we keep.
+
+**Recommendation for a human:** do not spend much on this. Fixing the key is
+worth a five-minute look at `trakt.tv/oauth/applications`; if that is not it,
+retiring `TraktClient` and its resolver is defensible — Letterboxd occupies the
+same tier by the same imdbId key, and the measured ceiling is six films. If we DO
+keep it, the cheap improvement is provenance (record which resolver bound a
+tmdbId) so the next person can answer this question from data instead of
+inference.
+
 ### Prod verification of this run's fixes
 
 - **KinoPort — CONFIRMED GREEN.** Its 2026-07-31 **09:30 UTC** bucket flipped to
