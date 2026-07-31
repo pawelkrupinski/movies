@@ -363,11 +363,14 @@ jobs:
                       if [ -n "$totals" ]; then echo "**$totals**"; else echo "**No test totals — the suite did not finish.**"; fi
                       echo
                       echo '```'
-                      # The spec's own structure: suite name, the `should` clauses, and the
-                      # `+` info lines hanging off them. Everything else on stdout is
-                      # application logging, which is not a report.
+                      # The spec's own structure — suite, `should` clauses, the `+` info
+                      # lines — PLUS the `[pl] phase done in …` timings the harness prints
+                      # as it goes. Those are how a slow leg is diagnosed without attaching
+                      # a profiler to a live JVM, so they belong in the report rather than
+                      # only in a 5 MB job log. Everything else on stdout is application
+                      # logging, which is not a report.
                       printf '%s\n' "$clean" \
-                        | { grep -E '^\[info\] ([A-Za-z0-9]+Spec:|- should |  \+ |the )' || true; } \
+                        | { grep -E '^(\[info\] )?([A-Za-z0-9]+Spec:|- should |  \+ |the |\[[a-z]{2}\] )' || true; } \
                         | sed 's/^\[info\] //' \
                         | head -150
                       echo '```'

@@ -338,13 +338,9 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * genuinely wedged on a dead tunnel, once on a leg that was working fine. The
    * elapsed time is what separates the two, so it goes to the stream that flushes.
    */
-  private def step[A](label: String)(body: => A): A = {
-    val started = System.nanoTime()
-    println(s"[${country.code}] $label …")
-    val result = body
-    println(f"[${country.code}] $label done in ${(System.nanoTime() - started) / 1e9}%.1fs")
-    result
-  }
+  /** Shared with the harness's own phases (`TestWiring.bootCorpus`), so a run's timings
+   *  all read the same way whichever layer emitted them. */
+  private def step[A](label: String)(body: => A): A = tools.PhaseTimer.timed(country.code, label)(body)
 
   /**
    * A REAL `cinema_scrapes` collection to replay instead of the generated corpus,

@@ -190,7 +190,10 @@ trait TestWiring extends WorkerWiring {
    *  Shared by every harness that boots a corpus — the HTTP-fixture replay and
    *  the archive replay both need exactly this tick. */
   def runOneScrapeTick(): Unit = {
-    val ready = scala.collection.mutable.ListBuffer.empty[MovieDetailsComplete]
+    val ready   = scala.collection.mutable.ListBuffer.empty[MovieDetailsComplete]
+    val started = System.nanoTime()
+    val total   = cinemaScrapers.size
+    var done    = 0
     cinemaScrapers.foreach { scraper =>
       try {
         val touched = movieCache.recordCinemaScrape(scraper.cinema, scraper.fetch())
@@ -198,6 +201,11 @@ trait TestWiring extends WorkerWiring {
         // back, no event yet) and returns the ready-now MovieDetailsComplete.
         ready ++= cinemaScrapeRunner.classify(scraper.cinema, touched)
       } catch { case _: Exception => () }
+      done += 1
+      // A heartbeat, because this loop is where a slow persistence layer shows up: each
+      // venue's rows are written through, so a per-row cost that grows with the corpus
+      // reads here as a rate that visibly decays rather than as one long silence.
+      if (PhaseTimer.shouldReport(done, total)) PhaseTimer.progress(country.code, "scraped", done, total, started)
     }
     // Cinemas that defer detail scrape BARE; fill each row's per-film detail via
     // the EnrichDetails queue tasks NOW. `enrichDetailsSync` then publishes the
@@ -229,16 +237,21 @@ trait TestWiring extends WorkerWiring {
    *  the cascade, refresh ratings, drop unscreened films, conclude enrichment.
    *  Stops short of the read model — a harness that owns one projects on top of
    *  this (see `FixtureTestWiring.bootStartup`). */
+  /** Each stage timed separately, because `bootCorpus` is the long pole of every replay
+   *  and used to be one opaque block: a leg that spent 56 of its 62 minutes here said
+   *  only `bootCorpus …` and then nothing, so finding the cost meant sampling a live
+   *  JVM. Now the log names the stage that is spending the budget. */
   def bootCorpus(): Unit = {
-    runOneScrapeTick()
-    drainServices()
-    drainStaging()
+    val scope = country.code
+    PhaseTimer.timed(scope, "scrapeTick")(runOneScrapeTick())
+    PhaseTimer.timed(scope, "drainServices")(drainServices())
+    PhaseTimer.timed(scope, "drainStaging")(drainStaging())
     // Ratings are queue tasks in production (drained by the TaskWorker). The
     // harness doesn't run the worker, so refresh them synchronously here — the
     // TMDB + IMDb-id cascade has already settled in drainServices.
-    enrichRatingsSync()
-    unscreenedCleanup.removeUnscreened()
-    concludeEnrichment()
+    PhaseTimer.timed(scope, "enrichRatings")(enrichRatingsSync())
+    PhaseTimer.timed(scope, "unscreenedCleanup")(unscreenedCleanup.removeUnscreened())
+    PhaseTimer.timed(scope, "concludeEnrichment")(concludeEnrichment())
   }
 
   def enrichRatingsSync(): Unit =
@@ -317,14 +330,23 @@ trait TestWiring extends WorkerWiring {
    *  converge) and the fixture recorder must drive this, or the `movies` cache
    *  stays empty and no TMDB/IMDb/rating enrichment ever runs. */
   def drainStaging(): Unit = {
-    var folded = true
+    var folded  = true
+    val started = System.nanoTime()
+    var round   = 0
     while (folded) {
       val before = stagingRepository.findAll().size
       if (before == 0) folded = false
       else {
         stagingReaper.tick()
         drainStagingQueueOnce()
-        folded = stagingRepository.findAll().size < before
+        val after = stagingRepository.findAll().size
+        round += 1
+        // Backlog remaining per round. A fold that is converging shrinks this steadily;
+        // one that is thrashing does not, and the two are indistinguishable from a
+        // phase that simply prints nothing until it finishes — which this one did not,
+        // on the run that timed out inside it.
+        println(f"[${country.code}] staging round $round: $before → $after rows in ${PhaseTimer.elapsedSeconds(started)}%.1fs")
+        folded = after < before
       }
     }
     // Fold each remaining staging GROUP (sanitize title). `foldGroup` settles as
