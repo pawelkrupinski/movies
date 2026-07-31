@@ -308,18 +308,21 @@ jobs:
                   # falls through to the live chain and is recorded for the next run.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
-                  # MONGODB_URI is deliberately NOT set, so these legs run in memory.
+                  # Names the container above, so every repository — movies, screenings,
+                  # slots, read model, staging and its transactional folder, tasks,
+                  # freshness, chunk-scrape, OMDb attempts and the archive — runs on a
+                  # real database.
                   #
-                  # `ConvergenceStorage` can put every repository on a real database and
-                  # the container above is still started for it, but the Mongo path does
-                  # not yet produce a corpus: staging graduates nothing, so a leg reports
-                  # `resolved NOTHING — 0 films` and the coverage guard fails it. That is
-                  # the guard working, and the honest state is a leg that runs the
-                  # assertions it CAN — in memory — rather than one held red on an
-                  # unfinished investigation, or one quietly weakened to go green.
+                  # Re-enabled once the Mongo path produced a corpus. It had reported
+                  # `resolved NOTHING — 0 films`, which was the coverage guard correctly
+                  # refusing a fixpoint over nothing; the cause was two different isolated
+                  # databases, not the pipeline. Measured locally after the fix: 773 films,
+                  # tmdbId 289, the same enrichment ladder the in-memory path produces,
+                  # three specs green in 12m05s.
                   #
-                  # Set MONGODB_URI locally to run the Mongo path; the storage in use is
-                  # printed in the report either way.
+                  # Absent, the suite runs in memory and says which it chose — a suite that
+                  # can silently fall back is one that quietly stops testing what it claims.
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it

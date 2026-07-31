@@ -70,9 +70,18 @@ object IsolatedMongoDatabase {
     } finally client.close()
   }
 
-  /** `kinowo_isolated_<purpose>_<pid>_<nanos>` — lower-cased and stripped of
-   *  anything Mongo won't accept in a database name. */
-  def nameFor(purpose: String): String = {
+  /**
+   * `kinowo_isolated_<purpose>_<pid>_<nanos>` — lower-cased and stripped of anything
+   * Mongo won't accept in a database name.
+   *
+   * PRIVATE, because it is not idempotent: the `<nanos>` means every call returns a
+   * different name. A caller that generated one here to label a database it had already
+   * opened got a SECOND, unrelated database — repositories wrote to one while a
+   * connection resolved collections in the other, and the corpus vanished between them
+   * with nothing in error. Take the name from the opened `MongoDatabase` instead; it
+   * carries its own.
+   */
+  private def nameFor(purpose: String): String = {
     val safe = purpose.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "_").stripPrefix("_").stripSuffix("_")
     s"${Prefix}_${safe}_${ProcessHandle.current().pid()}_${System.nanoTime()}"
   }

@@ -129,4 +129,31 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       }
     } finally purge()
   }
+
+  // A read failure must cost TIME, not a film. Returning `Seq.empty` when the fetch fails
+  // tells the reaper this film has no rows, so it skips its next step — indistinguishable
+  // from the film being finished, and permanent, since nothing revisits it. That is the
+  // same silent-degradation shape that hid a whole broken fold for a day.
+  it should "fall back to a full scan when the id fetch fails, rather than losing the film" in {
+    purge()
+    try {
+      val seeder = new MongoStagingRepository(Some(db))
+      seeder.upsert(Multikino, title, Some(1995), MovieRecord())
+      seeder.upsert(Multikino, title, Some(2017), MovieRecord())
+      val anchor = services.movies.TitleNormalizer.sanitize(seeder.findAll().head.title)
+
+      val broken = new MongoStagingRepository(Some(db)) {
+        override protected def fetchByIds(
+          c:   org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto],
+          ids: Seq[String]
+        ): scala.util.Try[Seq[services.movies.StoredMovieDto]] =
+          scala.util.Failure(new RuntimeException("simulated fetch failure"))
+      }
+
+      withClue("the film's rows must still come back, via the slower path: ") {
+        broken.findByAnchor(anchor).map(_.id).sorted shouldBe seeder.findByAnchor(anchor).map(_.id).sorted
+      }
+      broken.findByAnchor(anchor) should not be empty
+    } finally purge()
+  }
 }

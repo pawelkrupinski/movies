@@ -114,8 +114,15 @@ object ConvergenceStorage {
    *  Unique per run so the three country legs — and anything else on the `it` layer —
    *  can share one cluster without colliding, including with a re-run of themselves. */
   def mongo(uri: String, purpose: String): ConvergenceStorage = {
-    val name = IsolatedMongoDatabase.nameFor(purpose)
-    new MongoConvergenceStorage(IsolatedMongoDatabase.open(uri, purpose), uri, name)
+    // The name is taken FROM the opened database, never generated a second time.
+    // `IsolatedMongoDatabase.nameFor` embeds `System.nanoTime()`, so calling it again for
+    // the connection produced a DIFFERENT database from the one the repositories were
+    // handed: staging wrote 6,975 rows to one, `MongoStagingFolder` looked for them in
+    // the other, found none, and correctly reported nothing to fold. The corpus never
+    // reached `movies`, the suite reported `resolved NOTHING — 0 films`, and nothing
+    // anywhere was in error — each half was doing exactly what it was told.
+    val database = IsolatedMongoDatabase.open(uri, purpose)
+    new MongoConvergenceStorage(database, uri, database.name)
   }
 
   private final class MongoConvergenceStorage(database: MongoDatabase, uri: String, name: String)

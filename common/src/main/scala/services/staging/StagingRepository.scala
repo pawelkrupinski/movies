@@ -13,7 +13,7 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /** One per-cinema staging row: a single cinema's report of a film that has not
  *  yet been TMDB-concluded. Unlike `movies` (one merged row per film across all
@@ -279,6 +279,11 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
    * a previous version inferred it from the `_id`, which holds the sanitized title from
    * the row's FIRST write and diverges as soon as one is normalised.
    */
+  /** The id fetch, as a seam a test can fail on purpose — the fallback below is the
+   *  interesting behaviour and is otherwise unreachable without a broken database. */
+  protected def fetchByIds(c: MongoCollection[StoredMovieDto], ids: Seq[String]): Try[Seq[StoredMovieDto]] =
+    Try(Await.result(c.find(Filters.in("_id", ids*)).toFuture(), 30.seconds))
+
   private val anchorById = new java.util.concurrent.ConcurrentHashMap[String, String]()
   @volatile private var anchorIndexBuilt = false
 
@@ -302,10 +307,19 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
       anchorById.asScala.collect { case (id, a) if a == anchor => id }.toSeq
     }
     if (ids.isEmpty) Seq.empty
-    else Try(Await.result(c.find(Filters.in("_id", ids*)).toFuture(), 30.seconds))
-      .toOption.getOrElse(Seq.empty)
-      .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).toSeq)
-      .filter(row => TitleNormalizer.sanitize(row.title) == anchor)
+    else fetchByIds(c, ids) match {
+      case Success(rows) =>
+        rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).toSeq)
+          .filter(row => TitleNormalizer.sanitize(row.title) == anchor)
+      // NOT `Seq.empty`. A short answer here tells the reaper this film has no rows, so it
+      // skips the film's next step — indistinguishable from the film being finished, and
+      // permanent, because nothing revisits it. Degrade to the slower full scan instead:
+      // the cost of a read failure should be time, not a silently abandoned film.
+      case Failure(exception) =>
+        logger.warn(s"StagingRepository.findByAnchor('$anchor') could not fetch ${ids.size} row(s): " +
+          s"${exception.getClass.getSimpleName}: ${exception.getMessage} — falling back to a full scan")
+        super.findByAnchor(anchor)
+    }
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {
