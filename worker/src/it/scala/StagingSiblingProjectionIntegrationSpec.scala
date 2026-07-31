@@ -4,7 +4,7 @@ import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import models.{Multikino, MovieRecord}
+import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import services.staging.{MongoStagingRepository, StagingRecord}
 import tools.Env
 
@@ -94,6 +94,38 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       withClue(s"the sibling lookup pulled ${bytes}B back for a list of ids; projected to " +
                s"`_id` it returns a few hundred: ") {
         bytes should be < 2000
+      }
+    } finally purge()
+  }
+
+  // The invariant an override must hold: answer EXACTLY what filtering `findAll` answers.
+  // A previous attempt inferred the anchor from the `_id` — which holds the sanitized
+  // title from the row's first write — and silently returned nothing once titles were
+  // normalised, so the staging state machine stopped advancing. Comparing the two
+  // implementations directly is what pins that.
+  "findByAnchor" should "return exactly what filtering findAll returns, for every anchor" in {
+    val repository = new MongoStagingRepository(Some(db))
+    purge()
+    try {
+      val showtimes = (1 to 200).map(n =>
+        Showtime(java.time.LocalDateTime.of(2026, 8, 1, 12, 0).plusMinutes(n.toLong * 7), None))
+      Seq(1995, 2004, 2017).foreach(year =>
+        repository.upsert(Multikino, title, Some(year),
+          MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(
+            title = Some(s"$title ($year)"), showtimes = showtimes)))))
+      // A row whose DISPLAY title differs from the raw one it was first keyed under.
+      repository.upsert(Multikino, "GHOST IN THE SHELL 2", Some(2032),
+        MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ghost in the Shell 2")))))
+
+      val all     = repository.findAll()
+      val anchors = all.map(row => services.movies.TitleNormalizer.sanitize(row.title)).distinct
+      withClue("the fixture must produce at least two anchors: ") { anchors.size should be >= 2 }
+
+      anchors.foreach { anchor =>
+        val expected = all.filter(row => services.movies.TitleNormalizer.sanitize(row.title) == anchor)
+        withClue(s"anchor '$anchor': ") {
+          repository.findByAnchor(anchor).map(_.id).sorted shouldBe expected.map(_.id).sorted
+        }
       }
     } finally purge()
   }

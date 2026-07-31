@@ -79,6 +79,26 @@ trait StagingRepository {
   /** Every staging row, ordered by `_id`. Returns empty when disabled. */
   def findAll(): Seq[StagingRecord]
 
+  /**
+   * The rows of ONE film — the sanitized-title anchor the staging state machine works on.
+   *
+   * Defaults to filtering [[findAll]], which is what callers did inline, so a store that
+   * cannot do better is unchanged. It earns a method because the reaper asks it on every
+   * staging event: against Mongo the default decodes every staged document to return a
+   * handful, and during an ingest that grows the backlog that is quadratic in it. Measured
+   * on a convergence leg, the scrape rate decayed from 28 venues per 37s to 28 per 243s
+   * (Germany 110/38s to 110/429s; the UK 78/180s to 78/850s) — all of it here.
+   *
+   * The anchor is `TitleNormalizer.sanitize(row.title)` for the row `findAll` would have
+   * returned — NOT anything derivable from the `_id`. An earlier attempt read it off the
+   * key, which encodes the sanitized title as it was at the row's FIRST write, while
+   * callers derive it at read time from `record.displayTitle`. Any override must answer
+   * the same question the default does; [[StagingRepository]]'s own spec asserts the two
+   * agree.
+   */
+  def findByAnchor(anchor: String): Seq[StagingRecord] =
+    findAll().filter(row => TitleNormalizer.sanitize(row.title) == anchor)
+
   /** Write-through upsert of one cinema's row, keyed by `idFor(cinema, title,
    *  year)` — the scrape-divert path, called on every tick a newcomer is still
    *  incubating. When the row already exists, its enrichment is carried forward
@@ -245,6 +265,49 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
       records
   }
 
+  /**
+   * `_id` → anchor for every staged row, in memory, maintained on write.
+   *
+   * Built once by a single decoding pass and then kept current by `upsertId`/`deleteId` —
+   * every write to this collection goes through one of them. A lookup is then a scan of a
+   * few thousand strings and a fetch of the matching handful, instead of decoding the
+   * whole collection on every staging event.
+   *
+   * The anchor is computed exactly as the callers compute it — `sanitize` of the title
+   * `StagingRecord.fromStorage` derives — so this answers the same question the inherited
+   * default answers, by construction rather than by coincidence. That is the correction:
+   * a previous version inferred it from the `_id`, which holds the sanitized title from
+   * the row's FIRST write and diverges as soon as one is normalised.
+   */
+  private val anchorById = new java.util.concurrent.ConcurrentHashMap[String, String]()
+  @volatile private var anchorIndexBuilt = false
+
+  private def anchorOf(id: String, record: MovieRecord): Option[String] =
+    StagingRecord.fromStorage(id, record).map(row => TitleNormalizer.sanitize(row.title))
+
+  private def ensureAnchorIndex(): Unit =
+    if (!anchorIndexBuilt) synchronized {
+      if (!anchorIndexBuilt) {
+        findAll().foreach(row => anchorById.put(row.id, TitleNormalizer.sanitize(row.title)))
+        anchorIndexBuilt = true
+      }
+    }
+
+  /** Decoded rows are re-checked against `anchor` before being returned, so a stale index
+   *  entry can only ever cost a wasted fetch — never a wrong row. */
+  override def findByAnchor(anchor: String): Seq[StagingRecord] = coll.toSeq.flatMap { c =>
+    ensureAnchorIndex()
+    val ids = {
+      import scala.jdk.CollectionConverters._
+      anchorById.asScala.collect { case (id, a) if a == anchor => id }.toSeq
+    }
+    if (ids.isEmpty) Seq.empty
+    else Try(Await.result(c.find(Filters.in("_id", ids*)).toFuture(), 30.seconds))
+      .toOption.getOrElse(Seq.empty)
+      .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).toSeq)
+      .filter(row => TitleNormalizer.sanitize(row.title) == anchor)
+  }
+
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {
     val id       = StagingRecord.idFor(cinema, title, year)
     val existing = recordAt(id)
@@ -295,6 +358,7 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
   }
 
   private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
+    anchorOf(id, record).foreach(anchorById.put(id, _))
     val dto = StoredMovieDto.fromDomain(id, record, Instant.now())
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
@@ -310,6 +374,7 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
   override def deleteRow(row: StagingRecord): Unit = deleteId(row.id)
 
   private def deleteId(id: String): Unit = coll.foreach { c =>
+    anchorById.remove(id)
     Try {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()

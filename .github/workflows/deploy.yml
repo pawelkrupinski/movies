@@ -205,21 +205,14 @@ jobs:
     #
     # An explicit dispatch inverts that: a failed or cancelled deploy simply does not
     # dispatch, so no run is created, so nothing is cancelled.
-    kick-convergence:
-        needs: deploy
-        if: ${{ !cancelled() && needs.deploy.result == 'success' }}
-        runs-on: ubuntu-latest
-        permissions:
-            actions: write
-        steps:
-            - name: Start the country convergence suite
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  GH_REPO: ${{ github.repository }}
-              run: |
-                  set -euo pipefail
-                  echo "deploy succeeded for ${GITHUB_SHA:0:9} — dispatching Country convergence"
-                  gh workflow run "Country convergence" --ref "${GITHUB_REF_NAME}"
+    # There is no `kick-convergence` job any more. It dispatched the convergence suite on
+    # every successful deploy, which made sense while a leg took three minutes. Legs are
+    # tens of minutes long now that they actually enrich, and the workflow's concurrency
+    # group cancels whatever is in flight — so a deploy landing mid-run threw the whole
+    # thing away. That happened five times in one day, up to 27 minutes per leg each time,
+    # and not one superseded run ever reached its assertions. The nightly schedule and
+    # manual dispatch remain: a convergence result that arrives some hours after a deploy
+    # is worth incomparably more than one reliably killed at minute 26.
 
     annotate:
         needs: deploy
