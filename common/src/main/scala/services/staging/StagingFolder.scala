@@ -26,7 +26,20 @@ trait StagingFolder {
    *  upserted `movies` rows that no pre-existing row merged into, so the caller
    *  can schedule their first-time rating enrichment. Empty when nothing folded
    *  or every row merged into an existing movie. */
-  def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)]
+  /**
+   * Fold one film's staging group.
+   *
+   * `candidateIds`, when given, names the `_id`s that MIGHT belong to the group so an
+   * implementation can read those rows instead of every staged row. It is a hint and a
+   * superset only: the group is still selected by `sanitize(row.title)`, so passing too
+   * many costs a little I/O and passing the wrong ones changes nothing.
+   *
+   * It exists because the Mongo folder read the WHOLE staging collection inside every
+   * fold transaction — fine at the handful of trickling newcomers production usually
+   * holds, and 3,629 folds over 28,572 rows on a convergence leg, which is ~104 million
+   * document decodes and 47 minutes of a 62-minute budget.
+   */
+  def foldGroup(cleanTitle: String, candidateIds: Option[Set[String]] = None): Seq[(CacheKey, MovieRecord)]
 }
 
 /**
@@ -39,7 +52,20 @@ trait StagingFolder {
 class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepository: MovieRepository) extends StagingFolder with Logging {
   private val lock = new AnyRef
 
-  def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] = lock.synchronized {
+  /**
+   * Fold one film's staging group.
+   *
+   * `candidateIds`, when given, names the `_id`s that MIGHT belong to the group so an
+   * implementation can read those rows instead of every staged row. It is a hint and a
+   * superset only: the group is still selected by `sanitize(row.title)`, so passing too
+   * many costs a little I/O and passing the wrong ones changes nothing.
+   *
+   * It exists because the Mongo folder read the WHOLE staging collection inside every
+   * fold transaction — fine at the handful of trickling newcomers production usually
+   * holds, and 3,629 folds over 28,572 rows on a convergence leg, which is ~104 million
+   * document decodes and 47 minutes of a 62-minute budget.
+   */
+  def foldGroup(cleanTitle: String, candidateIds: Option[Set[String]] = None): Seq[(CacheKey, MovieRecord)] = lock.synchronized {
     val key         = TitleNormalizer.sanitize(cleanTitle)
     val stagingRows = StagingFold.selectStagingGroup(stagingRepository.findAll(), cleanTitle)
     if (stagingRows.isEmpty) Seq.empty

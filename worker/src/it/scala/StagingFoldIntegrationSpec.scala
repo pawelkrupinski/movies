@@ -200,4 +200,62 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       client.close()
     }
   }
+
+  // The hint must not change WHICH rows fold — it only says which to READ. `foldOnce`
+  // used to scan the entire staging collection inside every fold transaction, which is
+  // 3,629 folds over 28,572 rows on the UK convergence leg: ~104M decodes and 47 of the
+  // leg's 62 minutes. Passing the group's ids removes that, but only if the selection is
+  // still `selectStagingGroup`'s — a hint that silently narrowed the group would be the
+  // quietest possible corruption.
+  it should "fold the same group whether or not it is told which rows to read" in {
+    val client     = MongoClient(uri)
+    val db         = client.getDatabase(dbName)
+    val connection = new MongoConnection(Some(uri), dbName, required = false)
+    val repository = new services.staging.MongoStagingRepository(Some(db))
+    val folder     = new MongoStagingFolder(connection)
+    val hintTitle  = "Fold Hint Sentinel"
+    val anchor     = services.movies.TitleNormalizer.sanitize(hintTitle)
+
+    val staged = db.getCollection(StagingRepository.Collection)
+    // The same raw shape the tests above use — a CONCLUDED row (tmdbId present), which is
+    // what makes a group foldable. Writing through the repository leaves it unconcluded,
+    // so nothing folds and the assertion has nothing to compare.
+    def stage(): Unit = Seq(2025, 2026).foreach { year =>
+      val id = s"${Multikino.displayName}|$anchor|$year"
+      Await.result(staged.replaceOne(Filters.eq("_id", id),
+        org.mongodb.scala.Document("_id" -> id, "tmdbId" -> 778101,
+          "sourceData" -> org.mongodb.scala.Document(Multikino.displayName ->
+            org.mongodb.scala.Document("title" -> hintTitle)),
+          "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
+        new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+    }
+
+    val movies = db.getCollection(services.movies.MovieRepository.Collection)
+
+    // Asserted on the EFFECT — which `movies` rows exist afterwards — not on the return
+    // value, which carries only brand-new promotions and is empty on a re-fold.
+    def foldedIds(fold: => Unit): Set[String] = {
+      Await.result(movies.deleteMany(Filters.regex("_id", s"^$anchor\\|")).toFuture(), 10.seconds)
+      stage()
+      fold
+      Await.result(movies.find(Filters.regex("_id", s"^$anchor\\|")).toFuture(), 10.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue)).toSet
+    }
+
+    try {
+      val unhinted = foldedIds(folder.foldGroup(hintTitle))
+      val hinted   = foldedIds(folder.foldGroup(hintTitle,
+                       Some(repository.findByAnchor(anchor).map(_.id).toSet)))
+      // Deliberately over-broad: every staged id, not only this group's.
+      val tooWide  = foldedIds(folder.foldGroup(hintTitle, Some(repository.findAll().map(_.id).toSet)))
+
+      withClue("the fixture must actually fold something: ") { unhinted should not be empty }
+      withClue("a hinted fold must land exactly what an unhinted one lands: ") { hinted shouldBe unhinted }
+      withClue("an over-broad hint must not widen the group: ") { tooWide shouldBe unhinted }
+    } finally {
+      Await.result(staged.deleteMany(Filters.regex("_id", s".*\\|$anchor\\|.*")).toFuture(), 10.seconds)
+      Await.result(movies.deleteMany(Filters.regex("_id", s"^$anchor\\|")).toFuture(), 10.seconds)
+      client.close()
+    }
+  }
 }

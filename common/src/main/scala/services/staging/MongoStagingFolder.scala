@@ -44,10 +44,10 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
   private val moviesColl  = collection(services.movies.MovieRepository.Collection)
   private val stagingColl = collection(StagingRepository.Collection)
 
-  def foldGroup(cleanTitle: String): Seq[(CacheKey, MovieRecord)] =
+  def foldGroup(cleanTitle: String, candidateIds: Option[Set[String]] = None): Seq[(CacheKey, MovieRecord)] =
     (connection.startSession(), moviesColl, stagingColl) match {
       case (Some(session), Some(movies), Some(staging)) =>
-        try foldWithRetry(session, movies, staging, cleanTitle)
+        try foldWithRetry(session, movies, staging, cleanTitle, candidateIds)
         finally session.close()
       // NOT `Seq.empty`. An empty fold is the answer for "this group is already
       // folded", and returning it here made "I could not even try" indistinguishable
@@ -66,14 +66,15 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     session: ClientSession,
     movies:  MongoCollection[StoredMovieDto],
     staging: MongoCollection[StoredMovieDto],
-    cleanTitle: String
+    cleanTitle: String,
+    candidateIds: Option[Set[String]]
   ): Seq[(CacheKey, MovieRecord)] = {
     var attempt = 0
     var result  = Option.empty[Seq[(CacheKey, MovieRecord)]]
     while (result.isEmpty) {
       attempt += 1
       session.startTransaction()
-      val outcome = Try(foldOnce(session, movies, staging, cleanTitle))
+      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds))
       StagingFold.nextAfterAttempt(outcome, attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>
           await(publisherToFuture(session.commitTransaction())); result = Some(newPromotions)
@@ -99,7 +100,8 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     session:    ClientSession,
     movies:     MongoCollection[StoredMovieDto],
     staging:    MongoCollection[StoredMovieDto],
-    cleanTitle: String
+    cleanTitle: String,
+    candidateIds: Option[Set[String]]
   ): Seq[(CacheKey, MovieRecord)] = {
     val sanitize = TitleNormalizer.sanitize(cleanTitle)
     // Load every staging row and pick this fold's group by `sanitize(r.title)` —
@@ -110,9 +112,19 @@ class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with
     // forever (see StagingFold.selectStagingGroup). The full scan is no costlier
     // than the old regex — `^[^|]+\|…` can't use the `_id` index either, and prod
     // staging holds only a handful of trickling newcomers.
+    // Read only the rows the caller says might belong to this group, when it says so.
+    // The scan below is still correct and is what runs without a hint; it is simply
+    // ruinous once staging is large, because it happens inside EVERY fold — 3,629 folds
+    // over 28,572 rows is ~104 million decodes. `selectStagingGroup` still does the
+    // choosing, so a hint that is too broad costs I/O and a hint that is wrong changes
+    // nothing about which rows fold.
+    val candidates = candidateIds match {
+      case Some(ids) if ids.isEmpty => Seq.empty
+      case Some(ids)                => await(staging.find(session, Filters.in("_id", ids.toSeq*)).toFuture())
+      case None                     => await(staging.find(session).toFuture())
+    }
     val stagingRows = StagingFold.selectStagingGroup(
-      await(staging.find(session).toFuture())
-        .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record)),
+      candidates.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record)),
       cleanTitle)
     if (stagingRows.isEmpty) Seq.empty
     else {

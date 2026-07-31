@@ -1224,7 +1224,9 @@ class WorkerWiring(
   // corpus-wide burst the reaper's cap smooths. A merge into an existing row keeps
   // that row's ratings, so it's left untouched.
   eventBus.subscribe { case StagingFilmEnriched(title) =>
-    stagingFolder.foldGroup(title).foreach { case (key, record) =>
+    // Name the group's rows so the fold reads those instead of the whole collection.
+    stagingFolder.foldGroup(title, Some(stagingRepository.findByAnchor(
+      services.movies.TitleNormalizer.sanitize(title)).map(_.id).toSet)).foreach { case (key, record) =>
       movieService.announceResolvedNewMovie(key, record)
     }
   }

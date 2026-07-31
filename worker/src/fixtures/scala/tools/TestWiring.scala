@@ -365,8 +365,14 @@ trait TestWiring extends WorkerWiring {
     // absence of evidence.
     var foldFailures = 0
     var firstFailure = Option.empty[String]
-    stagingRepository.findAll().map(_.title).distinct.foreach { title =>
-      try stagingFolder.foldGroup(title)
+    // Grouped by ANCHOR, and each fold told which rows are its own. Folding per distinct
+    // TITLE re-entered the same sanitize group once per title spelling, and every fold
+    // read the entire staging collection: on the UK leg that was 3,629 folds over 28,572
+    // rows — ~104M decodes, 47 of the leg's 62 minutes.
+    val rowsByAnchor = stagingRepository.findAll().groupBy(row => services.movies.TitleNormalizer.sanitize(row.title))
+    rowsByAnchor.foreach { case (_, rows) =>
+      val title = rows.head.title
+      try stagingFolder.foldGroup(title, Some(rows.map(_.id).toSet))
       catch {
         case exception: Exception =>
           foldFailures += 1
