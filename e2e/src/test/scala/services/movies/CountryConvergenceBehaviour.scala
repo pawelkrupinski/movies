@@ -63,6 +63,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
   override def afterAll(): Unit = {
     enrichmentCacheStore.foreach(_.close())
+    passStorages.synchronized(passStorages.foreach(p => Try(p.close())))
     storage.close()
     super.afterAll()
   }
@@ -79,6 +80,10 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    */
   private lazy val storage: ConvergenceStorage =
     ConvergenceStorage.fromEnv(s"convergence-${country.code}")
+
+  /** The per-pass databases, so `afterAll` can drop them. Each is isolated; none may
+   *  outlive the run. */
+  private val passStorages = mutable.ListBuffer.empty[ConvergenceStorage]
 
   /**
    * This country's enrichment cache — the one thing in this suite that deliberately
@@ -664,7 +669,17 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   private def replay(archive: ScrapeArchiveRepository, seed: Long)
       : (Seq[StoredMovieRecord], Map[String, Map[String, Seq[Showtime]]], Seq[FilmSchedule]) = {
     val rnd = new Random(seed)
-    val w = new ArchiveReplayWiring(country, archive, enrichmentCache) {
+    // Its OWN Mongo database, one per pass. The passes run concurrently over the same
+    // corpus, so they cannot share collections — but they no longer run in memory either.
+    // That mattered: order-independence was the ONE claim never tested against real
+    // persistence, so a divergence introduced by re-keys, upsert ordering or transaction
+    // interleaving could not have been caught by the assertion written to catch exactly
+    // that.
+    // Short on purpose: the database name carries a pid and a nanosecond stamp, and
+    // Mongo caps the whole thing at 63 characters.
+    val passStorage = ConvergenceStorage.fromEnv(s"${country.code}p${seed - OrderSeed}")
+    passStorages.synchronized(passStorages += passStorage)
+    val w = new ArchiveReplayWiring(country, archive, enrichmentCache, passStorage) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
@@ -697,10 +712,9 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     "come out identical — films, screenings and rendered rows — whatever order it arrives in" in {
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
-      // The order passes keep their OWN in-memory archive whatever the shared storage
-      // is: they run concurrently over the same corpus, and three passes writing one
-      // `cinema_scrapes` collection would be testing the collection, not the ordering.
-      val archive = new services.scrapes.InMemoryScrapeArchiveRepository
+      // One archive per run, in Mongo like everything else. The passes each get their
+      // own database (see `replay`), so they still cannot tread on each other.
+      val archive = storage.archive
       seedArchive(archive)
 
       // Concurrently: the passes are independent whole-corpus replays and running

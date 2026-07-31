@@ -26,12 +26,10 @@ class ArchiveReplayWiring(
   country:          Country,
   archive:          ScrapeArchiveRepository,
   enrichmentCache:  Option[EnrichmentCache] = None,
-  // Where the state this suite makes claims about actually lives. In memory by
-  // default, because most callers want the fast deterministic thing; a real
-  // MongoDB when one is supplied, which puts the persistence layer — codecs,
-  // paged full scans, transactional staging folds — on the path the assertions
-  // run over. Same assertions either way; see [[ConvergenceStorage]].
-  storage:          ConvergenceStorage = ConvergenceStorage.inMemory
+  // REQUIRED, and always a real database. There is no in-memory storage to default
+  // to any more: a fixpoint proved over a map says nothing about codecs, paged scans
+  // or a transactional staging fold, and every one of those has shipped a bug here.
+  storage:          ConvergenceStorage
 ) extends WorkerWiring(country) with TestWiring {
 
   /** No network on the SCRAPE side, ever. Every cinema listing comes from the

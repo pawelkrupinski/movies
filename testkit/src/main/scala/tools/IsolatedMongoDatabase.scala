@@ -103,8 +103,17 @@ object IsolatedMongoDatabase {
    * with nothing in error. Take the name from the opened `MongoDatabase` instead; it
    * carries its own.
    */
+  /** Mongo rejects a database name over 63 characters, and the pid+nanos suffix is
+   *  ~30 of them — so a caller's `purpose` is TRUNCATED to what is left rather than
+   *  allowed to overflow. A too-long purpose used to surface as `InvalidNamespace`
+   *  from deep inside a lazy wiring init, which reads as the storage being broken
+   *  rather than the name being long. */
+  private val MaxDatabaseNameLength = 63
+
   private def nameFor(purpose: String): String = {
     val safe = purpose.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "_").stripPrefix("_").stripSuffix("_")
-    s"${Prefix}_${safe}_${ProcessHandle.current().pid()}_${System.nanoTime()}"
+    val suffix = s"_${ProcessHandle.current().pid()}_${System.nanoTime()}"
+    val room   = MaxDatabaseNameLength - Prefix.length - 1 - suffix.length
+    s"${Prefix}_${safe.take(math.max(1, room))}$suffix"
   }
 }

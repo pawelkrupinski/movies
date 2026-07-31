@@ -3,13 +3,12 @@ package tools
 import org.mongodb.scala.MongoDatabase
 import services.MongoConnection
 import services.movies._
-import services.readmodel.{InMemoryReadModelRepository, MongoReadModelRepository, ReadModelReader, ReadModelWriter}
-import services.scrapes.{InMemoryScrapeArchiveRepository, MongoScrapeArchiveRepository, ScrapeArchiveRepository}
-import services.enrichment.{InMemoryOmdbAttemptStore, MongoOmdbAttemptStore, OmdbAttemptStore}
-import services.freshness.{FreshnessStore, InMemoryFreshnessStore, MongoFreshnessStore}
+import services.readmodel.{MongoReadModelRepository, ReadModelReader, ReadModelWriter}
+import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
+import services.enrichment.{MongoOmdbAttemptStore, OmdbAttemptStore}
+import services.freshness.{FreshnessStore, MongoFreshnessStore}
 import services.staging._
-import services.tasks.{ChunkScrapeStore, InMemoryChunkScrapeStore, InMemoryTaskQueue, MongoChunkScrapeStore,
-  MongoTaskQueue, TaskQueue}
+import services.tasks.{ChunkScrapeStore, MongoChunkScrapeStore, MongoTaskQueue, TaskQueue}
 
 /**
  * Where a convergence run keeps the state it is making claims about — in memory, or in
@@ -84,31 +83,13 @@ object ConvergenceStorage {
    * an unreachable database fails the run rather than degrading it.
    */
   def fromEnv(purpose: String): ConvergenceStorage =
-    Env.get("MONGODB_URI").filter(_.nonEmpty).fold(inMemory)(uri => mongo(uri, purpose))
-
-  def inMemory: ConvergenceStorage = new ConvergenceStorage {
-    override val describe = "in-memory repositories"
-
-    // Production's storage SHAPE even without production's storage — showtimes in
-    // `screenings`, slots in `movie_slots`, neither inlined on the `movies` row. A fake
-    // that inlined everything would carry showtimes across a rename for free, and a
-    // merge is a rename, so it could not express the bug.
-    override lazy val screenings = new InMemoryScreeningsRepository
-    override lazy val slots      = new InMemorySlotsRepository
-    override lazy val movies     =
-      new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots))
-    override lazy val readModel: ReadModelReader & ReadModelWriter = new InMemoryReadModelRepository()
-    override lazy val staging    = new InMemoryStagingRepository()
-    override lazy val archive    = new InMemoryScrapeArchiveRepository
-    override lazy val connection = new MongoConnection(uri = None, dbName = "kinowo", required = false)
-    override lazy val tasks: TaskQueue             = new InMemoryTaskQueue
-    override lazy val freshness: FreshnessStore    = new InMemoryFreshnessStore
-    override lazy val chunkScrape: ChunkScrapeStore = new InMemoryChunkScrapeStore()
-    override lazy val omdbAttempt: OmdbAttemptStore = new InMemoryOmdbAttemptStore
-
-    override def stagingFolder(movieRepository: MovieRepository): StagingFolder =
-      new InMemoryStagingFolder(staging, movieRepository)
-  }
+    Env.get("MONGODB_URI").filter(_.nonEmpty)
+      .map(uri => mongo(uri, purpose))
+      .getOrElse(throw new IllegalStateException(
+        "MONGODB_URI is not set. This suite runs on a real database only — there is no " +
+        "in-memory storage any more, because a claim proved against a map is not a claim " +
+        "about the pipeline that ships. Start one with `scripts/convergence-local.sh <code> " +
+        "--mongo`, or name an existing throwaway."))
 
   /** A uniquely-named throwaway database on `uri`, dropped by [[ConvergenceStorage.close]].
    *  Unique per run so the three country legs — and anything else on the `it` layer —
