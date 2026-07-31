@@ -1,7 +1,7 @@
 package integration
 
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{Document, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
@@ -32,14 +32,27 @@ import scala.concurrent.duration._
  *
  * Requires MONGODB_URI; skips otherwise.
  */
-class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
+class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers with org.scalatest.BeforeAndAfterAll {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val client = MongoClient(Env.get("MONGODB_URI").get)
-  private val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+  // Its OWN database, not the one every other `it` spec shares.
+  //
+  // Two reasons, both learned the hard way. This spec seeds deliberately HEAVY and
+  // deliberately odd documents — that is the point of it — and a raw one missing
+  // `updatedAt` made `StagingFoldIntegrationSpec` fail with `Missing field: updatedAt`,
+  // the same "one bad row kills a whole batch decode" shape this repository has shipped
+  // to production twice. And it measures Mongo's PROFILER, which is database-wide: with
+  // specs running concurrently the byte counts belonged to whichever suite happened to be
+  // querying, so the assertions were reading someone else's traffic.
+  private val db     = tools.IsolatedMongoDatabase.open(Env.get("MONGODB_URI").get, "staging-projection-spec")
   private val staged = db.getCollection[Document]("pending_movies")
+
+  override protected def afterAll(): Unit = {
+    tools.IsolatedMongoDatabase.drop(db)
+    super.afterAll()
+  }
 
   private val title  = "Ghost In The Shell"
   /** Derived from `idFor`, so the seeded siblings share the prefix `upsert` will compute
@@ -141,6 +154,9 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       seeder.upsert(Multikino, title, Some(1995), MovieRecord())
       seeder.upsert(Multikino, title, Some(2017), MovieRecord())
       val anchor = services.movies.TitleNormalizer.sanitize(seeder.findAll().head.title)
+      // Rows for THAT anchor only — `findAll` spans every film the fixture staged, and
+      // `findByAnchor` answers for one.
+      val ours   = seeder.findAll().filter(row => services.movies.TitleNormalizer.sanitize(row.title) == anchor)
 
       val broken = new MongoStagingRepository(Some(db)) {
         override protected def fetchByIds(
@@ -150,10 +166,13 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
           scala.util.Failure(new RuntimeException("simulated fetch failure"))
       }
 
+      withClue("the fixture must have staged rows for this anchor: ") { ours should not be empty }
       withClue("the film's rows must still come back, via the slower path: ") {
         broken.findByAnchor(anchor).map(_.id).sorted shouldBe seeder.findByAnchor(anchor).map(_.id).sorted
       }
-      broken.findByAnchor(anchor) should not be empty
+      withClue("a failed fetch must cost time, not the film: ") {
+        broken.findByAnchor(anchor).map(_.id) should contain allElementsOf ours.map(_.id)
+      }
     } finally purge()
   }
 }

@@ -25,6 +25,13 @@ import scala.jdk.CollectionConverters._
  */
 class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
 
+  /** Unique per test, so events can be attributed. The appender hangs off the SHARED
+   *  `FallbackHttpFetch` logger, and specs run concurrently — without this, another
+   *  suite's fall-through warning lands in this one's capture and fails it, but only when
+   *  the whole layer runs. */
+  private def uniqueUrl(label: String): String =
+    s"https://fallback-logging-spec.test/$label-${java.util.UUID.randomUUID()}"
+
   private def capture[A](body: => A): (A, Seq[ILoggingEvent]) = {
     val logger   = LoggerFactory.getLogger(classOf[FallbackHttpFetch]).asInstanceOf[ch.qos.logback.classic.Logger]
     val captured = new ListAppender[ILoggingEvent]
@@ -54,11 +61,13 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   "a fallback chain" should "not warn when a later backend answers" in {
     val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "cache-or-live" -> answering))
 
-    val (result, events) = capture(chain.get("https://www.rottentomatoes.com/m/nope"))
+    val url = uniqueUrl("answered")
+    val (result, events) = capture(chain.get(url))
 
     result shouldBe "answer"
-    withClue(s"a successful fallback is not a warning, but logged: ${events.map(_.getFormattedMessage)}: ") {
-      events.filter(_.getLevel == Level.WARN) shouldBe empty
+    val ours = events.filter(_.getFormattedMessage.contains(url))
+    withClue(s"a successful fallback is not a warning, but logged: ${ours.map(_.getFormattedMessage)}: ") {
+      ours.filter(_.getLevel == Level.WARN) shouldBe empty
     }
   }
 
@@ -67,17 +76,20 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   it should "still record the fall-through at debug" in {
     val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "cache-or-live" -> answering))
 
-    val (_, events) = capture(chain.get("https://example.test/x"))
+    val url = uniqueUrl("debug")
+    val (_, events) = capture(chain.get(url))
 
-    events.filter(_.getLevel == Level.DEBUG).map(_.getFormattedMessage).mkString should include ("fixtures")
+    events.filter(e => e.getLevel == Level.DEBUG && e.getFormattedMessage.contains(url))
+      .map(_.getFormattedMessage).mkString should include ("fixtures")
   }
 
   it should "warn once, naming every backend, when they all fail" in {
     val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> failing("connection refused")))
 
-    val (_, events) = capture(a [RuntimeException] should be thrownBy chain.get("https://example.test/gone"))
+    val url = uniqueUrl("gone")
+    val (_, events) = capture(a [RuntimeException] should be thrownBy chain.get(url))
 
-    val warnings = events.filter(_.getLevel == Level.WARN)
+    val warnings = events.filter(e => e.getLevel == Level.WARN && e.getFormattedMessage.contains(url))
     warnings.size shouldBe 1
     warnings.head.getFormattedMessage should include ("no fixture file")
     warnings.head.getFormattedMessage should include ("connection refused")

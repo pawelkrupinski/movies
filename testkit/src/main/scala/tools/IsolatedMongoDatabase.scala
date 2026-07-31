@@ -45,8 +45,30 @@ object IsolatedMongoDatabase {
     database
   }
 
+  /**
+   * Drop ONE database handed out by [[open]] and close its client, leaving any others
+   * alone.
+   *
+   * Prefer this to [[closeAll]] whenever more than one thing in the process might hold an
+   * isolated database. `closeAll` drops EVERY one, so a suite that finished tidying up
+   * took another suite's database out from under it — two specs in the `it` layer did
+   * exactly that to each other, and the victim failed only when run alongside the other,
+   * which is the least diagnosable way to fail.
+   */
+  def drop(database: MongoDatabase): Unit = opened.synchronized {
+    opened.indexWhere(_._2.name == database.name) match {
+      case -1 => ()
+      case at =>
+        val (client, db) = opened(at)
+        try Await.result(db.drop().toFuture(), 60.seconds)
+        catch { case _: Throwable => () }
+        finally { client.close(); opened.remove(at) }
+    }
+  }
+
   /** Drop every database handed out by [[open]] and close their clients. Safe to
-   *  call twice, and safe to call when nothing was opened. */
+   *  call twice, and safe to call when nothing was opened. Use [[drop]] instead when
+   *  anything else in the process may hold one. */
   def closeAll(): Unit = opened.synchronized {
     opened.foreach { case (client, database) =>
       try Await.result(database.drop().toFuture(), 60.seconds)

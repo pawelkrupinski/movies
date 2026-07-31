@@ -159,6 +159,8 @@ object ConvergenceStorage {
     override def stagingFolder(movieRepository: MovieRepository): StagingFolder =
       new MongoStagingFolder(connection)
 
-    override def close(): Unit = IsolatedMongoDatabase.closeAll()
+    // Only OURS. `closeAll` drops every isolated database in the process, which is fine
+    // when a leg is the only holder and destructive the moment anything else is.
+    override def close(): Unit = IsolatedMongoDatabase.drop(database)
   }
 }
