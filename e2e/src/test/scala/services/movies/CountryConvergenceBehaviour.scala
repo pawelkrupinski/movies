@@ -279,6 +279,31 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       }
     }
 
+  /**
+   * Refuse to run without this country's recorded corpus.
+   *
+   * There used to be a silent fallback to the GENERATED corpus, and it cost eleven runs
+   * and a wrong diagnosis. The generated titles are synthetic — "Long ogród", "Der lange
+   * podróż + spotkanie z twórcami" — so TMDB matches none of them and every row concludes
+   * `tmdbNoMatch`. That is correct behaviour on nonsense input, but it reads exactly like
+   * a broken enrichment pipeline: I chased a "poisoned" fixture tree that was in fact
+   * accurately caching negatives for films that do not exist, and deleted 8,306 valid
+   * entries doing it.
+   *
+   * A leg without a corpus is not a weaker version of this suite, it is a different
+   * experiment wearing its name: the fixpoint it proves is over a repertoire nobody ships.
+   * So it fails, and says what is missing and how to produce it.
+   */
+  private def requireCorpusFixture(): Unit =
+    withClue(s"no corpus fixture for ${country.code} and no KINOWO_CONVERGENCE_SCRAPES_URI to " +
+             s"record one from. This leg would otherwise replay the " +
+             s"GENERATED corpus, whose synthetic titles cannot enrich — a fixpoint over a " +
+             s"repertoire that does not exist. Record one:\n" +
+             s"  KINOWO_COUNTRY=${country.code} KINOWO_CONVERGENCE_SCRAPES_URI=<prod mongo> \\\n" +
+             s"    sbt 'worker/Test/runMain scripts.RecordCorpusFixture'\n") {
+      CorpusFixture.exists(country.code) shouldBe true
+    }
+
   /** How far each enrichment source actually got across the settled corpus.
    *
    *  Printed on every run, including the offline one, where the all-zero line is
@@ -444,7 +469,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     // set too, which is backwards: the fixture exists precisely so a run needs no
     // tunnel.
     if (CorpusFixture.exists(country.code) || realScrapeSource.isDefined) seedFromRealScrapes(archive)
-    else seedGeneratedCorpus(archive)
+    else { requireCorpusFixture(); 0 }   // requireCorpusFixture always fails; 0 satisfies the type
 
   /** Copy the real `cinema_scrapes` dump in. Already restricted to the cinemas this
    *  country's catalogue still knows (see [[realScrapeRows]]) — a dump can outlive a
@@ -479,19 +504,6 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     rows.size
   }
 
-  private def seedGeneratedCorpus(archive: ScrapeArchiveRepository): Int = {
-    val listings = CountryScrapeCorpus.listings(country, LocalDateTime.of(2026, 8, 1, 0, 0))
-    listings.foreach { case (cinema, films) =>
-      archive.record(ScrapeAttempt(
-        cinema          = cinema,
-        city            = Cinema.cityOf(cinema),
-        at              = Instant.parse("2026-07-28T06:00:00Z"),
-        listingComplete = true,
-        films           = films
-      ))
-    }
-    listings.size
-  }
 
   /** One production-shaped tick: re-serve every cinema's archived listing in a
    *  shuffled order, then drain and settle. Returns the set of `(cinema, title)`
