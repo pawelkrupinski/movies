@@ -357,9 +357,25 @@ trait TestWiring extends WorkerWiring {
     // pass needed. The trailing `rehydrate` is a pure load of the folded repo.
     // One `foldGroup` per distinct staging title graduates the whole sanitize
     // group; a second title sharing that group then no-ops (rows already folded).
+    // Failures COUNTED and the first one reported, rather than swallowed. A blanket
+    // `catch { case _: Exception => () }` here hid a fold that threw on every single
+    // group: the harness produced no folds, no errors and no trace, and the corpus sat
+    // in staging looking as though nothing needed doing. A swallow is defensible — one
+    // bad group must not stop the rest — but a SILENT one turns a total failure into an
+    // absence of evidence.
+    var foldFailures = 0
+    var firstFailure = Option.empty[String]
     stagingRepository.findAll().map(_.title).distinct.foreach { title =>
-      try stagingFolder.foldGroup(title) catch { case _: Exception => () }
+      try stagingFolder.foldGroup(title)
+      catch {
+        case exception: Exception =>
+          foldFailures += 1
+          if (firstFailure.isEmpty)
+            firstFailure = Some(s"'$title': ${exception.getClass.getName}: ${exception.getMessage}")
+      }
     }
+    if (foldFailures > 0)
+      println(s"[${country.code}] staging fold FAILED for $foldFailures group(s); first: ${firstFailure.getOrElse("—")}")
     movieCache.rehydrate()
   }
 
@@ -386,9 +402,18 @@ trait TestWiring extends WorkerWiring {
    *  stray non-staging task is completed too, matching `enrichDetailsSync`. */
   private def drainStagingQueueOnce(): Unit = {
     val workerId = "staging-sync"
+    // Counted by outcome, because a staging drain that folds nothing is otherwise
+    // indistinguishable from one with nothing to do — and the two have very different
+    // causes: no tasks CLAIMED means the queue isn't handing them over, while claimed
+    // tasks that never advance means the handlers are refusing them.
+    var claimed   = 0
+    var advanced  = 0
+    var unhandled = 0
     Iterator.continually(taskQueue.claim(workerId, 5.minutes))
       .takeWhile(_.isDefined).flatten
       .foreach { task =>
+        claimed += 1
+        if (!stagingHandlerByType.contains(task.taskType)) unhandled += 1
         val advance = stagingHandlerByType.get(task.taskType).exists { h =>
           (try h.handle(task) catch { case _: Exception => HandlerOutcome.Reschedule(None) }) match {
             case HandlerOutcome.Done | HandlerOutcome.Skipped => true
@@ -397,11 +422,14 @@ trait TestWiring extends WorkerWiring {
             case _                                            => false
           }
         }
+        if (advance) advanced += 1
         taskQueue.complete(task.id, workerId)
         if (advance)
           stagingReaper.onTaskFinished.applyOrElse(
             services.events.TaskFinished(task.taskType, task.dedupKey, task.payload), (_: DomainEvent) => ())
       }
+    if (claimed > 0 || unhandled > 0)
+      println(s"[${country.code}] staging queue: claimed $claimed, advanced $advanced, no-handler $unhandled")
   }
 
   /** Scrape every cinema once in parallel, blocking until all have settled.

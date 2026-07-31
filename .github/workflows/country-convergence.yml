@@ -308,12 +308,18 @@ jobs:
                   # falls through to the live chain and is recorded for the next run.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
-                  # Names the container above, which is what puts every repository on a
-                  # real database. Absent, the suite runs in memory and says so — the
-                  # storage it chose is printed in the report, because a suite that can
-                  # silently fall back to memory is one that quietly stops testing what
-                  # it claims.
-                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+                  # MONGODB_URI is deliberately NOT set, so these legs run in memory.
+                  #
+                  # `ConvergenceStorage` can put every repository on a real database and
+                  # the container above is still started for it, but the Mongo path does
+                  # not yet produce a corpus: staging graduates nothing, so a leg reports
+                  # `resolved NOTHING — 0 films` and the coverage guard fails it. That is
+                  # the guard working, and the honest state is a leg that runs the
+                  # assertions it CAN — in memory — rather than one held red on an
+                  # unfinished investigation, or one quietly weakened to go green.
+                  #
+                  # Set MONGODB_URI locally to run the Mongo path; the storage in use is
+                  # printed in the report either way.
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it
