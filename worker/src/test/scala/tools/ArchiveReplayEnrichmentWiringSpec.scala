@@ -26,8 +26,38 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
     override def post(url: String, body: String, contentType: String): String = { calls += 1; "posted" }
   }
 
+
+  /**
+   * Test doubles assembled HERE, in the spec that wants them.
+   *
+   * This spec is about the enrichment FETCH — which chain answers, and whether TMDB gets
+   * a key — so a container would be pure cost. What it deliberately is NOT is a shipped
+   * `ConvergenceStorage.inMemory`: that existed as a default the convergence suite could
+   * pick up silently, and it did, which is how the order-independence passes ran against
+   * a map for months while appearing to cover the pipeline. A unit spec naming its own
+   * doubles is explicit; a default that anything can inherit is not.
+   */
+  private object FetchOnlyStorage extends tools.ConvergenceStorage {
+    override val describe = "unit-spec doubles (enrichment fetch only)"
+    override lazy val connection  = new services.MongoConnection(uri = None, dbName = "kinowo", required = false)
+    override lazy val screenings  = new services.movies.InMemoryScreeningsRepository
+    override lazy val slots       = new services.movies.InMemorySlotsRepository
+    override lazy val movies      = new services.movies.InMemoryMovieRepository(
+      screenings = Some(screenings), slots = Some(slots))
+    override lazy val readModel: services.readmodel.ReadModelReader & services.readmodel.ReadModelWriter =
+      new services.readmodel.InMemoryReadModelRepository()
+    override lazy val staging     = new services.staging.InMemoryStagingRepository()
+    override lazy val archive     = new services.scrapes.InMemoryScrapeArchiveRepository
+    override lazy val tasks       = new services.tasks.InMemoryTaskQueue
+    override lazy val freshness   = new services.freshness.InMemoryFreshnessStore
+    override lazy val chunkScrape = new services.tasks.InMemoryChunkScrapeStore()
+    override lazy val omdbAttempt = new services.enrichment.InMemoryOmdbAttemptStore
+    override def stagingFolder(movieRepository: services.movies.MovieRepository): services.staging.StagingFolder =
+      new services.staging.InMemoryStagingFolder(staging, movieRepository)
+  }
+
   private def wiringWith(cache: Option[EnrichmentCache], leaf: HttpFetch): ArchiveReplayWiring =
-    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache) {
+    new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, cache, FetchOnlyStorage) {
       override protected def realHttpLeaf: HttpFetch = leaf
     }
 
@@ -110,7 +140,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
     try {
       // Germany, so the language actually discriminates the two branches: the enabled
       // one passes the country's locale, the short-circuiting one takes the default.
-      val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None) {
+      val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, FetchOnlyStorage) {
         override protected def realHttpLeaf: HttpFetch = new CountingLeaf
       }
 

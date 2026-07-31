@@ -725,7 +725,20 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       info(s"${country.displayName}: $Passes passes over ${records0.size} films, " +
            s"${screenings0.values.map(_.size).sum} slots, ${rows0.size} rendered rows")
       records0 should not be empty
-      rows0     should not be empty
+      rows0    should not be empty
+      // NOTE: the screenings comparison below is currently VACUOUS. `screenings0` is empty
+      // because `MongoConvergenceStorage` builds `movies` without the `screenings`/`slots`
+      // read-split that `WorkerWiring` wires in prod, so showtimes stay embedded in the film
+      // document and the side collection is never written. Two empty maps compare equal on
+      // every pass, so this axis passes without testing anything. The films and rendered-rows
+      // axes are real; only this one is not.
+      //
+      // Do NOT "fix" it by passing `screenings = Some(...), slots = Some(...)` — that was
+      // tried (2026-07-31) and it empties the pipeline outright: the read model went to
+      // 0 cinemas / 0 screenings / 0 films and an identical re-scrape churned 3,079 writes,
+      // while `movies` still held all 773 films. The read-split is a protocol (write order,
+      // re-stitch on read, change-stream fan-out), not two constructor arguments, and
+      // turning it on here needs that protocol traced first.
 
       val divergences = mutable.ListBuffer.empty[String]
       (1 until Passes).foreach { i =>

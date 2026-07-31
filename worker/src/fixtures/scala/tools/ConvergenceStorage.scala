@@ -11,8 +11,7 @@ import services.staging._
 import services.tasks.{ChunkScrapeStore, MongoChunkScrapeStore, MongoTaskQueue, TaskQueue}
 
 /**
- * Where a convergence run keeps the state it is making claims about — in memory, or in
- * a real MongoDB.
+ * Where a convergence run keeps the state it is making claims about: a real MongoDB.
  *
  * The suite asks whether the pipeline reaches a fixpoint, and until now it asked that
  * of a pipeline with no database under it: every repository was an in-memory fake. That
@@ -23,10 +22,9 @@ import services.tasks.{ChunkScrapeStore, MongoChunkScrapeStore, MongoTaskQueue, 
  * fails a whole batch's decode, or a staging fold that needs a real transaction — all of
  * which this repository has actually shipped.
  *
- * So the storage is now a choice, and both sides run the SAME assertions. CI takes the
- * Mongo path against a container; a local run takes whichever it is given. Neither is a
- * reduced suite: if a claim holds in memory and not in Mongo, that difference is the
- * finding.
+ * So there is no in-memory side any more — CI and a local run both go through a real
+ * database. Keeping the choice would have meant keeping a path that passes for reasons
+ * production never gets to rely on, and the default is what everything quietly picks.
  *
  * A container, emphatically NOT a tunnel. The enrichment cache used to reach a
  * production cluster over a `flyctl proxy` and that proxy caused every serious failure
@@ -36,8 +34,8 @@ import services.tasks.{ChunkScrapeStore, MongoChunkScrapeStore, MongoTaskQueue, 
  */
 trait ConvergenceStorage {
 
-  /** For the run to say out loud which side of the choice it took — a suite that can
-   *  silently fall back to memory is one that quietly stops testing what it claims. */
+  /** For the run to name the database it used — a suite that cannot say where its state
+   *  went is one you cannot go and look at when it disagrees with you. */
   def describe: String
 
   def connection:  MongoConnection
@@ -58,9 +56,9 @@ trait ConvergenceStorage {
   def chunkScrape: ChunkScrapeStore
   def omdbAttempt: OmdbAttemptStore
 
-  /** Takes the repository rather than closing over one, because the in-memory folder
-   *  works against `movies` directly while the Mongo one goes through a transaction on
-   *  the connection. */
+  /** Takes the repository rather than closing over one: the fold is defined in terms of
+   *  the `movies` the caller is using, and the Mongo folder reaches it through a
+   *  transaction on the connection rather than the repository handle. */
   def stagingFolder(movieRepository: MovieRepository): StagingFolder
 
   def close(): Unit = ()
@@ -73,14 +71,12 @@ object ConvergenceStorage {
     scala.concurrent.duration.DurationInt(10).seconds
 
   /**
-   * Mongo when `MONGODB_URI` names one, memory otherwise.
+   * Mongo from `MONGODB_URI`, or a failure — never a fallback.
    *
-   * Deliberately NOT the other way round, and deliberately not silent. A suite that
-   * defaults to Mongo and falls back to memory when it cannot connect is a suite that
-   * reports success for a run that tested half of what it says it did — the exact shape
-   * of the enrichment gate that resolved 0 of 892 films while three specs passed. Naming
-   * a URI is an explicit request for the Mongo path, and getting it is then guaranteed:
-   * an unreachable database fails the run rather than degrading it.
+   * Deliberately not silent. A suite that falls back to memory when it cannot connect is
+   * a suite that reports success for a run that tested half of what it says it did — the
+   * exact shape of the enrichment gate that resolved 0 of 892 films while three specs
+   * passed. An unreachable database fails the run rather than degrading it.
    */
   def fromEnv(purpose: String): ConvergenceStorage =
     Env.get("MONGODB_URI").filter(_.nonEmpty)
@@ -88,8 +84,8 @@ object ConvergenceStorage {
       .getOrElse(throw new IllegalStateException(
         "MONGODB_URI is not set. This suite runs on a real database only — there is no " +
         "in-memory storage any more, because a claim proved against a map is not a claim " +
-        "about the pipeline that ships. Start one with `scripts/convergence-local.sh <code> " +
-        "--mongo`, or name an existing throwaway."))
+        "about the pipeline that ships. Start one with `scripts/convergence-local.sh <code>`, " +
+        "or name an existing throwaway."))
 
   /** A uniquely-named throwaway database on `uri`, dropped by [[ConvergenceStorage.close]].
    *  Unique per run so the three country legs — and anything else on the `it` layer —
@@ -126,6 +122,14 @@ object ConvergenceStorage {
     // `fallbackToOwnInit = false`: the database is handed in, so a `None` here would
     // mean the caller's connection failed, and re-running the repository's own init
     // would just hit the same timeout twice.
+    //
+    // NOT wired with `screenings`/`slots`, unlike `WorkerWiring` — so showtimes stay
+    // embedded in the film document here and the side collections, though present below,
+    // are never written by the pipeline. That is a real remaining difference from prod,
+    // and it is what makes the order-independence spec's screenings axis vacuous (see the
+    // note there). Passing the two arguments is NOT the fix: tried 2026-07-31, it took
+    // the read model to 0 cinemas / 0 screenings / 0 films and made an identical
+    // re-scrape churn 3,079 writes, with `movies` still holding all 773 films.
     override lazy val movies     = new MongoMovieRepository(shared, fallbackToOwnInit = false)
     override lazy val screenings = new MongoScreeningsRepository(shared)
     override lazy val slots      = new MongoSlotsRepository(shared)
