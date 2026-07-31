@@ -116,15 +116,36 @@ jobs:
                   docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
                   until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
 
-            # The scrape corpus, from the nightly `Record scrape fixtures`. Restore-only
-            # and prefix-matched, so a leg always takes the newest capture and simply
-            # proceeds without one when none exists.
-            - name: Restore recorded scrape fixtures
-              uses: actions/cache/restore@v5
-              with:
-                  path: scrape-archive
-                  key: scrape-fixtures-${{ matrix.code }}-
-                  restore-keys: scrape-fixtures-${{ matrix.code }}-
+            # The scrape corpus, from the ARTIFACT of the newest `Record scrape fixtures`
+            # run — not from the actions cache it also writes.
+            #
+            # The cache silently loses it. This repo sits at ~9.46 GB of a 10 GB ceiling,
+            # so entries are evicted by LRU with no signal: a leg logs `Cache not found
+            # for input keys: scrape-fixtures-uk-` and carries on. Poland and Germany
+            # never noticed because their corpora are committed to the repository; the
+            # UK's is not, so it depended entirely on the evictable copy — and when that
+            # vanished the leg fell back to a generated corpus and reported `tmdbId 0`,
+            # which cost eleven runs and a wrong diagnosis to trace.
+            #
+            # Same lesson as the enrichment trees a few steps above: an artifact has its
+            # own retention and cannot be evicted to make room for a build cache.
+            - name: Restore the recorded scrape corpus
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -uo pipefail
+                  mkdir -p scrape-archive
+                  for run in $(gh run list --workflow "Record scrape fixtures" --status success \
+                               --limit 10 --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+                      if gh run download "$run" --name "scrape-fixtures-${{ matrix.code }}" \
+                         --dir scrape-archive 2>/dev/null; then
+                          echo "scrape corpus from recording run $run"
+                          ls -l scrape-archive/
+                          exit 0
+                      fi
+                  done
+                  echo "no recorded scrape corpus for ${{ matrix.code }} — the leg will fail and say so"
 
             # The enrichment tree — recorded responses AND the remembered-answer cache —
             # lives in a ROLLING RELEASE, one asset per country, overwritten in place.
