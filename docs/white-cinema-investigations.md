@@ -57,6 +57,13 @@ running `flyctl proxy` on `127.0.0.1:27017`, iterated over `kinowo` /
 cleanly, and the two remaining big cohorts (DE open-air, UK Flicks) were
 re-tested adversarially and are confirmed NOT our bug.**
 
+> **A SECOND PASS followed the first** (same day, on request: "fix everything
+> outstanding"). It cleared six of the items this run had logged as follow-ups or
+> needs-human, including a **second real white-bar bug — The Old Court Windsor
+> was reading a different venue's page.** See **"Follow-up pass"** at the end of
+> this entry; the sections above are the original investigation record, with
+> `→ fixed in the follow-up pass` markers where they were later actioned.
+
 ### ✅ Verification owed from 2026-07-28: the UK Flicks span-button fix WORKS
 
 @d618f3a86 (match the session button by CLASS, not tag, so `<span>`-only
@@ -202,9 +209,10 @@ the one scenario that would have made it OUR bug.
 - **DE red (4, down from 23, out of scope):** all still HTTP 404 on
   `/kinoprogramm/kino/<ID>/` — Inselkino Baltrum `G01C9`, Kino Kiste `A0743`,
   Heppel-Ettlich `A2843`, Kino Babenhausen `A2165`. Venues delisted from
-  filmstarts, correctly red rather than white. **needs-human: prune or re-resolve
-  these ids** — they will never recover on their own and burn retries every
-  cycle. (Standing item, second run running; the set shrank from ~11 ids to 4.)
+  filmstarts, correctly red rather than white. They will never recover on their
+  own and burn retries every cycle. (Standing item, second run running; the set
+  shrank from ~11 ids to 4.) **→ fixed in the follow-up pass: all four verified
+  gone for good and retired from the roster.**
 
 ### UK — 57 white (was 63), 0 red — swept all 57; **zero client bugs**
 
@@ -225,8 +233,8 @@ Belmont Filmhouse → `belmont-filmhouse-aberdeen`).
   `sitemap-cinemas.xml` entirely; `the-old-court-windsor`, `old-court-windsor`,
   `the-old-court` all 404 (the only Windsor entry is a different venue,
   `the-screen-cinema-windsor`). Our config points at a slug Flicks no longer
-  publishes. **needs-human: re-resolve or retire that venue's slug** — it is the
-  one UK row that is arguably our config's fault rather than a coverage gap.
+  publishes. **→ fixed in the follow-up pass: it was worse than a stale slug —
+  the venue was wired to a DIFFERENT venue's page, and now has its own client.**
 - **Everyman Cinema Durham** is on `GatsbyBoxOfficeClient`, not Flicks (its
   Flicks slug exists but is irrelevant); previously confirmed "closed until
   further notice". `intentionally-dormant`.
@@ -248,6 +256,8 @@ Belmont Filmhouse → `belmont-filmhouse-aberdeen`).
   `/search/movie?query=…`. An enrichment source rejecting us, not a scrape.
   Out of scope for a white run but **worth a human's eye** — a 403 (not 429)
   suggests a key/permission problem rather than throttling.
+  **→ investigated in the follow-up pass; two header defects fixed, the
+  credential itself left for a human.**
 
 ### Carried-over PL dormant — per-venue evidence (all re-probed live this run)
 
@@ -293,7 +303,7 @@ this run.
 - **Studio (Opole)** — break to **3 września 2026**, confirmed live. **See the
   stale-URL heads-up below.**
 
-### Heads-up (NOT a white cause; left for a human): `KinoStudioClient` reads a soft-404
+### Heads-up: `KinoStudioClient` reads a soft-404 → fixed in the follow-up pass
 
 `mok.opole.pl` now 403s; the live host is **`mdk.opole.pl`**. `KinoStudioClient
 .RepertoireUrl` → `mdk.opole.pl/kino-studio.html` returns **HTTP 200 but serves
@@ -311,7 +321,7 @@ ours.** Follow-up: repoint the client (or make it follow whichever of the two
 pages carries `div.ckeditor`) and re-record its fixture. **Best done in the
 first run after 3 Sept, when a populated page exists to test against.**
 
-### Also worth recording (previous run's `MsiClient` 2-month horizon cap)
+### Previous run's `MsiClient` 2-month horizon cap → fixed in the follow-up pass
 
 Unchanged and still not actioned — see the 2026-07-28 entry. It causes no white
 bar; every out-of-window title measured was a concert / stand-up / theatre that
@@ -347,6 +357,153 @@ row into a shared `pending_movies`; it now gets its own isolated database). The
 transferable lesson, which cost time here and there: **a spec passing alone says
 nothing about the suite** — when the it/ layer goes red, check `origin/main`
 before assuming it is yours.
+
+---
+
+## 2026-07-31 — Follow-up pass ("fix everything outstanding")
+
+A second pass over the same run's backlog, on request. **Six items cleared,
+including a second real white-bar bug.** Everything below is one commit,
+`@57429179a`, with all layers green locally (`testUnit` 4,279 · `itAll` 12 + 111 ·
+`PageTest` 172); neither snapshot layer shifted.
+
+### The Old Court Windsor — `fixed` — **we were scraping the wrong venue**
+
+Logged above as "needs-human: a slug Flicks no longer publishes". That was too
+generous to us. The catalog line read
+`flicks("the-screen-cinema-windsor", TheOldCourtWindsor)` — **The Screen Cinema
+Windsor is a different venue.** The Old Court appears nowhere in Flicks' 848-entry
+`sitemap-cinemas.xml` (no `oldcourt` slug exists at all), so this venue was
+pointed at a neighbour's page and had scraped to zero for as long as it has been
+wired. A white bar caused entirely by our own mapping — not the venue, not the
+aggregator.
+
+Its own site carries the programme, so a new `TheOldCourtClient` reads
+`oldcourt.org.uk/events`: **12 films / 15 showtimes**, 2026-08-07 → 11-26.
+Three things worth knowing before touching it again:
+
+- **The page has NO class names** (it is styled with CSS `@scope`). Every hook is
+  structural — `a[href^=/event/]` for the event block, child-walking for the title.
+- **jsoup's `select` matches the ROOT element too**, so `block.selectFirst("div")`
+  returns the block itself and any descendant query lands on the wrapper, whose
+  text is the title with every booking line glued on. Cost two recording rounds;
+  the client now walks `children` explicitly.
+- **What makes an event a film is the booking path**, `/sales/the-old-court-cinema/`
+  — not the title. The listing is one flat stream of 42 events mixing in quiz
+  nights, DJ sets, sound baths and ballet. "Rocky Horror Night" and "Disclosure
+  Day" ARE films here; "Alice In Wonderland - The Ballet" is not.
+- Dates are prose with **no year** ("Fri 7th Aug 20:30-21:15"), inferred forward
+  from `today`; the spec pins the December→next-August rollover.
+- Programme-strand suffixes are stripped: "Tuner (The Old Courters)" (the seniors'
+  matinee) and "Tuner" are one film on two days, and would otherwise render as two
+  near-duplicate cards. Same for "Backrooms" and "(Independent film)".
+
+Six-case `TheOldCourtClientSpec` over a recorded 2026-07-31 fixture.
+
+### Kino Studio Opole — `fixed` — the soft-404 trap, defused before it bites
+
+Flagged above as "do this in the first run after 3 Sept". Doing it now instead,
+because the fix is test-backable today and the failure mode is worse than logged:
+`KinoStudioClient.parse` fell back to scanning the **whole `<body>`** when the CMS
+content div was absent, so a soft-404 fed the site's nav and footer to the
+date/title state machine — which can only manufacture junk films, never recover
+real ones.
+
+`mdk.opole.pl/kino-studio.html` returns **HTTP 200 with the site's "Błąd 404"
+body** (no `div.ckeditor`), while the live page is `kino-studio-przerwa.html`.
+The status code cannot tell the dead slug from the live one; the content div can.
+The client now tries both slugs in order, takes the first that renders content
+(lazily, so a healthy in-season page still costs one request), and — if NEITHER
+does — **throws**, so a dead source surfaces RED rather than white. Same guard as
+`MsiClient` / `KinoAwangarda2Client` / `KinoPatriaClient`.
+
+Three new cases over three recorded fixtures: soft-404 → falls through and finds
+the films; a real break page → zero films and NO throw (a dormant venue is
+correctly white); both dead → throws.
+
+### `MsiClient`'s 2-month horizon cap — `fixed`
+
+Carried since 2026-07-28. `fetchUnfiltered` fetched exactly `YearMonth.from(today)`
+and `.plusMonths(1)` across all ~12 MSI venues, which `ScrapeHorizon`
+(`MaxDays = 730`, "we want ALL future screenings") forbids. It now walks forward a
+month at a time, bounded by the horizon, stopping after `MaxEmptyMonths = 3`
+consecutive months that yielded nothing.
+
+**Three, not two** — deliberately. MSI venues publish one to two months ahead, so a
+threshold of two cannot see a programme resuming after a two-month summer gap,
+which is exactly where half these venues are right now. A dormant venue still
+costs three requests. A month that fails to fetch counts as empty for the stop
+rule: we cannot tell a missing month from a quiet one, and treating failures as
+"keep going" would walk the full two years on every blip. The total-outage guard
+is unchanged in meaning — if EVERY attempted month failed, propagate.
+
+Test serves the recorded month page ONLY at today+2, which the old client never
+requested; plus a request-counting fetch pinning that the walk still stops cheaply.
+
+### Four delisted German venues — `fixed` (retired)
+
+The DE red set (`A0743` Kino Kiste, `G01C9` Inselkino Baltrum, `A2843`
+Heppel - Ettlich, `A2165` Kino Babenhausen), 404ing for weeks and burning retries
+every cycle. Checked against Filmstarts' own exhaustive city/state listings —
+**none has been re-issued under a new id**, and the control proves 404 means
+deletion rather than dormancy: a live-but-idle venue (`A1809` Freiluftkino
+Parkbühne Biesdorf) returns HTTP 200 with `no.showtime.error`, never 404.
+
+Independently confirmed each is really gone as a cinema: Kino Kiste closed
+31.12.2025; Baltrum has no operator (the Gemeinde is advertising for one);
+Heppel - Ettlich is open but as a Kleinkunst stage; Babenhausen's hall runs
+theatre only. Removed from `data/germany/regions.json` and `GermanRosterData`
+(roster 1,533 → **1,529**, and every count/comment quoting 1,533 updated with it).
+
+**Trap recorded for whoever regenerates the roster:** do NOT re-point Heppel to
+`A1575` "Neues Rottmann". Munich's city page does list that id, but it is a
+separate operating cinema at Rottmannstr. 15, not a rename. `CountrySpec` now
+fails if any of the four ids returns to the roster.
+
+### `api.trakt.tv` 403 — partly fixed, credential left for a human
+
+Two real defects found, one fixed, and the likely root cause identified but not
+ours to change.
+
+- **`RealHttpFetch` was sending duplicate headers.** `buildRequest` applied
+  caller-supplied headers with `HttpRequest.Builder.header`, which **APPENDS** —
+  so a caller overriding a default got BOTH values sent. `WikidataClient` exists
+  precisely to satisfy Wikimedia's "identify yourself" policy and was shipping its
+  polite UA *alongside* a Chrome string. Now `setHeader`. This is a general fix,
+  not a Trakt one; `RealHttpFetchSpec` pins it (and it fails on the old code).
+- **`TraktClient` sent two of the four headers Trakt documents as required.** No
+  `Content-Type: application/json` (a 412 case) and no `User-Agent`, so it
+  inherited `RealHttpFetch`'s Chrome UA — a browser string on a JSON API, exactly
+  the shape Trakt's Cloudflare bot rules (announced Dec 2025, and confirmed on
+  their forum as "experimenting with some firewall rules to block bot traffic")
+  target. It now identifies as `kinowo/1.0`.
+- **The 403 itself is most likely the credential.** Trakt's status table is
+  explicit: `403 = "Forbidden - invalid API key or unapproved app"`, while rate
+  limiting is 429, a missing content type is 412 and VIP-gating is 426. Search is
+  still public (no OAuth), and no announcement revokes keys. **The discriminator
+  is the response content-type**: Trakt's own app layer returns a 9-byte JSON
+  `Forbidden`, whereas Cloudflare returns an HTML interstitial. **needs-human:
+  check the app at `trakt.tv/oauth/applications` and whether
+  `TRAKT_API_CLIENT_ID` is still valid.** The header fixes remove the other
+  variables; they are not claimed to fix the 403.
+
+Worth noting separately: `TraktClient.fetch` swallows every failure into `"[]"`,
+so an invalid key is indistinguishable from "no match" at the call site. Not
+changed here (it would ripple through the enrichment ladder), but it is why this
+took an external investigation to diagnose rather than a log line.
+
+### Still open after this pass
+
+- **Kino Zachęta (Kleczew)** — `unfixable` unless we build OCR; the venue
+  publishes only a JPEG. Unchanged.
+- **Wybrzeże** — expired TLS certificate at the source, four runs old. Nothing we
+  can do from our side; worth a human deciding whether to retire the venue.
+- **The DE open-air cohort and the 55 remaining UK Flicks venues** — genuine
+  aggregator coverage gaps. Fixing them means bespoke own-site clients per venue,
+  which is a project, not a white-run change. The Old Court above is the template
+  if anyone wants to start.
+- **Kino Sfinks / Kino Zamek** — both still waiting on the venue to repopulate its
+  calendar before a parser can be written or tested against it.
 
 ---
 
