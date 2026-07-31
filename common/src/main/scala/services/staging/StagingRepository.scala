@@ -79,6 +79,22 @@ trait StagingRepository {
   /** Every staging row, ordered by `_id`. Returns empty when disabled. */
   def findAll(): Seq[StagingRecord]
 
+  /**
+   * The rows of ONE film — the sanitized-title anchor the staging state machine works
+   * on. Defaults to filtering [[findAll]], which is what every caller used to do
+   * inline, so an implementation that can do better overrides it and one that cannot
+   * is unchanged.
+   *
+   * Worth a method of its own because the difference is enormous at scale: the reaper
+   * asks this on every staging event, and against Mongo the naive form read and DECODED
+   * the entire collection to return a handful of rows. During a convergence ingest —
+   * 281 venues against a backlog growing to ~7,000 — that is on the order of two million
+   * document decodes, and it was invisible for as long as the suite ran on an in-memory
+   * map where `findAll` is a copy.
+   */
+  def findByAnchor(anchor: String): Seq[StagingRecord] =
+    findAll().filter(row => TitleNormalizer.sanitize(row.title) == anchor)
+
   /** Write-through upsert of one cinema's row, keyed by `idFor(cinema, title,
    *  year)` — the scrape-divert path, called on every tick a newcomer is still
    *  incubating. When the row already exists, its enrichment is carried forward
@@ -153,6 +169,15 @@ object StagingRepository {
    *  the persisted `_id`, so it's drift-proof (the title re-derived on read can
    *  re-sanitize differently; the `_id` can't). */
   def cinemaTitlePrefix(id: String): String = id.substring(0, id.lastIndexOf('|') + 1)
+
+  /** The sanitized-title anchor an `_id` belongs to. `idFor` builds
+   *  `cinema|anchor|year`, so the anchor is already in the key and a row's anchor can
+   *  be known WITHOUT reading its payload — which is the whole point: it turns "decode
+   *  every document to see which film it is" into a read of the index. */
+  def anchorOf(id: String): Option[String] = id.split('|') match {
+    case Array(_, anchor, _*) => Some(anchor)
+    case _                    => None
+  }
 
   /** The `_id`s already in the store that are the SAME (cinema, sanitized title)
    *  as `newId` — its year-variant siblings (yearless, 2025, 2026, …), excluding
@@ -243,6 +268,43 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
       val records = buf.result()
       if (!complete) logger.warn(s"StagingRepository.findAll returned ${records.size} record(s) from an INCOMPLETE scan")
       records
+  }
+
+  /**
+   * One film's rows WITHOUT reading the collection.
+   *
+   * Two steps, and the first is the point: scan `_id` alone, projected, so the server
+   * answers from the `_id_` index and no payload crosses the wire. The anchor is already
+   * encoded in the key (`cinema|anchor|year`), so the film's rows can be identified from
+   * ids alone; only those few are then fetched and decoded.
+   *
+   * The inherited default filters `findAll`, which decodes every staged document to
+   * return a handful. The reaper asks this on every staging event, so during an ingest
+   * that grows the backlog the cost is quadratic in it — measured as the dominant cost of
+   * a convergence leg against Mongo, roughly two million decodes, while an in-memory
+   * `findAll` is a map copy and shows nothing.
+   *
+   * Degrades to the inherited scan on a read failure rather than to "this film has no
+   * rows": an empty answer here would make the reaper skip a film's next step, which is
+   * indistinguishable from the film being finished.
+   */
+  override def findByAnchor(anchor: String): Seq[StagingRecord] = coll.toSeq.flatMap { c =>
+    val ids = Try(Await.result(
+      c.withDocumentClass[org.mongodb.scala.Document]()
+        .find()
+        .projection(Projections.include("_id"))
+        .toFuture(), 30.seconds))
+      .toOption.map(_.flatMap(document => document.get("_id").filter(_.isString).map(_.asString().getValue)))
+
+    ids match {
+      case None            => super.findByAnchor(anchor)
+      case Some(everyId)   =>
+        val wanted = everyId.filter(StagingRepository.anchorOf(_).contains(anchor))
+        if (wanted.isEmpty) Seq.empty
+        else Try(Await.result(c.find(Filters.in("_id", wanted*)).toFuture(), 30.seconds))
+          .toOption.getOrElse(Seq.empty)
+          .flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).toSeq)
+    }
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {

@@ -4,7 +4,7 @@ import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import models.{Multikino, MovieRecord}
+import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import services.staging.{MongoStagingRepository, StagingRecord}
 import tools.Env
 
@@ -49,22 +49,27 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   private def purge(): Unit =
     Await.result(staged.deleteMany(Filters.regex("_id", "^" + java.util.regex.Pattern.quote(prefix))).toFuture(), 30.seconds)
 
-  /** Heavy staged rows, written directly: the point is the payload on the wire, and a
-   *  row without one cannot tell a projected read from an unprojected one. */
-  private def seedHeavySiblings(): Unit = {
-    val showtimes = (1 to 120).map(n =>
-      Document("when" -> s"2026-08-0${n % 9 + 1}T20:00", "room" -> s"Hall $n", "url" -> s"https://cinema.test/$n"))
+  /** Heavy staged rows written THROUGH THE REPOSITORY, so they are real
+   *  `StoredMovieDto`s that decode back into `StagingRecord`s — hand-built documents
+   *  measure bytes fine but cannot be read back, which silently turns a
+   *  "these rows come back" assertion into a comparison against an empty list.
+   *
+   *  Heavy on purpose: the payload on the wire is the thing under test, and a light row
+   *  cannot tell a projected read from an unprojected one. */
+  private def seedHeavySiblings(repository: MongoStagingRepository): Unit = {
+    val showtimes = (1 to 300).map(n =>
+      Showtime(java.time.LocalDateTime.of(2026, 8, 1, 12, 0).plusMinutes(n.toLong * 7), Some(s"https://cinema.test/booking/$n")))
     Seq(1995, 2004, 2017).foreach(year =>
-      Await.result(
-        staged.insertOne(Document("_id" -> s"$prefix$year", "record" -> Document("showtimes" -> showtimes)))
-          .toFuture(), 30.seconds))
+      repository.upsert(Multikino, title, Some(year),
+        MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(
+          title = Some(s"$title ($year)"), showtimes = showtimes)))))
   }
 
   "the staging sibling lookup" should "not pull the siblings' payloads over the wire" in {
     val repository = new MongoStagingRepository(Some(db))
     purge()
     try {
-      seedHeavySiblings()
+      seedHeavySiblings(repository)
 
       // The assertion is only meaningful if the rows are actually heavy. Without this a
       // future change that lightens the fixture would leave a test that passes whatever
@@ -94,6 +99,43 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       withClue(s"the sibling lookup pulled ${bytes}B back for a list of ids; projected to " +
                s"`_id` it returns a few hundred: ") {
         bytes should be < 2000
+      }
+    } finally purge()
+  }
+
+  // The reaper asks for ONE film's rows on every staging event. Filtering `findAll`
+  // decoded every staged document to answer that — during an ingest that grows the
+  // backlog, quadratically. `_id` already encodes the anchor (`cinema|anchor|year`), so
+  // the rows can be identified from the index and only the matches fetched.
+  "fetching one film's staging rows" should "not decode the whole collection" in {
+    val repository = new MongoStagingRepository(Some(db))
+    purge()
+    try {
+      seedHeavySiblings(repository)
+      val anchor = StagingRecord.idFor(Multikino, title, None).split('|')(1)
+
+      Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), 30.seconds)
+      Await.result(db.getCollection[Document]("system.profile").drop().toFuture(), 30.seconds)
+      Await.result(db.runCommand(Document("profile" -> 2)).toFuture(), 30.seconds)
+      val rows = try repository.findByAnchor(anchor)
+                 finally Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), 30.seconds)
+
+      withClue("it must still return the film's rows: ") { rows.map(_.id).sorted shouldBe
+        Seq(1995, 2004, 2017).map(y => s"$prefix$y").sorted }
+
+      // The id sweep is covered by the `_id_` index; only the matching rows carry payload.
+      // Scanning the collection would pull every document's showtimes instead.
+      val queries = Await.result(
+        db.getCollection[Document]("system.profile")
+          .find(Filters.and(Filters.eq("op", "query"), Filters.regex("ns", "pending_movies$")))
+          .toFuture(), 30.seconds)
+      val sweep = queries.filter(_.get("nreturned").exists(_.asNumber().intValue() >= 3))
+        .flatMap(_.get("responseLength").map(_.asNumber().intValue()))
+      withClue(s"expected a profiled sweep over the collection, saw ${queries.size} query op(s): ") {
+        sweep should not be empty
+      }
+      withClue(s"the id sweep pulled ${sweep.min}B; projected to `_id` it is a few hundred: ") {
+        sweep.min should be < 2000
       }
     } finally purge()
   }

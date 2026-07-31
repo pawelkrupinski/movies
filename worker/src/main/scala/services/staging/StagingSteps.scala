@@ -40,8 +40,10 @@ class StagingSteps(
 
   /** Every staging row of the film whose title sanitizes to `anchor`, `_id`-sorted
    *  (so `head` is deterministic), across all cinemas + year-variants. */
-  def rowsFor(anchor: String): Seq[StagingRecord] =
-    stagingRepository.findAll().filter(r => TitleNormalizer.sanitize(r.title) == anchor)
+  /** Delegated, so a repository that can answer this from an index does. The inline
+   *  `findAll().filter(...)` this replaced decoded every staged document to return one
+   *  film's rows, on every staging event. */
+  def rowsFor(anchor: String): Seq[StagingRecord] = stagingRepository.findByAnchor(anchor)
 
   def enricherFor(cinema: Source): Option[DetailEnricher] = enrichers.find(_.cinema == cinema)
 
