@@ -30,7 +30,12 @@ class MongoCachingDetailFetch(
   underlying:     HttpFetch,
   db:             Option[MongoDatabase],
   ttl:            FiniteDuration,
-  collectionName: String = "detailCache"
+  // No default. Two chains once shared this collection with different TTLs (Helios 2h,
+  // Cinema City 6h), so the second `createIndex` was rejected for redefining
+  // `fetchedAt_1` and one chain silently ran on the other's expiry — logged as a warning
+  // and otherwise invisible. A cache keyed by a TTL has to be named by whoever owns that
+  // TTL; there is no sensible shared default.
+  collectionName: String
 ) extends HttpFetch with Logging {
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))

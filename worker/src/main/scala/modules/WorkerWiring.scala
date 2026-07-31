@@ -249,7 +249,9 @@ class WorkerWiring(
     httoFetch, multikinoFetch, biletynaFetch, heliosToday,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process.
-    (h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl),
+    // One collection PER CHAIN: the TTL index is a property of the collection, so two
+    // chains sharing it means one of their expiries silently loses (see the class doc).
+    (chain, h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl, s"detailCache-$chain"),
     // Kino Kryterium (bilety.ck105.koszalin.pl) times out our Fly egress IP AND
     // every Decodo proxy IP at the TCP layer, so a direct scrape came back empty
     // → a permanent white /uptime bar. Only Zyte's true-residential network

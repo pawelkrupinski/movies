@@ -43,7 +43,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
                       vue:      HttpFetch = http): CinemaScraperCatalog =
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
-      chainDetailCache = (h, ttl) => new CachingDetailFetch(h, ttl),
+      chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl),
       zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
       odeonAuthToken = () => None
     )
@@ -229,6 +229,29 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
         h shouldBe h.toLowerCase
         h should not include "/"
         h should not include ":"
+      }
+    }
+  }
+
+  /** Each chain's detail cache carries its own TTL (Helios 2h, Cinema City 6h), and under
+   *  the worker that cache is a Mongo collection whose TTL index is named for the
+   *  collection. Two chains asking for one store therefore means one expiry silently
+   *  loses — Mongo rejects the second `createIndex` with `IndexOptionsConflict` and
+   *  `MongoCachingDetailFetch` logs it and carries on. Whatever the chains are, distinct
+   *  TTLs must come with distinct cache names. */
+  it should "never let two chains with different detail TTLs share one cache" in {
+    val requested = scala.collection.mutable.ListBuffer.empty[(String, FiniteDuration)]
+    new CinemaScraperCatalog(
+      http, mkFetch = http, bnFetch = http, today = LocalDate.of(2026, 6, 6),
+      chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
+      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonAuthToken = () => None)
+
+    requested.size should be > 1
+    withClue(s"chains built: ${requested.mkString(", ")} — ") {
+      requested.groupBy(_._1).foreach { case (chain, entries) =>
+        withClue(s"chain '$chain' asked for ${entries.size} different TTLs: ") {
+          entries.map(_._2).distinct should have size 1
+        }
       }
     }
   }

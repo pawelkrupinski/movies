@@ -48,10 +48,12 @@ class CinemaScraperCatalog(
   mkFetch: HttpFetch,
   bnFetch: HttpFetch,
   today:   LocalDate,
-  // Builds the per-chain detail-page cache (Helios / Cinema City). The worker
+  // Builds the per-chain detail-page cache, taking the chain it is for. The worker
   // injects a Mongo-backed cache so chain detail is deduped across servers; the
-  // diagnostic ctor + tests default to the in-process CachingDetailFetch.
-  chainDetailCache: (HttpFetch, FiniteDuration) => HttpFetch,
+  // diagnostic ctor + tests default to the in-process CachingDetailFetch. The chain name
+  // is not decoration — each chain's cache carries its own TTL, so each needs its own
+  // store (see `MongoCachingDetailFetch.collectionName`).
+  chainDetailCache: (String, HttpFetch, FiniteDuration) => HttpFetch,
   // Zyte residential egress for venues whose firewall blocks both our Fly IP and
   // the Decodo proxy (see the ctor doc). No primary-ctor default — Scala can't
   // reference `http` here — so the secondary ctor and WorkerWiring supply it.
@@ -82,7 +84,7 @@ class CinemaScraperCatalog(
    *  fixture-overridden) `multikinoFetch` / `biletynaFetch`. */
   def this(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) =
     this(http, MultikinoClient.fetchFor(http), ZyteFallback.fetchFor(http), today,
-      (h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http),
+      (_, h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http),
       // No residential proxy outside WorkerWiring — a diagnostic runs from a
       // developer's own (unblocked) IP, so plain `http` is the right default.
       flicksFetch = http, vueFetch = http,
@@ -97,8 +99,8 @@ class CinemaScraperCatalog(
   // Cinema City (6h).
   val heliosDetailTtl:     FiniteDuration = 2.hours
   val cinemaCityDetailTtl: FiniteDuration = 6.hours
-  private val heliosDetailHttp:     HttpFetch = chainDetailCache(http, heliosDetailTtl)
-  private val cinemaCityDetailHttp: HttpFetch = chainDetailCache(http, cinemaCityDetailTtl)
+  private val heliosDetailHttp:     HttpFetch = chainDetailCache("helios", http, heliosDetailTtl)
+  private val cinemaCityDetailHttp: HttpFetch = chainDetailCache("cinema-city", http, cinemaCityDetailTtl)
   private def helios(config: HeliosCinema): HeliosClient =
     new HeliosClient(http, config, today, Some(heliosDetailHttp))
 
