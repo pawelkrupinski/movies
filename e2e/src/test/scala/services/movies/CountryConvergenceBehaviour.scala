@@ -256,6 +256,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     bootSettled(w)
     enrichmentCache.foreach(cache => info(s"${country.displayName}: enrichment cache after boot — ${cache.statistics}"))
     info(s"${country.displayName}: enrichment coverage — ${enrichmentCoverage(w)}")
+    info(s"${country.displayName}: unresolved — ${unresolvedFilms(w)}")
     requireEnrichmentReached(w)
     (w, merges, archive)
   }
@@ -317,6 +318,11 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  a source can only reach the rows the source above it resolved, so a collapse
    *  between two rungs localises which resolver stopped answering.
    */
+  /** How many unresolved titles the report names before truncating. Enough to spot a
+   *  pattern (a banner family, a language, a decoration) without burying the run's other
+   *  findings; the total is always reported. */
+  private val UnresolvedFilmsReported = 60
+
   private def enrichmentCoverage(w: ArchiveReplayWiring): String = {
     val records = w.movieRepository.findAll().map(_.record)
     def count(predicate: MovieRecord => Boolean): Int = records.count(predicate)
@@ -324,6 +330,27 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     s"imdbId ${count(_.imdbId.isDefined)}, imdbRating ${count(_.imdbRating.isDefined)}, " +
     s"filmwebRating ${count(_.filmwebRating.isDefined)}, metascore ${count(_.metascore.isDefined)}, " +
     s"rottenTomatoes ${count(_.rottenTomatoes.isDefined)}"
+  }
+
+  /** The FILMS that resolved to nothing, named.
+   *
+   *  The counts above say how big the gap is and nothing about what it is made of, and
+   *  the per-row resolution logging is actively misleading as a substitute: a film with
+   *  several decorated rows ("X", "Cykl Y: X", "X + spotkanie z reżyserem") logs a
+   *  no-match for each row that failed while the film itself resolved through another,
+   *  so counting log lines overstates the gap and points at titles that are already
+   *  fine. Chasing that cost a round of rules aimed at rows whose films had resolved.
+   *
+   *  Sorted and capped so the report stays diffable between runs rather than dumping a
+   *  few hundred lines; the count is always reported in full. */
+  private def unresolvedFilms(w: ArchiveReplayWiring): String = {
+    val unresolved = w.movieRepository.findAll()
+      .filter(_.record.tmdbId.isEmpty)
+      .map(stored => stored.year.fold(stored.title)(year => s"${stored.title} ($year)"))
+      .sorted
+    val shown = unresolved.take(UnresolvedFilmsReported)
+    s"${unresolved.size} film(s) with no tmdbId" +
+      (if (unresolved.isEmpty) "" else s"; first ${shown.size}: ${shown.mkString(" | ")}")
   }
 
   /** Boot the corpus to the steady state production reaches, settle it, and get
