@@ -246,6 +246,38 @@ trait TestWiring extends WorkerWiring {
     PhaseTimer.timed(scope, "scrapeTick")(runOneScrapeTick())
     PhaseTimer.timed(scope, "drainServices")(drainServices())
     PhaseTimer.timed(scope, "drainStaging")(drainStaging())
+    // A SECOND scrape pass, because one is not enough to reach the state production
+    // rests in once per-film DETAIL is fetched.
+    //
+    // A cinema's rows take the direct `movies` path when the film is already known and
+    // go to staging when it is not. Detail is what creates a film under its plain title
+    // — Cinema City's detail page gives "GHOST: 2 Big To Rig" — so every venue scraped
+    // BEFORE that film existed has its rows sitting in staging, and the drain cannot
+    // progress them (staging held 248 rows at 6975 → 248 → 248, stable). The moment any
+    // later scrape runs, the film exists, those rows take the direct path, and 31
+    // Helios/Multikino slots land at once. Production scrapes continuously and passes
+    // through this on its own; a boot that stops after one pass hands the work to
+    // whoever scrapes next — which, in this suite, is the assertion that nothing should
+    // be written.
+    //
+    // Deliberately the whole scrape+drain pair and not a bare drain: the rows are not
+    // stuck because the drain missed them, they are stuck because nothing has re-offered
+    // them since the film appeared.
+    // UNCONDITIONAL, and it is much cheaper than it looks: measured on Poland the second
+    // pass is 21.7s against the first pass's 177s scrape + 141s drain, because the
+    // archive replay and every detail fetch are warm by then. ~7% on the boot, not the
+    // doubling it reads as.
+    //
+    // Gating it on `stagingRepository.findAll().nonEmpty` — "only re-scrape when rows
+    // are actually stuck" — was tried and is WRONG twice over. It is unnecessary, per
+    // the timings above; and it silently breaks, because that read came back EMPTY
+    // while staging demonstrably held 229 rows, so the pass was skipped and the leg went
+    // straight back to 31 writes. An empty read is not evidence of an empty collection,
+    // and a guard that skips the fix whenever its own query fails makes convergence
+    // depend on whether a read succeeded.
+    PhaseTimer.timed(scope, "scrapeTickSecondPass")(runOneScrapeTick())
+    PhaseTimer.timed(scope, "drainServicesSecondPass")(drainServices())
+    PhaseTimer.timed(scope, "drainStagingSecondPass")(drainStaging())
     // Ratings are queue tasks in production (drained by the TaskWorker). The
     // harness doesn't run the worker, so refresh them synchronously here — the
     // TMDB + IMDb-id cascade has already settled in drainServices.
