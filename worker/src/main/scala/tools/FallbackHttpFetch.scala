@@ -41,6 +41,7 @@ class FallbackHttpFetch(
 
   private def tryEach[T](verb: String, url: String, call: HttpFetch => T): T = {
     val failures        = mutable.ListBuffer.empty[String]
+    var lastFailure     = Option.empty[Throwable]
     var result: Option[T] = None
     val it              = backends.iterator
     while (result.isEmpty && it.hasNext) {
@@ -50,6 +51,7 @@ class FallbackHttpFetch(
         safeOutcome(name, None)
       } catch {
         case t: Throwable =>
+          lastFailure = Some(t)
           val message = s"$name: ${t.getClass.getSimpleName}: ${t.getMessage}"
           safeOutcome(name, Some(message))
           // DEBUG, not WARN: falling through is what a fallback chain is FOR, and a
@@ -67,6 +69,24 @@ class FallbackHttpFetch(
     }
     result.getOrElse {
       val detail = s"All ${backends.size} backends failed for $verb $url:\n  " + failures.mkString("\n  ")
+      // A definitive "not found" from the LAST backend is an ANSWER, and it has to
+      // reach the caller as one. Wrapping it in a composite `RuntimeException` hid
+      // it twice over: the message now begins "All N backends failed", so
+      // `EnrichmentRead`'s `^HTTP <code>` test cannot see the 404 and books it as a
+      // failed read. That is fatal to a slug-probe ladder — Metacritic and Rotten
+      // Tomatoes try ~20 candidates of which at most one exists, so treating the
+      // first losing probe as an outage aborts the whole ladder. A convergence leg
+      // measured it exactly: Metacritic 17 and RT 73 against production's 308 and
+      // 354, while IMDb (keyed by id, no ladder) was untouched.
+      //
+      // Only the LAST backend's verdict qualifies. An earlier leg missing (no
+      // fixture recorded) says nothing about the resource; the leg that actually
+      // reached the upstream is the one whose answer this is.
+      lastFailure.filter(EnrichmentRead.isAbsent).foreach { absent =>
+        logger.debug(s"FallbackHttpFetch $verb $url — every backend failed and the last says NOT FOUND; " +
+                     s"propagating that rather than a composite failure")
+        throw absent
+      }
       // NOW it is a warning: nothing answered. Logged as well as thrown because
       // callers routinely catch this to degrade gracefully, and a swallowed
       // exception is how a chain fails silently.

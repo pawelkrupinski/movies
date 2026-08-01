@@ -43,6 +43,11 @@ object EnrichmentRead {
    *  slug-probe ladders that read a 404 as "no such page". */
   private val StatusInMessage = """^HTTP (\d{3})\b""".r.unanchored
 
+  /** Whether a failure is the upstream saying "there is nothing here" rather than
+   *  a read that did not happen. Exposed so a composing fetch can tell the two
+   *  apart before it decides what to throw — see `FallbackHttpFetch`. */
+  def isAbsent(failure: Throwable): Boolean = statusOf(failure).exists(AbsentCodes.contains)
+
   /** The HTTP status a failure carries, however it carries it. */
   private def statusOf(failure: Throwable): Option[Int] = failure match {
     case e: HttpStatusException => Some(e.code)

@@ -94,4 +94,43 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     warnings.head.getFormattedMessage should include ("no fixture file")
     warnings.head.getFormattedMessage should include ("connection refused")
   }
+
+  /**
+   * A definitive 404 from the last backend must reach the caller AS a 404.
+   *
+   * Wrapped in the composite `RuntimeException`, it stopped looking like one:
+   * `EnrichmentRead` tests the message for a leading `HTTP <code>`, and
+   * "All 2 backends failed for ..." does not match, so an answer was booked as a
+   * failed read. Metacritic and Rotten Tomatoes probe ~20 candidate slugs of which
+   * at most one exists, so the first losing probe then aborted the whole ladder --
+   * a convergence leg came out with Metacritic 17 and RT 73 against production's
+   * 308 and 354.
+   */
+  it should "propagate a last-backend NOT FOUND instead of burying it in a composite failure" in {
+    val chain = new FallbackHttpFetch(Seq(
+      "fixtures" -> new GetOnlyHttpFetch {
+        override def get(url: String): String = throw new java.io.FileNotFoundException("no fixture for " + url)
+      },
+      "live" -> new GetOnlyHttpFetch {
+        override def get(url: String): String = throw new HttpStatusException(404, "GET", url, None)
+      }))
+
+    // The shape the slug ladders depend on: absent, not broken.
+    EnrichmentRead.absentOnNotFound(chain.get("https://www.metacritic.com/movie/nope")) shouldBe None
+  }
+
+  // ...while a genuine outage still reads as one, so a dead upstream can never be
+  // mistaken for "this film has no page" -- the distinction EnrichmentRead exists for.
+  it should "still report a composite failure when the last backend did not answer" in {
+    val chain = new FallbackHttpFetch(Seq(
+      "fixtures" -> new GetOnlyHttpFetch {
+        override def get(url: String): String = throw new java.io.FileNotFoundException("no fixture")
+      },
+      "live" -> new GetOnlyHttpFetch {
+        override def get(url: String): String = throw new HttpStatusException(503, "GET", url, None)
+      }))
+
+    a [RuntimeException] should be thrownBy
+      EnrichmentRead.absentOnNotFound(chain.get("https://www.metacritic.com/movie/nope"))
+  }
 }
