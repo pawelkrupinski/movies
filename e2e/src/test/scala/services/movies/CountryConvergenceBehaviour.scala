@@ -256,6 +256,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     bootSettled(w)
     enrichmentCache.foreach(cache => info(s"${country.displayName}: enrichment cache after boot — ${cache.statistics}"))
     info(s"${country.displayName}: enrichment coverage — ${enrichmentCoverage(w)}")
+    info(s"${country.displayName}: ratings given a tmdbId — ${ratingsGivenTmdbId(w)}")
     info(s"${country.displayName}: unresolved — ${unresolvedFilms(w)}")
     requireEnrichmentReached(w)
     (w, merges, archive)
@@ -330,6 +331,32 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     s"imdbId ${count(_.imdbId.isDefined)}, imdbRating ${count(_.imdbRating.isDefined)}, " +
     s"filmwebRating ${count(_.filmwebRating.isDefined)}, metascore ${count(_.metascore.isDefined)}, " +
     s"rottenTomatoes ${count(_.rottenTomatoes.isDefined)}"
+  }
+
+  /** Ratings coverage CONDITIONED on having resolved a tmdbId.
+   *
+   *  The headline counts conflate two different failures. A film with no tmdbId has
+   *  nothing to look a rating up by, so it drags every rating count down without saying
+   *  anything about the rating sources; a film that HAS a tmdbId and still has no rating
+   *  is a different problem entirely — the source refused, 404'd, or was never asked.
+   *  Reporting the conditional rate separates "we could not identify the film" from "we
+   *  identified it and could not rate it", which is the difference between chasing title
+   *  rules and chasing an HTTP failure. */
+  private def ratingsGivenTmdbId(w: ArchiveReplayWiring): String = {
+    val resolved = w.movieRepository.findAll().map(_.record).filter(_.tmdbId.isDefined)
+    if (resolved.isEmpty) "no films resolved a tmdbId"
+    else {
+      def rate(label: String, predicate: MovieRecord => Boolean): String = {
+        val n = resolved.count(predicate)
+        f"$label $n%d (${100.0 * n / resolved.size}%.1f%%)"
+      }
+      s"of ${resolved.size} films WITH a tmdbId — " + Seq(
+        rate("imdbId", _.imdbId.isDefined),
+        rate("imdbRating", _.imdbRating.isDefined),
+        rate("filmwebRating", _.filmwebRating.isDefined),
+        rate("metascore", _.metascore.isDefined),
+        rate("rottenTomatoes", _.rottenTomatoes.isDefined)).mkString(", ")
+    }
   }
 
   /** The FILMS that resolved to nothing, named.
