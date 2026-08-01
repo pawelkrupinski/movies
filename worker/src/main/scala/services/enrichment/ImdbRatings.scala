@@ -37,11 +37,15 @@ class ImdbRatings(
   // ── Per-row work ───────────────────────────────────────────────────────────
 
   // Look up the row, refresh the rating via the cheap `lookup` GraphQL call,
-  // then best-effort fetch the full `details` to populate the SourceData(Imdb)
-  // slot (synopsis, director, cast, …). Both calls are tolerant of failure —
-  // the rating refresh and the slot refresh are independent so a failing
-  // details fetch doesn't block the rating update. Skips rows without an
-  // `imdbId` (TMDB-only — IMDb hasn't cross-referenced the film yet).
+  // then fetch the full `details` to populate the SourceData(Imdb) slot
+  // (synopsis, director, cast, …). Skips rows without an `imdbId` (TMDB-only —
+  // IMDb hasn't cross-referenced the film yet).
+  //
+  // Neither call is wrapped: a FAILED read propagates to `RatingHandler`, which
+  // records the attempt for /debug, leaves freshness and the cadence alone, and
+  // lets the queue retry with backoff. Swallowing it here is what made IMDb's
+  // 2026-07-30 CDN block look like ~47h of films that simply have no rating.
+  // A film IMDb genuinely doesn't rate still returns None — see EnrichmentRead.
   protected def refreshOne(key: CacheKey): Option[String] =
     cache.get(key).flatMap { e =>
       val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
@@ -52,8 +56,8 @@ class ImdbRatings(
         case Some(id) =>
           // Store at the precision the badge shows (`%.1f`), so a sub-decimal
           // vote drift the user can't see isn't a "change" — see RatingDisplay.
-          val freshRating  = Try(imdb.lookup(id)).toOption.flatten.map(RatingDisplay.oneDecimal)
-          val freshDetails = Try(imdb.details(id)).toOption.flatten
+          val freshRating  = imdb.lookup(id).map(RatingDisplay.oneDecimal)
+          val freshDetails = imdb.details(id)
           // Write the rating whenever the displayed badge value changed; the
           // details slot writes as soon as its content changes.
           val ratingUpdate = freshRating.filter(r => !e.imdbRating.contains(r))

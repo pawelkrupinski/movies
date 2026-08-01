@@ -131,7 +131,7 @@ class FilmwebRatings(
   // Returns the new displayed rating (badge text) if it changed, else None.
   private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    val change = Try(filmweb.ratingFor(url)).toOption.flatten match {
+    val change = filmweb.ratingFor(url) match {
       case Some(rating) =>
         // Store at the precision the badge shows (`%.1f`): a sub-decimal vote
         // drift the user can't see isn't a change — see RatingDisplay.
@@ -233,7 +233,7 @@ class FilmwebRatings(
     // HIT only the url is known, so rebuild the rating + genres from it.
     var fresh: Option[FilmwebClient.FilmwebInfo] = None
     val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, effectiveYear, fallback, directors)) {
-      val info = Try(filmweb.lookup(linkTitle, effectiveYear, fallback, directors, referenceSynopsis)).toOption.flatten
+      val info = filmweb.lookup(linkTitle, effectiveYear, fallback, directors, referenceSynopsis)
       fresh = info
       info.map(_.url)
     }

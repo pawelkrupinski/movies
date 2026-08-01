@@ -5,7 +5,7 @@ import clients.TmdbClient
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{GetOnlyHttpFetch, HttpFetch, RealHttpFetch}
+import tools.{GetOnlyHttpFetch, HttpFetch, RealHttpFetch, UpstreamNotFound}
 
 /**
  * Tests for `RottenTomatoesRatings` — the RT-score equivalent of `ImdbRatings`.
@@ -30,7 +30,7 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
    *  URLs so a misrouted fetch surfaces loudly in tests. */
   private def httpStub(pages: Map[String, String]): HttpFetch = new GetOnlyHttpFetch {
     def get(url: String): String =
-      pages.getOrElse(url, throw new RuntimeException(s"unstubbed URL: $url"))
+      pages.getOrElse(url, UpstreamNotFound(url))
   }
 
   private def rtClient(pages: Map[String, String]): RottenTomatoesClient =
@@ -83,15 +83,21 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.rottenTomatoes) shouldBe Some(50)
   }
 
-  it should "be a no-op when the row has no rottenTomatoesUrl (RT didn't know the film)" in {
+  // The old version claimed the stub "never is" fetched. That was never true: a
+  // row without a URL is precisely the row RottenTomatoesRatings tries to RESOLVE
+  // one for, and the slug ladder did fetch — the blanket swallow turned the
+  // tripwire into a silent None so the false premise read as green. Modelled
+  // honestly: RT has no page for this film (every probe 404s), row left clean.
+  it should "leave the row clean when RT has no page for the film" in {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment(None))))
     val cache = new CaffeineMovieCache(repository)
-    // RottenTomatoesClient stub throws on any fetch — the test asserts it never is.
     val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new RottenTomatoesClient(http = new GetOnlyHttpFetch {
-      def get(u: String): String = throw new RuntimeException("should not be called")
+      def get(u: String): String = UpstreamNotFound(u)
     }))
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+    cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.rottenTomatoesUrl) shouldBe None
+    cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.rottenTomatoes)    shouldBe None
   }
 
   it should "be a no-op when the cache has no entry for the key" in {

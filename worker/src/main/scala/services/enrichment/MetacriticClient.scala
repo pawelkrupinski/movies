@@ -2,12 +2,11 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
-import tools.{HttpFetch, MemoizedHttpFetch, TextNormalization}
+import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Tries to resolve a film title to its canonical Metacritic page URL.
@@ -129,7 +128,11 @@ class MetacriticClient(http: HttpFetch) {
   def canonicalResolve(title: String, year: Option[Int] = None): Option[Resolved] =
     candidateSlugs(title, year).iterator
       .flatMap { slug =>
-        Try(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug"))).toOption
+        // 404 = "that slug isn't a film", which is what the ladder probes for, so
+        // it drops through to the next candidate. A block/throttle/5xx aborts the
+        // ladder instead of quietly reporting "no Metacritic page" — a failed read
+        // is not an answer. See tools.EnrichmentRead.
+        EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug")))
           .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
           .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
       }
@@ -156,7 +159,7 @@ class MetacriticClient(http: HttpFetch) {
     if (title.trim.isEmpty) return None
     val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
     val searchUrl = s"$Site/search/$encoded/?category=2"
-    Try(http.get(searchUrl)).toOption.flatMap { html =>
+    EnrichmentRead.absentOnNotFound(http.get(searchUrl)).flatMap { html =>
       val hits = parseSearchResults(html)
       pickBestSearchHit(hits, title, year).map(h => s"$Site/movie/${h.slug}")
     }
@@ -243,7 +246,7 @@ class MetacriticClient(http: HttpFetch) {
    *  far more stable than the visual HTML — the score block's CSS classes
    *  drift across redesigns. */
   def metascoreFor(movieUrl: String): Option[Int] =
-    Try(http.get(MetacriticClient.requestUrl(movieUrl))).toOption.flatMap(MetacriticClient.parseMetascore)
+    EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(movieUrl))).flatMap(MetacriticClient.parseMetascore)
 }
 
 object MetacriticClient {

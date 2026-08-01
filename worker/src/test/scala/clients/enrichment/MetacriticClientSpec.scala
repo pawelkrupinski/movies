@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.MetacriticClient
-import tools.GetOnlyHttpFetch
+import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 
 import scala.collection.mutable
 
@@ -105,7 +105,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
         if (url.endsWith("/movie/the-north/")) throw new RuntimeException("HTTP 404")
         else if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
         else if (url.contains("/search/")) "<html><body></body></html>"
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.urlFor("The North", year = Some(2026)) shouldBe None
   }
@@ -117,7 +117,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.endsWith("/movie/the-north/")) throw new RuntimeException("HTTP 404")
         else if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.urlFor("The North", year = Some(1994)) shouldBe
       Some("https://www.metacritic.com/movie/north")
@@ -130,7 +130,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.endsWith("/movie/picnic-at-hanging-rock/")) moviePage("Picnic at Hanging Rock", 1979, 81)
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.urlFor("Picnic at Hanging Rock", year = Some(1975)) shouldBe
       Some("https://www.metacritic.com/movie/picnic-at-hanging-rock")
@@ -145,7 +145,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.endsWith("/movie/michael/")) moviePage("Michael", 1996, 38)
         else if (url.contains("/search/")) "<html><body></body></html>"
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.urlFor("Michael", year = Some(2026)) shouldBe None
   }
@@ -156,7 +156,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.urlFor("North") shouldBe Some("https://www.metacritic.com/movie/north")
   }
@@ -180,7 +180,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
         // The wrong film at the bare slug: no parseable year (MC's placeholder
         // for a film with no release date), so the year guard cannot reject it.
         else if (url.endsWith("/movie/the-odyssey/")) undatedMoviePage("The Odyssey")
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
 
     c.urlFor("The Odyssey", year = Some(2026)) shouldBe
@@ -193,7 +193,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.endsWith("/movie/the-dark-knight-2008/")) throw new RuntimeException("HTTP 404")
         else if (url.endsWith("/movie/the-dark-knight/")) moviePage("The Dark Knight", 2008, 84)
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.urlFor("The Dark Knight", year = Some(2008)) shouldBe
       Some("https://www.metacritic.com/movie/the-dark-knight")
@@ -415,7 +415,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
         else if (url.contains("/search/")) fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     // Primary slug "top-gun" 404s; the search scrape sees Top Gun (1986) as
     // the only exact-title match and returns it.
@@ -440,7 +440,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.contains("/movie/")) throw new RuntimeException("HTTP 404")
         else if (url.contains("/search/")) html
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.urlFor("I Vitelloni", year = Some(2024)) shouldBe
       Some("https://www.metacritic.com/movie/i-vitelloni-re-release")
@@ -509,7 +509,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     val c = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url == "https://www.metacritic.com/movie/the-dark-knight/") fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
+        else UpstreamNotFound(url)
     })
     c.metascoreFor("https://www.metacritic.com/movie/the-dark-knight") shouldBe Some(85)
   }

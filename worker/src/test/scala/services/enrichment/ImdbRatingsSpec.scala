@@ -57,19 +57,11 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     repository.upserts shouldBe empty
   }
 
-  it should "swallow IMDb client failures (network blip, HTML challenge) without throwing" in {
-    val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new CaffeineMovieCache(repository)
-    val failingImdb = new ImdbClient(http = new HttpFetch {
-      def get(url: String): String                                              = throw new RuntimeException("boom")
-      override def post(url: String, body: String, contentType: String): String = throw new RuntimeException("boom")
-    })
-    val ratings = new ImdbRatings(cache, failingImdb)
-
-    noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
-    // Cached rating is preserved on failure.
-    cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.imdbRating) shouldBe Some(5.0)
-  }
+  // The old "swallow IMDb client failures without throwing" test lived here. Its
+  // no-throw half asserted the behaviour that hid the 2026-07-30 outage; its
+  // rating-preserved half is now covered by "leave the previously stored rating
+  // untouched when the source is blocked" below, alongside the propagation it
+  // must have. See tools.EnrichmentRead.
 
   it should "be a no-op when the row has no imdbId (TMDB resolved without a cross-reference)" in {
     val tmdbOnly = MovieRecord(tmdbId = Some(42))
@@ -151,4 +143,44 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     cadence.statsFor("imdb|tmdb:102")                                    shouldBe None  // unchanged → no bulk record
   }
 
+  // ── A blocked source must reach RatingHandler as a failure ─────────────────
+  // The per-row path feeds RatingHandler, which is written to treat a THROWN
+  // refresh as a failure: it records the attempt for /debug, skips
+  // freshness.markFresh, skips the cadence report, and lets the queue retry.
+  // While ImdbRatings swallowed the block into None it got Success(None)
+  // instead, and booked a healthy "checked, unchanged" refresh over a dead
+  // source for ~47h on 2026-07-30.
+
+  private def blockedImdb(code: Int): ImdbClient = new ImdbClient(http = new HttpFetch {
+    def get(url: String): String = throw new tools.HttpStatusException(code, "GET", "https://x", None)
+    override def post(url: String, body: String, contentType: String): String =
+      throw new tools.HttpStatusException(code, "POST", "https://caching.graphql.imdb.com/", None)
+  })
+
+  "refreshOneSync" should "propagate a blocked source instead of reporting 'no rating'" in {
+    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
+    val cache = new CaffeineMovieCache(repository)
+    val ratings = new ImdbRatings(cache, blockedImdb(403))
+
+    a[tools.HttpStatusException] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+  }
+
+  it should "leave the previously stored rating untouched when the source is blocked" in {
+    // The freeze-don't-blank guarantee, asserted rather than assumed: a failed
+    // refresh must never degrade a rating we already had.
+    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
+    val cache = new CaffeineMovieCache(repository)
+    val ratings = new ImdbRatings(cache, blockedImdb(403))
+
+    an[Exception] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
+    cache.get(cache.keyOf("Foo", Some(2024))).flatMap(_.imdbRating) shouldBe Some(5.0)
+  }
+
+  it should "still report None (no throw) when IMDb genuinely has no such title" in {
+    val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))))
+    val cache = new CaffeineMovieCache(repository)
+    val ratings = new ImdbRatings(cache, blockedImdb(404))
+
+    ratings.refreshOneSync(cache.keyOf("Foo", Some(2024))) shouldBe None
+  }
 }

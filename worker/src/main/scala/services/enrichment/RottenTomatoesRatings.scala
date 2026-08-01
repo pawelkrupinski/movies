@@ -79,7 +79,7 @@ class RottenTomatoesRatings(
         // independent ones: same ladder, same order, but the titles share a
         // fetch memo so a slug an earlier title already probed isn't probed
         // again ("The Sting" and "Sting" both end at /m/sting).
-        Try(rt.urlForAny(Seq(linkTitle) ++ englishTitle ++ usTitle, rtFallback, year)).toOption.flatten
+        rt.urlForAny(Seq(linkTitle) ++ englishTitle ++ usTitle, rtFallback, year)
       }
 
       resolved.foreach { url =>
@@ -91,7 +91,7 @@ class RottenTomatoesRatings(
 
   private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    Try(rt.scoreFor(url)).toOption.flatten match {
+    rt.scoreFor(url) match {
       case Some(score) =>
         val commit = !e.rottenTomatoes.contains(score)
         logger.info(s"RT: $label $url → Tomatometer $score" +

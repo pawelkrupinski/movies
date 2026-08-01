@@ -5,7 +5,7 @@ import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{GetOnlyHttpFetch, RealHttpFetch}
+import tools.{GetOnlyHttpFetch, RealHttpFetch, UpstreamNotFound}
 
 /**
  * Tests for `MetascoreRatings` — mirrors `ImdbRatingsSpec` but for the
@@ -32,7 +32,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
           case Some(None) =>
             // Page exists but no aggregated score yet — JSON-LD omits aggregateRating.
             """<html><head><script type="application/ld+json">{"@type":"Movie"}</script></head><body></body></html>"""
-          case None => throw new RuntimeException(s"unstubbed URL: $url")
+          case None => UpstreamNotFound(url)
         }
     })
   }
@@ -101,19 +101,26 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     })
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), brokenMc)
 
-    noException should be thrownBy rates.refreshOneSync(cache.keyOf("X", None))
+    a[RuntimeException] should be thrownBy rates.refreshOneSync(cache.keyOf("X", None))
     cache.get(cache.keyOf("X", None)).flatMap(_.metascore) shouldBe Some(70)
   }
 
-  it should "be a no-op when the row has no metacriticUrl" in {
+  // The old version of this claimed "MC stub throws on any call — proving we
+  // never tried to fetch". That was never true: a row without a URL is exactly
+  // the row MetascoreRatings tries to RESOLVE one for, and the probe ladder did
+  // fetch. The blanket swallow turned the tripwire into a silent None, so the
+  // false premise read as green. Modelled honestly now: Metacritic simply has no
+  // page for this film (every probe 404s), and the row is left clean.
+  it should "leave the row clean when Metacritic has no page for the film" in {
     val repository  = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt9", mcUrl = None, metascore = None))))
     val cache = new CaffeineMovieCache(repository)
-    // MC stub throws on any call — proving we never tried to fetch.
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("should not be called")
+      def get(url: String): String = UpstreamNotFound(url)
     }))
 
     noException should be thrownBy rates.refreshOneSync(cache.keyOf("X", None))
+    cache.get(cache.keyOf("X", None)).flatMap(_.metacriticUrl) shouldBe None
+    cache.get(cache.keyOf("X", None)).flatMap(_.metascore)     shouldBe None
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
@@ -172,7 +179,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url.contains("/movie/671?")) tmdbBody
-        else throw new RuntimeException(s"unstubbed TMDB url: $url")
+        else UpstreamNotFound(url)
     }, apiKey = Some("stub"))
 
     val repository = new InMemoryMovieRepository(Seq(
@@ -192,7 +199,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
             |{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":64,"bestRating":100,"worstRating":0,"reviewCount":10}}
             |</script></head><body></body></html>""".stripMargin
         else if (url == philosophers || url.contains("/search/") || url.contains("/movie/")) throw new RuntimeException("HTTP 404")
-        else throw new RuntimeException(s"unstubbed MC url: $url")
+        else UpstreamNotFound(url)
       }
     })
     val rates = new MetascoreRatings(cache, tmdb, mc)

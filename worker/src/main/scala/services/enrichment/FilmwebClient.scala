@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import tools.{HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
+import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -71,8 +71,13 @@ class FilmwebClient(http: HttpFetch) {
     queries.view.flatMap(q => attempt.lookupWithQuery(q, year, directors, referenceSynopsis)).headOption
   }
 
-  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String]): Option[FilmwebInfo] =
-    Try {
+  // No blanket `Try` around this body: a failed read is not an answer of "Filmweb
+  // doesn't have this film". Filmweb ANSWERING that — a 404 on a candidate's
+  // /info, an empty search — still yields None through EnrichmentRead; a block,
+  // throttle or 5xx propagates so the caller retries instead of persisting the
+  // miss (these link caches use UnresolvedPolicy.Remember, which would otherwise
+  // store "no page for this film" for 24h off the back of an outage).
+  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String]): Option[FilmwebInfo] = {
       val hits = search(query).take(MaxCandidates)
       // Step 1 (cheap): /info per candidate → title acceptance bar.
       val infoCandidates = hits.flatMap(h =>
@@ -116,7 +121,7 @@ class FilmwebClient(http: HttpFetch) {
           plot          = c.plot.orElse(winnerPreview.flatMap(_.plot))
         )
       }
-    }.toOption.flatten
+  }
 
   /** Returns search hits (id + kind) in the order Filmweb ranks them.
    *  Both `film` and `serial` types are kept — some content cinemas screen
@@ -133,16 +138,19 @@ class FilmwebClient(http: HttpFetch) {
     // recorded-fixture fingerprint) INDEPENDENT of the caller's exact spelling. That
     // decouples the rating query from the canonical title's casing, so a settle that
     // re-spells `minSpelling`→`displayTitle` no longer changes which fixture is hit.
-    parseSearch(http.get(s"$ApiBase/live/search?query=${urlEncode(deburr(title))}"))
+    // A 404 here is Filmweb saying "nothing matches", which is the same answer as
+    // an empty result list; anything else is a failed read and propagates.
+    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/live/search?query=${urlEncode(deburr(title))}"))
+      .map(parseSearch).getOrElse(Seq.empty)
 
   def info(id: Int): Option[FilmInfo] =
-    Try(parseInfo(http.get(s"$ApiBase/film/$id/info"))).toOption.flatten
+    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/info")).flatMap(b => Try(parseInfo(b)).toOption.flatten)
 
   def preview(id: Int): Option[FilmPreview] =
-    Try(parsePreview(http.get(s"$ApiBase/film/$id/preview"))).toOption
+    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/preview")).flatMap(b => Try(parsePreview(b)).toOption)
 
   def rating(id: Int): Option[Double] =
-    Try(parseRating(http.get(s"$ApiBase/film/$id/rating"))).toOption.flatten
+    EnrichmentRead.absentOnNotFound(http.get(s"$ApiBase/film/$id/rating")).flatMap(b => Try(parseRating(b)).toOption.flatten)
 
   /** Refresh just the rating for a stored canonical Filmweb URL. The URL ends
    *  in `-{id}` (or `-{id}/`); we parse the trailing id and hit only the

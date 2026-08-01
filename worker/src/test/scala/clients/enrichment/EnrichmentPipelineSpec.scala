@@ -5,7 +5,7 @@ import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient}
-import tools.HttpFetch
+import tools.{HttpFetch, UpstreamNotFound}
 
 /**
  * Glue-level tests that exercise the same TMDB → IMDb → Filmweb chain
@@ -21,8 +21,11 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
   // Minimal stub: route GETimestamp (and POSTimestamp) to canned bodies by URL substring.
   class StubFetch(routes: Map[String, String]) extends HttpFetch {
     override def get(url: String): String =
+      // An unrouted URL is the 404 a real site returns for a page it doesn't have,
+      // NOT a generic error — the clients tell those apart now (tools.EnrichmentRead),
+      // and a probe ladder must be able to move on to its next candidate.
       routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
+        .getOrElse(UpstreamNotFound(url))
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 

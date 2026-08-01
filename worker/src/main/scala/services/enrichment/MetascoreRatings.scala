@@ -94,8 +94,8 @@ class MetascoreRatings(
         // independent ones: same ladder, same order, but the titles share a
         // fetch memo so a slug an earlier title already probed isn't probed
         // again ("The Sting" and "Sting" both end at /movie/sting).
-        val resolved = Try(metacritic.resolveAcross(
-          Seq(linkTitle) ++ englishTitle ++ usTitle, mcFallback, year)).toOption.flatten
+        val resolved = metacritic.resolveAcross(
+          Seq(linkTitle) ++ englishTitle ++ usTitle, mcFallback, year)
         freshScore = resolved.flatMap(_.metascore)
         resolved.map(_.url)
       }
@@ -120,7 +120,7 @@ class MetascoreRatings(
     }
 
   private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] =
-    Try(metacritic.metascoreFor(url)).toOption.flatten match {
+    metacritic.metascoreFor(url) match {
       case Some(score) => applyScore(key, e, url, score)
       case None        => logger.info(s"Metacritic: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → no metascore on page"); None
     }

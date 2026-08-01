@@ -134,16 +134,56 @@ class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear:
    *  fall through to their next resolution strategy (originalTitle search,
    *  director-walk) deterministically, instead of the lookup throwing and the
    *  row's fate hinging on whether a sibling happened to resolve first (the
-   *  PageSnapshot/e2e flake). Every other endpoint still throws — a missing
-   *  detail / ratings / cinema-HTML fixture is a real recording gap. */
+   *  PageSnapshot/e2e flake).
+   *
+   *  A missing **rating-site page** fixture is the same idea one step further.
+   *  These resolvers work by PROBING — ~20 candidate slugs per title for
+   *  Metacritic and Rotten Tomatoes, up to ~55 candidate films for Filmweb (see
+   *  `UnresolvedPolicy.Remember`) — of which at most one exists. The recorder can
+   *  only ever capture that one — every losing candidate is an unrecorded URL by
+   *  construction, and in production each answers 404. So for these hosts "no
+   *  fixture" means 404, not "the recording is broken". This used to be masked:
+   *  the clients swallowed the FileNotFoundException into `None` and the ladder
+   *  walked on regardless. Now that a failed read propagates
+   *  ([[tools.EnrichmentRead]]), the fake has to state the distinction itself or
+   *  the first losing probe aborts the whole ladder.
+   *
+   *  A genuinely missing fixture for the WINNING slug still surfaces — as the
+   *  spec's own assertion that the score/URL resolved, which is the check that
+   *  actually matters. Every other endpoint still throws: a missing detail /
+   *  ratings-API / cinema-HTML fixture is a real recording gap.
+   */
   private def missingFixture(host: String, path: String, url: String, candidates: Seq[String]): Array[Byte] =
     if (!strict && host == "api.themoviedb.org" && path.startsWith("3/search/"))
       """{"page":1,"results":[],"total_pages":1,"total_results":0}""".getBytes("UTF-8")
+    // IMDb's suggestion endpoint is a SEARCH endpoint, so it takes the same rule:
+    // an unrecorded query is one that was never asked during recording, and in
+    // production an unknown query returns an empty candidate list (HTTP 200),
+    // never an error. Without this, every film TMDB has no imdbId for — exactly
+    // the films ImdbIdResolver exists to serve — aborts its whole enrichment
+    // chain on the first unrecorded title, taking its Metacritic and Filmweb
+    // resolution down with it.
+    else if (!strict && host == "v3.sg.media-imdb.com" && path.startsWith("suggestion/"))
+      """{"d":[]}""".getBytes("UTF-8")
+    // IMDb's GraphQL endpoint, same rule again. Its fixtures are keyed by request
+    // BODY hash (one per imdbId), so an id never queried during recording has no
+    // file — and in production IMDb answers an unknown id with HTTP 200 and a null
+    // title, not an error. Replay exactly that; `parseRating`/`parseDetails`
+    // already read it as "no rating".
+    else if (!strict && host == "caching.graphql.imdb.com")
+      """{"data":{"title":null}}""".getBytes("UTF-8")
+    else if (!strict && FakeHttpFetch.ProbedRatingHosts.exists(h => host == h || host.endsWith("." + h)))
+      throw new tools.HttpStatusException(404, "GET", url, None)
     else throw new java.io.FileNotFoundException(
       s"No fixture file for $url — tried:\n  ${candidates.mkString("\n  ")}")
 }
 
 object FakeHttpFetch {
+  /** Hosts whose resolvers find a page by PROBING candidate slugs, so an
+   *  unrecorded URL is a 404 rather than a recording gap. See `missingFixture`. */
+  private[tools] val ProbedRatingHosts: Set[String] =
+    Set("metacritic.com", "rottentomatoes.com", "filmweb.pl")
+
   /** Fixture root for a directory: `test/resources/fixtures/<directory>` relative to the CWD
    *  (the repository root for sbt test/runMain), OR `<KINOWO_FIXTURE_ROOT>/<directory>` when
    *  that env/sysprop is set — so a process whose CWD is NOT the repository root (a

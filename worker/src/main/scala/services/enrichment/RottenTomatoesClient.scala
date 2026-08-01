@@ -2,7 +2,7 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
-import tools.{HttpFetch, MemoizedHttpFetch, TextNormalization}
+import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -110,7 +110,7 @@ class RottenTomatoesClient(http: HttpFetch) {
   def canonicalUrl(title: String, year: Option[Int] = None): Option[String] =
     candidateSlugs(title, year).iterator
       .map(s => s"$Site/m/$s")
-      .flatMap(url => Try(http.get(url)).toOption.map(body => (url, body)))
+      .flatMap(url => EnrichmentRead.absentOnNotFound(http.get(url)).map(body => (url, body)))
       .find { case (_, body) => MetacriticClient.yearsCompatible(year, RottenTomatoesClient.parseReleaseYear(body)) }
       .map(_._1)
 
@@ -135,7 +135,7 @@ class RottenTomatoesClient(http: HttpFetch) {
     if (title.trim.isEmpty) return None
     val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
     val searchUrl = s"$Site/search?search=$encoded"
-    Try(http.get(searchUrl)).toOption.flatMap { html =>
+    EnrichmentRead.absentOnNotFound(http.get(searchUrl)).flatMap { html =>
       val hits = parseSearchResults(html)
       pickBestSearchHit(hits, title, year).map(h => s"$Site/m/${h.slug}")
     }

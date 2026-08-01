@@ -250,6 +250,38 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     calls.get() shouldBe 2
   }
 
+  // The teeth behind `Remember`: it may only remember an answer, never a
+  // failure. A blocked or throttled probe that surfaced as `None` would be
+  // written to the durable store as "this site has no page for this film" and
+  // replayed for a full day — turning a transient upstream outage into a day of
+  // missing rating links. The clients now throw instead of returning None on a
+  // failed read (tools.EnrichmentRead); this pins the other half of the
+  // contract, that a throwing chain leaves the cache empty.
+  it should "remember NOTHING when the probe chain fails, so an outage isn't stored as 'no page'" in {
+    val store = new InMemoryResolutionStore()
+    val cache = rememberingCache(store)
+
+    a[RuntimeException] should be thrownBy
+      cache.getOrResolve("k")(throw new RuntimeException("HTTP 403 for GET https://www.metacritic.com/movie/x"))
+
+    // Nothing remembered: the next probe, once the upstream recovers, resolves for real.
+    val calls = new AtomicInteger(0)
+    cache.getOrResolve("k") { calls.incrementAndGet(); Some("https://www.metacritic.com/movie/x") } shouldBe
+      Some("https://www.metacritic.com/movie/x")
+    calls.get() shouldBe 1
+  }
+
+  it should "not persist a failed probe to the store either (a restart must re-probe)" in {
+    val store = new InMemoryResolutionStore()
+    a[RuntimeException] should be thrownBy
+      rememberingCache(store).getOrResolve("k")(throw new RuntimeException("HTTP 503"))
+
+    val calls = new AtomicInteger(0)
+    // Fresh Caffeine over the same store — a cold worker after a deploy.
+    rememberingCache(store).getOrResolve("k") { calls.incrementAndGet(); None }
+    calls.get() shouldBe 1
+  }
+
   it should "drop remembered misses on forgetAll too" in {
     val cache = rememberingCache()
     val calls = new AtomicInteger(0)

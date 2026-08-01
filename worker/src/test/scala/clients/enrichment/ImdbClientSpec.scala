@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import tools.{GetOnlyHttpFetch, HttpFetch, RealHttpFetch}
+import tools.{GetOnlyHttpFetch, HttpFetch, HttpStatusException, RealHttpFetch}
 
 class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
@@ -175,11 +175,15 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     c.findId("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
   }
 
-  it should "swallow network / HTTP failures and return None" in {
+  // Was "swallow network / HTTP failures and return None" — the behaviour the
+  // 2026-07-30 IMDb outage proved wrong. A failed read is not an answer of "no
+  // id"; it now propagates so the caller can retry rather than book a healthy
+  // refresh over a dead source. See tools.EnrichmentRead.
+  it should "propagate a network / HTTP failure rather than reporting 'no id'" in {
     val c = new ImdbClient(http = new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("HTTP 503")
     })
-    c.findId("anything", None) shouldBe None
+    a[RuntimeException] should be thrownBy c.findId("anything", None)
   }
 
   // ── Diacritic normalisation ────────────────────────────────────────────────
@@ -273,5 +277,62 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
         throw new RuntimeException("details should not be called without directors")
     })
     c.findId("Nasz Film", Some(2026)) shouldBe None
+  }
+
+  // ── A blocked read must not masquerade as "this film has no rating" ────────
+  // IMDb's CDN began 403-ing us on 2026-07-30 and `lookup` swallowed it into
+  // None, so every worker logged the ordinary-looking "→ rating none" and
+  // RatingHandler booked a healthy "checked, unchanged" refresh. ~47h invisible.
+  // A 403/429/5xx/timeout must now reach the caller; only a real "not found" is
+  // still an answer. See tools.EnrichmentRead.
+
+  private def failingWith(exception: Throwable) = new ImdbClient(http = new HttpFetch {
+    def get(url: String): String = throw exception
+    override def post(url: String, body: String, contentType: String): String = throw exception
+  })
+
+  private def statusError(code: Int) = new HttpStatusException(code, "POST", "https://caching.graphql.imdb.com/", None)
+
+  "lookup" should "rethrow the CDN block instead of reporting 'no rating'" in {
+    a[HttpStatusException] should be thrownBy failingWith(statusError(403)).lookup("tt0816692")
+  }
+
+  it should "rethrow a throttle, a server error and a timeout too" in {
+    a[HttpStatusException] should be thrownBy failingWith(statusError(429)).lookup("tt0816692")
+    a[HttpStatusException] should be thrownBy failingWith(statusError(503)).lookup("tt0816692")
+    a[java.net.http.HttpTimeoutException] should be thrownBy
+      failingWith(new java.net.http.HttpTimeoutException("slow")).lookup("tt0816692")
+  }
+
+  it should "still report None when IMDb genuinely has no such title" in {
+    failingWith(statusError(404)).lookup("tt0000000") shouldBe None
+  }
+
+  it should "still report None when the title exists but carries no rating" in {
+    val c = new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = ""
+      override def post(url: String, body: String, contentType: String): String =
+        """{"data":{"title":{"ratingsSummary":null}}}"""
+    })
+    c.lookup("tt0816692") shouldBe None
+  }
+
+  "details" should "rethrow a block rather than emptying the SourceData(Imdb) slot" in {
+    a[HttpStatusException] should be thrownBy failingWith(statusError(403)).details("tt0816692")
+  }
+
+  it should "still report None on a genuine not-found" in {
+    failingWith(statusError(404)).details("tt0000000") shouldBe None
+  }
+
+  // `findId` probes the suggestion endpoint, a DIFFERENT host that stayed healthy
+  // throughout. It keeps its own leniency for the not-found case, but a block on
+  // that host must surface too rather than silently yielding "no imdbId".
+  "findId" should "rethrow a block on the suggestion endpoint" in {
+    a[HttpStatusException] should be thrownBy failingWith(statusError(403)).findId("Interstellar", Some(2014))
+  }
+
+  it should "still report None when the suggestion endpoint has no such title" in {
+    failingWith(statusError(404)).findId("Nonexistent Film", Some(2014)) shouldBe None
   }
 }

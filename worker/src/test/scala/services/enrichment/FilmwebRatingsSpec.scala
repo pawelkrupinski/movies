@@ -5,13 +5,20 @@ import clients.TmdbClient
 import models.{Filmweb, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch}
+import tools.{GetOnlyHttpFetch, RealHttpFetch, RoutingHttpFetch, UpstreamNotFound}
 
 /**
  * Tests for `FilmwebRatings` — the extracted Filmweb stage. Mirrors the
  * other ratings specs (`ImdbRatingsSpec`, `RottenTomatoesRatingsSpec`).
  */
 class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
+
+  // Filmweb's fake speaks the real site's vocabulary: a URL it doesn't serve is
+  // a 404 ("no such film"), not a generic error ("the site is broken"). The
+  // clients now tell those apart — see tools.EnrichmentRead.
+  private def filmwebSite(routes: Map[String, String]) =
+    new RoutingHttpFetch(routes, unroutedIsNotFound = true)
+
 
   // ── Scaffolding ─────────────────────────────────────────────────────────────
 
@@ -45,7 +52,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Mortal Kombat II", Some(2026), mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))
     ))
     val cache   = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/10007434/rating" -> """{"rate":6.72,"count":1000}"""
     )))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
@@ -63,7 +70,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val url = "https://www.filmweb.pl/film/Title-9999"
     val repository = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt1", filmwebUrl = Some(url)))))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/9999/rating" -> """{"rate":7.5,"count":1}"""
     )))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
@@ -77,7 +84,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   "refreshOneSync (no stored URL)" should "fall through to filmweb.lookup, populating both URL and rating" in {
     val repository  = new InMemoryMovieRepository(Seq(("Drama", Some(2024), mkEnrichment("tt1"))))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"          -> """{"searchHits":[{"id":555,"type":"film","matchedTitle":"Drama"}]}""",
       "/film/555/info"        -> """{"title":"Drama","year":2024}""",
       "/film/555/rating"      -> """{"rate":7.2,"count":500}"""
@@ -107,7 +114,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.contains("/movie/693134?")) tmdbBody
         else if (url.contains("/movie/693134/credits")) creditsBody
-        else throw new RuntimeException(s"unstubbed TMDB url: $url")
+        else UpstreamNotFound(url)
     }, apiKey = Some("stub"))
 
     val repository = new InMemoryMovieRepository(Seq(
@@ -124,7 +131,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"          -> """{"searchHits":[{"id":779836,"type":"film","matchedTitle":"Diuna"}]}""",
       "/film/779836/info"     -> """{"title":"Diuna: Część druga","originalTitle":"Dune: Part Two","year":2024}""",
       "/film/779836/preview"  -> """{"directors":[{"id":1,"name":"Denis Villeneuve"}]}""",
@@ -150,7 +157,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String =
         if (url.contains("/movie/682507?")) tmdbBody
         else if (url.contains("/movie/682507/credits")) creditsBody
-        else throw new RuntimeException(s"unstubbed TMDB url: $url")
+        else UpstreamNotFound(url)
     }, apiKey = Some("stub"))
 
     val repository = new InMemoryMovieRepository(Seq(
@@ -160,7 +167,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[{"id":1,"type":"film","matchedTitle":"Belle"}]}""",
       "/film/1/info"      -> """{"title":"Belle","year":2013}""",
       "/film/1/preview"   -> """{"directors":[{"id":10,"name":"Amma Asante"}]}"""
@@ -187,7 +194,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val fetch = new RoutingHttpFetch(Map(
+    val fetch = filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[
         |  {"id":719437,"type":"film","matchedTitle":"Lawa"},
         |  {"id":111,"type":"film","matchedTitle":"Lawa"}
@@ -221,7 +228,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[{"id":900,"type":"film","matchedTitle":"Ostatni konsjerż"}]}""",
       "/film/900/info"    -> """{"title":"Ostatni konsjerż","originalTitle":"Der letzte Concierge","year":2025}""",
       "/film/900/preview" -> """{"directors":[{"id":1,"name":"Gastón Solnicki"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Lucius Glantz walczy o hotel."}}""",
@@ -253,7 +260,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ))
     ))
     val cache = new CaffeineMovieCache(repository, retrigger = (_, _, kinds) => { captured += kinds; () })
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"      -> """{"searchHits":[{"id":900,"type":"film","matchedTitle":"Ostatni konsjerż"}]}""",
       "/film/900/info"    -> """{"title":"Ostatni konsjerż","originalTitle":"Der letzte Concierge","year":2025}""",
       "/film/900/preview" -> """{"directors":[{"id":1,"name":"Gastón Solnicki"}],"genres":[{"id":2,"name":{"text":"Dramat"}}]}""",
@@ -270,14 +277,18 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   // ── Failure handling ───────────────────────────────────────────────────────
 
-  it should "swallow Filmweb fetch failures without throwing" in {
+  // Was "swallow Filmweb fetch failures without throwing". A failed read is not
+  // an answer of "no rating": it now reaches RatingHandler so the attempt is
+  // recorded, freshness and the cadence are left alone, and the queue retries.
+  // The stored rating must still survive untouched. See tools.EnrichmentRead.
+  it should "propagate a Filmweb fetch failure while leaving the stored rating intact" in {
     val url  = "https://www.filmweb.pl/film/Foo-7"
     val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(6.0)))))
     val cache = new CaffeineMovieCache(repository)
     val brokenFilmweb = new FilmwebClient(RoutingHttpFetch.dead("boom"))
     val ratings = new FilmwebRatings(cache, disabledTmdb, brokenFilmweb)
 
-    noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", None))
+    a[RuntimeException] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", None))
     cache.get(cache.keyOf("Foo", None)).flatMap(_.filmwebRating) shouldBe Some(6.0)
   }
 
@@ -292,7 +303,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))))
     val cache = new CaffeineMovieCache(repository)
     repository.upserts.clear()
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map("/film/12/rating" -> """{"rate":7.5,"count":1}""")))
+    val filmweb = new FilmwebClient(filmwebSite(Map("/film/12/rating" -> """{"rate":7.5,"count":1}""")))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Foo", None))
@@ -310,7 +321,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Foo", None, mkEnrichment("tt1", filmwebUrl = Some(url), filmwebRating = Some(7.5)))))
     val cache = new CaffeineMovieCache(repository)
     repository.upserts.clear()
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map("/film/12/rating" -> """{"rate":7.53,"count":1001}""")))
+    val filmweb = new FilmwebClient(filmwebSite(Map("/film/12/rating" -> """{"rate":7.53,"count":1001}""")))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
     ratings.refreshOneSync(cache.keyOf("Foo", None))
@@ -329,7 +340,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("C", None, mkEnrichment("tt3"))                                                       // full lookup
     ))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/1/rating"   -> """{"rate":7.4,"count":1}""",
       "/film/2/rating"   -> """{"rate":6.0,"count":1}""",
       "/live/search"     -> """{"searchHits":[{"id":33,"type":"film","matchedTitle":"C"}]}""",
@@ -360,7 +371,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"     -> """{"searchHits":[{"id":838929,"type":"film","matchedTitle":"Wartość sentymentalna"}]}""",
       "/film/838929/info" -> """{"title":"It's About Time","year":2015}"""
     )))
@@ -381,7 +392,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(staleUrl), filmwebRating = Some(5.0)))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"          -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
       s"/film/$rightId/info"  -> """{"title":"Foo","year":2024}""",
       s"/film/$rightId/rating"-> """{"rate":8.0,"count":1}"""
@@ -403,7 +414,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Foo", Some(2024), mkEnrichment("tt1", filmwebUrl = Some(rightUrl), filmwebRating = Some(7.0)))
     ))
     val cache = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"           -> s"""{"searchHits":[{"id":$rightId,"type":"film","matchedTitle":"Foo"}]}""",
       s"/film/$rightId/info"   -> """{"title":"Foo","originalTitle":"Foo Original","year":2024}""",
       s"/film/$rightId/preview"-> """{"directors":[{"id":1,"name":"Jane Doe"}],"genres":[{"id":2,"name":{"text":"Dramat"}}],"plot":{"synopsis":"Blurb po polsku."}}""",
@@ -442,7 +453,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String = {
         if (url.contains("/live/search")) searches.incrementAndGet()
         routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-          .getOrElse(throw new RuntimeException(s"unstubbed Filmweb url: $url"))
+          .getOrElse(UpstreamNotFound(url))
       }
     })
   }
@@ -456,7 +467,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         MovieRecord(tmdbId = Some(1), data = Map(Tmdb -> SourceData(originalTitle = Some("Ashes and Diamonds")))))
     ))
     val cache   = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/live/search"    -> s"""{"searchHits":[{"id":1118,"type":"film","matchedTitle":"Popiół i diament"}]}""",
       "/film/1118/info" -> """{"title":"Popiół i diament","year":1958}""",
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
@@ -476,7 +487,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
       ("Popiół i diament", Some(1958), MovieRecord(tmdbId = Some(1), filmwebUrl = Some(url)))
     ))
     val cache   = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
     )))
     var fired = false
@@ -495,7 +506,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
         MovieRecord(imdbId = Some("tt0052080"), tmdbId = Some(1), filmwebUrl = Some(url)))
     ))
     val cache   = new CaffeineMovieCache(repository)
-    val filmweb = new FilmwebClient(new RoutingHttpFetch(Map(
+    val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/1118/rating" -> """{"rate":8.1,"count":2000}"""
     )))
     var fired = false

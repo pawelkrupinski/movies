@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import tools.{HttpFetch, TextNormalization}
+import tools.{EnrichmentRead, HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -22,9 +22,14 @@ import scala.util.Try
 class ImdbClient(http: HttpFetch) {
   import ImdbClient._
 
-  /** Live IMDb rating, or None when unrated / unknown / network blip. */
+  /** Live IMDb rating. `None` means IMDb ANSWERED and the film has no usable
+   *  rating (no such title, or a title carrying none). A read that failed — the
+   *  CDN block, a throttle, a server error, a timeout — throws, because the
+   *  caller must be able to tell "no rating" from "we never found out": see
+   *  [[tools.EnrichmentRead]] and the 2026-07-30 IMDb outage it documents. */
   def lookup(imdbId: String): Option[Double] =
-    Try(parseRating(http.post(Endpoint, queryBody(imdbId), "application/json"))).toOption.flatten
+    EnrichmentRead.absentOnNotFound(http.post(Endpoint, queryBody(imdbId), "application/json"))
+      .flatMap(body => Try(parseRating(body)).toOption.flatten)
 
   def parseRating(body: String): Option[Double] = {
     val js = Json.parse(body)
@@ -58,8 +63,8 @@ class ImdbClient(http: HttpFetch) {
    *  rows where the cinema-side synopsis was short or missing, producing
    *  inappropriate English blurbs for Polish films. */
   def details(imdbId: String): Option[ImdbClient.Details] =
-    Try(http.post(Endpoint, detailsQueryBody(imdbId), "application/json"))
-      .toOption.flatMap(body => Try(parseDetails(body)).toOption)
+    EnrichmentRead.absentOnNotFound(http.post(Endpoint, detailsQueryBody(imdbId), "application/json"))
+      .flatMap(body => Try(parseDetails(body)).toOption)
 
   def parseDetails(body: String): ImdbClient.Details = {
     val title = Json.parse(body) \ "data" \ "title"
@@ -158,7 +163,7 @@ class ImdbClient(http: HttpFetch) {
       val encoded = URLEncoder.encode(title, StandardCharsets.UTF_8)
       val prefix  = title.trim.headOption.filter(c => c.isLetter && c.toInt < 128).map(_.toLower).getOrElse('x')
       val url     = s"$SuggestionBase/$prefix/$encoded.json"
-      Try(http.get(url)).toOption.flatMap { body =>
+      EnrichmentRead.absentOnNotFound(http.get(url)).flatMap { body =>
         parseSuggestions(body, title, year).orElse(
           if (directors.nonEmpty) disambiguateByDirector(body, directors) else None
         )
