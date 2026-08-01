@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{CorpusFixture, CountryScrapeCorpus, Env, TunnelTunedUri}
+import tools.{CorpusFixture, CountryScrapeCorpus, Env, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -55,6 +55,16 @@ object RecordCorpusFixture {
       val gz   = java.nio.file.Files.size(path)
       println(s"[corpus] ${country.displayName}: ${rows.size} venues, ${rows.map(_.films.size).sum} listings")
       println(f"[corpus] wrote $path%s — ${raw / 1048576.0}%.1f MB JSON, ${gz / 1048576.0}%.2f MB gzipped")
+
+      // Capture what prod has ENRICHED for this same repertoire, from the connection
+      // that is already open. This is the only moment the two can be captured
+      // together, and together is the only way they compare: the corpus is what was
+      // screening at instant T, and the baseline is prod's coverage of exactly that
+      // set at exactly T. Recorded anywhere else it would drift against the corpus
+      // and the band it guards would become a flake.
+      val baselinePath = ProdCoverageBaseline.write(
+        country.code, ProdCoverage.of(client.getDatabase(databaseName)))
+      println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire")
     } finally client.close()
   }
 }

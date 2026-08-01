@@ -11,7 +11,8 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusFixture, CountryScrapeCorpus, EnrichmentCache,
-  EnrichmentCacheStore, EnrichmentFreshness, Env, FileEnrichmentCacheStore, SameThreadExecutionBudget}
+  EnrichmentCacheStore, EnrichmentFreshness, Env, FileEnrichmentCacheStore, ProdCoverageBaseline,
+  SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -347,6 +348,34 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     s"filmwebRating ${count(_.filmwebRating.isDefined)}, metascore ${count(_.metascore.isDefined)}, " +
     s"rottenTomatoes ${count(_.rottenTomatoes.isDefined)}"
   }
+
+  /** This run's coverage in the shape production's was recorded in, so the two can
+   *  be compared field by field. */
+  private def coverageOf(w: ArchiveReplayWiring): ProdCoverageBaseline = {
+    val records = w.movieRepository.findAll().map(_.record)
+    def count(predicate: MovieRecord => Boolean): Int = records.count(predicate)
+    ProdCoverageBaseline(
+      recordedAt     = Instant.EPOCH,   // unused on this side; the comparison is field-wise
+      films          = records.size,
+      tmdbId         = count(_.tmdbId.isDefined),
+      imdbId         = count(_.imdbId.isDefined),
+      imdbRating     = count(_.imdbRating.isDefined),
+      filmwebRating  = count(_.filmwebRating.isDefined),
+      metascore      = count(_.metascore.isDefined),
+      rottenTomatoes = count(_.rottenTomatoes.isDefined))
+  }
+
+  /** How far this run may sit from production on any one axis before it is a
+   *  regression rather than noise.
+   *
+   *  5% of prod's own share, not 5 percentage points: an axis prod resolves 97% of
+   *  and one it resolves 42% of should not get the same absolute licence.
+   *
+   *  Measured before it was chosen. On the day the baseline was first recorded every
+   *  axis of all three countries sat within ~2.5%, so 5% is a doubling of the observed
+   *  spread rather than a number picked to make today pass — which is what keeps this
+   *  a regression detector instead of a snapshot of one afternoon. */
+  private val ProdTolerance = 0.05
 
   /** Ratings coverage CONDITIONED on having resolved a tmdbId.
    *
@@ -838,6 +867,57 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     }
   }
 
+
+  /**
+   * What the pipeline identifies, against what PRODUCTION identifies for the same
+   * repertoire.
+   *
+   * Every other assertion in this suite is self-referential: the corpus is a fixpoint
+   * of itself, arrives order-independently, and loses nothing. All three hold
+   * perfectly over a pipeline that has quietly stopped enriching — `requireEnrichmentReached`
+   * exists because exactly that shipped, resolving 0 of 892 films with three specs
+   * green. That guard is a floor of ONE, deliberately, so it catches a collapse and
+   * nothing subtler. This is the assertion with an external reference: it fails when
+   * the pipeline drifts away from what prod actually achieves, in either direction.
+   *
+   * BOTH directions, and the upward one is not paranoia. The harness's rating sweep
+   * drove Filmweb for every country while production gates it to Poland, so the
+   * German and British legs reported 972 and 1293 Filmweb ratings against prod's
+   * zero — a fabricated number that read as enrichment. A one-sided band would have
+   * called that a pass.
+   *
+   * The baseline ships with the corpus and is captured from the same connection at
+   * the same instant (see `ProdCoverageBaseline`), so this needs no production
+   * access and stays offline and reproducible like the rest of the suite.
+   */
+  s"the ${country.displayName} pipeline's coverage" should
+    "stay within 5% of what production achieves on the same repertoire" in {
+    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
+    {
+      val (w, _, _) = shared
+      val baseline = ProdCoverageBaseline.read(country.code).getOrElse(
+        // Loud, not skipped. A silent pass here would restore precisely the failure
+        // this assertion exists to catch: the suite reporting green while nothing
+        // checks the numbers it produces.
+        fail(s"no production coverage baseline for ${country.code} — it is captured beside the corpus, so " +
+             s"re-record both:\n  gh workflow run \"Record scrape fixtures\""))
+
+      info(s"${country.displayName}: production baseline recorded ${baseline.recordedAt} — " +
+           s"${baseline.films} films, tmdbId ${baseline.tmdbId}, imdbId ${baseline.imdbId}, " +
+           s"imdbRating ${baseline.imdbRating}, filmwebRating ${baseline.filmwebRating}, " +
+           s"metascore ${baseline.metascore}, rottenTomatoes ${baseline.rottenTomatoes}")
+
+      val offBand = ProdCoverageBaseline.divergences(coverageOf(w), baseline, ProdTolerance)
+      withClue(
+        s"${offBand.size} coverage axis/axes drifted from production by more than " +
+        f"${100 * ProdTolerance}%.0f%%:\n${offBand.mkString("\n")}\n\n" +
+        s"A regression here means this pipeline now identifies or rates less of the corpus than prod does " +
+        s"(or MORE — a source prod does not run for this country). If prod itself moved, re-record the " +
+        s"corpus and its baseline together.\n") {
+        offBand shouldBe empty
+      }
+    }
+  }
 
   /** Every cinema, showtime and film the DATABASE holds, versus what the web
    *  would actually render.
