@@ -735,6 +735,73 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+      # ---- An enrichment source is refusing us --------------------------------
+      # 2026-07-30: IMDb's GraphQL CDN started 403-ing every request that didn't
+      # name a client. Ratings stopped refreshing in all three countries for ~47
+      # hours and nothing paged, even though every piece of detection already
+      # existed — HttpOutcome splits 403 into its own series precisely so "a host
+      # refusing us" is legible, and MonitoringHttpFetch already counted it as an
+      # IMDb failure, so /uptime showed the source 100% failed for two days. The
+      # gap was that no rule read any of it.
+      #
+      # Same shape as the residential-proxy rule above, and for the same reason:
+      # a source dying is SILENT. Ratings are best-effort, so nothing 5xxs, no
+      # page goes blank, and the stored ratings simply freeze at their last value
+      # — the failure is invisible except as a badge that quietly stops moving.
+      #
+      # Grouped `by (service, country)` because one dead source among five reads
+      # as roughly a fifth of enrichment traffic failing when summed fleet-wide,
+      # which trips nothing; per source it is unmissable and the alert names the
+      # source that died. Ratio rather than a raw count because the Metacritic /
+      # RT / Filmweb resolvers probe candidate slugs that 404 by design, so a
+      # failure count is never zero — only failures/(failures+successes)
+      # distinguishes routine probe misses from a wholesale refusal. clamp_min
+      # keeps an idle window from dividing by zero; an absent series (a country
+      # not exporting yet) yields no data → no alarm.
+      #
+      # Warning, not critical, and a slow 30m trip: no user-facing page breaks,
+      # ratings are retried forever, and a brief upstream wobble (Cloudflare
+      # challenging a probe burst) must not page. 30m of a source majority-
+      # failing is still ~94x faster than the 47h this took to notice by eye.
+      - uid: kinowo-enrichment-source-failing
+        title: Enrichment source failing (ratings stopped refreshing)
+        condition: C
+        for: 30m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: 'An enrichment source is mostly failing — its ratings have stopped refreshing'
+          description: 'Over half of the fetches to one enrichment source (IMDb / TMDB / Filmweb / Metacritic / Rotten Tomatoes) failed in the last 30 min — kinowo_uptime_recent_failures vs _recent_successes, per service. Nothing user-facing is down: stored ratings keep serving, they just freeze at their last value, which is why this class of outage goes unnoticed (IMDb 2026-07-30, ~47h). Check the source''s row on https://kinowo.fly.dev/uptime for the error text. A 403 across the board is the upstream refusing our requests wholesale — usually a new header/auth requirement rather than a ban; the IMDb case was fixed by naming ourselves via RealHttpFetch.HostPolicies headers.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) / clamp_min(sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) + sum by (service, country) (kinowo_uptime_recent_successes{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}), 1)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
       # ---- Per-city served-film count swung suddenly (either direction) -----
       # The web exposes kinowo_web_movies_served{city,scope} — distinct films
       # served per /:city/ page, sampled every minute from the real serving path
