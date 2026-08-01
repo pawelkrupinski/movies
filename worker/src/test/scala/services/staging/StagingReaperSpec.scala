@@ -71,18 +71,35 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     active(queue).map(_._1) shouldBe Seq(TaskType.StagingFold.name)             // folds, doesn't loop
   }
 
+  /** The bare-title long tail: one cinema, a title, no year, no director. TMDB is
+   *  right to refuse it (a year-less search returning 320 films is a guess), so it
+   *  concludes `tmdbNoMatch` — and that used to send it STRAIGHT to fold with no id
+   *  of any kind, nothing to look a rating up by, and nothing for
+   *  `tmdb.findByImdbId` to resolve in reverse. It is the film that needs the
+   *  recovery step most, and it was the one film the step skipped. */
+  it should "enqueue StagingResolveImdbId for a row TMDB could not name" in {
+    val unnamed = listing("Stop Making Sense", None).copy(tmdbNoMatch = true)
+    val (queue, reaper, _, _) = fixture(("Stop Making Sense", None, unnamed))
+    reaper.tick() shouldBe 1
+    active(queue) shouldBe Seq(
+      (TaskType.StagingResolveImdbId.name, StagingTaskKeys.resolveImdbDedup("Stop Making Sense")))
+  }
+
+  // …and still folds rather than looping once that attempt has been made, whatever
+  // it found — the same one-shot guard the resolved case relies on.
+  it should "fold a row TMDB could not name once IMDb recovery was attempted" in {
+    val unnamed = listing("Stop Making Sense", None).copy(tmdbNoMatch = true)
+    val (queue, reaper, _, freshness) = fixture(("Stop Making Sense", None, unnamed))
+    markImdbAttempted(freshness, "Stop Making Sense")
+    reaper.tick() shouldBe 1
+    active(queue).map(_._1) shouldBe Seq(TaskType.StagingFold.name)
+  }
+
   it should "enqueue StagingFold for a concluded row that has its imdbId" in {
     val concluded = listing("Done", Some(2026)).copy(tmdbId = Some(7), imdbId = Some("tt7"))
     val (queue, reaper, _, _) = fixture(("Done", Some(2026), concluded))
     reaper.tick() shouldBe 1
     active(queue) shouldBe Seq((TaskType.StagingFold.name, StagingTaskKeys.foldDedup("Done")))
-  }
-
-  it should "enqueue StagingFold for a definitive tmdbNoMatch (no imdb needed)" in {
-    val noMatch = listing("Obscure", Some(2026)).copy(tmdbNoMatch = true)
-    val (queue, reaper, _, _) = fixture(("Obscure", Some(2026), noMatch))
-    reaper.tick() shouldBe 1
-    active(queue).map(_._1) shouldBe Seq(TaskType.StagingFold.name)
   }
 
   it should "fold the whole sanitize group as ONE task across year-variants" in {

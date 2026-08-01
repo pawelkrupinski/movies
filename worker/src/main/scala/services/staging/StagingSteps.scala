@@ -224,6 +224,42 @@ class StagingSteps(
         }
       }
     }
+    // And the rows TMDB could NOT name. They have no tmdbId to group by and do not
+    // need one: every row under this anchor is the same film by construction, so they
+    // are one group. This is where an id is worth most — a `tmdbNoMatch` row has
+    // nothing to look a rating up by, and an imdbId is precisely what
+    // `tmdb.findByImdbId` turns back into a tmdbId for the bare-title long tail
+    // ("Stop Making Sense", "Złoto") that a year-less title search must refuse.
+    //
+    // Clearing `tmdbNoMatch` on a hit is what sends the film back through
+    // `ResolveTmdb` for that reverse lookup — `stepFor` routes on `tmdbConcluded`, so
+    // a row left concluded would fold with the id and never re-ask. It cannot cycle:
+    // `imdbRecoveryDone` is stamped below, so the second pass through `ResolveTmdb`
+    // goes on to Fold whatever it decides. Cleared ONLY on a hit — with no id there is
+    // nothing new for TMDB to see, and un-concluding would buy a re-search that must
+    // reach the same answer.
+    //
+    // Only when NOTHING under this anchor resolved. A tmdbId-less row sitting beside a
+    // resolved one is a year-VARIANT of that same film (the cinemas disagree on
+    // production vs release year), not an unnamed film — the loop above owns it, and
+    // recovering for it separately would search on the variant's own title and stamp a
+    // second id onto one film, which is the cross-stamp the grouping above exists to
+    // prevent.
+    val unidentified =
+      if (fresh.exists(_.record.tmdbId.isDefined)) Seq.empty
+      else fresh
+        .filter(r => r.record.tmdbId.isEmpty && r.record.imdbId.isEmpty)
+        .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+    unidentified.headOption.foreach { needy =>
+      val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
+      val years  = unidentified.flatMap(_.year).distinct.sorted
+      val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
+      tries.iterator.flatMap(y => recoverImdbId(search, y)).nextOption().foreach { id =>
+        unidentified.foreach(r => stagingRepository.upsertRow(
+          r.copy(record = r.record.copy(imdbId = Some(id), tmdbNoMatch = false))))
+        logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id for a film TMDB could not name")
+      }
+    }
     // Best-effort + one-shot: mark done whenever the step runs (recovered,
     // not-found, or nothing to recover) so the reaper folds instead of
     // re-enqueuing forever.

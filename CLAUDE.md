@@ -47,9 +47,9 @@ layers are green locally is the right shape.
 
 ## Regenerate the snapshots your change shifts
 
-Two checked-in snapshot layers guard this repo, and a change that
-shifts either one is not committable until the snapshot is regenerated
-and committed alongside it:
+THREE checked-in snapshot layers guard this repo, and a change that
+shifts any of them is not committable until that snapshot is
+regenerated and committed alongside it:
 
 - **`expected-*.html`** — the rendered HTML for `/` (per city: Poznań,
   Wrocław, Warszawa) and `/plan`, diffed by `PageSnapshotSpec`. Shifts
@@ -57,11 +57,27 @@ and committed alongside it:
   inline-JS change. (Comments inside inline `<style>`/`<script>` are
   stripped by `tools.Minify`, so those don't shift it; HTML `<!-- -->`
   comments do.)
+- **`expected-schedules.txt`** — the WHOLE-CORPUS assertion, also
+  guarded by `FilmScheduleEndToEndSpec`. The spec asserts one anchor
+  film field-by-field inline and gives every other film the same depth
+  through this file: one block per film with `displayTitle` beside
+  every raw `cinemaTitles` spelling, runtime, year, countries, poster,
+  synopsis length, cast, director, tmdbId, imdbId, all four ratings,
+  the MC/RT/Filmweb URLs, per-cinema slot provenance, and every
+  showtime with its room and format. It is the layer that names a
+  film the pipeline started or stopped emitting, so it is usually the
+  first to fail and the only one that says WHICH films moved.
 - **`read-model-snapshot.json`** — the pipeline's projected output,
-  guarded by `FilmScheduleEndToEndSpec`. Shifts on any cinema scraper,
-  enrichment, `TitleNormalizer`, staging-fold, `ReadModelProjector`,
-  model-field, or raw-fixture change — and a pipeline change usually
-  shifts the rendered HTML too, so regenerate both.
+  guarded by the same spec. Not an assertion so much as a CACHE: the
+  page-test servers load it instead of recomputing the ~110s pipeline
+  per boot, and the guard exists to stop it going stale (consumers
+  fall back to a full boot when it is absent, so a forgotten regen is
+  slow, never wrong).
+
+The last two shift on any cinema scraper, enrichment,
+`TitleNormalizer`, staging-fold, `ReadModelProjector`, model-field, or
+raw-fixture change — and a pipeline change usually shifts the rendered
+HTML too, so regenerate all three.
 
 The regenerate commands (delete → run the spec → re-run to confirm
 stability) are in the `regenerate-snapshots` skill.

@@ -1,12 +1,21 @@
 ---
 name: regenerate-snapshots
-description: How to regenerate the two checked-in snapshot layers — the rendered-HTML page snapshots (expected-*.html) and the projected read-model snapshot (read-model-snapshot.json). Use whenever a change alters the HTML a Twirl template emits, or alters the pipeline's output (scrapers, enrichment, TitleNormalizer, staging fold, ReadModelProjector, model fields, raw fixtures).
+description: How to regenerate the three checked-in snapshot layers — the whole-corpus assertion (expected-schedules.txt), the projected read-model snapshot (read-model-snapshot.json), and the rendered-HTML page snapshots (expected-*.html). Use whenever a change alters the HTML a Twirl template emits, or alters the pipeline's output (scrapers, enrichment, TitleNormalizer, staging fold, ReadModelProjector, model fields, raw fixtures).
 ---
 
 # Regenerating the snapshots
 
-There are TWO snapshot layers, regenerated for DIFFERENT changes:
+There are THREE snapshot layers, regenerated for DIFFERENT changes:
 
+- **`expected-schedules.txt`** — the whole-corpus ASSERTION. One block per
+  film, rendered from the controller's `FilmSchedule` output: `displayTitle`
+  beside every raw `cinemaTitles` spelling, runtime, year, countries, poster,
+  synopsis length, cast, director, tmdbId, imdbId, all four ratings, the
+  MC/RT/Filmweb URLs, per-cinema slot provenance, and every showtime with its
+  room and format. Regenerate for the same changes as the read model below.
+  Read its diff FIRST when several snapshots move: it is the only layer that
+  names the films that appeared or vanished, and a pipeline change that
+  silently drops films shows up here as deleted blocks.
 - **`read-model-snapshot.json`** — the pipeline's OUTPUT (what `web_movies` /
   `web_screenings` hold). Regenerate when you change anything that alters that
   output: a cinema scraper, the enrichment pipeline, `TitleNormalizer` rules,
@@ -14,8 +23,8 @@ There are TWO snapshot layers, regenerated for DIFFERENT changes:
   the raw fixture files under `08-06-2026/`. A render-only Twirl/CSS change does
   NOT touch it.
 - **`expected-*.html`** — the RENDERED output. A pipeline change usually
-  shifts BOTH (the new read model renders differently), so regenerate the HTML
-  too; a render-only change shifts only the HTML.
+  shifts ALL THREE (the new read model renders differently), so regenerate the
+  HTML too; a render-only change shifts only the HTML.
 
 ## Page snapshots (`expected-*.html`)
 
@@ -64,6 +73,31 @@ Changes that typically require regeneration: Twirl template edits
 fields that surface in the view, CSS class or `data-*` attribute
 changes on rendered elements, inline `onerror`/`onclick` handler
 changes.
+
+## Whole-corpus snapshot (`expected-schedules.txt`)
+
+`FilmScheduleEndToEndSpec`'s first test asserts ONE anchor film field-by-field
+inline, and gives every other film in the fixture corpus the same depth through
+this file — ~11,000 lines, one block per film, rendered deterministically
+(films by lowercased title, cinemas by display name, showtimes by clock).
+
+It is the layer that tells you WHICH films moved. The read-model snapshot is a
+blob; this one deletes or adds a named block, so a pipeline change that silently
+drops films reads straight off the diff:
+
+```
+diff <old> test/resources/fixtures/08-06-2026/expected-schedules.txt \
+  | grep '^[<>].*==='
+```
+
+Regenerate exactly like the read model, and read its diff before you trust
+either:
+
+```
+rm test/resources/fixtures/08-06-2026/expected-schedules.txt
+sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # writes it, fails "didn't exist"
+sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'   # re-run: must pass (stable)
+```
 
 ## Read-model snapshot (`read-model-snapshot.json`)
 

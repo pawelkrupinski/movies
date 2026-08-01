@@ -134,7 +134,16 @@ class StagingReaper(
     if (rows.isEmpty) None
     else if (!rows.forall(_.record.tmdbConcluded))
       if (rows.exists(r => !steps.detailReady(r))) Some(StagingStep.Detail) else Some(StagingStep.ResolveTmdb)
-    else if (rows.exists(r => r.record.tmdbId.isDefined && r.record.imdbId.isEmpty) && !steps.imdbRecoveryDone(anchor))
+    // Recovery is worth MORE to a film TMDB could not name than to one it could.
+    // This asked for `tmdbId.isDefined`, so a row concluded `tmdbNoMatch` — no id of
+    // any kind — went straight to Fold and left staging with nothing to look a rating
+    // up by and nothing for `tmdb.findByImdbId` to resolve in reverse. That is exactly
+    // the bare-title long tail: a single cinema listing "Stop Making Sense" or "Złoto"
+    // with no year and no director, which `resolveTmdbId` rightly refuses to guess at
+    // among 320 search hits. The event-driven `ImdbIdMissing` chain cannot cover them
+    // either — it reads the row out of the movie cache, and a staging row is not in it
+    // (the reason `ImdbIdResolver.findIdFor` exists at all).
+    else if (rows.exists(r => r.record.imdbId.isEmpty) && !steps.imdbRecoveryDone(anchor))
       Some(StagingStep.ResolveImdb)
     else Some(StagingStep.Fold)
 

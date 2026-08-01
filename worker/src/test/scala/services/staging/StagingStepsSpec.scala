@@ -205,6 +205,44 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.imdbId shouldBe Some("tt42003604")
   }
 
+  /** The film prod identifies and the pipeline could not: a single cinema listing a
+   *  title with no year and no director. TMDB refuses it (right — a year-less search
+   *  over 320 hits is a guess), so the row concludes `tmdbNoMatch`. IMDb's suggestion
+   *  endpoint CAN name it, and the id is what `tmdb.findByImdbId` resolves in reverse
+   *  — the route prod's `movie_slots` show for "Stop Making Sense" and "Złoto". */
+  it should "recover an imdbId for a film TMDB could not name" in {
+    val (repository, anchor) = seeded(Multikino, "Stop Making Sense", None)
+    var searchedFor = Option.empty[String]
+    val s = steps(repository, Seq.empty,
+      resolve = (_, _, r) => Some(r.copy(tmdbNoMatch = true)),        // TMDB refuses to guess
+      recover = (search, _) => { searchedFor = Some(search); Some("tt0088178") })
+
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved          // concluded tmdbNoMatch
+    repository.findAll().head.record.tmdbNoMatch shouldBe true
+    s.recoverImdbFor(anchor)
+
+    searchedFor shouldBe Some(MovieService.apiQuery("Stop Making Sense"))
+    repository.findAll().head.record.imdbId shouldBe Some("tt0088178")
+    // The no-match is LIFTED, so the reaper routes the film back through ResolveTmdb
+    // where the id becomes a tmdbId. Leaving it concluded would fold the film with an
+    // imdbId it never gets to use.
+    repository.findAll().head.record.tmdbNoMatch shouldBe false
+  }
+
+  // With nothing recovered there is nothing new for TMDB to see, so the conclusion
+  // must STAND — otherwise the film re-searches every pass to reach the same answer.
+  it should "leave a film TMDB could not name concluded when IMDb cannot name it either" in {
+    val (repository, anchor) = seeded(Multikino, "31. Festiwal Górski - zestaw 1", None)
+    val s = steps(repository, Seq.empty,
+      resolve = (_, _, r) => Some(r.copy(tmdbNoMatch = true)), recover = (_, _) => None)
+
+    s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
+    s.recoverImdbFor(anchor)
+
+    repository.findAll().head.record.imdbId     shouldBe None
+    repository.findAll().head.record.tmdbNoMatch shouldBe true
+  }
+
   it should "recover from a NON-head row and mark done one-shot when the _id-first row has no tmdbId" in {
     // Regression: a film's cinemas disagree on year, and a late-arriving variant
     // with NO tmdbId sorts ahead (by `_id`) of the resolved one. Keying recovery
