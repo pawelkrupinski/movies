@@ -62,6 +62,43 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /**
+   * A cinema's programme banner is part of the row's title, and IMDb has never heard
+   * of it. TMDB was always asked both ways — `resolveTmdbId` runs its candidates
+   * through `searchTitleCandidates`, which splits a `"X | Y"` pipe — while this path
+   * went out with the banner attached and could only miss:
+   * `ImdbIdMissing(search='Ghost in the Shell | Kino Azji')` → no match, for a film
+   * IMDb knows. Costing that row an imdbId costs it the tmdbId `findByImdbId` would
+   * have recovered from the id.
+   *
+   * The stub answers ONLY the de-decorated query, so a resolver that asks with the
+   * banner attached gets nothing and the id never lands.
+   */
+  it should "see through a programme banner the base title is buried in" in {
+    val bus = new InProcessEventBus()
+    val decorated = MovieRecord(tmdbId = Some(9323))
+    val repository = new InMemoryMovieRepository(
+      Seq(("Ghost in the Shell | Kino Azji", Some(1995), decorated)))
+    val cache = new CaffeineMovieCache(repository)
+    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
+      def get(url: String): String =
+        // The banner never reaches IMDb: only the bare film title answers.
+        if (url.toLowerCase.contains("kino") || url.toLowerCase.contains("azji")) """{"d":[]}"""
+        else loadFixture("/fixtures/imdb/suggestion_ghost_in_the_shell.json")
+      override def post(url: String, body: String, contentType: String): String =
+        throw new RuntimeException("ImdbIdResolver should not POST")
+    }))
+    bus.subscribe(resolver.onImdbIdMissing)
+
+    bus.publish(ImdbIdMissing(
+      "Ghost in the Shell | Kino Azji", Some(1995), "Ghost in the Shell | Kino Azji"))
+
+    eventually {
+      cache.get(cache.keyOf("Ghost in the Shell | Kino Azji", Some(1995))).flatMap(_.imdbId) shouldBe
+        Some("tt0113568")
+    }
+  }
+
   it should "no-op when the suggestion endpoint returns nothing usable" in {
     val bus = new InProcessEventBus()
     val tmdbOnly = MovieRecord(
