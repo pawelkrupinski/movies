@@ -112,6 +112,12 @@ object ExtraTitleRules {
     prog("xtra-pp-filmy-gorskie",     """(?i)^Filmy\s+g[óo]rskie:\s+""",                "Filmy górskie mountain-film cycle"),
     prog("xtra-pp-kino-plenerowe",    """(?i)^Kino\s+plenerowe:\s+""",                  "Kino plenerowe open-air cycle"),
     prog("xtra-pp-klasyka-cycle",     """(?i)^Klasyka\s+na\s+(?:topie|fali):\s+""",    "'Klasyka na topie/fali' classics cycle"),
+    // Retrospective banner ending in '!' rather than ':' — "Buñuel: niech żyją kajdany!
+    // Viridiana". The colon sits INSIDE the banner, so a ':'-anchored rule stops in the
+    // wrong place and leaves "niech żyją kajdany! Viridiana".
+    prog("xtra-pp-bunuel-retro",      """(?i)^Bu[ñn]uel:\s+niech\s+[^!]{2,40}!\s+""",  "Buñuel retrospective banner"),
+    prog("xtra-pp-ciekawi-swiata",    """(?i)^Ciekawi\s+[ŚS]wiata:\s+""",               "Ciekawi Świata documentary cycle"),
+    prog("xtra-pp-baltycki-deser",    """(?i)^Ba[łl]tycki\s+Deser[^:]{0,30}:\s+""",     "Bałtycki Deser children's cycle"),
     prog("xtra-pp-spotkania-seniora", """(?i)^Filmowe\s+spotkania\s+seniora:\s+""",       "Filmowe spotkania seniora"),
     prog("xtra-pp-fks-seniorki",      """(?i)^Filmowy\s+Klub\s+Seniora\s+i\s+Seniorki:\s+""", "Filmowy Klub Seniora i Seniorki"),
     prog("xtra-pp-dkf-named",         """(?i)^DKF\s+[^:]+:\s+""",                         "DKF <name>: film-club prefix"),
@@ -193,6 +199,12 @@ object ExtraTitleRules {
   /** Strips that fix enrichment without merging the row away — a premiere or a
    *  DKF screening keeps its own line, it just resolves ratings now. */
   val searchStrips: Seq[TitleRule] = Seq(
+    // "<film>. Amerykańska klasyka od Warner Bros." — a distributor's re-release strapline
+    // appended after a full stop, seen on Bullitt and Co się zdarzyło Baby Jane. Stripped
+    // for the query only: the row stays its own screening, as with every other banner.
+    searchStrip("xtra-ss-amerykanska-klasyka",
+      """(?i)\s*[.,]?\s*Ameryka[ńn]ska\s+klasyka\s+od\s+[^.]{2,30}\.?\s*$""",
+      "'… Amerykańska klasyka od <distributor>' re-release strapline"),
     // Normalise Polish typographic quotes to plain ASCII (GlobalStructural,
     // replaceAll so every quote in the title is folded).
     TitleRule("search-quote-right", GlobalStructural, None, "”", "\"", applyAll = true, order = 0,

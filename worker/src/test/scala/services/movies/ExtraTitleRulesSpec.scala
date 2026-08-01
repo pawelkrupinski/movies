@@ -46,6 +46,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Kino plenerowe: Amadeusz"                        -> ("Kino plenerowe: ",                 "Amadeusz"),
     "Klasyka na topie: Chinatown"                     -> ("Klasyka na topie: ",               "Chinatown"),
     "Klasyka na fali: Nagi instynkt"                  -> ("Klasyka na fali: ",                "Nagi instynkt"),
+    "Buñuel: niech żyją kajdany! Viridiana"           -> ("Buñuel: niech żyją kajdany! ",     "Viridiana"),
+    "Ciekawi Świata: Arek.Mama.Panorama"              -> ("Ciekawi Świata: ",                 "Arek.Mama.Panorama"),
     "Klub Filmowy Żółty Fotel: Chronologia wody"     -> ("Klub Filmowy Żółty Fotel: ",       "Chronologia wody"),
     "Kino Dostępne: Drugie życie"                     -> ("Kino Dostępne: ",                  "Drugie życie"),
     "Filmoterapia z Inspirą: Drugie życie"            -> ("Filmoterapia z Inspirą: ",         "Drugie życie"),
@@ -132,6 +134,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   // ── search-only strips: row kept, query fixed ──────────────────────────────
 
   private val searchStripCases = Seq(
+    "Bullitt. Amerykańska klasyka od Warner Bros."       -> "Bullitt",
+    "Co się zdarzyło Baby Jane. Amerykańska klasyka od Warner Bros." -> "Co się zdarzyło Baby Jane",
     "Ojczyzna_DKF"                     -> "Ojczyzna",
     "Czytając Lolitę w Teheranie | DKF" -> "Czytając Lolitę w Teheranie",
     "OJCZYZNA - DKF KOT"               -> "OJCZYZNA",

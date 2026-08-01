@@ -322,7 +322,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
   /** How many unresolved titles the report names before truncating. Enough to spot a
    *  pattern (a banner family, a language, a decoration) without burying the run's other
    *  findings; the total is always reported. */
-  private val UnresolvedFilmsReported = 60
+  private val UnresolvedFilmsReported = 400
 
   private def enrichmentCoverage(w: ArchiveReplayWiring): String = {
     val records = w.movieRepository.findAll().map(_.record)
