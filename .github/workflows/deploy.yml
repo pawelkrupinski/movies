@@ -26,8 +26,9 @@ concurrency:
 
 # Pipeline shape:
 #
-#   ci (reusable workflow — lint, test, integration, ios/android
-#       local-server, page-tests) ──►  deploy
+#   ci (reusable workflow — lint, test, integration, ios/android    ┌─► deploy (6 apps) ─► annotate
+#       local-server, page-tests) ───────────────────────────────── ┤
+#                                                                   └─► kick-convergence
 #
 # The whole build+test pipeline lives in ci.yml as a `workflow_call`
 # reusable workflow so it has exactly one definition; branch-ci.yml
@@ -184,36 +185,55 @@ jobs:
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
+    # Kick the country convergence suite off ALONGSIDE the deploy matrix — same
+    # `needs: ci` the legs have, so the dispatch goes out the moment the build is
+    # green and the suite runs concurrently with the six flyctl legs.
+    #
+    # Two shapes this deliberately is not:
+    #
+    #  * Not a `workflow_run` trigger on this workflow. `workflow_run` fires on ANY
+    #    completion, `failure` and `cancelled` included, and GitHub gives no way to
+    #    filter on conclusion in `on:` — the only gate available was a job-level
+    #    `if`, which still CREATES a run that then skips. Those runs were not merely
+    #    noise: concurrency is evaluated at RUN level, before the `if`, so a run
+    #    destined to skip claimed the lane and cancelled whatever was genuinely in
+    #    flight. One killed a leg 21.5 minutes into real work, and since every push
+    #    cancels the previous deploy, a burst of pushes produced a burst of
+    #    skipped-but-cancelling runs and nothing completed for a day. An explicit
+    #    dispatch inverts that: no dispatch, no run, nothing cancelled.
+    #
+    #  * Not `needs: deploy`. Convergence never reads the deployed machines — every
+    #    leg runs against its own MongoDB container and a recorded corpus — and
+    #    nothing gates the deploy on its result, so waiting for six flyctl legs only
+    #    pushed a tens-of-minutes suite later into the window where the next push's
+    #    dispatch supersedes it. Starting with the legs is the earliest this commit's
+    #    answer can exist. (DeployParallelismConfigSpec)
+    #
+    # That superseding is still real: the convergence workflow keeps one lane with
+    # `cancel-in-progress`, so a push landing mid-run throws that run away. Running in
+    # parallel buys the run a deploy's worth of head start against it; it does not
+    # remove it. The nightly 04:20 schedule stays the guaranteed-to-finish signal.
+    kick-convergence:
+        needs: ci
+        runs-on: ubuntu-latest
+        permissions:
+            actions: write
+        steps:
+            - name: Start the country convergence suite
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  echo "ci green for ${GITHUB_SHA:0:9} — dispatching Country convergence"
+                  gh workflow run "Country convergence" --ref "${GITHUB_REF_NAME}"
+
     # Drop a vertical marker on the self-hosted Grafana carrying this commit's
     # SHA + subject, so a metric regression on the dashboard lines up visually
     # with the release that caused it — the "I deploy X and a service degrades"
     # loop, made legible. Runs once after BOTH app legs finish. No-ops (doesn't
     # fail the deploy) until the Grafana secrets are set, so it's safe to land
     # before kinowo-grafana exists.
-    # Kick the convergence suite off HERE, on a successful deploy, rather than
-    # letting it chain off this workflow with a `workflow_run` trigger.
-    #
-    # `workflow_run` fires on ANY completion, including `failure` and `cancelled`,
-    # and GitHub gives no way to filter on conclusion in `on:` — so the only gate
-    # available was a job-level `if`, which still CREATES a run that then skips.
-    # Those skipped runs are not merely noise: concurrency is evaluated at run
-    # level, before the `if`, so a run destined to skip claimed the lane and
-    # cancelled whatever was genuinely in flight. One killed a leg 21.5 minutes into
-    # real work, and because every push cancels the previous deploy, a burst of
-    # pushes produced a burst of skipped-but-cancelling runs and NOTHING ever
-    # completed for a day.
-    #
-    # An explicit dispatch inverts that: a failed or cancelled deploy simply does not
-    # dispatch, so no run is created, so nothing is cancelled.
-    # There is no `kick-convergence` job any more. It dispatched the convergence suite on
-    # every successful deploy, which made sense while a leg took three minutes. Legs are
-    # tens of minutes long now that they actually enrich, and the workflow's concurrency
-    # group cancels whatever is in flight — so a deploy landing mid-run threw the whole
-    # thing away. That happened five times in one day, up to 27 minutes per leg each time,
-    # and not one superseded run ever reached its assertions. The nightly schedule and
-    # manual dispatch remain: a convergence result that arrives some hours after a deploy
-    # is worth incomparably more than one reliably killed at minute 26.
-
     annotate:
         needs: deploy
         if: ${{ !cancelled() && needs.deploy.result == 'success' }}

@@ -25,7 +25,33 @@ import org.scalatest.matchers.should.Matchers
 class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
   private lazy val deployYml = RepoFile.read(".github/workflows/deploy.yml")
 
+  /** The body of one top-level job, from its key to the next key at the same indent. */
+  private def job(name: String): String = {
+    val start = deployYml.indexOf(s"\n    $name:\n")
+    start should be >= 0
+    val rest  = deployYml.substring(start + 1)
+    val next  = "(?m)^    [a-z][a-z0-9-]*:$".r.findFirstMatchIn(rest.dropWhile(_ != '\n'))
+    next.map(m => rest.take(m.start + 1)).getOrElse(rest)
+  }
+
   "the deploy workflow" should "not bucket a whole tier into one concurrency group (GitHub cancels the 3rd app)" in {
     deployYml should not include "fly-deploy-${{ matrix.bin }}"
+  }
+
+  it should "dispatch the country convergence suite" in {
+    job("kick-convergence") should include("""gh workflow run "Country convergence"""")
+  }
+
+  /**
+   * Convergence hangs off `ci`, the same dependency the deploy matrix has — so the
+   * suite starts the moment the build is green rather than queueing behind six
+   * flyctl legs. Nothing gates the deploy on convergence and nothing gates
+   * convergence on a machine having restarted (it runs entirely against its own
+   * Mongo container and a recorded corpus), so making it wait bought only latency.
+   */
+  it should "start the convergence suite in parallel with the deploy matrix, not after it" in {
+    val kick = job("kick-convergence")
+    kick should include("needs: ci")
+    kick should not include "needs: deploy"
   }
 }

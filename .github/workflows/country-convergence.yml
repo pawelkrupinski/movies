@@ -23,16 +23,21 @@
 name: Country convergence
 
 on:
-    # Runs AFTER `Deploy to Fly.io` finishes — not on push. These legs are TENS of
-    # minutes long once enrichment actually runs (Poland 12 warm, ~22 on a cache it
-    # has to build first; Germany and the UK carry 1.6x and 2.2x Poland's films). The
-    # numbers this comment used to quote — 3, 9 and 14 — were measured while the TMDB
-    # key was gated wrong and every leg resolved 0 films, so they described a suite
-    # doing no enrichment at all. Firing that in parallel with the deploy put three
-    # heavyweight jobs on the runner pool at exactly the moment the deploy needed it,
-    # for a signal nobody gates the deploy on anyway. Chaining keeps the
-    # deploy's "all green" arriving as early as it always did and still runs the
-    # convergence check against the very commit that shipped.
+    # Dispatched by `Deploy to Fly.io` — not on push. Its `kick-convergence` job
+    # hangs off the same `needs: ci` the deploy matrix does, so these legs start
+    # alongside the flyctl legs rather than behind them.
+    #
+    # They are TENS of minutes long once enrichment actually runs (Poland 12 warm,
+    # ~22 on a cache it has to build first; Germany and the UK carry 1.6x and 2.2x
+    # Poland's films), and the lane below is single and cancel-in-progress — so every
+    # minute spent queueing behind something else is a minute in which the next push
+    # can supersede the run before it reaches an assertion. Starting with the deploy
+    # rather than after it is head start against exactly that. The runner-pool cost is
+    # three concurrent jobs while the deploy's six legs run; the deploy legs are
+    # flyctl-remote-build waits, so they contend for slots, not for CPU.
+    #
+    # Deploy-time dispatch is best-effort by construction. The nightly schedule below
+    # is the run that is guaranteed to finish.
     schedule:
         # 04:20 UTC — after the nightly country-fixture recorder, before the day starts.
         - cron: '20 4 * * *'
