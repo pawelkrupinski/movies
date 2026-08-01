@@ -94,6 +94,24 @@ object ExtraTitleRules {
     prog("xtra-pp-pora-dla-seniora",  """(?i)^Pora\s+dla\s+Seniora:\s+""",                "Pora dla Seniora cycle"),
     prog("xtra-pp-wtorki-seniora",    """(?i)^Wtorki\s+dla\s+Seniora:\s+""",              "Wtorki dla Seniora cycle"),
     prog("xtra-pp-kino-dla-seniora",  """(?i)^Kino\s+dla\s+Seniora:\s+""",                "Kino dla Seniora cycle"),
+    // Polish summer/holiday and family cycles. Every one of these was found on a row
+    // that reached TMDB with the banner still attached and therefore matched nothing —
+    // "Big Festivalowski: …" alone accounted for 22 unresolved rows in the real corpus.
+    // Each is anchored to a literal banner rather than a generic "<anything>: <film>",
+    // because a generic colon rule amputates real titles ("Rocky IV: Ostateczna walka").
+    prog("xtra-pp-big-festivalowski", """(?i)^Big\s+Festivalowski:\s+""",              "Big Festivalowski festival cycle"),
+    // "Lato w/z <venue or partner>" — one shape covering Lunie / Rafael Film / Mieście
+    // 2026 / Młodymi Horyzontami. Bounded to ~30 chars and no inner colon so it cannot
+    // run past the banner into the film.
+    prog("xtra-pp-lato-cycle",        """(?i)^Lato\s+(?:w|z|we)\s+[^:]{2,30}:\s+""",   "'Lato w/z <cycle>:' summer cycles"),
+    prog("xtra-pp-wakacyjne-cycle",   """(?i)^Wakacyjn\p{L}+\s+[^:]{2,30}:\s+""",      "'Wakacyjne <cycle>:' holiday cycles"),
+    prog("xtra-pp-wakacje-cycle",     """(?i)^Wakacje\s+(?:w|z|we)\s+[^:]{2,30}:\s+""","'Wakacje w/z <cycle>:' holiday cycles"),
+    prog("xtra-pp-filmowe-popoludnie","""(?i)^Filmowe\s+popo[łl]udnie(?:\s+[^:]{1,30})?:\s+""", "Filmowe popołudnie (dla dzieci) cycle"),
+    prog("xtra-pp-bajkowe-poranki",   """(?i)^Bajkowe\s+poranki:\s+""",                 "Bajkowe poranki children's cycle"),
+    prog("xtra-pp-rodzina-w-kinie",   """(?i)^Rodzina\s+w\s+kinie:\s+""",              "Rodzina w kinie family cycle"),
+    prog("xtra-pp-filmy-gorskie",     """(?i)^Filmy\s+g[óo]rskie:\s+""",                "Filmy górskie mountain-film cycle"),
+    prog("xtra-pp-kino-plenerowe",    """(?i)^Kino\s+plenerowe:\s+""",                  "Kino plenerowe open-air cycle"),
+    prog("xtra-pp-klasyka-cycle",     """(?i)^Klasyka\s+na\s+(?:topie|fali):\s+""",    "'Klasyka na topie/fali' classics cycle"),
     prog("xtra-pp-spotkania-seniora", """(?i)^Filmowe\s+spotkania\s+seniora:\s+""",       "Filmowe spotkania seniora"),
     prog("xtra-pp-fks-seniorki",      """(?i)^Filmowy\s+Klub\s+Seniora\s+i\s+Seniorki:\s+""", "Filmowy Klub Seniora i Seniorki"),
     prog("xtra-pp-dkf-named",         """(?i)^DKF\s+[^:]+:\s+""",                         "DKF <name>: film-club prefix"),
