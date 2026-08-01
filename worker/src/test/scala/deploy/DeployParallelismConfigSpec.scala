@@ -25,14 +25,7 @@ import org.scalatest.matchers.should.Matchers
 class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
   private lazy val deployYml = RepoFile.read(".github/workflows/deploy.yml")
 
-  /** The body of one top-level job, from its key to the next key at the same indent. */
-  private def job(name: String): String = {
-    val start = deployYml.indexOf(s"\n    $name:\n")
-    start should be >= 0
-    val rest  = deployYml.substring(start + 1)
-    val next  = "(?m)^    [a-z][a-z0-9-]*:$".r.findFirstMatchIn(rest.dropWhile(_ != '\n'))
-    next.map(m => rest.take(m.start + 1)).getOrElse(rest)
-  }
+  private def job(name: String): String = RepoFile.block(deployYml, name)
 
   "the deploy workflow" should "not bucket a whole tier into one concurrency group (GitHub cancels the 3rd app)" in {
     deployYml should not include "fly-deploy-${{ matrix.bin }}"

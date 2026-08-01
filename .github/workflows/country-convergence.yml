@@ -44,14 +44,25 @@ on:
     workflow_dispatch:
 
 concurrency:
-    # One lane for the whole workflow, so a new run always supersedes the one
-    # still in flight. Keying on the head SHA and the event name (as this did)
-    # gave every deploy, nightly and manual run its own lane, which meant
-    # nothing ever cancelled anything: three legs of up to 75 minutes each piled
-    # up on the runner pool while the only run whose result anyone reads is the
-    # newest one. All three triggers land on `main`, so the ref keeps a lane per
-    # branch for the rare dispatch from somewhere else without splitting main's.
-    group: country-convergence-${{ github.ref }}
+    # ONE lane for the whole workflow — a constant, with nothing per-run in it — so
+    # a new run always supersedes the one still in flight, whatever branch or event
+    # it came from. GitHub collapses runs only when this string is EQUAL, so every
+    # expression added here silently buys another lane:
+    #
+    #   - `${{ github.sha }}`-`${{ github.event_name }}` (the original) gave every
+    #     deploy, nightly and manual run a lane of its own — nothing ever cancelled
+    #     anything, and legs of up to 135 minutes piled up on the runner pool while
+    #     only the newest run's result gets read.
+    #   - `${{ github.ref }}` (the replacement) looked like it only split main from
+    #     the rare foreign dispatch. It isn't rare: dispatching by hand from a
+    #     worktree branch is how this suite normally gets run manually here. On
+    #     2026-08-01 a `convergence-imdb-ladder` dispatch and a main deploy dispatch
+    #     ran side by side for an hour — six heavyweight legs at once.
+    #
+    # The cost is deliberate: a hand-dispatched branch run is cancelled by the next
+    # push to main. One authoritative answer is worth more than several competing
+    # ones. (ConvergenceConcurrencyConfigSpec)
+    group: country-convergence
     # Unconditional again, and safe now: every run of this workflow is either a
     # deploy-triggered dispatch or a deliberate one, so there are no runs that exist
     # only to skip. Previously a skipped `workflow_run` run took the lane and
