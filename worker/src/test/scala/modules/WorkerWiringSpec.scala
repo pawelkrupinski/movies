@@ -198,4 +198,104 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     text should include (s"""kinowo_worker_http_total{country="pl",outcome="success",phase="$scrape"} 1""")
     wiring.stop()
   }
+
+  /** A wiring that records which rating sources the sweep actually drove. Asserting
+   *  on the SOURCE rather than on an HTTP call is deliberate: `enrichRatingsSync`
+   *  wraps all four refreshes in one `try`, so a throw from any earlier source (a stub
+   *  leaf's unparseable body will do it) skips the rest — and a test watching the wire
+   *  would then pass for Filmweb whether the gate existed or not. */
+  class RatingSourceRecordingWiring extends SpyWiring {
+    val refreshed = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    private def record(name: String): Unit = { refreshed.add(name); () }
+
+    // `TestWiring` pins Mongo disabled, so the production repository swallows the
+    // seed and the sweep would walk an empty cache — passing whatever the gate did.
+    override lazy val movieRepository: services.movies.MovieRepository =
+      new services.movies.InMemoryMovieRepository(
+        Seq(("Diuna", Some(2024), models.MovieRecord(tmdbId = Some(438631)))))
+
+    // All FOUR stubbed, so the sweep is hermetic and reaches the gate: the real
+    // sources would go to the network on the first call and the swallowed throw
+    // would skip everything after it.
+    override lazy val imdbRatings: services.enrichment.ImdbRatings =
+      new services.enrichment.ImdbRatings(movieCache, imdbClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("imdb"); None }
+      }
+    override lazy val rottenTomatoesRatings: services.enrichment.RottenTomatoesRatings =
+      new services.enrichment.RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("rt"); None }
+      }
+    override lazy val metascoreRatings: services.enrichment.MetascoreRatings =
+      new services.enrichment.MetascoreRatings(movieCache, tmdbClient, metacriticClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("mc"); None }
+      }
+    override lazy val filmwebRatings: services.enrichment.FilmwebRatings =
+      new services.enrichment.FilmwebRatings(movieCache, tmdbClient, filmwebClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("filmweb"); None }
+      }
+    def sources: Seq[String] = refreshed.toArray(Array.empty[String]).toSeq
+  }
+
+  /**
+   * The harness's rating sweep stands in for production's `RatingHandler`s, so it has
+   * to be gated where they are. Unconditional, it drove Filmweb for every country:
+   * prod's German and British corpora hold 0 `filmwebRating` and 0 `filmwebUrl`, while
+   * the convergence legs reported 972 and 1293 — a field invented by the harness, on
+   * ~2,250 live calls prod never makes, on the two longest legs in the suite.
+   */
+  "the harness rating sweep" should "not drive Filmweb for a country that has no Filmweb" in {
+    val wiring = new RatingSourceRecordingWiring { override protected def filmwebEnabled: Boolean = false }
+    wiring.movieCache.rehydrate()
+
+    wiring.enrichRatingsSync()
+
+    withClue(s"sources driven: ${wiring.sources.mkString(", ")}: ") {
+      wiring.sources should contain allOf ("imdb", "rt", "mc")   // the sweep DID run
+      wiring.sources should not contain "filmweb"                 // …and skipped only this
+    }
+    wiring.stop()
+  }
+
+  // …and still does for a country that HAS it, so the gate can't be "off everywhere".
+  it should "still drive Filmweb for a country that has it" in {
+    val wiring = new RatingSourceRecordingWiring
+    wiring.movieCache.rehydrate()
+
+    wiring.enrichRatingsSync()
+
+    wiring.sources should contain ("filmweb")
+    wiring.stop()
+  }
+
+  /**
+   * `resolveTmdbId`'s last rungs — `viaLetterboxd` and `viaFilmwebWikidata` — are the
+   * ones that exist for the arthouse long tail TMDB's own search misses. Prod passes
+   * both resolvers in; the harness rebuilt `MovieService` with positional defaults and
+   * silently got `None` for each, so a suite whose entire purpose is to measure how
+   * much of a country's repertoire resolves was measuring it with two rungs sawn off.
+   */
+  "the harness MovieService" should "keep prod's Letterboxd rung of the resolution ladder" in {
+    val asked = new java.util.concurrent.atomic.AtomicReference[String]("")
+    val wiring = new SpyWiring {
+      // Valid-but-empty payloads: TMDB's own search and `/find` both conclude "nothing",
+      // which is what hands the row down to the fallback rungs.
+      override protected def realHttpLeaf: HttpFetch = new GetOnlyHttpFetch {
+        override def get(url: String): String = """{"results":[],"movie_results":[]}"""
+      }
+      override lazy val movieRepository: services.movies.MovieRepository =
+        new services.movies.InMemoryMovieRepository(
+          Seq(("Obscure Arthouse Film", Some(2019), models.MovieRecord(imdbId = Some("tt5555555")))))
+      override lazy val letterboxdIdResolver: services.enrichment.LetterboxdIdResolver =
+        new services.enrichment.LetterboxdIdResolver(letterboxdClient) {
+          override def resolveTmdbId(imdbId: String): Option[Int] = { asked.set(imdbId); None }
+        }
+    }
+    wiring.movieCache.rehydrate()
+
+    wiring.movieService.retryResolve("Obscure Arthouse Film", Some(2019))
+    wiring.drainServices()
+
+    withClue("the Letterboxd rung was never consulted: ") { asked.get() shouldBe "tt5555555" }
+    wiring.stop()
+  }
 }

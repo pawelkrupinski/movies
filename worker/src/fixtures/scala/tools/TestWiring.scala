@@ -116,8 +116,18 @@ trait TestWiring extends WorkerWiring {
   // way; the queue dispatch seam is covered by the unit + WorkerWiring specs. A
   // missing fixture is a permanent miss (the inline path drops a transient
   // failure without retrying — no cascade churn).
+  //
+  // Everything else prod passes is passed HERE too. Rebuilding the service with
+  // positional defaults silently dropped `letterboxdIdResolver` and `wikidata`, and
+  // those are not incidental wiring: they are the last two rungs of
+  // `resolveTmdbId`'s fallback ladder (`viaLetterboxd`, `viaFilmwebWikidata`), the
+  // ones that exist for exactly the arthouse long tail TMDB's own search misses. A
+  // suite whose entire purpose is to measure how much of a country's repertoire
+  // resolves was measuring it with two rungs sawn off, and said nothing about it.
   override lazy val movieService =
-    new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"))
+    new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"),
+      letterboxdIdResolver = Some(letterboxdIdResolver),
+      wikidata             = Some(wikidataClient))
 
   // Staging repository/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
   // Mongo is disabled, so the inherited MongoStagingRepository would silently drop the
@@ -296,7 +306,13 @@ trait TestWiring extends WorkerWiring {
           imdbRatings.refreshOneSync(t, y)
           rottenTomatoesRatings.refreshOneSync(t, y)
           metascoreRatings.refreshOneSync(t, y)
-          filmwebRatings.refreshOneSync(t, y)
+          // Gated exactly as production gates the handler (`filmwebEnabled`), which
+          // this sweep stands in for. Unconditional, it fetched a source prod holds
+          // NOTHING for outside Poland: prod's German and British corpora carry 0
+          // `filmwebRating` and 0 `filmwebUrl`, while the convergence legs reported
+          // 972 and 1293 — a field invented by the harness, on ~2,250 live calls
+          // prod never makes, on the two longest legs in the suite.
+          if (filmwebEnabled) filmwebRatings.refreshOneSync(t, y)
         } catch { case _: Exception => () }
       }
 

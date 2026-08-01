@@ -243,9 +243,19 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     val seeded   = seedArchive(archive)
     val merges   = new CountingMergeMetrics
     val w = new ArchiveReplayWiring(country, archive, enrichmentCache, storage) {
+      // `mergeMetrics` is the ONLY thing this override exists to change — everything
+      // else must stay as `WorkerWiring` builds it. `enrichmentLanguage` went missing
+      // here and nowhere else: the cache the replay passes use (see `replay`) keeps
+      // prod's, so the shared boot and the passes were canonicalising country names
+      // against different locales, and the leg this spec reports coverage from was
+      // the one running on the default.
       override lazy val movieCache = new CaffeineMovieCache(
         movieRepository, eventBus, staging = Some(stagingRepository),
-        retrigger = enrichmentRetrigger, mergeMetrics = merges)
+        retrigger = enrichmentRetrigger, mergeMetrics = merges,
+        // `CountryConvergenceBehaviour.this` — inside the anonymous `ArchiveReplayWiring`
+        // both this spec's `country` and the wiring's are in scope, and they are the same
+        // value; naming the spec's is what disambiguates.
+        enrichmentLanguage = CountryConvergenceBehaviour.this.country.language)
     }
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
