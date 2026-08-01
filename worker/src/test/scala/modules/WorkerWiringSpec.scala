@@ -256,6 +256,28 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
+  /** Each source gets its own `try`, so one that throws cannot skip the ones after
+   *  it. Shared, a single `try` made coverage depend on a source's POSITION: a local
+   *  run whose Rotten Tomatoes probes 404'd finished with Metacritic 12 and Filmweb 11
+   *  against CI's 307 and 478, because RT is listed above them. */
+  it should "keep refreshing the other sources when one of them throws" in {
+    val wiring = new RatingSourceRecordingWiring {
+      override lazy val rottenTomatoesRatings: services.enrichment.RottenTomatoesRatings =
+        new services.enrichment.RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient) {
+          override def refreshOneSync(t: String, y: Option[Int]): Option[String] =
+            throw new RuntimeException("RT slug probe 404'd")
+        }
+    }
+    wiring.movieCache.rehydrate()
+
+    wiring.enrichRatingsSync()
+
+    withClue(s"sources driven: ${wiring.sources.mkString(", ")}: ") {
+      wiring.sources should contain allOf ("imdb", "mc", "filmweb")
+    }
+    wiring.stop()
+  }
+
   // …and still does for a country that HAS it, so the gate can't be "off everywhere".
   it should "still drive Filmweb for a country that has it" in {
     val wiring = new RatingSourceRecordingWiring

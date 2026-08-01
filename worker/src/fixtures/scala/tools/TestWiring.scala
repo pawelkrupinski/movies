@@ -302,18 +302,25 @@ trait TestWiring extends WorkerWiring {
       .map(r => (r.title, r.year))
       .sortBy { case (t, y) => (t, y.getOrElse(Int.MinValue)) }
       .foreach { case (t, y) =>
-        try {
-          imdbRatings.refreshOneSync(t, y)
-          rottenTomatoesRatings.refreshOneSync(t, y)
-          metascoreRatings.refreshOneSync(t, y)
-          // Gated exactly as production gates the handler (`filmwebEnabled`), which
-          // this sweep stands in for. Unconditional, it fetched a source prod holds
-          // NOTHING for outside Poland: prod's German and British corpora carry 0
-          // `filmwebRating` and 0 `filmwebUrl`, while the convergence legs reported
-          // 972 and 1293 — a field invented by the harness, on ~2,250 live calls
-          // prod never makes, on the two longest legs in the suite.
-          if (filmwebEnabled) filmwebRatings.refreshOneSync(t, y)
-        } catch { case _: Exception => () }
+        // ONE `try` PER SOURCE. Sharing a single `try` across all four made them a
+        // chain: the first to throw skipped every source after it for that film, so a
+        // source's coverage silently depended on its POSITION in the list and on
+        // whether the ones above it happened to answer. It is not hypothetical — a
+        // local run where Rotten Tomatoes 404'd its slug probes came out with
+        // Metacritic 12 and Filmweb 11 against CI's 307 and 478, purely because RT
+        // sits above them here. In production these are four independent queue tasks
+        // that cannot starve each other, which is the behaviour this stands in for.
+        def attempt(refresh: => Any): Unit = try { refresh; () } catch { case _: Exception => () }
+        attempt(imdbRatings.refreshOneSync(t, y))
+        attempt(rottenTomatoesRatings.refreshOneSync(t, y))
+        attempt(metascoreRatings.refreshOneSync(t, y))
+        // Gated exactly as production gates the handler (`filmwebEnabled`), which
+        // this sweep stands in for. Unconditional, it fetched a source prod holds
+        // NOTHING for outside Poland: prod's German and British corpora carry 0
+        // `filmwebRating` and 0 `filmwebUrl`, while the convergence legs reported
+        // 972 and 1293 — a field invented by the harness, on ~2,250 live calls
+        // prod never makes, on the two longest legs in the suite.
+        if (filmwebEnabled) attempt(filmwebRatings.refreshOneSync(t, y))
       }
 
   /** Apply deferred per-film detail to the bare-scraped rows, the way the
