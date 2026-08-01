@@ -19,11 +19,14 @@ import services.scrapes.InMemoryScrapeArchiveRepository
 class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
 
   /** Stands in for the real network at the very bottom of the wiring's enrich-phase
-   *  chain, so what a test counts is genuine wire attempts. */
+   *  chain, so what a test counts is genuine wire attempts. Records the URLs too, so a
+   *  test can ask WHICH service was reached rather than only how many times. */
   private class CountingLeaf extends HttpFetch {
-    var calls: Int = 0
-    override def get(url: String): String = { calls += 1; s"body for $url" }
-    override def post(url: String, body: String, contentType: String): String = { calls += 1; "posted" }
+    private val seen = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    def calls: Int = seen.size
+    def urls: Seq[String] = seen.toArray(Array.empty[String]).toSeq
+    override def get(url: String): String = { seen.add(url); s"body for $url" }
+    override def post(url: String, body: String, contentType: String): String = { seen.add(url); "posted" }
   }
 
 
@@ -161,6 +164,66 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
   it should "know it has an enrichment source when it has a cache" in {
     wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), new CountingLeaf)
       .enrichmentAvailable shouldBe true
+  }
+
+  /**
+   * The id-recovery ladder must survive a drain, because the boot calls one BEFORE the
+   * event that needs it is published.
+   *
+   * `ImdbIdMissing` is how a film TMDB could not identify still gets an id — IMDb's
+   * suggestion endpoint, then OMDb / Cinemeta / Wikidata — and the id then resolves
+   * TMDB in reverse through `/find`. It is the route prod takes for the whole bare-title
+   * long tail: `movies` rows for "Stop Making Sense" and "Złoto", listed by a single
+   * cinema under nothing but a title, carry an IMDB slot and a tmdbId that a year-less
+   * search could never have produced.
+   *
+   * In the replay harness the event fires from the STAGING FOLD
+   * (`announceResolvedNewMovie`), and `bootCorpus` runs `drainServices()` before
+   * `drainStaging()`. `drainServices` was `stop()` — a permanent
+   * `ExecutorService.shutdown()` — so every `ImdbIdMissing` published from the first
+   * fold onwards was submitted to a dead pool and silently dropped. Poland's leg logged
+   * 0 event-driven recoveries against prod's populated IMDB slots, and 42 films prod
+   * resolves came out `tmdbNoMatch`.
+   */
+  /** The control for the test below: with the pools untouched the ladder does reach
+   *  IMDb, so a failure there is about the DRAIN and not about the row, the cache or
+   *  the event. */
+  it should "recover a missing IMDb id off the bus" in {
+    val leaf   = new CountingLeaf
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+    seedUnidentifiedFilm(wiring)
+
+    wiring.eventBus.publish(
+      services.events.ImdbIdMissing("Stop Making Sense", None, "Stop Making Sense"))
+    wiring.drainServices()
+
+    withClue(s"URLs fetched: ${leaf.urls.mkString(", ")}: ") {
+      leaf.urls.exists(_.contains("imdb")) shouldBe true
+    }
+  }
+
+  it should "still attempt IMDb-id recovery after the enrichment pools have been drained once" in {
+    val leaf   = new CountingLeaf
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+    seedUnidentifiedFilm(wiring)
+
+    // What the boot does before the staging fold publishes anything.
+    wiring.drainServices()
+
+    wiring.eventBus.publish(
+      services.events.ImdbIdMissing("Stop Making Sense", None, "Stop Making Sense"))
+    wiring.drainServices()
+
+    withClue(s"the ladder never reached IMDb; the only URLs fetched were ${leaf.urls.mkString(", ")}: ") {
+      leaf.urls.exists(_.contains("imdb")) shouldBe true
+    }
+  }
+
+  /** A row the resolver will act on: known to the cache, with no imdbId to keep. */
+  private def seedUnidentifiedFilm(wiring: ArchiveReplayWiring): Unit = {
+    wiring.movieRepository.upsert("Stop Making Sense", None, models.MovieRecord())
+    wiring.movieCache.rehydrate()
+    ()
   }
 
   // Three concurrent replays each build their own wiring; sharing the cache is what

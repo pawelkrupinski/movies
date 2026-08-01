@@ -1,14 +1,13 @@
 package services.enrichment
 
 import play.api.Logging
-import services.Stoppable
+import services.Drainable
 import services.events.{DomainEvent, ImdbIdMissing}
 import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.DaemonExecutors
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.{ExecutionContextExecutorService, Future}
+import scala.concurrent.ExecutionContextExecutorService
 import scala.util.Try
 
 /**
@@ -59,12 +58,14 @@ class ImdbIdResolver(
   // foreign/regional long tail; corroborated by title+year. Free, no key. None
   // disables it (default for specs that don't wire it).
   cinemeta: Option[CinemetaClient] = None
-) extends Stoppable with Logging {
+) extends Drainable with Logging {
 
   /** Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match
    *  re-queries next time. */
   private def cachedFindId(searchTitle: String, year: Option[Int]): Option[String] =
     imdbIdCache.getOrResolve(ResolutionKeys.imdb(searchTitle, year))(Try(imdb.findId(searchTitle, year)).toOption.flatten)
+
+  private val pool = new tools.DrainablePool(executionContext)
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
    *  cross-reference for it, recover the id via IMDb's suggestion endpoint
@@ -75,9 +76,7 @@ class ImdbIdResolver(
    *  another resolver) or when the search returns nothing — we'd rather leave
    *  the row imdbId-less than guess a wrong id. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
-    case ImdbIdMissing(title, year, searchTitle) =>
-      Future(resolve(title, year, searchTitle))(using executionContext)
-      ()
+    case ImdbIdMissing(title, year, searchTitle) => pool.submit(resolve(title, year, searchTitle))
   }
 
   /** Synchronous resolution — public for tests/scripts (e.g. `Wiring.fullySyncOne`),
@@ -203,13 +202,15 @@ class ImdbIdResolver(
       ))
   }
 
-  /** Drain the worker pool so in-flight id write-backs have completed before the
-   *  caller moves on. Waits for the queue to drain, not a fixed window — the
-   *  bounded cap was returning before real-network suggestion lookups finished
-   *  and `cascadeDrainOrder`'s next entry was shutting down a pool that still had
-   *  inbound work coming. */
-  def stop(): Unit = {
-    executionContext.shutdown()
-    while (!executionContext.isTerminated) executionContext.awaitTermination(1, TimeUnit.HOURS)
-  }
+  /** Wait for in-flight id write-backs, leaving the pool able to take more. Waits for
+   *  the queue to drain, not a fixed window — the bounded cap was returning before
+   *  real-network suggestion lookups finished and `cascadeDrainOrder`'s next entry was
+   *  shutting down a pool that still had inbound work coming. */
+  def drain(): Unit = pool.drain()
+
+  /** Drain, then end the pool — shutdown only. A caller that merely wants the
+   *  in-flight work finished wants [[drain]]: this one rejects everything after it,
+   *  and the replay boot drains BEFORE the staging fold publishes the
+   *  `ImdbIdMissing` events that need this resolver. */
+  def stop(): Unit = pool.stop()
 }

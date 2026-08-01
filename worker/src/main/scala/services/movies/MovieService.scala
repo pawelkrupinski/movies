@@ -2,7 +2,7 @@ package services.movies
 
 import clients.TmdbClient
 import play.api.Logging
-import services.Stoppable
+import services.Drainable
 import services.cinemas.CountryNames
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
@@ -101,7 +101,7 @@ class MovieService(
   // `WikidataClient` `ImdbIdResolver` uses; default None so specs resolve as
   // before; `Wiring` injects it.
   wikidata:             Option[WikidataClient]        = None
-) extends Stoppable with Logging {
+) extends Drainable with Logging {
 
   // How a needed single-movie TMDB resolution is dispatched (see the `dispatcher`
   // ctor param). The inline default dedups by the row's `CacheKey` so it doesn't
@@ -163,6 +163,10 @@ class MovieService(
    *  the whole pool to drain rather than a fixed window — a fixed cap returned
    *  before lookups against real upstreams finished. */
   def stop(): Unit = resolveDispatcher.stop()
+
+  /** Wait for in-flight inline resolutions WITHOUT ending the pool — what a harness
+   *  that drains between phases wants, as opposed to [[stop]]'s one-way shutdown. */
+  def drain(): Unit = resolveDispatcher.drain()
 
   // ── Event listeners ───────────────────────────────────────────────────────
 
@@ -763,6 +767,17 @@ class MovieService(
    *  unresolved backlog re-tries as a flat trickle instead of a boot/period
    *  burst. No-op once the row has resolved or is awaiting detail (its detail
    *  completing re-triggers TMDB via `MovieDetailsComplete`). */
+  /** [[retryResolve]] addressed by `(title, year)`, for a caller outside `services`
+   *  — `CacheKey` is `private[services]`, so the fixture harness cannot name a row
+   *  any other way. Without it the only reachable re-resolve was the operator-scale
+   *  [[retryUnresolvedTmdb]], whose corpus-wide `clearNegatives` un-concludes every
+   *  unresolved row at once: in the e2e corpus that dropped ten decorated
+   *  banner films ("Cinema Italia Oggi: Kochanie", "Kino bez barier: Pieśni lasu")
+   *  out of the read model, because `readyToProject` needs `tmdbConcluded` and the
+   *  re-dispatch does not restore it. A per-row retry touches only the row that
+   *  earned one. */
+  def retryResolve(title: String, year: Option[Int]): Unit = retryResolve(cache.keyOf(title, year))
+
   def retryResolve(key: CacheKey): Unit =
     cache.get(key).filter(e => e.tmdbId.isEmpty && !e.detailPending).foreach { e =>
       cache.clearNegative(key)

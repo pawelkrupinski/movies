@@ -3,7 +3,7 @@ package tools
 import clients.TmdbClient
 import models.Cinema
 import modules.WorkerWiring
-import services.{MongoConnection, Stoppable}
+import services.{Drainable, MongoConnection}
 import services.events.{DomainEvent, EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.movies.MovieService
@@ -278,12 +278,84 @@ trait TestWiring extends WorkerWiring {
     PhaseTimer.timed(scope, "scrapeTickSecondPass")(runOneScrapeTick())
     PhaseTimer.timed(scope, "drainServicesSecondPass")(drainServices())
     PhaseTimer.timed(scope, "drainStagingSecondPass")(drainStaging())
+    // BEFORE the ratings: a film that identifies here becomes a film the rating
+    // sweep will visit at all — `enrichRatingsSync` only walks rows with a tmdbId.
+    PhaseTimer.timed(scope, "recoverMissingIds")(recoverMissingIdsSync())
     // Ratings are queue tasks in production (drained by the TaskWorker). The
     // harness doesn't run the worker, so refresh them synchronously here — the
     // TMDB + IMDb-id cascade has already settled in drainServices.
     PhaseTimer.timed(scope, "enrichRatings")(enrichRatingsSync())
     PhaseTimer.timed(scope, "unscreenedCleanup")(unscreenedCleanup.removeUnscreened())
     PhaseTimer.timed(scope, "concludeEnrichment")(concludeEnrichment())
+  }
+
+  /**
+   * Recover an id for the films TMDB could not identify, then re-resolve them from it.
+   *
+   * This is prod's route for the whole bare-title long tail, and the harness had no
+   * way to reach it. A film a single cinema lists as nothing but a title — "Stop
+   * Making Sense", "Złoto", "La La Land" — arrives at TMDB with no year and no
+   * director, where `resolveTmdbId` accepts only a search returning exactly ONE film
+   * and correctly refuses to guess between 320. Prod then recovers the imdbId from
+   * IMDb's suggestion endpoint (plus OMDb / Cinemeta / Wikidata behind it) and
+   * `tmdb.findByImdbId` resolves the film in reverse. Prod's `movie_slots` show it
+   * plainly: those rows carry an IMDB slot that no year-less title search could have
+   * produced.
+   *
+   * Two things stopped the harness getting there, and neither was reachable from the
+   * ladder's own code. `announceResolvedNewMovie` publishes `ImdbIdMissing` from the
+   * staging fold, but `drainStaging`'s force-fold calls `foldGroup` directly and drops
+   * the pairs, so most films never announced at all; and the ones that did announced
+   * against a `movies` row the cache had not seen — prod's change stream puts it there,
+   * and there is no stream here, only the `rehydrate` at the end of the drain. The
+   * Poland leg logged zero event-driven recoveries and `imdbId` on exactly zero
+   * TMDB-less films as a result.
+   *
+   * So drive it here instead of chasing the event, on the same principle
+   * `enrichRatingsSync` and `concludeEnrichment` already stand on: production reaches
+   * this state on a cadence (`ImdbIdResolver` on the bus, `UnresolvedTmdbReaper`,
+   * `OmdbBackfill`), and a harness with no clock has to do it in one pass. Run AFTER
+   * the corpus has folded and rehydrated, so every row is visible to the cache the
+   * resolver reads and writes.
+   *
+   * Concurrent, bounded: this is ~250 suggestion lookups on Poland and every one of
+   * them is network wait. Five rather than more, because the whole pass is a burst
+   * against one upstream that owes us nothing.
+   */
+  def recoverMissingIdsSync(): Unit = {
+    val unidentified = movieCache.snapshot()
+      .filter(row => row.record.tmdbId.isEmpty && row.record.imdbId.isEmpty)
+      // Sorted, so which row asks first is a function of the corpus and not of the
+      // snapshot's iteration order — the same reason every other sweep here sorts.
+      .sortBy(row => (row.title, row.year.map(_.toString).getOrElse("")))
+    if (unidentified.nonEmpty) {
+      val pool = java.util.concurrent.Executors.newFixedThreadPool(5)
+      try {
+        implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
+        scala.concurrent.Await.result(scala.concurrent.Future.traverse(unidentified) { row =>
+          scala.concurrent.Future {
+            val search = row.record.searchTitle.orElse(row.record.originalTitle)
+              .getOrElse(services.movies.MovieService.searchQuery(row.title))
+            try imdbIdResolver.resolveSync(row.title, row.year, search)
+            catch { case _: Exception => () }
+          }
+        }, 30.minutes)
+      } finally pool.shutdown()
+
+      // Whatever landed an id now has the one thing TMDB's `/find` needs. Re-dispatch
+      // exactly those rows, through the same per-row retry `UnresolvedTmdbReaper` drives
+      // on its 24h phase spread — the cadence a one-pass harness has to collapse.
+      //
+      // Per-row, NOT the corpus-wide `retryUnresolvedTmdb`. That one clears every
+      // negative marker at once, and an un-concluded row fails `readyToProject`: it
+      // dropped ten decorated banner films out of the e2e read model, which is a loss
+      // dressed as an enrichment improvement.
+      movieCache.snapshot()
+        .filter(row => row.record.tmdbId.isEmpty && row.record.imdbId.isDefined)
+        .foreach(row => movieService.retryResolve(row.title, row.year))
+      drainServices()
+    }
+    println(s"[${country.code}] id recovery: asked IMDb about ${unidentified.size} unidentified film(s)")
   }
 
   def enrichRatingsSync(): Unit =
@@ -327,13 +399,23 @@ trait TestWiring extends WorkerWiring {
     ready.foreach(eventBus.publish)
   }
 
-  def quiesce(stoppables: Stoppable*): Unit =
-    stoppables.foreach(_.stop())
+  def quiesce(drainables: Drainable*): Unit =
+    drainables.foreach(_.drain())
 
   /** Drain the enrichment worker pools so every `ImdbIdMissing` published during
    *  the scrape (and the id write-backs it drives) is processed end to end. Uses
    *  the same `cascadeDrainOrder` production shutdown does — single source of
    *  truth for the producer→consumer ordering.
+   *
+   *  DRAIN, not `stop()`. This is called more than once — `bootCorpus` runs it
+   *  before AND after each `drainStaging`, and each replay pass calls it again —
+   *  and `stop()` shuts the executors down for good. So the very first call ended
+   *  the id-recovery pool, and every `ImdbIdMissing` the staging fold published
+   *  afterwards (`announceResolvedNewMovie`, which is where a `tmdbNoMatch`
+   *  newcomer asks for an id) was submitted to a dead pool and dropped. Poland's
+   *  leg logged zero event-driven recoveries as a result, and the bare-title long
+   *  tail prod identifies through IMDb — "Stop Making Sense", "Złoto", "La La
+   *  Land", 42 films in all — came out unresolved.
    *
    *  Kino Muza's detail-page synopsis/poster/trailer is no longer settled here:
    *  it now rides the standard deferred-detail pipeline (a deduped

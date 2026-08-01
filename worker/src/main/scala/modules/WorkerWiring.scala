@@ -12,7 +12,7 @@ import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDeta
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
 import clients.TmdbClient
-import services.{MongoCachingDetailFetch, MongoConnection, Stoppable, UptimeMonitor}
+import services.{Drainable, MongoCachingDetailFetch, MongoConnection, UptimeMonitor}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
@@ -1308,7 +1308,7 @@ class WorkerWiring(
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
    *  the async stages need draining: the TMDB stage and the IMDb-id resolver.
    *  Rating refresh is synchronous (queue-driven), so the *Ratings own no pool. */
-  def cascadeDrainOrder: Seq[Stoppable] = Seq(movieService, imdbIdResolver)
+  def cascadeDrainOrder: Seq[Drainable] = Seq(movieService, imdbIdResolver)
 
   def stop(): Unit = {
     envConfigService.stop()

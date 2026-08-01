@@ -2,8 +2,8 @@ package services.movies
 
 import services.tasks.{EnrichTaskKeys, TaskQueue, TaskType}
 
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
-import scala.concurrent.{ExecutionContextExecutorService, Future}
+import java.util.concurrent.ConcurrentHashMap
+import scala.concurrent.ExecutionContextExecutorService
 
 /** How a needed single-movie TMDB resolution is dispatched. The resolution WORK
  *  is always the shared `MovieService.resolveTmdbOnce`; only the dispatch differs:
@@ -19,9 +19,11 @@ trait ResolveDispatcher {
                director:      Option[String],
                force:         Boolean = false): Unit
 
-  /** Drain any owned pool so in-flight inline resolutions finish before shutdown.
-   *  The queue dispatcher owns no pool (the TaskWorker lifecycle drains its work),
-   *  so it no-ops. */
+  /** Wait for in-flight inline resolutions, leaving the dispatcher usable. The queue
+   *  dispatcher owns no pool (the TaskWorker lifecycle drains its work), so it no-ops. */
+  def drain(): Unit = ()
+
+  /** Drain any owned pool and then end it. */
   def stop(): Unit = ()
 }
 
@@ -50,6 +52,7 @@ class InlineResolveDispatcher(
   resolve:  (String, Option[Int], Option[String], Option[String], Boolean) => Unit
 ) extends ResolveDispatcher {
   private val pending = ConcurrentHashMap.newKeySet[CacheKey]()
+  private val pool    = new tools.DrainablePool(ec)
 
   def dispatch(title:         String,
                year:          Option[Int],
@@ -57,14 +60,11 @@ class InlineResolveDispatcher(
                director:      Option[String],
                force:         Boolean): Unit = {
     val key = dedupKey(title, year)
-    if (pending.add(key)) {
-      Future(try resolve(title, year, originalTitle, director, force) finally { pending.remove(key); () })(using ec)
-      ()
-    }
+    if (pending.add(key))
+      pool.submit(try resolve(title, year, originalTitle, director, force) finally { pending.remove(key); () })
   }
 
-  override def stop(): Unit = {
-    ec.shutdown()
-    while (!ec.isTerminated) ec.awaitTermination(1, TimeUnit.HOURS)
-  }
+  override def drain(): Unit = pool.drain()
+
+  override def stop(): Unit = pool.stop()
 }
