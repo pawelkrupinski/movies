@@ -547,6 +547,15 @@ keep it, the cheap improvement is provenance (record which resolver bound a
 tmdbId) so the next person can answer this question from data instead of
 inference.
 
+#### Outcome (2026-08-01): retired
+
+We took the retirement option. `TraktClient`, `TraktIdResolver`, their specs and
+fixtures are gone; the `traktIdResolver` rung is removed from both
+`ImdbIdResolver` and `MovieService.resolveTmdbId`, so Letterboxd is now the
+first id-crosswalk rung after TMDB's own `/find`. `NoTraktIntegrationSpec` guards
+against it coming back. The `TRAKT_API_CLIENT_ID` / `TRAKT_API_SECRET` Fly
+secrets are now unread by any code path and can be unset at leisure.
+
 ### Prod verification of this run's fixes
 
 - **KinoPort — CONFIRMED GREEN.** Its 2026-07-31 **09:30 UTC** bucket flipped to

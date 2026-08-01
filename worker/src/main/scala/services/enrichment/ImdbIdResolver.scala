@@ -43,16 +43,14 @@ class ImdbIdResolver(
   // between the cinema listing and IMDb for the suggestion endpoint to match.
   // None disables the fallback (default for tests that don't wire Wikidata).
   wikidata: Option[WikidataClient] = None,
-  // Final id-crosswalk backstops, tried only after IMDb suggestion + director +
-  // Wikidata all abstain: Trakt's corroborated title search (its result carries
-  // the imdbId), then — when the row already has a tmdbId — Letterboxd's film
-  // page, which echoes the imdbId. Both default None so specs resolve as before;
-  // `Wiring` injects them (Trakt no-ops without `TRAKT_API_CLIENT_ID`).
-  traktIdResolver:      Option[TraktIdResolver]      = None,
+  // Final id-crosswalk backstop, tried only after IMDb suggestion + director +
+  // Wikidata all abstain: when the row already has a tmdbId, Letterboxd's film
+  // page echoes the imdbId. Defaults None so specs resolve as before; `Wiring`
+  // injects it.
   letterboxdIdResolver: Option[LetterboxdIdResolver] = None,
   // OMDb id backstop — its English DB carries much of the niche/foreign long tail
-  // (Indian, Malayalam, festival titles) that IMDb's suggestion endpoint and Trakt
-  // miss. Previously only the once-daily `OmdbBackfill` sweep hit it; wiring it as a
+  // (Indian, Malayalam, festival titles) that IMDb's suggestion endpoint and
+  // Letterboxd miss. Previously only the once-daily `OmdbBackfill` sweep hit it; wiring it as a
   // ladder rung lets a TMDB-less newcomer's id land promptly. `findImdbId` is
   // title+year+director corroborated, so a fuzzy hit can't bind an unrelated film.
   // None (default / `OMDB_API_KEY` unset) skips it.
@@ -145,12 +143,6 @@ class ImdbIdResolver(
           // Filmweb enrichment — so harvesting it would be a no-op.)
           harvested.foreach(backfillRatingUrls(key, _))
           harvested.flatMap(_.imdbId)
-        }
-        .orElse {
-          // Trakt backstop — a corroborated title+year search whose matched film
-          // carries the imdbId (exact deburred-title + non-contradicting year +
-          // lone match; TraktIdResolver never guesses among several candidates).
-          traktIdResolver.flatMap(_.resolve(None, (searchTitle +: record.cinemaTitles.toSeq).distinct, year).imdbId)
         }
         .orElse {
           // Letterboxd backstop — when the row already has a tmdbId, its Letterboxd

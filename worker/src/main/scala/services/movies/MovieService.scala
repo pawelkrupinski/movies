@@ -4,7 +4,7 @@ import clients.TmdbClient
 import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
-import services.enrichment.{LetterboxdIdResolver, TraktIdResolver, WikidataClient}
+import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, ResolutionKeys}
@@ -86,14 +86,12 @@ class MovieService(
   // re-probing, so a wrong answer returns immediately and survives the full 24h
   // TTL — prod, "Odyseja" re-resolving to the memoised wrong Metacritic URL.
   forgetResolutions: String => Unit = _ => (),
-  // Fallback id-crosswalk resolvers, tried in `resolveTmdbId` ONLY after TMDB
+  // Fallback id-crosswalk resolver, tried in `resolveTmdbId` ONLY after TMDB
   // title/director search AND `/find`-by-imdbId all miss on a tmdbId-less row.
-  // Both turn the row's known imdbId into the EXACT tmdbId (Trakt's id-keyed
-  // `/search/imdb`, then Letterboxd's page scrape) — coverage of the arthouse /
-  // festival long tail TMDB's own indexes miss. Abstain without an imdbId, so
-  // they never guess. Default None so unit specs/scripts resolve as before;
-  // `Wiring` injects them (Trakt itself no-ops without `TRAKT_API_CLIENT_ID`).
-  traktIdResolver:      Option[TraktIdResolver]      = None,
+  // Turns the row's known imdbId into the EXACT tmdbId via Letterboxd's page
+  // scrape — coverage of the arthouse / festival long tail TMDB's own indexes
+  // miss. Abstains without an imdbId, so it never guesses. Default None so unit
+  // specs/scripts resolve as before; `Wiring` injects it.
   letterboxdIdResolver: Option[LetterboxdIdResolver] = None,
   // Resolves a `tmdbId`-less row that carries a Filmweb URL via the Filmweb
   // entity id → Wikidata (P5032 → P4947 = TMDB id). Once Filmweb enrichment is
@@ -441,7 +439,7 @@ class MovieService(
       // TMDB found nothing, so the match path above never published `ImdbIdMissing`
       // and the film would only ever get an id from the once-daily OMDb sweep. Kick
       // the same id-recovery chain HERE too: `ImdbIdResolver` runs its full ladder
-      // (IMDb suggestion → director → Filmweb/Wikidata → Trakt → OMDb → Wikidata-title
+      // (IMDb suggestion → director → Filmweb/Wikidata → Letterboxd → OMDb → Wikidata-title
       // → Cinemeta) against the freshly-folded cached row. This is what lets the
       // TMDB-less long tail (niche/foreign titles — the Flicks catalogue in
       // particular) land an imdbId → rating AND a resolved year that stabilises its
@@ -965,20 +963,14 @@ class MovieService(
       // absent tmdbId so a row that's already TMDB-resolved never resurrects a
       // drifted resolution from its TMDB-DERIVED imdbId — a re-enrich whose search
       // now misses must leave that row untouched, not re-confirm the stale id.
-      // After TMDB's own `/find` misses, cross to the other id-keyed sources in
-      // turn — Trakt's `/search/imdb` (exact), then Letterboxd's page scrape —
-      // each of which can hold the imdbId→tmdbId mapping TMDB itself lacks for
-      // an obscure title. Same `tmdbId.isEmpty` gate: never resurrect a drifted
-      // resolution from a TMDB-derived imdbId. `None` SearchResult — the tmdbId
-      // alone drives the by-id details fetch downstream (as on a cache hit).
+      // After TMDB's own `/find` misses, cross to the other id-keyed source —
+      // Letterboxd's page scrape — which can hold the imdbId→tmdbId mapping TMDB
+      // itself lacks for an obscure title. Same `tmdbId.isEmpty` gate: never
+      // resurrect a drifted resolution from a TMDB-derived imdbId. `None`
+      // SearchResult — the tmdbId alone drives the by-id details fetch
+      // downstream (as on a cache hit).
       .orElse {
         if (row.tmdbId.isEmpty) {
-          def viaTrakt: Option[Int] =
-            for {
-              id       <- row.imdbId
-              resolver <- traktIdResolver
-              tmdbId   <- resolver.resolve(Some(id), candidates, effectiveYear).tmdbId
-            } yield tmdbId
           def viaLetterboxd: Option[Int] =
             for {
               id       <- row.imdbId
@@ -1008,7 +1000,6 @@ class MovieService(
               if tmdb.fullDetails(tmdbId).flatMap(_.releaseYear).contains(rowYear)
             } yield tmdbId
           row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit)))
-            .orElse(viaTrakt.map((_, Option.empty[TmdbClient.SearchResult])))
             .orElse(viaLetterboxd.map((_, Option.empty[TmdbClient.SearchResult])))
             .orElse(viaFilmwebWikidata.map((_, Option.empty[TmdbClient.SearchResult])))
         } else None

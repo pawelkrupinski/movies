@@ -10,7 +10,7 @@ import scala.util.Try
 /**
  * Cinemeta (Stremio's public catalogue addon) as an IMDb-id resolver of last
  * resort in [[ImdbIdResolver]] — after IMDb suggestion, director, Wikidata,
- * Trakt, Letterboxd and OMDb have all abstained.
+ * Letterboxd and OMDb have all abstained.
  *
  * Cinemeta is IMDb-KEYED: every catalogue entry's `id` IS the `tt…` imdb id, and
  * the search catalogue indexes a broad long tail (regional/foreign releases) that
@@ -19,7 +19,7 @@ import scala.util.Try
  *   GET https://v3-cinemeta.strem.io/catalog/movie/top/search=<title>.json
  *     → { "metas": [ { "id":"tt…", "name":"…", "releaseInfo":"2026", … }, … ] }
  *
- * Corroboration (same "never guess" bar as OMDb/Trakt): a candidate binds only
+ * Corroboration (same "never guess" bar as OMDb): a candidate binds only
  * when its name matches the query EXACTLY (deburred, case-folded), OR its name
  * contains/starts-with the query AND its `releaseInfo` year is within one of the
  * queried year. A bare fuzzy hit is refused so a wrong film can't get bound.

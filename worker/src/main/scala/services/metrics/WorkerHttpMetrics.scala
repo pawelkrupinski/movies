@@ -18,7 +18,7 @@ import tools.{HttpOutcome, HttpOutcomeRecorder}
  * different populations that used to be lumped together: `scrape` is the
  * cinema-site HTTP (every listing scrape, chunk scrape and per-film detail
  * fetch), `enrich` is the third-party metadata/rating/resolution APIs
- * (TMDB/IMDb/RT/Metacritic/Filmweb/Trakt/Letterboxd/Wikidata/Cinemeta). They fail
+ * (TMDB/IMDb/RT/Metacritic/Filmweb/Letterboxd/Wikidata/Cinemeta). They fail
  * for opposite reasons — a rising scrape 403 is a cinema blocking us, while a
  * steady enrich 404 is the RT/Metacritic resolvers probing candidate slugs by
  * design — so a Grafana panel filtered to one phase reads a failure budget the
@@ -64,7 +64,7 @@ object WorkerHttpMetrics {
     /** Cinema-site HTTP: listing scrapes, chunk scrapes, per-film detail fetches. */
     val Scrape = "scrape"
     /** Third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/
-     *  Filmweb/Trakt/Letterboxd/Wikidata/Cinemeta). */
+     *  Filmweb/Letterboxd/Wikidata/Cinemeta). */
     val Enrich = "enrich"
 
     /** Every phase, for seeding the metric at 0. */

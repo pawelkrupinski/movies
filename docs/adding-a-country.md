@@ -82,7 +82,7 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
    - Secrets: copy **`MONGODB_URI` from the running `kinowo-worker`** (the real
      `kinowo-mongo.internal` URI, NOT the local `.env.local` `127.0.0.1` one),
      piped so the value never prints; the env-agnostic ones (TMDB/ZYTE/SENTRY/
-     TELEGRAM_*/`KINOWO_PROXY_*`/OMDB/TRAKT) from `.env.local`. `flyctl secrets
+     TELEGRAM_*/`KINOWO_PROXY_*`/OMDB) from `.env.local`. `flyctl secrets
      import` reads `KEY=VALUE` from stdin.
 3. Add a matrix leg to `.github/workflows/deploy.yml` (the no-op guard is keyed on
    `bin=worker` + `matrix.toml`, so each worker app tracks its own toml).

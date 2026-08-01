@@ -162,7 +162,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   it should "still send a caller header that has no default to collide with" in {
     val request = new RealHttpFetch().buildRequest(
-      "https://api.trakt.tv/search/movie", Map("trakt-api-version" -> "2"))
-    request.headers.allValues("trakt-api-version") should contain only "2"
+      "https://www.wikidata.org/w/api.php", Map("Api-User-Agent" -> "kinowo/1.0"))
+    request.headers.allValues("Api-User-Agent") should contain only "kinowo/1.0"
   }
 }

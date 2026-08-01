@@ -104,33 +104,16 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     repository.upserts shouldBe empty
   }
 
-  // ── Trakt / Letterboxd id-crosswalk backstops ───────────────────────────────
+  // ── Letterboxd id-crosswalk backstop ────────────────────────────────────────
 
-  // GET-only stub for the Trakt / Letterboxd clients: matches on a URL substring.
+  // GET-only stub for the Letterboxd client: matches on a URL substring.
   private class StubGet(routes: Seq[(String, String)]) extends tools.GetOnlyHttpFetch {
     override def get(url: String): String =
       routes.collectFirst { case (frag, body) if url.contains(frag) => body }
         .getOrElse(throw new RuntimeException(s"unstubbed URL: $url"))
   }
 
-  "the Trakt backstop" should "recover the imdbId from a corroborated Trakt title search when IMDb abstains" in {
-    val tmdbOnly = MovieRecord(
-      tmdbId = Some(4242),
-      data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Obscure Arthouse Film"), releaseYear = Some(2016)))
-    )
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Obscure Arthouse Film", Some(2016), tmdbOnly))))
-    val trakt = new TraktIdResolver(new TraktClient(
-      new StubGet(Seq("/search/movie" ->
-        """[{"type":"movie","movie":{"title":"Obscure Arthouse Film","year":2016,"ids":{"trakt":1,"tmdb":4242,"imdb":"tt7001001"}}}]""")),
-      apiKey = Some("stub")))
-    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      traktIdResolver = Some(trakt))
-
-    resolver.resolveSync("Obscure Arthouse Film", Some(2016), "Obscure Arthouse Film")
-    cache.get(cache.keyOf("Obscure Arthouse Film", Some(2016))).flatMap(_.imdbId) shouldBe Some("tt7001001")
-  }
-
-  "the Letterboxd backstop" should "recover the imdbId from the film's Letterboxd page when IMDb and Trakt abstain" in {
+  "the Letterboxd backstop" should "recover the imdbId from the film's Letterboxd page when IMDb abstains" in {
     val tmdbOnly = MovieRecord(
       tmdbId = Some(5252),
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Another Obscure Film"), releaseYear = Some(2017)))

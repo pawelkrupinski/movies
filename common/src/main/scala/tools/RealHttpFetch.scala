@@ -209,8 +209,8 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     // `setHeader`, NOT `header`: the latter APPENDS, so a caller overriding one of
     // the defaults above (most importantly `User-Agent`) got BOTH values sent —
     // our identity plus a Chrome string, on the very requests where the override
-    // exists because the upstream cares what we claim to be. Wikimedia's UA policy
-    // and Trakt's ("use your app and version") are both that case.
+    // exists because the upstream cares what we claim to be — Wikimedia's UA
+    // policy ("use your app and version") is exactly that case.
     extraHeaders.foreach { case (k, v) => builder.setHeader(k, v) }
 
     decorateBuilder(builder, url).build()

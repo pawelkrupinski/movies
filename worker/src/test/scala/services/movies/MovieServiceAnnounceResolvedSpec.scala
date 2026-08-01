@@ -67,7 +67,7 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
   it should "publish ImdbIdMissing (→ id recovery) for a tmdbNoMatch promotion, but enqueue no rating tasks (no ids yet)" in {
     // TMDB found nothing, so the film has no id to query ratings against — but we
     // STILL kick the id-recovery chain (IMDb suggestion → director → Wikidata →
-    // Trakt → OMDb → Wikidata-title → Cinemeta) so the TMDB-less long tail can land
+    // Letterboxd → OMDb → Wikidata-title → Cinemeta) so the TMDB-less long tail can land
     // an imdbId → rating + a resolved year, instead of waiting for the daily OMDb sweep.
     val (service, seen, freshness, queue) = fixture()
     service.announceResolvedNewMovie(

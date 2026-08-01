@@ -4,7 +4,7 @@ import clients.TmdbClient
 import models.{CinemaCityPoznanPlaza, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.enrichment.{LetterboxdClient, LetterboxdIdResolver, TraktClient, TraktIdResolver}
+import services.enrichment.{LetterboxdClient, LetterboxdIdResolver}
 import services.events.InProcessEventBus
 import tools.GetOnlyHttpFetch
 
@@ -12,11 +12,11 @@ import tools.GetOnlyHttpFetch
  * A tmdbId-less row can carry a known `imdbId` (OMDb backfill recovers one for
  * exactly the films TMDB's fuzzy search misses). TMDB's own `/find` is tried
  * first, but TMDB's external-id index is itself blank for obscure titles — so
- * after it misses we cross to the OTHER id-keyed sources, which hold the same
- * imdbId→tmdbId mapping: Trakt's `/search/imdb`, then Letterboxd's film page.
- * Both are exact (id-keyed), so no corroboration is needed and neither guesses.
+ * after it misses we cross to the other id-keyed source holding the same
+ * imdbId→tmdbId mapping: Letterboxd's film page. It is exact (id-keyed), so no
+ * corroboration is needed and it never guesses.
  */
-class TraktLetterboxdResolveSpec extends AnyFlatSpec with Matchers {
+class LetterboxdResolveSpec extends AnyFlatSpec with Matchers {
 
   private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
     override def get(url: String): String =
@@ -47,22 +47,7 @@ class TraktLetterboxdResolveSpec extends AnyFlatSpec with Matchers {
     "append_to_response=credits" -> s"""{"id":$id,"title":"Długi Ogon","release_date":"2015-03-01","credits":{"crew":[],"cast":[]}}"""
   )
 
-  "the TMDB stage" should "resolve a tmdbId-less row via Trakt when TMDB search and /find both miss" in {
-    val imdbId = "tt5550001"
-    val cache  = backfilledRow("Zupełnie Nieznany Tytuł", imdbId)
-    val trakt  = new TraktIdResolver(new TraktClient(
-      new StubFetch(Seq(s"/search/imdb/$imdbId" ->
-        s"""[{"type":"movie","movie":{"title":"Long Tail Film","year":2015,"ids":{"trakt":1,"tmdb":8801,"imdb":"$imdbId"}}}]""")),
-      apiKey = Some("stub")))
-    val service = new MovieService(cache, new InProcessEventBus(),
-      tmdbStub(tmdbMissesButHasDetails(imdbId, 8801)*),
-      traktIdResolver = Some(trakt))
-
-    service.reEnrichSync("Zupełnie Nieznany Tytuł", None)
-    cache.snapshot().flatMap(_.record.tmdbId) should contain (8801)
-  }
-
-  it should "resolve a tmdbId-less row via Letterboxd when TMDB and Trakt both miss" in {
+  "the TMDB stage" should "resolve a tmdbId-less row via Letterboxd when TMDB search and /find both miss" in {
     val imdbId     = "tt5550002"
     val cache      = backfilledRow("Inny Nieznany Tytuł", imdbId)
     val letterboxd = new LetterboxdIdResolver(new LetterboxdClient(

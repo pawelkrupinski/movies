@@ -153,15 +153,12 @@ class WorkerWiring(
   // is unset; `omdbBackfill` in the ratings block builds the refresher only when
   // the key is present.
   lazy val omdbClient = new OMDbClient(enrichmentFetch)
-  // Trakt + Letterboxd — id-crosswalk resolution SOURCES (not rating sources):
-  // they turn a known imdbId into the exact tmdbId (and vice versa) for the
-  // arthouse/festival long tail TMDB's own indexes leave unmapped. Trakt is
-  // feature-gated on TRAKT_API_CLIENT_ID (no key → no HTTP, resolver no-ops);
-  // Letterboxd scrapes its film pages. Wired into `resolveTmdbId` (after TMDB
-  // /find) and `ImdbIdResolver` (after Wikidata) as last-resort fallbacks.
-  lazy val traktClient          = new TraktClient(enrichmentFetch)
+  // Letterboxd — an id-crosswalk resolution SOURCE (not a rating source): it
+  // turns a known imdbId into the exact tmdbId (and vice versa) for the
+  // arthouse/festival long tail TMDB's own indexes leave unmapped, by scraping
+  // its film pages. Wired into `resolveTmdbId` (after TMDB /find) and
+  // `ImdbIdResolver` (after Wikidata) as a last-resort fallback.
   lazy val letterboxdClient     = new LetterboxdClient(enrichmentFetch)
-  lazy val traktIdResolver      = new TraktIdResolver(traktClient)
   lazy val letterboxdIdResolver = new LetterboxdIdResolver(letterboxdClient)
 
   // ── Cinema scrapers ───────────────────────────────────────────────────────
@@ -587,7 +584,7 @@ class WorkerWiring(
   lazy val imdbIdResolver = new ImdbIdResolver(movieCache, imdbClient,
     backgroundBudget.executionContext("imdb-id-resolver"), imdbIdCache = imdbIdCache,
     wikidata = Some(wikidataClient),
-    traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver),
+    letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same OMDB_API_KEY gate as `omdbBackfill` below — the OMDb rung is inert when unset.
     omdb = Env.get("OMDB_API_KEY").map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
@@ -653,7 +650,7 @@ class WorkerWiring(
     // re-resolve strips, which the cadence would otherwise keep from re-fetching.
     forceRatingRefresh = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, java.time.Instant.now(), force = true); () },
     forgetResolutions = cleanTitle => resolutionCaches.foreach(_.forget(cleanTitle)),
-    traktIdResolver = Some(traktIdResolver), letterboxdIdResolver = Some(letterboxdIdResolver),
+    letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same WikidataClient ImdbIdResolver uses — lets a tmdbId-less row with a
     // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.
     wikidata = Some(wikidataClient))
