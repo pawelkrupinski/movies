@@ -86,6 +86,26 @@ object ProdCoverageBaseline {
    * harness's rating sweep was driving it anyway and reporting 972 and 1293. This
    * band is what would have caught that on the day it landed.
    */
+  /**
+   * Films' worth of difference that is never a finding, whatever the percentages say.
+   *
+   * A corpus and a production database are captured minutes apart at best and a day
+   * apart at worst, so a handful of films differ between them by construction — one
+   * whose last showtime passed, one a venue added since. On a full corpus that is
+   * fractions of a percent and the relative band governs. On the ~100-film sample it
+   * is not: each film is a whole percent, and a measured run came out 92 films against
+   * production's 78 with the per-source counts almost exactly matching (tmdbId 68
+   * vs 69, imdbId 65 vs 66). Judged on shares alone that reads as a 16% collapse; it
+   * is capture skew.
+   *
+   * 15 because the skew observed across three countries and several runs topped out at
+   * 14 films, and because the regressions this exists to catch are nothing like that
+   * size — the fallback chain that broke the rating ladders put Poland 281 films from
+   * production on one axis. The floor is well above the noise and far below anything
+   * worth reporting.
+   */
+  val NoiseFloorFilms = 15
+
   def divergences(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] = {
     def share(count: Int, films: Int): Double = if (films == 0) 0.0 else count.toDouble / films
     actual.metrics.zip(prod.metrics).flatMap { case ((name, mine), (_, theirs)) =>
@@ -95,7 +115,11 @@ object ProdCoverageBaseline {
       // `b == 0` covers both "prod has none of this" and an empty prod corpus; either
       // way the only value within the band is zero.
       val off = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
-      Option.when(off > tolerance)(
+      // Outside the relative band AND more than a few films apart. Either alone
+      // misfires: the ratio is noise-dominated on a small corpus, and a raw count is
+      // meaningless on a large one.
+      val filmsApart = math.abs(mine - theirs)
+      Option.when(off > tolerance && filmsApart > NoiseFloorFilms)(
         f"$name%-15s run=$mine%5d (${100 * a}%.1f${if (name == "films") "" else "%"}) " +
         f"prod=$theirs%5d (${100 * b}%.1f${if (name == "films") "" else "%"}) " +
         f"— off by ${100 * off}%.1f%%, band is ${100 * tolerance}%.0f%%")

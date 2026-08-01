@@ -6,4 +6,4 @@ import models.Country
  *  Flicks) share films across hundreds of sites, which is the heaviest merge
  *  pressure any country puts on the fold. */
 @CorpusReplay @CountryScoped
-class UnitedKingdomConvergenceSpec extends CountryConvergenceBehaviour(Country.UnitedKingdom)
+class UnitedKingdomConvergenceSpec extends CountryConvergenceBehaviour(Country.UnitedKingdom, corpusKey = "uk")

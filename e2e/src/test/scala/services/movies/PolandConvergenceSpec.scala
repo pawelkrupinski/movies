@@ -7,4 +7,4 @@ import models.Country
  *  recorded HTTP corpus — this one asks it of the archive replay path, so the two
  *  fail for different reasons. */
 @CorpusReplay @CountryScoped
-class PolandConvergenceSpec extends CountryConvergenceBehaviour(Country.Poland)
+class PolandConvergenceSpec extends CountryConvergenceBehaviour(Country.Poland, corpusKey = "pl")

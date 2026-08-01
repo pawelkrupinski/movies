@@ -421,6 +421,12 @@ addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.Corpus
 // into `TitleNormalizer`, which is process-global, so two countries in one JVM
 // would overwrite each other's normalisation. Hence no `convergenceAll` alias —
 // running them together is exactly the thing that would silently mis-test.
+// The FAST legs: the same claims over the ~100-film sample, run ahead of the full
+// matrix so a regression that costs every country its rating ladders is caught in
+// minutes rather than after the longest leg in the suite.
+addCommandAlias("convergencePolandSample",  "e2e/Test/testOnly services.movies.PolandSampleConvergenceSpec")
+addCommandAlias("convergenceGermanySample", "e2e/Test/testOnly services.movies.GermanySampleConvergenceSpec")
+addCommandAlias("convergenceUkSample",      "e2e/Test/testOnly services.movies.UnitedKingdomSampleConvergenceSpec")
 addCommandAlias("convergencePoland",  "e2e/Test/testOnly services.movies.PolandConvergenceSpec")
 addCommandAlias("convergenceGermany", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec")
 addCommandAlias("convergenceUk",      "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec")

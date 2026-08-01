@@ -60,7 +60,26 @@ import scala.util.{Random, Try}
  * minute. Without a key nothing resolves, and the suite says so rather than passing
  * quietly — see `requireEnrichmentReached`.
  */
-abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+abstract class CountryConvergenceBehaviour(
+  country: Country,
+  /**
+   * Which recorded corpus to replay: the country's whole catalogue, or the ~100-film
+   * SAMPLE captured beside it.
+   *
+   * The sample leg exists to fail FAST. These assertions are the only ones that can
+   * see a whole class of enrichment regression — a fallback chain that turned a 404
+   * into an outage cost every country its Metacritic and Rotten Tomatoes ladders, and
+   * nothing else in the suite noticed — but the full legs take 12 to 73 minutes to
+   * say so, and the UK's is the one most likely to be cancelled on a budget. A
+   * hundred films exercise the same code on the same shapes in a couple of minutes,
+   * so the matrix runs them first and the long legs only start once they are green.
+   *
+   * Everything else is identical. The sample is not a weaker experiment: it runs the
+   * same fixpoint, order-independence, no-loss and production-band assertions over a
+   * smaller corpus, so a failure means the same thing here as there.
+   */
+  corpusKey: String
+) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   override def afterAll(): Unit = {
     enrichmentCacheStore.foreach(_.close())
@@ -80,7 +99,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * could not produce it because the database was never there to disagree.
    */
   private lazy val storage: ConvergenceStorage =
-    ConvergenceStorage.fromEnv(s"convergence-${country.code}")
+    ConvergenceStorage.fromEnv(s"convergence-$corpusKey")
 
   /** The per-pass databases, so `afterAll` can drop them. Each is isolated; none may
    *  outlive the run. */
@@ -319,7 +338,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
              s"repertoire that does not exist. Record one:\n" +
              s"  KINOWO_COUNTRY=${country.code} KINOWO_CONVERGENCE_SCRAPES_URI=<prod mongo> \\\n" +
              s"    sbt 'worker/Test/runMain scripts.RecordCorpusFixture'\n") {
-      CorpusFixture.exists(country.code) shouldBe true
+      CorpusFixture.exists(corpusKey) shouldBe true
     }
 
   /** How far each enrichment source actually got across the settled corpus.
@@ -509,14 +528,14 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    * stays even though the read underneath it is now sound.
    */
   private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] =
-    if (CorpusFixture.exists(country.code)) {
+    if (CorpusFixture.exists(corpusKey)) {
       // The checked-in corpus. Preferred over the live read whenever it exists: it
       // needs no tunnel, costs milliseconds, and — unlike prod — does not move
       // under the test. Prod drifts as venues rescrape (the same Polish corpus
       // measured 7,044, then 7,055, then 7,063 listings inside an hour), so a
       // divergence found against the live read could not be re-examined afterwards.
-      val rows = step("readCorpusFixture")(CorpusFixture.read(country.code))
-      info(s"${country.displayName}: replayed ${rows.size} archived scrapes from ${CorpusFixture.pathFor(country.code)}")
+      val rows = step("readCorpusFixture")(CorpusFixture.read(corpusKey))
+      info(s"${country.displayName}: replayed ${rows.size} archived scrapes from ${CorpusFixture.pathFor(corpusKey)}")
       rows
     } else fetchAndCaptureCorpus
 
@@ -541,7 +560,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
 
     // Only a COMPLETE read is worth capturing — the guard above already refused an
     // empty one, and a short read would bake a truncated corpus into the repo.
-    val path = CorpusFixture.write(country.code, rows)
+    val path = CorpusFixture.write(corpusKey, rows)
     info(s"${country.displayName}: read ${rows.size} archived scrapes from ${known.size} catalogue cinemas — " +
          s"captured ${CorpusFixture.renderedBytes(rows) / 1048576} MB of JSON to $path " +
          s"(${java.nio.file.Files.size(path) / 1048576} MB gzipped); future runs replay it without a tunnel")
@@ -558,7 +577,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     // fixture-driven run rendering at the hard-coded generated-corpus instant, which
     // put 12 venues' entire repertoire in the past and reported them as "never reach
     // the read model" — a loss that was really a clock mismatch.
-    Option.when(CorpusFixture.exists(country.code) || realScrapeSource.isDefined)(realScrapeRows).flatMap { rows =>
+    Option.when(CorpusFixture.exists(corpusKey) || realScrapeSource.isDefined)(realScrapeRows).flatMap { rows =>
       rows.flatMap(_.films).flatMap(_.showtimes).map(_.dateTime).minOption.map(_.toLocalDate.atStartOfDay)
     }
 
@@ -571,7 +590,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     // checked-in corpus was silently ignored unless the tunnel env var happened to be
     // set too, which is backwards: the fixture exists precisely so a run needs no
     // tunnel.
-    if (CorpusFixture.exists(country.code) || realScrapeSource.isDefined) seedFromRealScrapes(archive)
+    if (CorpusFixture.exists(corpusKey) || realScrapeSource.isDefined) seedFromRealScrapes(archive)
     else { requireCorpusFixture(); 0 }   // requireCorpusFixture always fails; 0 satisfies the type
 
   /** Copy the real `cinema_scrapes` dump in. Already restricted to the cinemas this
@@ -895,7 +914,7 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, _, _) = shared
-      val baseline = ProdCoverageBaseline.read(country.code).getOrElse(
+      val baseline = ProdCoverageBaseline.read(corpusKey).getOrElse(
         // Loud, not skipped. A silent pass here would restore precisely the failure
         // this assertion exists to catch: the suite reporting green while nothing
         // checks the numbers it produces.

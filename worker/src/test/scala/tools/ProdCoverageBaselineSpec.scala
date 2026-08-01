@@ -36,12 +36,32 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "flag an axis that resolved a smaller share than production" in {
-    val prod = coverage(films = 100, tmdb = 70)
-    val run  = coverage(films = 100, tmdb = 60)      // 60% vs 70% — off by 14%
+    val prod = coverage(films = 700, tmdb = 500)
+    val run  = coverage(films = 700, tmdb = 300)      // 43% vs 71% — the shape of a real collapse
 
     val flagged = ProdCoverageBaseline.divergences(run, prod, Band)
     flagged should have size 1
     flagged.head should include ("tmdbId")
+  }
+
+  /** Two guards, not one. A ratio alone is noise-dominated on a small corpus — a
+   *  ~100-film sample came out 92 films against production's 78 with the per-source
+   *  counts almost identical, which reads as a 16% collapse and is capture skew. A raw
+   *  count alone is meaningless on a large one. An axis has to fail BOTH. */
+  it should "not flag a handful of films' difference, however large the percentage looks" in {
+    val prod = coverage(films = 78, tmdb = 69)
+    val run  = coverage(films = 92, tmdb = 68)        // 74% vs 88% by share; ONE film apart
+
+    ProdCoverageBaseline.divergences(run, prod, Band).filter(_.contains("tmdbId")) shouldBe empty
+  }
+
+  // …and the floor must not swallow a real regression. The fallback chain that broke
+  // the rating ladders put Poland 281 films from production on this very axis.
+  it should "still flag a collapse that is far larger than the noise floor" in {
+    val prod = coverage(films = 726, rt = 354)
+    val run  = coverage(films = 710, rt = 73)
+
+    ProdCoverageBaseline.divergences(run, prod, Band).mkString should include ("rottenTomatoes")
   }
 
   /**

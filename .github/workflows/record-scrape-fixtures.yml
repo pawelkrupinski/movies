@@ -108,8 +108,15 @@ jobs:
                   # corpus against what prod had achieved on that same repertoire, so a
                   # corpus arriving without its baseline (or beside a staler one) would
                   # be comparing two different days.
+                  # Corpus, baseline and the sample pair all travel in ONE archive.
+                  # They are captured from a single connection at a single instant and
+                  # only mean anything together — a corpus arriving beside a staler
+                  # baseline would be comparing two different days.
                   tar -czf "scrape-archive/scrapes-${{ matrix.code }}.tar.gz" \
                       "test/resources/fixtures/corpus/cinema-scrapes-${{ matrix.code }}.json.gz" \
+                      "test/resources/fixtures/corpus/prod-coverage-${{ matrix.code }}.json" \
+                      "test/resources/fixtures/corpus/cinema-scrapes-${{ matrix.code }}-sample.json.gz" \
+                      "test/resources/fixtures/corpus/prod-coverage-${{ matrix.code }}-sample.json" \
                       "test/resources/fixtures/corpus/prod-coverage-${{ matrix.code }}.json"
                   ls -l scrape-archive/
 

@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{CorpusFixture, CountryScrapeCorpus, Env, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
+import tools.{CorpusFixture, CorpusSample, CountryScrapeCorpus, Env, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -62,9 +62,25 @@ object RecordCorpusFixture {
       // screening at instant T, and the baseline is prod's coverage of exactly that
       // set at exactly T. Recorded anywhere else it would drift against the corpus
       // and the band it guards would become a flake.
-      val baselinePath = ProdCoverageBaseline.write(
-        country.code, ProdCoverage.of(client.getDatabase(databaseName)))
+      val database     = client.getDatabase(databaseName)
+      val baselinePath = ProdCoverageBaseline.write(country.code, ProdCoverage.of(database))
       println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire")
+
+      // …and the same pair again over a ~100-film slice, for the fast leg that runs
+      // ahead of the full matrix. The draw happens HERE, once, and the files pin it:
+      // the leg replaying them is exactly reproducible, while the slice still rotates
+      // every time the corpus is re-recorded, so it never ossifies around one hundred
+      // films that happen to work. The seed is printed so a capture can be re-derived
+      // from a log if anyone ever needs to.
+      val seed   = java.time.Instant.now().toEpochMilli
+      val keys   = CorpusSample.pick(rows, CorpusSample.DefaultSize, new scala.util.Random(seed))
+      val sample = CorpusSample.trim(rows, keys)
+      val sampleKey  = s"${country.code}-sample"
+      val samplePath = CorpusFixture.write(sampleKey, sample)
+      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotTitles = Some(CorpusSample.titlesOf(rows, keys))))
+      println(s"[corpus] sample seed $seed — ${keys.size} films drawn from ${CorpusSample.filmKeys(rows).size}")
+      println(s"[corpus] wrote $samplePath — ${sample.size} venues, ${sample.map(_.films.size).sum} listings")
+      println(s"[corpus] wrote $sampleBaseline — prod's coverage of just those films")
     } finally client.close()
   }
 }

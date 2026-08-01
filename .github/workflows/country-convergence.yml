@@ -85,9 +85,9 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland }
-                    - { country: germany,        code: de, cmd: convergenceGermany }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample }
         runs-on: ubuntu-latest
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -311,12 +311,25 @@ jobs:
             # explicitly, because the default shell is `bash -e` without it and the
             # pipeline would otherwise report `tee`'s exit status and pass a failing
             # suite.
+            # The ~100-film SAMPLE first, then the full catalogue — one step, so the
+            # long leg never starts if the short one already has the answer.
+            #
+            # Both replay the same code over the same shapes and assert the same four
+            # things, so most of what the full leg can see, the sample sees in about a
+            # minute and a half instead of 25 to 73. The gap is not academic: a
+            # fallback chain that reported a 404 as an outage cost all three countries
+            # their Metacritic and Rotten Tomatoes ladders, and the evidence only
+            # arrived after the whole matrix had run — twice.
+            #
+            # `set -o pipefail` governs both, so a failing sample fails the step and
+            # the full leg is never reached.
             - name: Run the convergence suite
               id: suite
               shell: bash
               timeout-minutes: 120
               run: |
                   set -o pipefail
+                  sbt ${{ matrix.sample }} 2>&1 | tee convergence-sample.log
                   sbt ${{ matrix.cmd }} 2>&1 | tee convergence.log
               env:
                   # The spec installs this country's TitleRuleSet itself; naming the
