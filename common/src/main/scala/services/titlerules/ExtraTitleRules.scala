@@ -515,6 +515,19 @@ object ExtraTitleRules {
       "'Federico Fellini: [ciao a tutti!] <film>' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix — merge-key fold (Noce Cabirii, Słodkie życie, Wałkonie, Giulietta i duchy, Osiem i pół)"),
     canon("xtra-canonical-fellini-suffix", FelliniSuffix, "",
       "'<film> [(year)] | / – przegląd Federico Fellini …' retrospective suffix — merge-key fold; runs before the year strip so a '(1957)' glued in before the banner still folds (Noce Cabirii, Wałkonie, Słodkie życie)"),
+    // "<film> w Helios na Scenie" — Helios brands its own event screenings in the
+    // LISTING title, so the venue reports a spelling no other cinema uses. CANONICAL,
+    // not query-only, because the problem is the merge key: Cinema City's detail page
+    // gives the plain "GHOST: 2 Big To Rig", both spellings resolve to tmdbId 1693400,
+    // and with two keys the staging fold collapsed the decorated row into the clean one
+    // on EVERY scrape — the source keeps reporting the banner, so the row is re-created
+    // and re-folded for ever. That is 31 Helios/Multikino slots rewritten per pass,
+    // which is what stopped the Polish leg converging once per-film detail was fetched
+    // (before detail there was no second spelling, so nothing folded). Same shape as
+    // the Fellini fold above, and the same fix: one key, no fold.
+    canon("xtra-canonical-helios-na-scenie",
+      """(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$""", "",
+      "'<film> w Helios na Scenie' Helios event-branding suffix — merge-key fold"),
     canon("xtra-canonical-gwiezdne-wojny-ci",
       """(?iu)^Gwiezdne\s+wojny\s*:\s*""", "",
       "Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged."),

@@ -835,4 +835,25 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
         withExtras.perCinema("some-other-cinema", raw) shouldBe raw)
     }
   }
+
+  /** Helios brands its event screenings in the LISTING title, so the venue reports a
+   *  spelling no other cinema uses. Cinema City's detail page gives the plain title,
+   *  both resolve to the same tmdbId, and with two merge keys the staging fold
+   *  collapsed one into the other on EVERY scrape — the source keeps reporting the
+   *  banner, so the row is re-created and re-folded for ever. 31 slots rewritten per
+   *  pass, which is what stopped the Polish convergence leg converging once per-film
+   *  detail was fetched. One key, no fold. */
+  "The Helios event-branding suffix" should "canonicalise onto the plain film's key" in {
+    val plain     = "GHOST: 2 Big To Rig"
+    val decorated = "GHOST: 2 Big To Rig w Helios na Scenie"
+    withClue("seed rules alone must NOT merge it (otherwise this test proves nothing): ") {
+      mergeKey(seedOnly, decorated) should not be mergeKey(seedOnly, plain)
+    }
+    mergeKey(withExtras, decorated) shouldBe mergeKey(withExtras, plain)
+  }
+
+  it should "leave a film whose own title merely contains those words alone" in {
+    val innocent = "Wieczór w Helios na Scenie Głównej"
+    mergeKey(withExtras, innocent) shouldBe mergeKey(seedOnly, innocent)
+  }
 }

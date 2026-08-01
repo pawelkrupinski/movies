@@ -324,6 +324,11 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
    *  findings; the total is always reported. */
   private val UnresolvedFilmsReported = 400
 
+  /** The stored records in a stable order — the same snapshot the settle assertion
+   *  takes, so a churn tick can be diffed against itself with `CorpusDiff.records`. */
+  private def recordSnapshot(w: ArchiveReplayWiring): Seq[StoredMovieRecord] =
+    w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+
   private def enrichmentCoverage(w: ArchiveReplayWiring): String = {
     val records = w.movieRepository.findAll().map(_.record)
     def count(predicate: MovieRecord => Boolean): Int = records.count(predicate)
@@ -677,6 +682,10 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
       (1 to 2).foreach { t =>
         val mergesBeforeTick    = merges.byReason
         val emissionsBeforeTick = emissions.get
+        // Snapshot the records so a tick that writes can say WHAT it wrote. The count
+        // alone gives you nothing to check a hypothesis against — it cost two rounds of
+        // work on causes that turned out to leave the count at exactly 31.
+        val recordsBeforeTick   = recordSnapshot(w)
         val diversions   = settleTick(w, rnd)
         val mergesDelta  = MergeReason.all.map(r => r -> (merges.byReason(r) - mergesBeforeTick(r))).filter(_._2 > 0)
         val emissionsDelta = emissions.get - emissionsBeforeTick
@@ -688,8 +697,14 @@ abstract class CountryConvergenceBehaviour(country: Country) extends AnyFlatSpec
         mergesDelta.foreach { case (r, n) => churn += f"tick $t%d: $n%3d merge(s) reason=${r.label}" }
         if (diversions.nonEmpty)
           churn += s"tick $t: ${diversions.size} known film(s) RE-DIVERTED to staging: ${diversions.take(12).mkString(", ")}"
-        if (emissionsDelta != 0)
-          churn += s"tick $t: $emissionsDelta persisted write(s) — an identical re-scrape must write nothing"
+        if (emissionsDelta != 0) {
+          val recordsAfterTick = recordSnapshot(w)
+          churn += s"tick $t: $emissionsDelta persisted write(s) — an identical re-scrape must write nothing" +
+                   (if (recordsAfterTick == recordsBeforeTick)
+                      " (the stored records came out IDENTICAL — the write changed nothing, so this is a " +
+                      "re-write of unchanged data, not a corpus still moving)"
+                    else s"\n${CorpusDiff.records(recordsBeforeTick, recordsAfterTick, s"before-tick$t", s"after-tick$t")}")
+        }
         if (appeared.nonEmpty) keyDrift += s"tick $t: keys APPEARED: ${appeared.take(8).mkString(", ")}"
         if (vanished.nonEmpty) keyDrift += s"tick $t: keys VANISHED: ${vanished.take(8).mkString(", ")}"
       }
