@@ -165,4 +165,51 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       "https://www.wikidata.org/w/api.php", Map("Api-User-Agent" -> "kinowo/1.0"))
     request.headers.allValues("Api-User-Agent") should contain only "kinowo/1.0"
   }
+
+  // ── Per-host identifying headers (IMDb's GraphQL CDN) ─────────────────────
+  // On 2026-08-01 IMDb's edge started 403-ing every POST to
+  // caching.graphql.imdb.com that arrives without a client-identifying header —
+  // an nginx-shaped "403 Forbidden" page, not a GraphQL error, so the block is at
+  // the CDN not the API. Every IMDb rating in all three countries silently became
+  // "rating none". The same request WITH `x-imdb-client-name` returns 200 (verified
+  // against the live endpoint from both a residential and the Fly egress, so this
+  // is a request-shape rule, not an IP ban). The header rides on the host policy
+  // table — data, one row, like every other per-host rule — so it applies at the
+  // terminal fetch and no decorator in the chain can drop it.
+
+  "headersFor" should "give IMDb's GraphQL CDN the client-name header its edge now demands" in {
+    RealHttpFetch.headersFor("https://caching.graphql.imdb.com/") shouldBe
+      Map("x-imdb-client-name" -> "imdb-web-next")
+  }
+
+  it should "leave every other host — including IMDb's suggestion endpoint, which is not blocked — header-free" in {
+    RealHttpFetch.headersFor("https://v3.sg.media-imdb.com/suggestion/i/interstellar.json") shouldBe empty
+    RealHttpFetch.headersFor("https://api.themoviedb.org/3/movie/1") shouldBe empty
+    RealHttpFetch.headersFor("not a url") shouldBe empty
+  }
+
+  "postRequest" should "carry the host policy's headers on the POST that was being 403'd" in {
+    val request = new RealHttpFetch().postRequest(
+      "https://caching.graphql.imdb.com/", """{"query":"{x}"}""", "application/json")
+    request.headers.allValues("x-imdb-client-name") should contain only "imdb-web-next"
+    request.headers.allValues("Content-Type") should contain only "application/json"
+  }
+
+  it should "leave a POST to an unpoliced host exactly as it was" in {
+    val request = new RealHttpFetch().postRequest(
+      "https://query.wikidata.org/sparql", "SELECT", "application/sparql-query")
+    request.headers.firstValue("x-imdb-client-name").isPresent shouldBe false
+    request.headers.allValues("Content-Type") should contain only "application/sparql-query"
+  }
+
+  "buildRequest" should "carry the host policy's headers on the GET path too" in {
+    val request = new RealHttpFetch().buildRequest("https://caching.graphql.imdb.com/x")
+    request.headers.allValues("x-imdb-client-name") should contain only "imdb-web-next"
+  }
+
+  it should "let a caller's explicit header win over the host policy's" in {
+    val request = new RealHttpFetch().buildRequest(
+      "https://caching.graphql.imdb.com/x", Map("x-imdb-client-name" -> "caller-wins"))
+    request.headers.allValues("x-imdb-client-name") should contain only "caller-wins"
+  }
 }

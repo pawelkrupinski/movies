@@ -101,8 +101,13 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
         checkStatus("GET", url, response)
       }
 
-  override def post(url: String, body: String, contentType: String = "application/json"): String = {
-    val request = HttpRequest.newBuilder()
+  override def post(url: String, body: String, contentType: String = "application/json"): String =
+    sendLogged("POST", url, clientFor(url).send(postRequest(url, body, contentType), HttpResponse.BodyHandlers.ofByteArray()))
+
+  /** Package-private so the spec can assert what actually goes on the wire — the
+   *  header a host policy demands is only observable on the built request. */
+  private[tools] def postRequest(url: String, body: String, contentType: String): HttpRequest = {
+    val builder = HttpRequest.newBuilder()
       .uri(URI.create(url))
       .timeout(RealHttpFetch.requestTimeoutFor(url))
       .header("Content-Type", contentType)
@@ -111,8 +116,9 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
       // header on `buildRequest` for the GET path.
       .header("Accept-Encoding", "gzip")
       .POST(HttpRequest.BodyPublishers.ofString(body))
-      .build()
-    sendLogged("POST", url, clientFor(url).send(request, HttpResponse.BodyHandlers.ofByteArray()))
+    // `setHeader` (overwrite), not `header` (append) — same reason as `buildRequest`.
+    RealHttpFetch.headersFor(url).foreach { case (k, v) => builder.setHeader(k, v) }
+    builder.build()
   }
 
   // ── Logging hooks ─────────────────────────────────────────────────────────
@@ -211,6 +217,9 @@ class RealHttpFetch(proxy: Option[RealHttpFetch.ProxyConfig] = None) extends Htt
     // our identity plus a Chrome string, on the very requests where the override
     // exists because the upstream cares what we claim to be — Wikimedia's UA
     // policy ("use your app and version") is exactly that case.
+    // Host-policy headers first, caller's second: an explicit per-call override
+    // is more specific than a blanket rule about the host, so it wins.
+    RealHttpFetch.headersFor(url).foreach { case (k, v) => builder.setHeader(k, v) }
     extraHeaders.foreach { case (k, v) => builder.setHeader(k, v) }
 
     decorateBuilder(builder, url).build()
@@ -310,13 +319,22 @@ object RealHttpFetch {
    *  that through redeploys costs a worker restart and a cold JVM per attempt.
    *  Naming a knob makes the pace flippable from `/admin/config` mid-flight: the
    *  resolve below reads it per request, so the next request uses the new value.
-   *  Still DATA, not an if-branch — any future host can name its own key. */
+   *  Still DATA, not an if-branch — any future host can name its own key.
+   *
+   *  `headers` are sent on EVERY request to this host, GET and POST alike, on top
+   *  of the defaults — for a host whose edge admits us only when we identify
+   *  ourselves a particular way. An explicit caller header of the same name still
+   *  wins (per-call beats per-host). This belongs on the transport, not the client,
+   *  because it is a property of the ORIGIN's admission rule rather than of the API
+   *  contract — and because applying it at the terminal fetch means none of the
+   *  eleven `HttpFetch` decorators in the chain can silently drop it. */
   final case class HostPolicy(
     hostSuffixes: Set[String],
     connectTimeout: Duration = DefaultConnectTimeout,
     requestTimeout: Duration = DefaultRequestTimeout,
     minRequestInterval: Option[Duration] = None,
     paceKnob: Option[String] = None,
+    headers: Map[String, String] = Map.empty,
   )
 
   /** The per-host policy table — the single place a host earns a non-default
@@ -354,6 +372,22 @@ object RealHttpFetch {
     // Exception, leaving it perpetually red on /uptime though the page returns 200
     // given time. 40s covers the handshake; the read budget stays the default.
     HostPolicy(Set("iluzjon.fn.org.pl"), connectTimeout = Duration.ofSeconds(40)),
+
+    // IMDb's GraphQL CDN — the endpoint every IMDb rating and the whole
+    // SourceData(Imdb) slot (director, cast, runtime, poster) comes from. On
+    // 2026-08-01 its edge began 403-ing any request that doesn't name a client:
+    // an nginx "403 Forbidden" HTML page, so the block is at the CDN, before the
+    // API. Nothing about us changed and it is not an IP ban — a residential IP is
+    // refused identically, and the Fly egress is served identically once the
+    // header is present. The symptom was silent: `ImdbClient.lookup` swallows the
+    // throw into `None`, so every film in all three countries logged "rating none"
+    // while the ratings simply stopped refreshing. `imdb-web-next` is the name
+    // imdb.com's own front-end sends. The suggestion host (v3.sg.media-imdb.com,
+    // used by `findId`) is a different origin and is NOT blocked — no row for it.
+    HostPolicy(
+      Set("caching.graphql.imdb.com"),
+      headers = Map("x-imdb-client-name" -> "imdb-web-next"),
+    ),
 
     // Filmstarts (Webedia DE). Germany's 1,529 venues each fan out one listing
     // fetch plus one request per advertised day onto ONE origin, and with no
@@ -482,4 +516,10 @@ object RealHttpFetch {
    *  else the generous default. */
   def requestTimeoutFor(url: String): Duration =
     policyFor(url).map(_.requestTimeout).getOrElse(DefaultRequestTimeout)
+
+  /** The headers `url`'s host demands on every request, if it names any. Empty —
+   *  the default for every host without a row naming one — leaves the request
+   *  exactly as the defaults built it. */
+  def headersFor(url: String): Map[String, String] =
+    policyFor(url).map(_.headers).getOrElse(Map.empty)
 }
