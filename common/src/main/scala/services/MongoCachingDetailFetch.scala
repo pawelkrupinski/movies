@@ -4,7 +4,7 @@ import com.mongodb.client.model.{IndexOptions => JIndexOptions}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Indexes, Updates}
 import play.api.Logging
-import tools.HttpFetch
+import tools.{HttpFetch, HttpStatusException}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
@@ -57,12 +57,25 @@ class MongoCachingDetailFetch(
 
   override def get(url: String): String = coll match {
     case None => underlying.get(url)
-    case Some(c) =>
-      cached(c, url).getOrElse {
-        val body = underlying.get(url) // throws on failure → falls through uncached
-        store(c, url, body)
-        body
-      }
+    case Some(c) => cached(c, url) match {
+      case Some(Right(body)) => body
+      case Some(Left(code))  => throw new HttpStatusException(code, "GET", url, None)
+      case None =>
+        try {
+          val body = underlying.get(url)
+          store(c, url, Right(body))
+          body
+        } catch {
+          // A 404/410 describes the URL, not the moment, so every server asking again
+          // next pass gets the same answer — and the film whose detail this is stays
+          // gated on a fetch that will not start succeeding. Remembering it here (rather
+          // than only in-process) is the point of this class: one server learning a page
+          // is gone spares the whole fleet. Everything else stays uncached and retries.
+          case failure: HttpStatusException if MongoCachingDetailFetch.DurableFailureStatuses(failure.code) =>
+            store(c, url, Left(failure.code))
+            throw failure
+        }
+    }
   }
 
   // Detail fetches don't vary by request header; key on the URL alone.
@@ -79,17 +92,26 @@ class MongoCachingDetailFetch(
   /** A document only survives in the collection while within the TTL (the TTL index
    *  reaps it after `fetchedAt + ttl`, modulo Mongo's ~60s reaper cadence), so
    *  any document found is fresh enough to reuse. */
-  private def cached(c: MongoCollection[Document], url: String): Option[String] =
+  /** `Right(body)` for a cached success, `Left(status)` for a remembered permanent
+   *  failure, `None` for a URL this cache has nothing to say about. A document with
+   *  neither field reads as `None` — the safe direction, since it just re-fetches. */
+  private def cached(c: MongoCollection[Document], url: String): Option[Either[Int, String]] =
     Try(Await.result(c.find(Filters.eq("_id", url)).headOption(), 10.seconds))
       .toOption.flatten
-      .flatMap(document => Option(document.getString("body")))
+      .flatMap { document =>
+        Option(document.getString("body")).map(Right(_))
+          .orElse(Option(document.getInteger("goneStatus")).map(status => Left(status.intValue())))
+      }
 
-  private def store(c: MongoCollection[Document], url: String, body: String): Unit =
+  private def store(c: MongoCollection[Document], url: String, outcome: Either[Int, String]): Unit =
     Try {
+      val payload = outcome.fold(
+        status => Updates.combine(Updates.set("goneStatus", status), Updates.unset("body")),
+        body   => Updates.combine(Updates.set("body", body), Updates.unset("goneStatus")))
       c.updateOne(
         Filters.eq("_id", url),
         Updates.combine(
-          Updates.set("body", body),
+          payload,
           Updates.set("fetchedAt", new java.util.Date(System.currentTimeMillis()))
         ),
         new com.mongodb.client.model.UpdateOptions().upsert(true)
@@ -98,4 +120,10 @@ class MongoCachingDetailFetch(
         (exception: Throwable) => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}")
       )
     }.recover { case exception => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}") }
+}
+
+object MongoCachingDetailFetch {
+  /** Statuses that describe the URL rather than the moment — the same set
+   *  `CachingDetailFetch` and `EnrichmentCache.isDurable` use, for the same reason. */
+  private val DurableFailureStatuses = Set(404, 410)
 }

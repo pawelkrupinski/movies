@@ -53,4 +53,52 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
     c.get("a"); c.get("b"); c.get("a"); c.get("b")
     under.calls shouldBe 2
   }
+
+  /** A 404/410 says something permanent about the URL, unlike a blip. Kinoteka and
+   *  Cinema City between them serve 98 permanently-missing detail pages in the Polish
+   *  corpus; with every failure re-tried, each one is re-fetched on EVERY scrape pass,
+   *  forever, and the film it belongs to never gets the year/director its TMDB
+   *  resolution is gated on. Same {404, 410} rule `EnrichmentCache.isDurable` uses. */
+  it should "remember a 404, so a permanently-missing detail page is fetched once" in {
+    val under = new CountingFetch(Map("gone" -> (() => throw new HttpStatusException(404, "GET", "gone", None))))
+    val c = new CachingDetailFetch(under, ttl = 1.hour)
+    a [HttpStatusException] should be thrownBy c.get("gone")
+    a [HttpStatusException] should be thrownBy c.get("gone")
+    a [HttpStatusException] should be thrownBy c.get("gone")
+    under.calls shouldBe 1
+  }
+
+  it should "remember a 410 the same way" in {
+    val under = new CountingFetch(Map("gone" -> (() => throw new HttpStatusException(410, "GET", "gone", None))))
+    val c = new CachingDetailFetch(under, ttl = 1.hour)
+    a [HttpStatusException] should be thrownBy c.get("gone")
+    a [HttpStatusException] should be thrownBy c.get("gone")
+    under.calls shouldBe 1
+  }
+
+  it should "re-raise a remembered 404 with its status intact, not a bare failure" in {
+    val under = new CountingFetch(Map("gone" -> (() => throw new HttpStatusException(404, "GET", "gone", None))))
+    val c = new CachingDetailFetch(under, ttl = 1.hour)
+    a [HttpStatusException] should be thrownBy c.get("gone")
+    the [HttpStatusException] thrownBy c.get("gone") should have (Symbol("code") (404))
+  }
+
+  it should "still retry a 500, which says nothing permanent about the URL" in {
+    val under = new CountingFetch(Map("flaky" -> (() => throw new HttpStatusException(500, "GET", "flaky", None))))
+    val c = new CachingDetailFetch(under, ttl = 1.hour)
+    a [HttpStatusException] should be thrownBy c.get("flaky")
+    a [HttpStatusException] should be thrownBy c.get("flaky")
+    under.calls shouldBe 2
+  }
+
+  it should "let a remembered 404 expire with the TTL, so a restored page comes back" in {
+    val tick  = new FakeTicker
+    var fail  = true
+    val under = new CountingFetch(Map("u" -> (() => if (fail) throw new HttpStatusException(404, "GET", "u", None) else "BACK")))
+    val c = new CachingDetailFetch(under, ttl = 1.hour, ticker = tick)
+    a [HttpStatusException] should be thrownBy c.get("u")
+    fail = false
+    tick.nanos = 2.hours.toNanos
+    c.get("u") shouldBe "BACK"
+  }
 }

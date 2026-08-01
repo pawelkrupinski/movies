@@ -70,4 +70,45 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     server.get(s"https://chain/b/${System.nanoTime()}")
     under.gets shouldBe 2
   }
+
+  /** The point of the Mongo cache is that one server's knowledge spares the fleet, and
+   *  that has to include "this page is gone". 98 permanently-missing detail pages in the
+   *  Polish corpus were being re-fetched by every server on every pass, and the films
+   *  they belong to never got the year/director their TMDB resolution is gated on. */
+  "A permanently-missing detail page" should "be fetched once fleet-wide, not once per server" in {
+    val url   = s"https://chain/film/gone-${System.nanoTime()}"
+    val under = new CountingFetch {
+      override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(404, "GET", u, None) }
+    }
+    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+
+    a [tools.HttpStatusException] should be thrownBy serverA.get(url)
+    awaitStored(url)
+    a [tools.HttpStatusException] should be thrownBy serverB.get(url)
+    a [tools.HttpStatusException] should be thrownBy serverA.get(url)
+    under.gets shouldBe 1
+  }
+
+  it should "keep its status, so callers still see a 404 rather than a generic failure" in {
+    val url   = s"https://chain/film/gone-status-${System.nanoTime()}"
+    val under = new CountingFetch {
+      override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(410, "GET", u, None) }
+    }
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    a [tools.HttpStatusException] should be thrownBy server.get(url)
+    awaitStored(url)
+    the [tools.HttpStatusException] thrownBy server.get(url) should have (Symbol("code") (410))
+  }
+
+  it should "NOT be remembered when the failure is transient, so a 5xx still retries" in {
+    val url   = s"https://chain/film/flaky-${System.nanoTime()}"
+    val under = new CountingFetch {
+      override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(503, "GET", u, None) }
+    }
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, collName)
+    a [tools.HttpStatusException] should be thrownBy server.get(url)
+    a [tools.HttpStatusException] should be thrownBy server.get(url)
+    under.gets shouldBe 2
+  }
 }

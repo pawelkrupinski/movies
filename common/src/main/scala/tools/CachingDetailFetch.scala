@@ -17,9 +17,12 @@ import scala.concurrent.duration._
  * instead of hundreds of times a day. It must NOT wrap the listing/day fetches:
  * those carry volatile showtimes and have to stay live.
  *
- * Only SUCCESSFUL responses are cached. `get` throws on HTTP/transport failure
- * exactly like the underlying fetch, so a transient blip is never pinned for the
- * whole TTL — the next pass retries it. Caching the body (not a parsed result)
+ * Successes are cached, and so are PERMANENT failures — a 404/410 describes the
+ * URL, not the moment, so re-asking every pass buys the same answer while the film
+ * whose detail it is stays gated on a fetch that will not start succeeding. Every
+ * other failure (timeout, 5xx, rate limit) says something about right now and stays
+ * uncached, so a transient blip is never pinned for the whole TTL. `get` still
+ * throws either way, so callers are unchanged. Caching the body (not a parsed result)
  * keeps this uniform across clients and sidesteps each client's own "empty"
  * sentinel; re-parsing the cached HTML is cheap next to the network round-trip.
  */
@@ -30,21 +33,35 @@ class CachingDetailFetch(
   ticker:     Ticker         = Ticker.systemTicker()
 ) extends HttpFetch {
 
-  private val cache: Cache[String, String] =
+  // One cache for both outcomes: a URL is either a body or a remembered permanent
+  // failure, never both, and sharing the entry means the TTL and the size bound
+  // apply to them uniformly.
+  private val cache: Cache[String, CachingDetailFetch.Outcome] =
     Caffeine.newBuilder()
       .expireAfterWrite(ttl.toMillis, TimeUnit.MILLISECONDS)
       .maximumSize(maxEntries)
       .ticker(ticker)
       .build()
 
-  override def get(url: String): String = {
-    val hit = cache.getIfPresent(url)
-    if (hit != null) hit
-    else {
-      val body = underlying.get(url) // throws on failure → falls through uncached
-      cache.put(url, body)
-      body
-    }
+  override def get(url: String): String = cache.getIfPresent(url) match {
+    case CachingDetailFetch.Body(body) => body
+    case CachingDetailFetch.Gone(code) => throw new HttpStatusException(code, "GET", url, None)
+    case null =>
+      try {
+        val body = underlying.get(url)
+        cache.put(url, CachingDetailFetch.Body(body))
+        body
+      } catch {
+        // A 404/410 says something permanent about the URL, so re-asking every pass
+        // buys nothing: it is the same answer, and the film whose detail this is stays
+        // gated on a fetch that will not start succeeding. Every OTHER failure —
+        // timeouts, 5xx, rate limits — says something about right now, and stays
+        // uncached so the next pass retries it. Same {404, 410} line
+        // `EnrichmentCache.isDurable` draws, for the same reason.
+        case failure: HttpStatusException if CachingDetailFetch.DurableFailureStatuses(failure.code) =>
+          cache.put(url, CachingDetailFetch.Gone(failure.code))
+          throw failure
+      }
   }
 
   // Detail fetches don't vary by request header; key on the URL alone.
@@ -60,6 +77,15 @@ class CachingDetailFetch(
 }
 
 object CachingDetailFetch {
+
+  /** What the cache holds for a URL: the body, or the permanent failure that URL gives. */
+  private sealed trait Outcome
+  private final case class Body(body: String) extends Outcome
+  private final case class Gone(code: Int)    extends Outcome
+
+  /** Statuses that describe the URL rather than the moment. Kept identical to
+   *  `EnrichmentCache.isDurable`'s set — the two answer the same question. */
+  private val DurableFailureStatuses = Set(404, 410)
   /** Detail metadata is effectively static per film; refreshing twice a day is
    *  plenty fresh while cutting ~all of the redundant per-pass detail fetches. */
   val DefaultTtl: FiniteDuration = 12.hours
