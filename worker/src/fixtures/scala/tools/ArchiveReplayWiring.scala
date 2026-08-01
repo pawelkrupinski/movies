@@ -32,10 +32,39 @@ class ArchiveReplayWiring(
   storage:          ConvergenceStorage
 ) extends WorkerWiring(country) with TestWiring {
 
-  /** No network on the SCRAPE side, ever. Every cinema listing comes from the
-   *  archive, so a scraper reaching for HTTP is a bug that should announce itself
-   *  rather than quietly fetch a live repertoire the corpus never claimed. */
-  override lazy val httoFetch: HttpFetch = OfflineHttpFetch
+  /**
+   * The scrape side: recorded DETAIL pages first, live behind them, and whatever the
+   * live leg fetched written back into the same tree.
+   *
+   * It used to be `OfflineHttpFetch` outright, on the grounds that every listing comes
+   * from the archive so a scraper reaching for HTTP is a bug. The listing half of that
+   * still holds and is enforced by construction: `cinemaScrapers` is replaced with
+   * `PreScrapedCinemaScraper`, so no scraper's fetch is ever called. What the catalogue
+   * DOES do here is per-film detail — 25 Polish cinema clients implement `DetailEnricher`
+   * — and refusing that was quietly costing the suite its enrichment.
+   *
+   * Polish listings carry a title and showtimes and nothing else; the year, director,
+   * synopsis and poster live on a per-film detail page, and `StagingSteps.detailReady`
+   * gates TMDB resolution on that fetch precisely because it supplies the hints
+   * resolution needs. With the fetch refused, rows reached TMDB yearless, fell to the
+   * tier that demands an exact title match, and `Amadeusz` never matched `Amadeus`:
+   * Poland resolved 36% against prod's 78%, while Germany — whose listings are
+   * self-sufficient and whose clients implement no enricher at all — sat at 96% on the
+   * same code.
+   *
+   * Same tree as the enrichment fixtures, because cinema hosts cannot collide with
+   * TMDB/IMDb/RT ones and one artifact is easier to keep honest than two. `strict = true`
+   * for the same reason it is there: a synthesised empty answer would be
+   * indistinguishable from a real one and the live leg would never be reached.
+   */
+  override lazy val httoFetch: HttpFetch =
+    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
+      .fold(OfflineHttpFetch: HttpFetch) { directory =>
+        new FallbackHttpFetch(Seq(
+          "detail-fixtures" -> new clients.tools.FakeHttpFetch(directory, strict = true, foldYear = false),
+          "detail-live"     -> new clients.tools.RecordingHttpFetch(
+            directory, phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape), foldYear = false)))
+      }
   override lazy val multikinoFetch: HttpFetch  = httoFetch
   override lazy val biletynaFetch: HttpFetch   = httoFetch
   override lazy val zyteFetch: HttpFetch       = httoFetch
