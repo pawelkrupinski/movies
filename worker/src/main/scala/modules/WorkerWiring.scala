@@ -634,9 +634,20 @@ class WorkerWiring(
       workerMetrics.resolutionMetrics.recorderFor(country.code, ResolutionOutcome.sourceOf(collection)),
       unresolved)
   lazy val tmdbIdCache: ResolutionCache = resolutionCache("resolve_tmdb")
+  /** How a single-movie TMDB resolution is dispatched. Production queues it; the
+   *  fixture harness runs it inline, because it never starts a `TaskWorker`.
+   *
+   *  A SEAM, so that is the only thing a harness has to change. It used to rebuild
+   *  `MovieService` wholesale to swap this, and rebuilding it positionally silently
+   *  dropped whatever the rebuild forgot — `letterboxdIdResolver` and `wikidata` (two
+   *  rungs of the resolution ladder), `enqueueNewcomerRatings`, `freshness`,
+   *  `tmdbIdCache`, `forgetResolutions`. Each was invisible until something measured
+   *  it. Overriding one `def` cannot drop the rest. */
+  protected def resolveDispatcher: Option[services.movies.ResolveDispatcher] = Some(new QueueResolveDispatcher(taskQueue))
+
   lazy val movieService: MovieService = new MovieService(
     movieCache, eventBus, tmdbClient,
-    dispatcher = Some(new QueueResolveDispatcher(taskQueue)),
+    dispatcher = resolveDispatcher,
     tmdbIdCache = tmdbIdCache,
     // SAME store the rating handlers read, so the resolved → first-rating delay
     // (stamped here on resolution, observed there on first attempt) correlates.

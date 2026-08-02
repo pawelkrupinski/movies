@@ -778,6 +778,19 @@ class MovieService(
    *  earned one. */
   def retryResolve(title: String, year: Option[Int]): Unit = retryResolve(cache.keyOf(title, year))
 
+  /** Offer one row's ratings to the enqueuer, addressed by `(title, year)`.
+   *
+   *  Exists for the same reason the [[retryResolve]] overload above does: `CacheKey`
+   *  is `private[services]`, so a caller outside the package cannot name a row. The
+   *  fixture harness stands in for `EnrichmentReaper`'s tick, and without this it had
+   *  to restate the reaper's eligibility itself — which is precisely how it came to
+   *  gate every rating source on `tmdbId` while production gates IMDb on an `imdbId`
+   *  and Filmweb on `tmdbId OR filmwebUrl`. Handing the row to the real enqueuer keeps
+   *  that judgement in one place. */
+  def enqueueRatingsFor(title: String, year: Option[Int]): Unit =
+    cache.get(cache.keyOf(title, year)).foreach(record =>
+      enqueueNewcomerRatings(cache.keyOf(title, year), record))
+
   def retryResolve(key: CacheKey): Unit =
     cache.get(key).filter(e => e.tmdbId.isEmpty && !e.detailPending).foreach { e =>
       cache.clearNegative(key)

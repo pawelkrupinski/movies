@@ -212,7 +212,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     // seed and the sweep would walk an empty cache — passing whatever the gate did.
     override lazy val movieRepository: services.movies.MovieRepository =
       new services.movies.InMemoryMovieRepository(
-        Seq(("Diuna", Some(2024), models.MovieRecord(tmdbId = Some(438631)))))
+        Seq(("Diuna", Some(2024), models.MovieRecord(tmdbId = Some(438631), imdbId = Some("tt15239678")))))
 
     // All FOUR stubbed, so the sweep is hermetic and reaches the gate: the real
     // sources would go to the network on the first call and the swallowed throw
@@ -243,6 +243,30 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
    * the convergence legs reported 972 and 1293 — a field invented by the harness, on
    * ~2,250 live calls prod never makes, on the two longest legs in the suite.
    */
+  /** The eligibility production uses, not a tmdbId gate. `RatingSources` makes IMDb
+   *  eligible on an `imdbId` alone and Filmweb on `tmdbId OR filmwebUrl` — the latter
+   *  precisely so a tmdbId-less row can RESOLVE its tmdbId via Filmweb→Wikidata. The
+   *  harness gated all four on `tmdbId`, so the row that route exists for was the one
+   *  row it never walked; 21 of the 25 films production identifies and the replay does
+   *  not carry a Filmweb slot. */
+  it should "refresh a tmdbId-less row that IMDb and Filmweb are still eligible for" in {
+    val wiring = new RatingSourceRecordingWiring {
+      override lazy val movieRepository: services.movies.MovieRepository =
+        new services.movies.InMemoryMovieRepository(Seq(("Brzezina", Some(1970), models.MovieRecord(
+          imdbId = Some("tt0068321"), filmwebUrl = Some("https://www.filmweb.pl/film/Brzezina-1970-8085")))))
+    }
+    wiring.movieCache.rehydrate()
+
+    wiring.enrichRatingsSync()
+
+    withClue(s"sources driven: ${wiring.sources.mkString(", ")}: ") {
+      wiring.sources should contain allOf ("imdb", "filmweb")   // eligible without a tmdbId
+      wiring.sources should not contain "rt"                     // RT/MC really are tmdbId-gated
+      wiring.sources should not contain "mc"
+    }
+    wiring.stop()
+  }
+
   "the harness rating sweep" should "not drive Filmweb for a country that has no Filmweb" in {
     val wiring = new RatingSourceRecordingWiring { override protected def filmwebEnabled: Boolean = false }
     wiring.movieCache.rehydrate()

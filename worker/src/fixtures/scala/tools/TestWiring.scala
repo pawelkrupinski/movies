@@ -6,7 +6,6 @@ import modules.WorkerWiring
 import services.{Drainable, MongoConnection}
 import services.events.{DomainEvent, EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
-import services.movies.MovieService
 import services.resolution.{ResolutionCache, UnresolvedPolicy}
 import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, HandlerOutcome, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType}
 
@@ -116,18 +115,16 @@ trait TestWiring extends WorkerWiring {
   // way; the queue dispatch seam is covered by the unit + WorkerWiring specs. A
   // missing fixture is a permanent miss (the inline path drops a transient
   // failure without retrying — no cascade churn).
+  // Resolve TMDB INLINE: production dispatches a `ResolveTmdb` worker task, and the
+  // harness never runs the worker — it drives enrichment synchronously and relies on
+  // the queue staying drained. `None` falls back to the inline dispatcher.
   //
-  // Everything else prod passes is passed HERE too. Rebuilding the service with
-  // positional defaults silently dropped `letterboxdIdResolver` and `wikidata`, and
-  // those are not incidental wiring: they are the last two rungs of
-  // `resolveTmdbId`'s fallback ladder (`viaLetterboxd`, `viaFilmwebWikidata`), the
-  // ones that exist for exactly the arthouse long tail TMDB's own search misses. A
-  // suite whose entire purpose is to measure how much of a country's repertoire
-  // resolves was measuring it with two rungs sawn off, and said nothing about it.
-  override lazy val movieService =
-    new MovieService(movieCache, eventBus, tmdbClient, backgroundBudget.executionContext("enrichment-worker"),
-      letterboxdIdResolver = Some(letterboxdIdResolver),
-      wikidata             = Some(wikidataClient))
+  // ONE seam, deliberately. This used to rebuild `MovieService` to change it, and each
+  // rebuild silently dropped whatever it forgot to restate: `letterboxdIdResolver` and
+  // `wikidata` — the last two rungs of `resolveTmdbId`'s ladder, missing for months —
+  // and `enqueueNewcomerRatings`, without which the rating sweep enqueues nothing.
+  // Everything else now comes from the composition root unchanged.
+  override protected def resolveDispatcher: Option[services.movies.ResolveDispatcher] = None
 
   // Staging repository/folder are Mongo-backed in prod; pin in-memory here — TestWiring's
   // Mongo is disabled, so the inherited MongoStagingRepository would silently drop the
@@ -296,32 +293,72 @@ trait TestWiring extends WorkerWiring {
     PhaseTimer.timed(scope, "concludeEnrichment")(concludeEnrichment())
   }
 
-  def enrichRatingsSync(): Unit =
-    movieCache.snapshot()
-      .filter(_.record.tmdbId.isDefined)
-      .map(r => (r.title, r.year))
-      .sortBy { case (t, y) => (t, y.getOrElse(Int.MinValue)) }
-      .foreach { case (t, y) =>
-        // ONE `try` PER SOURCE. Sharing a single `try` across all four made them a
-        // chain: the first to throw skipped every source after it for that film, so a
-        // source's coverage silently depended on its POSITION in the list and on
-        // whether the ones above it happened to answer. It is not hypothetical — a
-        // local run where Rotten Tomatoes 404'd its slug probes came out with
-        // Metacritic 12 and Filmweb 11 against CI's 307 and 478, purely because RT
-        // sits above them here. In production these are four independent queue tasks
-        // that cannot starve each other, which is the behaviour this stands in for.
-        def attempt(refresh: => Any): Unit = try { refresh; () } catch { case _: Exception => () }
-        attempt(imdbRatings.refreshOneSync(t, y))
-        attempt(rottenTomatoesRatings.refreshOneSync(t, y))
-        attempt(metascoreRatings.refreshOneSync(t, y))
-        // Gated exactly as production gates the handler (`filmwebEnabled`), which
-        // this sweep stands in for. Unconditional, it fetched a source prod holds
-        // NOTHING for outside Poland: prod's German and British corpora carry 0
-        // `filmwebRating` and 0 `filmwebUrl`, while the convergence legs reported
-        // 972 and 1293 — a field invented by the harness, on ~2,250 live calls
-        // prod never makes, on the two longest legs in the suite.
-        if (filmwebEnabled) attempt(filmwebRatings.refreshOneSync(t, y))
+  /** The enrichment reaper's per-tick cap is a burst-shedding lever in production;
+   *  a harness that drives ONE sweep to quiescence wants the whole corpus offered,
+   *  exactly as `maxDetailEnqueuePerTick` already does for detail. */
+  override def maxEnrichmentEnqueuePerTick: Int = Int.MaxValue
+
+  /**
+   * Refresh every film's ratings by DRIVING PRODUCTION'S OWN PATH: the enrichment
+   * reaper enqueues, the real `RatingHandler`s work the queue.
+   *
+   * This used to walk the corpus itself and call each refresher directly, and every
+   * rule it restated along the way drifted from the one production actually uses:
+   *
+   *  - eligibility. It gated all four sources on `tmdbId`, while `RatingSources` makes
+   *    IMDb eligible on an `imdbId` alone and Filmweb on `tmdbId OR filmwebUrl` —
+   *    the latter deliberately, "because it can RESOLVE its tmdbId via
+   *    Filmweb→Wikidata". The tmdbId-less row that route exists for was the one row
+   *    the sweep never walked, and 21 of the 25 films production identifies and the
+   *    replay does not carry a Filmweb slot.
+   *  - the country gate. Filmweb ran for Germany and the UK, which production holds no
+   *    Filmweb data for at all, inventing 972 and 1293 ratings.
+   *  - failure isolation. One `try` wrapped all four, so the first to throw skipped
+   *    every source after it and coverage depended on a source's POSITION in a list.
+   *
+   * None of those can be got wrong here, because none of them is stated here. The
+   * reaper owns eligibility (through `RatingEnqueuer` → `RatingSources`), the handler
+   * list owns the country gate (Filmweb is only in `ratingHandlers` where
+   * `filmwebEnabled`), and one task per source owns the isolation. The harness supplies
+   * only what production gets from its clock: repetition until quiescent.
+   */
+  def enrichRatingsSync(): Unit = {
+    var round = 0
+    var worked = true
+    while (worked) {
+      // `enrichmentReaper.tick` is `private[tasks]`, so the harness supplies the walk
+      // the reaper would have done and hands each row to the SAME enqueuer the reaper
+      // uses. Eligibility, the due window and the dedup keys all stay where production
+      // keeps them — this only decides WHEN, which is the one thing a harness with no
+      // clock has to.
+      movieCache.snapshot()
+        .sortBy(row => (row.title, row.year.map(_.toString).getOrElse("")))
+        .foreach(row => movieService.enqueueRatingsFor(row.title, row.year))
+      val done = drainRatingQueueOnce()
+      round += 1
+      worked = done > 0
+      if (done > 0) println(s"[${country.code}] rating round $round: $done task(s)")
+    }
+  }
+
+  private lazy val ratingHandlerByType = ratingHandlers.map(h => h.taskType -> h).toMap
+
+  /** Work every claimable rating task through the REAL handlers — the synchronous
+   *  stand-in for the prod `TaskWorker`, and the same shape `drainStagingQueueOnce`
+   *  uses. A non-rating task is completed and dropped so it cannot spin this drain. */
+  private def drainRatingQueueOnce(): Int = {
+    val workerId = "rating-sync"
+    var handled  = 0
+    Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+      .takeWhile(_.isDefined).flatten
+      .foreach { task =>
+        ratingHandlerByType.get(task.taskType).foreach { h =>
+          try { h.handle(task); handled += 1 } catch { case _: Exception => () }
+        }
+        taskQueue.complete(task.id, workerId)
       }
+    handled
+  }
 
   /** Apply deferred per-film detail to the bare-scraped rows, the way the
    *  production TaskWorker does — but synchronously, in one pass. First
