@@ -518,8 +518,18 @@ class WorkerWiring(
   // OOM dump).
   lazy val slotsRepository: services.movies.SlotsRepository =
     new services.movies.MongoSlotsRepository(mongoConnection.database)
+  /** This wiring's country's title rules — the ONE instance every component below
+   *  keys through, so a worker running several countries cannot fold one country's
+   *  titles with another's. Passing it explicitly (rather than letting each
+   *  component fall back to `TitleNormalizer.deployment`) is what makes that true:
+   *  the default reads the environment, which has no answer for a multi-country
+   *  process. */
+  lazy val titleNormalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(country)
+
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
+    normalizer = titleNormalizer,
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),
     // The worker is the durable read-model/cache mirror: persist the change-stream resume
@@ -530,11 +540,12 @@ class WorkerWiring(
   // (resolve-then-fold) instead of landing straight in `movies`; a film already
   // known to `movies` keeps the direct path. The `staging` sink is wired into the
   // cache, the promoter scheduled and the fold subscribed (below) unconditionally.
-  lazy val stagingRepository: StagingRepository = new MongoStagingRepository(mongoConnection.database)
+  lazy val stagingRepository: StagingRepository =
+    new MongoStagingRepository(mongoConnection.database, normalizer = titleNormalizer)
   lazy val movieCache: CaffeineMovieCache =
     new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
       retrigger = enrichmentRetrigger, mergeMetrics = taskMetrics, cacheMetrics = taskMetrics,
-      enrichmentLanguage = country.language)
+      enrichmentLanguage = country.language, normalizer = titleNormalizer)
 
   // After a merge changes an enrichment's input fields, re-kick that enrichment
   // (per case) as a worker task — clearing its freshness stamp so the tmdbId-keyed
@@ -627,7 +638,7 @@ class WorkerWiring(
     unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry
   ): ResolutionCache =
     new WriteThroughResolutionCache(
-      new MongoResolutionStore(mongoConnection.database, collection),
+      new MongoResolutionStore(mongoConnection.database, collection, normalizer = titleNormalizer),
       // Labels the counter with the source this collection serves (`resolve_rt` →
       // `rt`), so `kinowo_worker_resolution_total` breaks the saving down per
       // rating source rather than lumping all five together.
@@ -981,7 +992,7 @@ class WorkerWiring(
   // steps (off `TaskFinished`) and is the periodic backstop. On the fold step a
   // `StagingFilmEnriched` event drives the transactional folder, which merges the
   // concluded film into `movies` and deletes its staging rows.
-  lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection)
+  lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer)
   lazy val stagingSteps = new StagingSteps(
     stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor, freshnessStore)
   lazy val stagingHandlers: Seq[services.tasks.TaskHandler] = Seq(

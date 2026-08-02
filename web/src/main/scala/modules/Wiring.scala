@@ -90,9 +90,16 @@ trait Wiring {
   // complete.
   lazy val slotsRepository: services.movies.SlotsRepository =
     new services.movies.MongoSlotsRepository(movieMirrorConnection.database)
+  /** The SERVING country's title rules. Passed explicitly so the web tier keys
+   *  the same way the worker that wrote the corpus did; the per-country debug
+   *  stacks below each get their OWN, since they read another country's database. */
+  lazy val titleNormalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(models.Country.fromEnv)
+
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     movieMirrorConnection.database, fallbackToOwnInit = false,
-    screenings = Some(screeningsRepository), slots = Some(slotsRepository))
+    screenings = Some(screeningsRepository), slots = Some(slotsRepository),
+    normalizer = titleNormalizer)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository)
 
@@ -227,9 +234,14 @@ trait Wiring {
         val slots      = new services.movies.MongoSlotsRepository(conn.database)
         val reader     = new MongoReadModelRepository(conn.database)
         val stack = new DebugStack(country,
+          // THIS stack's country, not the serving one: /debug reads another
+          // country's database, and folding its titles with the serving country's
+          // rules would key rows the way no worker ever wrote them.
           new MongoMovieRepository(conn.database, fallbackToOwnInit = false,
-            screenings = Some(screenings), slots = Some(slots)),
-          new services.staging.MongoStagingRepository(conn.database),
+            screenings = Some(screenings), slots = Some(slots),
+            normalizer = services.movies.TitleNormalizer.forCountry(country)),
+          new services.staging.MongoStagingRepository(conn.database,
+            normalizer = services.movies.TitleNormalizer.forCountry(country)),
           new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
           new services.attempts.MongoEnrichmentAttemptReader(conn.database),

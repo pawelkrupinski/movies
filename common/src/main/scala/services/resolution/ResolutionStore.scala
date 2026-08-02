@@ -108,7 +108,12 @@ class InMemoryResolutionStore(clock: Clock = Clock.systemUTC()) extends Resoluti
 class MongoResolutionStore(
   db:             Option[MongoDatabase],
   collectionName: String,
-  clock:          Clock = Clock.systemUTC()
+  clock:          Clock = Clock.systemUTC(),
+  // See `ResolutionStore.normalizer` — the rules that built the hint keys this
+  // collection holds. The worker passes its country's; defaults to the
+  // deployment's so scripts and single-country callers are unchanged.
+  override val normalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.deployment
 ) extends ResolutionStore with Logging {
 
   private given services.movies.TitleNormalizer = normalizer
