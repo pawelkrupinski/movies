@@ -16,8 +16,15 @@ object TitleNormalizer {
   // `soleFromEnv`, NOT `fromEnv`: the worker names its country through
   // `KINOWO_COUNTRIES`, so reading only `KINOWO_COUNTRY` gives it the Poland
   // default and the scoping does nothing on the process that writes the corpus.
-  // A multi-country worker gets `None` — no global set can be right for it, so it
-  // falls back to the default and must scope per country via `withRules`.
+  // A multi-country worker gets `None` — no global set can be right for it — and
+  // the `getOrElse` below then keys every country with Poland's rules. That is why
+  // `WorkerMain.unsupportedCountries` REFUSES to boot such a worker: `withRules` is
+  // not the escape hatch it looks like, because it is thread-scoped and the hot
+  // paths leave the installing thread (a `CacheKey` builds its sanitized key in its
+  // own constructor, Mongo change-stream callbacks run on driver threads, and the
+  // rating enrichers fan out through `BoundedParallel`'s shared executor). Serving
+  // several countries from one JVM needs the rule set threaded per country, not a
+  // scope around a call.
   @volatile private var active: TitleRuleSet =
     TitleRuleSet.forCountry(models.Country.soleFromEnv.getOrElse(models.Country.default))
 
@@ -29,8 +36,9 @@ object TitleNormalizer {
   // duration of its `try` block — a rare, order-dependent flake that no
   // `finally` restore could prevent (the race is during the install, not after).
   // Scoping the override to the installing thread keeps a test's rules invisible
-  // to the suites running beside it. Production never sets this; the change-stream
-  // consumer still swaps `active` globally via `installRules`.
+  // to the suites running beside it. Production sets NEITHER slot: `active` is
+  // whatever class-load resolved, and `installRules`' only caller is the country
+  // convergence e2e, which swaps it per country between runs.
   private val scopedOverride = new ThreadLocal[TitleRuleSet]()
   private def effective: TitleRuleSet = scopedOverride.get() match {
     case null => active
@@ -51,10 +59,6 @@ object TitleNormalizer {
     try body
     finally if (prev == null) scopedOverride.remove() else scopedOverride.set(prev)
   }
-
-  /** The currently-active GLOBAL rule set — read by the admin preview + backfill
-   *  (which run without a thread scope, so they see what `installRules` set). */
-  def currentRules: TitleRuleSet = active
 
   /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
   def resetToDefaults(): Unit = { active = TitleRuleSet.forCountry(models.Country.soleFromEnv.getOrElse(models.Country.default)); sanitizeCache.clear() }

@@ -51,6 +51,13 @@ object WorkerMain extends Logging {
     // monitor-thread set — each country still keeps its OWN event bus and its OWN
     // per-country database view on that shared client.
     val countries    = resolveCountries()
+    // Refuse a configuration this process cannot normalise correctly, before any
+    // wiring touches the corpus.
+    unsupportedCountries(countries).foreach { why =>
+      logger.error(why)
+      health.stop(0)
+      sys.exit(1)
+    }
     val sharedBudget: ExecutionBudget =
       new SharedExecutionBudget(Env.positiveInt("KINOWO_BG_CONCURRENCY", 4))
     val sharedClient: Option[MongoClient] = MongoConnection.sharedClientFromEnv()
@@ -147,6 +154,34 @@ object WorkerMain extends Logging {
     }.distinct
     if (resolved.isEmpty) Seq(Country.default) else resolved
   }
+
+  /** Why this worker must NOT boot with the countries it was given, or None when
+   *  the configuration is safe.
+   *
+   *  [[services.movies.TitleNormalizer]] resolves its rule set ONCE per process,
+   *  from [[Country.soleFromEnv]] — which is `None` for a multi-country worker, so
+   *  it falls back to [[Country.default]] and normalises EVERY country with
+   *  Poland's rules. Three rules are Poland-scoped and none of them are cosmetic:
+   *  the " & " → " i " unification keyed the German "Minions & Monster" as
+   *  `minionsimonster` and served German users that spelling, and the Mandalorian
+   *  rule pinned a Berlin row to the Polish key `mandalorianigrogu`. Both are
+   *  recorded incidents, not hypotheticals — see `TitleNormalizerScopingSpec`.
+   *
+   *  Worse than the mis-keying: the DE/UK WEB tier resolves `KINOWO_COUNTRY`
+   *  correctly and so keeps the right rule set, so a multi-country worker writes
+   *  keys its own web tier disagrees with — a permanent re-key / split-row
+   *  generator rather than a one-off cosmetic error.
+   *
+   *  Lifting this needs the normalizer threaded per country — it is a
+   *  process-global `object` whose memo cache is keyed on the raw title alone,
+   *  reached from ~65 call sites — not another environment variable. Until then a
+   *  loud refusal beats a silently corrupted corpus. */
+  private[modules] def unsupportedCountries(countries: Seq[Country]): Option[String] =
+    Option.when(countries.sizeIs > 1)(
+      s"KINOWO_COUNTRIES names ${countries.size} countries (${countries.map(_.code).mkString(", ")}), but this " +
+        s"worker can only normalise one: TitleNormalizer resolves a single rule set per process, so every country " +
+        s"would be keyed with ${Country.default.code}'s rules and disagree with its own web tier. " +
+        s"Run one country per worker until the normalizer is country-scoped.")
 
   private def startHealthServer(port: Int): HttpServer = {
     val server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0)
