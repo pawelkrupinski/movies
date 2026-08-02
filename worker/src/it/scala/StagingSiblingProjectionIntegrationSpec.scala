@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.SingleCountryNormalizer.given
+
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, ObservableFuture, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec

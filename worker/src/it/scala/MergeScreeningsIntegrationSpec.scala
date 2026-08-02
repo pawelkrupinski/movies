@@ -1,5 +1,7 @@
 package services.movies
 
+import services.movies.SingleCountryNormalizer.given
+
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters

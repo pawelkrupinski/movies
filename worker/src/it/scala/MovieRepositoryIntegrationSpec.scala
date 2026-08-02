@@ -1,5 +1,7 @@
 package integration
 
+import services.movies.SingleCountryNormalizer.given
+
 import models.{Helios, HeliosOstrowWlkp, KinoMuranow, MovieRecord, Multikino, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
