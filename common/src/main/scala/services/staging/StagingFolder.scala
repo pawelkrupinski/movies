@@ -49,7 +49,16 @@ trait StagingFolder {
  * worker's in-memory cache + read-model projector catch the folded row up via
  * the `movies` change stream, exactly as every other out-of-band `movies` write.
  */
-class InMemoryStagingFolder(stagingRepository: StagingRepository, movieRepository: MovieRepository) extends StagingFolder with Logging {
+class InMemoryStagingFolder(
+  stagingRepository: StagingRepository,
+  movieRepository:   MovieRepository,
+  // The country whose title rules select and key the group. Defaults to Poland so
+  // the many single-country test constructions are unchanged; the worker wires its
+  // own country's instance.
+  normalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(models.Country.default)
+) extends StagingFolder with Logging {
+  private given services.movies.TitleNormalizer = normalizer
   private val lock = new AnyRef
 
   /**

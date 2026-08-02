@@ -61,6 +61,27 @@ class TitleNormalizerInstanceSpec extends AnyFlatSpec with Matchers {
     pl.sanitize(title) shouldBe "alvinithechipmunks" // and Poland's entry survived
   }
 
+  // `CacheKey` equality IS identity in the corpus — it decides whether two
+  // cinema spellings are one film. It used to normalise inside its own
+  // constructor, so a key silently adopted whatever rule set was global on the
+  // thread that built it, including Mongo change-stream driver threads.
+  "a CacheKey" should "take its identity from the country whose rules built it" in {
+    CacheKey("Minions & Monster", Some(2025))(using pl) should
+      not be CacheKey("Minions & Monster", Some(2025))(using de)
+  }
+
+  it should "merge the ampersand and conjunction spellings only where that rule applies" in {
+    CacheKey("Minions & Monster", Some(2025))(using pl) shouldBe
+      CacheKey("Minions i Monster", Some(2025))(using pl)
+    CacheKey("Minions & Monster", Some(2025))(using de) should
+      not be CacheKey("Minions i Monster", Some(2025))(using de)
+  }
+
+  it should "still key identically across countries when no scoped rule applies" in {
+    CacheKey("Top Gun: Maverick", Some(2022))(using pl) shouldBe
+      CacheKey("Top Gun: Maverick", Some(2022))(using de)
+  }
+
   "the rules a normalizer exposes" should "be that country's filtered set" in {
     // Poland carries the three country-scoped rules the others drop.
     pl.rules.rules.size should be > de.rules.rules.size

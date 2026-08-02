@@ -1,5 +1,7 @@
 package services.staging
 
+import services.movies.SingleCountryNormalizer.given
+
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{CacheKey, InMemoryMovieRepository}
 import models.{Cinema, Helios, MovieRecord, Source, SourceData}

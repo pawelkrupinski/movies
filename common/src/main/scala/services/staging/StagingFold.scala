@@ -94,9 +94,9 @@ object StagingFold {
    *  reaper groups + the gauge count on this SAME `sanitize(r.title)` key, so the
    *  fold now consumes exactly the rows the reaper classified as ready. Deletes
    *  still go through each row's persisted `id` (drift-proof), per StagingRecord. */
-  def selectStagingGroup(rows: Seq[StagingRecord], cleanTitle: String): Seq[StagingRecord] = {
-    val key = TitleNormalizer.sanitize(cleanTitle)
-    rows.filter(r => TitleNormalizer.sanitize(r.title) == key)
+  def selectStagingGroup(rows: Seq[StagingRecord], cleanTitle: String)(using normalizer: TitleNormalizer): Seq[StagingRecord] = {
+    val key = normalizer.sanitize(cleanTitle)
+    rows.filter(r => normalizer.sanitize(r.title) == key)
   }
 
   /** `stagingRows` are every per-cinema row of ONE `sanitize(title)` group (all its
@@ -105,7 +105,7 @@ object StagingFold {
    *  [[reconcileTmdbIds]]). `groupByFilm` then collapses within AND across titles by
    *  shared tmdbId — the same partition the cache `canonicalizeBySanitize` settle
    *  runs over the whole corpus, applied here to the fold's neighbourhood. */
-  def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord]): Plan = {
+  def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord])(using normalizer: TitleNormalizer): Plan = {
     // Union the per-cinema staging rows to ONE row per (sanitize, year) key FIRST,
     // restoring the one-row-per-key invariant `clusterByFilm` assumes. Without it,
     // N separate YEARLESS cinema rows would each become a rule-4 singleton cluster

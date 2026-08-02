@@ -18,13 +18,27 @@ import scala.util.Try
  * two cache entries. Equality uses the normalised form; `cleanTitle` retains
  * the original casing for display in snapshots.
  */
-private[services] case class CacheKey(cleanTitle: String, year: Option[Int]) {
-  private val normalized = TitleNormalizer.sanitize(cleanTitle)
+private[services] case class CacheKey private (cleanTitle: String, year: Option[Int], normalized: String) {
   override def hashCode(): Int = (normalized, year).hashCode()
   override def equals(other: Any): Boolean = other match {
     case k: CacheKey => k.normalized == normalized && k.year == year
     case _           => false
   }
+}
+
+private[services] object CacheKey {
+  /** Build a key under ONE country's rules. `normalized` is computed here and
+   *  carried, rather than derived in the constructor body as it used to be:
+   *  identity depends on the rule set, so a key that normalises itself silently
+   *  adopts whatever set happened to be global on the constructing thread. That
+   *  is the mechanism that made a shared `TitleNormalizer` impossible to scope —
+   *  keys are built on Mongo change-stream driver threads and inside
+   *  `BoundedParallel`'s executor, neither of which any caller-side scope
+   *  reaches. Taking the normalizer as a context parameter puts the choice back
+   *  where the country is known, and leaves existing call sites unchanged
+   *  wherever a `given` is already in scope. */
+  def apply(cleanTitle: String, year: Option[Int])(using normalizer: TitleNormalizer): CacheKey =
+    new CacheKey(cleanTitle, year, normalizer.sanitize(cleanTitle))
 }
 
 /**
@@ -205,8 +219,19 @@ class CaffeineMovieCache(
   // `kinowo`, the source's already-localised name elsewhere — see
   // `CountryNames.canonical`). The worker wires `country.language`; defaults to
   // Polish so every existing single-country construction is unchanged.
-  enrichmentLanguage: java.util.Locale = CountryNames.DefaultLanguage
+  enrichmentLanguage: java.util.Locale = CountryNames.DefaultLanguage,
+  // The country's title rules. Sibling of `enrichmentLanguage` above and wired
+  // from the same `country` by the worker; both default to Poland so existing
+  // single-country constructions are unchanged. Every `CacheKey` this cache
+  // builds — including the ones built on the change-stream driver thread and in
+  // the rehydrate scheduler — keys through THIS instance, which is what makes
+  // the cache's identity country-correct rather than process-global.
+  normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
 ) extends MovieCache with Stoppable with Logging {
+
+  // Supplies `CacheKey.apply` throughout this class, so a key can never be built
+  // here under another country's rules.
+  private given TitleNormalizer = normalizer
 
   // Films skipped this process's lifetime because their stored row could not be read.
   // Exposed for tests + diagnostics: a non-zero value means scrapes are landing against
@@ -269,7 +294,7 @@ class CaffeineMovieCache(
   // normalised titles still scrape in parallel.
   private val titleLocks = new ConcurrentHashMap[String, AnyRef]()
   private def lockFor(rawTitle: String): AnyRef =
-    titleLocks.computeIfAbsent(TitleNormalizer.sanitize(rawTitle), _ => new Object())
+    titleLocks.computeIfAbsent(normalizer.sanitize(rawTitle), _ => new Object())
 
   /** The lock that serialises every read-modify-write on rows whose
    *  normalised cleanTitle matches `cleanTitle`. Reentrant (JVM
@@ -414,9 +439,9 @@ class CaffeineMovieCache(
 
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
-    val target = TitleNormalizer.sanitize(key.cleanTitle)
+    val target = normalizer.sanitize(key.cleanTitle)
     val sameTitle = positive.asMap().asScala.keysIterator
-      .filter(k => TitleNormalizer.sanitize(k.cleanTitle) == target).toSeq
+      .filter(k => normalizer.sanitize(k.cleanTitle) == target).toSeq
     // Prefer a row at this EXACT year. A same-title row at a DIFFERENT year is a
     // distinct film — a remake or re-release carrying the original's name
     // ("Zaproszenie" 2022 "The Invitation" vs 2026 "The Invite", "Diuna" 1984 vs
@@ -522,9 +547,9 @@ class CaffeineMovieCache(
     // new spelling still drives a re-key: `recordCinemaScrape` merges it onto the
     // row and `FilmCanonicalizer.canonical` moves the canonical, so the ROW key
     // then differs and trips the guard.
-    val canonicalSanitized = TitleNormalizer.sanitize(canonical.cleanTitle)
+    val canonicalSanitized = normalizer.sanitize(canonical.cleanTitle)
     val needsFix = keys.sizeIs > 1 ||
-      keys.exists(k => TitleNormalizer.sanitize(k.cleanTitle) == canonicalSanitized &&
+      keys.exists(k => normalizer.sanitize(k.cleanTitle) == canonicalSanitized &&
         (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year))
     if (needsFix) {
       withTitleLock(canonical.cleanTitle) {
@@ -636,7 +661,7 @@ class CaffeineMovieCache(
           s"to fold into the resolved row; leaving '${oldKey.cleanTitle}' on its own key this pass.")
       val target = if (targetReadable) wanted else oldKey
       val base        = priorTarget.fold(resolved)(t => MovieRecordMerge.union(resolved, t))
-      val norm        = TitleNormalizer.sanitize(oldKey.cleanTitle)
+      val norm        = normalizer.sanitize(oldKey.cleanTitle)
       // Fold ONLY the YEARLESS + IDLESS same-title strays onto the resolved row.
       // These are exactly `clusterByFilm`'s rule (4) rows: with no year and no
       // tmdbId they can belong to no OTHER film in the group, so attaching them
@@ -651,7 +676,7 @@ class CaffeineMovieCache(
       // row's OWN key, not a recomputed canonical spelling, for the same reason.
       val strays = positive.asMap().asScala.toSeq.filter { case (k, e) =>
         k != oldKey && k != target && k.year.isEmpty && e.tmdbId.isEmpty &&
-        TitleNormalizer.sanitize(k.cleanTitle) == norm
+        normalizer.sanitize(k.cleanTitle) == norm
       }
       // ONE write carrying every cinema (the resolved row's first
       // `readyToProject` upsert is already complete), so the read model is
@@ -682,7 +707,7 @@ class CaffeineMovieCache(
    *  2026 — the "two copies of Kumotry" bug). Ties break on `canonicalRank`. */
   private def concludedKeyFor(primary: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
-    val norm = TitleNormalizer.sanitize(primary.cleanTitle)
+    val norm = normalizer.sanitize(primary.cleanTitle)
     // A scrape lands on a concluded row when its title matches that row's key, OR
     // one of the row's TMDB aliases (its Polish / original title). The alias arm
     // lands a cinema's original-language listing of a film ("Tangled") straight on
@@ -702,9 +727,9 @@ class CaffeineMovieCache(
     // (its sanitize matches no alias).
     val concluded = positive.asMap().asScala.iterator
       .collect { case (k, e) if e.tmdbConcluded &&
-        (TitleNormalizer.sanitize(k.cleanTitle) == norm ||
+        (normalizer.sanitize(k.cleanTitle) == norm ||
          (FilmCanonicalizer.isBareFilmTitle((k, e)) &&
-          e.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm))) => k }
+          e.tmdbTitleAliases.exists(a => normalizer.sanitize(a) == norm))) => k }
       .toSeq
     // Prefer a row whose OWN key IS this title over one that matches only via a
     // TMDB alias. The alias arm exists to land an original-language listing that
@@ -715,7 +740,7 @@ class CaffeineMovieCache(
     // first in the canonicalRank tie-break ("De" < "Dz"), splitting the Polish
     // film across two ever-growing rows the sanitize-keyed canonicalize can't
     // re-merge. So resolve key-matches first, alias-only matches only as fallback.
-    val (keyMatches, aliasOnly) = concluded.partition(k => TitleNormalizer.sanitize(k.cleanTitle) == norm)
+    val (keyMatches, aliasOnly) = concluded.partition(k => normalizer.sanitize(k.cleanTitle) == norm)
     def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
       case None    => cands.minByOption(canonicalRank)
       case Some(y) =>
@@ -896,7 +921,7 @@ class CaffeineMovieCache(
    *  TMDB stage when a no-year scrape's resolved year promotes the row
    *  to a year-keyed identity. */
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit = {
-    require(TitleNormalizer.sanitize(oldKey.cleanTitle) == TitleNormalizer.sanitize(newKey.cleanTitle),
+    require(normalizer.sanitize(oldKey.cleanTitle) == normalizer.sanitize(newKey.cleanTitle),
       s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
     withTitleLock(oldKey.cleanTitle) {
       // `stored` (cache-or-Mongo): a cold `oldKey` read EMPTY would be re-`put` at
@@ -1088,7 +1113,7 @@ class CaffeineMovieCache(
     // prefix ("Kino Dostępne:"), a "+ event" suffix, or a Ukrainian screening keep
     // their title and stay their own card (see FormatTags' Ukrainian guard).
     def cleanAndFormat(cm: CinemaMovie): (String, List[String]) =
-      FormatTags.extractFormatTags(TitleNormalizer.cinemaClean(ruleKey, cm.movie.title))
+      FormatTags.extractFormatTags(normalizer.cinemaClean(ruleKey, cm.movie.title))
     val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
     // Badge each screening with its film's format tokens (unless the client already
     // set one), BEFORE the same-title fold below unions them.
@@ -1118,7 +1143,7 @@ class CaffeineMovieCache(
     // variants un-folded. Union every screening's showtimes (deduped, ordered) so
     // none is lost, and keep a deterministic representative for the scalar film
     // fields (incl. the year the row keys on).
-    val slotGroupKey: CinemaMovie => String = cm => TitleNormalizer.sanitize(cleaned(cm))
+    val slotGroupKey: CinemaMovie => String = cm => normalizer.sanitize(cleaned(cm))
     val deduped: Seq[CinemaMovie] =
       formatted.groupBy(slotGroupKey).toSeq
         .sortBy { case (k, _) => k }
@@ -1163,7 +1188,7 @@ class CaffeineMovieCache(
     // prior-slot carry-forward + the staging prune below).
     val knownSanitized: Set[String] =
       if (staging.isEmpty) Set.empty
-      else positive.asMap().asScala.keysIterator.map(k => TitleNormalizer.sanitize(k.cleanTitle)).toSet
+      else positive.asMap().asScala.keysIterator.map(k => normalizer.sanitize(k.cleanTitle)).toSet
     // Sanitized TMDB aliases (Polish + original title) of every CONCLUDED, BARE
     // row, so a cinema's original-language listing of a known film ("Tangled") is
     // recognised as already-known and lands on the existing resolved row instead
@@ -1176,7 +1201,7 @@ class CaffeineMovieCache(
       if (staging.isEmpty) Set.empty
       else positive.asMap().asScala.iterator
         .collect { case (k, e) if e.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, e)) =>
-          e.tmdbTitleAliases.iterator.map(TitleNormalizer.sanitize) }
+          e.tmdbTitleAliases.iterator.map(normalizer.sanitize) }
         .flatten.toSet
     // Widened recognition: index every movies row by each of its CINEMA SLOTS'
     // sanitized titles, scoped to the slot's cinema. So a scrape lands on a film
@@ -1206,14 +1231,14 @@ class CaffeineMovieCache(
     val rowByCinemaSlot: Map[(Cinema, String), CacheKey] =
       positive.asMap().asScala.iterator.flatMap { case (k, rec) =>
         rec.cinemaShowings.iterator.flatMap { case (cin, sd) =>
-          sd.title.iterator.map(t => (cin, TitleNormalizer.sanitize(t)) -> k)
+          sd.title.iterator.map(t => (cin, normalizer.sanitize(t)) -> k)
         }
       }.toSeq.groupBy(_._1).view.mapValues(_.map(_._2).minBy(canonicalRank)).toMap
     val knownByCinemaSlot: Set[(Cinema, String)] =
       if (staging.isEmpty) Set.empty else rowByCinemaSlot.keySet
     val priorStagingRows: Map[String, services.staging.StagingRecord] =
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
-        _.findAll().iterator.collect { case r if r.cinema == cinema => TitleNormalizer.sanitize(r.title) -> r }.toMap
+        _.findAll().iterator.collect { case r if r.cinema == cinema => normalizer.sanitize(r.title) -> r }.toMap
       }
     val divertedSanitized = scala.collection.mutable.Set.empty[String]
     // Titles diverted into staging for the FIRST time this cinema (no prior row) —
@@ -1226,7 +1251,7 @@ class CaffeineMovieCache(
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>
       val displayTitle = cleaned(cm)
       val primary      = keyOf(displayTitle, cm.movie.releaseYear)
-      val norm         = TitleNormalizer.sanitize(displayTitle)
+      val norm         = normalizer.sanitize(displayTitle)
       // A newcomer: `staging` is wired and this film's sanitize group isn't in
       // `movies` yet — AND it isn't a known film listed under another language (an
       // alias of a concluded row). (Same-tick spelling variants already collapsed
@@ -1251,7 +1276,7 @@ class CaffeineMovieCache(
           val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
           val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
           staging.get.upsert(cinema, displayTitle, cm.movie.releaseYear, MovieRecord(
-            searchTitle = Some(TitleNormalizer.apiQuery(TitleNormalizer.recase(displayTitle))),
+            searchTitle = Some(normalizer.apiQuery(normalizer.recase(displayTitle))),
             data        = Map(cinemaSlotKey(cinema, displayTitle) -> slot)
           ))
           divertedSanitized += norm
@@ -1516,7 +1541,7 @@ class CaffeineMovieCache(
    *  ambiguous (cross-film collision) and zero-match cases fall through to
    *  None and the caller creates a fresh row.
    *
-   *  Match uses `TitleNormalizer.sanitize` so an Arabic/Roman /
+   *  Match uses `normalizer.sanitize` so an Arabic/Roman /
    *  punctuation / case variant ("Mortal Kombat 2") redirects onto a row
    *  that only knows the canonical form ("Mortal Kombat II") — without
    *  this, the FIRST cinema's raw spelling would pin the row's
@@ -1525,12 +1550,12 @@ class CaffeineMovieCache(
   private def redirectToExistingVariant(primary: CacheKey): Option[CacheKey] = {
     if (positive.getIfPresent(primary) != null) return None
     import scala.jdk.CollectionConverters._
-    val normalizedRaw = TitleNormalizer.sanitize(primary.cleanTitle)
+    val normalizedRaw = normalizer.sanitize(primary.cleanTitle)
     // Match by cleanTitle normalisation. Cross-script titles produce
     // different normalised forms (sanitize keeps Unicode letters), so a
     // Cyrillic row can't be matched by a Latin scrape and vice versa.
     val candidates = positive.asMap().asScala.iterator
-      .filter { case (k, _) => TitleNormalizer.sanitize(k.cleanTitle) == normalizedRaw }
+      .filter { case (k, _) => normalizer.sanitize(k.cleanTitle) == normalizedRaw }
       .map(_._1)
       .toSet  // unique by CacheKey (which dedups by normalized form)
     if (candidates.size == 1) Some(candidates.head) else None
@@ -1538,9 +1563,9 @@ class CaffeineMovieCache(
 
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean = {
     import scala.jdk.CollectionConverters._
-    val normalizedRaw = TitleNormalizer.sanitize(rawTitle)
+    val normalizedRaw = normalizer.sanitize(rawTitle)
     positive.asMap().asScala.iterator.exists { case (k, e) =>
-      e.tmdbId.isDefined && TitleNormalizer.sanitize(k.cleanTitle) == normalizedRaw
+      e.tmdbId.isDefined && normalizer.sanitize(k.cleanTitle) == normalizedRaw
     }
   }
 

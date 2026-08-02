@@ -174,9 +174,9 @@ object FilmCanonicalizer {
    *  edge — an UNRESOLVED row is adopted onto a resolved row only when the resolved
    *  row is a bare film title, so a decorated edition's alias never adopts a
    *  genuinely-new bare film. */
-  private[services] def isBareFilmTitle(row: (CacheKey, MovieRecord)): Boolean = {
-    val norm = TitleNormalizer.sanitize(row._1.cleanTitle)
-    row._2.tmdbTitleAliases.exists(a => TitleNormalizer.sanitize(a) == norm)
+  private[services] def isBareFilmTitle(row: (CacheKey, MovieRecord))(using normalizer: TitleNormalizer): Boolean = {
+    val norm = normalizer.sanitize(row._1.cleanTitle)
+    row._2.tmdbTitleAliases.exists(a => normalizer.sanitize(a) == norm)
   }
 
   /** Partition the corpus into FILM-IDENTITY components before per-film
@@ -196,7 +196,7 @@ object FilmCanonicalizer {
    *  same-title row a per-title group saw still clusters together — plus the
    *  cross-title bare-alias rows. Each component is then sub-clustered by
    *  [[clusterByFilm]]. */
-  def groupByFilm(rows: Seq[(CacheKey, MovieRecord)]): Seq[Seq[(CacheKey, MovieRecord)]] = {
+  def groupByFilm(rows: Seq[(CacheKey, MovieRecord)])(using normalizer: TitleNormalizer): Seq[Seq[(CacheKey, MovieRecord)]] = {
     val n      = rows.length
     val parent = Array.tabulate(n)(identity)
     def find(x: Int): Int = {
@@ -213,7 +213,7 @@ object FilmCanonicalizer {
     def unionAllIndices(idxs: Iterable[Int]): Unit =
       idxs.reduceLeftOption { (a, b) => union(a, b); b }
     // sanitize(title) edges — always (preserves the prior title-scoped grouping).
-    rows.indices.groupBy(i => TitleNormalizer.sanitize(rows(i)._1.cleanTitle))
+    rows.indices.groupBy(i => normalizer.sanitize(rows(i)._1.cleanTitle))
       .valuesIterator.foreach(unionAllIndices)
     // tmdbId edges — connect EVERY pair of rows sharing a tmdbId: a film TMDB
     // resolves to one id is one record, however its rows are spelled (Polish /
@@ -242,10 +242,10 @@ object FilmCanonicalizer {
     val resolvedBareByAlias: Map[String, Seq[Int]] =
       rows.indices
         .filter(i => rows(i)._2.tmdbId.isDefined && isBareFilmTitle(rows(i)))
-        .flatMap(i => rows(i)._2.tmdbTitleAliases.map(a => TitleNormalizer.sanitize(a) -> i))
+        .flatMap(i => rows(i)._2.tmdbTitleAliases.map(a => normalizer.sanitize(a) -> i))
         .groupBy(_._1).view.mapValues(_.map(_._2)).toMap
     rows.indices.foreach { j =>
-      val norm = TitleNormalizer.sanitize(rows(j)._1.cleanTitle)
+      val norm = normalizer.sanitize(rows(j)._1.cleanTitle)
       resolvedBareByAlias.get(norm).foreach(_.foreach(union(_, j)))
     }
     // SEARCH-TITLE edges — union rows whose decoration-STRIPPED title (the
@@ -278,8 +278,8 @@ object FilmCanonicalizer {
     // grouping key — never the stored key, the display title, or the real TMDB
     // query (`apiQuery`), which stays in the original script. Exact-match gated,
     // so a lossy transliteration can only fail to fold, never mis-fold.
-    rows.indices.groupBy(i => TitleNormalizer.sanitize(
-        tools.TextNormalization.romanizeCyrillic(TitleNormalizer.apiQuery(rows(i)._1.cleanTitle))))
+    rows.indices.groupBy(i => normalizer.sanitize(
+        tools.TextNormalization.romanizeCyrillic(normalizer.apiQuery(rows(i)._1.cleanTitle))))
       .valuesIterator.foreach(unionAllIndices)
     // title-CONTAINMENT edges — the complement of the search-title edge, for banners
     // `apiQuery` does NOT recognise ("WAJDA: re-wizje: Człowiek z marmuru",
@@ -345,7 +345,7 @@ object FilmCanonicalizer {
    *  the production-year 2025 row attached to a TMDB-2026 resolved cluster)
    *  can't clobber the resolved row's tmdbId/imdbId/ratings. Order independent
    *  for the per-source `data` (it's a keyed merge). */
-  def canonical(cluster: Seq[(CacheKey, MovieRecord)]): (CacheKey, MovieRecord) = {
+  def canonical(cluster: Seq[(CacheKey, MovieRecord)])(using normalizer: TitleNormalizer): (CacheKey, MovieRecord) = {
     // Every reported variant: each CINEMA slot's derived title plus the rows'
     // current keys. Enrichment-source slots (Tmdb/Imdb/Filmweb) are excluded on
     // purpose: a row's identity spelling must come from what CINEMAS call it, not

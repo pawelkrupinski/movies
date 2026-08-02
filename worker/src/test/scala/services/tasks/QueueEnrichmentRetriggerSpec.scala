@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.movies.SingleCountryNormalizer.given
+
 import models.{Country, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

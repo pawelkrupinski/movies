@@ -28,7 +28,14 @@ import scala.util.Try
  * depend on it). On a standalone Mongo `startSession`/transactions error out; the
  * composition root should wire `InMemoryStagingFolder` there instead.
  */
-class MongoStagingFolder(connection: MongoConnection) extends StagingFolder with Logging {
+class MongoStagingFolder(
+  connection: MongoConnection,
+  // See `InMemoryStagingFolder` — the country whose rules select and key the group.
+  normalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(models.Country.default)
+) extends StagingFolder with Logging {
+
+  private given services.movies.TitleNormalizer = normalizer
 
   private val opTimeout  = 10.seconds
   private val maxRetries = 3

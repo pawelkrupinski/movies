@@ -27,11 +27,13 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     override def close() = ()
   }
 
-  // Thread-scoped (see TitleNormalizer.withRules): the rehydrate under test runs
-  // synchronously on this thread at cache construction, and the scope keeps the
-  // custom rule set from leaking into a suite running in parallel.
-  private def withInstalledRules(rs: TitleRuleSet)(body: => Unit): Unit =
-    TitleNormalizer.withRules(rs)(body)
+  // The rehydrate under test runs synchronously at cache construction, under the
+  // rule set the cache HOLDS. Handing it the normalizer says so outright; this
+  // used to install the rules in a thread-local scope and rely on the cache
+  // reading whatever was ambient at the moment each key was built — which is
+  // exactly the coupling that made a rule set impossible to scope per country.
+  private def cacheUnder(rs: TitleRuleSet, rows: StoredMovieRecord*): CaffeineMovieCache =
+    new CaffeineMovieCache(repositoryOf(rows*), normalizer = new TitleNormalizer(rs))
 
   private def row(title: String, cinema: Source): StoredMovieRecord =
     StoredMovieRecord(title, Some(2025),
@@ -48,21 +50,17 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     """(?i)\s*/\s*Kino\s+Cafe\s*$""", "", applyAll = false, order = 100)
 
   "rehydrate" should "union two documents a late merge-key rule collides, not drop one" in {
-    withInstalledRules(TitleRuleSet(TitleRules.all :+ kinoCafeRule)) {
-      val cache = new CaffeineMovieCache(repositoryOf(decorated, base))   // rehydrates at construction
-      cache.entries should have size 1
-      // The union keeps BOTH cinemas; the old last-write-wins kept only the
-      // last-iterated row's slot.
-      cache.entries.head._2.cinemaData.keySet shouldBe Set(CinemaCityKinepolis, Multikino)
-    }
+    val cache = cacheUnder(TitleRuleSet(TitleRules.all :+ kinoCafeRule), decorated, base)
+    cache.entries should have size 1
+    // The union keeps BOTH cinemas; the old last-write-wins kept only the
+    // last-iterated row's slot.
+    cache.entries.head._2.cinemaData.keySet shouldBe Set(CinemaCityKinepolis, Multikino)
   }
 
   it should "leave non-colliding rows as separate entries (no spurious union)" in {
     // Same two rows, but WITHOUT the /Kino Cafe rule they don't collide.
-    withInstalledRules(TitleRules.ruleSet) {
-      val cache = new CaffeineMovieCache(repositoryOf(decorated, base))
-      cache.entries should have size 2
-    }
+    val cache = cacheUnder(TitleRules.ruleSet, decorated, base)
+    cache.entries should have size 2
   }
 
   // The live duplicate-card / double-rating-run shape: different cinemas report ONE

@@ -1,5 +1,7 @@
 package services.metrics
 
+import services.movies.SingleCountryNormalizer.given
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
