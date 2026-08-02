@@ -41,6 +41,16 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   private def viaImdb[T](body: => T): T =
     LiveUpstream.orCancel("IMDb", probe(LiveUpstream.Probes.Imdb))(body)
 
+  /** Guarded by BOTH, because the pipeline case needs both.
+   *
+   *  It reaches IMDb only THROUGH TMDB — search the title, follow the id — so
+   *  guarding it on IMDb alone left it failing whenever TMDB was the upstream that
+   *  was down: the `viaTmdb` cases beside it cancelled correctly while this one ran
+   *  on an unreachable TMDB, resolved nothing, and failed its `found >= 1`. Observed
+   *  2026-08-02 with six TMDB cases cancelled and this one red in the same run —
+   *  which reads as a pipeline regression and is an upstream outage. */
+  private def viaTmdbAndImdb[T](body: => T): T = viaTmdb(viaImdb(body))
+
   // Films that appear in the current site data, picked for variety: a sequel,
   // an upcoming blockbuster, a Polish-language art-house piece, and a 1960s
   // classic (Wajda) which exercises old-films-with-diacritics matching.
@@ -74,7 +84,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   }
 
   "The full Polish-title → TMDB → IMDb pipeline" should
-      "produce a usable IMDb id (and rating when IMDb has aggregated one) for each known film" in viaImdb {
+      "produce a usable IMDb id (and rating when IMDb has aggregated one) for each known film" in viaTmdbAndImdb {
     var found = 0
     knownFilms.foreach { case (title, year) =>
       val result = for {
