@@ -58,8 +58,8 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
   // …and the floor must not swallow a real regression. The fallback chain that broke
   // the rating ladders put Poland 281 films from production on this very axis.
   it should "still flag a collapse that is far larger than the noise floor" in {
-    val prod = coverage(films = 726, rt = 354)
-    val run  = coverage(films = 710, rt = 73)
+    val prod = coverage(films = 726, tmdb = 526, rt = 354)
+    val run  = coverage(films = 710, tmdb = 509, rt = 73)
 
     ProdCoverageBaseline.divergences(run, prod, Band).mkString should include ("rottenTomatoes")
   }
@@ -71,15 +71,17 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
    * is within 5% of nothing, so a zero baseline admits only zero.
    */
   it should "flag a source production does not run for this country at all" in {
-    val prod = coverage(films = 1171, filmweb = 0)
-    val run  = coverage(films = 1220, filmweb = 972)
+    val prod = coverage(films = 1171, tmdb = 1137, filmweb = 0)
+    val run  = coverage(films = 1220, tmdb = 1192, filmweb = 972)
 
     val flagged = ProdCoverageBaseline.divergences(run, prod, Band)
     flagged.mkString should include ("filmwebRating")
   }
 
   it should "accept a zero baseline when the run also has none" in {
-    ProdCoverageBaseline.divergences(coverage(films = 1220, filmweb = 0), coverage(films = 1171, filmweb = 0), Band) shouldBe empty
+    ProdCoverageBaseline.divergences(
+      coverage(films = 1220, tmdb = 1192, filmweb = 0),
+      coverage(films = 1171, tmdb = 1137, filmweb = 0), Band) shouldBe empty
   }
 
   // The one axis with no share to take — it IS the denominator, so it is compared
@@ -96,5 +98,23 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
       ProdCoverageBaseline.write(code, baseline)
       ProdCoverageBaseline.read(code) shouldBe Some(baseline)
     } finally java.nio.file.Files.deleteIfExists(ProdCoverageBaseline.pathFor(code))
+  }
+
+  /**
+   * The distinction `ratingsGivenTmdbId` already draws in the report, now in the
+   * assertion: identification is measured against the films, everything downstream
+   * against the films that were IDENTIFIED.
+   *
+   * These are Poland's real numbers from the run that forced this. Judged against all
+   * films, `imdbRating` and `filmwebRating` were 5.6% and 6.6% out and failed; judged
+   * against identified films they are 92.5% and 90.1% against production's 93.0% and
+   * 91.7%. Nothing was wrong with the rating pipeline — the run simply carried 32 more
+   * unresolvable rows than production, and every rating axis inherited that.
+   */
+  it should "not flag ratings for a run that carries more unresolvable films than production" in {
+    val prod = coverage(films = 727, tmdb = 531, imdb = 519, imdbRating = 494, filmweb = 487, metascore = 308, rt = 353)
+    val run  = coverage(films = 745, tmdb = 517, imdb = 507, imdbRating = 478, filmweb = 466, metascore = 301, rt = 348)
+
+    ProdCoverageBaseline.divergences(run, prod, Band) shouldBe empty
   }
 }

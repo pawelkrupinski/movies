@@ -74,7 +74,8 @@ object ProdCoverageBaseline {
    * Which metrics sit further from production than `tolerance` allows, as report
    * lines — empty when every one is inside the band.
    *
-   * Compared as a SHARE of each side's own film count, not as raw counts. The corpus
+   * Compared as a SHARE, not as raw counts — of each side's own film count for
+   * identification, and of each side's own IDENTIFIED films for everything downstream. The corpus
    * is a snapshot and prod is live, so the two never hold quite the same number of
    * films; a raw comparison would fail on that alone and say nothing about
    * enrichment. `films` itself is the one metric compared as a count, because there
@@ -106,14 +107,58 @@ object ProdCoverageBaseline {
    */
   val NoiseFloorFilms = 15
 
-  def divergences(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] = {
-    def share(count: Int, films: Int): Double = if (films == 0) 0.0 else count.toDouble / films
-    actual.metrics.zip(prod.metrics).flatMap { case ((name, mine), (_, theirs)) =>
+  /**
+   * Each axis as `(name, run share, prod share, run count, prod count)`.
+   *
+   * ONE definition of what every axis is measured against, so the band and the report
+   * can never disagree about whether a run passed. Identification is a share of the
+   * FILMS; everything downstream is a share of the films that were IDENTIFIED — the
+   * distinction `ratingsGivenTmdbId` already draws in the report, because "we could
+   * not identify the film" and "we identified it and could not rate it" are different
+   * failures with different fixes. Conflating them had Poland failing on `imdbRating`
+   * and `filmwebRating` while rating 92.5% and 90.1% of what it had identified against
+   * production's 93.0% and 91.7%: a healthy pipeline, flagged for a deficit one level
+   * up. `films` is the one axis compared as a count — it IS the denominator.
+   */
+  private def axes(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline)
+      : Seq[(String, Double, Double, Int, Int)] = {
+    def share(count: Int, of: Int): Double = if (of == 0) 0.0 else count.toDouble / of
+    actual.metrics.zip(prod.metrics).map { case ((name, mine), (_, theirs)) =>
       val (a, b) =
-        if (name == "films") (actual.films.toDouble, prod.films.toDouble)
-        else                 (share(mine, actual.films), share(theirs, prod.films))
-      // `b == 0` covers both "prod has none of this" and an empty prod corpus; either
-      // way the only value within the band is zero.
+        if (name == "films")       (actual.films.toDouble,        prod.films.toDouble)
+        else if (name == "tmdbId") (share(mine, actual.films),    share(theirs, prod.films))
+        else                       (share(mine, actual.tmdbId),   share(theirs, prod.tmdbId))
+      (name, a, b, mine, theirs)
+    }
+  }
+
+  /**
+   * Every axis with the margin it has left, whether or not it failed.
+   *
+   * Printed on every run, deliberately, because a band that only speaks when it breaks
+   * hides the thing most worth seeing: an axis drifting TOWARDS the line. Poland's
+   * identification sat at 5.0% of a 5% band while the rating axes above it failed —
+   * the root cause clearing the threshold by a hair while its symptoms were the ones
+   * being reported. Silence would have said the run was fine.
+   *
+   * An axis inside the band but past four fifths of it is marked `NEARING`, so the
+   * drift is legible in the log of a PASSING leg rather than discovered by a failing
+   * one weeks later.
+   */
+  def report(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] =
+    axes(actual, prod).map { case (name, a, b, mine, theirs) =>
+      val off   = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
+      val apart = math.abs(mine - theirs)
+      val note =
+        if (off > tolerance && apart > NoiseFloorFilms) "OUT"
+        else if (off > tolerance * 0.8 && apart > NoiseFloorFilms) "NEARING"
+        else ""
+      f"$name%-15s run=$mine%5d prod=$theirs%5d — ${100 * off}%5.1f%% of a ${100 * tolerance}%.0f%% band, " +
+      f"$apart%3d film(s) apart $note"
+    }
+
+  def divergences(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] = {
+    axes(actual, prod).flatMap { case (name, a, b, mine, theirs) =>
       val off = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
       // Outside the relative band AND more than a few films apart. Either alone
       // misfires: the ratio is noise-dominated on a small corpus, and a raw count is

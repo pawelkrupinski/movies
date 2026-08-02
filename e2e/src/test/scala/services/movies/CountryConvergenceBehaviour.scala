@@ -917,7 +917,14 @@ abstract class CountryConvergenceBehaviour(
            s"imdbRating ${baseline.imdbRating}, filmwebRating ${baseline.filmwebRating}, " +
            s"metascore ${baseline.metascore}, rottenTomatoes ${baseline.rottenTomatoes}")
 
-      val offBand = ProdCoverageBaseline.divergences(coverageOf(w), baseline, ProdTolerance)
+      val mine = coverageOf(w)
+      // Printed whether or not it passes. A band that only speaks when it breaks hides
+      // an axis drifting TOWARDS the line — Poland's identification sat at 5.0% of a 5%
+      // band while the rating axes it feeds were the ones failing.
+      info(s"${country.displayName}: coverage against production —\n  " +
+           ProdCoverageBaseline.report(mine, baseline, ProdTolerance).mkString("\n  "))
+
+      val offBand = ProdCoverageBaseline.divergences(mine, baseline, ProdTolerance)
       withClue(
         s"${offBand.size} coverage axis/axes drifted from production by more than " +
         f"${100 * ProdTolerance}%.0f%%:\n${offBand.mkString("\n")}\n\n" +
