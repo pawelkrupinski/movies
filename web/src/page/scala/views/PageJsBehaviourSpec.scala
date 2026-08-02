@@ -1,5 +1,7 @@
 package views
 
+import services.movies.SingleCountryNormalizer.given
+
 import testsupport.TestMessages.given
 
 import models.{CinemaCityWroclavia, CinemaShowing, Helios, MovieRecord, Poznan, Showtime, SourceData}
