@@ -350,6 +350,10 @@ class MovieController( cc: ControllerComponents,
                        servingCountry: models.Country = models.Country.fromEnv,
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
 
+  // The country this deployment serves — the rules its corpus was keyed under,
+  // so /debug orders staging rows by the same anchor the worker wrote.
+  private given TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
+
   // Read the session's `userId` (set by `AuthController.callback`) and
   // resolve it to a User if the row is still there. Returns None for
   // anonymous browsers AND for the rare case where a previously
@@ -928,7 +932,7 @@ object MovieController {
   def orderStagingByQueue(
     staging: Seq[services.staging.StagingRecord],
     active:  Seq[services.tasks.TaskSummary],
-  ): Seq[services.staging.StagingRecord] = {
+  )(using normalizer: TitleNormalizer): Seq[services.staging.StagingRecord] = {
     import services.tasks.TaskState
     // 1-based place of each waiting dedupKey among the waiting tasks (first seen).
     val waitingPlaces = {
@@ -953,7 +957,7 @@ object MovieController {
         if (places.isEmpty) 1e9d else places.min.toDouble                                      // waiting / queued-past-snapshot
     }
     // sortBy is stable, so equal-rank rows keep the caller's (title, cinema) order.
-    staging.sortBy(r => rank(TitleNormalizer.sanitize(r.title)))
+    staging.sortBy(r => rank(normalizer.sanitize(r.title)))
   }
 
   /** Deterministic sample cards for the `/debug/tune` page — built in process
