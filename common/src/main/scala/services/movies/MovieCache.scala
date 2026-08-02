@@ -51,6 +51,14 @@ private[services] object CacheKey {
  * not the concrete implementation.
  */
 trait MovieCacheReader {
+  /** The country whose title rules key this cache's rows. Exposed on the READ
+   *  surface because the enrichers and the read-model projection hold a cache and
+   *  need to fold titles the same way it did — a resolution hint key or a
+   *  projected `_id` built under different rules addresses a row that isn't
+   *  there. Defaulted like `MovieRepository.normalizer` so in-memory and inline
+   *  test caches need not supply one. */
+  def normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+
   /** True when some existing cache row's cleanTitle normalises to the same
    *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). */
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean
@@ -226,7 +234,7 @@ class CaffeineMovieCache(
   // builds — including the ones built on the change-stream driver thread and in
   // the rehydrate scheduler — keys through THIS instance, which is what makes
   // the cache's identity country-correct rather than process-global.
-  normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+  override val normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
 ) extends MovieCache with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built

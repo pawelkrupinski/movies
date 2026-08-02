@@ -12,7 +12,16 @@ import scala.collection.mutable
  * on read exactly as the codec does, so case/diacritic variants collapse and the
  * fake differs from Mongo only at the storage boundary (a HashMap, not BSON).
  */
-class InMemoryStagingRepository(seed: Seq[(Source, String, Option[Int], MovieRecord)] = Seq.empty) extends StagingRepository with Logging {
+class InMemoryStagingRepository(
+  seed: Seq[(Source, String, Option[Int], MovieRecord)] = Seq.empty,
+  // The rules this repository anchors rows under. Overridable so a spec that
+  // needs a specific rule set (e.g. one where a title still drifts between its
+  // persisted `_id` and its re-derived display title) can say so, instead of
+  // installing rules ambiently and hoping the repository reads them.
+  override val normalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(models.Country.default)
+) extends StagingRepository with Logging {
+  private given services.movies.TitleNormalizer = normalizer
 
   // Store the REBUILT `StagingRecord` keyed by `_id`, in a `_id`-sorted map. The
   // promoter re-reads `findAll` O(films) times per staging drain, and on a

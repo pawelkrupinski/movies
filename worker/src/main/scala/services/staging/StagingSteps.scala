@@ -36,6 +36,9 @@ class StagingSteps(
   recoverImdbId:     (String, Option[Int], models.MovieRecord) => Option[String],
   freshness:         FreshnessStore
 ) extends Logging {
+  // The staging rows anchor under their repository's country rules — take them
+  // from it rather than a second copy that could disagree.
+  private given services.movies.TitleNormalizer = stagingRepository.normalizer
   import StagingSteps._
 
   /** Every staging row of the film whose title sanitizes to `anchor`, `_id`-sorted

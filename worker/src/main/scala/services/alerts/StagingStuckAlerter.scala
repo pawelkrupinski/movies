@@ -95,7 +95,10 @@ class StagingStuckAlerter(
     }
   }
 
-  private def idOf(r: StagingRecord): String = StagingRecord.idFor(r.cinema, r.title, r.year)
+  // The row carries the `_id` it was persisted under; re-deriving it would fold the
+  // title again under whichever rules were in scope here, which is how a re-keyed row
+  // stops matching the alert that was tracking it.
+  private def idOf(r: StagingRecord): String = r.id
 
   /** One bullet per film (`title (year)` + the cinemas reporting it), titles
    *  sorted so the message is stable. Rows are per-cinema, so a film showing at

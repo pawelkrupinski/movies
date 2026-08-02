@@ -51,6 +51,11 @@ class ReadModelProjector(
   scheduler: java.util.concurrent.ScheduledExecutorService = DaemonExecutors.scheduler("read-model-projector"),
   cpuClock:  tools.ThreadCpuClock = tools.ThreadCpuClock.threadMxBean
 ) extends Stoppable with Logging {
+  // The projection keys rows by the repository's own `_id` formula, so it must
+  // fold titles with the same rules the repository writes under — take them from
+  // it rather than accepting a second, separately-wired copy that could disagree.
+  private given services.movies.TitleNormalizer = movieRepository.normalizer
+
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
   // Diff state for minimal writes: the CONTENT HASH of the last-projected document per

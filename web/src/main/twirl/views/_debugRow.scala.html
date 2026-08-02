@@ -14,7 +14,7 @@
  * that OOM'd the view on the full corpus.
  *@
 @(row: StoredMovieRecord)(implicit city: models.City)
-@defining(StoredMovieRecord.idOf(row)) { id =>
+@defining(StoredMovieRecord.idOf(row)(using services.movies.TitleNormalizer.forCountry(models.Country.of(city)))) { id =>
 @defining(row.title) { title =>
 @defining(row.year)  { year =>
 @defining(row.record) { e =>

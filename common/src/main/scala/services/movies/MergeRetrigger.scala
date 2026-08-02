@@ -64,9 +64,12 @@ object MergeRetrigger {
     // Fellini: Słodkie życie" vs "…SŁODKIE ŻYCIE". That was the ~83-retrigger/boot
     // rating spike (`CanonicalizeRetriggerFlapSpec`). Only a genuine title change
     // (different `sanitize`) or a year change re-kicks now.
+    // Read each key's OWN normalised form rather than re-sanitizing its title: a
+    // CacheKey now carries the identity its builder computed, so this compares
+    // what the corpus actually keyed the rows under instead of re-deriving it
+    // under whichever rules happened to be in scope here.
     val titleOrYearChanged   =
-      TitleNormalizer.sanitize(beforeKey.cleanTitle) != TitleNormalizer.sanitize(afterKey.cleanTitle) ||
-      beforeKey.year != afterKey.year
+      beforeKey.normalized != afterKey.normalized || beforeKey.year != afterKey.year
     // Compare the RESOLVER original-title set (TMDB + IMDb + Filmweb), not the
     // TMDB-only display `originalTitle`: a Filmweb-supplied original title is a new
     // search term the TMDB/IMDb lookups mine, so it must re-kick them the same way

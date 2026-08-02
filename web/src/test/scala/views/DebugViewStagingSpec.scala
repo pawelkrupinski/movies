@@ -1,5 +1,7 @@
 package views
 
+import services.movies.SingleCountryNormalizer.given
+
 import models.{Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -102,6 +102,8 @@ class MovieService(
   // before; `Wiring` injects it.
   wikidata:             Option[WikidataClient]        = None
 ) extends Drainable with Logging {
+  // Fold titles with the rules the corpus was keyed under, not a process default.
+  private given services.movies.TitleNormalizer = cache.normalizer
 
   // How a needed single-movie TMDB resolution is dispatched (see the `dispatcher`
   // ctor param). The inline default dedups by the row's `CacheKey` so it doesn't

@@ -45,6 +45,7 @@ class DebugStreamController(
    *  ships empty (lazily fetched on expand), so no cinema-URL map is needed. */
   private[controllers] def upsertFrame(row: StoredMovieRecord): String = {
     implicit val city: models.City = models.City.all.head
+    given services.movies.TitleNormalizer = services.movies.TitleNormalizer.forCountry(models.Country.of(city))
     val html = views.html._debugRow(row).body
     s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row), "html" -> html))}\n\n"
   }
@@ -57,7 +58,7 @@ class DebugStreamController(
    *  the row's `pending_movies` `_id` so the page can replace-or-insert it. */
   private[controllers] def stagingUpsertFrame(row: StagingRecord): String = {
     val html = views.html._stagingRow(row).body
-    s"data: ${Json.stringify(Json.obj("type" -> "staging-upsert", "id" -> StagingRecord.idFor(row.cinema, row.title, row.year), "html" -> html))}\n\n"
+    s"data: ${Json.stringify(Json.obj("type" -> "staging-upsert", "id" -> row.id, "html" -> html))}\n\n"
   }
 
   /** SSE frame for a removed staging row (the film graduated): just the `_id`. */

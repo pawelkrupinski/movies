@@ -120,8 +120,13 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // the case-INSENSITIVE `xtra-canonical-gwiezdne-wojny-ci`, which collapses both
     // spellings to one key — so this exact title no longer drifts in prod; the stamp-by-`id`
     // invariant is what we exercise, with a rule set where the drift still exists.
-    TitleNormalizer.withRules(TitleRuleSet(TitleRules.all)) {
-      val repository = new InMemoryStagingRepository
+    // Hand the repository the restricted set outright. This used to install it in a
+    // thread-local scope and rely on the repository reading it while building the
+    // row's `_id`; now the repository owns its rules, so the spec has to say which —
+    // and gets the drift it needs deterministically rather than by ambient timing.
+    val restricted = new TitleNormalizer(TitleRuleSet(TitleRules.all))
+    locally {
+      val repository = new InMemoryStagingRepository(normalizer = restricted)
       val slotTitle  = "Gwiezdne Wojny: Mandalorian i Grogu"            // recase output (capital W → sanitize strips)
       // Persist under the NON-stripping all-caps spelling so the `_id` prefix and
       // the re-derived display title sanitize to DIFFERENT keys.
@@ -129,7 +134,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
         MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(slotTitle)))))
 
       val row    = repository.findAll().head
-      val anchor = TitleNormalizer.sanitize(row.title)
+      val anchor = restricted.sanitize(row.title)
       anchor should not be row.id.split('|')(1)                          // precondition: the drift exists
 
       val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbNoMatch = true)))

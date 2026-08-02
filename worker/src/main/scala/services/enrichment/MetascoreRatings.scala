@@ -32,6 +32,8 @@ class MetascoreRatings(
   mcLinkCache: ResolutionCache = ResolutionCache.passthrough,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
+  // Fold titles with the rules the corpus was keyed under, not a process default.
+  private given services.movies.TitleNormalizer = cache.normalizer
 
   override protected def sourceName: String = "Metacritic"
 

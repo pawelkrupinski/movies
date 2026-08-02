@@ -1,5 +1,7 @@
 package services.movies
 
+import services.movies.SingleCountryNormalizer.given
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete

@@ -36,15 +36,15 @@ object StagingRecord {
   /** Build a row whose `id` is the canonical `idFor` of its fields — the right
    *  default for a FRESH row (a scrape divert, a test seed). Rows read back from
    *  storage carry their persisted `_id` instead (see `fromStorage`). */
-  def apply(cinema: Source, title: String, year: Option[Int], record: MovieRecord): StagingRecord =
+  def apply(cinema: Source, title: String, year: Option[Int], record: MovieRecord)(using TitleNormalizer): StagingRecord =
     StagingRecord(cinema, title, year, record, idFor(cinema, title, year))
 
   /** The Mongo `_id` for a staging row: `cinemaDisplayName|sanitize(title)|year`.
    *  A `Cinema.displayName` never contains `|` and `sanitize` never emits one, so
    *  the first `|` ends the cinema and the last `|` precedes the year — the middle
    *  is the sanitized title (the same prefix `movies` keys its `_id` on). */
-  def idFor(cinema: Source, title: String, year: Option[Int]): String =
-    s"${cinema.displayName}|${TitleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
+  def idFor(cinema: Source, title: String, year: Option[Int])(using normalizer: TitleNormalizer): String =
+    s"${cinema.displayName}|${normalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
   /** Rebuild a staging row from its persisted `_id` + `MovieRecord`. The display
    *  title is derived from the record's slots (same as `StoredMovieRecord`), the
@@ -89,15 +89,21 @@ trait StagingRepository {
    * on a convergence leg, the scrape rate decayed from 28 venues per 37s to 28 per 243s
    * (Germany 110/38s to 110/429s; the UK 78/180s to 78/850s) — all of it here.
    *
-   * The anchor is `TitleNormalizer.sanitize(row.title)` for the row `findAll` would have
+   * The anchor is `normalizer.sanitize(row.title)` for the row `findAll` would have
    * returned — NOT anything derivable from the `_id`. An earlier attempt read it off the
    * key, which encodes the sanitized title as it was at the row's FIRST write, while
    * callers derive it at read time from `record.displayTitle`. Any override must answer
    * the same question the default does; [[StagingRepository]]'s own spec asserts the two
    * agree.
    */
-  def findByAnchor(anchor: String): Seq[StagingRecord] =
-    findAll().filter(row => TitleNormalizer.sanitize(row.title) == anchor)
+  def findByAnchor(anchor: String): Seq[StagingRecord] = {
+    given TitleNormalizer = normalizer
+    findAll().filter(row => normalizer.sanitize(row.title) == anchor)
+  }
+
+  /** The country whose rules anchor these rows. Defaulted like
+   *  `MovieRepository.normalizer`; the worker wires its own. */
+  def normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
 
   /** Write-through upsert of one cinema's row, keyed by `idFor(cinema, title,
    *  year)` — the scrape-divert path, called on every tick a newcomer is still
@@ -214,7 +220,13 @@ object StagingRepository {
  * relaxed write concern: `pending_movies` is re-scraped continuously and its rows
  * are transient, so a write lost to a crash is recovered by the next scrape.
  */
-class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends StagingRepository with Logging {
+class MongoStagingRepository(
+  sharedDb: Option[MongoDatabase] = None,
+  // See `StagingRepository.normalizer` — the rules that anchor a row's `_id`.
+  override val normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+) extends StagingRepository with Logging {
+
+  private given TitleNormalizer = normalizer
 
   private lazy val coll: Option[MongoCollection[StoredMovieDto]] =
     sharedDb.map { db =>
@@ -288,12 +300,12 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
   @volatile private var anchorIndexBuilt = false
 
   private def anchorOf(id: String, record: MovieRecord): Option[String] =
-    StagingRecord.fromStorage(id, record).map(row => TitleNormalizer.sanitize(row.title))
+    StagingRecord.fromStorage(id, record).map(row => normalizer.sanitize(row.title))
 
   private def ensureAnchorIndex(): Unit =
     if (!anchorIndexBuilt) synchronized {
       if (!anchorIndexBuilt) {
-        findAll().foreach(row => anchorById.put(row.id, TitleNormalizer.sanitize(row.title)))
+        findAll().foreach(row => anchorById.put(row.id, normalizer.sanitize(row.title)))
         anchorIndexBuilt = true
       }
     }
@@ -310,7 +322,7 @@ class MongoStagingRepository(sharedDb: Option[MongoDatabase] = None) extends Sta
     else fetchByIds(c, ids) match {
       case Success(rows) =>
         rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).toSeq)
-          .filter(row => TitleNormalizer.sanitize(row.title) == anchor)
+          .filter(row => normalizer.sanitize(row.title) == anchor)
       // NOT `Seq.empty`. A short answer here tells the reaper this film has no rows, so it
       // skips the film's next step — indistinguishable from the film being finished, and
       // permanent, because nothing revisits it. Degrade to the slower full scan instead:

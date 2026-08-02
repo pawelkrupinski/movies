@@ -29,6 +29,13 @@ import scala.util.Try
  * identical with or without Mongo.
  */
 trait ResolutionStore {
+  /** The country whose rules built the hint keys held here. A key embeds
+   *  `sanitize`d title fields, so `ResolutionKeys.belongsTo` can only match keys
+   *  folded the same way. Defaulted like `MovieRepository.normalizer` so test and
+   *  in-memory stores need not carry one. */
+  def normalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(models.Country.default)
+
   /** The stored value for `hintKey`, or None if never stored or older than the TTL. */
   def get(hintKey: String): Option[String]
 
@@ -61,6 +68,7 @@ object ResolutionStore {
 /** In-memory `ResolutionStore` for tests and Mongo-less local dev. Honours the
  *  same TTL expiry as the Mongo store via an injectable clock. */
 class InMemoryResolutionStore(clock: Clock = Clock.systemUTC()) extends ResolutionStore {
+  private given services.movies.TitleNormalizer = normalizer
   private val entries = new ConcurrentHashMap[String, (String, Instant)]()
 
   override def get(hintKey: String): Option[String] =
@@ -102,6 +110,8 @@ class MongoResolutionStore(
   collectionName: String,
   clock:          Clock = Clock.systemUTC()
 ) extends ResolutionStore with Logging {
+
+  private given services.movies.TitleNormalizer = normalizer
 
   private val coll: Option[MongoCollection[Document]] =
     db.map(_.getCollection(collectionName).withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))

@@ -110,7 +110,7 @@ class MongoStagingFolder(
     cleanTitle: String,
     candidateIds: Option[Set[String]]
   ): Seq[(CacheKey, MovieRecord)] = {
-    val sanitize = TitleNormalizer.sanitize(cleanTitle)
+    val sanitize = normalizer.sanitize(cleanTitle)
     // Load every staging row and pick this fold's group by `sanitize(r.title)` —
     // NOT a `_id`-middle regex. A row's `_id` middle is the sanitize baked at
     // creation, which DRIFTS from the re-derived display title's sanitize (e.g.

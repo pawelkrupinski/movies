@@ -37,6 +37,8 @@ class InMemoryMovieRepository(
   // union (`SlotsRepository.merge`) is never exercised.
   slots: Option[SlotsRepository] = None
 ) extends MovieRepository {
+  // Fold titles with the rules the corpus was keyed under, not a process default.
+  private given services.movies.TitleNormalizer = normalizer
 
   override def hasScreenings: Boolean = screenings.isDefined
   override def hasSlots:      Boolean = slots.isDefined

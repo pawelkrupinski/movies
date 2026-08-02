@@ -110,6 +110,11 @@ class WriteThroughResolutionCache(
   recorder: ResolutionOutcomeRecorder = ResolutionOutcomeRecorder.noop,
   unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry) extends ResolutionCache {
 
+  // Take the rules from the store rather than accepting a second copy: the
+  // in-memory cache and the durable store hold the SAME hint keys, so folding
+  // them differently would make an invalidation miss the row it meant to clear.
+  private given services.movies.TitleNormalizer = store.normalizer
+
   private val cache: Cache[String, String] =
     Caffeine.newBuilder().expireAfterWrite(ResolutionStore.Ttl.toMillis, TimeUnit.MILLISECONDS).build()
 

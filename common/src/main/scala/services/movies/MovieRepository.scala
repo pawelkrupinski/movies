@@ -33,8 +33,8 @@ object StoredMovieRecord {
    *  formula the repository keys rows by — exposed so the change stream and the
    *  /debug live view can key DOM rows on the same id the store does. Matches
    *  the in-memory `CacheKey` normalization (case/diacritic-folded). */
-  def idFor(title: String, year: Option[Int]): String =
-    s"${TitleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
+  def idFor(title: String, year: Option[Int])(using normalizer: TitleNormalizer): String =
+    s"${normalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
   /** The `_id` of a stored row. Prefers the actual `persistedId` over re-deriving
    *  `idFor(title, year)`: the display `title` is derived from `sourceData`, so a
@@ -44,7 +44,8 @@ object StoredMovieRecord {
    *  Mongo documents then render the same `data-id` and the /debug live view's
    *  first-match DOM lookup opens whichever row is first. The persisted `_id` is
    *  unique by construction, so keying on it keeps the rows independent. */
-  def idOf(row: StoredMovieRecord): String = row.persistedId.getOrElse(idFor(row.title, row.year))
+  def idOf(row: StoredMovieRecord)(using TitleNormalizer): String =
+    row.persistedId.getOrElse(idFor(row.title, row.year))
 
   /** Rebuild a stored row from its persisted `_id` and `MovieRecord`, deriving
    *  the display `title` and `year` rather than reading pinned columns — used by
@@ -122,8 +123,16 @@ trait MovieRepository {
    *  fell to a third across every country.
    *
    *  The in-memory store cannot fail, so the default reports `true`. */
-  def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) =
+  def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = {
+    given TitleNormalizer = normalizer
     (findAll().find(row => StoredMovieRecord.idOf(row) == id), true)
+  }
+
+  /** The country whose rules derive a row's `_id`. Defaulted so the in-memory and
+   *  inline test implementations need not carry one; `MongoMovieRepository`
+   *  overrides it from its constructor, which is the only place the choice is
+   *  load-bearing (the id it writes IS the row's identity). */
+  def normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
 
   /** Like [[findAll]] but with each source's `showtimes` list dropped — the
    *  rows for a LISTING that renders only per-cinema metadata + counts, never
@@ -338,8 +347,16 @@ class MongoMovieRepository(
   // this process was down, closing the gap the consumers' periodic backstops exist for. ON
   // only in the WORKER (the durable read-model / cache mirror); OFF for web /debug + scripts,
   // whose ephemeral cursor position must not clobber the worker's in the shared token doc.
-  persistResumeToken: Boolean = false
+  persistResumeToken: Boolean = false,
+  // The country whose rules derive a row's `_id` (`sanitize(title)|year`). The
+  // document id IS the row's identity, so a repository writing under another
+  // country's rules would split or collide rows. Last in the list and defaulted
+  // to Poland so the positional script/test constructions are unchanged; the
+  // worker and web wire their own country's instance.
+  override val normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
 ) extends MovieRepository with Logging {
+
+  private given TitleNormalizer = normalizer
 
   override def hasScreenings: Boolean = screenings.isDefined
   override def hasSlots:       Boolean = slots.isDefined
