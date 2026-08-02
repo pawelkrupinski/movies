@@ -1,5 +1,7 @@
 package services.readmodel
 
+import services.movies.SingleCountryNormalizer.given
+
 import models.MovieRecord
 import services.movies.StoredMovieRecord
 

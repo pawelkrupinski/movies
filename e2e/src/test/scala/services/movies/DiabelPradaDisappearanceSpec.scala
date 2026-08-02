@@ -1,5 +1,7 @@
 package services.movies
 
+import services.movies.SingleCountryNormalizer.given
+
 import clients.TmdbClient
 import clients.tools.FakeHttpFetch
 import controllers.MovieControllerService

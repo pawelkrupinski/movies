@@ -1,5 +1,7 @@
 package services.readmodel
 
+import services.movies.SingleCountryNormalizer.given
+
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -247,4 +249,18 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     byTitle("Iwan Groźny").map(_.cinema)   shouldBe Seq("Multikino Stary Browar")
     byTitle("Иван Грозный").map(_.cinema)  shouldBe Seq("Helios Magnolia Park")
   }
+  /** The projected `_id` is the read model's identity, and it is a `sanitize` of the
+   *  title — so it belongs to a country, not to the process. Before the projection
+   *  took its normalizer as a parameter it folded with whatever was global, which on
+   *  a multi-country worker meant Poland's rules for every country's read model. */
+  "filmId" should "fold the title with the country whose rules are passed, not a global" in {
+    val stored = StoredMovieRecord("Minions & Monster", Some(2026),
+      MovieRecord(data = Map[models.Source, models.SourceData](
+        models.Multikino -> models.SourceData(title = Some("Minions & Monster"), releaseYear = Some(2026)))))
+    val pl = ReadModelProjection.filmId(stored)(using TitleNormalizer.forCountry(models.Country.Poland))
+    val de = ReadModelProjection.filmId(stored)(using TitleNormalizer.forCountry(models.Country.Germany))
+    assert(pl.startsWith("minionsimonster|"))
+    assert(de.startsWith("minionsmonster|"))
+  }
+
 }

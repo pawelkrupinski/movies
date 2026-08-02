@@ -37,6 +37,13 @@ class WorkerShowtimesMetrics(
   clock:       Clock     = Clock.systemDefaultZone(),
   cities:      Seq[City] = City.all
 ) extends CorpusMetricsCollector {
+
+  // The corpus this collector counts belongs to `countryCode`, so the film ids it
+  // projects must fold titles with THAT country's rules — otherwise the gauge
+  // counts ids no reader ever addresses.
+  private given services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(
+      models.Country.byCode(countryCode).getOrElse(models.Country.default))
   import WorkerShowtimesMetrics._
 
   // Seed every city at 0 so a city that empties reads as an explicit 0, not a
@@ -81,7 +88,7 @@ object WorkerShowtimesMetrics {
    *  exactly as the read model does (per-title split + cinema→city bucketing) and gated on
    *  `readyToProject`; a row that fails to project is skipped, matching the projector's
    *  per-row resilience. */
-  class ShowtimeTally(cities: Seq[City], clock: Clock) {
+  class ShowtimeTally(cities: Seq[City], clock: Clock)(using services.movies.TitleNormalizer) {
     private val bySlug = cities.map(c => c.slug -> c).toMap
     private val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
 
@@ -109,7 +116,7 @@ object WorkerShowtimesMetrics {
 
   /** The tally over a fixed set of rows — the pure-logic entry point the specs drive;
    *  production folds the same [[ShowtimeTally]] row-by-row off the shared scan. */
-  def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock): Map[String, Int] = {
+  def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock)(using services.movies.TitleNormalizer): Map[String, Int] = {
     val tally = new ShowtimeTally(cities, clock)
     rows.iterator.foreach(tally.accept)
     tally.counts

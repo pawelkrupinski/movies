@@ -1,5 +1,7 @@
 package scripts
 
+import services.movies.SingleCountryNormalizer.given
+
 import org.mongodb.scala.MongoClient
 import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjection, ReadModelReader, ReadModelWriter}
