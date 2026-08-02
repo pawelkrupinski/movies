@@ -42,6 +42,11 @@ class StagingReaper(
   clock:        Clock             = Clock.systemUTC()
 ) extends Stoppable with Logging {
 
+  // Anchor rows with the rules their repository keyed them under — an anchor
+  // folded any other way names a group that isn't there.
+  private given normalizer: services.movies.TitleNormalizer = staging.normalizer
+
+
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("staging-reaper")
 
   def start(): Unit = {
@@ -62,7 +67,7 @@ class StagingReaper(
    *  the initial kick that would otherwise wait for the next backstop tick. Same
    *  idempotent [[enqueueNext]] decision, keyed on the newcomer's anchor. */
   def onNewcomerDiverted: PartialFunction[DomainEvent, Unit] = {
-    case StagingNewcomerDiverted(title) => enqueueNext(TitleNormalizer.sanitize(title)); ()
+    case StagingNewcomerDiverted(title) => enqueueNext(normalizer.sanitize(title)); ()
   }
 
   private def chainable(t: TaskType): Boolean =
@@ -86,7 +91,7 @@ class StagingReaper(
    *  `_id`-sorted (findAll is sorted and `groupBy` keeps encounter order), so each
    *  group is byte-identical to what `rowsFor(anchor)` would have returned. */
   def tick(): Int = {
-    val byAnchor = staging.findAll().groupBy(r => TitleNormalizer.sanitize(r.title))
+    val byAnchor = staging.findAll().groupBy(r => normalizer.sanitize(r.title))
     val n = byAnchor.foldLeft(0) { case (acc, (anchor, rows)) => acc + enqueueNext(anchor, rows) }
     if (n > 0) logger.info(s"StagingReaper enqueued $n staging step(s).")
     n
@@ -154,7 +159,7 @@ class StagingReaper(
    *  agrees with what the reaper will actually enqueue. */
   def stepCounts(): Map[StagingStep, Int] =
     staging.findAll()
-      .groupBy(r => TitleNormalizer.sanitize(r.title))
+      .groupBy(r => normalizer.sanitize(r.title))
       .toSeq
       .flatMap { case (anchor, rows) => stepFor(rows, anchor) }
       .groupBy(identity)

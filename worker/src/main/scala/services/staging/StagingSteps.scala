@@ -38,7 +38,7 @@ class StagingSteps(
 ) extends Logging {
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
-  private given services.movies.TitleNormalizer = stagingRepository.normalizer
+  private given normalizer: services.movies.TitleNormalizer = stagingRepository.normalizer
   import StagingSteps._
 
   /** Every staging row of the film whose title sanitizes to `anchor`, `_id`-sorted
@@ -59,7 +59,7 @@ class StagingSteps(
    *  fetch failed — its detail never BLOCKS, but it's still fetched first. A cinema
    *  with no enricher at all has no detail to wait for. */
   def detailReady(row: StagingRecord): Boolean = enricherFor(row.cinema) match {
-    case Some(_) => freshness.isFresh(StagingTaskKeys.detailKey(TitleNormalizer.sanitize(row.title), row.cinema.displayName), FreshnessKind.DetailEnrich)
+    case Some(_) => freshness.isFresh(StagingTaskKeys.detailKey(normalizer.sanitize(row.title), row.cinema.displayName), FreshnessKind.DetailEnrich)
     case None    => true
   }
 
