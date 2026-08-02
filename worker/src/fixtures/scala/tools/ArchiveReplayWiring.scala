@@ -25,7 +25,7 @@ import services.scrapes.ScrapeArchiveRepository
 class ArchiveReplayWiring(
   country:          Country,
   archive:          ScrapeArchiveRepository,
-  enrichmentCache:  Option[EnrichmentCache] = None,
+  enrichmentCache:  Option[EnrichmentCache],
   // REQUIRED, and always a real database. There is no in-memory storage to default
   // to any more: a fixpoint proved over a map says nothing about codecs, paged scans
   // or a transactional staging fold, and every one of those has shipped a bug here.

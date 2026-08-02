@@ -11,7 +11,7 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusFixture, CountryScrapeCorpus, EnrichmentCache,
-  EnrichmentCacheStore, EnrichmentFreshness, Env, FileEnrichmentCacheStore, ProdCoverageBaseline,
+  EnrichmentFreshness, Env, FileEnrichmentCacheStore, ProdCoverageBaseline,
   SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -55,10 +55,10 @@ import scala.util.{Random, Try}
  * for the corpus, a tunnelled cluster for the cache — is gone, along with the failures
  * they caused.
  *
- * ENRICHMENT is on the path whenever a real `TMDB_API_KEY` is present, replayed so that
- * what a pass sees is fixed rather than whatever the live services felt like saying that
- * minute. Without a key nothing resolves, and the suite says so rather than passing
- * quietly — see `requireEnrichmentReached`.
+ * ENRICHMENT is always on the path, replayed so that what a pass sees is fixed rather
+ * than whatever the live services felt like saying that minute. A real `TMDB_API_KEY` is
+ * required and checked before the run starts, because without one nothing resolves and
+ * the leg would spend an hour proving a fixpoint over a corpus with no metadata in it.
  */
 abstract class CountryConvergenceBehaviour(
   country: Country,
@@ -82,7 +82,7 @@ abstract class CountryConvergenceBehaviour(
 ) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   override def afterAll(): Unit = {
-    enrichmentCacheStore.foreach(_.close())
+    enrichmentCacheStore.close()
     passStorages.synchronized(passStorages.foreach(p => Try(p.close())))
     storage.close()
     super.afterAll()
@@ -125,13 +125,15 @@ abstract class CountryConvergenceBehaviour(
    * needs no cluster, no credential and no proxy, and is warm on the next run by
    * construction.
    *
-   * Present only when a real `TMDB_API_KEY` is. Without a key `TmdbClient.search`
-   * short-circuits to `None`, so nothing downstream would resolve and there would be
-   * nothing to cache.
+   * Requires a real `TMDB_API_KEY`, and says so HERE rather than letting the run find
+   * out. Without a key `TmdbClient.search` short-circuits before it reaches any fetch, so
+   * neither the tree nor the cache can rescue it: the leg resolves exactly zero and dies
+   * at `requireEnrichmentReached` — after scraping, folding and projecting a whole
+   * country to prove nothing. The keyless run used to be a supported mode, with the cache
+   * simply absent and the enrichment assertion excused along with it.
    *
-   * That gate is silent by design, and the trap it sets is worth naming: `Env` reads
-   * `.env.local` from the WORKING DIRECTORY, so a run from a fresh worktree finds no key
-   * and quietly enriches nothing. Symlink it in to exercise the real path:
+   * The trap worth naming: `Env` reads `.env.local` from the WORKING DIRECTORY, so a run
+   * from a fresh worktree finds no key. Symlink it in:
    *
    * {{{
    *   ln -s /path/to/movies/.env.local .env.local     # gitignored
@@ -141,9 +143,14 @@ abstract class CountryConvergenceBehaviour(
    * The run prints the preload count and the hit/fill split, so whether it was warm is
    * never a guess.
    */
-  private lazy val enrichmentCacheStore: Option[EnrichmentCacheStore] =
-    if (TmdbClient.ApiKey.isEmpty) None
-    else Some(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureDirectory)))
+  private lazy val enrichmentCacheStore: FileEnrichmentCacheStore = {
+    if (TmdbClient.ApiKey.isEmpty)
+      throw new IllegalStateException(
+        s"TMDB_API_KEY is not set, so ${country.displayName} would resolve nothing: TmdbClient.search " +
+        "short-circuits on a missing key without reaching the fixture tree at all. Symlink .env.local into " +
+        "the working directory (see this suite's scaladoc) and re-run.")
+    new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureDirectory))
+  }
 
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
@@ -175,7 +182,8 @@ abstract class CountryConvergenceBehaviour(
    * application thread parked in `RealHttpFetch.getBytes` in all 15 samples, and the
    * fixture tree five files larger at the end than at the start.
    */
-  private lazy val enrichmentCache: Option[EnrichmentCache] = enrichmentCacheStore.map { store =>
+  private lazy val enrichmentCache: EnrichmentCache = {
+    val store   = enrichmentCacheStore
     val expired = expireStaleFixtures
     if (expired > 0)
       info(s"${country.displayName}: expired $expired recorded response(s) older than " +
@@ -186,13 +194,8 @@ abstract class CountryConvergenceBehaviour(
     // cache is for is the half the tree cannot hold, the remembered FAILURES.
     val cache  = new EnrichmentCache(store, persistSuccesses = false)
     val loaded = step("preloadEnrichmentCache")(cache.preload())
-    info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${describe(store)}")
+    info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${store.root}")
     cache
-  }
-
-  private def describe(store: EnrichmentCacheStore): String = store match {
-    case file: FileEnrichmentCacheStore => file.root.toString
-    case other                          => other.getClass.getSimpleName
   }
 
   /** Independent random-order passes compared against each other. Three is enough
@@ -208,13 +211,16 @@ abstract class CountryConvergenceBehaviour(
    *  between passes merely because the wall clock moved mid-test — the corpus's
    *  showtimes are all after it, so every pass renders the same window.
    *
-   *  The generated corpus builds its showtimes around a fixed day, so the constant
-   *  is right for it. A REAL corpus's showtimes sit around whenever it was scraped,
-   *  and rendering a live dump at a hard-coded 2026-08-01 would put the whole
-   *  repertoire in the past and emit nothing — so that case takes its instant from
-   *  the corpus instead (see `realCorpusRenderAt`). Still a fixed value for the
-   *  run's duration either way, which is all the passes need. */
-  private lazy val renderAt: LocalDateTime = realCorpusRenderAt.getOrElse(LocalDateTime.of(2026, 8, 1, 0, 0))
+   *  It used to fall back to a hard-coded 2026-08-01 — right for the GENERATED corpus,
+   *  which built its showtimes around a fixed day. That corpus is gone (a run without a
+   *  real one is refused by `requireCorpusFixture`), and the constant with it: applied to
+   *  a real dump it put the whole repertoire in the past and emitted nothing, which is
+   *  how 12 venues were once reported as "never reach the read model". */
+  private lazy val renderAt: LocalDateTime =
+    realScrapeRows.flatMap(_.films).flatMap(_.showtimes).map(_.dateTime).minOption
+      .map(_.toLocalDate.atStartOfDay)
+      .getOrElse(throw new IllegalStateException(
+        s"${country.displayName}'s corpus holds no showtimes at all, so there is no instant to render at."))
 
   /** Counts merges by reason so a per-tick delta is observable. */
   private final class CountingMergeMetrics extends MergeMetrics {
@@ -261,7 +267,7 @@ abstract class CountryConvergenceBehaviour(
     val archive = storage.archive
     val seeded   = seedArchive(archive)
     val merges   = new CountingMergeMetrics
-    val w = new ArchiveReplayWiring(country, archive, enrichmentCache, storage) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage) {
       // `mergeMetrics` is the ONLY thing this override exists to change — everything
       // else must stay as `WorkerWiring` builds it. `enrichmentLanguage` went missing
       // here and nowhere else: the cache the replay passes use (see `replay`) keeps
@@ -283,7 +289,7 @@ abstract class CountryConvergenceBehaviour(
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     bootSettled(w)
-    enrichmentCache.foreach(cache => info(s"${country.displayName}: enrichment cache after boot — ${cache.statistics}"))
+    info(s"${country.displayName}: enrichment cache after boot — ${enrichmentCache.statistics}")
     info(s"${country.displayName}: enrichment coverage — ${enrichmentCoverage(w)}")
     info(s"${country.displayName}: ratings given a tmdbId — ${ratingsGivenTmdbId(w)}")
     info(s"${country.displayName}: unresolved — ${unresolvedFilms(w)}")
@@ -343,11 +349,9 @@ abstract class CountryConvergenceBehaviour(
 
   /** How far each enrichment source actually got across the settled corpus.
    *
-   *  Printed on every run, including the offline one, where the all-zero line is
-   *  itself the assertion's context: it says out loud that the fixpoint just proved
-   *  was proved with no metadata in it. With the cache on, the ladder is legible —
-   *  a source can only reach the rows the source above it resolved, so a collapse
-   *  between two rungs localises which resolver stopped answering.
+   *  Printed on every run, and legible as a ladder — a source can only reach the rows
+   *  the source above it resolved, so a collapse between two rungs localises which
+   *  resolver stopped answering.
    */
   /** How many unresolved titles the report names before truncating. Enough to spot a
    *  pattern (a banner family, a language, a decoration) without burying the run's other
@@ -567,31 +571,18 @@ abstract class CountryConvergenceBehaviour(
     rows
   }
 
-  /** The real corpus's own render instant: the start of the day its OLDEST listed
-   *  showtime falls on, so every screening the dump holds is in the future and the
-   *  read model renders all of it. Taken from the corpus rather than the clock so
-   *  the three passes still agree. */
-  private lazy val realCorpusRenderAt: Option[LocalDateTime] =
-    // Same condition as `seedArchive`: a real corpus is a real corpus whether it came
-    // from a fixture or a live archive. Gating on `realScrapeSource` alone left a
-    // fixture-driven run rendering at the hard-coded generated-corpus instant, which
-    // put 12 venues' entire repertoire in the past and reported them as "never reach
-    // the read model" — a loss that was really a clock mismatch.
-    Option.when(CorpusFixture.exists(corpusKey) || realScrapeSource.isDefined)(realScrapeRows).flatMap { rows =>
-      rows.flatMap(_.films).flatMap(_.showtimes).map(_.dateTime).minOption.map(_.toLocalDate.atStartOfDay)
-    }
-
   /** Seed the archive with this country's corpus, exactly as a real scrape would
    *  have filed it — through `ScrapeAttempt`, so the archive's own "content only"
    *  rule and its BSON round-trip are both on the path to the pipeline. */
-  private def seedArchive(archive: ScrapeArchiveRepository): Int =
+  private def seedArchive(archive: ScrapeArchiveRepository): Int = {
     // A committed fixture is enough on its own — it must NOT need a live source
     // configured alongside it. Dispatching on `realScrapeSource` alone meant a
     // checked-in corpus was silently ignored unless the tunnel env var happened to be
     // set too, which is backwards: the fixture exists precisely so a run needs no
     // tunnel.
-    if (CorpusFixture.exists(corpusKey) || realScrapeSource.isDefined) seedFromRealScrapes(archive)
-    else { requireCorpusFixture(); 0 }   // requireCorpusFixture always fails; 0 satisfies the type
+    if (!CorpusFixture.exists(corpusKey) && realScrapeSource.isEmpty) requireCorpusFixture()
+    seedFromRealScrapes(archive)
+  }
 
   /** Copy the real `cinema_scrapes` dump in. Already restricted to the cinemas this
    *  country's catalogue still knows (see [[realScrapeRows]]) — a dump can outlive a
@@ -806,7 +797,7 @@ abstract class CountryConvergenceBehaviour(
     // Mongo caps the whole thing at 63 characters.
     val passStorage = ConvergenceStorage.fromEnv(s"${country.code}p${seed - OrderSeed}")
     passStorages.synchronized(passStorages += passStorage)
-    val w = new ArchiveReplayWiring(country, archive, enrichmentCache, passStorage) {
+    val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
