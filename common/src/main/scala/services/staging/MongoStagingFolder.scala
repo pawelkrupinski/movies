@@ -32,7 +32,7 @@ class MongoStagingFolder(
   connection: MongoConnection,
   // See `InMemoryStagingFolder` — the country whose rules select and key the group.
   normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(models.Country.default)
+    services.movies.TitleNormalizer.deployment
 ) extends StagingFolder with Logging {
 
   private given services.movies.TitleNormalizer = normalizer

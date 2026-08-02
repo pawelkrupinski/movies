@@ -103,7 +103,7 @@ trait StagingRepository {
 
   /** The country whose rules anchor these rows. Defaulted like
    *  `MovieRepository.normalizer`; the worker wires its own. */
-  def normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+  def normalizer: TitleNormalizer = TitleNormalizer.deployment
 
   /** Write-through upsert of one cinema's row, keyed by `idFor(cinema, title,
    *  year)` — the scrape-divert path, called on every tick a newcomer is still
@@ -223,7 +223,7 @@ object StagingRepository {
 class MongoStagingRepository(
   sharedDb: Option[MongoDatabase] = None,
   // See `StagingRepository.normalizer` — the rules that anchor a row's `_id`.
-  override val normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+  override val normalizer: TitleNormalizer = TitleNormalizer.deployment
 ) extends StagingRepository with Logging {
 
   private given TitleNormalizer = normalizer

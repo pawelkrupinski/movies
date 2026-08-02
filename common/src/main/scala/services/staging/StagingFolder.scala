@@ -56,7 +56,7 @@ class InMemoryStagingFolder(
   // the many single-country test constructions are unchanged; the worker wires its
   // own country's instance.
   normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(models.Country.default)
+    services.movies.TitleNormalizer.deployment
 ) extends StagingFolder with Logging {
   private given services.movies.TitleNormalizer = normalizer
   private val lock = new AnyRef

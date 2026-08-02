@@ -34,7 +34,7 @@ trait ResolutionStore {
    *  folded the same way. Defaulted like `MovieRepository.normalizer` so test and
    *  in-memory stores need not carry one. */
   def normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.forCountry(models.Country.default)
+    services.movies.TitleNormalizer.deployment
 
   /** The stored value for `hintKey`, or None if never stored or older than the TTL. */
   def get(hintKey: String): Option[String]

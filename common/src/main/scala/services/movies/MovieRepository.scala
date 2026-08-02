@@ -132,7 +132,7 @@ trait MovieRepository {
    *  inline test implementations need not carry one; `MongoMovieRepository`
    *  overrides it from its constructor, which is the only place the choice is
    *  load-bearing (the id it writes IS the row's identity). */
-  def normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+  def normalizer: TitleNormalizer = TitleNormalizer.deployment
 
   /** Like [[findAll]] but with each source's `showtimes` list dropped — the
    *  rows for a LISTING that renders only per-cinema metadata + counts, never
@@ -353,7 +353,7 @@ class MongoMovieRepository(
   // country's rules would split or collide rows. Last in the list and defaulted
   // to Poland so the positional script/test constructions are unchanged; the
   // worker and web wire their own country's instance.
-  override val normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+  override val normalizer: TitleNormalizer = TitleNormalizer.deployment
 ) extends MovieRepository with Logging {
 
   private given TitleNormalizer = normalizer

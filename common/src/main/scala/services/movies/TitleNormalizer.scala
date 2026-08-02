@@ -306,6 +306,23 @@ object TitleNormalizer {
 
   private val byCountry = new ConcurrentHashMap[Country, TitleNormalizer]()
 
+  /** TRANSITIONAL: the normalizer for the country THIS process serves, resolved
+   *  from the environment exactly as the old process-global did.
+   *
+   *  It exists so the constructor defaults on `MovieRepository`, `MovieCache`,
+   *  `StagingRepository` and friends stay behaviour-identical while their
+   *  composition roots are migrated to pass an instance explicitly. Defaulting
+   *  them to `forCountry(Country.default)` instead would have been a live
+   *  regression: `showtimes-de` and `showtimes-uk` resolve `KINOWO_COUNTRY`, so a
+   *  Poland default would have started keying their corpora with Polish rules —
+   *  the precise fault this refactor removes.
+   *
+   *  A multi-country worker still gets Poland here, which is why
+   *  `WorkerMain.unsupportedCountries` keeps refusing to boot one until the
+   *  remaining call sites are injected and this default can be deleted. */
+  def deployment: TitleNormalizer =
+    forCountry(Country.soleFromEnv.getOrElse(Country.default))
+
   // Precompiled hot-path patterns. `sanitize` / `stripPunct` run per movie ×
   // per cinema × per tick (plus every staging row and read-model projection);
   // `String.replaceAll` recompiles its `Pattern` on every call, so we compile

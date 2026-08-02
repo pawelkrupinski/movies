@@ -57,7 +57,7 @@ trait MovieCacheReader {
    *  projected `_id` built under different rules addresses a row that isn't
    *  there. Defaulted like `MovieRepository.normalizer` so in-memory and inline
    *  test caches need not supply one. */
-  def normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+  def normalizer: TitleNormalizer = TitleNormalizer.deployment
 
   /** True when some existing cache row's cleanTitle normalises to the same
    *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). */
@@ -234,7 +234,7 @@ class CaffeineMovieCache(
   // builds — including the ones built on the change-stream driver thread and in
   // the rehydrate scheduler — keys through THIS instance, which is what makes
   // the cache's identity country-correct rather than process-global.
-  override val normalizer: TitleNormalizer = TitleNormalizer.forCountry(models.Country.default)
+  override val normalizer: TitleNormalizer = TitleNormalizer.deployment
 ) extends MovieCache with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
