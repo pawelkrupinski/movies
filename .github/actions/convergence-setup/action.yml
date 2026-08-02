@@ -1,0 +1,206 @@
+# Everything a convergence leg needs BEFORE it can run a spec: a real database, the
+# recorded corpus and its production baseline, the enrichment tree, and a warm sbt.
+#
+# Extracted because there are now two jobs that need all of it — the fast sample gate
+# and the full leg behind it — and the setup is not incidental: it is ~180 lines of
+# hard-won detail about which storage survives (artifacts and a rolling release, never
+# the actions cache, which evicts silently at this repo's 9.46 GB), and duplicating it
+# would guarantee the two drift. A drifted copy is worse than no gate: the sample would
+# pass on inputs the full leg never sees.
+name: Convergence leg setup
+description: MongoDB, recorded fixtures and a warm sbt for a country's convergence leg.
+
+inputs:
+  code:
+    description: The country's two-letter code (pl / de / uk).
+    required: true
+  token:
+    description: A token that can read this repo's runs and releases.
+    required: true
+
+runs:
+  using: composite
+  steps:
+
+    # A real database under the assertions, because the suite spent its whole
+    # life claiming a pipeline fixpoint with every repository faked out. Nothing
+    # in those runs could have caught a BSON codec that drops a field, a
+    # `findAll` that recurses the async driver into a StackOverflowError once a
+    # collection grows, a required DTO field that fails a whole batch's decode,
+    # or a staging fold that needs a real transaction — all of which this
+    # repository has actually shipped.
+    #
+    # A CONTAINER, emphatically not a tunnel. The `flyctl proxy` to a production
+    # cluster is what cancelled three legs at the 75-minute ceiling and hung a
+    # preload past its 120-second budget; this is on localhost, needs no
+    # credential, holds nothing anyone would miss, and dies with the runner.
+    #
+    # Single-node REPLICA SET rather than standalone: change streams (the
+    # read-model projector) and multi-document transactions (the staging fold)
+    # are both rejected by a standalone mongod, and both are on the path.
+    - name: Start MongoDB (single-node replica set, for change streams)
+      shell: bash
+      run: |
+          docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0
+          until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
+          docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+          until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
+
+    # The scrape corpus, from the ARTIFACT of the newest `Record scrape fixtures`
+    # run — not from the actions cache it also writes.
+    #
+    # The cache silently loses it. This repo sits at ~9.46 GB of a 10 GB ceiling,
+    # so entries are evicted by LRU with no signal: a leg logs `Cache not found
+    # for input keys: scrape-fixtures-uk-` and carries on. Poland and Germany
+    # never noticed because their corpora are committed to the repository; the
+    # UK's is not, so it depended entirely on the evictable copy — and when that
+    # vanished the leg fell back to a generated corpus and reported `tmdbId 0`,
+    # which cost eleven runs and a wrong diagnosis to trace.
+    #
+    # Same lesson as the enrichment trees a few steps above: an artifact has its
+    # own retention and cannot be evicted to make room for a build cache.
+    - name: Restore the recorded scrape corpus
+      shell: bash
+      continue-on-error: true
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          mkdir -p scrape-archive
+          for run in $(gh run list --workflow "Record scrape fixtures" --status success \
+                       --limit 10 --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+              if gh run download "$run" --name "scrape-fixtures-${{ inputs.code }}" \
+                 --dir scrape-archive 2>/dev/null; then
+                  echo "scrape corpus from recording run $run"
+                  ls -l scrape-archive/
+                  exit 0
+              fi
+          done
+          echo "no recorded scrape corpus for ${{ inputs.code }} — the leg will fail and say so"
+
+    # The enrichment tree — recorded responses AND the remembered-answer cache —
+    # lives in a ROLLING RELEASE, one asset per country, overwritten in place.
+    #
+    # Three storage options, and only one of them fits. The actions CACHE is out
+    # on space: this repo already sits at 9.46 GB of a 10 GB ceiling, so these
+    # tarballs were evicted the moment they were written — with
+    # `actions/cache/save` still reporting success, because a save succeeding
+    # says nothing about whether the entry SURVIVES — and forcing them through
+    # that ceiling evicts the sbt caches every job depends on. MONGO has the
+    # space and is where this cache started, but it is only reachable over a
+    # `flyctl proxy`, which is the single component that has broken more runs
+    # this week than everything else combined (three legs cancelled at the
+    # 75-minute ceiling paying 5s a write to a socket nobody was listening to).
+    # ARTIFACTS work, and are what this used to use, but they are per-run: three
+    # countries at 84-434 MB every deploy, retained for days, when the only copy
+    # anyone ever reads is the newest one.
+    #
+    # A release asset is 2 GB per file, doesn't touch the Actions storage quota,
+    # comes off the CDN with no tunnel in the path, and `--clobber` replaces it
+    # in place — so there is exactly one copy per country and no history to
+    # prune. It is also a far simpler read than scanning runs for an artifact.
+    #
+    # Never fails the leg: no release yet is the normal first-run state, and the
+    # leg then falls through to the artifact bootstrap, and failing that to
+    # fetching live and publishing what it learns.
+    - name: Restore the enrichment tree and remembered answers
+      shell: bash
+      continue-on-error: true
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          # FIXTURE_RELEASE_TAG comes from the workflow-level `env`, which is
+          # exported into every step's shell.
+          TAG="$FIXTURE_RELEASE_TAG"
+          mkdir -p enrichment-archive
+          if gh release download "$TAG" --pattern "enrichment-${{ inputs.code }}.tar.gz" \
+             --dir enrichment-archive --clobber 2>/dev/null; then
+              echo "enrichment tree from release $TAG"
+              ls -l enrichment-archive/
+              exit 0
+          fi
+
+          # One-off bootstrap: before the release existed, legs published
+          # artifacts. Read the newest of those so the switch doesn't throw away
+          # captures already paid for. Conclusion deliberately NOT filtered — a
+          # leg that failed or was cancelled still recorded everything it
+          # enriched before it stopped, and today's largest captures came from
+          # cancelled legs.
+          echo "no asset in release $TAG — falling back to the newest artifact"
+          for run in $(gh run list --workflow "Country convergence" --limit 10 \
+                       --json databaseId --jq '.[].databaseId' 2>/dev/null); do
+                  [ "$run" = "${{ github.run_id }}" ] && continue
+                  if gh run download "$run" --name "enrichment-fixtures-${{ inputs.code }}" \
+                     --dir enrichment-archive 2>/dev/null; then
+                      echo "enrichment fixtures from run $run"
+                      ls -l enrichment-archive/
+                      exit 0
+                  fi
+          done
+          echo "no enrichment capture found for ${{ inputs.code }} — this leg fetches live and publishes the result"
+
+    - name: Unpack whichever fixtures are present
+      shell: bash
+      run: |
+          set -euo pipefail
+          for archive in "scrape-archive/scrapes-${{ inputs.code }}.tar.gz" \
+                         "enrichment-archive/enrichment-${{ inputs.code }}.tar.gz"; do
+              if [ -f "$archive" ]; then
+                  tar -xzf "$archive"
+                  echo "restored $archive ($(du -h "$archive" | cut -f1))"
+              else
+                  echo "no $archive — this leg fetches live for it and the recorder captures it next"
+              fi
+          done
+          # `|| true` and a subshell: a MISSING fixture directory is the normal
+          # fallback path, not an error — the leg then fetches live and the
+          # recorder captures it next. Without this, `find` exiting non-zero on
+          # an absent path tripped `set -euo pipefail` and failed the whole leg
+          # AFTER printing the count, which is how three legs died 40 seconds in
+          # with both restores reporting success.
+          available=$( { find test/resources/fixtures/corpus \
+                              "test/resources/fixtures/enrichment-${{ inputs.code }}" \
+                              -type f 2>/dev/null || true; } | wc -l )
+          echo "fixture files available: $available"
+
+          # Count the REMEMBERED-ANSWER cache separately from the recorded
+          # responses, because they fail independently and only one of them is
+          # visible in the file count above.
+          #
+          # The tree records what a fetch RETURNED. Half a country's films never
+          # resolve and still cost three or four rating-slug guesses that 404,
+          # and a 404 returns nothing to record — so those verdicts live only in
+          # `.enrichment-cache`, and a leg that arrives without it re-asks every
+          # one of them live and rate-paced. That is a 22-minute Poland leg
+          # versus a 12-minute one, and the ONLY symptom is the clock: nothing
+          # errors, coverage is identical, and the run still passes. Printing the
+          # entry count on both sides of the artifact hop is what makes the
+          # difference between "warm" and "silently cold" legible in the log.
+          cache="test/resources/fixtures/enrichment-${{ inputs.code }}/.enrichment-cache"
+          remembered=$( { find "$cache" -name '*.entry' 2>/dev/null || true; } | wc -l )
+          if [ "$remembered" -gt 0 ]; then
+              echo "remembered enrichment answers restored: $remembered"
+          else
+              echo "NO remembered-answer cache in the artifact — this leg re-asks every"
+              echo "unresolved film's rating slugs live, and publishes the cache it builds."
+          fi
+
+    - uses: actions/setup-java@v5
+      with:
+          distribution: temurin
+          java-version: 25
+          cache: sbt
+    - uses: sbt/setup-sbt@v1
+
+    - uses: actions/cache@v5
+      with:
+          path: |
+              target
+              project/target
+              project/project/target
+          key: sbt-target-convergence-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala') }}
+          restore-keys: |
+              sbt-target-convergence-${{ runner.os }}-
+              sbt-target-e2e-${{ runner.os }}-
+              sbt-target-${{ runner.os }}-
