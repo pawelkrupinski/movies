@@ -115,12 +115,100 @@ class ImdbIdResolver(
    *  the cache, so the event-driven `onImdbIdMissing` (which reads + `putIfPresent`s
    *  the cache) can't reach it; recovering here folds the row already carrying the
    *  id, the same end state the direct path's `ImdbIdMissing` chain produces. */
-  def findIdFor(searchTitle: String, year: Option[Int]): Option[String] = {
+  def findIdFor(searchTitle: String, year: Option[Int], record: models.MovieRecord = models.MovieRecord()): Option[String] = {
     logger.info(s"IMDb-id (staging): looking up [search='$searchTitle'] (${year.getOrElse("?")})")
-    val id = cachedFindId(searchTitle, year)
+    val id = lookupId(searchTitle, year, record)
     logger.info(s"IMDb-id (staging): [search='$searchTitle'] (${year.getOrElse("?")}) → ${id.getOrElse("no match")}")
     id
   }
+
+  /**
+   * Every rung, cache-free — suggestion endpoint, director corroboration, Wikidata,
+   * Letterboxd, OMDb, Cinemeta — for a row that is NOT in the movie cache.
+   *
+   * Extracted because the STAGING recovery could not reach any of it. That path holds a
+   * `pending_movies` row, not a cached one, so it called `findIdFor`, which is the first
+   * rung alone; the other five lived inside `resolve`, behind a `cache.get`. In a replay
+   * where staging handles nearly every newcomer that is not a subtlety — one leg logged
+   * 1,696 staging lookups against 11 that reached the full ladder — and it is precisely
+   * the long tail those rungs exist for. IMDb's suggestion endpoint answers a Polish
+   * query with the film's ENGLISH title ("Brzezina" → "The Birch Wood") and the matcher
+   * rejects it, while Cinemeta returns tt0068321 for the same query — the exact id
+   * production holds.
+   */
+  private def lookupId(searchTitle: String, year: Option[Int], record: models.MovieRecord,
+                       // The Wikidata rung harvests RT/Metacritic URLs alongside the id.
+                       // Writing them back needs a cached row, which the staging caller has
+                       // not got — so the effect belongs to the caller, not the ladder.
+                       onHarvest: WikidataIds => Unit = _ => ()): Option[String] = {
+    val years = (record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year).toSeq.sorted
+    val yearSeq = if (years.isEmpty) Seq(year) else years.map(Option(_))
+    val found: Option[String] = yearSeq.iterator.flatMap(y => cachedFindId(searchTitle, y)).nextOption()
+      .orElse {
+        // Director-based fallback: when the year-anchored cached search returns nothing
+        // (e.g. IMDb hasn't set a release year yet for a fresh film), try confirming an
+        // exact-deburr-title candidate via director. Not routed through the cache — the
+        // basic path already cached a miss; this live fallback only fires when directors
+        // are known and can disambiguate.
+        val directors = record.director.toSet
+        if (directors.nonEmpty)
+          yearSeq.iterator.flatMap(y => Try(imdb.findId(searchTitle, y, directors)).toOption.flatten).nextOption()
+        else None
+      }
+      .orElse {
+        // Wikidata fallback: ONE claims call cross-references via the Filmweb
+        // entity id (P5032) and yields every film-database id at once. Only fires
+        // when the filmwebUrl is a real entity page (not a search redirect) and a
+        // WikidataClient has been wired. Never throws — findIdsByFilmwebId absorbs
+        // all network failures and returns None.
+        val harvested = for {
+          client    <- wikidata
+          url       <- record.filmwebUrl
+          filmwebId <- WikidataClient.filmwebEntityId(url)
+          ids       <- client.findIdsByFilmwebId(filmwebId)
+        } yield ids
+        // Backfill the RT / Metacritic page URLs the harvest turned up — their
+        // rating clients otherwise slug-probe/scrape to discover them. (TMDB's
+        // P4947 is intentionally NOT applied here: a film reaching this bridge
+        // already has a tmdbId — that's what fired `ImdbIdMissing` and gated its
+        // Filmweb enrichment — so harvesting it would be a no-op.)
+        harvested.foreach(onHarvest)
+        harvested.flatMap(_.imdbId)
+      }
+      .orElse {
+        // Letterboxd backstop — when the row already has a tmdbId, its Letterboxd
+        // film page echoes the imdbId (echo-checked against the queried tmdbId).
+        for {
+          resolver <- letterboxdIdResolver
+          tmdbId   <- record.tmdbId
+          imdbId   <- resolver.resolveImdbId(tmdbId)
+        } yield imdbId
+      }
+      .orElse {
+        // OMDb backstop — the English DB that covers most of the TMDB-less
+        // long tail (Indian/Malayalam/festival titles). title+year+director
+        // corroborated (see OMDbClient) so a fuzzy hit can't bind a wrong film.
+        // This is the id the once-daily OmdbBackfill sweep would have supplied
+        // hours later; running it inline lands it now.
+        omdb.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year, record.director.toSet))
+      }
+      .orElse {
+        // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a
+        // TMDB-less film with no Filmweb entity page, search Wikidata's film items
+        // by title and bind the first whose label + P577 year corroborate. Catches
+        // films with a Wikidata entry (hence RT/MC/Letterboxd slugs too) that the
+        // English-DB resolvers miss.
+        wikidata.flatMap(_.findImdbIdByTitle(searchTitle, year))
+      }
+      .orElse {
+        // Cinemeta (Stremio) — final rung. IMDb-keyed catalogue covering a broad
+        // foreign/regional long tail; corroborated by title+year so a fuzzy hit
+        // can't bind a wrong film. Free, no API key.
+        cinemeta.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year))
+      }
+    found
+  }
+
 
   private def resolve(title: String, year: Option[Int], searchTitle: String): Unit = {
     val key = cache.keyOf(title, year)
@@ -133,71 +221,7 @@ class ImdbIdResolver(
       // the id flickering present/absent with arrival order (StagingOrderDeterminismSpec).
       // The sorted year set is order-independent; the per-year EXACT match still refuses
       // a same-series sibling ("Kicia Kocia w przedszkolu" 2024) at no reported year.
-      val years = (record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year).toSeq.sorted
-      val yearSeq = if (years.isEmpty) Seq(year) else years.map(Option(_))
-      val found = yearSeq.iterator.flatMap(y => cachedFindId(searchTitle, y)).nextOption()
-        .orElse {
-          // Director-based fallback: when the year-anchored cached search returns nothing
-          // (e.g. IMDb hasn't set a release year yet for a fresh film), try confirming an
-          // exact-deburr-title candidate via director. Not routed through the cache — the
-          // basic path already cached a miss; this live fallback only fires when directors
-          // are known and can disambiguate.
-          val directors = record.director.toSet
-          if (directors.nonEmpty)
-            yearSeq.iterator.flatMap(y => Try(imdb.findId(searchTitle, y, directors)).toOption.flatten).nextOption()
-          else None
-        }
-        .orElse {
-          // Wikidata fallback: ONE claims call cross-references via the Filmweb
-          // entity id (P5032) and yields every film-database id at once. Only fires
-          // when the filmwebUrl is a real entity page (not a search redirect) and a
-          // WikidataClient has been wired. Never throws — findIdsByFilmwebId absorbs
-          // all network failures and returns None.
-          val harvested = for {
-            client    <- wikidata
-            url       <- record.filmwebUrl
-            filmwebId <- WikidataClient.filmwebEntityId(url)
-            ids       <- client.findIdsByFilmwebId(filmwebId)
-          } yield ids
-          // Backfill the RT / Metacritic page URLs the harvest turned up — their
-          // rating clients otherwise slug-probe/scrape to discover them. (TMDB's
-          // P4947 is intentionally NOT applied here: a film reaching this bridge
-          // already has a tmdbId — that's what fired `ImdbIdMissing` and gated its
-          // Filmweb enrichment — so harvesting it would be a no-op.)
-          harvested.foreach(backfillRatingUrls(key, _))
-          harvested.flatMap(_.imdbId)
-        }
-        .orElse {
-          // Letterboxd backstop — when the row already has a tmdbId, its Letterboxd
-          // film page echoes the imdbId (echo-checked against the queried tmdbId).
-          for {
-            resolver <- letterboxdIdResolver
-            tmdbId   <- record.tmdbId
-            imdbId   <- resolver.resolveImdbId(tmdbId)
-          } yield imdbId
-        }
-        .orElse {
-          // OMDb backstop — the English DB that covers most of the TMDB-less
-          // long tail (Indian/Malayalam/festival titles). title+year+director
-          // corroborated (see OMDbClient) so a fuzzy hit can't bind a wrong film.
-          // This is the id the once-daily OmdbBackfill sweep would have supplied
-          // hours later; running it inline lands it now.
-          omdb.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year, record.director.toSet))
-        }
-        .orElse {
-          // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a
-          // TMDB-less film with no Filmweb entity page, search Wikidata's film items
-          // by title and bind the first whose label + P577 year corroborate. Catches
-          // films with a Wikidata entry (hence RT/MC/Letterboxd slugs too) that the
-          // English-DB resolvers miss.
-          wikidata.flatMap(_.findImdbIdByTitle(searchTitle, year))
-        }
-        .orElse {
-          // Cinemeta (Stremio) — final rung. IMDb-keyed catalogue covering a broad
-          // foreign/regional long tail; corroborated by title+year so a fuzzy hit
-          // can't bind a wrong film. Free, no API key.
-          cinemeta.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year))
-        }
+      val found = lookupId(searchTitle, year, record, backfillRatingUrls(key, _))
       found match {
         case Some(id) =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")

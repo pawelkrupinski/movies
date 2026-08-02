@@ -33,7 +33,7 @@ class StagingSteps(
   stagingRepository: StagingRepository,
   enrichers:         Seq[DetailEnricher],
   resolveStaging:    (String, Option[Int], MovieRecord) => Option[MovieRecord],
-  recoverImdbId:     (String, Option[Int]) => Option[String],
+  recoverImdbId:     (String, Option[Int], models.MovieRecord) => Option[String],
   freshness:         FreshnessStore
 ) extends Logging {
   import StagingSteps._
@@ -218,7 +218,7 @@ class StagingSteps(
         val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
         val years  = group.flatMap(_.year).distinct.sorted
         val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
-        tries.iterator.flatMap(y => recoverImdbId(search, y)).nextOption().foreach { id =>
+        tries.iterator.flatMap(y => recoverImdbId(search, y, needy.record)).nextOption().foreach { id =>
           group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(imdbId = Some(id)))))
           logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id")
         }
@@ -254,7 +254,7 @@ class StagingSteps(
       val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
       val years  = unidentified.flatMap(_.year).distinct.sorted
       val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
-      tries.iterator.flatMap(y => recoverImdbId(search, y)).nextOption().foreach { id =>
+      tries.iterator.flatMap(y => recoverImdbId(search, y, needy.record)).nextOption().foreach { id =>
         unidentified.foreach(r => stagingRepository.upsertRow(
           r.copy(record = r.record.copy(imdbId = Some(id), tmdbNoMatch = false))))
         logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id for a film TMDB could not name")

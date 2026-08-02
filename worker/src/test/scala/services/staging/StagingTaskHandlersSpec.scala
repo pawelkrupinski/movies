@@ -26,7 +26,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
 
   private def steps(repository: InMemoryStagingRepository, enrichers: Seq[DetailEnricher],
                     resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord],
-                    recover: (String, Option[Int]) => Option[String] = (_, _) => None) =
+                    recover: (String, Option[Int], models.MovieRecord) => Option[String] = (_, _, _) => None) =
     new StagingSteps(repository, enrichers, resolve, recover, new InMemoryFreshnessStore)
 
   "StagingDetailHandler" should "fetch the cinema's detail and report Done" in {
@@ -124,7 +124,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   "StagingResolveImdbIdHandler" should "recover + stamp the imdbId and report Done" in {
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film").copy(tmdbId = Some(5)))   // resolved, no imdb
-    val handler = new StagingResolveImdbIdHandler(steps(repository, Seq.empty, (_, _, r) => Some(r), (_, _) => Some("tt5")))
+    val handler = new StagingResolveImdbIdHandler(steps(repository, Seq.empty, (_, _, r) => Some(r), (_, _, _) => Some("tt5")))
 
     handler.handle(task(TaskType.StagingResolveImdbId, StagingTaskKeys.titlePayload("Film"))) shouldBe HandlerOutcome.Done
     repository.findAll().head.record.imdbId shouldBe Some("tt5")

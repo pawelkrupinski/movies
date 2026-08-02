@@ -36,7 +36,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
   private def steps(repository: InMemoryStagingRepository, enrichers: Seq[DetailEnricher],
                     resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord],
-                    recover: (String, Option[Int]) => Option[String] = (_, _) => None) =
+                    recover: (String, Option[Int], models.MovieRecord) => Option[String] = (_, _, _) => None) =
     new StagingSteps(repository, enrichers, resolve, recover, new InMemoryFreshnessStore)
 
   "fetchDetailFor" should "fetch + merge a deferred cinema's detail into its row" in {
@@ -197,7 +197,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     var searchedFor = Option.empty[String]
     val s = steps(repository, Seq(enricher),
       resolve = (_, _, r) => Some(r.copy(tmdbId = Some(1645035))),    // hit, but imdbId empty
-      recover = (search, _) => { searchedFor = Some(search); Some("tt42003604") })
+      recover = (search, _, _) => { searchedFor = Some(search); Some("tt42003604") })
 
     s.fetchDetailFor(Helios, anchor); s.resolveAndStamp(anchor)
     s.recoverImdbFor(anchor)
@@ -215,7 +215,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     var searchedFor = Option.empty[String]
     val s = steps(repository, Seq.empty,
       resolve = (_, _, r) => Some(r.copy(tmdbNoMatch = true)),        // TMDB refuses to guess
-      recover = (search, _) => { searchedFor = Some(search); Some("tt0088178") })
+      recover = (search, _, _) => { searchedFor = Some(search); Some("tt0088178") })
 
     s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved          // concluded tmdbNoMatch
     repository.findAll().head.record.tmdbNoMatch shouldBe true
@@ -234,7 +234,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
   it should "leave a film TMDB could not name concluded when IMDb cannot name it either" in {
     val (repository, anchor) = seeded(Multikino, "31. Festiwal Górski - zestaw 1", None)
     val s = steps(repository, Seq.empty,
-      resolve = (_, _, r) => Some(r.copy(tmdbNoMatch = true)), recover = (_, _) => None)
+      resolve = (_, _, r) => Some(r.copy(tmdbNoMatch = true)), recover = (_, _, _) => None)
 
     s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
     s.recoverImdbFor(anchor)
@@ -257,7 +257,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.tmdbId shouldBe None             // precondition: head lacks tmdbId
 
     var searched = Option.empty[String]
-    val s = steps(repository, Seq.empty, (_, _, r) => Some(r), (search, _) => { searched = Some(search); Some("tt1277047") })
+    val s = steps(repository, Seq.empty, (_, _, r) => Some(r), (search, _, _) => { searched = Some(search); Some("tt1277047") })
     s.imdbRecoveryDone(anchor) shouldBe false
     s.recoverImdbFor(anchor)
     searched should not be empty                                       // recovered from the needy (non-head) row
@@ -296,7 +296,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // No row has tmdbId-without-imdb, so recovery is a no-op — but it must still
     // mark done so the reaper doesn't treat the step as outstanding.
     val (repository, anchor) = seeded(Multikino, "NoNeed", Some(2026))
-    val s = steps(repository, Seq.empty, (_, _, r) => Some(r), (_, _) => Some("x"))
+    val s = steps(repository, Seq.empty, (_, _, r) => Some(r), (_, _, _) => Some("x"))
     s.recoverImdbFor(anchor)
     s.imdbRecoveryDone(anchor) shouldBe true
   }
@@ -307,7 +307,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     var recoverCalled = false
     val s = steps(repository, Seq(enricher),
       resolve = (_, _, r) => Some(r.copy(tmdbId = Some(7), imdbId = Some("tt0000007"))),
-      recover = (_, _) => { recoverCalled = true; None })
+      recover = (_, _, _) => { recoverCalled = true; None })
 
     s.fetchDetailFor(Helios, anchor); s.resolveAndStamp(anchor)
     s.recoverImdbFor(anchor)

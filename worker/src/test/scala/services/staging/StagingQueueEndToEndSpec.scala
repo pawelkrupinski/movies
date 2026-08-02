@@ -46,7 +46,7 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
       MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Newcomer"), filmUrl = Some("u")))))
     val steps = new StagingSteps(staging, Seq(new FakeEnricher(Helios, Some(FilmDetail(director = Seq("Jane Doe"))))),
       resolveStaging = (_, _, r) => Some(r.copy(tmdbId = Some(1275779))),    // hit, imdb empty
-      recoverImdbId  = (_, _) => Some("tt1275779"),
+      recoverImdbId  = (_, _, _) => Some("tt1275779"),
       freshness      = new InMemoryFreshnessStore)
     val reaper = new StagingReaper(steps, queue, staging)
 

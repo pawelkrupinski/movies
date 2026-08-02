@@ -23,7 +23,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryStagingRepository
     rows.foreach { case (t, y, r) => repository.upsert(Helios, t, y, r) }
     val freshness = new InMemoryFreshnessStore
-    val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _) => None, freshness)
+    val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, freshness)
     val queue     = new InMemoryTaskQueue
     val reaper    = new StagingReaper(steps, queue, repository)
     (queue, reaper, repository, freshness)
@@ -166,7 +166,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     Seq("Alpha", "Beta", "Gamma", "Delta").foreach(t =>
       repository.upsert(Helios, t, Some(2026), listing(t, Some(2026))))
     val freshness = new InMemoryFreshnessStore
-    val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _) => None, freshness)
+    val steps     = new StagingSteps(repository, Seq(enricher), (_, _, _) => None, (_, _, _) => None, freshness)
     val reaper    = new StagingReaper(steps, new InMemoryTaskQueue, repository)
 
     reaper.tick() shouldBe 4                      // one StagingDetail per film…
