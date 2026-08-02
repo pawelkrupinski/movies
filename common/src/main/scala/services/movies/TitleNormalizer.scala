@@ -1,113 +1,43 @@
 package services.movies
 
+import models.Country
 import services.titlerules.TitleRuleSet
 
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
 
-object TitleNormalizer {
-  // The active rule set drives every prefix/suffix/canonical strip below.
-  // Rules live in code (TitleRules + ExtraTitleRules) and are loaded once
-  // at class-load. `@volatile` makes the reference visible to scrape/enrich
-  // threads; tests can swap it thread-locally via `withRules`.
-  // Scoped to the country THIS process serves: a language-specific rule (the
-  // Polish " & " → " i " unification) must not rewrite a German or British title.
-  // `soleFromEnv`, NOT `fromEnv`: the worker names its country through
-  // `KINOWO_COUNTRIES`, so reading only `KINOWO_COUNTRY` gives it the Poland
-  // default and the scoping does nothing on the process that writes the corpus.
-  // A multi-country worker gets `None` — no global set can be right for it — and
-  // the `getOrElse` below then keys every country with Poland's rules. That is why
-  // `WorkerMain.unsupportedCountries` REFUSES to boot such a worker: `withRules` is
-  // not the escape hatch it looks like, because it is thread-scoped and the hot
-  // paths leave the installing thread (a `CacheKey` builds its sanitized key in its
-  // own constructor, Mongo change-stream callbacks run on driver threads, and the
-  // rating enrichers fan out through `BoundedParallel`'s shared executor). Serving
-  // several countries from one JVM needs the rule set threaded per country, not a
-  // scope around a call.
-  @volatile private var active: TitleRuleSet =
-    TitleRuleSet.forCountry(models.Country.soleFromEnv.getOrElse(models.Country.default))
-
-  // A THREAD-SCOPED override that, when set, shadows `active` for the current
-  // thread only. Tests that need a custom rule set install it here via
-  // `withRules` instead of swapping the global `active`: ScalaTest runs suites in
-  // PARALLEL (`Test / parallelExecution` defaults to true), so a global swap by
-  // one suite leaked its rules into every OTHER suite's `sanitize` for the
-  // duration of its `try` block — a rare, order-dependent flake that no
-  // `finally` restore could prevent (the race is during the install, not after).
-  // Scoping the override to the installing thread keeps a test's rules invisible
-  // to the suites running beside it. Production sets NEITHER slot: `active` is
-  // whatever class-load resolved, and `installRules`' only caller is the country
-  // convergence e2e, which swaps it per country between runs.
-  private val scopedOverride = new ThreadLocal[TitleRuleSet]()
-  private def effective: TitleRuleSet = scopedOverride.get() match {
-    case null => active
-    case rs   => rs
-  }
-
-  /** Install a rule set — used by tests that want to exercise a custom set globally. */
-  def installRules(rs: TitleRuleSet): Unit = { active = rs; sanitizeCache.clear() }
-
-  /** Run `body` with `rs` as the active rule set for the CURRENT THREAD only,
-   *  restoring the prior state afterwards. The scope is thread-local so a test
-   *  installing custom rules can't leak them into a suite running in parallel —
-   *  see `scopedOverride`. The body must drive its title normalisation on the
-   *  calling thread (the common case for unit specs). */
-  def withRules[A](rs: TitleRuleSet)(body: => A): A = {
-    val prev = scopedOverride.get()
-    scopedOverride.set(rs)
-    try body
-    finally if (prev == null) scopedOverride.remove() else scopedOverride.set(prev)
-  }
-
-  /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
-  def resetToDefaults(): Unit = { active = TitleRuleSet.forCountry(models.Country.soleFromEnv.getOrElse(models.Country.default)); sanitizeCache.clear() }
+/**
+ * Title normalisation under ONE country's rule set.
+ *
+ * An INSTANCE, not a process-global, because the rule set is country-specific:
+ * the canonical " & " → " i " unification is Polish ("i" = "and"), and applying
+ * it to a German listing stored CinemaxX Würzburg's "Minions & Monster" as
+ * "Minions i Monster" — a key no German cinema slot can ever produce. A process
+ * serving several countries cannot pick one global set, and the thread-scoped
+ * override that used to stand in for per-country scoping could never reach the
+ * hot paths: a [[CacheKey]] normalises inside its own constructor, Mongo
+ * change-stream callbacks run on driver threads, and the rating enrichers fan
+ * out through `BoundedParallel`'s shared executor. Passing the normalizer as a
+ * dependency is the only scoping that survives all three.
+ *
+ * The memo cache lives HERE rather than on the companion for the same reason:
+ * keyed on the raw title alone, one shared cache would hand a German title the
+ * key Poland's rules computed for it.
+ *
+ * Rule-INDEPENDENT helpers (Roman-numeral folding, script detection, the
+ * well-formedness check) stay on the companion — they are pure string functions
+ * that no country can disagree about.
+ */
+class TitleNormalizer(val rules: TitleRuleSet) {
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
-  def cinemaClean(cinemaId: String, raw: String): String = effective.perCinema(cinemaId, raw)
-
-  // Precompiled hot-path patterns. `sanitize` / `stripPunct` run per movie ×
-  // per cinema × per tick (plus every staging row and read-model projection);
-  // `String.replaceAll` recompiles its `Pattern` on every call, so we compile
-  // these once. `CombiningMarks` mirrors the NFD combining-mark strip; the
-  // `NonAlnum*` pair drops the residual punctuation/whitespace, one Unicode-aware
-  // (keeps Cyrillic/Greek/CJK letters) and one ASCII-only.
-  private val CombiningMarks  = Pattern.compile("\\p{M}")
-  private val NonAlnumUnicode = Pattern.compile("[^\\p{L}\\p{N}]+")
-  private val NonAlnumAscii   = Pattern.compile("[^a-z0-9]+")
-
-  // "Mortal Kombat 2" and "Mortal Kombat II" should collapse — onto the ARABIC
-  // form (the spelling cinemas + TMDB actually use), so keys read `mortalkombat2`,
-  // not `mortalkombatii`. Only MULTI-letter Roman numerals are converted: the
-  // single letters I, V, X collide with real title words ("I Am Legend",
-  // "Malcolm X", "V for Vendetta", Polish "i" = and), so converting them would
-  // corrupt those titles. The cost is not unifying a bare Roman single-digit
-  // ("Rocky V") with its Arabic form ("Rocky 5"), which cinema listings
-  // effectively never use.
-  private val RomanToArabic = Map(
-    "II" -> "2", "III" -> "3", "IV" -> "4", "VI" -> "6", "VII" -> "7",
-    "VIII" -> "8", "IX" -> "9", "XI" -> "11", "XII" -> "12", "XIII" -> "13",
-    "XIV" -> "14", "XV" -> "15", "XVI" -> "16", "XVII" -> "17", "XVIII" -> "18",
-    "XIX" -> "19", "XX" -> "20"
-  )
-
-  // Always-applied transformation: standalone (space-delimited) multi-letter Roman
-  // numerals → Arabic, CASE-INSENSITIVELY so "Mortal Kombat II" (chains) and
-  // "Mortal kombat ii" (a lower-casing cinema) fold to the same `mortalkombat2`
-  // rather than splitting. `sanitize` runs this AFTER `canonical` (not before): a
-  // decoration glued to a numeral with no separating space ("Mortal Kombat II-
-  // dubbing" → token "II-") hides the numeral until canonical strips the
-  // decoration, so normalising first stranded it as Roman while the stripped
-  // display form ("Mortal Kombat II") deromanised it — the two then sanitized to
-  // different keys and the film never settled (the staging re-divert loop).
-  def normalize(title: String): String =
-    title.split(" ").map(word => RomanToArabic.getOrElse(word.toUpperCase(Locale.ROOT), word)).mkString(" ")
+  def cinemaClean(cinemaId: String, raw: String): String = rules.perCinema(cinemaId, raw)
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
-  // The patterns formerly hardcoded here now live in the active `TitleRuleSet`
-  // (seeded from `TitleRules`, editable in Mongo via the admin page). The
-  // tiers:
+  // The patterns live in the `TitleRuleSet` (seeded from `TitleRules`, editable
+  // in Mongo via the admin page). The tiers:
   //   - `apiQuery` (GlobalStructural) — decoration strips (anniversary, restored,
   //     Cykl prefix, slash, language-version) PLUS programme prefixes /
   //     accessibility tags / "+ <event>" suffixes, for EXTERNAL LOOKUPS ONLY:
@@ -133,7 +63,7 @@ object TitleNormalizer {
    *  Cross-script folding of an UNresolved orphan onto its Latin sibling is done
    *  separately, on the canonicalizer's union key — see
    *  `FilmCanonicalizer.groupByFilm`'s search-title edge. */
-  def apiQuery(display: String): String = effective.search(display)
+  def apiQuery(display: String): String = rules.search(display)
 
   /** Display-side casing applied to EVERY scraper's title at the scrape choke
    *  point (`MovieCache.recordCinemaScrape`). Banner-aware: when a leading
@@ -155,9 +85,10 @@ object TitleNormalizer {
    *  the re-cased form is only adopted when it sanitizes to the SAME key; otherwise
    *  the original casing is kept (the franchise-prefixed shout stays as scraped). */
   def recase(title: String): String = {
-    val recased = effective.leadingBannerBoundary(title) match {
-      case Some(n) => caseSegment(title.substring(0, n)) + caseSegment(title.substring(n))
-      case None    => caseSegment(title)
+    val recased = rules.leadingBannerBoundary(title) match {
+      case Some(n) => TitleNormalizer.caseSegment(title.substring(0, n)) +
+                      TitleNormalizer.caseSegment(title.substring(n))
+      case None    => TitleNormalizer.caseSegment(title)
     }
     // Fast path: the overwhelming majority of titles are already well-cased, so
     // recasing is a no-op — skip the (relatively costly) identity check entirely.
@@ -167,76 +98,42 @@ object TitleNormalizer {
     else title
   }
 
-  private def caseSegment(s: String): String = {
-    val letters = s.filter(_.isLetter)
-    if (letters.isEmpty) s
-    else if (letters.forall(_.isUpper) || letters.forall(_.isLower)) tools.TextNormalization.sentenceCase(s)
-    else recaseShoutedRuns(s) // partly-shouted → down-case the shouted run(s)
-  }
-
-  // A token made only of roman-numeral letters — kept in caps when a shout is
-  // down-cased so "Rocky BALBOA II" cases the name but leaves the sequel ("II").
-  private val RomanNumeral = "^[IVXLCDM]+$".r
-
-  private def isAllCapsWord(token: String): Boolean = {
-    val ls = token.filter(_.isLetter)
-    ls.nonEmpty && ls.forall(_.isUpper)
-  }
-
-  /** Display-casing for a MIXED-case segment: when a scraper SHOUTS part of an
-   *  otherwise properly-cased title ("FEDERICO FELLINI: Ciao a tutti!"), down-case
-   *  the shouted words while leaving the already-cased words byte-identical.
-   *
-   *  The trigger is a RUN of two or more *consecutive* all-caps words — that's
-   *  what tells a shout ("FEDERICO FELLINI", "GWIEZDNE WOJNY: MANDALORIAN") apart
-   *  from a lone acronym/initialism that must stay ("Liga Mistrzów UEFA",
-   *  "NT Live"). Once a segment is found to be shouting, EVERY all-caps word in it
-   *  is down-cased — including ones a lowercase connective stranded out of the run
-   *  ("…MANDALORIAN i GROGU" → "…Mandalorian i Grogu", not a half-shouted
-   *  "…Mandalorian i GROGU" that would also key as a brand-new spelling and
-   *  churn the staging fold). Multi-letter roman numerals keep their caps
-   *  ("BALBOA II" → "Balboa II"). */
-  private def recaseShoutedRuns(s: String): String = {
-    // Alternating whitespace / non-whitespace tokens, preserved exactly so an
-    // untouched input round-trips byte-identical.
-    val tokens    = "\\s+|\\S+".r.findAllIn(s).toVector
-    val capsWords = tokens.indices.filter(i => isAllCapsWord(tokens(i)))
-    // A shout = at least one ADJACENT pair of all-caps words. Tokens strictly
-    // alternate whitespace/non-whitespace, so two consecutive caps words sit
-    // exactly two indices apart (one whitespace token between them).
-    val shouting  = capsWords.sliding(2).exists { case Seq(a, b) => b - a == 2; case _ => false }
-    if (!shouting) s
-    else tokens.zipWithIndex.map {
-      case (t, i) if isAllCapsWord(t) && RomanNumeral.findFirstIn(t.filter(_.isLetter)).isEmpty =>
-        tools.TextNormalization.titleCaseIfAllCaps(t)
-      case (t, _) => t
-    }.mkString
-  }
-
   /** When `title` opens with a recognised programme prefix (Kino bez barier,
    *  Filmowy Klub Seniora, …), return the matched prefix INCLUDING the trailing
    *  ": " delimiter, so a caller can split the prefix from the film title and
    *  case each half on its own. None when no programme prefix is present. */
-  def programmePrefix(title: String): Option[String] = effective.programmePrefix(title)
+  def programmePrefix(title: String): Option[String] = rules.programmePrefix(title)
 
   // Cross-cinema spelling unifications (Gwiezdne Wojny prefix, " & " → " i ")
   // over the trimmed title. Does NOT apply `searchTitle`/structural: decoration
   // (anniversary / wersja / slash / Cykl / restored) is NOT part of identity, so
   // a decoration edition keys by its own form and is NOT merged with the base
   // film. Used by `sanitize` (the documentId) and `preferredDisplay`.
-  private def canonical(t: String): String = effective.canonical(t)
+  private def canonical(t: String): String = rules.canonical(t)
 
-  // Last-resort collapse for titles that share words + order but differ only
-  // in punctuation/whitespace ("Top Gun Maverick" vs "Top Gun: Maverick").
-  // Lowercased, accents stripped, every non-alphanumeric char dropped. Used
-  // by `mergeKeyLookup` ONLY when at least two distinct corpus titles reduce
-  // to the same form — so it never collapses a standalone film into siblings
-  // that merely share a prefix.
-  private def stripPunct(t: String): String = {
-    val deburred = CombiningMarks.matcher(
-      java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
-    ).replaceAll("").toLowerCase(Locale.ROOT)
-    NonAlnumAscii.matcher(deburred).replaceAll("")
+  // Memoised because `sanitize` is the hottest normaliser — called per movie ×
+  // per corpus row inside `MovieCache`'s scrape scans (`concludedKeyFor`,
+  // `redirectToExistingVariant`, the per-tick index rebuilds) and every staging /
+  // projection key. The inner `canonical` fold is already cached per-`TitleRuleSet`,
+  // but the outer NFD-normalise + deburr + Unicode `replaceAll` ran uncached on
+  // every call. Keyed on the raw title alone, which is only safe because the cache
+  // belongs to ONE rule set: the instance owns it, so two countries can never read
+  // each other's keys and no swap has to invalidate anything.
+  private val sanitizeCache = new ConcurrentHashMap[String, String]()
+
+  // Canonicalise, but never all the way to NOTHING. The Canonical tier is a set of
+  // `^`-anchored banner rules, and a cinema can list a film whose title is nothing BUT
+  // the banner — Kino Muza's "Federico Fellini: ciao a tutti!" is a programme name that
+  // is also the whole listing. That sanitized to "", so the film's identity became the
+  // bare year: `_id = "|1957"`, with its screening row keyed `"|1957|krakow|Kino Agrafka"`
+  // behind it. Identity is the one thing that cannot be empty — every wholly-banner film
+  // in a given year lands on that same `_id` and the later write replaces the earlier one.
+  // Falling back to the RAW title's key keeps the identity a pure function of what the
+  // cinemas reported, and still deburrs/lower-cases/strips, so the case and punctuation
+  // variants that should be one film remain one film.
+  private val computeSanitize: java.util.function.Function[String, String] = title => {
+    val canonicalised = TitleNormalizer.strippedKey(canonical(title))
+    if (canonicalised.nonEmpty) canonicalised else TitleNormalizer.strippedKey(title)
   }
 
   /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
@@ -257,41 +154,7 @@ object TitleNormalizer {
    *  Per-script titles still get distinct keys (Latin vs Cyrillic translations
    *  of the same film stay as separate records). The imdbId re-merge step
    *  (later phase) folds those across scripts. */
-  def sanitize(title: String): String =
-    // Memoised because `sanitize` is the hottest normaliser — called per movie ×
-    // per corpus row inside `MovieCache`'s scrape scans (`concludedKeyFor`,
-    // `redirectToExistingVariant`, the per-tick index rebuilds) and every staging /
-    // projection key. The inner `canonical` fold is already cached per-`TitleRuleSet`,
-    // but the outer NFD-normalise + deburr + Unicode `replaceAll` ran uncached on
-    // every call. The cache is keyed on the raw title and scoped to the GLOBAL
-    // `active` rule set: cleared whenever `active` swaps (`installRules` /
-    // `resetToDefaults`), and BYPASSED under a thread-local `withRules` override
-    // (transient + rare — tests / admin preview) so a scoped set never poisons the
-    // shared cache nor reads a globally-cached value.
-    if (scopedOverride.get() != null) computeSanitize(title)
-    else sanitizeCache.computeIfAbsent(title, computeSanitize)
-
-  private val sanitizeCache = new ConcurrentHashMap[String, String]()
-
-  private def strippedKey(t: String): String =
-    NonAlnumUnicode.matcher(
-      tools.TextNormalization.deburr(normalize(t)).toLowerCase(Locale.ROOT)
-    ).replaceAll("")
-
-  // Canonicalise, but never all the way to NOTHING. The Canonical tier is a set of
-  // `^`-anchored banner rules, and a cinema can list a film whose title is nothing BUT
-  // the banner — Kino Muza's "Federico Fellini: ciao a tutti!" is a programme name that
-  // is also the whole listing. That sanitized to "", so the film's identity became the
-  // bare year: `_id = "|1957"`, with its screening row keyed `"|1957|krakow|Kino Agrafka"`
-  // behind it. Identity is the one thing that cannot be empty — every wholly-banner film
-  // in a given year lands on that same `_id` and the later write replaces the earlier one.
-  // Falling back to the RAW title's key keeps the identity a pure function of what the
-  // cinemas reported, and still deburrs/lower-cases/strips, so the case and punctuation
-  // variants that should be one film remain one film.
-  private val computeSanitize: java.util.function.Function[String, String] = title => {
-    val canonicalised = strippedKey(canonical(title))
-    if (canonicalised.nonEmpty) canonicalised else strippedKey(title)
-  }
+  def sanitize(title: String): String = sanitizeCache.computeIfAbsent(title, computeSanitize)
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.
@@ -306,7 +169,7 @@ object TitleNormalizer {
   // (e.g. Rialto's sentence-case "Top gun | 40 rocznica" alongside Helios's
   // "Top Gun 40th Anniversary") don't prevent a merge.
   def mergeKeyLookup(allTitles: Iterable[String]): String => String = {
-    val romanized = allTitles.iterator.map(normalize).toSet
+    val romanized = allTitles.iterator.map(TitleNormalizer.normalize).toSet
     val canonicalCounts: Map[String, Int] =
       romanized.iterator.map(t => canonical(t).toLowerCase(Locale.ROOT)).toSeq
         .groupBy(identity).view.mapValues(_.size).toMap
@@ -315,13 +178,13 @@ object TitleNormalizer {
     // canonical so this also catches "Mandalorian & Grogu" ≡ "Mandalorian i
     // Grogu" when they additionally lose their colon.
     val puncStripCounts: Map[String, Int] =
-      romanized.iterator.map(t => stripPunct(canonical(t))).toSeq
+      romanized.iterator.map(t => TitleNormalizer.stripPunct(canonical(t))).toSeq
         .groupBy(identity).view.mapValues(_.size).toMap
     title => {
-      val r       = normalize(title)
+      val r       = TitleNormalizer.normalize(title)
       val cLower  = canonical(r).toLowerCase(Locale.ROOT)
       val rLower  = r.toLowerCase(Locale.ROOT)
-      val p       = stripPunct(cLower)
+      val p       = TitleNormalizer.stripPunct(cLower)
       // Punctuation-strip is the widest collapse — check first. Only fires
       // when ≥2 distinct corpus titles reduce to the same form, so a lone
       // film never gets a key derived from punctuation it didn't share.
@@ -368,7 +231,7 @@ object TitleNormalizer {
       // spellings of one film.
       val canonicals = seq.map(canonicalForDisplay).distinct
       if (canonicals.sizeIs == 1) canonicals.headOption
-      else canonicals.sortBy(displayLadderKey).headOption
+      else canonicals.sortBy(TitleNormalizer.displayLadderKey).headOption
     }
   }
 
@@ -383,31 +246,8 @@ object TitleNormalizer {
   /** The REWRITING half only — safe for a group of one, because it swaps a spelling rather
    *  than deleting a decoration. See [[services.titlerules.TitleRuleSet.spellingUnified]]. */
   private def unifySpelling(t: String): String = {
-    val unified = effective.spellingUnified(t)
+    val unified = rules.spellingUnified(t)
     if (unified.trim.nonEmpty) unified else t
-  }
-
-  // Deterministic preference ladder for same-identity title spellings. Pure
-  // function of the string — the pick never depends on scrape/merge order.
-  // Axes, best-first (the `-` makes "more is better" sort first under ascending
-  // `sortBy`):
-  //   1. richer punctuation — "Top Gun: Maverick" over "Top Gun Maverick"
-  //   2. diacritics present — "Diabeł" over a scraper-flattened "Diabel"
-  //   3. mixed case, not ALL-CAPS — "Top Gun" over "TOP GUN"
-  //   4. least leading/trailing junk — "Werdykt" over "Werdykt." / "„Arco”"
-  //   5. shorter — demoted below the quality axes so it can't strip the colon
-  //   6. the string itself — total, order-independent final fallback
-  private def displayLadderKey(c: String): (Int, Int, Int, Int, Int, String) = {
-    // Strip leading/trailing non-alphanumerics so a stray trailing "." or
-    // wrapping „quotes" count as junk (axis 4), NOT as richer interior
-    // punctuation (axis 1) — otherwise "Werdykt." would outrank "Werdykt".
-    val trimmed   = c.dropWhile(!_.isLetterOrDigit)
-                     .reverse.dropWhile(!_.isLetterOrDigit).reverse
-    val punct     = trimmed.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
-    val diacritic = if (c.exists(ch => ch.isLetter && ch.toInt > 127)) 1 else 0
-    val mixedCase = if (c.exists(_.isUpper) && c.exists(_.isLower)) 1 else 0
-    val junk      = c.length - trimmed.length
-    (-punct, -diacritic, -mixedCase, junk, c.length, c)
   }
 
   /** The deterministic display-title ladder used by the live merge
@@ -430,7 +270,7 @@ object TitleNormalizer {
     val votePool    = if (perCinemaTitles.nonEmpty) perCinemaTitles else Seq(fallback)
     val dominantKey = votePool.groupBy(sanitize).toSeq.sortBy { case (k, ts) => (-ts.size, k) }.head._1
     val chosen = tmdbTitle
-      .filter(t => sanitize(t) == dominantKey && wellFormedTitle(t))
+      .filter(t => sanitize(t) == dominantKey && TitleNormalizer.wellFormedTitle(t))
       .getOrElse {
         // The fallback joins the pool only when NO cinema spelling survives the dominant-key
         // filter. It used to be appended unconditionally, and that made the answer depend on
@@ -447,6 +287,147 @@ object TitleNormalizer {
         preferredDisplay(variants).getOrElse(fallback)
       }
     recase(chosen)
+  }
+}
+
+/**
+ * Per-country instances, plus the rule-INDEPENDENT half of normalisation: pure
+ * string functions (Roman-numeral folding, script detection, casing mechanics,
+ * the well-formedness check) that no country's rule set can disagree about, so
+ * they stay static rather than being duplicated per instance.
+ */
+object TitleNormalizer {
+
+  /** The normalizer for `country`, memoised — a [[TitleRuleSet]] compiles ~180
+   *  regexes and builds its tier maps at construction, so it is worth holding
+   *  one per country rather than one per call site. */
+  def forCountry(country: Country): TitleNormalizer =
+    byCountry.computeIfAbsent(country, c => new TitleNormalizer(TitleRuleSet.forCountry(c)))
+
+  private val byCountry = new ConcurrentHashMap[Country, TitleNormalizer]()
+
+  // Precompiled hot-path patterns. `sanitize` / `stripPunct` run per movie ×
+  // per cinema × per tick (plus every staging row and read-model projection);
+  // `String.replaceAll` recompiles its `Pattern` on every call, so we compile
+  // these once. `CombiningMarks` mirrors the NFD combining-mark strip; the
+  // `NonAlnum*` pair drops the residual punctuation/whitespace, one Unicode-aware
+  // (keeps Cyrillic/Greek/CJK letters) and one ASCII-only.
+  private val CombiningMarks  = Pattern.compile("\\p{M}")
+  private val NonAlnumUnicode = Pattern.compile("[^\\p{L}\\p{N}]+")
+  private val NonAlnumAscii   = Pattern.compile("[^a-z0-9]+")
+
+  // "Mortal Kombat 2" and "Mortal Kombat II" should collapse — onto the ARABIC
+  // form (the spelling cinemas + TMDB actually use), so keys read `mortalkombat2`,
+  // not `mortalkombatii`. Only MULTI-letter Roman numerals are converted: the
+  // single letters I, V, X collide with real title words ("I Am Legend",
+  // "Malcolm X", "V for Vendetta", Polish "i" = and), so converting them would
+  // corrupt those titles. The cost is not unifying a bare Roman single-digit
+  // ("Rocky V") with its Arabic form ("Rocky 5"), which cinema listings
+  // effectively never use.
+  private val RomanToArabic = Map(
+    "II" -> "2", "III" -> "3", "IV" -> "4", "VI" -> "6", "VII" -> "7",
+    "VIII" -> "8", "IX" -> "9", "XI" -> "11", "XII" -> "12", "XIII" -> "13",
+    "XIV" -> "14", "XV" -> "15", "XVI" -> "16", "XVII" -> "17", "XVIII" -> "18",
+    "XIX" -> "19", "XX" -> "20"
+  )
+
+  // Always-applied transformation: standalone (space-delimited) multi-letter Roman
+  // numerals → Arabic, CASE-INSENSITIVELY so "Mortal Kombat II" (chains) and
+  // "Mortal kombat ii" (a lower-casing cinema) fold to the same `mortalkombat2`
+  // rather than splitting. `sanitize` runs this AFTER `canonical` (not before): a
+  // decoration glued to a numeral with no separating space ("Mortal Kombat II-
+  // dubbing" → token "II-") hides the numeral until canonical strips the
+  // decoration, so normalising first stranded it as Roman while the stripped
+  // display form ("Mortal Kombat II") deromanised it — the two then sanitized to
+  // different keys and the film never settled (the staging re-divert loop).
+  def normalize(title: String): String =
+    title.split(" ").map(word => RomanToArabic.getOrElse(word.toUpperCase(Locale.ROOT), word)).mkString(" ")
+
+  // A token made only of roman-numeral letters — kept in caps when a shout is
+  // down-cased so "Rocky BALBOA II" cases the name but leaves the sequel ("II").
+  private val RomanNumeral = "^[IVXLCDM]+$".r
+
+  private def isAllCapsWord(token: String): Boolean = {
+    val ls = token.filter(_.isLetter)
+    ls.nonEmpty && ls.forall(_.isUpper)
+  }
+
+  private[movies] def caseSegment(s: String): String = {
+    val letters = s.filter(_.isLetter)
+    if (letters.isEmpty) s
+    else if (letters.forall(_.isUpper) || letters.forall(_.isLower)) tools.TextNormalization.sentenceCase(s)
+    else recaseShoutedRuns(s) // partly-shouted → down-case the shouted run(s)
+  }
+
+  /** Display-casing for a MIXED-case segment: when a scraper SHOUTS part of an
+   *  otherwise properly-cased title ("FEDERICO FELLINI: Ciao a tutti!"), down-case
+   *  the shouted words while leaving the already-cased words byte-identical.
+   *
+   *  The trigger is a RUN of two or more *consecutive* all-caps words — that's
+   *  what tells a shout ("FEDERICO FELLINI", "GWIEZDNE WOJNY: MANDALORIAN") apart
+   *  from a lone acronym/initialism that must stay ("Liga Mistrzów UEFA",
+   *  "NT Live"). Once a segment is found to be shouting, EVERY all-caps word in it
+   *  is down-cased — including ones a lowercase connective stranded out of the run
+   *  ("…MANDALORIAN i GROGU" → "…Mandalorian i Grogu", not a half-shouted
+   *  "…Mandalorian i GROGU" that would also key as a brand-new spelling and
+   *  churn the staging fold). Multi-letter roman numerals keep their caps
+   *  ("BALBOA II" → "Balboa II"). */
+  private def recaseShoutedRuns(s: String): String = {
+    // Alternating whitespace / non-whitespace tokens, preserved exactly so an
+    // untouched input round-trips byte-identical.
+    val tokens    = "\\s+|\\S+".r.findAllIn(s).toVector
+    val capsWords = tokens.indices.filter(i => isAllCapsWord(tokens(i)))
+    // A shout = at least one ADJACENT pair of all-caps words. Tokens strictly
+    // alternate whitespace/non-whitespace, so two consecutive caps words sit
+    // exactly two indices apart (one whitespace token between them).
+    val shouting  = capsWords.sliding(2).exists { case Seq(a, b) => b - a == 2; case _ => false }
+    if (!shouting) s
+    else tokens.zipWithIndex.map {
+      case (t, i) if isAllCapsWord(t) && RomanNumeral.findFirstIn(t.filter(_.isLetter)).isEmpty =>
+        tools.TextNormalization.titleCaseIfAllCaps(t)
+      case (t, _) => t
+    }.mkString
+  }
+
+  // Last-resort collapse for titles that share words + order but differ only
+  // in punctuation/whitespace ("Top Gun Maverick" vs "Top Gun: Maverick").
+  // Lowercased, accents stripped, every non-alphanumeric char dropped. Used
+  // by `mergeKeyLookup` ONLY when at least two distinct corpus titles reduce
+  // to the same form — so it never collapses a standalone film into siblings
+  // that merely share a prefix.
+  private[movies] def stripPunct(t: String): String = {
+    val deburred = CombiningMarks.matcher(
+      java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
+    ).replaceAll("").toLowerCase(Locale.ROOT)
+    NonAlnumAscii.matcher(deburred).replaceAll("")
+  }
+
+  private[movies] def strippedKey(t: String): String =
+    NonAlnumUnicode.matcher(
+      tools.TextNormalization.deburr(normalize(t)).toLowerCase(Locale.ROOT)
+    ).replaceAll("")
+
+  // Deterministic preference ladder for same-identity title spellings. Pure
+  // function of the string — the pick never depends on scrape/merge order.
+  // Axes, best-first (the `-` makes "more is better" sort first under ascending
+  // `sortBy`):
+  //   1. richer punctuation — "Top Gun: Maverick" over "Top Gun Maverick"
+  //   2. diacritics present — "Diabeł" over a scraper-flattened "Diabel"
+  //   3. mixed case, not ALL-CAPS — "Top Gun" over "TOP GUN"
+  //   4. least leading/trailing junk — "Werdykt" over "Werdykt." / "„Arco”"
+  //   5. shorter — demoted below the quality axes so it can't strip the colon
+  //   6. the string itself — total, order-independent final fallback
+  private[movies] def displayLadderKey(c: String): (Int, Int, Int, Int, Int, String) = {
+    // Strip leading/trailing non-alphanumerics so a stray trailing "." or
+    // wrapping „quotes" count as junk (axis 4), NOT as richer interior
+    // punctuation (axis 1) — otherwise "Werdykt." would outrank "Werdykt".
+    val trimmed   = c.dropWhile(!_.isLetterOrDigit)
+                     .reverse.dropWhile(!_.isLetterOrDigit).reverse
+    val punct     = trimmed.count(ch => !ch.isLetterOrDigit && !ch.isWhitespace)
+    val diacritic = if (c.exists(ch => ch.isLetter && ch.toInt > 127)) 1 else 0
+    val mixedCase = if (c.exists(_.isUpper) && c.exists(_.isLower)) 1 else 0
+    val junk      = c.length - trimmed.length
+    (-punct, -diacritic, -mixedCase, junk, c.length, c)
   }
 
   /** Whether a title is clean enough to display verbatim. Used to gate the
@@ -486,4 +467,66 @@ object TitleNormalizer {
    *  would just create unnecessary rows. */
   def sameScript(a: String, b: String): Boolean =
     isLatinDominant(a) == isLatinDominant(b)
+
+  // ── Transitional process-global facade ─────────────────────────────────────
+  //
+  // TEMPORARY. Every delegate below resolves the rule set from the environment
+  // instead of from the caller, which is exactly the coupling this class exists
+  // to remove — a multi-country process has no correct answer here, which is why
+  // `WorkerMain.unsupportedCountries` still refuses to boot one. The delegates
+  // exist only so the ~65 call sites can migrate to an injected instance in
+  // separate commits rather than one unreviewable diff; each one deleted is a
+  // call site that now says whose rules it means. Do not add callers.
+
+  private def defaultRules: TitleRuleSet =
+    TitleRuleSet.forCountry(Country.soleFromEnv.getOrElse(Country.default))
+
+  @volatile private var active: TitleNormalizer = new TitleNormalizer(defaultRules)
+
+  // A THREAD-SCOPED override that, when set, shadows `active` for the current
+  // thread only. Tests that need a custom rule set install it here via
+  // `withRules` instead of swapping the global `active`: ScalaTest runs suites in
+  // PARALLEL (`Test / parallelExecution` defaults to true), so a global swap by
+  // one suite leaked its rules into every OTHER suite's `sanitize` for the
+  // duration of its `try` block — a rare, order-dependent flake that no
+  // `finally` restore could prevent (the race is during the install, not after).
+  // Scoping the override to the installing thread keeps a test's rules invisible
+  // to the suites running beside it. Production sets NEITHER slot: `active` is
+  // whatever class-load resolved, and `installRules`' only caller is the country
+  // convergence e2e, which swaps it per country between runs.
+  private val scopedOverride = new ThreadLocal[TitleNormalizer]()
+  private def effective: TitleNormalizer = scopedOverride.get() match {
+    case null => active
+    case tn   => tn
+  }
+
+  /** Install a rule set — used by tests that want to exercise a custom set globally. */
+  def installRules(rs: TitleRuleSet): Unit = active = new TitleNormalizer(rs)
+
+  /** Run `body` with `rs` as the active rule set for the CURRENT THREAD only,
+   *  restoring the prior state afterwards. The scope is thread-local so a test
+   *  installing custom rules can't leak them into a suite running in parallel —
+   *  see `scopedOverride`. The body must drive its title normalisation on the
+   *  calling thread (the common case for unit specs). */
+  def withRules[A](rs: TitleRuleSet)(body: => A): A = {
+    val prev = scopedOverride.get()
+    scopedOverride.set(new TitleNormalizer(rs))
+    try body
+    finally if (prev == null) scopedOverride.remove() else scopedOverride.set(prev)
+  }
+
+  /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
+  def resetToDefaults(): Unit = active = new TitleNormalizer(defaultRules)
+
+  def cinemaClean(cinemaId: String, raw: String): String   = effective.cinemaClean(cinemaId, raw)
+  def apiQuery(display: String): String                    = effective.apiQuery(display)
+  def recase(title: String): String                        = effective.recase(title)
+  def programmePrefix(title: String): Option[String]       = effective.programmePrefix(title)
+  def sanitize(title: String): String                      = effective.sanitize(title)
+  def mergeKey(title: String, allTitles: Iterable[String]): String = effective.mergeKey(title, allTitles)
+  def mergeKeyLookup(allTitles: Iterable[String]): String => String = effective.mergeKeyLookup(allTitles)
+  def preferredDisplay(titles: Iterable[String]): Option[String]    = effective.preferredDisplay(titles)
+  def chooseDisplay(perCinemaTitles: Seq[String], fallback: String,
+                    tmdbTitle: Option[String] = None): String =
+    effective.chooseDisplay(perCinemaTitles, fallback, tmdbTitle)
 }
