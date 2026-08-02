@@ -76,11 +76,13 @@ object WorkerMain extends Logging {
           health.stop(0)
           sys.exit(1)
       }
-    // Liveness/throttle below target the FIRST country's wiring (the default-country
-    // one on a single-country deploy). Metrics now cover ALL countries (shared
-    // registry, country label). TODO(multi-country): per-country liveness/watchdog +
-    // per-country /throttle routing; for now the primary's watchdog is exposed.
-    val wiring = wirings.head
+    // /health and /throttle are properties of the MACHINE, not of any one country,
+    // so they fold across every wiring — see [[WorkerFleet]]. Metrics likewise cover
+    // all countries (shared registry, `country` label).
+    val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog), wirings.map(_.externalThrottleGate))
+    // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
+    // wiring — one dump dir per machine, not per country.
+    val heapDumpDir = wirings.head.heapDumpDir
     logger.info("Worker up — scraping/enriching")
 
     // Register /metrics now that every country's queue + metrics are live: one
@@ -90,19 +92,21 @@ object WorkerMain extends Logging {
 
     // /throttle — an external pusher (a Grafana alert on fly_instance_cpu_balance)
     // flips the worker's credit backoff on/off here; the credit threshold lives
-    // outside the worker, this just receives the decision.
-    addThrottleEndpoint(health, wiring)
-    addHeapDumpEndpoint(health, wiring.heapDumpDir)
+    // outside the worker, this just receives the decision. The alert watches a
+    // per-MACHINE metric, so the decision lands on every country's gate.
+    addThrottleEndpoint(health, fleet)
+    addHeapDumpEndpoint(health, heapDumpDir)
     logger.info(s"Worker throttle control up on :$port/throttle")
 
     // Now that the heartbeat + watchdog are running, let /health report real
-    // liveness: it goes 503 (and the watchdog restarts the process) only once the
+    // liveness: it goes 503 (and the watchdog restarts the process) only once a
     // heartbeat pulse has been stale for minutes — a wedged JVM, not a slow boot.
-    livenessProbe = () => wiring.livenessWatchdog.isAlive
+    // ANY country going stale wedges the machine they share.
+    livenessProbe = () => fleet.isAlive
     // Ensure the heap-dump volume dir exists so the JVM's HeapDumpOnOutOfMemoryError
     // (hard-OOM path) and the watchdog (death-spiral path) both have somewhere to write.
-    try java.nio.file.Files.createDirectories(java.nio.file.Paths.get(wiring.heapDumpDir))
-    catch { case e: Throwable => logger.warn(s"Could not create heap-dump dir ${wiring.heapDumpDir}: ${e.getMessage}") }
+    try java.nio.file.Files.createDirectories(java.nio.file.Paths.get(heapDumpDir))
+    catch { case e: Throwable => logger.warn(s"Could not create heap-dump dir $heapDumpDir: ${e.getMessage}") }
 
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
@@ -168,11 +172,12 @@ object WorkerMain extends Logging {
    *  reaper backoff through this endpoint. Accepts a simple `?state=on|off`
    *  (curl/manual), a `?throttled=true|false`, OR a Grafana webhook body whose
    *  `"status"` is `"firing"` (→ on) / `"resolved"` (→ off). Reads no metric and
-   *  holds no threshold — it just sets `ExternalThrottleGate`. */
-  private def addThrottleEndpoint(server: HttpServer, wiring: WorkerWiring): Unit = {
+   *  holds no threshold — it just sets every country's `ExternalThrottleGate`
+   *  through the [[WorkerFleet]]. */
+  private def addThrottleEndpoint(server: HttpServer, fleet: WorkerFleet): Unit = {
     server.createContext("/throttle", exchange => {
       val state = throttleStateFrom(exchange)
-      state.foreach(wiring.externalThrottleGate.setThrottled)
+      state.foreach(fleet.setThrottled)
       val body = state.fold("no state — pass ?state=on|off or a Grafana firing/resolved webhook")(
         on => s"throttled=$on").getBytes("UTF-8")
       exchange.sendResponseHeaders(if (state.isDefined) 200 else 400, body.length.toLong)
