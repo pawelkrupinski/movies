@@ -47,8 +47,16 @@ struct Country: Codable, Hashable {
 
     /// Compile-time FALLBACK registry, used only until the bundled/fetched
     /// catalog loads (and if that ever fails to decode). The live registry is the
-    /// `/api/catalog` payload the `CatalogStore` publishes. Poland is first (the
-    /// default). Codes match the server (`pl`/`uk`/`de`).
+    /// `/api/catalog` payload the `CatalogStore` publishes.
+    ///
+    /// POLAND ONLY since 2026-08-02, when the UK and German deployments were
+    /// stopped to cut hosting cost. This list is not merely cosmetic: `byCode`
+    /// resolves the PERSISTED selection through it, and `kinowoBaseURL` sends
+    /// every request to the resulting `baseURL`. So dropping a country here is
+    /// what MIGRATES a user who still has `uk`/`de` saved — the unknown code now
+    /// falls back to Poland instead of pinning the app to a host that no longer
+    /// answers. Re-add a country here (and to the Android registry) when its
+    /// deployment comes back.
     static let all: [Country] = [
         Country(
             code: "pl",
@@ -56,20 +64,6 @@ struct Country: Codable, Hashable {
             baseURL: URL(string: "https://kinowo.fly.dev")!,
             languageCode: "pl",
             timeZone: TimeZone(identifier: "Europe/Warsaw") ?? warsawZone
-        ),
-        Country(
-            code: "uk",
-            displayName: "United Kingdom",
-            baseURL: URL(string: "https://showtimes-uk.fly.dev")!,
-            languageCode: "en",
-            timeZone: TimeZone(identifier: "Europe/London") ?? warsawZone
-        ),
-        Country(
-            code: "de",
-            displayName: "Deutschland",
-            baseURL: URL(string: "https://showtimes-de.fly.dev")!,
-            languageCode: "de",
-            timeZone: TimeZone(identifier: "Europe/Berlin") ?? warsawZone
         ),
     ]
 

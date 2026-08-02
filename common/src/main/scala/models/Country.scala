@@ -28,7 +28,7 @@ sealed abstract class Country(
   val language:       Locale,          // UI language + collation locale
   val mongoDb:        String,          // database name on the shared cluster
   val filmwebEnabled: Boolean,         // is the Filmweb rating/fallback path wired for this country?
-  val webUrl:         Option[String],  // public web host of this country's deployment (scheme+host, no trailing slash); None = not deployed yet
+  val webUrl:         Option[String],  // public web host of this country's deployment (scheme+host, no trailing slash); None = no deployment serving it
   val brandName:      String,          // customer-facing app name: "Kinowo" in PL, "Showtimes" elsewhere (the Polish coinage means nothing abroad)
 ) {
   /** The cities this country serves. Authoritative per-country list; [[City.all]]
@@ -48,9 +48,9 @@ sealed abstract class Country(
 
   /** Public origin (scheme + host, no trailing slash) for this country's share /
    *  Open Graph links — the host Facebook scrapes and caches a preview against.
-   *  A deployed country carries its own [[webUrl]]; a modelled-but-not-yet-deployed
-   *  country falls back to the default country's host so a link still resolves
-   *  rather than dangling. (All modelled countries are currently deployed.) */
+   *  A deployed country carries its own [[webUrl]]; an undeployed one falls back
+   *  to the default country's host so a link still resolves rather than dangling.
+   *  (Only Poland is deployed today — UK and Germany were stopped 2026-08-02.) */
   def ogOrigin: String = webUrl.getOrElse(Country.default.webUrl.get)
 
   /** Filename (under `assets/img/`) of the `/` landing's share-preview montage
@@ -77,35 +77,42 @@ object Country {
     val cities: Seq[City] = City.polishCities
   }
 
-  /** The United Kingdom — the second country, wired end-to-end but with NO
-   *  cinemas yet (`cities = Nil`): an English-language deployment on its own
-   *  `kinowo_uk` database that does not use Filmweb. Its cinema scrapers + city
-   *  list are the remaining `§6` work; until then a `KINOWO_COUNTRY=uk` web
-   *  renders in English with an empty city list, and the worker only runs it
-   *  when `KINOWO_COUNTRIES` names `uk`. */
+  /** The United Kingdom — an English-language country on its own `kinowo_uk`
+   *  database that does not use Filmweb, sourced from the Flicks listings plus
+   *  the Cineworld/Vue/Odeon/Everyman/Showcase chain clients.
+   *
+   *  UNDEPLOYED (`webUrl = None`) since 2026-08-02: `showtimes-uk` and
+   *  `kinowo-worker-uk` are stopped to cut hosting cost. The model, scrapers and
+   *  city list are all still here and a `KINOWO_COUNTRY=uk` process still boots
+   *  against `kinowo_uk` — it is only absent from [[switchable]], so no client
+   *  offers a country nothing is serving. Restore by putting the host back and
+   *  starting the machines. */
   case object UnitedKingdom extends Country(
     code           = "uk",
     displayName    = "United Kingdom",
     language       = Locale.forLanguageTag("en-GB"),
     mongoDb        = "kinowo_uk",
     filmwebEnabled = false,
-    webUrl         = Some("https://showtimes-uk.fly.dev"),
+    webUrl         = None,
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
   }
 
-  /** Germany — the third country: a German-language deployment on its own
-   *  `kinowo_de` database, sourced from the AlloCiné/Filmstarts website-JSON
+  /** Germany — a German-language country on its own `kinowo_de` database,
+   *  sourced from the AlloCiné/Filmstarts website-JSON
    *  ([[services.cinemas.de.WebediaShowtimesClient]], via `www.filmstarts.de`).
-   *  No Filmweb (Polish-only). */
+   *  No Filmweb (Polish-only).
+   *
+   *  UNDEPLOYED (`webUrl = None`) since 2026-08-02, same as [[UnitedKingdom]]:
+   *  `showtimes-de` and `kinowo-worker-de` are stopped to cut hosting cost. */
   case object Germany extends Country(
     code           = "de",
     displayName    = "Deutschland",
     language       = Locale.forLanguageTag("de-DE"),
     mongoDb        = "kinowo_de",
     filmwebEnabled = false,
-    webUrl         = Some("https://showtimes-de.fly.dev"),
+    webUrl         = None,
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
@@ -119,10 +126,15 @@ object Country {
    *  (Poland-only) deployments and tests working with no new env var. */
   val default: Country = Poland
 
-  /** The countries a user can SWITCH to from the web navbar: those with a real
-   *  deployment host ([[Country.webUrl]] defined), in [[all]] order (Poland,
-   *  UK, Germany). The country `<select>` renders only when this holds more than
-   *  one entry. */
+  /** The countries a user can SWITCH to: those with a real deployment host
+   *  ([[Country.webUrl]] defined), in [[all]] order. Currently POLAND ALONE —
+   *  the UK and German deployments were stopped on 2026-08-02.
+   *
+   *  This is the one list every client-facing enumeration goes through — the web
+   *  navbar `<select>`, and the `/api/catalog` payload the iOS and Android apps
+   *  build their country picker from. All three render the switch only when this
+   *  holds more than one entry, so an undeployed country disappears from every
+   *  surface at once rather than offering a host that answers nothing. */
   val switchable: Seq[Country] = all.filter(_.webUrl.isDefined)
 
   def byCode(code: String): Option[Country] =

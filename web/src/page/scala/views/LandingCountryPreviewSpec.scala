@@ -10,10 +10,15 @@ import play.api.i18n.Messages
 /**
  * The `/` landing is the URL people paste into Facebook / Messenger / Slack, so
  * a non-Polish deployment's share preview must sell the RIGHT product: an
- * English card, the country's own host, and its English-poster home montage —
- * not Poland's `kinowo.fly.dev` / `og-home.png`. This pins the UK variant
- * (`KINOWO_COUNTRY=uk`); the default (Poland) variant is covered by
- * `LandingPreviewMetaSpec`.
+ * English card and its English-poster home montage, not Poland's `og-home.png`.
+ * This pins the UK variant (`KINOWO_COUNTRY=uk`); the default (Poland) variant
+ * is covered by `LandingPreviewMetaSpec`.
+ *
+ * The one thing the UK variant no longer carries is its OWN host: `showtimes-uk`
+ * was stopped on 2026-08-02, so `Country.ogOrigin` falls back to the deployed
+ * country's origin. A shared link therefore resolves somewhere that answers
+ * instead of dangling at a stopped machine — the branding stays per-country, the
+ * host does not.
  *
  * Lives in `PageTest` (not the main unit `Test`) on purpose: forcing
  * `KINOWO_COUNTRY` mutates a process-global that `Country.fromEnv` reads, which
@@ -41,17 +46,20 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
   // the property, so skip rather than assert against the wrong country.
   private val envCountryForced = System.getenv("KINOWO_COUNTRY") != null
 
-  "the UK landing preview" should "point og:image + twitter:image at the English home card on the UK host" in {
+  "the UK landing preview" should "point og:image + twitter:image at the English home card, on the host that still answers" in {
     if (envCountryForced) cancel("KINOWO_COUNTRY is set in the environment; property override can't take effect")
     val html = renderUk()
-    html should include ("""<meta property="og:image"       content="https://showtimes-uk.fly.dev/assets/img/og-home-uk.png">""")
-    html should include ("""<meta name="twitter:image"       content="https://showtimes-uk.fly.dev/assets/img/og-home-uk.png">""")
+    // The montage is still the UK one (it keys off the country code, not the
+    // deployment); only the origin falls back to the deployed host.
+    html should include ("""<meta property="og:image"       content="https://kinowo.fly.dev/assets/img/og-home-uk.png">""")
+    html should include ("""<meta name="twitter:image"       content="https://kinowo.fly.dev/assets/img/og-home-uk.png">""")
+    html should not include ("showtimes-uk.fly.dev")
   }
 
-  it should "carry the UK host as og:url and the Showtimes brand, in English" in {
+  it should "carry the Showtimes brand, in English" in {
     if (envCountryForced) cancel("KINOWO_COUNTRY is set in the environment; property override can't take effect")
     val html = renderUk()
-    html should include ("""<meta property="og:url"         content="https://showtimes-uk.fly.dev/">""")
+    html should include ("""<meta property="og:url"         content="https://kinowo.fly.dev/">""")
     html should include ("""<meta property="og:site_name"   content="Showtimes">""")
     html should include ("""<meta property="og:title"       content="Showtimes — cinema listings in your city">""")
   }

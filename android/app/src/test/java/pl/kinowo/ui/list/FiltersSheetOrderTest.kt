@@ -222,51 +222,24 @@ class FiltersSheetOrderTest {
     }
 
     /**
-     * The country switch ("Kraj") sits directly above the city switch ("Miasto")
-     * — Country over City — mirroring iOS FiltersBar. Its field shows the current
-     * country's native name (Poland by default). Fails if the switcher drifts, or
-     * regresses to the old top-bar placement that replaced the 🎬 mark.
+     * The country switch ("Kraj") is GONE while only one country is deployed —
+     * the UK and German deployments were stopped on 2026-08-02, so the catalog
+     * carries Poland alone and there is nothing to switch to. The city switch
+     * ("Miasto") is unaffected: Poland still serves many cities. Fails if the
+     * section comes back as a dead one-option dropdown.
      */
     @Test
-    fun countryPickerSitsDirectlyAboveTheCityPicker() {
+    fun countryPickerIsAbsentWhileOnlyOneCountryIsDeployed() {
         compose.setContent {
             FiltersSheetContent(viewModel(), films = emptyList())
         }
 
-        fun top(text: String) =
-            compose.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top
-
-        // The country field shows Poland's native name; scroll it + Miasto on screen.
-        val poland = Country.default.displayName // "Polska"
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Miasto"))
-        assertTrue("Kraj must sit directly above Miasto",
-            top(poland) < top("Miasto"))
-    }
-
-    /**
-     * The country picker is a Material3 ExposedDropdownMenu like the city one:
-     * the field shows the active country, the others stay hidden until tapped,
-     * and picking is wired to [pl.kinowo.ui.KinowoViewModel.setCountry]. Fails if
-     * it eagerly composes every country or regresses to the top-bar pill.
-     */
-    @Test
-    fun countryPickerIsAnExposedDropdown() {
-        compose.setContent {
-            FiltersSheetContent(viewModel(), films = emptyList())
-        }
-
-        val poland = Country.default.displayName // "Polska"
-        val uk = Country.all.first { it != Country.default }.displayName // "United Kingdom"
-
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(poland))
-
-        // The field shows the active country; another stays hidden until opened.
-        compose.onNodeWithText(poland).assertIsDisplayed()
-        compose.onNodeWithText(uk).assertDoesNotExist()
-
-        // Tapping the field opens the menu, revealing the other countries.
-        compose.onNodeWithText(poland).performClick()
-        compose.onNodeWithText(uk).assertExists()
+        compose.onNodeWithText("Miasto").assertIsDisplayed()
+        // "Kraj" is the country_label; the production-country filter is the
+        // distinct "Kraj produkcji", and onNodeWithText matches exactly.
+        compose.onNodeWithText("Kraj").assertDoesNotExist()
+        compose.onNodeWithText(Country.default.displayName).assertDoesNotExist() // "Polska"
     }
 
     /**

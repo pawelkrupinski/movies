@@ -5,9 +5,10 @@ import org.junit.Test
 import java.time.ZoneId
 
 /**
- * Pins the static country registry: Poland is the default (current prod base
- * URL, Polish UI) and the UK entry carries the English deployment + language.
- * Mirrors the iOS `CountryTests` so the two apps can't drift.
+ * Pins the static country registry: it holds only countries a deployment
+ * actually serves — Poland alone since the UK and German deployments were
+ * stopped on 2026-08-02. Mirrors the iOS `CountryTests` so the two apps can't
+ * drift.
  */
 class CountryTest {
 
@@ -20,22 +21,33 @@ class CountryTest {
     }
 
     @Test
-    fun ukEntryForcesEnglishOnItsOwnDeployment() {
-        val uk = Country.byCode("uk")
-        assertEquals("uk", uk.code)
-        assertEquals("United Kingdom", uk.displayName)
-        assertEquals("https://showtimes-uk.fly.dev", uk.baseUrl)
-        assertEquals("en", uk.languageTag)
+    fun registryHoldsOnlyTheDeployedCountry() {
+        assertEquals(listOf("pl"), Country.all.map { it.code })
+        assertEquals(emptyList<Country>(), Country.all.filter { it.baseUrl.contains("showtimes-") })
+    }
+
+    /** The upgrade path for a user who had UK or Germany selected: `byCode`
+     *  resolves the PERSISTED code through this registry and `MainActivity`
+     *  builds `KinowoApi` on the result, so a code whose deployment is gone must
+     *  land on the live one rather than pin the app to a stopped host. */
+    @Test
+    fun persistedStoppedCountryFallsBackToTheLiveDeployment() {
+        for (stopped in listOf("uk", "de")) {
+            assertEquals(Country.default, Country.byCode(stopped))
+            assertEquals("https://kinowo.fly.dev", Country.byCode(stopped).baseUrl)
+        }
     }
 
     @Test
     fun legacyIsoCodesNormalizeToServerCodes() {
         // Earlier builds persisted ISO codes (PL/GB); the catalog keys on pl/uk.
-        assertEquals("pl", Country.byCode("PL").code)
-        assertEquals("uk", Country.byCode("GB").code)
+        // The code space is unchanged — it's the registry lookup that then falls
+        // back, so this mapping stays right if the UK deployment ever returns.
         assertEquals("pl", Country.normalizeCode("PL"))
         assertEquals("uk", Country.normalizeCode("GB"))
         assertEquals("uk", Country.normalizeCode("uk"))
+        assertEquals("pl", Country.byCode("PL").code)
+        assertEquals(Country.default, Country.byCode("GB"))   // uk is undeployed → Poland
     }
 
     @Test
@@ -52,11 +64,28 @@ class CountryTest {
 
     @Test
     fun eachCountryCarriesItsLocalZone() {
-        // Drives timezone-correct pruning — a London show disappears on London
-        // time, a Berlin one on Berlin time, not a hardcoded Warsaw.
+        // Drives timezone-correct pruning. The registry now carries one country,
+        // so the per-country zone is exercised through the CATALOG shape instead
+        // (`countryDtoDecodesTimezoneWithWarsawFallback`) — that is where a
+        // second country's zone would come from if one were deployed again.
         assertEquals(ZoneId.of("Europe/Warsaw"), Country.byCode("pl").zoneId)
-        assertEquals(ZoneId.of("Europe/London"), Country.byCode("uk").zoneId)
-        assertEquals(ZoneId.of("Europe/Berlin"), Country.byCode("de").zoneId)
+    }
+
+    /** The visibility rule both country controls gate on — the first-launch
+     *  gate's [pl.kinowo.ui.CountryPicker] and the Filtry sheet's country
+     *  section. One deployed country means nothing to switch to. */
+    @Test
+    fun aSingleDeployedCountryIsNotSwitchable() {
+        assertEquals(1, Country.all.size)
+        assertEquals(false, Country.all.isSwitchable)
+    }
+
+    /** …and the rule is about the LIST, not a hardcoded count: a catalog that
+     *  carries two countries again turns both controls back on. */
+    @Test
+    fun twoCountriesInTheCatalogAreSwitchableAgain() {
+        val second = Country("uk", "United Kingdom", "https://example.test", "en")
+        assertEquals(true, (Country.all + second).isSwitchable)
     }
 
     @Test

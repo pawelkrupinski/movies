@@ -38,8 +38,16 @@ data class Country(
     companion object {
         /** Compile-time FALLBACK registry, used only until the bundled/fetched
          *  catalog loads (and if it ever fails to decode). The live registry is
-         *  the `/api/catalog` payload the catalog repository publishes. Poland is
-         *  the default. Codes match the server (`pl`/`uk`/`de`). */
+         *  the `/api/catalog` payload the catalog repository publishes.
+         *
+         *  POLAND ONLY since 2026-08-02, when the UK and German deployments were
+         *  stopped to cut hosting cost. This list is not merely cosmetic:
+         *  [byCode] resolves the PERSISTED selection through it and
+         *  `MainActivity` builds [pl.kinowo.net.KinowoApi] on the resulting
+         *  [baseUrl]. So dropping a country here is what MIGRATES a user who
+         *  still has `uk`/`de` saved — the unknown code now falls back to Poland
+         *  instead of pinning the app to a host that no longer answers. Re-add a
+         *  country here (and to the iOS registry) when its deployment returns. */
         val all: List<Country> = listOf(
             Country(
                 code = "pl",
@@ -47,20 +55,6 @@ data class Country(
                 baseUrl = "https://kinowo.fly.dev",
                 languageTag = "pl",
                 zoneId = ZoneId.of("Europe/Warsaw"),
-            ),
-            Country(
-                code = "uk",
-                displayName = "United Kingdom",
-                baseUrl = "https://showtimes-uk.fly.dev",
-                languageTag = "en",
-                zoneId = ZoneId.of("Europe/London"),
-            ),
-            Country(
-                code = "de",
-                displayName = "Deutschland",
-                baseUrl = "https://showtimes-de.fly.dev",
-                languageTag = "de",
-                zoneId = ZoneId.of("Europe/Berlin"),
             ),
         )
 

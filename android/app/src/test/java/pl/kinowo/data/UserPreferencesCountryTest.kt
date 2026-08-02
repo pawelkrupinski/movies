@@ -33,6 +33,12 @@ class UserPreferencesCountryTest {
         prefs.setCountryCode("GB")
         assertEquals("GB", prefs.selectedCountryCode.first())
         assertEquals("GB", prefs.blockingCountryCode())
-        assertEquals("en", Country.byCode(prefs.blockingCountryCode()).languageTag)
+        // The STORE keeps whatever was written; the REGISTRY decides what that
+        // code resolves to. "GB" normalizes to `uk`, whose deployment was stopped
+        // on 2026-08-02, so it now resolves to the live country — which is how a
+        // user who had the UK selected gets moved off a host that stopped
+        // answering, without a migration write.
+        assertEquals(Country.default, Country.byCode(prefs.blockingCountryCode()))
+        assertEquals("pl", Country.byCode(prefs.blockingCountryCode()).languageTag)
     }
 }

@@ -131,14 +131,20 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.allJson should not include "london"
   }
 
-  "Country.switchable" should "list every deployed country (webUrl defined), Poland first" in {
-    // The navbar country <select> iterates this, in this order.
-    Country.switchable shouldBe Seq(Country.Poland, Country.UnitedKingdom, Country.Germany)
+  "Country.switchable" should "list only the countries a deployment actually serves — Poland alone" in {
+    // showtimes-uk / showtimes-de were stopped on 2026-08-02, so neither carries
+    // a webUrl any more and neither may be offered as somewhere to switch TO:
+    // every client-facing country list (navbar <select>, /api/catalog, and
+    // through it the iOS and Android pickers) is built from this one Seq.
+    Country.switchable shouldBe Seq(Country.Poland)
     Country.Poland.webUrl shouldBe Some("https://kinowo.fly.dev")
-    Country.UnitedKingdom.webUrl shouldBe Some("https://showtimes-uk.fly.dev")
-    // Germany is now deployed (showtimes-de) → switchable.
-    Country.Germany.webUrl shouldBe Some("https://showtimes-de.fly.dev")
-    Country.switchable should contain (Country.Germany)
+    Country.UnitedKingdom.webUrl shouldBe None
+    Country.Germany.webUrl shouldBe None
+    // Both are still fully MODELLED — the databases, city rosters and scrapers
+    // are untouched; only the public host is gone.
+    Country.all should contain allOf (Country.UnitedKingdom, Country.Germany)
+    Country.UnitedKingdom.cities should not be empty
+    Country.Germany.cities should not be empty
     // Every switchable country carries a host (no trailing slash) and a label.
     Country.switchable.foreach { c =>
       c.webUrl.get should (startWith("https://") and not endWith "/")
@@ -146,17 +152,23 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "A country's share-preview (Open Graph) identity" should "carry its own host origin and home-montage filename" in {
-    // The `/` landing card and the default og:image are built from these, so a
-    // UK deployment previews off showtimes-uk.fly.dev with an English montage
-    // (og-home-uk.png) instead of Poland's kinowo.fly.dev / og-home.png.
+  it should "leave nothing to switch to, which is what hides every country picker" in {
+    // The single visibility rule the web navbar, the iOS gate/filters sheet and
+    // the Android picker all apply: more than one entry, or no switcher at all.
+    Country.switchable.sizeIs > 1 shouldBe false
+  }
+
+  "A country's share-preview (Open Graph) identity" should "fall back to the deployed host once its own is gone" in {
+    // The `/` landing card and the default og:image are built from these.
     Country.Poland.ogOrigin shouldBe "https://kinowo.fly.dev"
     Country.Poland.homeOgImage shouldBe "og-home.png"                    // the default keeps the unsuffixed asset
-    Country.UnitedKingdom.ogOrigin shouldBe "https://showtimes-uk.fly.dev"
+    // UK and DE are undeployed, so a share link rendered for them resolves to
+    // the one host that answers rather than dangling at a stopped machine.
+    Country.UnitedKingdom.ogOrigin shouldBe "https://kinowo.fly.dev"
+    Country.Germany.ogOrigin shouldBe "https://kinowo.fly.dev"
+    // The per-country montage filename is independent of deployment — it keys
+    // off the country code, so it survives the host going away.
     Country.UnitedKingdom.homeOgImage shouldBe "og-home-uk.png"
-    // Germany is now deployed (showtimes-de) → previews off its own host, with a
-    // per-code montage name (og-home-de.png).
-    Country.Germany.ogOrigin shouldBe "https://showtimes-de.fly.dev"
     Country.Germany.homeOgImage shouldBe "og-home-de.png"
   }
 

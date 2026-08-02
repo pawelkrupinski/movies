@@ -59,4 +59,21 @@ final class CityChoiceSearchUITests: XCTestCase {
         // Białystok led the unfiltered list; "lodz" must have dropped it.
         XCTAssertFalse(app.buttons["Białystok"].exists)
     }
+
+    /// The gate carries NO country picker while one country is deployed: the UK
+    /// and German deployments were stopped on 2026-08-02, so the bundled catalog
+    /// seed carries Poland alone and a one-segment control is something the user
+    /// can't act on. The gate is then a plain city chooser. Mirrors the Android
+    /// `CityChoiceSearchTest` and the web navbar's `Country.switchable` guard.
+    func testNoCountryPickerWhileOnlyOneCountryIsDeployed() throws {
+        // Anchor on the list having rendered, so an absent picker can't be
+        // confused with a screen that never appeared.
+        XCTAssertTrue(app.buttons["Białystok"].waitForExistence(timeout: 5),
+                      "Manual city list never appeared")
+
+        XCTAssertEqual(app.segmentedControls.count, 0,
+                       "The gate still renders a country picker with one deployed country")
+        XCTAssertFalse(app.staticTexts["Kraj"].exists,
+                       "The country section header is still on the gate")
+    }
 }

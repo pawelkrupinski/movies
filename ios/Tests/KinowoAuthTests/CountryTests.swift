@@ -32,30 +32,37 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(pl.languageCode, "pl")
     }
 
-    func testUkEntryForcesEnglishOnItsOwnDeployment() {
-        let uk = Country.byCode("uk")
-        XCTAssertEqual(uk.code, "uk")
-        XCTAssertEqual(uk.displayName, "United Kingdom")
-        XCTAssertEqual(uk.baseURL.absoluteString, "https://showtimes-uk.fly.dev")
-        XCTAssertEqual(uk.languageCode, "en")
+    /// The registry holds ONLY countries a deployment actually serves, so it
+    /// never hands out a base URL that can't answer. UK and Germany were stopped
+    /// on 2026-08-02 and dropped from it.
+    func testRegistryHoldsOnlyTheDeployedCountry() {
+        XCTAssertEqual(Country.all.map(\.code), ["pl"])
+        XCTAssertFalse(Country.all.contains { $0.baseURL.absoluteString.contains("showtimes-uk") })
+        XCTAssertFalse(Country.all.contains { $0.baseURL.absoluteString.contains("showtimes-de") })
     }
 
-    func testDeEntryForcesGermanOnItsOwnDeployment() {
-        let de = Country.byCode("de")
-        XCTAssertEqual(de.code, "de")
-        XCTAssertEqual(de.displayName, "Deutschland")
-        XCTAssertEqual(de.baseURL.absoluteString, "https://showtimes-de.fly.dev")
-        XCTAssertEqual(de.languageCode, "de")
+    /// The upgrade path for a user who had UK or Germany selected: `byCode`
+    /// resolves the PERSISTED code through the registry and `kinowoBaseURL`
+    /// sends every request to the result, so a code whose deployment is gone
+    /// must land on the live one — not pin the app to a stopped host.
+    func testPersistedStoppedCountryFallsBackToTheLiveDeployment() {
+        for stopped in ["uk", "de"] {
+            let resolved = Country.byCode(stopped)
+            XCTAssertEqual(resolved, .default)
+            XCTAssertEqual(resolved.baseURL.absoluteString, "https://kinowo.fly.dev")
+        }
     }
 
     /// Legacy persisted ISO codes (`PL`/`GB` from earlier builds) normalize to
-    /// the current server code space so an upgrade keeps the user's country.
+    /// the current server code space. `GB` still maps to `uk` — the code space is
+    /// unchanged; it's the registry lookup that then falls back to the deployed
+    /// country, so the mapping stays correct if the UK deployment ever returns.
     func testLegacyIsoCodesNormalizeToServerCodes() {
-        XCTAssertEqual(Country.byCode("PL").code, "pl")
-        XCTAssertEqual(Country.byCode("GB").code, "uk")
         XCTAssertEqual(Country.normalizeCode("PL"), "pl")
         XCTAssertEqual(Country.normalizeCode("GB"), "uk")
         XCTAssertEqual(Country.normalizeCode("uk"), "uk")
+        XCTAssertEqual(Country.byCode("PL").code, "pl")
+        XCTAssertEqual(Country.byCode("GB"), .default)   // uk is undeployed → Poland
     }
 
     func testUnknownOrNilCodeFallsBackToDefault() {
@@ -68,44 +75,70 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(Country.all.count, Set(Country.all.map(\.baseURL)).count)
     }
 
-    /// The switch is language-forcing, not device-derived.
+    /// The selected country forces the language; it is not device-derived. With
+    /// one deployed country every code resolves to it, so every launch is Polish.
     func testCountryDeterminesLanguageNotDeviceLocale() {
         XCTAssertEqual(Country.byCode("pl").languageCode, "pl")
-        XCTAssertEqual(Country.byCode("uk").languageCode, "en")
+        XCTAssertEqual(Country.byCode("uk").languageCode, "pl")
     }
 
-    /// The in-app "Kraj" section renders only when there's more than one
-    /// country to switch between — the visibility rule the Filtry sheet gates on.
-    func testMoreThanOneDeployedCountryIsSwitchable() {
-        XCTAssertGreaterThan(Country.all.count, 1)
-        XCTAssertTrue(Country.all.isSwitchable)
+    /// The visibility rule BOTH country controls gate on — the first-launch
+    /// gate's "Kraj" section and the Filtry sheet's picker. One deployed country
+    /// means nothing to switch to, so neither renders.
+    func testASingleDeployedCountryIsNotSwitchable() {
+        XCTAssertEqual(Country.all.count, 1)
+        XCTAssertFalse(Country.all.isSwitchable)
+    }
+
+    /// …and the rule is about the LIST, not a hardcoded country count: a catalog
+    /// that ever carries two countries again turns both controls back on.
+    func testTwoCountriesInTheCatalogAreSwitchableAgain() {
+        let second = Country(code: "uk", displayName: "United Kingdom",
+                             baseURL: URL(string: "https://example.test")!, languageCode: "en")
+        XCTAssertTrue((Country.all + [second]).isSwitchable)
     }
 
     // MARK: - In-app country switch (Filtry "Kraj" section)
 
-    /// The in-app switch at the model level: picking a country persists its
-    /// code, repoints the base URL to that country's deployment, AND clears the
-    /// selected city so the gate re-asks (the old city may not exist under the
-    /// new host). Exactly what the Filtry "Kraj" picker's `set` closure runs.
-    func testInAppCountrySwitchPersistsCodeRepointsBaseAndResetsCity() {
+    /// A country the app did NOT compile in — the switch is driven by the live
+    /// catalog's list, so the mechanism has to work for a country that isn't in
+    /// the one-entry registry. Stands in for the stopped UK deployment.
+    private static let undeployedUK = Country(
+        code: "uk",
+        displayName: "United Kingdom",
+        baseURL: URL(string: "https://showtimes-uk.fly.dev")!,
+        languageCode: "en"
+    )
+
+    /// The in-app switch at the model level: picking a country repoints the base
+    /// URL to that country's deployment AND clears the selected city so the gate
+    /// re-asks (the old city may not exist under the new host). Exactly what the
+    /// Filtry "Kraj" picker's `set` closure runs.
+    func testInAppCountrySwitchRepointsTheBaseAndResetsCity() {
         let prefs = UserPreferences(store: defaults)
         prefs.setCity("poznan")
         XCTAssertEqual(prefs.selectedCity, "poznan")
 
-        prefs.setCountry(Country.byCode("GB"))
+        prefs.setCountry(Self.undeployedUK)
         prefs.clearCity()
 
         XCTAssertEqual(prefs.selectedCountry.code, "uk")
-        XCTAssertEqual(
-            CountrySelection.current(defaults).baseURL.absoluteString,
-            "https://showtimes-uk.fly.dev"
-        )
+        XCTAssertEqual(prefs.selectedCountry.baseURL.absoluteString, "https://showtimes-uk.fly.dev")
         XCTAssertNil(prefs.selectedCity)
+    }
 
-        // A fresh instance sees the same post-switch state at the next launch.
+    /// …but a selection whose deployment is GONE does not survive the relaunch.
+    /// `CountrySelection.current` re-resolves the persisted code through the
+    /// registry, so the next launch lands on the country that still answers
+    /// instead of pinning `kinowoBaseURL` to a stopped host. This is the upgrade
+    /// path for everyone who had UK or Germany selected before 2026-08-02.
+    func testASelectionWhoseDeploymentIsGoneFallsBackOnRelaunch() {
+        let prefs = UserPreferences(store: defaults)
+        prefs.setCountry(Self.undeployedUK)
+
         let reloaded = UserPreferences(store: defaults)
-        XCTAssertEqual(reloaded.selectedCountry.code, "uk")
-        XCTAssertNil(reloaded.selectedCity)
+        XCTAssertEqual(reloaded.selectedCountry, .default)
+        XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://kinowo.fly.dev")
     }
 
     // MARK: - Persistence round-trip (via UserPreferences' store)
@@ -118,21 +151,26 @@ final class CountryTests: XCTestCase {
 
     func testSetCountryPersistsAndSurvivesAReload() {
         let prefs = UserPreferences(store: defaults)
-        prefs.setCountry(Country.byCode("GB"))
-        XCTAssertEqual(prefs.selectedCountry.code, "uk")
+        prefs.setCity("poznan")
+        prefs.setCountry(.default)
+        XCTAssertEqual(prefs.selectedCountry.code, "pl")
 
         // A fresh instance over the same store reads the persisted choice —
         // exactly what `kinowoBaseURL` sees at the next launch.
         let reloaded = UserPreferences(store: defaults)
-        XCTAssertEqual(reloaded.selectedCountry.code, "uk")
-        XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://showtimes-uk.fly.dev")
+        XCTAssertEqual(reloaded.selectedCountry.code, "pl")
+        XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://kinowo.fly.dev")
     }
 
     func testSelectingCountryForcesItsLanguageTag() {
         let prefs = UserPreferences(store: defaults)
-        prefs.setCountry(Country.byCode("GB"))
-        // iOS reads AppleLanguages at launch to pick the localized bundle.
+        // The tag written is the SELECTED country's, not the device's — iOS
+        // reads AppleLanguages at launch to pick the localized bundle.
+        prefs.setCountry(Self.undeployedUK)
         XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), ["en"])
-        XCTAssertEqual(CountrySelection.locale(defaults).identifier, "en")
+
+        prefs.setCountry(.default)
+        XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), ["pl"])
+        XCTAssertEqual(CountrySelection.locale(defaults).identifier, "pl")
     }
 }
