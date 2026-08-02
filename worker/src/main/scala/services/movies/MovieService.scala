@@ -922,7 +922,24 @@ class MovieService(
     // singleton guard below: with a year the director-less branch takes the safe
     // year-scoped exact-title path instead of refusing every multi-hit title as
     // `searchUnique` does when the year is absent.
-    val effectiveYear = year.orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
+    // A year a CINEMA reported, when the row itself has none. A staging row's `year`
+    // column is fixed when the newcomer is diverted — before any detail page has been
+    // fetched — and the detail then merges `releaseYear` onto the SLOT with nothing
+    // back-filling the column. Reading only the column sent films to TMDB year-less
+    // whose detail page stated the year plainly: production's Kino Iluzjon slot for
+    // "Pokój 666" carries releaseYear 1982 and director Wim Wenders, both parsed from
+    // the very page the replay had recorded and merged, and the leg still logged
+    // `'Pokój 666' (?) → no match`. A year-less, director-less search is one this
+    // method rightly refuses to guess at, so the row never stood a chance.
+    //
+    // Sorted and distinct so the choice is a pure function of the row rather than of
+    // slot iteration order, and taken only when the row has no year of its own — the
+    // persisted year still wins. `ImdbIdResolver.resolve` already reads the
+    // cinema-reported years exactly this way.
+    val reportedYears = row.data.values.flatMap(_.releaseYear).toSeq.distinct.sorted
+    val effectiveYear = year
+      .orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
+      .orElse(reportedYears.headOption)
     val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
     // this thread), so the caller keeps the hit's title/year as a fallback when

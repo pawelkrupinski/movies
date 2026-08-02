@@ -222,4 +222,41 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     resolved.flatMap(_.imdbId) shouldBe Some("tt9999999")
     cache.get(cache.keyOf("Premiera", Some(2026))) shouldBe None // never touched the cache
   }
+
+  /**
+   * A year a CINEMA reported must reach the search, even when the row itself has none.
+   *
+   * The staging row's `year` column is fixed when the newcomer is diverted, before any
+   * detail page has been fetched; the detail then merges `releaseYear` onto the SLOT and
+   * nothing back-fills the column. Resolution read only the column, so a film whose
+   * detail page states the year plainly still reached TMDB year-less — and a year-less,
+   * director-less search is one `resolveTmdbId` correctly refuses to guess at.
+   *
+   * Poland's "Pokój 666" is the worked example: production's Kino Iluzjon slot carries
+   * `releaseYear=1982` and `director=Wim Wenders`, both parsed from the very detail page
+   * the replay had recorded, replayed and merged — and the leg still logged
+   * `'Pokój 666' (?) → no match`.
+   *
+   * `ImdbIdResolver.resolve` already reads the cinema-reported years this way; this
+   * brings TMDB resolution in line with it.
+   */
+  it should "use a year a cinema slot reported when the row itself carries none" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository)
+    val tmdb  = new TmdbClient(http = new StubFetch(Map(
+      // Year-scoped search finds the film; the year-less one is ambiguous and refused.
+      "year=1982"                 -> """{"results":[{"id":118257,"title":"Room 666","original_title":"Chambre 666","release_date":"1982-05-01","popularity":5.0}]}""",
+      "/search/movie"             -> """{"results":[{"id":1,"title":"A"},{"id":2,"title":"B"}]}""",
+      "/movie/118257/external_ids" -> """{"id":118257,"imdb_id":"tt0083727"}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // No row year — exactly what a diverted newcomer has. The year lives on the slot,
+    // put there by the detail fetch.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Pokój 666"), releaseYear = Some(1982))))
+    val resolved = service.resolveStagingRecord("Pokój 666", None, existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(118257)
+  }
 }

@@ -948,18 +948,18 @@ runtimeMinutes:    90
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1750696947049.jpg
-synopsis.length:   119
-cast:              —
+synopsis.length:   247
+cast:              Marco Fiore, Aurora Quattrocchi, Martina Ziami, Camille Dugay Comencini, Concetta Ingrassia
 director:          Margherita Spampinato
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
+tmdbId:            1510325
+imdbId:            tt36454256
+originalTitle:     Gioia mia
+imdbRating:        7.1
+metascore:         71
 rottenTomatoes:    —
 filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
+metacriticUrl:     https://www.metacritic.com/movie/sweetheart
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/sweetheart_2025
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14626-cinema-italia-oggi-kochanie/
@@ -975,19 +975,19 @@ runtimeMinutes:    98
 releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1717409506831_3i23FXB.jpg
-synopsis.length:   118
-cast:              —
+synopsis.length:   194
+cast:              Pilar Fogliati, Adriano Giannini, Andrea Carpenzano, Valeria Golino, Selene Caramazza
 director:          Ludovica Rampoldi
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
+tmdbId:            1299382
+imdbId:            tt32528560
+originalTitle:     Breve storia d'amore
+imdbRating:        6.4
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     7.1
 metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/breve_storia_damore
+filmwebUrl:        https://www.filmweb.pl/film/Kr%C3%B3tka+historia+o+mi%C5%82o%C5%9Bci-2025-10096692
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14632-cinema-italia-oggi-krotka-historia-miosci/
 cinemaScrapes:
@@ -1002,19 +1002,19 @@ runtimeMinutes:    98
 releaseYear:       2025
 countries:         Włochy, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1744641462242.jpg
-synopsis.length:   116
-cast:              —
+synopsis.length:   407
+cast:              Filippo Scotti, Sergio Romano, Pierpaolo Capovilla, Roberto Citran, Andrea Pennacchi
 director:          Francesco Sossai
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1462322
+imdbId:            tt36491632
+originalTitle:     Le città di pianura
+imdbRating:        7.1
+metascore:         70
+rottenTomatoes:    90
+filmwebRating:     6.7
+metacriticUrl:     https://www.metacritic.com/movie/the-last-one-for-the-road
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/le_citta_di_pianura
+filmwebUrl:        https://www.filmweb.pl/film/Le+citt%C3%A0+di+pianura-2025-10078609
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14625-cinema-italia-oggi-miasta-na-rowninie/
 cinemaScrapes:
@@ -1084,22 +1084,22 @@ showings:
 displayTitle:      Cinema Italia Oggi: Razem czy osobno
 cinemaTitles:      Cinema Italia Oggi: Razem czy osobno
 runtimeMinutes:    108
-releaseYear:       2025
+releaseYear:       2026
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1758713670913.jpg
-synopsis.length:   118
-cast:              —
+synopsis.length:   794
+cast:              Edoardo Leo, Claudia Pandolfi, Gianmarco Tognazzi, Giorgio Colangeli, Benedetta Tiberi
 director:          Massimiliano Bruno
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
+tmdbId:            1397055
+imdbId:            tt36284371
+originalTitle:     2 cuori e 2 capanne
+imdbRating:        6.1
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.2
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Razem+czy+osobno-2026-10113196
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14630-cinema-italia-oggi-razem-czy-osobno/
 cinemaScrapes:
@@ -1160,17 +1160,17 @@ releaseYear:       2025
 countries:         Włochy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/1746483878552.jpg
 synopsis.length:   119
-cast:              —
+cast:              Pierfrancesco Favino, Tiziano Menichelli, Giovanni Ludeno, Dora Romano, Valentina Bellè
 director:          Andrea Di Stefano
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
+tmdbId:            1143973
+imdbId:            tt5179884
+originalTitle:     Il maestro
+imdbRating:        6.7
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
+metacriticUrl:     https://www.metacritic.com/movie/my-tennis-maestro
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/il_maestro_2014
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14627-cinema-italia-oggi-trener-tenisa/
@@ -2199,7 +2199,7 @@ showings:
 
 === Dzień objawienia ===
 displayTitle:      Dzień objawienia
-cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
+cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie | Pokaz przedpremierowy: dzień objawienia
 runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
@@ -2344,7 +2344,7 @@ cinemaScrapes:
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
-  Kinoteka / Dzień objawienia | Kino przy herbatce / 2026
+  Kinoteka / Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / —
   Max Kino / Dzień objawienia / —
@@ -2381,7 +2381,7 @@ showings:
 
 === Dzień objawienia ukraiński dubbing ===
 displayTitle:      Dzień objawienia ukraiński dubbing
-cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
+cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie | Pokaz przedpremierowy: dzień objawienia
 runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
@@ -2523,7 +2523,7 @@ cinemaScrapes:
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
-  Kinoteka / Dzień objawienia | Kino przy herbatce / 2026
+  Kinoteka / Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / —
   Max Kino / Dzień objawienia / —
@@ -2913,7 +2913,7 @@ showings:
 
 === Filmowy Klub Seniora: Ojczyzna ===
 displayTitle:      Filmowy Klub Seniora: Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy
+cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -2956,7 +2956,7 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Atlantic / Pora dla Seniora: Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
@@ -4020,19 +4020,19 @@ runtimeMinutes:    93
 releaseYear:       2025
 countries:         Francja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_piesni_lasu.jpg
-synopsis.length:   110
-cast:              —
+synopsis.length:   777
+cast:              Vincent Munier, Michel Munier, Simon Munier
 director:          Vincent Munier
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
+tmdbId:            1309373
+imdbId:            tt32368068
+originalTitle:     Le Chant des forêts
+imdbRating:        7.9
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     8.2
 metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/whispers_in_the_woods
+filmwebUrl:        https://www.filmweb.pl/film/Pie%C5%9Bni+lasu-2025-10111381
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14486-kino-bez-barier-piesni-lasu-ad-cc-pjm/
 cinemaScrapes:
@@ -4840,7 +4840,7 @@ showings:
 
 === Milczenie owiec ===
 displayTitle:      Milczenie owiec
-cinemaTitles:      Klasyk w kinie: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec
+cinemaTitles:      Klasyk w kinie: Milczenie owiec | Klasyka w kinie Atlantic: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec - pokazy specjalne
 runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
@@ -4928,6 +4928,7 @@ cinemaScrapes:
   Helios Tczew / Milczenie owiec / —
   Helios Łódź / Milczenie owiec / —
   Helios Żory / Milczenie owiec / —
+  Kino Atlantic / Klasyka w kinie Atlantic: Milczenie owiec / 1991
   Kino Iluzjon / Milczenie owiec / 1991
   Kino Kinematograf / Klasyk w kinie: Milczenie owiec / 1991
   Kino MDK / MILCZENIE OWIEC / —
@@ -4937,6 +4938,7 @@ cinemaScrapes:
   Kino Pod Baranami / Milczenie owiec / —
   Kino Sfinks / MILCZENIE OWIEC / —
   Kino Studyjne Kadr / Milczenie owiec / —
+  Kino Wisła / Milczenie owiec - pokazy specjalne / 1991
   KinoPort / Milczenie owiec / 1991
   OKF Iluzja / Milczenie owiec / —
   Planet Cinema / Milczenie owiec / —
@@ -6163,7 +6165,7 @@ showings:
 
 === Ojczyzna ===
 displayTitle:      Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy
+cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -6208,7 +6210,7 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Atlantic / Pora dla Seniora: Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
@@ -6587,13 +6589,13 @@ showings:
 
 === Pianista ===
 displayTitle:      Pianista
-cinemaTitles:      PIANISTA | Pianista
+cinemaTitles:      PIANISTA | Pianista | Spotkania Filmowe: Pianista
 runtimeMinutes:    149
 releaseYear:       2002
 countries:         Francja, Niemcy, Polska, Wielka Brytania, USA
 posterUrl:         https://img.helios.pl/pliki/film/pianista/pianista-plakat-769.png
 synopsis.length:   579
-cast:              Adrien Brody, Thomas Kretschmann, Frank Finlay, Maureen Lipman, Emilia Fox
+cast:              Adrien Brody, Thomas Kretschmann, Emilia Fox, Maureen Lipman, Jessica Kate Meyer, Julia Rayner
 director:          Roman Polański
 tmdbId:            423
 imdbId:            tt0253474
@@ -6646,6 +6648,7 @@ cinemaScrapes:
   Helios Tczew / Pianista / —
   Helios Łódź / Pianista / —
   Helios Żory / Pianista / —
+  Kino Przedwiośnie / Spotkania Filmowe: Pianista / 2002
   Kino Tatry / PIANISTA / 2002
 showings:
   2026-06-14  Helios Posnania               15:00 Sala 2 2D/NAP
@@ -8061,7 +8064,7 @@ showings:
 
 === Prawo pożądania ===
 displayTitle:      Prawo pożądania
-cinemaTitles:      FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania | Prawo pożądania | Prawo pożądania | 6 razy Pedro | Prawo pożądania | Fiesta Kina Hiszpańskiego | Prawo pożądania – fiesta kina hiszpańskiego: almodóvar/ banderas
+cinemaTitles:      FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania | Prawo pożądania | Prawo pożądania | Fiesta Kina Hiszpańskiego | Prawo pożądania – fiesta kina hiszpańskiego: almodóvar/ banderas
 runtimeMinutes:    102
 releaseYear:       1987
 countries:         Hiszpania
@@ -8087,7 +8090,6 @@ cinemaScrapes:
   Kino Oskard / FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania / —
   Kino Spektrum / Prawo pożądania | Fiesta Kina Hiszpańskiego / —
   Kino Zamek / Prawo pożądania – fiesta kina hiszpańskiego: almodóvar/ banderas / 1987
-  Kinoteka / Prawo pożądania | 6 razy Pedro / 2026
 showings:
   2026-06-08  Kino Malta Charlie Monroe     20:30 Sala Charlie
   2026-06-09  Kino Malta Charlie Monroe     18:45 Sala Charlie
@@ -8095,7 +8097,7 @@ showings:
 
 === Projekt Hail Mary ===
 displayTitle:      Projekt Hail Mary
-cinemaTitles:      Projekt Hail Mary | Projekt Hail Mary | Kinoteka dla rodzica
+cinemaTitles:      21 i 22 Jump Street – podwójny seans | Projekt Hail Mary | Projekt Hail Mary | Kinoteka dla rodzica
 runtimeMinutes:    156
 releaseYear:       2026
 countries:         USA
@@ -10570,7 +10572,7 @@ showings:
 
 === Zaproszenie ===
 displayTitle:      Zaproszenie
-cinemaTitles:      ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
+cinemaTitles:      Kobiecy świat: Zaproszenie | ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
 runtimeMinutes:    108
 releaseYear:       2026
 countries:         USA
@@ -10596,6 +10598,7 @@ cinemaScrapes:
   Kino Bajka / Zaproszenie / —
   Kino Pałacowe / Zaproszenie / 2026
   Kino Pionier 1907 / ZAPROSZENIE / 2026
+  Kino Wisła / Kobiecy świat: Zaproszenie / 2026
   Kinoteka / Zaproszenie | Zobacz przedpremierowo / 2026
 showings:
   2026-06-27  Kino Pałacowe                 18:00 Sala 1 - Kinowa

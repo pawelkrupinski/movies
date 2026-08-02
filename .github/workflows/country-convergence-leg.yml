@@ -189,6 +189,11 @@ jobs:
                   # falls through to the live chain and is recorded for the next run.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  # The OMDb rung of ImdbIdResolver is gated on this key
+                  # (`omdb = Env.get("OMDB_API_KEY").map(...)`), so without it the
+                  # ladder silently runs one rung short of production, which HAS the
+                  # secret. Nothing logs the difference — the rung is simply absent.
+                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
                   # Names the container above, so every repository — movies, screenings,
                   # slots, read model, staging and its transactional folder, tasks,
                   # freshness, chunk-scrape, OMDb attempts and the archive — runs on a

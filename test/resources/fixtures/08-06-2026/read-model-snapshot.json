@@ -128,24 +128,30 @@
   }, {
     "_id" : "21i22jumpstreetpodwojnyseans|2026",
     "title" : "21 i 22 Jump Street – podwójny seans",
-    "originalTitle" : "21 Jump Street & 22 Jump Street",
-    "posterUrl" : "https://medstore.kinoteka.pl/FreaksGeeks(1).png",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 250,
+    "originalTitle" : "Project Hail Mary",
+    "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7449S2R.jpg",
+    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/ProjektHailMaryplakat.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/plak1at_8187089.8.jpg_x_standa.jpg", "https://medstore.kinoteka.pl/FreaksGeeks(1).png", "https://medstore.kinoteka.pl/plakat(15).jpg", "https://image.tmdb.org/t/p/w500/sQWgdoo3qM6dMLdpfXD804XZhwY.jpg", "https://m.media-amazon.com/images/M/MV5BNTkwNzJiYTctNzI3NC00NjE1LTlhYjktY2Q5MTdmMWFmNzcxXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 156,
     "releaseYear" : 2026,
-    "genres" : [ "Komedia", "Pokaz Specjalny" ],
+    "genres" : [ "Sci-Fi", "Przygodowy" ],
     "countries" : [ "USA" ],
-    "directors" : [ "Phil Lord", "Christopher Miller" ],
-    "cast" : [ "Jonah Hill", "Channing Tatum", "Peter Stormare", "Ice Cu" ],
+    "directors" : [ "Christopher Miller", "Phil Lord" ],
+    "cast" : [ "Ryan Gosling", "Sandra Hüller", "James Ortiz", "Lionel Boyce", "Milana Vayntrub" ],
     "synopsis" : "Choć powrót do szkoły to ostatnie, o czym ludzie chcą myśleć w czerwcu, akurat tej dwójce musicie dać szansę. Już 20.06 wszystkich absolwentów humoru czekać będzie niezwykły reunion: podwójny seans „21 Jump Street” i „22 Jump Street” zamkniętych w jednym komediowym doświadczeniu.\n\nW „Jump Street” stojący za kamerą Phil Lord i Christopher Miller (niedawny „Projekt Hail Mary”) całkowicie odpięli wrotki. Biorąc na warsztat kultowy policyjny serial z lat 80-tych, w swoim luźnym remake’u postanowili wydobyć przede wszystkim jego komediowe potencjały. Dlatego też do murów liceum, pod przykrywką zwykłych uczniów, wracają tutaj aspirant Jonah Hill („Supersamiec”) oraz aspirant Channing Tatum („Magic Mike”). Ich wyjątkowa dynamika, jak i wszystko w tym wybitnie autotematycznym projekcie, igra z konwencją policyjnej komedii sensacyjnej i kina kumpelskiego, ale oba filmy uchodzą za arcydzieło komedii XXI wieku także z innych powodów.\n\nW motywie „Back 2 School” twórcy pochylają się nad wymiarami męskiej przyjaźni, przemianami charakteru młodego pokolenia i odrzuceniem maczyzmu na rzecz empatii przez współczesną kulturę. Równolegle zastanawiają się też nad zadaniami dzisiejszego kina wysokobudżetowego. W erze nieskończonych remake’ów, sequeli i rebootów zalewających dzisiejsze kina, seans igrającego z tą konwencją „Jump Street” może okazać się zupełnie odświeżającym doświadczeniem.\n\nW ramach wydarzenia filmy „21 Jump Street” i „22 Jump Street” zostaną pokazane po sobie. Pomiędzy nimi odbędzie się prelekcja Jana Lubaczewskiego i Macieja Satory w adekwatnej formie: trochę rozmowy, trochę wymiany myśli oraz reakcji z sali, trochę zagryzania pączków z MOD Donuts – partnera zbliżającego się pokazu.",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/0tNw0bH1Ais", "https://www.youtube.com/embed/JGj8XMyKnec" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/21+i+22+Jump+Street+%E2%80%93+podw%C3%B3jny+seans/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=21+i+22+Jump+Street+%E2%80%93+podw%C3%B3jny+seans",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=21+i+22+Jump+Street+%E2%80%93+podw%C3%B3jny+seans"
+      "imdb" : 8.3,
+      "imdbUrl" : "https://www.imdb.com/title/tt12042730/",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/project-hail-mary",
+      "rottenTomatoes" : 94,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/project_hail_mary",
+      "filmweb" : 7.9,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Projekt+Hail+Mary-2026-10047841"
     },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "weightedRating" : 8.325000000000001,
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "32mfspaparttrixie|",
     "title" : "32. Mfsp A Part - Trixie",
@@ -843,27 +849,25 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|1944",
+    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|2026",
     "title" : "Arszenik i stare koronki | Kino cyrkularne – klasyka filmowa",
     "originalTitle" : "Arsenic and Old Lace",
     "posterUrl" : "https://medstore.kinoteka.pl/plakatcyrkularnelq.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 118,
-    "releaseYear" : 1944,
-    "genres" : [ "Czarna komedia" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Czarna Komedia", "Komedia", "Kryminał", "Thriller" ],
     "countries" : [ "USA" ],
     "directors" : [ "Frank Capra" ],
     "cast" : [ "Cary Grant", "Priscilla Lane", "Raymond Massey", "Peter Lorre", "Josephine Hull" ],
     "synopsis" : "29 czerwca o 20:00 pokażemy „Arszenik i stare koronki” (1944) – kultową czarną komedię Franka Capry, opartą na słynnej broadwayowskiej sztuce Josepha Kesselringa.\n\nTo pełna absurdalnego humoru i błyskotliwych dialogów historia, w której makabryczne pomysły spotykają się z lekkością klasycznej komedii. Capra mistrzowsko łączy elementy farsy, kryminału i screwball comedy, budując coraz bardziej chaotyczną i komiczną spiralę wydarzeń.\n\nFilm balansuje między grozą a humorem, wykorzystując teatralny rytm, dynamiczne tempo i serię nieoczekiwanych sytuacji, które prowadzą do jednej z najbardziej szalonych komedii w historii kina.\n\nOpis filmu:\n\nMortimer Brewster, nowojorski krytyk teatralny i zagorzały przeciwnik małżeństwa, odwiedza swoje ekscentryczne ciotki tuż po własnym ślubie. Wkrótce odkrywa jednak rodzinny sekret, który zamienia spokojną wizytę w pasmo coraz bardziej absurdalnych wydarzeń. W roli głównej występuje Cary Grant, tworząc jedną ze swoich najbardziej pamiętnych komediowych kreacji.\n\nSeans odbędzie się w sali kinowej wyposażonej w laserowy projektor Barco SP2K-9S.\n\nProsimy o punktualność – przed seansem odbędzie się krótka prelekcja.\n\nCo wyświetlimy na kolejnych pokazach? Decyzję pozostawiamy wam!\n\nPrzed wejściem na seans otrzymacie od nas karty do głosowania – będziecie mogli wybrać następny tytuł z przygotowanej przez nas listy lub wpisać własną propozycję.\n\nKuratorka cyklu: Karolina Fornal",
     "trailerUrls" : [ "https://www.youtube.com/embed/Mqtku1zL8K4" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0036613/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Arsenic+and+Old+Lace/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arsenic+and+Old+Lace",
-      "filmweb" : 7.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Arszenik+i+stare+koronki-1944-31599"
+      "metacriticUrl" : "https://www.metacritic.com/search/Arszenik+i+stare+koronki+%7C+Kino+cyrkularne+%E2%80%93+klasyka+filmowa/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arszenik+i+stare+koronki+%7C+Kino+cyrkularne+%E2%80%93+klasyka+filmowa",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Arszenik+i+stare+koronki+%7C+Kino+cyrkularne+%E2%80%93+klasyka+filmowa"
     },
-    "weightedRating" : 7.8,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "audiencjanationaltheatrelive2026|2026",
@@ -1540,27 +1544,29 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "boliblask6razypedro|2019",
+    "_id" : "boliblask6razypedro|2026",
     "title" : "Ból i blask | 6 razy Pedro",
-    "originalTitle" : "Dolor y gloria",
+    "originalTitle" : "Amarga Navidad",
     "posterUrl" : "https://medstore.kinoteka.pl/bbplakatpllq.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/matkirownolegleplakatpllq.jpg", "https://medstore.kinoteka.pl/W%20pokoju%20obok_plakat%20PL_LQ.jpg", "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://image.tmdb.org/t/p/w500/ji29dXqoeIsQiVnXAkzI4nzxMjr.jpg", "https://m.media-amazon.com/images/M/MV5BN2I4ODhmMDItM2EzNS00NmM0LTkzOTQtMWM5MTNhOTYzNDM3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 113,
-    "releaseYear" : 2019,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Hiszpania" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "Hiszpania", "USA" ],
     "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Penélope Cruz", "Antonio Banderas", "Asier Etxeandia" ],
+    "cast" : [ "Bárbara Lennie", "Leonardo Sbaraglia", "Aitana Sánchez-Gijón", "Victoria Luengo", "Patrick Criado" ],
     "synopsis" : "„Ból i blask” to arcydzieło (Gazeta Wyborcza), najlepszy i zarazem najbardziej osobisty film hiszpańskiego mistrza od lat (The Hollywood Reporter), najpiękniejsza celebracja miłości (The Playlist). Doskonałe recenzje, łzy wzruszenia i 10-minutowa owacja po seansie – to tylko kilka reakcji na najnowszy film jednego z najwybitniejszych reżyserów światowego kina, Pedro Almodóvara. Twórca „Wszystko o mojej matce” i „Porozmawiaj z nią” opowiada o roli przypadku w naszym życiu, o sile pierwszych fascynacji oraz o tym, co po latach zostaje z relacji – zwłaszcza miłosnych – z ważnymi dla nas ludźmi. „Ból i blask” to również ponowne spotkanie hiszpańskiego reżysera ze swoją wieloletnią filmową muzą, Penélope Cruz, oraz – przede wszystkim – z Antonio Banderasem, którego za tę rolę uhonorowano nagrodą dla najlepszego aktora na 72. Festiwalu w Cannes.\n\nGłównym bohaterem filmu jest Salvador Mallo (Banderas), kultowy hiszpański reżyser, który stroni od mediów i usilnie strzeże swojej prywatności. Mężczyzna odnajduje po latach osoby, które wywarły największy wpływ na jego życie, oraz przeżywa na nowo najważniejsze momenty ze swojej przeszłości. Wraca do dzieciństwa, gdy wraz z rodzicami w poszukiwaniu dobrobytu przenieśli się do małego miasteczka. Przywołuje obrazy swojej pierwszej namiętności, pierwszej wielkiej miłości i bólu rozstania. Wspomina spotkanie z kinem, które na lata stało się sensem jego życia. Powracając do najintensywniejszych doświadczeń minionych lat, Salvador odnajduje siłę, by zmierzyć się z teraźniejszością. Czy uda mu się zamknąć niedokończone sprawy z przeszłości, które burzą jego poukładaną codzienność?\n\n„Ból i blask” to najbardziej osobisty spośród wszystkich filmów Almodóvara, a jednocześnie, jak podkreśla światowa krytyka, najlepszy film w jego karierze. Pełne emocji dzieło na miarę „Osiem i pół” Felliniego, w którym hiszpański reżyser po raz kolejny zachwyca swoją niepowtarzalną wrażliwością wizualną i w kapitalny sposób łączy wielką czułość z poczuciem humoru.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/ASjGIpOfwNU" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/ASjGIpOfwNU", "https://www.youtube.com/embed/asE6E7X1gOs", "https://www.youtube.com/embed/5rphRnnqyu0", "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt8291806/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Dolor+y+gloria/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dolor+y+gloria",
-      "filmweb" : 7.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/B%C3%B3l+i+blask-2019-823007"
+      "imdb" : 6.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt28088049/",
+      "metascore" : 69,
+      "metacriticUrl" : "https://www.metacritic.com/movie/bitter-christmas",
+      "rottenTomatoes" : 91,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/bitter_christmas",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Amarga+Navidad"
     },
-    "weightedRating" : 7.2,
+    "weightedRating" : 7.5,
     "synopsisByCity" : { }
   }, {
     "_id" : "bonpodarunkowy|",
@@ -2263,62 +2269,76 @@
   }, {
     "_id" : "cinemaitaliaoggikochanie|2025",
     "title" : "Cinema Italia Oggi: Kochanie",
+    "originalTitle" : "Gioia mia",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1750696947049.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/kYw62IF023miZMKyiAqX4mYat3a.jpg", "https://m.media-amazon.com/images/M/MV5BNTY0NDdkZTctNWEzNy00MTA4LTkyYzQtNzY0MmQyYzU3MDZlXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 90,
     "releaseYear" : 2025,
-    "genres" : [ ],
+    "genres" : [ "Dramat" ],
     "countries" : [ "Włochy" ],
     "directors" : [ "Margherita Spampinato" ],
-    "cast" : [ ],
-    "synopsis" : "Nico, chłopiec wychowany w świeckiej rodzinie, w nowoczesnym, technologicznym świecie, zostaje zmuszony do spędzenia...",
+    "cast" : [ "Marco Fiore", "Aurora Quattrocchi", "Martina Ziami", "Camille Dugay Comencini", "Concetta Ingrassia" ],
+    "synopsis" : "Młody chłopak i starsza kobieta są zmuszeni spędzić razem lato. To zderzenie nowoczesności z tradycją, szybkości z powolnością. Lato pełne lęków i odkryć, ale także przygód, kamieni milowych i strat – lato, po którym nic już nie będzie takie samo.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cinema+Italia+Oggi%3A+Kochanie/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cinema+Italia+Oggi%3A+Kochanie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cinema+Italia+Oggi%3A+Kochanie"
+      "imdb" : 7.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt36454256/",
+      "metascore" : 71,
+      "metacriticUrl" : "https://www.metacritic.com/movie/sweetheart",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/sweetheart_2025",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Gioia+mia"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.1,
     "synopsisByCity" : { }
   }, {
     "_id" : "cinemaitaliaoggikrotkahistoriamilosci|2025",
     "title" : "Cinema Italia Oggi: Krótka historia miłości",
+    "originalTitle" : "Breve storia d'amore",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1717409506831_3i23FXB.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/avqBTEK53Zqyr5sWIi6EuE51UaH.jpg", "https://m.media-amazon.com/images/M/MV5BMDViMmJlZTQtOGNhMy00NGU2LThkZjQtZjQ3OWFjMzBhMmJlXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 98,
     "releaseYear" : 2025,
-    "genres" : [ ],
+    "genres" : [ "Komedia" ],
     "countries" : [ "Włochy" ],
     "directors" : [ "Ludovica Rampoldi" ],
-    "cast" : [ ],
-    "synopsis" : "To historia dwóch par. Trzydziestoletnich Lei i Andrei oraz pięćdziesięcioletnich Rocca i Cecilii. Losy tej czwórki...",
+    "cast" : [ "Pilar Fogliati", "Adriano Giannini", "Andrea Carpenzano", "Valeria Golino", "Selene Caramazza" ],
+    "synopsis" : "Lea poznaje Rocco, po czym szybko staje się jego kochanką. Skrywany romans, skonsumowany na hotelowym łóżku, nabiera mrocznego wymiaru, gdy Lea zaczyna coraz śmielej ingerować w życie mężczyzny.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cinema+Italia+Oggi%3A+Kr%C3%B3tka+historia+mi%C5%82o%C5%9Bci/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cinema+Italia+Oggi%3A+Kr%C3%B3tka+historia+mi%C5%82o%C5%9Bci",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cinema+Italia+Oggi%3A+Kr%C3%B3tka+historia+mi%C5%82o%C5%9Bci"
+      "imdb" : 6.4,
+      "imdbUrl" : "https://www.imdb.com/title/tt32528560/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Breve+storia+d%27amore/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/breve_storia_damore",
+      "filmweb" : 7.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Kr%C3%B3tka+historia+o+mi%C5%82o%C5%9Bci-2025-10096692"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.75,
     "synopsisByCity" : { }
   }, {
     "_id" : "cinemaitaliaoggimiastanarowninie|2025",
     "title" : "Cinema Italia Oggi: Miasta na równinie",
+    "originalTitle" : "Le città di pianura",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1744641462242.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/oxKw1UkPojpYoreMkjqCqjZ1dyG.jpg", "https://m.media-amazon.com/images/M/MV5BMWNkOTM5YmEtYTM3Ny00MDVkLWE5OTYtZDg2N2ExMDIwMTdmXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 98,
     "releaseYear" : 2025,
-    "genres" : [ ],
+    "genres" : [ "Komedia" ],
     "countries" : [ "Włochy", "Niemcy" ],
     "directors" : [ "Francesco Sossai" ],
-    "cast" : [ ],
-    "synopsis" : "Carlobianchi i Doriano, dwaj spłukani pięćdziesięciolatkowie, mają jedną obsesję: wypić ostatni kieliszek. Pewnej...",
+    "cast" : [ "Filippo Scotti", "Sergio Romano", "Pierpaolo Capovilla", "Roberto Citran", "Andrea Pennacchi" ],
+    "synopsis" : "Carlobianchi i Doriano, dwaj bez grosza przy duszy pięćdziesięciolatkowie, mają obsesję na punkcie jednego: pójścia na ostatniego drinka. Pewnego wieczoru, zupełnie przypadkiem, jeżdżąc bez celu od baru do baru, spotykają Giulia, nieśmiałego studenta architektury. Spotkanie tych dwóch niezwykłych mentorów radykalnie zmieni sposób, w jaki Giulio postrzega świat i miłość, a także wyobraża sobie przyszłość.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cinema+Italia+Oggi%3A+Miasta+na+r%C3%B3wninie/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cinema+Italia+Oggi%3A+Miasta+na+r%C3%B3wninie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cinema+Italia+Oggi%3A+Miasta+na+r%C3%B3wninie"
+      "imdb" : 7.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt36491632/",
+      "metascore" : 70,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-last-one-for-the-road",
+      "rottenTomatoes" : 90,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/le_citta_di_pianura",
+      "filmweb" : 6.7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Le+citt%C3%A0+di+pianura-2025-10078609"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.45,
     "synopsisByCity" : { }
   }, {
     "_id" : "cinemaitaliaoggioczymsobieniemowimy|2026",
@@ -2369,24 +2389,28 @@
     "weightedRating" : 6.15,
     "synopsisByCity" : { }
   }, {
-    "_id" : "cinemaitaliaoggirazemczyosobno|2025",
+    "_id" : "cinemaitaliaoggirazemczyosobno|2026",
     "title" : "Cinema Italia Oggi: Razem czy osobno",
+    "originalTitle" : "2 cuori e 2 capanne",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1758713670913.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/iqzJFIm7p64xVnRHLD5FKQM5XcJ.jpg", "https://m.media-amazon.com/images/M/MV5BNDE5N2QzMDEtNWViNi00NThjLWFkZDMtMWZiYzVkYTU5MWI3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 108,
-    "releaseYear" : 2025,
-    "genres" : [ ],
+    "releaseYear" : 2026,
+    "genres" : [ "Komedia" ],
     "countries" : [ "Włochy" ],
     "directors" : [ "Massimiliano Bruno" ],
-    "cast" : [ ],
-    "synopsis" : "Alessandra i Valerio nie mogliby bardziej się od siebie różnić. Ona jest błyskotliwą i lubianą nauczycielką liceum,...",
+    "cast" : [ "Edoardo Leo", "Claudia Pandolfi", "Gianmarco Tognazzi", "Giorgio Colangeli", "Benedetta Tiberi" ],
+    "synopsis" : "Alessandra i Valerio nie mogliby się bardziej różnić. Ona jest piękną, wolną i niezależną kobietą po czterdziestce, nonkonformistką i zaangażowaną społecznie, zagorzałą feministką, uczuloną na konkubinat i długotrwałe związki. On jest atrakcyjnym, wysportowanym, a jednocześnie sztywnym i świadomym konwencji chłopcem w jej wieku, żyjącym prostym, rygorystycznym i być może dość banalnym życiem. Pewnego ranka ich drogi się krzyżują: chemia jest niezaprzeczalna, a namiętność przytłaczająca. Nagle nadchodzi niespodzianka: pracują w tej samej szkole. Szkoda, że ​​ona jest idolką swoich uczniów, a on dyrektorem, nieustępliwym wobec nich. Dwa różne światy. Zmuszeni do koegzystencji na szkolnych korytarzach i w klasach pełnych nastolatków, czy będą gotowi zakwestionować wszystko, w co wierzą?",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cinema+Italia+Oggi%3A+Razem+czy+osobno/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cinema+Italia+Oggi%3A+Razem+czy+osobno",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cinema+Italia+Oggi%3A+Razem+czy+osobno"
+      "imdb" : 6.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt36284371/",
+      "metacriticUrl" : "https://www.metacritic.com/search/2+cuori+e+2+capanne/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=2+cuori+e+2+capanne",
+      "filmweb" : 6.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Razem+czy+osobno-2026-10113196"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.15,
     "synopsisByCity" : { }
   }, {
     "_id" : "cinemaitaliaoggitakiejestzycie|2025",
@@ -2415,22 +2439,25 @@
   }, {
     "_id" : "cinemaitaliaoggitrenertenisa|2025",
     "title" : "Cinema Italia Oggi: Trener Tenisa",
+    "originalTitle" : "Il maestro",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/1746483878552.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/oDucYHSU6iDlRKAj0tJmvNBgoq0.jpg", "https://m.media-amazon.com/images/M/MV5BNDY3YmU3OWUtZDVmYS00Mzg4LWExN2ItZWIwYzk0Y2RmZTk2XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 125,
     "releaseYear" : 2025,
-    "genres" : [ ],
+    "genres" : [ "Dramat" ],
     "countries" : [ "Włochy" ],
     "directors" : [ "Andrea Di Stefano" ],
-    "cast" : [ ],
+    "cast" : [ "Pierfrancesco Favino", "Tiziano Menichelli", "Giovanni Ludeno", "Dora Romano", "Valentina Bellè" ],
     "synopsis" : "Lato, koniec lat osiemdziesiątych. Po latach ciężkich treningów i dręczących oczekiwań ojca, trzynastoletni Felice w...",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cinema+Italia+Oggi%3A+Trener+Tenisa/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cinema+Italia+Oggi%3A+Trener+Tenisa",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cinema+Italia+Oggi%3A+Trener+Tenisa"
+      "imdb" : 6.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt5179884/",
+      "metacriticUrl" : "https://www.metacritic.com/movie/my-tennis-maestro",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/il_maestro_2014",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Il+maestro"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.7,
     "synopsisByCity" : { }
   }, {
     "_id" : "cinemaitaliaoggiwolnoscpowlosku|2025",
@@ -4209,7 +4236,7 @@
     "title" : "Dzień objawienia | Kino przy herbatce",
     "originalTitle" : "Disclosure Day",
     "posterUrl" : "https://movies.helios.pl/images/DzienObjawieniaPlakatNew.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://medstore.kinoteka.pl/kolor2.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 146,
     "releaseYear" : 2026,
     "genres" : [ "Tajemnica", "Sci-Fi", "Thriller" ],
@@ -4217,7 +4244,7 @@
     "directors" : [ "Steven Spielberg" ],
     "cast" : [ "Emily Blunt", "Josh O'Connor", "Colin Firth", "Eve Hewson", "Wyatt Russell", "Colman Domingo" ],
     "synopsis" : "Prezenterka pogody (Emily Blunt) wywołuje panikę i uruchamia falę spekulacji po tym, jak w czasie transmisji na żywo nagle zaczyna mówić w tajemniczym obcym języku. Zaczynają się spekulacje o kontakcie z istotami pozaziemskimi.\nAnalityk ds. cyberbezpieczeństwa Daniel (Josh O'Connor) orientuje się, że prawdopodobnie jest jedyną osobą, która choć nie wie jak to możliwe, rozumie ten język i może przetłumaczyć go na angielski. Jego zdaniem ludzkość ma prawo poznać prawdę, więc postanawia upublicznić przesłanie od obcych.\n\nTa decyzja prowadzi go do konfliktu ze stroną rządową, reprezentowaną przez agenta Scanlona (Colin Firth), która nie cofnie się przed niczym, by nie dopuścić do ujawnienia prawdy.\n\n„Kino przy herbatce” to cykl kameralnych spotkań filmowych, podczas których łączymy oglądanie dobrego kina z chwilą rozmowy przy kawie czy herbacie. To propozycja dla seniorów oraz wszystkich innych, którzy cenią sobie spokojne seanse w ciągu dnia.\n\nSpotkania odbywają się w każdy wtorek, w swobodnej formule – zaczynamy drobnym poczęstunkiem od 11:00 w kawiarni, a następnie o 12:00 zapraszamy na projekcję filmu. W repertuarze pojawią się zarówno głośne nowości, jak i ceniona klasyka.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ", "https://www.youtube.com/embed/_h-efLS7VV4" ],
     "ratings" : {
       "imdbUrl" : "https://www.imdb.com/title/tt15047880/",
       "metacriticUrl" : "https://www.metacritic.com/movie/disclosure-day",
@@ -4231,7 +4258,7 @@
     "title" : "Dzień objawienia ukraiński dubbing",
     "originalTitle" : "Disclosure Day",
     "posterUrl" : "https://movies.helios.pl/images/DzienObjawieniaPlakatNew.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://medstore.kinoteka.pl/kolor2.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 146,
     "releaseYear" : 2026,
     "genres" : [ "Tajemnica", "Sci-Fi", "Thriller" ],
@@ -4239,7 +4266,7 @@
     "directors" : [ "Steven Spielberg" ],
     "cast" : [ "Emily Blunt", "Josh O'Connor", "Colin Firth", "Eve Hewson", "Wyatt Russell", "Colman Domingo" ],
     "synopsis" : "Gdybyś dowiedział się, że nie jesteśmy sami, gdyby ktoś ci to pokazał i udowodnił, bałbyś się? Prezenterka pogody wywołuje panikę i uruchamia falę spekulacji po tym, jak w czasie transmisji na żywo nagle zaczyna mówić w tajemniczym obcym języku. Zaczynają się spekulacje o kontakcie z istotami pozaziemskimi...",
-    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ", "https://www.youtube.com/embed/_h-efLS7VV4" ],
     "ratings" : {
       "imdbUrl" : "https://www.imdb.com/title/tt15047880/",
       "metacriticUrl" : "https://www.metacritic.com/movie/disclosure-day",
@@ -4253,7 +4280,7 @@
     "title" : "Dzień objawienia",
     "originalTitle" : "Disclosure Day",
     "posterUrl" : "https://movies.helios.pl/images/DzienObjawieniaPlakatNew.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://medstore.kinoteka.pl/kolor2.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 146,
     "releaseYear" : 2026,
     "genres" : [ "Tajemnica", "Sci-Fi", "Thriller" ],
@@ -4261,7 +4288,7 @@
     "directors" : [ "Steven Spielberg" ],
     "cast" : [ "Emily Blunt", "Josh O'Connor", "Colin Firth", "Eve Hewson", "Wyatt Russell", "Colman Domingo" ],
     "synopsis" : "*Dzień objawienia* to opowieść o poszukiwaniu prawdy na temat przybyszów z odległych planet, którą starają się zataić politycy i przedstawiciele wielkich korporacji technologicznych.\n\nGdy na jaw wychodzą informacje o obecności kosmitów na ziemi, rozpoczyna się wyścig z czasem. W rolach głównych występują Emily Blunt (*Oppenheimer*, *Diabeł ubiera się u Prady 2*), Josh O'Connor (*Challengers*, *La chimera*) i Colin Firth (*Jak zostać królem*, *Dziennik Bridget Jones*).\n\nW filmie *Dzień objawienia* Steven Spielberg wraca do korzeni i kina nowej przygody. Pół wieku po premierze *Bliskich spotkań trzeciego stopnia*, amerykański reżyser ponownie opowiada o próbie kontaktu między ludzkością a obcą cywilizacją z kosmosu, badając przy tym współczesne lęki i marzenia na temat przyszłości. Od samego początku kariery Spielberga fascynuje wizja świata, w którym pojawiają się ciekawi go kosmici - tacy, jak sympatyczny, zagubiony bohater filmu *E.T*.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ", "https://www.youtube.com/embed/_h-efLS7VV4" ],
     "ratings" : {
       "imdbUrl" : "https://www.imdb.com/title/tt15047880/",
       "metacriticUrl" : "https://www.metacritic.com/movie/disclosure-day",
@@ -4768,7 +4795,7 @@
     "title" : "Fiesta kina hiszpańskiego: Prawo pożądania",
     "originalTitle" : "La ley del deseo",
     "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 102,
     "releaseYear" : 1987,
     "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
@@ -4776,7 +4803,7 @@
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
     "synopsis" : "Tina jest siostrą Pabla. Ich rodzice rozstali się, kiedy Tina miała na imię Tino i była chłopcem, a gdy zamieszkała z ojcem, od pewnego czasu już z nim sypiała. Tino przechodzi zmianę płci, staje się Tiną i jednocześnie żoną ojca, którą ten po kilku latach porzuca, a zraniona Tina nie chce nawet słyszeć o mężczyznach. Nienawidzi ich. Pablo jest zakochany w Juanie, który nie jest pewien swoich uczuć, więc Pablo próbuje o nim zapomnieć. Poznaje zaborczego, pełnego sprzeczności Antonia i nawiązuje z nim romans, jednak jego życie staje się jeszcze bardziej skomplikowane. Nie może z tego wyjść nic dobrego…\nBilety: 15 zł",
-    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
+    "trailerUrls" : [ ],
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
@@ -6346,22 +6373,26 @@
   }, {
     "_id" : "kinobezbarierpiesnilasuadccpjm|2025",
     "title" : "Kino bez barier: Pieśni lasu (AD + CC + PJM)",
+    "originalTitle" : "Le Chant des forêts",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_piesni_lasu.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/5rcsd0iGbsQ6DFTI3HclJPJzY9K.jpg", "https://m.media-amazon.com/images/M/MV5BYTEwMTA5OGItN2FlNS00ZjFiLWIyNzktYTVmZDZlOGNlMGYwXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 93,
     "releaseYear" : 2025,
     "genres" : [ "Dokumentalny" ],
     "countries" : [ "Francja" ],
     "directors" : [ "Vincent Munier" ],
-    "cast" : [ ],
-    "synopsis" : "Film \"Pieśni lasu\" Vincenta Muniera. Czas trwania: 1 godzina i 33 minuty. Kraj produkcji: Francja. Gatunek:...",
+    "cast" : [ "Vincent Munier", "Michel Munier", "Simon Munier" ],
+    "synopsis" : "Mężczyzna idzie, z plecakiem na plecach, laską w ręku, ciężką, ciepłą kurtką przerzuconą przez ramiona, w głąb starego, omszałego lasu. Ani wiatr, ani mgła, ani nawet śnieg nie zatrzymają go w kroku, gdy dociera do swojej kryjówki, swojej kryjówki: jodły. Prześlizgując się pod jej niskimi gałęziami, mężczyzna znika, a świat się budzi. Świat zwierząt. Stary mędrzec zaprasza nas do podzielenia się z nim silnymi emocjami, tymi, które czuł podczas tysięcy kryjówek. Nadszedł czas, aby podzielił się swoją wiedzą, wspomnieniami z najpiękniejszych spotkań z dziką przyrodą. Podczas podróży przez nasze lokalne lasy obudzi w nas zmysły, a dokładniej poezję dzikiego świata, poezję, którą przekazał swojemu synowi w wieku 12 lat i którą pewnego dnia może przekazać swojemu wnukowi.",
     "trailerUrls" : [ "https://www.youtube.com/embed/JDI3avsGSHo" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kino+bez+barier%3A+Pie%C5%9Bni+lasu+%28AD+%2B+CC+%2B+PJM%29/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kino+bez+barier%3A+Pie%C5%9Bni+lasu+%28AD+%2B+CC+%2B+PJM%29",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kino+bez+barier%3A+Pie%C5%9Bni+lasu+%28AD+%2B+CC+%2B+PJM%29"
+      "imdb" : 7.9,
+      "imdbUrl" : "https://www.imdb.com/title/tt32368068/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Le+Chant+des+for%C3%AAts/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/whispers_in_the_woods",
+      "filmweb" : 8.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Pie%C5%9Bni+lasu-2025-10111381"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 8.05,
     "synopsisByCity" : { }
   }, {
     "_id" : "kinodlakobietjutrobedzienasze|2023",
@@ -6787,22 +6818,30 @@
   }, {
     "_id" : "klasykawkinieatlanticmilczenieowiec|1991",
     "title" : "Klasyka w kinie Atlantic: Milczenie owiec",
-    "posterUrl" : "https://www.novekino.pl/multimedia/milczenie_owiec/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "originalTitle" : "The Silence of the Lambs",
+    "posterUrl" : "https://img.helios.pl/pliki/film/milczenie-owiec/milczenie-owiec-plakat-760.jpg",
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Milczenie_owiec_plakat_B1_hg3G1PJ.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8207S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg", "https://www.iluzjon.fn.org.pl/public/covers/movie-1645.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec/plakat.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec_spec/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/22951.6.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1009.jpg.png", "https://okf.czest.pl/wp-content/uploads/2026/05/Milczenie-owiec_plakat-B1-441x635.jpg", "https://image.tmdb.org/t/p/w500/qWG1nSFlp4oNwSSTCPk3Q3n4FlD.jpg", "https://m.media-amazon.com/images/M/MV5BNDdhOGJhYzctYzYwZC00YmI2LWI0MjctYjg4ODdlMDExYjBlXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 118,
     "releaseYear" : 1991,
-    "genres" : [ "Thriller" ],
+    "genres" : [ "Kryminał", "Thriller", "Dramat" ],
     "countries" : [ "USA" ],
-    "directors" : [ ],
-    "cast" : [ "Anthony Hopkins", "Jodie Foster", "Ted Levine", "Kasi Lemmons", "Lawrence A. Bonney", "Lawrence T. Wrentz" ],
+    "directors" : [ "Jonathan Demme" ],
+    "cast" : [ "Anthony Hopkins", "Jodie Foster", "Ted Levine", "Kasi Lemmons", "Scott Glenn", "Anthony Heald" ],
     "synopsis" : "Młoda kadetka FBI, Clarice Starling (w tej roli rewelacyjna Jodie Foster) otrzymuje zadanie schwytania seryjnego mordercy zwanego Buffalo Billem. W tym celu zostaje wysłana do doktora Hannibala Lectera (ikoniczna rola Anthony’ego Hopkinsa) - uwięzionego w celi psychopaty i kanibala, który może pomóc w ustaleniu tożsamości zabójcy.\n\nRelacja między Starling i Lecterem odbiega od rutynowej znajomości i oparta jest na niebezpiecznej psychologicznej grze. Lecter analizuje traumy Clarice, za które oferuje wskazówki prowadzące do schwytania Buffalo Billa.",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/_v9xtAN_Dco", "https://www.youtube.com/embed/VqOG5uEXY7Q" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Klasyka+w+kinie+Atlantic%3A+Milczenie+owiec/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Klasyka+w+kinie+Atlantic%3A+Milczenie+owiec",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Klasyka+w+kinie+Atlantic%3A+Milczenie+owiec"
+      "imdb" : 8.6,
+      "imdbUrl" : "https://www.imdb.com/title/tt0102926/",
+      "metascore" : 86,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-silence-of-the-lambs",
+      "rottenTomatoes" : 95,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_silence_of_the_lambs",
+      "filmweb" : 8.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Milczenie+owiec-1991-1047"
     },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "weightedRating" : 8.75,
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "klasykawkinieatlanticmontereypop|1968",
     "title" : "Klasyka w kinie Atlantic: Monterey Pop",
@@ -7007,7 +7046,7 @@
     "title" : "Klasyk w kinie: Milczenie owiec",
     "originalTitle" : "The Silence of the Lambs",
     "posterUrl" : "https://img.helios.pl/pliki/film/milczenie-owiec/milczenie-owiec-plakat-760.jpg",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Milczenie_owiec_plakat_B1_hg3G1PJ.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8207S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg", "https://www.iluzjon.fn.org.pl/public/covers/movie-1645.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/22951.6.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1009.jpg.png", "https://okf.czest.pl/wp-content/uploads/2026/05/Milczenie-owiec_plakat-B1-441x635.jpg", "https://image.tmdb.org/t/p/w500/qWG1nSFlp4oNwSSTCPk3Q3n4FlD.jpg", "https://m.media-amazon.com/images/M/MV5BNDdhOGJhYzctYzYwZC00YmI2LWI0MjctYjg4ODdlMDExYjBlXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Milczenie_owiec_plakat_B1_hg3G1PJ.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8207S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg", "https://www.iluzjon.fn.org.pl/public/covers/movie-1645.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec/plakat.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec_spec/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/22951.6.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1009.jpg.png", "https://okf.czest.pl/wp-content/uploads/2026/05/Milczenie-owiec_plakat-B1-441x635.jpg", "https://image.tmdb.org/t/p/w500/qWG1nSFlp4oNwSSTCPk3Q3n4FlD.jpg", "https://m.media-amazon.com/images/M/MV5BNDdhOGJhYzctYzYwZC00YmI2LWI0MjctYjg4ODdlMDExYjBlXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 118,
     "releaseYear" : 1991,
     "genres" : [ "Kryminał", "Thriller", "Dramat" ],
@@ -7015,7 +7054,7 @@
     "directors" : [ "Jonathan Demme" ],
     "cast" : [ "Anthony Hopkins", "Jodie Foster", "Ted Levine", "Kasi Lemmons", "Scott Glenn", "Anthony Heald" ],
     "synopsis" : "Psychopata porywa i morduje młode kobiety na środkowym zachodzie. Wierząc, że w ujęciu tego mordercy dopomoże tylko inny przestępca, F.B.I. wysyła agentkę Clarice Starling (Jodie Foster) na wywiad z obłąkanym więźniem, który może dostarczyć psychologicznych przesłanek i tropów do kolejnych działań zabójcy. Więzień, psychiatra, dr. Hannibal Lecter (Anthony Hopkins) jest genialnym mordercą-kanibalem, który pomoże Agentce Starling, jeżeli ona będzie karmić jego chorą ciekawość detalami ze swojego skomplikowanego życia. Ta pokręcona relacja zmusza Starling nie tylko do konfrontacji z jej psychicznymi demonami, ale doprowadza ją również do spotkania twarzą w twarz z szalonym, ohydnym mordercą, wcieleniem zła tak potężnym, że nie będzie miała odwagi - ani siły - by go zatrzymać!",
-    "trailerUrls" : [ "https://www.youtube.com/embed/_v9xtAN_Dco" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/_v9xtAN_Dco", "https://www.youtube.com/embed/VqOG5uEXY7Q" ],
     "ratings" : {
       "imdb" : 8.6,
       "imdbUrl" : "https://www.imdb.com/title/tt0102926/",
@@ -7377,21 +7416,28 @@
   }, {
     "_id" : "kobiecyswiatzaproszenie|2026",
     "title" : "Kobiecy świat: Zaproszenie",
-    "posterUrl" : "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "originalTitle" : "The Invite",
+    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vJRFj5ri9Zm7Tg0Tn7pBmOtXqKb.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 108,
     "releaseYear" : 2026,
-    "genres" : [ "Komedia" ],
+    "genres" : [ "Dramat", "Komedia" ],
     "countries" : [ "USA" ],
-    "directors" : [ ],
+    "directors" : [ "Olivia Wilde" ],
     "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
     "synopsis" : "Zapraszamy na cykl filmowy dedykowany kobietom!\n\nRaz w miesiącu organizujemy spotkanie filmowe dedykowane specjalnie dla naszych widzek.\nZapewniamy miłą atmosferę w damskim towarzystwie (chociaż Panowie też są oczywiście mile widziani!).\nWspólnie oglądamy najbardziej rozchwytywane tytuły z naszego repertuaru, klasyki kina i ciekawe nowości warte zobaczenia.\nPrzed seansem można poczęstować się powitalną lampką wina, otrzymać wyjątkowe prezenty oraz wsiąść udział w losowaniu nagród!\n\nJoe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?",
     "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kobiecy+%C5%9Bwiat%3A+Zaproszenie/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kobiecy+%C5%9Bwiat%3A+Zaproszenie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kobiecy+%C5%9Bwiat%3A+Zaproszenie"
+      "imdb" : 6.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
+      "rottenTomatoes" : 92,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.425,
     "synopsisByCity" : { }
   }, {
     "_id" : "kobietapelnazyciaksiaze|",
@@ -7488,12 +7534,12 @@
     "weightedRating" : 8.225,
     "synopsisByCity" : { }
   }, {
-    "_id" : "kochamkino|1988",
+    "_id" : "kochamkino|2026",
     "title" : "Kocham kino",
     "posterUrl" : "https://medstore.kinoteka.pl/514911183046867302509551246106313356738560n.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 77,
-    "releaseYear" : 1988,
+    "releaseYear" : 2026,
     "genres" : [ "Obyczajowy", "Psychologiczny" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Piotr Łazarkiewicz" ],
@@ -7501,13 +7547,11 @@
     "synopsis" : "List miłosny do kin studyjnych i urzekająca, nieoczywista historia. Zapraszamy na pokaz filmu „Kocham kino” w reżyserii Piotra Łazarkiewicza w ramach cyklu Polska Klasyka Wieczorową Porą.\n\nMaria, kierowniczka kina „Jutrzenka” w Lubieniu na ziemiach zachodnich, próbuje zapobiec spadkowi frekwencji, wykupując codziennie po 10 biletów na seans. W jednym z odcinków Polskiej Kroniki Filmowej wśród młodych żołnierzy rozpoznaje swojego syna, porzuconego niegdyś dla kariery filmowej. Udaje jej się go odnaleźć, sprowadzić do siebie, a nawet zarazić pasją dla kina i misją ocalenia „Jutrzenki”. Niestety, bezskutecznie.\n\nUpadek kin w małych miejscowościach rozpoczął się u schyłku realnego socjalizmu, najpierw w wyniku deficytowej gospodarki polskiej kinematografii okresu stanu wojennego, potem odpływu widzów na fali popularności wypożyczalni wideo i zagranicznych filmów. Kina w małych miejscowościach jako nierentowne i zapomniane przez widzów sukcesywnie znikały z kinowej mapy Polski. Mimo przytłaczającej nostalgii i poczucia nieuchronnej porażki bohaterów, twórcy zostawiają odrobinę nadziei w epilogu. Dostrzegają ją w kolejnym pokoleniu miłośników małych kin i ambitnego repertuaru. Macierzyński melodramat, który dzięki kinofilii bohaterów jest zarazem hołdem dla minionej epoki kina.\n\n„Kocham kino” to fabularny debiut Piotra Łazarkiewicza z Elżbietą Czyżewską w roli głównej, gwiazdą kina Polski Ludowej, wówczas od dwudziestu lat na emigracji. W historię Marii i jej syna (Marek Probosz) autor wplótł pastisz czarno-białego melodramatu z lat 60, fikcyjnego filmu sprzed dwóch dekad, zatytułowanego \"Ręce pianisty\", który powstał w Lubieniu z udziałem mieszkańców. Autor filmu wystąpił w roli charyzmatycznego reżysera w kożuchu, co można odczytać jako dowcipną aluzję do Andrzeja Wajdy. Z kolei Maria miałaby być laureatką popularnego w PRL konkursu dla amatorek „Piękne dziewczyny na ekrany”.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0093358/",
       "metacriticUrl" : "https://www.metacritic.com/search/Kocham+kino/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kocham+kino",
-      "filmweb" : 6.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Kocham+kino-1987-6799"
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kocham+kino"
     },
-    "weightedRating" : 6.1,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "kochanicakrolajeannedubarry|2023",
@@ -7624,27 +7668,26 @@
     "weightedRating" : 7.266666666666666,
     "synopsisByCity" : { }
   }, {
-    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|1985",
+    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|2026",
     "title" : "Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie",
-    "originalTitle" : "The Color Purple",
-    "posterUrl" : "https://medstore.kinoteka.pl/kolor2.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 154,
-    "releaseYear" : 1985,
-    "genres" : [ "Dramat obyczajowy" ],
+    "originalTitle" : "Disclosure Day",
+    "posterUrl" : "https://movies.helios.pl/images/DzienObjawieniaPlakatNew.jpg",
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://medstore.kinoteka.pl/kolor2.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 146,
+    "releaseYear" : 2026,
+    "genres" : [ "Tajemnica", "Sci-Fi", "Thriller" ],
     "countries" : [ "USA" ],
     "directors" : [ "Steven Spielberg" ],
-    "cast" : [ "Danny Glover", "Whoopi Goldberg", "Oprah Winfrey", "Will" ],
+    "cast" : [ "Emily Blunt", "Josh O'Connor", "Colin Firth", "Eve Hewson", "Wyatt Russell", "Colman Domingo" ],
     "synopsis" : "Maltretowana przez męża i pomiatana przez czwórkę jego dzieci z pierwszego małżeństwa, Celie z całych sił stara się posłusznie wykonywać obowiązki przykładnej żony. Do jej domu przybywa siostra Nettie szukając schronienia przed okrutnym ojcem. Mąż Cellie, Albert, wyrzuca kobietę, gdy ta odrzuca jego zaloty.\n\nKolor purpury, na podstawie nagrodzonej Pulitzerem powieści Alice Walker, której akcja toczy się w wiejskich realiach Południa Stanów, jest triumfalnym debiutem Whoopi Goldberg, nominowanej do Oscara za pierwszoplanową rolę promiennej nieustraszonej Celie. Jest to także pierwszy film Spielberga poruszający problemy rasizmu i mniejszości etnicznych. Roger Ebert uznał go film roku i wpisał na listę Great Films Archive. Film otrzymał 11 nominacji do Oscara, w tym za najlepszy film roku.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/_h-efLS7VV4" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ", "https://www.youtube.com/embed/_h-efLS7VV4" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0088939/",
-      "metacriticUrl" : "https://www.metacritic.com/search/The+Color+Purple/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=The+Color+Purple",
-      "filmweb" : 7.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Kolor+purpury-1985-1218"
+      "imdbUrl" : "https://www.imdb.com/title/tt15047880/",
+      "metacriticUrl" : "https://www.metacritic.com/movie/disclosure-day",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/disclosure_day",
+      "filmwebUrl" : "https://www.filmweb.pl/film/Dzie%C5%84+objawienia-2026-10060793"
     },
-    "weightedRating" : 7.8,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "konwickipisarzscenarzystarezyserostatnidzienlata|",
@@ -8133,27 +8176,25 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "kultoweklasykidrabinajakubowa|1990",
+    "_id" : "kultoweklasykidrabinajakubowa|2026",
     "title" : "Kultowe klasyki: Drabina Jakubowa",
     "originalTitle" : "Jacob's Ladder",
     "posterUrl" : "https://medstore.kinoteka.pl/DrabinaJakubowaplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 115,
-    "releaseYear" : 1990,
-    "genres" : [ "Thriller", "Psychologiczny" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Psychologiczny", "Thriller" ],
     "countries" : [ "USA" ],
     "directors" : [ "Adrian Lyne" ],
     "cast" : [ ],
     "synopsis" : "Tim Robbins w jednym z najbardziej kultowych horrorów psychologicznych lat 90\nPo powrocie z wojny w Wietnamie Jacob Singer próbuje wrócić do normalnego życia w Nowym Jorku, ale rzeczywistość zaczyna wymykać mu się spod kontroli. Nękany przez niepokojące wizje, dziwne spotkania i coraz silniejsze poczucie paranoi, Jacob desperacko próbuje odkryć, co jest prawdą, a co jedynie wytworem jego umysłu. „Drabina Jakubowa” to psychologiczny horror i thriller, który wciąga widza w koszmar bez wyjścia.\n\nFilm hipnotyzuje duszną, oniryczną atmosferą i poczuciem ciągłego zagrożenia. To mroczne kino balansujące między horrorem, dramatem wojennym i psychologicznym labiryntem, pełne obrazów, które zostają w głowie na długo po seansie. Brudny Nowy Jork, halucynacyjny montaż i niepokojąca muzyka tworzą doświadczenie bardziej przypominające zły sen.\n\n„Drabina Jakubowa” uchodzi za film kultowy i jeden z najważniejszych psychologicznych horrorów lat 90. Reżyser Adrian Lyne („Fatalne zauroczenie”) stworzył dzieło, które wywarło ogromny wpływ na estetykę późniejszych horrorów, w tym serii „Silent Hill”. W głównej roli fenomenalny Tim Robbins, a za scenariusz odpowiada Bruce Joel Rubin - autor oscarowego „Uwierz w ducha”. Film do dziś fascynuje również swoją symboliką - pełną religijnych odniesień, pytań o winę, śmierć i naturę rzeczywistości - dzięki czemu pozostaje jednym z tych tytułów, które można interpretować i odkrywać na nowo przy każdym kolejnym seansie.\n\nPRELEKCJA\nPrzed filmem krótką prelekcję wygłosi Monika Stolat - dyrektorka artystyczna i producentka Splat!FilmFest, Kultowych Klasyków, festiwalu strasznie dziwnych filmów WTF FEST oraz cyklu Najlepsze z Najgorszych.\nO CYKLU KULTOWE KLASYKI OD SPLAT!FILMFEST\nCałoroczny cykl festiwalu nowego kina gatunkowego, horrorów, fantastyki i bezkompromisowego kina arthousowego Splat!FilmFest – International Fantastic Film Festival. W repertuarze Kultowych Klasyków znajdują się filmy o szczególnym znaczeniu, mocne, wyraziste i ponadczasowe, które mimo upływu lat, zmieniających się gustów i trendów nie straciły na przesłaniu i sile rażenia. Kuratorka cyklu: Monika Stolat. Więcej: splatfilmfest.com",
     "trailerUrls" : [ ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0099871/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Jacob%27s+Ladder/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Jacob%27s+Ladder",
-      "filmweb" : 7.6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Drabina+Jakubowa-1990-5188"
+      "metacriticUrl" : "https://www.metacritic.com/search/Kultowe+klasyki%3A+Drabina+Jakubowa/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kultowe+klasyki%3A+Drabina+Jakubowa",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kultowe+klasyki%3A+Drabina+Jakubowa"
     },
-    "weightedRating" : 7.6,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "kumotryiallthediamondswystawaifilmwdialogu|2026",
@@ -8488,27 +8529,25 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "lawrencezarabiikinocyrkularneextra|1962",
+    "_id" : "lawrencezarabiikinocyrkularneextra|2026",
     "title" : "Lawrence z Arabii | Kino cyrkularne EXTRA",
     "originalTitle" : "Lawrence of Arabia",
     "posterUrl" : "https://medstore.kinoteka.pl/plakatcyrkularne(2).jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 216,
-    "releaseYear" : 1962,
-    "genres" : [ "Wojenny", "Dramat", "Przygodowy" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Przygodowy", "Wojenny" ],
     "countries" : [ "Wielka Brytania" ],
     "directors" : [ "David Lean" ],
     "cast" : [ "Anthony Quinn", "Alec Guinness", "Peter O'Toole" ],
     "synopsis" : "Oglądamy epickie kino w kinie, nie na telefonie — bo tylko wielki ekran oddaje pełnię takich filmów.\n\nZapraszamy na wyjątkowy pokaz jednego z najważniejszych dzieł w historii kina – epickiej superprodukcji Davida Leana „Lawrence z Arabii” z niezapomnianą kreacją Petera O’Toole’a.\n\n„Lawrence z Arabii” to nie tylko imponująca wizualnie epopeja, nagrodzona 7 Oscarami, ale także poruszająca opowieść o bohaterstwie, tożsamości, moralnych dylematach i cienkiej granicy między legendą a rzeczywistością. Monumentalne krajobrazy pustyni, mistrzowska reżyseria oraz zapadająca w pamięć muzyka sprawiają, że film wciąż zachwyca kolejne pokolenia widzów.\n\nW trakcie seansu (po 139 minutach) zaplanowana jest 15- minutowa przerwa.\n\nKino cyrkularne to cykl poświęcony klasyce – mamy nadzieję spełniać w nim nasze i wasze kinofilskie marzenia o pokazach ulubionych klasycznych filmów na wielkim ekranie.\n\nKuratorka cyklu: Karolina Fornal",
     "trailerUrls" : [ "https://www.youtube.com/embed/_AznzZAlwVA" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0056172/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Lawrence+of+Arabia/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Lawrence+of+Arabia",
-      "filmweb" : 7.6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Lawrence+z+Arabii-1962-33560"
+      "metacriticUrl" : "https://www.metacritic.com/search/Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA"
     },
-    "weightedRating" : 7.6,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "lefthandedgirl|2025",
@@ -8720,21 +8759,22 @@
   }, {
     "_id" : "lowcaandroidowfinalcutkultoweklasyki|2026",
     "title" : "Łowca androidów: Final Cut | Kultowe Klasyki",
-    "originalTitle" : "Blade Runner: The Final Cut",
+    "originalTitle" : "The Dog Stars",
     "posterUrl" : "https://medstore.kinoteka.pl/BladeRunner.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/ePWFnyCQQr4fvBOD1lgKtcvfnCd.jpg", "https://m.media-amazon.com/images/M/MV5BMDBkZTNhMmQtMjliNS00OTIyLWI1OTItYzEzZTU0NGU0NTI4XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 118,
     "releaseYear" : 2026,
-    "genres" : [ "Science Fiction" ],
+    "genres" : [ "Przygodowy", "Sci-Fi", "Thriller" ],
     "countries" : [ "USA" ],
     "directors" : [ "Ridley Scott" ],
-    "cast" : [ ],
+    "cast" : [ "Jacob Elordi", "Josh Brolin", "Margaret Qualley", "Guy Pearce", "Allison Janney" ],
     "synopsis" : "Los Angeles, rok 2019. Rick Deckard, były policjant z jednostki „blade runner”, zostaje zmuszony do powrotu do pracy. Jego zadaniem jest odnalezienie i wycofanie czterech zbuntowanych replikantów - bioinżynieryjnych istot stworzonych przez korporację Tyrell do wykonywania niebezpiecznych zadań w pozaziemskich koloniach. Tropiąc ich w mrocznych zakamarkach futurystycznego miasta, Deckard zaczyna jednak zadawać pytania, które podważają sens jego misji: gdzie przebiega granica między człowiekiem a sztucznie stworzonym życiem i kto ma prawo decydować o czyimś istnieniu?\n\nRidley Scott stworzył jedną z najbardziej sugestywnych wizji przyszłości w historii kina. Deszczowe, neonowe Los Angeles tonie w smogu i światłach reklam, a cyberpunkowa estetyka spotyka się tu z klimatem klasycznego kina noir. „Łowca androidów” jest jednocześnie\nfuturystycznym kryminałem i melancholijną opowieścią o pamięci, tożsamości i samotności w świecie zdominowanym przez technologię. Hipnotyczna muzyka Vangelisa nadaje tej historii dodatkową, niemal oniryczną atmosferę.\n\nFinal Cut, przygotowany przez Ridleya Scotta w 2007 roku, to wersja odrestaurowana cyfrowo i zrealizowana pod pełną kontrolą reżysera. Dziś uznawana jest za definitywną odsłonę filmu, który z czasem wyrósł na jeden z najważniejszych i najbardziej wpływowych tytułów w historii science fiction. Jego wizja futurystycznego miasta oraz estetyka cyberpunku na trwałe wpłynęły na kino, komiksy i gry wideo.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/%C5%81owca+android%C3%B3w%3A+Final+Cut+%7C+Kultowe+Klasyki/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%C5%81owca+android%C3%B3w%3A+Final+Cut+%7C+Kultowe+Klasyki",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=%C5%81owca+android%C3%B3w%3A+Final+Cut+%7C+Kultowe+Klasyki"
+      "imdbUrl" : "https://www.imdb.com/title/tt21285562/",
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-dog-stars",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_dog_stars",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=The+Dog+Stars"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -9192,27 +9232,29 @@
     "weightedRating" : 7.766666666666667,
     "synopsisByCity" : { }
   }, {
-    "_id" : "matkirownolegle6razypedro|2021",
+    "_id" : "matkirownolegle6razypedro|2026",
     "title" : "Matki równoległe | 6 razy Pedro",
-    "originalTitle" : "Madres paralelas",
-    "posterUrl" : "https://medstore.kinoteka.pl/matkirownolegleplakatpllq.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 120,
-    "releaseYear" : 2021,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Hiszpania" ],
+    "originalTitle" : "Amarga Navidad",
+    "posterUrl" : "https://medstore.kinoteka.pl/bbplakatpllq.jpg",
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/matkirownolegleplakatpllq.jpg", "https://medstore.kinoteka.pl/W%20pokoju%20obok_plakat%20PL_LQ.jpg", "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://image.tmdb.org/t/p/w500/ji29dXqoeIsQiVnXAkzI4nzxMjr.jpg", "https://m.media-amazon.com/images/M/MV5BN2I4ODhmMDItM2EzNS00NmM0LTkzOTQtMWM5MTNhOTYzNDM3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 113,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "Hiszpania", "USA" ],
     "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Penélope Cruz", "Milena Smit", "Rossy de Palma", "Aitana" ],
+    "cast" : [ "Bárbara Lennie", "Leonardo Sbaraglia", "Aitana Sánchez-Gijón", "Victoria Luengo", "Patrick Criado" ],
     "synopsis" : "Najnowszy film Pedra Almodóvara, z nagrodzoną za swoją rolę na festiwalu w Wenecji Penélope Cruz, to wyznanie wiary w siłę w kobiet, ich solidarność i odwagę. Czułe, a przy tym żywiołowe; ciepłe, ale niepozbawione dramatycznych zwrotów akcji; pełne nadziei, która przychodzi po bolesnych stratach – „Matki równoległe” portretują życie w jego wszystkich odcieniach. Film został z entuzjazmem przyjęty przez krytykę, która nie szczędzi mu komplementów. Najlepszy Almodóvar od „Wszystko o mojej matce” (Variety), Penélope Cruz w swojej najlepszej roli (Time), Pulsująca emocjami historia (The Wrap), Wielki pean na cześć kobiet (Little White Lies) – piszą zachwyceni recenzenci.\n\nBohaterki filmu, Janis (Cruz) i Ana (Milena Smit), spotykają się na oddziale położniczym. Ta pierwsza jest dojrzałą kobietą, ta druga ledwie przestała być nastolatką. Obie są singielkami, obie czeka samodzielne macierzyństwo. Janis wie, że sobie poradzi, Ana jest pełna obaw. Wydaje się, że ich ścieżki ledwie się przetną, tymczasem więź, która je połączy, okaże się mocna jak pępowina. Jak to u Almodóvara bywa: zbieg okoliczności może stać się przeznaczeniem, a rodzina z wyboru tą, która zaoferuje bezwarunkową akceptację i miłość.\n\n„Matki równoległe” to nie tylko tragikomiczna, intymna opowieść o bólu i blasku macierzyństwa. To również mocny głos przeciw rodzinnym sekretom i ukrywaniu prawdy o przeszłości. I właśnie kobiety, które tworzą pomost pomiędzy przeszłością i przyszłością, okazują się w filmie Almodóvara bezkompromisowymi rzeczniczkami otwartości przynoszącej ulgę i oczyszczenie.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/asE6E7X1gOs" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/ASjGIpOfwNU", "https://www.youtube.com/embed/asE6E7X1gOs", "https://www.youtube.com/embed/5rphRnnqyu0", "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt12618926/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Madres+paralelas/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Madres+paralelas",
-      "filmweb" : 6.5,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Matki+r%C3%B3wnoleg%C5%82e-2021-859971"
+      "imdb" : 6.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt28088049/",
+      "metascore" : 69,
+      "metacriticUrl" : "https://www.metacritic.com/movie/bitter-christmas",
+      "rottenTomatoes" : 91,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/bitter_christmas",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Amarga+Navidad"
     },
-    "weightedRating" : 6.5,
+    "weightedRating" : 7.5,
     "synopsisByCity" : { }
   }, {
     "_id" : "matrix|",
@@ -9281,19 +9323,21 @@
   }, {
     "_id" : "mezczyzniniepozorniwieczorzkrotkimifilmamimichalatoczka|2026",
     "title" : "Mężczyźni niepozorni. Wieczór z krótkimi filmami Michała Toczka",
+    "originalTitle" : "Spiritus Sanctus",
     "posterUrl" : "https://api-sf.artmuseum.pl/uploads/thumbs/6a1d5fe160dc8826556315.png",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/5pJIitWwcrtR0oBiCZZbJ07OhpR.jpg", "https://m.media-amazon.com/images/M/MV5BYTU5YmNjOGYtMjBhMi00NzJiLTlmMmUtMjljZjlkZDllYjk3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 60,
     "releaseYear" : 2026,
-    "genres" : [ ],
+    "genres" : [ "Komedia", "Dramat", "Historyczny" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Michał Toczek" ],
-    "cast" : [ ],
+    "cast" : [ "Sebastian Stankiewicz", "Izabela Dąbrowska", "Artur Paczesny", "Oskar Stoczyński", "Klara Bielawka" ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/M%C4%99%C5%BCczy%C5%BAni+niepozorni.+Wiecz%C3%B3r+z+kr%C3%B3tkimi+filmami+Micha%C5%82a+Toczka/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=M%C4%99%C5%BCczy%C5%BAni+niepozorni.+Wiecz%C3%B3r+z+kr%C3%B3tkimi+filmami+Micha%C5%82a+Toczka",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=M%C4%99%C5%BCczy%C5%BAni+niepozorni.+Wiecz%C3%B3r+z+kr%C3%B3tkimi+filmami+Micha%C5%82a+Toczka"
+      "imdbUrl" : "https://www.imdb.com/title/tt41990152/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Spiritus+Sanctus/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Spiritus+Sanctus",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Spiritus+Sanctus"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -9651,28 +9695,36 @@
   }, {
     "_id" : "milczenieowiecpokazyspecjalne|1991",
     "title" : "Milczenie owiec - pokazy specjalne",
-    "posterUrl" : "https://www.novekino.pl/multimedia/milczenie_owiec_spec/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "originalTitle" : "The Silence of the Lambs",
+    "posterUrl" : "https://img.helios.pl/pliki/film/milczenie-owiec/milczenie-owiec-plakat-760.jpg",
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Milczenie_owiec_plakat_B1_hg3G1PJ.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8207S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg", "https://www.iluzjon.fn.org.pl/public/covers/movie-1645.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec/plakat.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec_spec/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/22951.6.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1009.jpg.png", "https://okf.czest.pl/wp-content/uploads/2026/05/Milczenie-owiec_plakat-B1-441x635.jpg", "https://image.tmdb.org/t/p/w500/qWG1nSFlp4oNwSSTCPk3Q3n4FlD.jpg", "https://m.media-amazon.com/images/M/MV5BNDdhOGJhYzctYzYwZC00YmI2LWI0MjctYjg4ODdlMDExYjBlXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 118,
     "releaseYear" : 1991,
-    "genres" : [ "Thriller" ],
+    "genres" : [ "Kryminał", "Thriller", "Dramat" ],
     "countries" : [ "USA" ],
-    "directors" : [ ],
-    "cast" : [ "Anthony Hopkins", "Jodie Foster", "Ted Levine", "Brooke Smith", "Scott Glenn", "Anthony Heald" ],
+    "directors" : [ "Jonathan Demme" ],
+    "cast" : [ "Anthony Hopkins", "Jodie Foster", "Ted Levine", "Kasi Lemmons", "Scott Glenn", "Anthony Heald" ],
     "synopsis" : "35 lat od premiery, wciąż smakuje wybornie…\nMłoda kadetka FBI, Clarice Starling (w tej roli rewelacyjna Jodie Foster) otrzymuje zadanie schwytania seryjnego mordercy zwanego Buffalo Billem. W tym celu zostaje wysłana do doktora Hannibala Lectera (ikoniczna rola Anthony’ego Hopkinsa) – uwięzionego w celi psychopaty i kanibala, który może pomóc w ustaleniu tożsamości zabójcy. Relacja między Starling i Lecterem odbiega od rutynowej znajomości i oparta jest na niebezpiecznej psychologicznej grze. Lecter analizuje traumy Clarice, za które oferuje wskazówki prowadzące do schwytania Buffalo Billa.\n*Milczenie owiec* (1991) to jeden z zaledwie trzech filmów w historii, które zdobyły Wielką Piątkę Oscarów, triumfując w najważniejszych kategoriach: najlepszy film, reżyseria (Jonathan Demme), scenariusz (Ted Tally) oraz pierwszoplanowe role (Anthony Hopkins i Jodie Foster).",
-    "trailerUrls" : [ "https://www.youtube.com/embed/VqOG5uEXY7Q" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/_v9xtAN_Dco", "https://www.youtube.com/embed/VqOG5uEXY7Q" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Milczenie+owiec+-+pokazy+specjalne/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Milczenie+owiec+-+pokazy+specjalne",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Milczenie+owiec+-+pokazy+specjalne"
+      "imdb" : 8.6,
+      "imdbUrl" : "https://www.imdb.com/title/tt0102926/",
+      "metascore" : 86,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-silence-of-the-lambs",
+      "rottenTomatoes" : 95,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_silence_of_the_lambs",
+      "filmweb" : 8.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Milczenie+owiec-1991-1047"
     },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "weightedRating" : 8.75,
+    "synopsisByCity" : { },
+    "ageRating" : "18"
   }, {
     "_id" : "milczenieowiec|1991",
     "title" : "Milczenie owiec",
     "originalTitle" : "The Silence of the Lambs",
     "posterUrl" : "https://img.helios.pl/pliki/film/milczenie-owiec/milczenie-owiec-plakat-760.jpg",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Milczenie_owiec_plakat_B1_hg3G1PJ.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8207S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg", "https://www.iluzjon.fn.org.pl/public/covers/movie-1645.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/22951.6.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1009.jpg.png", "https://okf.czest.pl/wp-content/uploads/2026/05/Milczenie-owiec_plakat-B1-441x635.jpg", "https://image.tmdb.org/t/p/w500/qWG1nSFlp4oNwSSTCPk3Q3n4FlD.jpg", "https://m.media-amazon.com/images/M/MV5BNDdhOGJhYzctYzYwZC00YmI2LWI0MjctYjg4ODdlMDExYjBlXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Milczenie_owiec_plakat_B1_hg3G1PJ.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8207S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg", "https://www.iluzjon.fn.org.pl/public/covers/movie-1645.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec/plakat.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec_spec/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/22951.6.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1009.jpg.png", "https://okf.czest.pl/wp-content/uploads/2026/05/Milczenie-owiec_plakat-B1-441x635.jpg", "https://image.tmdb.org/t/p/w500/qWG1nSFlp4oNwSSTCPk3Q3n4FlD.jpg", "https://m.media-amazon.com/images/M/MV5BNDdhOGJhYzctYzYwZC00YmI2LWI0MjctYjg4ODdlMDExYjBlXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 118,
     "releaseYear" : 1991,
     "genres" : [ "Kryminał", "Thriller", "Dramat" ],
@@ -9680,7 +9732,7 @@
     "directors" : [ "Jonathan Demme" ],
     "cast" : [ "Anthony Hopkins", "Jodie Foster", "Ted Levine", "Kasi Lemmons", "Scott Glenn", "Anthony Heald" ],
     "synopsis" : "Młoda kadetka FBI, Clarice Starling (w tej roli rewelacyjna Jodie Foster) otrzymuje zadanie schwytania seryjnego mordercy zwanego Buffalo Billem. W tym celu zostaje wysłana do doktora Hannibala Lectera (ikoniczna rola Anthony’ego Hopkinsa) – uwięzionego w celi psychopaty i kanibala, który może pomóc w ustaleniu tożsamości zabójcy. Relacja między Starling i Lecterem odbiega od rutynowej znajomości i oparta jest na niebezpiecznej psychologicznej grze. Lecter analizuje traumy Clarice, za które oferuje wskazówki prowadzące do schwytania Buffalo Billa.\n\n„Milczenie owiec” to jeden z zaledwie trzech filmów w historii (pozostałe dwa to „Ich noce” Franka Capry i „Lot nad kukułczym gniazdem” Milosa Formana), które zdobyły Wielką Piątkę Oscarów, triumfując w najważniejszych kategoriach: najlepszy film, reżyseria (Jonathan Demme), scenariusz (Ted Tally) oraz pierwszoplanowe role (Jodie Foster i Anthony Hopkins).\n\nOpis dystrybucyjny",
-    "trailerUrls" : [ "https://www.youtube.com/embed/_v9xtAN_Dco" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/_v9xtAN_Dco", "https://www.youtube.com/embed/VqOG5uEXY7Q" ],
     "ratings" : {
       "imdb" : 8.6,
       "imdbUrl" : "https://www.imdb.com/title/tt0102926/",
@@ -12664,15 +12716,15 @@
     "title" : "Pianista",
     "originalTitle" : "The Pianist",
     "posterUrl" : "https://img.helios.pl/pliki/film/pianista/pianista-plakat-769.png",
-    "fallbackPosterUrls" : [ "https://kinotatrylodz.pl/wp-content/uploads/2026/03/PIANISTA-864x1080.jpg", "https://image.tmdb.org/t/p/w500/zBAT1blHB2zkzWvHMQmV65qBfXM.jpg", "https://m.media-amazon.com/images/M/MV5BMjEwNmEwYjgtNTk3ZC00NjljLTg5ZDctZTY3ZGQwZjRkZmQxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinotatrylodz.pl/wp-content/uploads/2026/03/PIANISTA-864x1080.jpg", "https://www.novekino.pl/multimedia/pianista/plakat.jpg", "https://image.tmdb.org/t/p/w500/zBAT1blHB2zkzWvHMQmV65qBfXM.jpg", "https://m.media-amazon.com/images/M/MV5BMjEwNmEwYjgtNTk3ZC00NjljLTg5ZDctZTY3ZGQwZjRkZmQxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 149,
     "releaseYear" : 2002,
     "genres" : [ "Dramat", "Wojenny" ],
     "countries" : [ "Francja", "Niemcy", "Polska", "Wielka Brytania", "USA" ],
     "directors" : [ "Roman Polański" ],
-    "cast" : [ "Adrien Brody", "Thomas Kretschmann", "Frank Finlay", "Maureen Lipman", "Emilia Fox" ],
+    "cast" : [ "Adrien Brody", "Thomas Kretschmann", "Emilia Fox", "Maureen Lipman", "Jessica Kate Meyer", "Julia Rayner" ],
     "synopsis" : "Władysław Szpilman wraz z rodziną mieszka w Warszawie. Jest młodym, zdolnym pianistą, żydowskiego pochodzenia. Gdy do miasta wkraczają Niemcy, i wkrótce potem zakładają getta, młody Władek zarabia jako pianista w kawiarniach. Z biegiem czasu Niemcy rozpoczynają wywóz Żydów, a Szpilmanowi w ostatniej chwili udaje się uniknąć losu rodziny, którą zagnano do wagonu pociągu. Wkrótce potem Władysław ucieka z getta i dzięki polskim przyjaciołom znajduje ukrycie przed okupantami. Niestety nie zaznaje spokoju na długo. Zaraz po wybuchu Powstania Warszawskiego Szpilman musi uciekać.",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/fJRz03iaeak" ],
     "ratings" : {
       "imdb" : 8.5,
       "imdbUrl" : "https://www.imdb.com/title/tt0253474/",
@@ -13763,7 +13815,7 @@
     "title" : "Pokaz przedpremierowy: Dzień objawienia",
     "originalTitle" : "Disclosure Day",
     "posterUrl" : "https://movies.helios.pl/images/DzienObjawieniaPlakatNew.jpg",
-    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7913S2R1.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/DZIEN_OBJAWIENIA/plak1at_Dzien_Objawienia_zaslepka_9x16.jpg.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/dzien-objawienia.jpg", "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg", "https://media.user.com/uploads/j0sawm-kinogram/dzien-objawienia-plakat-net_n1vpxgN.jpg", "https://www.kinokultura.pl/foto,20563,829ed2020eb9186f094c21f883c35dc8,jpg.html", "https://www.novekino.pl/multimedia/dzien_objawienia/plakat.jpg", "https://medstore.kinoteka.pl/DzienObjawieniaplakat.jpg", "https://medstore.kinoteka.pl/kolor2.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412523.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1007.jpg.png", "https://biletyna.pl/file/get/id/365105", "https://img.helios.pl/pliki/film/dzien-objawienia/dzien-objawienia-plakat-389.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1319&mode=thumb", "https://www.kinoscenakultura.pl/images/filmy/Dzien_Objawienia_plakat.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/dzien-objawienia-emily-plakat-964x1389jpg.jpg", "https://image.tmdb.org/t/p/w500/AsTNDKxTltcNuNjn9COdl9dz4OG.jpg", "https://m.media-amazon.com/images/M/MV5BMTgwNDI1ZjctYWNmMS00MTJhLTg1ZWItMzI1Yjk5NjZkYWFkXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 146,
     "releaseYear" : 2026,
     "genres" : [ "Tajemnica", "Sci-Fi", "Thriller" ],
@@ -13771,7 +13823,7 @@
     "directors" : [ "Steven Spielberg" ],
     "cast" : [ "Emily Blunt", "Josh O'Connor", "Colin Firth", "Eve Hewson", "Wyatt Russell", "Colman Domingo" ],
     "synopsis" : "Gdybyś dowiedział się, że nie jesteśmy sami, gdyby ktoś ci to pokazał i udowodnił, bałbyś się? Prezenterka pogody wywołuje panikę i uruchamia falę spekulacji po tym, jak w czasie transmisji na żywo nagle zaczyna mówić w tajemniczym obcym języku. Zaczynają się spekulacje o kontakcie z istotami pozaziemskimi...",
-    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/sivmnSRv5nk", "https://www.youtube.com/embed/JppEkoxoVMs", "https://www.youtube.com/embed/J6ezviDWpQQ", "https://www.youtube.com/embed/_h-efLS7VV4" ],
     "ratings" : {
       "imdbUrl" : "https://www.imdb.com/title/tt15047880/",
       "metacriticUrl" : "https://www.metacritic.com/movie/disclosure-day",
@@ -13936,40 +13988,54 @@
   }, {
     "_id" : "poradlasenioraojczyzna|2026",
     "title" : "Pora dla Seniora: Ojczyzna",
-    "posterUrl" : "https://www.novekino.pl/multimedia/ojczyzna/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "originalTitle" : "Fatherland",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/05/unnamed.jpg",
+    "fallbackPosterUrls" : [ "https://www.kinomuza.pl/content/uploads/2026/05/8245630.10.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/ojczyzna-poster-800x0-c-default.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/ojczyzna-plakat-1779999294.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8224S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/OJCZYZNA/plak1at_unnamed.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/ojczyzna-plakat-1.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/fatherland_still_3_agatagrzybowska.jpg?itok=9xvOWp7j", "https://media.user.com/uploads/j0sawm-kinogram/ojczyzna-plakat-1779999294_r7TNIWg.jpg", "https://www.kinokultura.pl/foto,20552,e45cf6bac84d67bc464c44585d5225c7,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a1858f116e5a380628168.jpg", "https://www.novekino.pl/multimedia/ojczyzna/plakat.jpg", "https://medstore.kinoteka.pl/image001(2).jpg", "https://muzhp.pl/uploads/thumbs/2026-05/6a14145d278d4090972055.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/image003.jpg", "https://dkinoteatrrialto.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://kinopatria.com/wp-content/uploads/2026/05/8248238.8-264x396_c.webp", "https://biletyna.pl/file/get/id/367932", "https://www.muzeum1939.pl/upload/thumb/2026/05/fatherland_still_3_agatagrzybowska-male_auto_600x900.png", "https://gcf.org.pl/wp-content/uploads/2026/05/Ojczyzna_plakat.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/ojczyzna-image-processing20260514-8-s22mv5.jpg", "/app/assets/movie/2_Q3tlLUyrLhkxZPgyqibTzf7Rmt.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/ojczyzna-plakat.jpg", "https://image.tmdb.org/t/p/w500/7VjwmvDG5mksJBXMcmK6PudqH88.jpg", "https://m.media-amazon.com/images/M/MV5BY2M5ZmVkMWMtOTNjZS00MjM3LTg3ODYtYjJmMDJjMjU0ODU5XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 82,
     "releaseYear" : 2026,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Francja", "Niemcy", "Polska", "Włochy" ],
-    "directors" : [ ],
-    "cast" : [ "Hanns Zischler", "Sandra Hüller", "August Diehl", "Anna Madeley" ],
+    "genres" : [ "Dramat", "Historyczny" ],
+    "countries" : [ "Polska", "Niemcy", "Włochy", "Francja" ],
+    "directors" : [ "Paweł Pawlikowski" ],
+    "cast" : [ "Sandra Hüller", "Hanns Zischler", "August Diehl", "Anna Madeley", "Devid Striesov", "Joanna Kulig" ],
     "synopsis" : "„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”.\n\nW swoim najnowszym dziele, podobnie jak w poprzednich, reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.\n\nW rolach głównych zobaczymy nominowaną do Oscara® Sandrę Hüller („Strefa interesów”, „Anatomia upadku”, „Projekt Hail Mary”) i Hannsa Zischlera („Monachium”). Scenariusz napisali Paweł Pawlikowski i Henk Handloegten. Do realizacji filmu reżyser ponownie zaprosił swój wieloletni zespół twórczy – nominowanego do Oscara® operatora Łukasza Żala („Hamnet”), kostiumografkę Aleksandrę Staszko („Ministranci”) oraz scenografów Katarzynę Sobańską i Marcela Sławińskiego („Lalka”).\n\n„Ojczyzna” opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/Ny7JujsNhNc" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/Ny7JujsNhNc", "https://www.youtube.com/embed/kxDLkNfPBUA" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Pora+dla+Seniora%3A+Ojczyzna/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pora+dla+Seniora%3A+Ojczyzna",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pora+dla+Seniora%3A+Ojczyzna"
+      "imdb" : 7.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt37304295/",
+      "metascore" : 90,
+      "metacriticUrl" : "https://www.metacritic.com/movie/fatherland",
+      "rottenTomatoes" : 95,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/fatherland_2026",
+      "filmweb" : 7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Ojczyzna-2026-10074985"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 8.15,
     "synopsisByCity" : { }
   }, {
     "_id" : "poradlaseniorasavagehouse|2026",
     "title" : "Pora dla Seniora: Savage House",
+    "originalTitle" : "Savage House",
     "posterUrl" : "https://www.novekino.pl/multimedia/savage_house/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/tFWewN33etDjCiteqEkgORNnqcF.jpg", "https://m.media-amazon.com/images/M/MV5BMGUxYTRjNmQtYzA5YS00MDhmLThlODktM2QxMGJhNzNmYjVkXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 114,
     "releaseYear" : 2026,
-    "genres" : [ "Dramat/Komedia" ],
-    "countries" : [ "Wielka Brytania" ],
-    "directors" : [ ],
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "Wielka Brytania", "Kanada", "USA" ],
+    "directors" : [ "Peter Glanz" ],
     "cast" : [ "Richard E. Grant", "Claire Foy", "Sebastian Armesto", "Roger Ashton-Griffiths", "Erin Battle", "Shiona Brown" ],
     "synopsis" : "Akcja rozgrywa się w XVIII-wiecznej Anglii, na tle ogromnej epidemii ospy oraz powstania jakobickiego. To mroczna satyryczna opowieść o sir Chaunceyu Savage’u (Grant) i lady Savage (Foy) oraz ich ślepej pogoni za lepszym życiem. Pojedynki, dekadencja i rozlew krwi tworzą szaloną historię o klasach społecznych i władzy.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Pora+dla+Seniora%3A+Savage+House/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pora+dla+Seniora%3A+Savage+House",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pora+dla+Seniora%3A+Savage+House"
+      "imdb" : 6.3,
+      "imdbUrl" : "https://www.imdb.com/title/tt31349852/",
+      "metascore" : 47,
+      "metacriticUrl" : "https://www.metacritic.com/movie/savage-house",
+      "rottenTomatoes" : 62,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/savage_house",
+      "filmweb" : 7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Savage+House-2026-10115560"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.05,
     "synopsisByCity" : { }
   }, {
     "_id" : "poranekdladziecichlopiecnakrancachswiata|2026",
@@ -14311,36 +14377,36 @@
     "weightedRating" : 5.7,
     "synopsisByCity" : { }
   }, {
-    "_id" : "prawopozadania6razypedro|1987",
+    "_id" : "prawopozadania6razypedro|2026",
     "title" : "Prawo pożądania | 6 razy Pedro",
-    "originalTitle" : "La ley del deseo",
-    "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 102,
-    "releaseYear" : 1987,
-    "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
-    "countries" : [ "Hiszpania" ],
+    "originalTitle" : "Amarga Navidad",
+    "posterUrl" : "https://medstore.kinoteka.pl/bbplakatpllq.jpg",
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/matkirownolegleplakatpllq.jpg", "https://medstore.kinoteka.pl/W%20pokoju%20obok_plakat%20PL_LQ.jpg", "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://image.tmdb.org/t/p/w500/ji29dXqoeIsQiVnXAkzI4nzxMjr.jpg", "https://m.media-amazon.com/images/M/MV5BN2I4ODhmMDItM2EzNS00NmM0LTkzOTQtMWM5MTNhOTYzNDM3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 113,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "Hiszpania", "USA" ],
     "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
+    "cast" : [ "Bárbara Lennie", "Leonardo Sbaraglia", "Aitana Sánchez-Gijón", "Victoria Luengo", "Patrick Criado" ],
     "synopsis" : "Tina (Carmen Maura) jest siostrą Pabla. Ich rodzice rozstali się, kiedy Tina miała na imię Tino i była chłopcem, a gdy zamieszkała z ojcem, od pewnego czasu już z nim sypiała. Tino przechodzi zmianę płci, staje się Tiną i jednocześnie żoną ojca, którą ten po kilku latach porzuca, a zraniona Tina nie chce nawet słyszeć o mężczyznach. Nienawidzi ich. Pablo (Eusebio Poncela) jest zakochany w Juanie (Miguel Molina), który nie jest pewien swoich uczuć, więc Pablo próbuje o nim zapomnieć. Poznaje zaborczego, pełnego sprzeczności Antonia (Antonio Banderas) i nawiązuje z nim romans, jednak jego życie staje się jeszcze bardziej skomplikowane. Nie może z tego wyjść nic dobrego…\n\nKlasyczny film Pedra Almodovara, który kładzie podwaliny pod jego styl filmowy, uniemożliwiając, bez obejrzenia go, pełne zrozumienie świata, który reżyser stworzył przez kolejne lata.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/ASjGIpOfwNU", "https://www.youtube.com/embed/asE6E7X1gOs", "https://www.youtube.com/embed/5rphRnnqyu0", "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
-      "imdb" : 7.1,
-      "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
-      "metacriticUrl" : "https://www.metacritic.com/search/La+ley+del+deseo/?category=2",
-      "rottenTomatoes" : 100,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/law_of_desire",
-      "filmweb" : 7.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Prawo+po%C5%BC%C4%85dania-1987-7061"
+      "imdb" : 6.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt28088049/",
+      "metascore" : 69,
+      "metacriticUrl" : "https://www.metacritic.com/movie/bitter-christmas",
+      "rottenTomatoes" : 91,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/bitter_christmas",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Amarga+Navidad"
     },
-    "weightedRating" : 8.066666666666666,
+    "weightedRating" : 7.5,
     "synopsisByCity" : { }
   }, {
     "_id" : "prawopozadaniafiestakinahiszpanskiegoalmodovarbanderas|1987",
     "title" : "Prawo pożądania – fiesta kina hiszpańskiego: almodóvar/ banderas",
     "originalTitle" : "La ley del deseo",
     "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 102,
     "releaseYear" : 1987,
     "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
@@ -14348,7 +14414,7 @@
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
     "synopsis" : "Znany reżyser Pablo oraz jego siostra Tina są dość nietypowym rodzeństwem: on jest homoseksualistą, a Tina transseksualistą. Przypadek sprawi, że obydwoje zwiążą się z tym samym młodym, nieprzewidywalnym człowiekiem - pociągającym, ale niebezpiecznym Antonio (Antonio Banderas).",
-    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
+    "trailerUrls" : [ ],
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
@@ -14365,7 +14431,7 @@
     "title" : "Prawo pożądania | Fiesta Kina Hiszpańskiego",
     "originalTitle" : "La ley del deseo",
     "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 102,
     "releaseYear" : 1987,
     "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
@@ -14373,7 +14439,7 @@
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
     "synopsis" : "Znany reżyser Pablo oraz jego siostra Tina są dość nietypowym rodzeństwem: on jest homoseksualistą, a Tina transseksualistą. Przypadek sprawi, że obydwoje zwiążą się z tym samym młodym, nieprzewidywalnym człowiekiem - pociągającym, ale niebezpiecznym Antonio (Antonio Banderas).",
-    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
+    "trailerUrls" : [ ],
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
@@ -14390,7 +14456,7 @@
     "title" : "Prawo pożądania",
     "originalTitle" : "La ley del deseo",
     "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 102,
     "releaseYear" : 1987,
     "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
@@ -14398,7 +14464,7 @@
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
     "synopsis" : "Tina jest siostrą Pabla. Ich rodzice rozstali się, kiedy Tina miała na imię Tino i była chłopcem, a gdy zamieszkała z ojcem, od pewnego czasu już z nim sypiała. Tino przechodzi zmianę płci, staje się Tiną i jednocześnie żoną ojca, którą ten po kilku latach porzuca, a zraniona Tina",
-    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
+    "trailerUrls" : [ ],
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
@@ -14458,7 +14524,7 @@
     "title" : "Projekt Hail Mary | Kinoteka dla rodzica",
     "originalTitle" : "Project Hail Mary",
     "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7449S2R.jpg",
-    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/ProjektHailMaryplakat.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/plak1at_8187089.8.jpg_x_standa.jpg", "https://medstore.kinoteka.pl/plakat(15).jpg", "https://image.tmdb.org/t/p/w500/sQWgdoo3qM6dMLdpfXD804XZhwY.jpg", "https://m.media-amazon.com/images/M/MV5BNTkwNzJiYTctNzI3NC00NjE1LTlhYjktY2Q5MTdmMWFmNzcxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/ProjektHailMaryplakat.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/plak1at_8187089.8.jpg_x_standa.jpg", "https://medstore.kinoteka.pl/FreaksGeeks(1).png", "https://medstore.kinoteka.pl/plakat(15).jpg", "https://image.tmdb.org/t/p/w500/sQWgdoo3qM6dMLdpfXD804XZhwY.jpg", "https://m.media-amazon.com/images/M/MV5BNTkwNzJiYTctNzI3NC00NjE1LTlhYjktY2Q5MTdmMWFmNzcxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 156,
     "releaseYear" : 2026,
     "genres" : [ "Sci-Fi", "Przygodowy" ],
@@ -14485,7 +14551,7 @@
     "title" : "Projekt Hail Mary",
     "originalTitle" : "Project Hail Mary",
     "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7449S2R.jpg",
-    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/ProjektHailMaryplakat.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/plak1at_8187089.8.jpg_x_standa.jpg", "https://medstore.kinoteka.pl/plakat(15).jpg", "https://image.tmdb.org/t/p/w500/sQWgdoo3qM6dMLdpfXD804XZhwY.jpg", "https://m.media-amazon.com/images/M/MV5BNTkwNzJiYTctNzI3NC00NjE1LTlhYjktY2Q5MTdmMWFmNzcxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/ProjektHailMaryplakat.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/PROJEKT_HAIL_MARY/plak1at_8187089.8.jpg_x_standa.jpg", "https://medstore.kinoteka.pl/FreaksGeeks(1).png", "https://medstore.kinoteka.pl/plakat(15).jpg", "https://image.tmdb.org/t/p/w500/sQWgdoo3qM6dMLdpfXD804XZhwY.jpg", "https://m.media-amazon.com/images/M/MV5BNTkwNzJiYTctNzI3NC00NjE1LTlhYjktY2Q5MTdmMWFmNzcxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 156,
     "releaseYear" : 2026,
     "genres" : [ "Sci-Fi", "Przygodowy" ],
@@ -15250,27 +15316,24 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "salto|1965",
+    "_id" : "salto|2025",
     "title" : "Salto",
     "posterUrl" : "https://medstore.kinoteka.pl/782062813.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 100,
-    "releaseYear" : 1965,
-    "genres" : [ "Psychologiczny", "Dramat", "Poetycki" ],
+    "releaseYear" : 2025,
+    "genres" : [ "Dramat", "Psychologiczny" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Tadeusz Konwicki" ],
     "cast" : [ "Zbigniew Cybulski", "Jerzy Block", "Włodzimierz Boruńs" ],
     "synopsis" : "Do małego miasteczka przybywa mężczyzna o podwójnym nazwisku Kowalski-Malinowski (Z. Cybulski). Podaje się za niegdysiejszego mieszkańca, a teraz ucieka przed wyrokiem swojego oddziału partyzantów, mimo upływu kilkunastu lat od wojny. Zatrzymuje się w domu, który podobno kiedyś do niego należał, co obecny Gospodarz (Z. Holoubek) przyjmuje ze spokojem. Makówki w rękach Gospodarza symbolizują sen, który zapewne śnią wszystkie postaci – uosobienia postaw ważnych dla tej mitycznej wspólnoty, nie mogącej wyzwolić się z widma wojny. Kowalski-Malinowski zdolny jest zahipnotyzować mieszkańców, wprowadzić ich w trans przeżywania jego mitomańskiej opowieści o bohaterstwie, konieczności ucieczki, ukrytych skarbach przeszłości. Po rocznicowej uroczystości, która stanowi kulminację wszystkich spotkań bohaterów, mieszkańcy buntują się przeciw przybyszowi i decydują przegnać z miasteczka. Film Tadeusza Konwickiego wpisuje się w dorobek Szkoły Polskiej przez polemikę z narodową mitologią, której ucieleśnieniem jest w filmie postać Kowalskiego-Malinowskiego granego przez Zbyszka Cybulskiego, ikonicznego Maćka z „Popiołu i diamentu”. Nawiązuje przy tym do neoromantycznego chocholego tańca i figur z „Wesela” Stanisława Wyspiańskiego przez postaci Poety, Pijaka, Wdowy, Gospodarza. Koresponduje przez kompozycję i problematykę z ówczesną powieścią Konwickiego „Sennik współczesny”. Motyw osobliwego tańca powraca na urodzinowym przyjęciu bohatera filmu „Jak daleko stąd, jak blisko”.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0059670/",
       "metacriticUrl" : "https://www.metacritic.com/search/Salto/?category=2",
-      "rottenTomatoes" : 76,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/salto",
-      "filmweb" : 7.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Salto-1965-9334"
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Salto",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Salto"
     },
-    "weightedRating" : 7.699999999999999,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "santasangreamondogrindhouse|1989",
@@ -15877,22 +15940,30 @@
   }, {
     "_id" : "spotkaniafilmowepianista|2002",
     "title" : "Spotkania Filmowe: Pianista",
-    "posterUrl" : "https://www.novekino.pl/multimedia/pianista/plakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "originalTitle" : "The Pianist",
+    "posterUrl" : "https://img.helios.pl/pliki/film/pianista/pianista-plakat-769.png",
+    "fallbackPosterUrls" : [ "https://kinotatrylodz.pl/wp-content/uploads/2026/03/PIANISTA-864x1080.jpg", "https://www.novekino.pl/multimedia/pianista/plakat.jpg", "https://image.tmdb.org/t/p/w500/zBAT1blHB2zkzWvHMQmV65qBfXM.jpg", "https://m.media-amazon.com/images/M/MV5BMjEwNmEwYjgtNTk3ZC00NjljLTg5ZDctZTY3ZGQwZjRkZmQxXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 149,
     "releaseYear" : 2002,
-    "genres" : [ "Biograficzny/Dramat/Wojenny" ],
-    "countries" : [ "Francja", "Niemcy", "Polska", "Wielka Brytania" ],
-    "directors" : [ ],
+    "genres" : [ "Dramat", "Wojenny" ],
+    "countries" : [ "Francja", "Niemcy", "Polska", "Wielka Brytania", "USA" ],
+    "directors" : [ "Roman Polański" ],
     "cast" : [ "Adrien Brody", "Thomas Kretschmann", "Emilia Fox", "Maureen Lipman", "Jessica Kate Meyer", "Julia Rayner" ],
     "synopsis" : "Jeden z najważniejszych filmów XXI wieku powraca w nowej odsłonie po gruntownej rekonstrukcji 4K.\n\nOparty na wspomnieniach Władysława Szpilmana „Pianista” to osobista relacja z przetrwania w rozdzieranym wojną mieście, poruszające świadectwo siły, jaką daje sztuka w najmniej oczekiwanych momentach oraz zachwycający autentyzmem portret artysty, w którego wcielił się nagrodzony Oscarem Adrien Brody.\n\nW 1939 roku Szpilman jest cenionym pianistą i kompozytorem, który mieszka wraz z rodziną w Warszawie. Kiedy do stolicy wkraczają naziści, życie żydowskiego muzyka zamienia się w koszmar: traci kolejne prawa, trafia do getta, obserwuje dwa powstania i próbuje przetrwać w zniszczonym mieście. Pomaga mu przypadek, łut szczęścia oraz miłość do muzyki.\n\n„Pianista” to film o świadku Zagłady zrealizowany z szacunkiem i dojrzałością przez innego świadka. Jeden z najważniejszych filmów Romana Polańskiego był pierwszym i na razie jedynym powrotem reżysera do czasów wojny, którą przeżył on jako mały chłopiec. Kręcony na ulicach Warszawy z częściowo polską ekipą i obsadą film stanowi głęboki humanistyczny manifest, w którym rozpacz łączy się z tlącą się nadzieją.\n\nOpowiadany w sposób chronologiczny, oszczędny i skupiony na detalach „Pianista” to ewenement w historii polskiego i światowego kina: stworzona przez mistrza wizja bolesnej przeszłości, w której osobista perspektywa łączy się z rozmachem i wierną rekonstrukcją wydarzeń.\n\nNagrodzone Złotą Palmą i 3 Oscarami arcydzieło ponownie w kinach po nowej postprodukcji i rekonstrukcji obrazu w jakości 4K.",
     "trailerUrls" : [ "https://www.youtube.com/embed/fJRz03iaeak" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Spotkania+Filmowe%3A+Pianista/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Spotkania+Filmowe%3A+Pianista",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Spotkania+Filmowe%3A+Pianista"
+      "imdb" : 8.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt0253474/",
+      "metascore" : 85,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-pianist",
+      "rottenTomatoes" : 29,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_pianist",
+      "filmweb" : 8.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Pianista-2002-32225"
     },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
+    "weightedRating" : 7.05,
+    "synopsisByCity" : { },
+    "ageRating" : "12"
   }, {
     "_id" : "spotkaniafilmowewerdykt|2025",
     "title" : "Spotkania Filmowe: Werdykt",
@@ -18849,27 +18920,29 @@
     "weightedRating" : 8.15,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wpokojuobok6razypedro|2024",
+    "_id" : "wpokojuobok6razypedro|2026",
     "title" : "W pokoju obok | 6 razy Pedro",
-    "originalTitle" : "La habitación de al lado",
-    "posterUrl" : "https://medstore.kinoteka.pl/W%20pokoju%20obok_plakat%20PL_LQ.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 107,
-    "releaseYear" : 2024,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "USA", "Hiszpania" ],
+    "originalTitle" : "Amarga Navidad",
+    "posterUrl" : "https://medstore.kinoteka.pl/bbplakatpllq.jpg",
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/matkirownolegleplakatpllq.jpg", "https://medstore.kinoteka.pl/W%20pokoju%20obok_plakat%20PL_LQ.jpg", "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://image.tmdb.org/t/p/w500/ji29dXqoeIsQiVnXAkzI4nzxMjr.jpg", "https://m.media-amazon.com/images/M/MV5BN2I4ODhmMDItM2EzNS00NmM0LTkzOTQtMWM5MTNhOTYzNDM3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 113,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "Hiszpania", "USA" ],
     "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Julianne Moore", "Tilda Swinton", "John Turturro" ],
+    "cast" : [ "Bárbara Lennie", "Leonardo Sbaraglia", "Aitana Sánchez-Gijón", "Victoria Luengo", "Patrick Criado" ],
     "synopsis" : "19 grudnia zapraszamy na seans przedpremierowy w ramach cyklu \"Premiery z Kają Klimek\"\n\nZwycięzca festiwalu w Wenecji, „W pokoju obok\", łączy na ekranie dwie wielkie osobowości i gwiazdy kina: Julianne Moore i Tildę Swinton. Melodramat Pedra Almodóvara to pełna emocji opowieść o pożegnaniach, spełnieniu, macierzyństwie i rodzinie z wyboru, a przede wszystkim – o życiu na swoich zasadach. Anglojęzyczny debiut Hiszpana otwiera zupełnie nowy rozdział w jego twórczości, zachowując przy tym charakterystyczne dla reżysera humor, melancholię i uwodzicielski splendor kostiumów i wnętrz. Eksplozja soczystych barw głosi pochwałę życia tak w radosnych, jak i w gorzkich odsłonach i jest hołdem dla przyjaźni, której blask złagodzi każdy ból.\n\nAkcję „W pokoju obok\" umieścił Almodóvar na Wschodnim Wybrzeżu USA. To w Nowym Jorku spotykają się przyjaciółki sprzed lat: wzięta pisarka Ingrid (Moore) i Martha (Swinton), reporterka wojenna, która toczy właśnie najważniejszą bitwę swojego życia. Rozdzieliły je zawodowe i prywatne wybory, a na nowo połączy los, którego się nie wybiera. W dramatycznych okolicznościach Ingrid i Martha dostrzegą szansę, by jeszcze raz przeżyć coś wspólnie.\n\nJeden z najwyżej ocenianych filmów Pedra Amodóvara jest ekranizacją „Pełni miłości\", powieści Sigrid Nunez. „W pokoju obok\" to terapeutyczne, niosące nadzieję kino, które nie wstydzi się wzruszać i wierzyć: w uzdrawiającą moc obecności i relacje odporne na upływ czasu.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/5rphRnnqyu0" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/ASjGIpOfwNU", "https://www.youtube.com/embed/asE6E7X1gOs", "https://www.youtube.com/embed/5rphRnnqyu0", "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt29439114/",
-      "metacriticUrl" : "https://www.metacritic.com/search/La+habitaci%C3%B3n+de+al+lado/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=La+habitaci%C3%B3n+de+al+lado",
-      "filmweb" : 6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/W+pokoju+obok-2024-10045112"
+      "imdb" : 6.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt28088049/",
+      "metascore" : 69,
+      "metacriticUrl" : "https://www.metacritic.com/movie/bitter-christmas",
+      "rottenTomatoes" : 91,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/bitter_christmas",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Amarga+Navidad"
     },
-    "weightedRating" : 6,
+    "weightedRating" : 7.5,
     "synopsisByCity" : { }
   }, {
     "_id" : "wspczytajaclolitewteheranie|2024",
@@ -18948,13 +19021,12 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wsrodnocnejciszydyskusjakinoniejawnequeerowekodyprlu|1978",
+    "_id" : "wsrodnocnejciszydyskusjakinoniejawnequeerowekodyprlu|2026",
     "title" : "Wśród nocnej ciszy + dyskusja | Kino (nie)jawne: queerowe kody PRL-u",
-    "originalTitle" : "Wśród nocnej ciszy",
     "posterUrl" : "https://medstore.kinoteka.pl/w(2).jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 116,
-    "releaseYear" : 1978,
+    "releaseYear" : 2026,
     "genres" : [ "Dramat", "Kryminał", "Psychologiczny" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Tadeusz Chmielewski" ],
@@ -18962,13 +19034,11 @@
     "synopsis" : "Tadeusz Chmielewski, autor takich komedii jak chociażby „Nie lubię poniedziałku” czy „Jak rozpętałem drugą wojnę światową”, w „Wśród nocnej ciszy” prezentuje swoją mroczną stronę. Na Pomorzu grasuje seryjny morderca młodych chłopców. Komisarz prowadzący śledztwo musi radzić sobie także w domu z trudną relacją z 15-letnim synem.\n\nPo seansie dyskusja z widownią na temat tropu „bury your gays”. Czy film to jego klasyczna egzekucja czy wręcz przeciwnie, twórcza trawestacja?",
     "trailerUrls" : [ ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0080150/",
-      "metacriticUrl" : "https://www.metacritic.com/search/W%C5%9Br%C3%B3d+nocnej+ciszy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=W%C5%9Br%C3%B3d+nocnej+ciszy",
-      "filmweb" : 7.6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/W%C5%9Br%C3%B3d+nocnej+ciszy-1978-11845"
+      "metacriticUrl" : "https://www.metacritic.com/search/W%C5%9Br%C3%B3d+nocnej+ciszy+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=W%C5%9Br%C3%B3d+nocnej+ciszy+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=W%C5%9Br%C3%B3d+nocnej+ciszy+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u"
     },
-    "weightedRating" : 7.6,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "wszyscyludzieprezydentaamerykanskaklasyka50rocznicapremiery|1976",
@@ -19110,13 +19180,13 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestcatsickblues|2016",
+    "_id" : "wtffestcatsickblues|2026",
     "title" : "WTF Fest | Cat Sick Blues",
     "originalTitle" : "Cat Sick Blues",
     "posterUrl" : "https://medstore.kinoteka.pl/CatSickBuesplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 94,
-    "releaseYear" : 2016,
+    "releaseYear" : 2026,
     "genres" : [ "Horror" ],
     "countries" : [ "Australia" ],
     "directors" : [ "Dave Jackson" ],
@@ -19124,36 +19194,31 @@
     "synopsis" : "Najbardziej traumatyczny film o miłości do kota\n\n.\n\nClaire nie może pogodzić się ze śmiercią swojego ukochanego kota, internetowej gwiazdy viralowych filmików. Szukając wsparcia, trafia na grupę terapeutyczną dla osób przeżywających żałobę po zwierzętach i poznaje Teda – dziwnego, wycofanego chłopaka, który również obsesyjnie tęskni za swoim kotem. Problem w tym, że Ted jest gotowy zrobić naprawdę bardzo dużo, żeby go odzyskać.\n\n„Cat Sick Blues” zaczyna się jak absurdalny internetowy żart, ale szybko zamienia się w brutalny, emocjonalnie rozchwiany horror o żałobie, obsesji i samotności. Reżyser Dave Jackson balansuje między bardzo czarnym humorem, niezręcznym romansem i scenami, które potrafią autentycznie straumatyzować widza. To film jednocześnie absurdalny, drastyczny i zaskakująco smutny – jeden z tych, po których przez chwilę naprawdę nie wiadomo, czy bardziej chce się śmiać, czy wziąć długi prysznic.\n\nFilm szybko zdobył status jednego z najbardziej osobliwych i ekstremalnych horrorów undergroundowych ostatnich lat. Pod całym absurdem, krwią i kocim futrem kryje się historia ludzi desperacko próbujących poradzić sobie ze stratą — nawet jeśli prowadzi ich to w bardzo niebezpieczne miejsca.\n\nFilm zdobył Nagrodę Publiczności dla Najbardziej Szokującego Filmu na Splat!FilmFest w 2016 roku.\n\n18+ TRIGGER WARNING: film zawiera brutalne sceny przemocy, przemocy seksualnej oraz motywy żałoby po zwierzętach.",
     "trailerUrls" : [ "https://www.youtube.com/embed/n7oPgrg3pUA" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt4185862/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Cat+Sick+Blues/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cat+Sick+Blues",
-      "filmweb" : 5.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Cat+Sick+Blues-2015-715321"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Cat+Sick+Blues/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Cat+Sick+Blues",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Cat+Sick+Blues"
     },
-    "weightedRating" : 5.3,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestcrash|1996",
+    "_id" : "wtffestcrash|2026",
     "title" : "WTF Fest | Crash",
-    "originalTitle" : "Crash",
     "posterUrl" : "https://medstore.kinoteka.pl/Crashplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 100,
-    "releaseYear" : 1996,
-    "genres" : [ "Thriller", "Erotyczny" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Erotyczny", "Thriller" ],
     "countries" : [ "Wielka Brytania", "Kanada" ],
     "directors" : [ "David Cronenberg" ],
     "cast" : [ ],
     "synopsis" : "David Cronenberg i jeden z najbardziej niepokojących erotycznych thrillerów w historii kina.\n\nPo poważnym wypadku samochodowym producent filmowy James Ballard trafia do środowiska ludzi seksualnie fascynujących się katastrofami drogowymi, bliznami i rozbitym metalem. Wypadki przestają być dla nich tragedią, a stają się obsesją, fetyszem i sposobem na odczuwanie czegokolwiek. Im dalej Ballard wchodzi w ten świat, tym bardziej zaciera się granica między pożądaniem, bólem i autodestrukcją.\n\n„Crash” działa jak chłodny, hipnotyczny trans o ludziach uzależnionych od adrenaliny, przemocy i własnych obsesji. David Cronenberg zamienia erotyczny thriller w coś dużo bardziej dziwnego i niewygodnego — film o ciałach, technologii i seksualności w epoce, w której emocje coraz częściej zastępuje bodziec. Chłodna muzyka, sterylne zdjęcia i atmosfera emocjonalnego odrętwienia sprawiają, że „Crash” bardzo niepokoi.\n\nFilm powstał na podstawie kultowej powieści J. G. Ballarda i po premierze wywołał gigantyczny skandal. Był oskarżany o deprawację i atakowany przez media i polityków, lokalnie zakazywany i ograniczany w dystrybucji. Jednocześnie zdobył Nagrodę Specjalną Jury na Festiwalu Filmowym w Cannes w 1996 roku, gdzie jury przewodniczył Francis Ford Coppola. Dziś „Crash” uznawany jest za jedno z najważniejszych i najbardziej bezkompromisowych dzieł Cronenberga.",
     "trailerUrls" : [ "https://www.youtube.com/embed/jTaGH1POlds" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0115964/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Crash/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Crash",
-      "filmweb" : 6.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Crash%3A+Niebezpieczne+po%C5%BC%C4%85danie-1996-642"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Crash/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Crash",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Crash"
     },
-    "weightedRating" : 6.1,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "wtffestdeerskin|2026",
@@ -19176,27 +19241,25 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestglowadowycierania|1977",
+    "_id" : "wtffestglowadowycierania|2026",
     "title" : "WTF Fest | Głowa do wycierania",
     "originalTitle" : "Eraserhead",
     "posterUrl" : "https://medstore.kinoteka.pl/779820113.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 89,
-    "releaseYear" : 1977,
-    "genres" : [ "Surrealistyczny" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Czarna Komedia", "Horror", "Surrealistyczny" ],
     "countries" : [ "USA" ],
     "directors" : [ "David Lynch" ],
     "cast" : [ ],
     "synopsis" : "\"Surrealistyczny koszmar Davida Lyncha.\n\nHenry Spencer prowadzi samotne życie w przemysłowym mieście przypominającym niekończący się koszmar. Kiedy jego dziewczyna Mary informuje go, że urodziło im się dziecko, Henry trafia do świata pełnego niezręcznych rodzinnych spotkań, napięcia i coraz trudniejszej do zniesienia codzienności. Problem w tym, że ich nowo narodzone dziecko wygląda bardziej jak dziwne, chorowite stworzenie niż człowiek, a opieka nad nim zaczyna powoli niszczyć psychikę Henry’ego.\n\n„Głowa do wycierania” nie przypomina klasycznego horroru ani zwykłego filmu surrealistycznego. David Lynch buduje tutaj własny język kina: oparty na dźwięku, niepokoju, dziwnej logice snu i obrazach, których nie da się wyrzucić z głowy. Czarny humor miesza się z autentycznym dyskomfortem, a cały film wygląda momentami jak koszmar o dorosłości, rodzicielstwie i strachu przed dpowiedzialnością.\n\nPełnometrażowy debiut Lyncha powstawał z przerwami przez kilka lat. Po premierze nie stał się natychmiastowym hitem – swoją legendę zbudował dopiero dzięki nocnym pokazom i widzom, którzy odkrywali go jak filmowy sekret. To właśnie „Głowa do wycierania” ustanowiła wiele elementów stylu Lyncha: przemysłowy niepokój, czarny humor, logikę snu i obrazy działające bardziej na podświadomość niż rozsądek.\"",
     "trailerUrls" : [ "https://www.youtube.com/embed/J0Eq5GtCYdA" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0074486/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Eraserhead/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Eraserhead",
-      "filmweb" : 7.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/G%C5%82owa+do+wycierania-1977-1088"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+G%C5%82owa+do+wycierania/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+G%C5%82owa+do+wycierania",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+G%C5%82owa+do+wycierania"
     },
-    "weightedRating" : 7.3,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "wtffestgogosecondtimevirgin|2026",
@@ -19220,13 +19283,13 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestimperiumzmyslow|1976",
+    "_id" : "wtffestimperiumzmyslow|2026",
     "title" : "WTF Fest | Imperium zmysłów",
-    "originalTitle" : "愛のコリーダ",
+    "originalTitle" : "In the Realm of the Senses / Ai no korîda",
     "posterUrl" : "https://medstore.kinoteka.pl/ImperiumZmyslowplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 109,
-    "releaseYear" : 1976,
+    "releaseYear" : 2026,
     "genres" : [ "Dramat", "Erotyczny" ],
     "countries" : [ "Francja", "Japonia" ],
     "directors" : [ "Nagisa Ôshima" ],
@@ -19234,90 +19297,82 @@
     "synopsis" : "Erotyczny klasyk, który przekroczył każdą granicę\n.\n\nTokio, lata 30. Sada, była prostytutka pracująca jako służąca w gospodzie, wdaje się w romans z właścicielem lokalu. Związek szybko przeradza się w obsesję, która odcina ich od świata zewnętrznego: pracy, obowiązków, innych ludzi. Każde kolejne spotkanie staje się bardziej intensywne i ryzykowne, aż granica między pożądaniem a autodestrukcją całkowicie znika.\n\nNagisa Ōshima nie robi erotyku ani prowokacji dla samego szoku. „Imperium zmysłów” działa jak duszny trans - intymny, cielesny i momentami wręcz niewygodnie bliski. Seks nie jest tu dodatkiem do fabuły, tylko samą fabułą: narzędziem kontroli, uzależnienia i stopniowego zatracania się w obsesji. Im dalej ten film idzie, tym bardziej widz ma wrażenie, że obserwuje coś, czego nie powinien oglądać. Ōshima był jednym z najważniejszych twórców japońskiej Nowej Fali — reżyserem bezkompromisowym, politycznym i obsesyjnie zainteresowanym tym, jak społeczeństwo próbuje kontrolować ciało, seksualność i wolność jednostki.\n\nFilm oparty jest na prawdziwej historii Sady Abe - jednej z najsłynniejszych obyczajowych i kryminalnych historii XX-wiecznej Japonii. Po premierze wywołał gigantyczny skandal: w wielu krajach był zakazywany lub pokazywany wyłącznie w ocenzurowanej wersji. Przez lata funkcjonował jako „film, którego nie wolno oglądać”. W Japonii nie mógł być legalnie pokazywany w pełnej wersji, a kopia filmu była montowana we Francji, by ominąć lokalne przepisy dotyczące pornografii. Dziś „Imperium zmysłów” uznawane jest nie tylko za klasyk kina transgresji, ale też jedno z najważniejszych dzieł w historii światowego kina artystycznego.\n\nTRIGGER WARNING: film zawiera bardzo odważne sceny seksualne",
     "trailerUrls" : [ "https://www.youtube.com/embed/yFAIcOZaqiE" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0074102/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E6%84%9B%E3%81%AE%E3%82%B3%E3%83%AA%E3%83%BC%E3%83%80/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%E6%84%9B%E3%81%AE%E3%82%B3%E3%83%AA%E3%83%BC%E3%83%80",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=%E6%84%9B%E3%81%AE%E3%82%B3%E3%83%AA%E3%83%BC%E3%83%80"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Imperium+zmys%C5%82%C3%B3w/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Imperium+zmys%C5%82%C3%B3w",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Imperium+zmys%C5%82%C3%B3w"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestlozkoktorepozera|1977",
+    "_id" : "wtffestlozkoktorepozera|2026",
     "title" : "WTF Fest | Łóżko, które pożera",
     "originalTitle" : "Death Bed: The Bed That Eats",
     "posterUrl" : "https://medstore.kinoteka.pl/lozko.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 77,
-    "releaseYear" : 1977,
-    "genres" : [ "Horror" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Horror", "Surrealistyczny" ],
     "countries" : [ "USA" ],
     "directors" : [ "George Barry" ],
     "cast" : [ ],
     "synopsis" : "Film o łóżku, które pożera ludzi i zdrowy rozsądek widzów.\n\nW opuszczonym domu stoi stare łóżko o bardzo nietypowym problemie – regularnie pożera ludzi, którzy mają pecha na nim usiąść, położyć się albo spędzić noc. Kolejne ofiary trafiają do pokoju, nie mając pojęcia, że mebel od dawna żyje własnym życiem i powoli rozpuszcza wszystko, co znajdzie się na jego materacu. Całość obserwuje tajemniczy mężczyzna uwięziony za ścianą obrazu, komentujący wydarzenia, jakby sam do końca nie wierzył w absurd tego, co ogląda.\n\n„Łóżko, które pożera” działa jak horror wymyślony według logiki prawdziwego snu – pełnego przypadkowych dialogów, dziwnych decyzji i scen kompletnie ignorujących normalne zasady narracji. Reżyser George Barry z absolutną powagą traktuje pomysł o morderczym łóżku i właśnie dlatego cały film staje się tak fascynujący. Psychodeliczna atmosfera, surrealistyczny humor i kompletnie nieprzewidywalna logika zamieniają całość w jedno z najbardziej osobliwych doświadczeń horrorowego undergroundu.\n\nFilm został nakręcony w 1977 roku, ale przez lata praktycznie nie istniał w normalnym obiegu i funkcjonował bardziej jako legenda wśród fanów dziwnego kina niż realny film. Dopiero po latach „Łóżko, które pożera” zdobyło status kultowego midnight movie i jednego z najbardziej surrealistycznych horrorów undergroundowych swoich czasów. To dokładnie ten rodzaj filmu, przy którym przez pół seansu nie wiadomo, czy bardziej się śmiać, czy próbować zrozumieć, jakim cudem coś takiego w ogóle powstało.",
     "trailerUrls" : [ "https://www.youtube.com/embed/GTKZ0Z-2k2s" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0385639/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Death+Bed%3A+The+Bed+That+Eats/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Death+Bed%3A+The+Bed+That+Eats",
-      "filmweb" : 3.4,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Death+Bed%3A+The+Bed+That+Eats-1977-172421"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera"
     },
-    "weightedRating" : 3.4,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestmalyotik|2001",
+    "_id" : "wtffestmalyotik|2026",
     "title" : "WTF Fest | Mały Otik",
-    "originalTitle" : "Otesánek",
     "posterUrl" : "https://medstore.kinoteka.pl/MalyOtikplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 132,
-    "releaseYear" : 2001,
-    "genres" : [ "Dramat", "Czarna komedia", "Fantasy" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Czarna Komedia", "Dramat", "Fantasy" ],
     "countries" : [ "Wielka Brytania", "Japonia", "Czechy" ],
     "directors" : [ "Jan Svankmajer" ],
     "cast" : [ ],
     "synopsis" : "Mistrz surrealizmu Jan Švankmajer i jego najbardziej żarłoczna baśń\n.\nBezdzietne małżeństwo znajduje w lesie kawałek drewna przypominający niemowlę. Kobieta zaczyna traktować go jak własne dziecko - karmi, usypia, wychowuje. I wtedy Otik ożywa. Tyle że zamiast zachowywać się jak dziecko, zaczyna pożerać wszystko wokół. Najpierw jedzenie. Potem rzeczy. Potem ludzi. Dom zamienia się w zamknięty obieg karmienia, a sytuacja wymyka się spod kontroli szybciej, niż ktokolwiek chce to przyznać.\n\nTo film, który działa jak koszmar podszyty absurdem. Z jednej strony: baśń, znajoma struktura, coś niemal dziecięcego. Z drugiej: rosnące poczucie niepokoju, cielesność, coś lepko-organicznego, co wchodzi pod skórę. Otik nie jest tylko potworem - jest ucieleśnieniem potrzeby, która zaczyna pożerać wszystko wokół. Humor i groza idą tu ramię w ramię, ale śmiech szybko zamiera.\n\nReżyser Jan Švankmajer, mistrz filmowego surrealizmu i animacji poklatkowej, bierze na warsztat ludową czeską legendę i przepuszcza ją przez swój charakterystyczny, niepokojący styl. Efekt to jedno z jego najbardziej przystępnych, a jednocześnie najbardziej podstępnych dzieł - film, który funkcjonuje gdzieś między bajką, horrorem i artystycznym eksperymentem. Kultowy wśród fanów kina dziwnego, bo robi dokładnie to, co powinno takie kino robić: destabilizuje.",
     "trailerUrls" : [ "https://www.youtube.com/embed/leQHDXoOZL0" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0228687/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Otes%C3%A1nek/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Otes%C3%A1nek",
-      "filmweb" : 7.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Ma%C5%82y+Otik-2000-114091"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Ma%C5%82y+Otik/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Ma%C5%82y+Otik",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Ma%C5%82y+Otik"
     },
-    "weightedRating" : 7.3,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestmonos|2019",
+    "_id" : "wtffestmonos|2026",
     "title" : "WTF Fest | Monos",
     "originalTitle" : "Monos",
     "posterUrl" : "https://medstore.kinoteka.pl/Monoplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 102,
-    "releaseYear" : 2019,
-    "genres" : [ "Dramat" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Thriller" ],
     "countries" : [ "Szwecja", "Niemcy", "Holandia", "Argentyna" ],
     "directors" : [ "Alejandro Landes" ],
     "cast" : [ ],
     "synopsis" : "Kolumbijski kandydat do Oscara o wojnie, narkotykach i dzieciakach bez żadnych zasad\n.\n\nGrupa nastoletnich partyzantów ukrywających się w górach pilnuje amerykańskiej zakładniczki i funkcjonuje według własnych brutalnych zasad. Początkowo wszystko przypomina dziwny obóz przetrwania z rytuałami i dyscypliną, ale gdy sytuacja zaczyna wymykać się spod kontroli, grupa stopniowo pogrąża się w chaosie. Granica między zabawą, wojną i czystym szaleństwem szybko przestaje istnieć.\n\n„Monos” działa jak narkotyczny sen o przemocy i powolnym rozpadzie moralności. Reżyser Alejandro Landes miesza kino wojenne z horrorem, survivalem i hipnotycznym arthouse’em, tworząc film bardziej odczuwalny niż opowiadany. Duszna elektronika, monumentalne zdjęcia i atmosfera ciągłego napięcia sprawiają, że widz ma wrażenie, jakby razem z bohaterami powoli zanurzał się w chaosie.\n\nFilm miał premierę na Sundance Film Festival, gdzie zdobył Nagrodę Specjalną Jury w sekcji World Cinema Dramatic. „Monos” błyskawicznie stał się międzynarodową sensacją festiwalową i jednym z najgłośniejszych południowoamerykańskich filmów ostatnich lat. Krytycy porównywali go do „Czasu Apokalipsy” i „Władcy much”, ale film Landesa idzie w dużo bardziej psychodeliczną, dziką i nieprzewidywalną stronę. Oficjalny kolumbijski kandydat do Oscara dla najlepszego filmu międzynarodowego.",
     "trailerUrls" : [ "https://www.youtube.com/embed/disclpVzoMQ" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt6062774/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Monos/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Monos",
-      "filmweb" : 6.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Monos-2019-815970"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Monos/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Monos",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Monos"
     },
-    "weightedRating" : 6.3,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestsetkibobrow|2024",
+    "_id" : "wtffestsetkibobrow|2026",
     "title" : "WTF Fest | Setki bobrów",
     "originalTitle" : "Hundreds of Beavers",
     "posterUrl" : "https://medstore.kinoteka.pl/setki.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 108,
-    "releaseYear" : 2024,
+    "releaseYear" : 2026,
     "genres" : [ "Komedia", "Przygodowy" ],
     "countries" : [ "USA" ],
     "directors" : [ "Mike Cheslik" ],
@@ -19325,36 +19380,32 @@
     "synopsis" : "Jeden z najbardziej absurdalnych i najbardziej pomysłowych filmów ostatnich lat\n.\n\nPo katastrofie, która dosłownie niszczy jego dotychczasowe życie, producent jabłkowego alkoholu zostaje sam na środku zimowego pustkowia. Żeby przetrwać i zdobyć rękę córki handlarza futer, postanawia zostać najlepszym traperem w okolicy. Problem w tym, że przeciwko niemu staje armia sprytnych zwierząt, a szczególnie setki bobrów, które wydają się działać według własnej, całkowicie absurdalnej logiki.\n\n„Setki bobrów” wygląda jak zagubiony niemy film odnaleziony w alternatywnej rzeczywistości, w której kino slapstickowe rozwinęło się w stronę kompletnego szaleństwa. Reżyser Mike Cheslik miesza komedię niemą, kreskówkową fizykę i gry komputerowe, ale robi to z taką precyzją i pomysłowością, że efekt staje się czymś zaskakująco świeżym. Każda kolejna scena próbuje przebić poprzednią nowym pomysłem, kolejnym absurdem albo jeszcze bardziej skomplikowanym żartem wizualnym.\n\nFilm szybko zdobył status jednego z najbardziej zaskakujących sukcesów współczesnego kina niezależnego. Przy minimalnym budżecie twórcy stworzyli widowisko wyglądające momentami jak połączenie filmów Bustera Keatona, kreskówek Looney Tunes i survivalowej gry komputerowej. To jeden z tych bardzo rzadkich przypadków, kiedy absurdalny pomysł okazuje się nie tylko śmieszny, ale po prostu świetnie zrobiony.",
     "trailerUrls" : [ "https://www.youtube.com/embed/OPPzStE6w_8" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt12818328/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Hundreds+of+Beavers/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Hundreds+of+Beavers",
-      "filmweb" : 7.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Setki+bobr%C3%B3w-2022-10040091"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Setki+bobr%C3%B3w/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Setki+bobr%C3%B3w",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Setki+bobr%C3%B3w"
     },
-    "weightedRating" : 7.2,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffeststolikkawowy|2023",
+    "_id" : "wtffeststolikkawowy|2026",
     "title" : "WTF Fest | Stolik kawowy",
-    "originalTitle" : "La mesita del comedor",
+    "originalTitle" : "La mesita del comedor / The Coffee Table",
     "posterUrl" : "https://medstore.kinoteka.pl/Stolikkawowy2.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 89,
-    "releaseYear" : 2023,
-    "genres" : [ "Dramat", "Psychologiczny" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Czarna Komedia" ],
     "countries" : [ "Hiszpania" ],
     "directors" : [ "Caye Casas" ],
     "cast" : [ ],
     "synopsis" : "Jeden z najbardziej szokujących filmów ostatnich lat\n.\n\nJesús kupuje do mieszkania potwornie brzydki stolik kawowy, mimo że jego partnerka absolutnie go nie chce. Chwilę później dochodzi do tragicznego wypadku, a bohater wpada w spiralę paniki, kłamstw i desperackich prób ukrycia tego, co się wydarzyło. Im bardziej próbuje zachować pozory normalności podczas kolejnych rodzinnych wizyt, tym bardziej sytuacja zamienia się w koszmar nie do wytrzymania.\n\n„Stolik kawowy” bierze banalny punkt wyjścia i zamienia go w jedną z najbardziej stresujących czarnych komedii ostatnich lat. Reżyser Caye Casas perfekcyjnie balansuje między absurdem, napięciem i bardzo czarnym humorem, przez cały film zmuszając widza do nerwowego śmiechu. To kino, które jednocześnie bawi i sprawia, że ma się ochotę schować twarz w dłoniach. Największy horror tego filmu polega na tym, że wszystko dzieje się tutaj w zwykłym mieszkaniu, podczas zwykłego dnia i między ludźmi, którzy próbują za wszelką cenę udawać, że nadal panują nad sytuacją.\n\nFilm błyskawicznie zdobył status jednego z najbardziej szokujących, stresujących i najczęściej komentowanych horrorów ostatnich lat. Widzowie wychodzą z niego albo zachwyceni, albo kompletnie straumatyzowani – albo jedno i drugie na raz.\n\nFilm zdobył Nagrodę Publiczności dla Najbardziej Szokującego Filmu na Splat!FilmFest w 2023 roku.\n\nTRIGGER WARNING: film odradzany kobietom w ciąży, osobom spodziewającym się dziecka oraz rodzicom małych dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/kVk7wRuw7gA" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt21874760/",
-      "metacriticUrl" : "https://www.metacritic.com/search/La+mesita+del+comedor/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=La+mesita+del+comedor",
-      "filmweb" : 6.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Stolik+kawowy-2022-10024961"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Stolik+kawowy/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Stolik+kawowy",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Stolik+kawowy"
     },
-    "weightedRating" : 6.1,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "wtffestswietakrew|1989",
@@ -19382,36 +19433,39 @@
     "weightedRating" : 7.966666666666666,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffesttaxidermia|2006",
+    "_id" : "wtffesttaxidermia|2026",
     "title" : "WTF Fest | Taxidermia",
-    "originalTitle" : "Taxidermia",
+    "originalTitle" : "Κότα",
     "posterUrl" : "https://medstore.kinoteka.pl/Taxidermiaplakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/xmHzLoSEguCNj4b0nSiqu0npNHF.jpg", "https://m.media-amazon.com/images/M/MV5BMTFhOWExMzAtYWEzNi00MWM3LTk5NmItNDI4MGNjMDA4ZTRhXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 94,
-    "releaseYear" : 2006,
-    "genres" : [ "Dramat", "Komedia", "Horror" ],
-    "countries" : [ "Węgry", "Francja", "Austria" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Przygodowy", "Dramat" ],
+    "countries" : [ "Węgry", "Francja", "Austria", "Niemcy", "Grecja" ],
     "directors" : [ "György Pálfi" ],
-    "cast" : [ ],
+    "cast" : [ "Γιάννης Κοκιασμένος", "Μαρία Διακοπαναγιώτου", "Αργύρης Πανταζάρας", "Αντώνης Καφετζόπουλος", "Αντώνης Τσιοτσιόπουλος" ],
     "synopsis" : "Jeden z najbardziej obrzydliwych filmów europejskiego arthouse’u.\n\nW świecie „Taxidermii” seks, jedzenie i ciało nie są zwykłymi ludzkimi potrzebami, tylko groteskowymi obsesjami. Pierwszy bohater, ordynans żyjący podczas II wojny światowej, ucieka od upokarzającej codzienności w coraz bardziej dziwne fantazje seksualne. Kilkadziesiąt lat później jego syn staje się gwiazdą zawodów w jedzeniu na czas i podporządkowuje całe życie obsesji jedzenia, rywalizacji i własnemu ciału. Ostatni z rodu pracuje jako samotny taksydermista otoczony rozkładem, wypchanymi zwierzętami i rodzinnymi traumami, próbując odnaleźć sens w rzeczywistości, która wydaje się coraz bardziej martwa. Każda kolejna historia jest coraz bardziej groteskowa, cielesna i absurdalna – jakby cała rodzina była skazana na dziedziczenie obsesji swoich poprzedników.\n\nGyörgy Pálfi miesza czarną komedię, body horror, surrealizm i gorzką satyrę społeczną w film, którego praktycznie nie da się pomylić z niczym innym. „Taxidermia” jest jednocześnie odpychająca i wizualnie hipnotyzująca – pełna jedzenia, seksu, krwi, wydzielin i biologii pokazanej w sposób momentami absurdalny, a momentami autentycznie niepokojący. Im dalej film idzie, tym bardziej wygląda jak groteskowy koszmar o ciele, historii i dziedziczonych obsesjach.\n\nFilm miał premierę na Festiwalu Filmowym w Cannes w 2006 roku w sekcji Un Certain Regard. Z czasem zdobył status jednego z najgłośniejszych europejskich filmów ekstremalnych XXI wieku. Pod warstwą groteski i prowokacji kryje się precyzyjny film o ciele, wstydzie, ambicji i desperackiej potrzebie pozostawienia po sobie jakiegokolwiek śladu.\n\nTRIGGER WARNING: film zawiera obrazy mogące skutecznie odebrać apetyt",
     "trailerUrls" : [ "https://www.youtube.com/embed/xeQqwG3D0l4" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0410730/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Taxidermia/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Taxidermia",
+      "imdb" : 7.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt29283995/",
+      "metascore" : 83,
+      "metacriticUrl" : "https://www.metacritic.com/movie/hen",
+      "rottenTomatoes" : 100,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/hen",
       "filmweb" : 6.9,
       "filmwebUrl" : "https://www.filmweb.pl/film/Taxidermia-2006-265557"
     },
-    "weightedRating" : 6.9,
+    "weightedRating" : 8.075,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestzezyciemasens|2001",
+    "_id" : "wtffestzezyciemasens|2026",
     "title" : "WTF Fest | Że życie ma sens",
     "originalTitle" : "Że życie ma sens",
     "posterUrl" : "https://medstore.kinoteka.pl/Zezyciemasensplakat.jpeg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 87,
-    "releaseYear" : 2001,
+    "releaseYear" : 2026,
     "genres" : [ "Dramat" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Grzegorz Lipiec" ],
@@ -19419,13 +19473,11 @@
     "synopsis" : "Jeden z pierwszych polskich filmów, w którym pojawił się rap\n.\n\nOsiedle Piastowskie w Zielonej Górze, koniec lat 90. Czas wielkich przemian i wielkich szans. Może pozornie? Grupa przyjaciół spod bloku znajduje sposób na szarzyznę transformacji – zafascynowani hitami wypożyczalni VHS realizują amatorskie sequele szlagierów lat 80., np. „Terminatora”. To produkcje amatorskie, ale robione z sercem i pasją na hollywoodzkim poziomie. O chłopakach robi się głośno – udzielają wywiadów lokalnym stacjom telewizyjnym. Chcą realizować coraz bardziej brawurowe projekty. I wtedy na scenę wchodzi on – chłopak z sąsiedztwa, który wciąga domorosłych filmowców w świat imprez techno, picia na umór, wielkich planów. I narkotyków. Okazuje się, że nie każdy z bohaterów będzie „wiedział, kiedy przestać”.\n\n„Że życie ma sens” to produkcja grupy Sky Piastowskie, która zdefiniowała polskie kino niezależne. Film kultowy, wielokrotnie nagradzany i omawiany na studiach filmowych, z którego kipią lata 90. w całej swojej siermiędze i jaskrawej beznadziei. W chwili premiery narobił tyle szumu, że został wprowadzony do kin przez dystrybutora Best Film. Choć w zaledwie dziesięciu kopiach, wciąż ruch ten był ewenementem. Bo „Że życie ma sens” to film całkowicie amatorski, zrealizowany za kilka tysięcy złotych. Nie ma jednak w polskim kinie mocniejszego portretu ludzi, których życie łamią narkotyki.\n\nStatus filmu kultowego „Że życie ma sens” osiągnęło nie tylko dzięki tematyce, ale i wciąż cytowanym, naturalnym dialogom i muzyce. Na ścieżce dźwiękowej znalazły się m.in. kawałki formacji Kaliber 44. Choć od premiery minęło ponad 20 lat, losy Lipy, Vincenta, Pitera, Jacy, Jarka i Bono wciąż chwytają za serce. Grzegorz Lipiec – filmowy „Lipa” – i reżyser „Że życie ma sens” cztery lata po tym mocnym filmie zrealizował „Dzień, w którym umrę”.",
     "trailerUrls" : [ "https://www.youtube.com/embed/ITyEfkPn7c8" ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0983251/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%C5%BBe+%C5%BCycie+ma+sens/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%C5%BBe+%C5%BCycie+ma+sens",
-      "filmweb" : 7.5,
-      "filmwebUrl" : "https://www.filmweb.pl/film/%C5%BBe+%C5%BCycie+ma+sens-2000-1348"
+      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+%C5%BBe+%C5%BCycie+ma+sens/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+%C5%BBe+%C5%BCycie+ma+sens",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+%C5%BBe+%C5%BCycie+ma+sens"
     },
-    "weightedRating" : 7.5,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "wtorkidlasenioramikeyinickypokazzprelekcja|1976",
@@ -19735,7 +19787,7 @@
     "title" : "Zaproszenie | Kinoteka dla rodziców",
     "originalTitle" : "The Invite",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vJRFj5ri9Zm7Tg0Tn7pBmOtXqKb.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vJRFj5ri9Zm7Tg0Tn7pBmOtXqKb.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 108,
     "releaseYear" : 2026,
     "genres" : [ "Dramat", "Komedia" ],
@@ -19761,7 +19813,7 @@
     "title" : "Zaproszenie | Zobacz przedpremierowo",
     "originalTitle" : "The Invite",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vJRFj5ri9Zm7Tg0Tn7pBmOtXqKb.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vJRFj5ri9Zm7Tg0Tn7pBmOtXqKb.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 108,
     "releaseYear" : 2026,
     "genres" : [ "Dramat", "Komedia" ],
@@ -19787,7 +19839,7 @@
     "title" : "Zaproszenie",
     "originalTitle" : "The Invite",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vJRFj5ri9Zm7Tg0Tn7pBmOtXqKb.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vJRFj5ri9Zm7Tg0Tn7pBmOtXqKb.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 108,
     "releaseYear" : 2026,
     "genres" : [ "Dramat", "Komedia" ],
@@ -20259,27 +20311,24 @@
     "synopsisByCity" : { },
     "ageRating" : "7"
   }, {
-    "_id" : "zygfryddyskusjakinoniejawnequeerowekodyprlu|1987",
+    "_id" : "zygfryddyskusjakinoniejawnequeerowekodyprlu|2026",
     "title" : "Zygfryd + dyskusja | Kino (nie)jawne: queerowe kody PRL-u",
-    "originalTitle" : "Zygfryd",
     "posterUrl" : "https://medstore.kinoteka.pl/z.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 91,
-    "releaseYear" : 1987,
-    "genres" : [ "Obyczajowy", "Psychologiczny" ],
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Andrzej Domalik" ],
     "cast" : [ ],
     "synopsis" : "Figura mentora, który uczy, ale też uwodzi czy po prostu ma romantyczną bądź seksualną relację z młodzieńcem, obecna jest już w antyku. Andrzej Domalik bierze ją na warsztat adaptując opowiadanie o tym samym tytule Jarosława Iwaszkiewicza. W tej wersji koneser sztuki (grany przez samego Stanisława Holoubka) fascynuje się młodym cyrkowcem-akrobatą.\n\nPo seansie dyskusja z widownią – czy „Zygfryd” rzeczywiście zasługuje na miano pierwszego gejowskiego polskiego filmu? Jakie emocje budzi we współczesnej widowni?",
     "trailerUrls" : [ ],
     "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0094394/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Zygfryd/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zygfryd",
-      "filmweb" : 7.4,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Zygfryd-1986-12049"
+      "metacriticUrl" : "https://www.metacritic.com/search/Zygfryd+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zygfryd+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zygfryd+%2B+dyskusja+%7C+Kino+%28nie%29jawne%3A+queerowe+kody+PRL-u"
     },
-    "weightedRating" : 7.4,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "zywotbrianawersjazremasterowana|",
@@ -22253,8 +22302,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|1944|warszawa|Kinoteka",
-    "filmId" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|1944",
+    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|2026|warszawa|Kinoteka",
+    "filmId" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/arszenik-i-stare-koronki-kino-cyrkularne-klasyka-filmowa/",
@@ -28413,8 +28462,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "boliblask6razypedro|2019|warszawa|Kinoteka",
-    "filmId" : "boliblask6razypedro|2019",
+    "_id" : "boliblask6razypedro|2026|warszawa|Kinoteka",
+    "filmId" : "boliblask6razypedro|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/bol-i-blask-6-razy-pedro/",
@@ -30086,8 +30135,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "cinemaitaliaoggirazemczyosobno|2025|poznan|Kino Pałacowe",
-    "filmId" : "cinemaitaliaoggirazemczyosobno|2025",
+    "_id" : "cinemaitaliaoggirazemczyosobno|2026|poznan|Kino Pałacowe",
+    "filmId" : "cinemaitaliaoggirazemczyosobno|2026",
     "city" : "poznan",
     "cinema" : "Kino Pałacowe",
     "filmUrl" : "http://kinopalacowe.pl/filmy/14630-cinema-italia-oggi-razem-czy-osobno/",
@@ -60547,8 +60596,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "kochamkino|1988|warszawa|Kinoteka",
-    "filmId" : "kochamkino|1988",
+    "_id" : "kochamkino|2026|warszawa|Kinoteka",
+    "filmId" : "kochamkino|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/kocham-kino/",
@@ -60917,8 +60966,8 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
-    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|1985|warszawa|Kinoteka",
-    "filmId" : "kolorpurpurykinotekajestkobietaportretwkostiumie|1985",
+    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|2026|warszawa|Kinoteka",
+    "filmId" : "kolorpurpurykinotekajestkobietaportretwkostiumie|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/kolor-purpury-kinoteka-jest-kobieta-portret-w-kostiumie/",
@@ -66161,8 +66210,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "kultoweklasykidrabinajakubowa|1990|warszawa|Kinoteka",
-    "filmId" : "kultoweklasykidrabinajakubowa|1990",
+    "_id" : "kultoweklasykidrabinajakubowa|2026|warszawa|Kinoteka",
+    "filmId" : "kultoweklasykidrabinajakubowa|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/kultowe-klasyki-drabina-jakubowa/",
@@ -68475,8 +68524,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "lawrencezarabiikinocyrkularneextra|1962|warszawa|Kinoteka",
-    "filmId" : "lawrencezarabiikinocyrkularneextra|1962",
+    "_id" : "lawrencezarabiikinocyrkularneextra|2026|warszawa|Kinoteka",
+    "filmId" : "lawrencezarabiikinocyrkularneextra|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/lawrence-z-arabii/",
@@ -79476,8 +79525,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "matkirownolegle6razypedro|2021|warszawa|Kinoteka",
-    "filmId" : "matkirownolegle6razypedro|2021",
+    "_id" : "matkirownolegle6razypedro|2026|warszawa|Kinoteka",
+    "filmId" : "matkirownolegle6razypedro|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/matki-rownolegle-6-razy-pedro/",
@@ -127932,8 +127981,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "prawopozadania6razypedro|1987|warszawa|Kinoteka",
-    "filmId" : "prawopozadania6razypedro|1987",
+    "_id" : "prawopozadania6razypedro|2026|warszawa|Kinoteka",
+    "filmId" : "prawopozadania6razypedro|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/prawo-pozadania-6-razy-pedro/",
@@ -131464,8 +131513,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "salto|1965|warszawa|Kinoteka",
-    "filmId" : "salto|1965",
+    "_id" : "salto|2025|warszawa|Kinoteka",
+    "filmId" : "salto|2025",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/salto/",
@@ -193411,8 +193460,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wpokojuobok6razypedro|2024|warszawa|Kinoteka",
-    "filmId" : "wpokojuobok6razypedro|2024",
+    "_id" : "wpokojuobok6razypedro|2026|warszawa|Kinoteka",
+    "filmId" : "wpokojuobok6razypedro|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/w-pokoju-obok-6-razy-pedro/",
@@ -193466,8 +193515,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wsrodnocnejciszydyskusjakinoniejawnequeerowekodyprlu|1978|warszawa|Kinoteka",
-    "filmId" : "wsrodnocnejciszydyskusjakinoniejawnequeerowekodyprlu|1978",
+    "_id" : "wsrodnocnejciszydyskusjakinoniejawnequeerowekodyprlu|2026|warszawa|Kinoteka",
+    "filmId" : "wsrodnocnejciszydyskusjakinoniejawnequeerowekodyprlu|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wsrod-nocnej-ciszy-kino-niejawne-queerowe-kody-prl-u/",
@@ -193566,8 +193615,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestcatsickblues|2016|warszawa|Kinoteka",
-    "filmId" : "wtffestcatsickblues|2016",
+    "_id" : "wtffestcatsickblues|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestcatsickblues|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-cat-sick-blues/",
@@ -193577,8 +193626,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestcrash|1996|warszawa|Kinoteka",
-    "filmId" : "wtffestcrash|1996",
+    "_id" : "wtffestcrash|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestcrash|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-crash/",
@@ -193599,8 +193648,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestglowadowycierania|1977|warszawa|Kinoteka",
-    "filmId" : "wtffestglowadowycierania|1977",
+    "_id" : "wtffestglowadowycierania|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestglowadowycierania|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-glowa-do-wycierania/",
@@ -193621,8 +193670,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestimperiumzmyslow|1976|warszawa|Kinoteka",
-    "filmId" : "wtffestimperiumzmyslow|1976",
+    "_id" : "wtffestimperiumzmyslow|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestimperiumzmyslow|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-imperium-zmyslow/",
@@ -193632,8 +193681,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestlozkoktorepozera|1977|warszawa|Kinoteka",
-    "filmId" : "wtffestlozkoktorepozera|1977",
+    "_id" : "wtffestlozkoktorepozera|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestlozkoktorepozera|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-lozko-ktore-pozera/",
@@ -193643,8 +193692,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestmalyotik|2001|warszawa|Kinoteka",
-    "filmId" : "wtffestmalyotik|2001",
+    "_id" : "wtffestmalyotik|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestmalyotik|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-maly-otik/",
@@ -193654,8 +193703,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestmonos|2019|warszawa|Kinoteka",
-    "filmId" : "wtffestmonos|2019",
+    "_id" : "wtffestmonos|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestmonos|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-monos/",
@@ -193665,8 +193714,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestsetkibobrow|2024|warszawa|Kinoteka",
-    "filmId" : "wtffestsetkibobrow|2024",
+    "_id" : "wtffestsetkibobrow|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestsetkibobrow|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-setki-bobrow/",
@@ -193676,8 +193725,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffeststolikkawowy|2023|warszawa|Kinoteka",
-    "filmId" : "wtffeststolikkawowy|2023",
+    "_id" : "wtffeststolikkawowy|2026|warszawa|Kinoteka",
+    "filmId" : "wtffeststolikkawowy|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-stolik-kawowy/",
@@ -193698,8 +193747,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffesttaxidermia|2006|warszawa|Kinoteka",
-    "filmId" : "wtffesttaxidermia|2006",
+    "_id" : "wtffesttaxidermia|2026|warszawa|Kinoteka",
+    "filmId" : "wtffesttaxidermia|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-taxidermia/",
@@ -193709,8 +193758,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestzezyciemasens|2001|warszawa|Kinoteka",
-    "filmId" : "wtffestzezyciemasens|2001",
+    "_id" : "wtffestzezyciemasens|2026|warszawa|Kinoteka",
+    "filmId" : "wtffestzezyciemasens|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-ze-zycie-ma-sens/",
@@ -200527,8 +200576,8 @@
       "format" : [ "2D", "DUB" ]
     } ]
   }, {
-    "_id" : "zygfryddyskusjakinoniejawnequeerowekodyprlu|1987|warszawa|Kinoteka",
-    "filmId" : "zygfryddyskusjakinoniejawnequeerowekodyprlu|1987",
+    "_id" : "zygfryddyskusjakinoniejawnequeerowekodyprlu|2026|warszawa|Kinoteka",
+    "filmId" : "zygfryddyskusjakinoniejawnequeerowekodyprlu|2026",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/zygfryd-kino-niejawne-queerowe-kody-prl-u/",
