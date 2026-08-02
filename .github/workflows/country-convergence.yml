@@ -6,30 +6,12 @@
 # rules? The corpus is written into a real `cinema_scrapes` collection and
 # replayed back out, so the archive's round-trip is on the path too.
 #
-# ONE MATRIX OF PAIRS: each leg is a country, and each country runs its ~100-film
-# sample and then, only if that passed, its full convergence run. The sample is an
-# ordinary step, so the step that follows it simply doesn't run when it fails —
-# which is the gate, expressed by sequence rather than by wiring.
-#
-# It was two jobs, `sample` and `convergence`, the second declaring `needs: sample`.
-# That reads like per-country gating and isn't: `needs:` joins JOBS, not matrix legs,
-# so every country waited for EVERY country's sample. Poland's sample held Germany's
-# and the UK's full legs, and the UK's — slowest, on the largest corpus — held
-# everyone's; one country's flap cost the day's answer for the other two. Pairing
-# them inside one leg removes the shared edge entirely: there is no cross-country
-# `needs:` left to get wrong.
-#
-# It is also strictly less work. The setup below — MongoDB container, scrape corpus,
-# enrichment tree, sbt caches — ran once per JOB, so twice per country; now it runs
-# once, and the full run inherits the sample's warm sbt rather than resolving and
-# compiling a second time.
-#
-# The countries must stay in separate JOBS, which the matrix gives us: each leg
-# installs its country's `TitleRuleSet` into `TitleNormalizer` process-globally, so
-# two countries sharing a process would overwrite each other's normalisation and
-# silently test the wrong rules. Each leg also gets its own MongoDB container and —
-# inside it — a uniquely named database per run (`IsolatedMongoDatabase`), so nothing
-# here can collide with anything else, including a re-run of itself.
+# One leg per country, in parallel and independent of each other. The sample gate
+# and the full run for a country both live in `country-convergence-leg.yml`, called
+# once per country from the matrix below — that file explains why the pair has to be
+# its own workflow rather than two matrix jobs here (`needs:` joins JOBS, not matrix
+# legs, so one shared `needs: sample` made every country wait for every other
+# country's sample).
 #
 # Deliberately NOT part of ci.yml: that workflow runs against a hard 20-runner
 # budget (1 test + 1 integration + 4 e2e + 1 mobile + 13 page-tests), and three
@@ -87,325 +69,45 @@ concurrency:
     # explicitly removes that class of run entirely.
     cancel-in-progress: true
 
-env:
-    # The rolling release the per-country fixture trees live in. One tag, three assets,
-    # each replaced in place — a store, not a history. Marked as a prerelease when
-    # created so it never reads as a shipped version of anything.
-    FIXTURE_RELEASE_TAG: convergence-fixtures
-
 jobs:
-    convergence:
+    # One call per country, each carrying its own sample → convergence chain, so a
+    # country's full leg waits on ITS OWN sample and nothing else.
+    #
+    # `fail-fast: false`, and that is the whole point of the split: every country
+    # reports independently, and a country whose sample fails stops only that
+    # country's full leg. Under the old shared `needs:` it stopped all three, so one
+    # country's flap cost the day's answer for the other two as well.
+    #
+    # `permissions` here is the CEILING for the called workflow's jobs, which narrow
+    # it further per job — `contents: write` for the rolling release the fixture
+    # trees live in, `actions: read` for the artifact bootstrap.
+    leg:
         name: ${{ matrix.country }}
         strategy:
-            # Every country reports independently — one country's flap must not
-            # hide whether the other two converged, and must not stop them running.
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, sample: convergencePolandSample,  cmd: convergencePoland  }
-                    - { country: germany,        code: de, sample: convergenceGermanySample, cmd: convergenceGermany }
-                    - { country: united-kingdom, code: uk, sample: convergenceUkSample,      cmd: convergenceUk      }
-        runs-on: ubuntu-latest
-        # Both steps plus setup and the publishes, with the same ~15-minute margin the
-        # full run used to have on its own. 45 was not enough headroom and cost a real
-        # run: on 2026-07-28 the Germany and UK legs were CANCELLED at exactly 45m while
-        # Poland finished in 8, because the corpus was mis-sized (Poland's
-        # films-per-venue ratio applied to every country — see
-        # CountryScrapeCorpus.shapeOf). The sizing is fixed, but a CI runner is a good
-        # deal slower than the machine these are timed on, so the ceiling sits well
-        # clear of the expected run rather than just above it. A leg that approaches
-        # this is a signal to re-measure the shape, not to raise the number again.
-        # (ConvergenceLegWiringSpec keeps this above the two step budgets combined.)
-        timeout-minutes: 145
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample }
+        uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
-            # `contents: write` for the rolling release the fixture trees live in —
-            # see "Publish" below for why that, rather than an artifact.
             contents: write
             checks: write
-            # `gh run download` still reads artifacts, for the one-off bootstrap when
-            # the release doesn't exist yet.
             actions: read
-        steps:
-            - uses: actions/checkout@v5
-
-            # Everything both runs need — database, corpus, enrichment tree, warm sbt —
-            # paid for ONCE, where it used to be paid per job and therefore twice.
-            - uses: ./.github/actions/convergence-setup
-              with:
-                  code:  ${{ matrix.code }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
-
-            # THE GATE, and a real one rather than a smoke test. It replays the same four
-            # assertions the full run does — fixpoint, order-independence, no-loss, and the
-            # production-coverage band — over a ~100-film sample recorded beside the corpus.
-            # That is about 90 seconds against 12 to 73 minutes, and the two regressions
-            # this suite has caught (a rating source starved by the one above it, a 404
-            # flattened into an outage by a fallback chain) both showed up on these axes
-            # and would both have been caught here.
-            #
-            # Failing this step skips the full run below — no `if:` needed, that is what a
-            # failed step does — so a broken pipeline costs 90 seconds of a runner instead
-            # of 73 minutes of one. The publish steps still run, because they are
-            # `always()`, so the leg's captures survive either way.
-            #
-            # Ten minutes, against the full run's 120. A sample that takes longer than
-            # this is not a fast gate any more and wants investigating rather than
-            # accommodating.
-            - name: Run the ${{ matrix.country }} sample
-              shell: bash
-              timeout-minutes: 10
-              run: |
-                  set -o pipefail
-                  sbt ${{ matrix.sample }} 2>&1 | tee convergence-sample.log
-              env:
-                  KINOWO_COUNTRY:   ${{ matrix.code }}
-                  KINOWO_COUNTRIES: ${{ matrix.code }}
-                  MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
-                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
-                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
-                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
-
-            # Bounded BELOW the job's ceiling, on purpose — the single most important line
-            # in this file for a leg that runs long. Both numbers moved up together (from
-            # 62/75) when every collection went onto a real database: the UK replays alone
-            # went from ~10 minutes to over 30, and the gap between the two is what pays
-            # for the publish steps, so raising one without the other would reintroduce
-            # exactly the cancellation this comment exists to prevent.
-            #
-            # A job that hits its own `timeout-minutes` is CANCELLED, and a cancelled
-            # job runs its remaining `always()` steps only inside a short grace window.
-            # The steps that have to run here tar and upload 84-152 MB, and losing that
-            # race loses the whole point: the cache and the newly recorded responses
-            # this leg just spent an hour building, which are exactly what would have
-            # made the NEXT run fast enough not to time out. A timeout that discards its
-            # own progress cannot converge — every run repeats the same cold sweep.
-            #
-            # Failing the STEP instead keeps the job alive and un-cancelled, so the
-            # publish and upload steps below run normally with the remaining ~15 minutes
-            # rather than on borrowed time. The leg still reports failure, loudly; it
-            # just doesn't throw away the work first.
-            # `tee`d so the findings can be republished as a report below. `pipefail`
-            # explicitly, because the default shell is `bash -e` without it and the
-            # pipeline would otherwise report `tee`'s exit status and pass a failing
-            # suite.
-            - name: Run the convergence suite
-              id: suite
-              shell: bash
-              timeout-minutes: 120
-              run: |
-                  set -o pipefail
-                  sbt ${{ matrix.cmd }} 2>&1 | tee convergence.log
-              env:
-                  # The spec installs this country's TitleRuleSet itself; naming the
-                  # country here too means anything that reads the environment
-                  # directly (`Country.soleFromEnv`) agrees with it rather than
-                  # falling back to the Poland default.
-                  KINOWO_COUNTRY:   ${{ matrix.code }}
-                  KINOWO_COUNTRIES: ${{ matrix.code }}
-                  # NO Mongo cache here, deliberately.
-                  #
-                  # The cache URI used to point at the shared cluster, reached over a
-                  # `flyctl proxy` this job starts nowhere. Every enrichment cache
-                  # write therefore blocked for the driver's 5s server selection and
-                  # then failed `Connection refused` on 127.0.0.1:27018, and the write
-                  # sits on the fetch path — so each of the ~780 live fills cost 5.6s
-                  # instead of 0.6s and all three legs were cancelled at the 75-minute
-                  # ceiling, still inside `bootCorpus`. (`EnrichmentCache` now suspends
-                  # write-through after three refusals, so this can never cost more
-                  # than a handful of timeouts again — but the right number of round
-                  # trips to a cluster this job cannot reach is zero.)
-                  #
-                  # It isn't needed. The corpus comes from the committed fixture
-                  # (`CorpusFixture`), and the enrichment answers come from the fixture
-                  # tree restored above — which this leg also EXTENDS as it runs and
-                  # uploads below, so the loop closes without a tunnel in it.
-                  #
-                  # Without a real key TmdbClient short-circuits and nothing resolves,
-                  # so the real corpus would buy nothing over the generated one.
-                  # Replay recorded enrichment answers first; anything genuinely new
-                  # falls through to the live chain and is recorded for the next run.
-                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ matrix.code }}
-                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
-                  # Names the container the setup started, so every repository — movies,
-                  # screenings, slots, read model, staging and its transactional folder,
-                  # tasks, freshness, chunk-scrape, OMDb attempts and the archive — runs
-                  # on a real database.
-                  #
-                  # Re-enabled once the Mongo path produced a corpus. It had reported
-                  # `resolved NOTHING — 0 films`, which was the coverage guard correctly
-                  # refusing a fixpoint over nothing; the cause was two different isolated
-                  # databases, not the pipeline. Measured locally after the fix: 773 films,
-                  # tmdbId 289, the same enrichment ladder the in-memory path produces,
-                  # three specs green in 12m05s.
-                  #
-                  # Absent, the suite runs in memory and says which it chose — a suite that
-                  # can silently fall back is one that quietly stops testing what it claims.
-                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
-
-            # `include_passed: true` — these tests are the report. A convergence leg that
-            # PASSES is the interesting case: the run's whole value is the numbers it
-            # prints on the way (coverage per rating source, per-tick emissions, films in
-            # versus films out), and suppressing passed tests hid every one of them. A
-            # suite whose output is only visible when it breaks tells you nothing about
-            # the day it worked.
-            #
-            # One report per country now covers BOTH runs, since the sample writes its
-            # results into the same directory before the full run appends to it.
-            - name: Publish convergence test report
-              if: always()
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  report_paths: 'target/test-reports/unit/**/*.xml'
-                  check_name: convergence (${{ matrix.country }})
-                  detailed_summary: true
-                  include_passed: true
-
-            # The findings, on the run's summary page, per country.
-            #
-            # ScalaTest's `info(...)` lines carry everything worth knowing about a leg —
-            # enrichment coverage down the whole ladder, cache hits versus live fills,
-            # cinemas and screenings in versus out, per-tick change-stream emissions —
-            # and they were reachable only by downloading a 5 MB job log and grepping it.
-            # Three countries' worth of that is a report nobody reads. Rendered here it is
-            # the first thing on the page, for a passing run as much as a failing one.
-            #
-            # BOTH logs, sample first. When the sample fails the full run never starts and
-            # `convergence.log` doesn't exist, and that is precisely the run whose findings
-            # matter most — reporting only the full log would print "the suite produced no
-            # output" for the one failure mode the gate exists to catch.
-            - name: Report the convergence findings
-              if: always()
-              shell: bash
-              run: |
-                  set -uo pipefail
-                  echo "### convergence (${{ matrix.country }})" >> "$GITHUB_STEP_SUMMARY"
-                  found=0
-                  for log in convergence-sample.log convergence.log; do
-                      [ -s "$log" ] || continue
-                      found=1
-                      # sbt colours its output; the escapes are noise in markdown.
-                      # `|| true` on every grep. The step declares `shell: bash`, which runs
-                      # with `-e`, and grep exits 1 when it matches NOTHING — so a run with no
-                      # `Tests:` line killed this step before it printed a character. That is
-                      # precisely the cancelled-or-crashed run whose partial output the report
-                      # exists to salvage: it failed only when it was most needed, and blamed
-                      # the reporting rather than the run.
-                      clean=$(sed -E 's/\x1b\[[0-9;]*m//g' "$log")
-                      totals=$(printf '%s\n' "$clean" | { grep -E '^\[info\] Tests: ' || true; } | tail -1 | sed 's/^\[info\] //')
-                      {
-                          echo
-                          echo "#### $log"
-                          echo
-                          if [ -n "$totals" ]; then echo "**$totals**"; else echo "**No test totals — this run did not finish.**"; fi
-                          echo
-                          echo '```'
-                          # The spec's own structure — suite, `should` clauses, the `+` info
-                          # lines — PLUS the `[pl] phase done in …` timings the harness prints
-                          # as it goes. Those are how a slow leg is diagnosed without attaching
-                          # a profiler to a live JVM, so they belong in the report rather than
-                          # only in a 5 MB job log. Everything else on stdout is application
-                          # logging, which is not a report.
-                          printf '%s\n' "$clean" \
-                            | { grep -E '^(\[info\] )?([A-Za-z0-9]+Spec:|- should |  \+ |the |\[[a-z]{2}\] )' || true; } \
-                            | sed 's/^\[info\] //' \
-                            | head -150
-                          echo '```'
-                      } >> "$GITHUB_STEP_SUMMARY"
-                  done
-                  if [ "$found" -eq 0 ]; then
-                      echo "Neither run produced output — see the job log." >> "$GITHUB_STEP_SUMMARY"
-                  fi
-
-            # The leg both CONSUMES and EXTENDS the fixture tree: `ArchiveReplayWiring`
-            # wraps the live leg in a `RecordingHttpFetch` pointed at the same
-            # directory, so whatever wasn't already recorded is on disk by the time
-            # the run ends. Publishing it here is what closes the loop — a partial
-            # capture converges on a complete one over successive runs, with no Mongo
-            # cache to write through and no tunnel to dump it back out of.
-            #
-            # `always()` because a leg that FAILED or was cancelled has usually still
-            # enriched most of the corpus, and that capture is exactly what stops the
-            # next run repeating the work. That now covers the sample-failed case too:
-            # the sample records everything it fetched before it broke.
-            - name: Publish the enrichment fixtures this leg recorded
-              if: always()
-              run: |
-                  set -euo pipefail
-                  DIR="test/resources/fixtures/enrichment-${{ matrix.code }}"
-                  if [ ! -d "$DIR" ]; then
-                      echo "nothing recorded — no $DIR"
-                      exit 0
-                  fi
-                  echo "recorded fixture files: $(find "$DIR" -type f -not -path '*/.enrichment-cache/*' | wc -l)"
-                  echo "remembered enrichment answers: $( { find "$DIR/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l )"
-                  mkdir -p enrichment-upload
-                  tar -czf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" "$DIR"
-                  du -h "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz"
-                  # The cache is dot-prefixed and lives INSIDE the tree, so `tar` carries
-                  # it along with the recorded responses and one artifact restores both.
-                  # Asserted rather than assumed: if a future change to this tar drops
-                  # hidden paths, the loss is invisible — every leg simply gets slower and
-                  # still passes.
-                  # `grep -c`, which reads to EOF, NOT `grep -q`, which doesn't.
-                  #
-                  # `tar -tzf … | grep -q` exits the moment it matches and closes the
-                  # pipe; GNU tar is still streaming, takes SIGPIPE and returns 141, and
-                  # under `set -euo pipefail` the PIPELINE is then a failure even though
-                  # the pattern was found. The `!` turned that into "the cache is
-                  # missing", so this guard failed all three legs on a tarball that
-                  # contained the cache perfectly — the published asset had 3,745 cache
-                  # paths in it. Reading the listing to the end removes the race
-                  # entirely, and the count is worth printing anyway.
-                  #
-                  # (BSD tar on macOS absorbs the SIGPIPE, so this could not be
-                  # reproduced locally — it needs a Linux runner. Verified instead by
-                  # inspecting the asset the same run published.)
-                  cached=$(tar -tzf "enrichment-upload/enrichment-${{ matrix.code }}.tar.gz" \
-                           | grep -c '/\.enrichment-cache/.*\.entry' || true)
-                  echo "remembered answers inside the archive: $cached"
-                  if [ -d "$DIR/.enrichment-cache" ] && [ "$cached" -eq 0 ]; then
-                      echo "::error::the enrichment cache exists on disk but is NOT in the tarball"
-                      exit 1
-                  fi
-
-            # Replaces the country's asset IN PLACE, so the release holds one copy per
-            # country and never a history — the newest capture is the only one anyone
-            # reads, and keeping the rest was pure storage.
-            #
-            # `always()` for the same reason the tar above is: a leg that failed or was
-            # cancelled has usually still enriched most of the corpus, and that capture
-            # is exactly what stops the next run repeating the work. Today's two largest
-            # captures (301 MB and 434 MB) both came from CANCELLED legs.
-            #
-            # `create ... || true` because three country legs race to create the release
-            # on the very first run and exactly one of them can win; the other two find
-            # it already there, which is the outcome they wanted anyway.
-            - name: Publish the tree to the rolling release
-              if: always()
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: |
-                  set -uo pipefail
-                  TAG="$FIXTURE_RELEASE_TAG"
-                  ARCHIVE="enrichment-upload/enrichment-${{ matrix.code }}.tar.gz"
-                  if [ ! -f "$ARCHIVE" ]; then
-                      echo "nothing to publish — no $ARCHIVE"
-                      exit 0
-                  fi
-                  gh release view "$TAG" >/dev/null 2>&1 || \
-                    gh release create "$TAG" --prerelease \
-                      --title "Convergence fixture trees (rolling)" \
-                      --notes "Recorded enrichment responses and remembered answers per country.
-                  Replaced in place by every convergence leg — one copy each, no history.
-                  Not a version of anything; do not treat as a release." || true
-                  gh release upload "$TAG" "$ARCHIVE" --clobber
-                  echo "published $ARCHIVE to release $TAG"
+        with:
+            country:        ${{ matrix.country }}
+            code:           ${{ matrix.code }}
+            sample-command: ${{ matrix.sample }}
+            command:        ${{ matrix.cmd }}
+        # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
+        secrets: inherit
 
     # There is no `record-enrichment` job any more. It dispatched `Record enrichment
     # fixtures`, which opens a tunnel to the shared Mongo cache and dumps it back out
     # as files — a round trip that only made sense while the legs wrote their fills
-    # INTO that cache. They no longer do (see the env block above); each leg now
-    # publishes the fixture tree it recorded directly, so the recorder would have
-    # dumped an ever-staler snapshot over a tunnel, on top of a capture that is
+    # INTO that cache. They no longer do (see the called workflow's env block); each
+    # leg now publishes the fixture tree it recorded directly, so the recorder would
+    # have dumped an ever-staler snapshot over a tunnel, on top of a capture that is
     # already newer. The workflow itself stays, dispatch-only, as the way to re-cut a
     # country's fixtures from the cache by hand.

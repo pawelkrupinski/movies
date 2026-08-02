@@ -4,40 +4,35 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Locks the convergence suite to a matrix of PAIRS: one leg per country, each
- * running that country's sample and then, only if it passed, that country's full
- * run.
+ * Locks each country's convergence leg to ITS OWN sample gate.
  *
- * The shape it replaced was two jobs, `sample` and `convergence`, the second
- * declaring `needs: sample`. That reads like per-country gating and isn't —
- * `needs:` joins JOBS, not matrix legs, so every country waited for EVERY
- * country's sample. Poland's held Germany's and the UK's full legs; the UK's
- * (slowest, largest corpus) held everyone's; one country's flap cost the day's
- * answer for the other two. Sequencing the pair inside a single leg removes the
- * shared edge entirely — but only while these hold, and none is visible at a
- * glance in the YAML:
+ * `needs:` in GitHub Actions joins JOBS, not matrix legs — so a `convergence`
+ * matrix declaring `needs: sample` waits for EVERY country's sample, not its
+ * own. Three countries then moved as one: Poland's sample held Germany's and the
+ * UK's full legs, the UK's sample (slowest, largest corpus) held everyone's, and
+ * one country's flap cost the day's answer for the other two.
  *
- *   - the sample step comes BEFORE the full run, which is the whole gate. A
- *     failed step skips the ones after it, so order is the wiring; reverse them
- *     and the 73-minute run happens first, gated by nothing.
- *   - each leg pairs a country's full alias with the SAME country's sample
- *     alias, and both aliases exist. A mis-paired row would gate Germany's run
- *     on Poland's sample and still be green.
- *   - the job's ceiling stays clear of both step budgets combined. A job that
- *     hits `timeout-minutes` is CANCELLED, and a cancelled job runs its
- *     `always()` publish steps only inside a short grace window — so a leg that
- *     overruns discards the very capture that would have made the next run fast
- *     enough not to overrun. Adding the sample's 10 minutes to a ceiling sized
- *     for the full run alone is exactly how that gets reintroduced.
- *   - no `needs:` survives anywhere in the file. One reappearing is the
- *     regression itself.
+ * The fix is one reusable workflow holding a single sample → convergence pair,
+ * called once per country. That is only correct while three things hold, and
+ * none of them is visible at a glance in the YAML:
+ *
+ *   - the pair is genuinely chained (`convergence` needs `sample`) inside the
+ *     called file, where "the sample" can only mean this country's;
+ *   - the caller's matrix pairs each country's full alias with the SAME
+ *     country's sample alias — a mis-paired row would gate Germany's leg on
+ *     Poland's sample and still be green;
+ *   - the called file declares no `concurrency:` of its own. All three calls
+ *     live in one run, so a group named there would be shared and the legs would
+ *     cancel each other. The lane belongs to the caller. (See
+ *     [[ConvergenceConcurrencyConfigSpec]].)
  */
 class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
-  private lazy val yml   = RepoFile.read(".github/workflows/country-convergence.yml")
-  private lazy val build = RepoFile.read("build.sbt")
+  private lazy val caller = RepoFile.read(".github/workflows/country-convergence.yml")
+  private lazy val leg    = RepoFile.read(".github/workflows/country-convergence-leg.yml")
+  private lazy val build  = RepoFile.read("build.sbt")
 
   /**
-   * The matrix rows: country → (sample alias, full alias).
+   * The caller's matrix rows: country → (full alias, sample alias).
    *
    * Each `- { … }` row is read as an unordered set of `key: value` pairs rather than
    * matched positionally — a spec that hard-codes the field order fails loudly on a
@@ -46,62 +41,64 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    */
   private lazy val countries: Map[String, (String, String)] =
     """-\s*\{([^}]*)}""".r
-      .findAllMatchIn(RepoFile.block(yml, "matrix"))
+      .findAllMatchIn(RepoFile.block(caller, "matrix"))
       .map { row =>
         val fields = """(\w+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap
-        fields("country") -> (fields("sample"), fields("cmd"))
+        fields("country") -> (fields("cmd"), fields("sample"))
       }
       .toMap
 
-  /** Every `timeout-minutes:` in file order — the job's ceiling, then the sample's, then the suite's. */
+  /** The leg workflow's `timeout-minutes:` in file order — the sample job, the full job, then its suite step. */
   private lazy val budgets: Seq[Int] =
-    """timeout-minutes:\s*(\d+)""".r.findAllMatchIn(yml).map(_.group(1).toInt).toSeq
+    """timeout-minutes:\s*(\d+)""".r.findAllMatchIn(leg).map(_.group(1).toInt).toSeq
 
-  "the convergence suite" should "run one leg per country" in {
+  "the convergence caller" should "run every country through the single-country leg workflow" in {
     countries.keySet shouldBe Set("poland", "germany", "united-kingdom")
+    caller should include("uses: ./.github/workflows/country-convergence-leg.yml")
+  }
+
+  it should "hold no sample job of its own, which every country would then wait on" in {
+    // The regression this whole split exists to prevent: a `sample` job here is by
+    // construction shared, so the only safe place for one is inside the per-country
+    // workflow.
+    caller.linesIterator.map(_.trim).toList should not contain "sample:"
   }
 
   it should "let one country's failure stop only that country" in {
-    RepoFile.block(yml, "strategy") should include("fail-fast: false")
+    RepoFile.block(caller, "strategy") should include("fail-fast: false")
   }
 
-  it should "join no country to another, at any distance" in {
-    // `needs:` between jobs is what made all three move as one. There is only one
-    // job now, so any `needs:` at all is either dead or the regression returning.
-    yml.linesIterator.map(_.trim).filter(_.startsWith("needs:")).toList shouldBe empty
-  }
-
-  it should "pair each country's full run with that same country's sample" in {
-    countries.foreach { case (country, (sample, command)) =>
+  it should "gate each country's full leg on that same country's sample" in {
+    countries.foreach { case (country, (command, sample)) =>
       withClue(s"$country: ") { sample shouldBe s"${command}Sample" }
     }
   }
 
   it should "name only aliases the build actually defines" in {
-    countries.values.flatMap { case (sample, command) => Seq(sample, command) }.foreach { alias =>
+    countries.values.flatMap { case (command, sample) => Seq(command, sample) }.foreach { alias =>
       withClue(s"$alias: ") { build should include("addCommandAlias(\"" + alias + "\"") }
     }
   }
 
-  it should "run the sample before the full run, which is the gate" in {
-    val sampleStep = yml.indexOf("sbt ${{ matrix.sample }}")
-    val suiteStep  = yml.indexOf("sbt ${{ matrix.cmd }}")
-    sampleStep should be >= 0
-    withClue(s"sample at $sampleStep, suite at $suiteStep: ") { sampleStep should be < suiteStep }
-
-    // And both are reached through the matrix, not hard-coded per country — three
-    // copied step blocks would drift the moment one country's budget changes.
-    countries.values.foreach { case (sample, command) =>
-      yml should not include s"sbt $sample"
-      yml should not include s"sbt $command"
-    }
+  "the single-country leg workflow" should "run its full leg behind its own sample" in {
+    RepoFile.block(leg, "convergence") should include("needs: sample")
   }
 
-  it should "keep the job's ceiling clear of both step budgets combined" in {
-    val Seq(job, sample, suite) = budgets.take(3)
-    withClue(s"job $job vs sample $sample + suite $suite: ") { job should be > (sample + suite) }
-    // The margin pays for setup and the `always()` publish steps, which is what a
-    // cancelled job loses. Ten minutes is the floor those steps were measured at.
-    job - (sample + suite) should be >= 10
+  it should "leave the concurrency lane to the caller, so its three calls don't cancel each other" in {
+    leg.linesIterator.map(_.trim).toList should not contain "concurrency:"
+  }
+
+  it should "keep the full job's ceiling clear of the suite step it wraps" in {
+    // A job that hits `timeout-minutes` is CANCELLED, and a cancelled job runs its
+    // `always()` publish steps only inside a short grace window — so a leg that
+    // overruns discards the very capture that would have made the next run fast
+    // enough not to overrun. The gap between the two numbers is what pays for setup
+    // and the four publishes; raising the step without the job reintroduces exactly
+    // that. Order in the file is: sample job, full job, suite step.
+    val Seq(sampleJob, fullJob, suiteStep) = budgets.take(3)
+    withClue(s"sample job $sampleJob, full job $fullJob, suite step $suiteStep: ") {
+      fullJob should be > suiteStep
+      fullJob - suiteStep should be >= 10
+    }
   }
 }
