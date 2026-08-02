@@ -32,11 +32,23 @@ class ArchiveReplayWiring(
   storage:          ConvergenceStorage
 ) extends WorkerWiring(country) with TestWiring {
 
+  /** The tree both chains replay from and record into — named by the environment when a
+   *  run wants a particular one, and by the country otherwise. Read ONCE so the two
+   *  chains, the cache that lives beside it and the freshness prune can never be looking
+   *  at different directories.
+   *
+   *  LAZY, and it has to be: `WorkerWiring`'s own initialisation forces `httoFetch`, which
+   *  is this subclass's override, which reads this field. As a strict `val` it is still
+   *  `null` at that point and both chains silently bind to
+   *  `test/resources/fixtures/null` — a tree that exists, records, and replays, so the
+   *  next run answers from it and never reaches the live leg at all. */
+  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country)
+
   /**
    * The scrape side: recorded DETAIL pages first, live behind them, and whatever the
    * live leg fetched written back into the same tree.
    *
-   * It used to be `OfflineHttpFetch` outright, on the grounds that every listing comes
+   * It used to be a fetch that refused every call, on the grounds that every listing comes
    * from the archive so a scraper reaching for HTTP is a bug. The listing half of that
    * still holds and is enforced by construction: `cinemaScrapers` is replaced with
    * `PreScrapedCinemaScraper`, so no scraper's fetch is ever called. What the catalogue
@@ -58,20 +70,16 @@ class ArchiveReplayWiring(
    * indistinguishable from a real one and the live leg would never be reached.
    */
   override lazy val httoFetch: HttpFetch =
-    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
-      .fold(OfflineHttpFetch: HttpFetch) { directory =>
-        new FallbackHttpFetch(Seq(
-          "detail-fixtures" -> new clients.tools.FakeHttpFetch(directory, strict = true, foldYear = false),
-          "detail-live"     -> new clients.tools.RecordingHttpFetch(
-            directory, phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape), foldYear = false)))
-      }
+    new FallbackHttpFetch(Seq(
+      "detail-fixtures" -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false),
+      "detail-live"     -> new clients.tools.RecordingHttpFetch(
+        fixtureDirectory, phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape), foldYear = false)))
   override lazy val multikinoFetch: HttpFetch  = httoFetch
   override lazy val biletynaFetch: HttpFetch   = httoFetch
   override lazy val zyteFetch: HttpFetch       = httoFetch
   override lazy val flicksFetch: HttpFetch     = httoFetch
 
-  /** Enrichment runs against the per-country cache when one is supplied, and is
-   *  offline otherwise.
+  /** Enrichment runs against the per-country cache when one is supplied.
    *
    *  Live enrichment used to be refused here on the grounds that a metadata lookup
    *  answers on its own schedule and would make the fixpoint depend on data the
@@ -91,12 +99,12 @@ class ArchiveReplayWiring(
    * On-disk enrichment fixtures FIRST, live behind them, and whatever the live leg
    * fetched recorded on the way through.
    *
-   * `KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES` names a directory under
-   * `test/resources/fixtures/`. When it is set the leg replays every answer already
-   * recorded there — no Mongo, no tunnel, no third-party call — and only genuinely
-   * new URLs reach the live chain. Those are then written into the same tree, so a
-   * run both consumes and extends the corpus and a partial fixture set converges on
-   * a complete one instead of having to be recorded in one perfect pass.
+   * The leg replays every answer already recorded in the tree — no Mongo, no tunnel, no
+   * third-party call — and only genuinely new URLs reach the live chain. Those are then
+   * written into the same tree, so a run both consumes and extends the corpus and a
+   * partial fixture set converges on a complete one instead of having to be recorded in
+   * one perfect pass. An ABSENT tree is just the empty case of that: every URL is new,
+   * every answer is recorded, and the next run starts warm. It is not a mode.
    *
    * Three details are load-bearing, and each was a bug first:
    *
@@ -109,60 +117,45 @@ class ArchiveReplayWiring(
    *    right for cinema scrapes and wrong here: `?query=Cicha+noc&year=2026` returns
    *    0 results where the yearless form returns 16, and `TmdbClient` depends on
    *    exactly that difference.
-   *  - The recorder wraps the WHOLE chain, not just the live leg, so a response is
-   *    keyed by the request regardless of which leg served it (the same reasoning
-   *    `RecordingHttpFetch`'s own doc gives for the Zyte chain).
+   *  - The recorder wraps ONLY the live leg. Wrapping the whole chain wrote every
+   *    fixture HIT straight back to disk byte-identically — `RecordingHttpFetch` writes
+   *    on every call — so a fully recorded corpus still paid a disk write per URL per
+   *    pass, and the order-independence test runs four enrichment sweeps over the same
+   *    films. Only a live fetch has anything new to record. (`RecordingHttpFetch`'s own
+   *    doc argues for wrapping a whole chain, but that is about the Zyte-routed SCRAPE
+   *    chain, where an inner leg fetches through its own client and would otherwise
+   *    bypass the recorder. There is no such leg here.)
    */
-  override lazy val enrichmentFetch: HttpFetch =
-    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
-      .fold(cachedEnrichmentFetch.getOrElse(OfflineHttpFetch): HttpFetch) { directory =>
-      // The live leg is the CACHE when there is one, and the enrich-phase chain
-      // itself when there isn't. Without that second case "no cache" meant "offline
-      // behind the fixtures", so every URL the tree didn't already hold failed
-      // outright and was never recorded — which is precisely the state CI is now in,
-      // with the Mongo cache removed from the leg and the tree carrying determinism
-      // on its own. A tree that cannot grow re-misses the same URLs for ever.
-      val live   = cachedEnrichmentFetch.getOrElse(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich))
-      val replay = new clients.tools.FakeHttpFetch(directory, strict = true, foldYear = false)
-      // The recorder wraps ONLY the live leg, not the whole chain. Wrapping the chain
-      // meant every fixture HIT was written straight back to disk byte-identically —
-      // `RecordingHttpFetch` writes on every call — so a corpus that is already fully
-      // recorded still paid a disk write per URL per pass, and the order-independence
-      // test runs four enrichment sweeps over the same films. Only a live fetch has
-      // anything new to record.
-      //
-      // (`RecordingHttpFetch`'s own doc argues for wrapping a whole chain, but that is
-      // about the Zyte-routed SCRAPE chain, where an inner leg fetches through its own
-      // client and would otherwise bypass the recorder. There is no such leg here: the
-      // live side is the only thing that reaches the network.)
-      // Named for what it IS. Labelled "live", every cached 404 was reported as
-      // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
-      // exactly like one re-fetching every one of them.
-      new FallbackHttpFetch(Seq(
-        "enrichment-fixtures" -> replay,
-        "remembered-or-live"  -> new clients.tools.RecordingHttpFetch(directory, live, foldYear = false)))
-    }
+  override lazy val enrichmentFetch: HttpFetch = {
+    // The live leg is the CACHE when there is one, and the enrich-phase chain
+    // itself when there isn't. Without that second case "no cache" meant "offline
+    // behind the fixtures", so every URL the tree didn't already hold failed
+    // outright and was never recorded — which is precisely the state CI is now in,
+    // with the Mongo cache removed from the leg and the tree carrying determinism
+    // on its own. A tree that cannot grow re-misses the same URLs for ever.
+    val live   = cachedEnrichmentFetch.getOrElse(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich))
+    val replay = new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false)
+    // Named for what it IS. Labelled "live", every cached 404 was reported as
+    // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
+    // exactly like one re-fetching every one of them.
+    new FallbackHttpFetch(Seq(
+      "enrichment-fixtures" -> replay,
+      "remembered-or-live"  -> new clients.tools.RecordingHttpFetch(fixtureDirectory, live, foldYear = false)))
+  }
 
-  /** Whether enrichment has anywhere to get an answer from — a cache, a recorded
-   *  fixture tree, or both. Exactly the condition under which [[enrichmentFetch]] is
-   *  something other than [[OfflineHttpFetch]], and asked that way so the two can
-   *  never drift apart again. */
-  lazy val enrichmentAvailable: Boolean = enrichmentFetch ne OfflineHttpFetch
-
-  /** With somewhere to fetch from, the real key and the country's own language — the
-   *  enrichment is meant to be the one production would do. With nowhere, no key at
-   *  all, so the client short-circuits rather than shaping a request it can never
-   *  send.
+  /** The real key and the country's own language — the enrichment is meant to be the one
+   *  production would do. Overridden because `TestWiring` pins a stub key and the DEFAULT
+   *  language, and a replay canonicalising against the wrong locale is a divergence the
+   *  suite would report as a pipeline bug.
    *
-   *  This asked `enrichmentCache.isDefined` until the fixture tree became a source in
-   *  its own right, and the drift was invisible: `search` is `authHeader.flatMap`, so
-   *  a keyless client returns `None` without ever reaching the fetch. A leg with 6,906
-   *  recorded fixtures and no cache therefore resolved 0 of 892 films — in 55 seconds,
-   *  all three specs GREEN, having proved a fixpoint over a corpus with no metadata in
-   *  it. A silent pass is worse than the hour-long failure it replaced. */
-  override lazy val tmdbClient: TmdbClient =
-    if (enrichmentAvailable) new TmdbClient(enrichmentFetch, language = country.language)
-    else new TmdbClient(enrichmentFetch, apiKey = None)
+   *  There was a second, keyless branch here for the case where enrichment had nowhere to
+   *  ask, gated on `enrichmentCache.isDefined`. It outlived the condition it described —
+   *  the fixture tree became a source in its own right — and the drift was invisible,
+   *  because `search` is `authHeader.flatMap` and a keyless client returns `None` without
+   *  ever reaching the fetch: a leg with 6,906 recorded fixtures and no cache resolved 0
+   *  of 892 films in 55 seconds, all three specs GREEN over a corpus with no metadata in
+   *  it. There is no "nowhere to ask" any more, so there is no branch to drift. */
+  override lazy val tmdbClient: TmdbClient = new TmdbClient(enrichmentFetch, language = country.language)
 
   // Production's storage SHAPE either way — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything
@@ -224,19 +217,25 @@ class ArchiveReplayWiring(
       }
 }
 
-/** An `HttpFetch` that refuses every call. Used where a spec must prove it is
- *  hermetic: any client that slips through announces itself as a failure naming
- *  the URL, rather than quietly reaching the network. */
-object OfflineHttpFetch extends HttpFetch {
-  private def refuse(url: String): Nothing =
-    throw new UnsupportedOperationException(s"offline replay: no HTTP allowed, but something requested $url")
+object ArchiveReplayWiring {
 
-  override def get(url: String): String            = refuse(url)
-  override def getBytes(url: String): Array[Byte]  = refuse(url)
-  override def post(url: String, body: String, contentType: String): String = refuse(url)
-  override def getAsync(url: String): java.util.concurrent.CompletableFuture[String] = {
-    val failed = new java.util.concurrent.CompletableFuture[String]()
-    failed.completeExceptionally(new UnsupportedOperationException(s"offline replay: no HTTP allowed, but something requested $url"))
-    failed
-  }
+  /** Points a run at a PARTICULAR tree — a scratch one to prove recording works, a
+   *  shared one restored from a CI cache. Only ever an override: unset means the
+   *  country's own tree, not a different way of running. */
+  val FixturesVar = "KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES"
+
+  /**
+   * The fixture tree a country's replay reads and records: `enrichment-pl`,
+   * `enrichment-de`, `enrichment-uk` under `test/resources/fixtures/` (or under
+   * `KINOWO_FIXTURE_ROOT`), which is exactly what CI and `scripts/convergence-local.sh`
+   * have always passed explicitly.
+   *
+   * There is no "no tree" answer, and that is the point. An unconfigured run used to get
+   * a wiring that refused HTTP outright: TMDB was handed no key, every cinema DETAIL
+   * fetch threw, and the leg ran to completion having enriched nothing — a fixpoint over
+   * a corpus with no metadata in it, reported as a pass. A directory that does not exist
+   * yet is simply an empty one; the first run fills it and every later run replays it.
+   */
+  def fixtureDirectory(country: Country): String =
+    Env.get(FixturesVar).filter(_.nonEmpty).getOrElse(s"enrichment-${country.code}")
 }

@@ -1,6 +1,7 @@
 package tools
 
 import models.Country
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.scrapes.InMemoryScrapeArchiveRepository
@@ -11,12 +12,58 @@ import services.scrapes.InMemoryScrapeArchiveRepository
  * (which `CachingEnrichmentFetchSpec` covers).
  *
  * Worth its own spec because the failure mode is silent in both directions: a
- * wiring that quietly kept `OfflineHttpFetch` would leave every enrichment field
- * `None` and the convergence specs would still pass, having verified nothing new;
- * a wiring that put the cache UNDER the throttle would replay every hit through a
- * rate limiter and turn a warm run into a slow one.
+ * wiring that quietly enriched from nowhere would leave every field `None` and the
+ * convergence specs would still pass, having verified nothing new; a wiring that put
+ * the cache UNDER the throttle would replay every hit through a rate limiter and turn
+ * a warm run into a slow one.
  */
-class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
+class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
+
+  /**
+   * A scratch tree per test.
+   *
+   * Every wiring in this spec both replays from a tree and RECORDS into it, and left to
+   * its own devices it would pick the country's real one — so a `sbt testUnit` run would
+   * write `body for https://…` into the corpus a convergence leg replays. Pointing the
+   * spec's own knob at a throwaway name keeps that impossible, and keeps it LOCAL:
+   * `KINOWO_FIXTURE_ROOT` would relocate every fixture consumer in the JVM, and suites
+   * here run in parallel.
+   */
+  private var fixtureTree: String = scala.compiletime.uninitialized
+  private val trees = scala.collection.mutable.ListBuffer.empty[String]
+
+  /** Point the wirings built from here on at a tree of their own. Called once per test by
+   *  [[beforeEach]], and again by any test that needs a SECOND wiring not to see the
+   *  first one's recordings. Every tree it hands out is removed in [[afterEach]]. */
+  private def useFreshTree(): String = {
+    fixtureTree = s"archive-replay-spec-${java.util.UUID.randomUUID()}"
+    trees += fixtureTree
+    System.setProperty(ArchiveReplayWiring.FixturesVar, fixtureTree)
+    fixtureTree
+  }
+
+  private def rootOf(tree: String): java.nio.file.Path =
+    java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(tree))
+
+  override def beforeEach(): Unit = {
+    trees.clear()
+    useFreshTree()
+    ()
+  }
+
+  override def afterEach(): Unit = {
+    System.clearProperty(ArchiveReplayWiring.FixturesVar)
+    trees.map(rootOf).filter(java.nio.file.Files.exists(_)).foreach { root =>
+      java.nio.file.Files.walk(root).sorted(java.util.Comparator.reverseOrder())
+        .forEach(path => java.nio.file.Files.deleteIfExists(path))
+    }
+  }
+
+  private def recordedFiles: Long = {
+    val root = rootOf(fixtureTree)
+    if (!java.nio.file.Files.exists(root)) 0L
+    else java.nio.file.Files.walk(root).filter(java.nio.file.Files.isRegularFile(_)).count()
+  }
 
   /** Stands in for the real network at the very bottom of the wiring's enrich-phase
    *  chain, so what a test counts is genuine wire attempts. Records the URLs too, so a
@@ -64,24 +111,36 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
       override protected def realHttpLeaf: HttpFetch = leaf
     }
 
-  "the archive replay wiring" should "refuse enrichment HTTP when it has no cache" in {
-    val leaf = new CountingLeaf
-    val wiring = wiringWith(None, leaf)
+  // An unconfigured run is the EMPTY case of a configured one, not a second mode. It used
+  // to be a second mode — no directory meant a fetch that refused every call, which took
+  // TMDB's key away with it — and the leg then ran to completion having enriched nothing.
+  "the archive replay directory" should "be named after the country when nothing points it elsewhere" in {
+    System.clearProperty(ArchiveReplayWiring.FixturesVar)
 
-    a [UnsupportedOperationException] should be thrownBy wiring.enrichmentFetch.get("https://api.themoviedb.org/3/x")
-    leaf.calls shouldBe 0
+    ArchiveReplayWiring.fixtureDirectory(Country.Poland)  shouldBe "enrichment-pl"
+    ArchiveReplayWiring.fixtureDirectory(Country.Germany) shouldBe "enrichment-de"
   }
 
-  it should "keep the SCRAPE side offline even when enrichment is cached" in {
+  it should "be whatever a run points it at" in {
+    // `beforeEach` set it; that IS the override.
+    ArchiveReplayWiring.fixtureDirectory(Country.Poland) shouldBe fixtureTree
+  }
+
+  // The scrape side is per-film DETAIL — 25 Polish cinema clients implement `DetailEnricher`
+  // — and refusing it cost the suite its enrichment: rows reached TMDB yearless, fell to the
+  // tier demanding an exact title match, and Poland resolved 36% against prod's 78%. The
+  // LISTINGS still never fetch, but that is enforced by construction (`PreScrapedCinemaScraper`),
+  // not by crippling the fetch.
+  "the archive replay wiring" should "fetch and record cinema detail pages through the tree" in {
     val leaf = new CountingLeaf
     val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
 
-    // The corpus comes from the archive; a scraper reaching for HTTP is a bug.
-    a [UnsupportedOperationException] should be thrownBy wiring.httoFetch.get("https://cinema.test/listing")
-    leaf.calls shouldBe 0
+    wiring.httoFetch.get("https://cinema.test/film/dune") shouldBe "body for https://cinema.test/film/dune"
+    leaf.calls shouldBe 1
+    withClue("and be recorded, so the next run replays it: ") { recordedFiles should be > 0L }
   }
 
-  it should "answer a repeated enrichment call from the cache instead of the wire" in {
+  it should "answer a repeated enrichment call from the tree instead of the wire" in {
     val leaf = new CountingLeaf
     val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
 
@@ -92,78 +151,38 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
     leaf.calls shouldBe 1
   }
 
-  // The TMDB client is what every downstream rating source hangs off; if it were
-  // left on the offline fetch nothing would enrich however good the cache was.
-  it should "point the TMDB client at the cached fetch" in {
-    val leaf = new CountingLeaf
-    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+  // CI runs with an empty-or-partial tree and NO Mongo cache — the cache URI named a
+  // tunnel the job never started, so it was removed. The tree is then the whole
+  // determinism mechanism, and it only works if it can GROW: a miss has to reach live and
+  // be recorded, or the same miss recurs on every run for ever. Left as it was, "no cache"
+  // meant "offline behind the fixtures" and every unrecorded URL simply failed.
+  it should "reach live and record it when the tree holds nothing yet and there is no cache" in {
+    val leaf   = new CountingLeaf
+    val wiring = wiringWith(None, leaf)
 
-    wiring.cachedEnrichmentFetch should not be empty
-    wiring.enrichmentFetch shouldBe wiring.cachedEnrichmentFetch.get
+    wiring.enrichmentFetch.get("https://api.themoviedb.org/3/search?query=dune") shouldBe
+      "body for https://api.themoviedb.org/3/search?query=dune"
+    withClue("a fixture miss must reach the live leg: ") { leaf.calls shouldBe 1 }
+    withClue("and be recorded, so the next run replays it: ") { recordedFiles should be > 0L }
   }
 
-  // CI runs with the fixture tree and NO Mongo cache — the cache URI named a tunnel
-  // the job never started, so it was removed. The tree is then the whole determinism
-  // mechanism, and it only works if it can GROW: a miss has to reach live and be
-  // recorded, or the same miss recurs on every run for ever. Left as it was, "no
-  // cache" meant "offline behind the fixtures" and every unrecorded URL simply
-  // failed.
-  it should "reach live and record it when fixtures are configured but no cache is" in {
-    val leaf      = new CountingLeaf
-    val directory = s"enrichment-wiring-${ProcessHandle.current().pid()}"
-    val root      = java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(directory))
-    System.setProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES", directory)
-    try {
-      val wiring = wiringWith(None, leaf)
-
-      wiring.enrichmentFetch.get("https://api.themoviedb.org/3/search?query=dune") shouldBe
-        "body for https://api.themoviedb.org/3/search?query=dune"
-      withClue("a fixture miss must reach the live leg: ") { leaf.calls shouldBe 1 }
-
-      withClue("and be recorded, so the next run replays it: ") {
-        java.nio.file.Files.exists(root) shouldBe true
-        java.nio.file.Files.walk(root).filter(java.nio.file.Files.isRegularFile(_)).count() should be > 0L
-      }
-    } finally {
-      System.clearProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES")
-      if (java.nio.file.Files.exists(root))
-        java.nio.file.Files.walk(root).sorted(java.util.Comparator.reverseOrder())
-          .forEach(path => java.nio.file.Files.deleteIfExists(path))
+  // TMDB used to be gated on having a CACHE, so a leg running on the fixture tree alone
+  // handed `TmdbClient` `apiKey = None` — and `search` is `authHeader.flatMap`, so every
+  // title came back `None` without the fetch being touched: 892 films, 0 resolved, three
+  // specs green in 55 seconds. The gate is gone (a sourceless wiring can't be built), but
+  // `TestWiring` still pins a stub key and the DEFAULT language, so the override that
+  // beats it has to stay — and the language is what proves this wiring's own is in force.
+  it should "give TMDB the country's language even when nothing is configured" in {
+    // Nothing configured is where the old gate did its damage: no cache and no fixtures
+    // meant `apiKey = None`, and a keyless `TmdbClient` returns `None` from `search`
+    // without ever reaching the fetch. Germany, so the locale discriminates — the keyless
+    // branch took `TmdbClient.DefaultLanguage` (pl-PL), and so does `TestWiring`'s stub.
+    System.clearProperty(ArchiveReplayWiring.FixturesVar)
+    val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, FetchOnlyStorage) {
+      override protected def realHttpLeaf: HttpFetch = new CountingLeaf
     }
-  }
 
-  // The gate that decides whether TMDB gets a key at all. It asked about the CACHE,
-  // so a leg running on the fixture tree alone handed `TmdbClient` `apiKey = None` —
-  // and `search` is `authHeader.flatMap`, so every title came back `None` without the
-  // fetch being touched. 892 films, 0 resolved, three specs green in 55 seconds.
-  it should "give TMDB a real key when fixtures are its source and no cache is" in {
-    val directory = s"enrichment-gate-${ProcessHandle.current().pid()}"
-    val root      = java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(directory))
-    System.setProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES", directory)
-    try {
-      // Germany, so the language actually discriminates the two branches: the enabled
-      // one passes the country's locale, the short-circuiting one takes the default.
-      val wiring = new ArchiveReplayWiring(Country.Germany, new InMemoryScrapeArchiveRepository, None, FetchOnlyStorage) {
-        override protected def realHttpLeaf: HttpFetch = new CountingLeaf
-      }
-
-      wiring.enrichmentAvailable shouldBe true
-      wiring.tmdbClient.language shouldBe Country.Germany.language
-    } finally {
-      System.clearProperty("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES")
-      if (java.nio.file.Files.exists(root))
-        java.nio.file.Files.walk(root).sorted(java.util.Comparator.reverseOrder())
-          .forEach(path => java.nio.file.Files.deleteIfExists(path))
-    }
-  }
-
-  it should "know it has no enrichment source when it has neither cache nor fixtures" in {
-    wiringWith(None, new CountingLeaf).enrichmentAvailable shouldBe false
-  }
-
-  it should "know it has an enrichment source when it has a cache" in {
-    wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), new CountingLeaf)
-      .enrichmentAvailable shouldBe true
+    wiring.tmdbClient.language shouldBe Country.Germany.language
   }
 
   /**
@@ -228,11 +247,16 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers {
 
   // Three concurrent replays each build their own wiring; sharing the cache is what
   // stops them disagreeing about what the live service said.
+  //
+  // Separate TREES on purpose, and that is also what makes this the test that the cache
+  // is in the chain at all: on one tree the second wiring would replay the recording the
+  // first one made and never consult the cache, so the leaf count would prove nothing.
   it should "share one cache's answers across separate wirings" in {
     val leaf  = new CountingLeaf
     val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore())
 
     wiringWith(Some(cache), leaf).enrichmentFetch.get("https://api.themoviedb.org/3/shared")
+    useFreshTree()
     wiringWith(Some(cache), leaf).enrichmentFetch.get("https://api.themoviedb.org/3/shared")
 
     leaf.calls shouldBe 1

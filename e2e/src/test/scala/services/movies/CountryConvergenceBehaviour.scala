@@ -135,7 +135,7 @@ abstract class CountryConvergenceBehaviour(
    *
    * {{{
    *   ln -s /path/to/movies/.env.local .env.local     # gitignored
-   *   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES=enrichment-pl sbt convergencePoland
+   *   sbt convergencePoland
    * }}}
    *
    * The run prints the preload count and the hit/fill split, so whether it was warm is
@@ -143,19 +143,19 @@ abstract class CountryConvergenceBehaviour(
    */
   private lazy val enrichmentCacheStore: Option[EnrichmentCacheStore] =
     if (TmdbClient.ApiKey.isEmpty) None
-    else fixtureDirectory.map(dir => new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(dir)))
+    else Some(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureDirectory)))
 
-  private def fixtureDirectory: Option[String] =
-    Env.get("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").filter(_.nonEmpty)
+  /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
+   *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
+   *  directory this file happened to name. */
+  private def fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country)
 
   /** Age the recorded responses out before anything reads them, so a rating captured
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
    *  half nothing used to expire at all. */
   private lazy val expireStaleFixtures: Int =
-    fixtureDirectory.fold(0) { dir =>
-      step("expireStaleEnrichment")(
-        EnrichmentFreshness.prune(java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(dir))))
-    }
+    step("expireStaleEnrichment")(
+      EnrichmentFreshness.prune(java.nio.file.Paths.get(clients.tools.FakeHttpFetch.rootFor(fixtureDirectory))))
 
   /**
    * ONE cache for every replay in the suite, preloaded whole before the first of
@@ -180,12 +180,11 @@ abstract class CountryConvergenceBehaviour(
     if (expired > 0)
       info(s"${country.displayName}: expired $expired recorded response(s) older than " +
            s"${EnrichmentFreshness.Ttl.toDays}d — they refetch and record fresh")
-    // Successes are persisted only when NOTHING else is recording them. With a fixture
-    // tree present, `RecordingHttpFetch` already writes every response there and the
-    // tree is consulted first, so a copy in the cache is never read — it only made the
-    // artifact three times larger. Without a tree, the cache is the sole store and must
-    // hold everything.
-    val cache  = new EnrichmentCache(store, persistSuccesses = fixtureDirectory.isEmpty)
+    // Successes are never persisted here: `RecordingHttpFetch` already writes every
+    // response into the fixture tree and the tree is consulted first, so a copy in the
+    // cache could not be read — it only made the artifact three times larger. What the
+    // cache is for is the half the tree cannot hold, the remembered FAILURES.
+    val cache  = new EnrichmentCache(store, persistSuccesses = false)
     val loaded = step("preloadEnrichmentCache")(cache.preload())
     info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${describe(store)}")
     cache
@@ -293,28 +292,29 @@ abstract class CountryConvergenceBehaviour(
   }
 
   /**
-   * A run that HAS an enrichment source must actually have enriched something.
+   * A run must actually have enriched something. Unconditionally: every run has a tree to
+   * replay and a live chain behind it, so "nowhere to ask" is not a state any more.
    *
    * The coverage line above was informational, and that let the suite pass green
    * having proved nothing: with the TMDB key gated on the wrong condition, a leg
    * resolved 0 of 892 films and all three specs still passed — the fixpoint holds
-   * trivially over a corpus with no metadata in it. The offline run is still allowed
-   * to resolve nothing (it has nowhere to ask); a run with a cache or a fixture tree
-   * is not.
+   * trivially over a corpus with no metadata in it. This is also where a missing
+   * `TMDB_API_KEY` now lands: the key is the one input nothing can replay around, and a
+   * keyless run resolves exactly zero.
    *
    * Deliberately a floor of ONE rather than a ratio. Any real collapse — a missing
    * key, a stale tree, a resolver that stopped answering — lands at exactly zero,
    * and a ratio would need re-tuning per country as each corpus drifts, which is how
    * a guard becomes a flake and then gets deleted.
    */
-  private def requireEnrichmentReached(w: ArchiveReplayWiring): Unit =
-    if (w.enrichmentAvailable) {
-      val resolved = w.movieRepository.findAll().count(_.record.tmdbId.isDefined)
-      withClue(s"${country.displayName} has an enrichment source but resolved NOTHING — " +
-               s"${enrichmentCoverage(w)}. A fixpoint over an unenriched corpus proves nothing: ") {
-        resolved should be > 0
-      }
+  private def requireEnrichmentReached(w: ArchiveReplayWiring): Unit = {
+    val resolved = w.movieRepository.findAll().count(_.record.tmdbId.isDefined)
+    withClue(s"${country.displayName} resolved NOTHING — ${enrichmentCoverage(w)}. " +
+             s"A fixpoint over an unenriched corpus proves nothing; check TMDB_API_KEY is " +
+             s"readable from the working directory: ") {
+      resolved should be > 0
     }
+  }
 
   /**
    * Refuse to run without this country's recorded corpus.

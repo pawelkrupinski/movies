@@ -9,8 +9,8 @@ import scala.util.control.NonFatal
  *
  * Why the convergence suite needs one at all. The suite's whole claim is that the
  * pipeline reaches a fixpoint: settle twice, tick twice, and nothing moves. Every
- * enrichment field was excluded from that claim by running the whole replay on
- * `OfflineHttpFetch`, because a live lookup answers on its own schedule and a
+ * enrichment field was excluded from that claim by running the whole replay on a
+ * fetch that refused every call, because a live lookup answers on its own schedule and a
  * corpus whose ratings shifted between pass 1 and pass 2 would fail the fixpoint
  * for a reason that has nothing to do with the pipeline. A cache removes exactly
  * that objection: the first pass fills it, every later pass replays it
