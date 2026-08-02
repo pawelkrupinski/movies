@@ -314,4 +314,33 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     recoverCalled shouldBe false
     repository.findAll().head.record.imdbId shouldBe Some("tt0000007")
   }
+
+  /** A detail page that parses to nothing must SAY so. It used to log the same
+   *  `← detail from X` line whether it contributed every field or none, so a cinema
+   *  whose pages were thin — or absent from a replay's fixture tree — was
+   *  indistinguishable from one that worked, and the films it should have enriched
+   *  went to TMDB year-less with nothing in the log to explain it. */
+  "fetchDetailFor" should "report which fields a detail merge actually contributed" in {
+    // No year on the listing — the diverted-newcomer shape the detail exists to fill.
+    val (repository, anchor) = seeded(Helios, "Newcomer", None)
+    val enricher = new FakeEnricher(Helios, Some(FilmDetail(releaseYear = Some(1982), director = Seq("Wim Wenders"))))
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe true
+
+    val slot = repository.findAll().head.record.cinemaData(Helios)
+    slot.releaseYear shouldBe Some(1982)
+    slot.director    shouldBe Seq("Wim Wenders")
+    models.SourceData.fieldsGained(models.SourceData(), slot) should contain allOf ("year", "director")
+  }
+
+  // …and an EMPTY page gains nothing, which is the case that used to be silent.
+  it should "gain no fields from a detail page that parses to nothing" in {
+    val (repository, anchor) = seeded(Helios, "Thin", None)
+    val s = steps(repository, Seq(new FakeEnricher(Helios, Some(FilmDetail()))), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe true          // the fetch RAN — still ready
+    val slot = repository.findAll().head.record.cinemaData(Helios)
+    models.SourceData.fieldsGained(models.SourceData(), slot) shouldBe empty
+  }
 }

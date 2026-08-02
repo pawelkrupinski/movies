@@ -129,4 +129,18 @@ object SourceData {
    *  this (rather than "unknown, re-resolve") keeps the Polish corpus — where the
    *  stamp is absent and the text is already right — completely still. */
   val LegacyLanguageTag: String = "pl-PL"
+
+  /** Which fields a merge actually filled in — for logging that can tell a detail page
+   *  that contributed something from one that contributed nothing. The two used to look
+   *  identical in the log, which is how a whole cinema's thin or missing detail pages
+   *  stayed invisible while the films they should have enriched went unresolved. */
+  def fieldsGained(before: SourceData, after: SourceData): Seq[String] = Seq(
+    Option.when(before.synopsis.isEmpty       && after.synopsis.nonEmpty)("synopsis"),
+    Option.when(before.director.isEmpty       && after.director.nonEmpty)("director"),
+    Option.when(before.cast.isEmpty           && after.cast.nonEmpty)("cast"),
+    Option.when(before.releaseYear.isEmpty    && after.releaseYear.nonEmpty)("year"),
+    Option.when(before.runtimeMinutes.isEmpty && after.runtimeMinutes.nonEmpty)("runtime"),
+    Option.when(before.originalTitle.isEmpty  && after.originalTitle.nonEmpty)("originalTitle"),
+    Option.when(before.posterUrl.isEmpty      && after.posterUrl.nonEmpty)("poster")
+  ).flatten
 }

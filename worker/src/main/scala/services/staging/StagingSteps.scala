@@ -98,10 +98,26 @@ class StagingSteps(
           else enricher.detailTarget
         enricher.fetchFilmDetail(ref) match {
           case Some(detail) =>
-            val merged = row.record.copy(
-              data = row.record.data + (target -> detail.mergeInto(row.record.data.getOrElse(target, SourceData()))))
+            val before = row.record.data.getOrElse(target, SourceData())
+            val after  = detail.mergeInto(before)
+            val merged = row.record.copy(data = row.record.data + (target -> after))
             stagingRepository.upsertRow(row.copy(record = merged))
-            logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}")
+            // Say whether the merge actually CONTRIBUTED anything. It used to log the
+            // same line either way, so a detail page that parsed to nothing — or a
+            // whole cinema's pages missing from a replay's fixture tree — read exactly
+            // like one that worked. That silence is what made "Pokój 666" take an hour
+            // to diagnose: the leg logged `← detail from Kino Iluzjon` and then sent the
+            // film to TMDB with no year, and nothing in between said why.
+            //
+            // Still returns true either way: the fetch RAN, which is what `detailReady`
+            // gates on, and holding the film back would spin it to the give-up budget
+            // for a page that is simply thin. This is a diagnosis, not a gate.
+            if (after == before)
+              logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName} " +
+                          s"added NOTHING (page parsed to no new fields)")
+            else
+              logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}" +
+                          s" (${SourceData.fieldsGained(before, after).mkString(", ")})")
             true
           case None => detailPresent(row, target)                       // fetch failed — already-merged still counts
         }
