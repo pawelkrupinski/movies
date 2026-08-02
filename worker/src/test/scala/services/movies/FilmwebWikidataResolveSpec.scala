@@ -6,7 +6,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.WikidataClient
 import services.events.InProcessEventBus
-import tools.{GetOnlyHttpFetch, HttpFetch}
 
 /**
  * Once Filmweb enrichment is un-gated for `tmdbId`-less rows (see
@@ -27,28 +26,15 @@ import tools.{GetOnlyHttpFetch, HttpFetch}
  */
 class FilmwebWikidataResolveSpec extends AnyFlatSpec with Matchers {
 
-  private class StubFetch(routes: Seq[(String, String)]) extends GetOnlyHttpFetch {
-    override def get(url: String): String =
-      routes.collectFirst { case (frag, body) if url.contains(frag) => body }
-        .getOrElse(throw new RuntimeException(s"unstubbed TMDB URL: $url"))
-  }
-
   private def tmdb(routes: (String, String)*): TmdbClient =
-    new TmdbClient(http = new StubFetch(routes), apiKey = Some("stub"))
+    new TmdbClient(http = new clients.tools.UrlFragmentHttpFetch(routes.toSeq), apiKey = Some("stub"))
 
   // A Wikidata client whose two Action-API calls (search by P5032, then
   // wbgetentities claims) are stubbed by URL fragment. `P4947` = TMDB id.
   private def wikidata(tmdbId: Int): WikidataClient =
-    new WikidataClient(new HttpFetch {
-      def get(url: String): String =
-        if (url.contains("haswbstatement")) """{"query":{"search":[{"title":"Q123"}]}}"""
-        else if (url.contains("wbgetentities"))
-          s"""{"entities":{"Q123":{"claims":{"P4947":[{"mainsnak":{"datavalue":{"value":"$tmdbId"}}}]}}}}"""
-        else throw new RuntimeException(s"unstubbed Wikidata URL: $url")
-      override def get(url: String, headers: Map[String, String]): String = get(url)
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("WikidataClient should not POST")
-    })
+    new WikidataClient(clients.tools.UrlFragmentHttpFetch(
+      "haswbstatement" -> """{"query":{"search":[{"title":"Q123"}]}}""",
+      "wbgetentities"  -> s"""{"entities":{"Q123":{"claims":{"P4947":[{"mainsnak":{"datavalue":{"value":"$tmdbId"}}}]}}}}"""))
 
   // A tmdbId-less row that carries a Filmweb URL (scraper-supplied / discovered)
   // and a year, keyed at (title, year) so resolution reads that year back.

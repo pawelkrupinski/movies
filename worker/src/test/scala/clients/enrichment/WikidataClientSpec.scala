@@ -22,16 +22,11 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
     finally stream.close()
   }
 
+  // `UrlFragmentHttpFetch`, not a local stub: it parses the URL the way `RealHttpFetch`
+  // does before routing, which is what a hand-rolled `String.contains` stub never did —
+  // and why this spec was green for a client whose every call threw in production.
   private def wikidataStub(responses: Map[String, String]): WikidataClient =
-    new WikidataClient(new HttpFetch {
-      def get(url: String): String = responses
-        .collectFirst { case (key, body) if url.contains(key) => body }
-        .getOrElse(throw new RuntimeException(s"no stub for $url"))
-      // headers overload — test fakes ignore headers, routing by URL only
-      override def get(url: String, headers: Map[String, String]): String = get(url)
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("WikidataClient should not POST")
-    })
+    new WikidataClient(new clients.tools.UrlFragmentHttpFetch(responses.toSeq))
 
   // ── filmwebEntityId ────────────────────────────────────────────────────────
 
@@ -121,6 +116,24 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
       imdbId = Some("tt0052080"), tmdbId = None,
       rottenTomatoesId = Some("m/ashes_and_diamonds"), metacriticId = None, letterboxdId = None
     ))
+  }
+
+  // The search asks for up to three Q-IDs and the harvest fetches them in ONE call, so
+  // the ids list is usually plural — and a plural list is where the separator appears.
+  // Every other test here happens to search up a single Q-ID, which is exactly why a
+  // client that could not send a multi-id URL at all looked healthy: `mkString` emits no
+  // separator for one element. Here the winning claim sits on the SECOND item, so the
+  // call cannot be satisfied by asking for the first alone.
+  it should "harvest across every Q-ID the search returned, not just the first" in {
+    val client = wikidataStub(Map(
+      "haswbstatement" -> """{"query":{"search":[{"title":"Q1"},{"title":"Q2"}]}}""",
+      "wbgetentities"  ->
+        """{"entities":{
+          |"Q1":{"claims":{}},
+          |"Q2":{"claims":{"P345":[{"mainsnak":{"datavalue":{"value":"tt0052080"}}}]}}
+          |}}""".stripMargin,
+    ))
+    client.findImdbIdByFilmwebId("1118") shouldBe Some("tt0052080")
   }
 
   it should "build canonical RT and Metacritic URLs from the harvested ids" in {

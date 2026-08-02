@@ -241,16 +241,9 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(("Popiół i diament", Some(1958), record)))
     val cache      = new CaffeineMovieCache(repository)
     // IMDb suggestion returns no match; Wikidata stub returns tt0052080 for filmweb id 1118
-    val wikidataStub = new WikidataClient(new HttpFetch {
-      def get(url: String): String =
-        if (url.contains("haswbstatement"))
-          """{"query":{"search":[{"title":"Q722281"}]}}"""
-        else if (url.contains("wbgetentities"))
-          """{"entities":{"Q722281":{"claims":{"P345":[{"mainsnak":{"datavalue":{"value":"tt0052080"}}}]}}}}"""
-        else throw new RuntimeException(s"unexpected url: $url")
-      override def get(url: String, headers: Map[String, String]): String = get(url)
-      override def post(url: String, body: String, contentType: String): String = ???
-    })
+    val wikidataStub = new WikidataClient(clients.tools.UrlFragmentHttpFetch(
+      "haswbstatement" -> """{"query":{"search":[{"title":"Q722281"}]}}""",
+      "wbgetentities"  -> """{"entities":{"Q722281":{"claims":{"P345":[{"mainsnak":{"datavalue":{"value":"tt0052080"}}}]}}}}"""))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
       wikidata = Some(wikidataStub))
     bus.subscribe(resolver.onImdbIdMissing)

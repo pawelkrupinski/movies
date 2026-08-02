@@ -59,8 +59,7 @@ class WikidataClient(http: HttpFetch) {
       val qids = searchFilmsByTitle(title)
       if (qids.isEmpty) None
       else {
-        val url  = s"$ActionBase?action=wbgetentities&ids=${qids.mkString("|")}&props=claims|labels&languages=en&format=json"
-        val body = http.get(url, UserAgentHeader)
+        val body = http.get(entitiesUrl(qids, Seq("claims", "labels"), languages = Seq("en")), UserAgentHeader)
         val entities = (Json.parse(body) \ "entities").asOpt[JsObject].map(_.value).getOrElse(Map.empty)
         qids.iterator.flatMap { qid =>
           entities.get(qid).flatMap { e =>
@@ -115,8 +114,7 @@ class WikidataClient(http: HttpFetch) {
   }
 
   private def harvest(qids: Seq[String]): Option[WikidataIds] = {
-    val url      = s"$ActionBase?action=wbgetentities&ids=${qids.mkString("|")}&props=claims&format=json"
-    val body     = http.get(url, UserAgentHeader)
+    val body     = http.get(entitiesUrl(qids, Seq("claims")), UserAgentHeader)
     val entities = (Json.parse(body) \ "entities").asOpt[JsObject].map(_.value).getOrElse(Map.empty)
     // Extract each id independently, each from the first Q-ID (by search rank)
     // that carries that property. Keeping the id-types independent preserves the
@@ -143,6 +141,32 @@ class WikidataClient(http: HttpFetch) {
 
 object WikidataClient {
   private val ActionBase = "https://www.wikidata.org/w/api.php"
+
+  /**
+   * Wikidata's list separator, PERCENT-ENCODED.
+   *
+   * The API documents it as a literal `|` and accepts either form, but a literal one
+   * never reaches it: `java.net.URI` rejects `|` in a query outright, and
+   * `RealHttpFetch` builds every request through `URI.create`. So each of these calls
+   * threw `IllegalArgumentException: Illegal character in query` before a byte left the
+   * process, and this whole rung of the imdbId ladder — Wikidata's P345/P4947/P1258/
+   * P1712 harvest — was dead in production while its specs stayed green, because they
+   * stubbed by URL substring and never parsed what they were handed.
+   *
+   * The single-item calls were fine, which is what made it survive: `mkString` emits no
+   * separator for one Q-ID. `props=claims|labels` has two by construction, so the
+   * title-search path never worked at all.
+   */
+  private val ListSeparator = "%7C"
+
+  /** One `wbgetentities` call for a set of Q-IDs. Every list this URL carries goes
+   *  through [[ListSeparator]] — the reason it exists in one place. */
+  private def entitiesUrl(qids: Seq[String], props: Seq[String], languages: Seq[String] = Seq.empty): String = {
+    val languageParameter =
+      if (languages.isEmpty) "" else s"&languages=${languages.mkString(ListSeparator)}"
+    s"$ActionBase?action=wbgetentities&ids=${qids.mkString(ListSeparator)}" +
+      s"&props=${props.mkString(ListSeparator)}$languageParameter&format=json"
+  }
 
   // Wikidata property ids for the film-database cross-references we harvest.
   private val PImdb            = "P345"   // IMDb id            → "tt0052080"
