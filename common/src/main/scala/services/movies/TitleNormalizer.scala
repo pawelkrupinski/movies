@@ -512,40 +512,18 @@ object TitleNormalizer {
 
   @volatile private var active: TitleNormalizer = new TitleNormalizer(defaultRules)
 
-  // A THREAD-SCOPED override that, when set, shadows `active` for the current
-  // thread only. Tests that need a custom rule set install it here via
-  // `withRules` instead of swapping the global `active`: ScalaTest runs suites in
-  // PARALLEL (`Test / parallelExecution` defaults to true), so a global swap by
-  // one suite leaked its rules into every OTHER suite's `sanitize` for the
-  // duration of its `try` block — a rare, order-dependent flake that no
-  // `finally` restore could prevent (the race is during the install, not after).
-  // Scoping the override to the installing thread keeps a test's rules invisible
-  // to the suites running beside it. Production sets NEITHER slot: `active` is
-  // whatever class-load resolved, and `installRules`' only caller is the country
-  // convergence e2e, which swaps it per country between runs.
-  private val scopedOverride = new ThreadLocal[TitleNormalizer]()
-  private def effective: TitleNormalizer = scopedOverride.get() match {
-    case null => active
-    case tn   => tn
-  }
+  // The thread-scoped override this used to carry is gone: it existed so a spec
+  // could swap rules without leaking them into a suite running beside it, and
+  // every such spec now holds its own instances instead. `installRules` keeps the
+  // one remaining global swap — the country convergence e2e, which runs a whole
+  // pipeline per country and reaches the delegates below in too many places to
+  // thread an instance through until the retroactive sweep lands.
+  private def effective: TitleNormalizer = active
 
-  /** Install a rule set — used by tests that want to exercise a custom set globally. */
+  /** Swap the process-wide rule set. Sole caller: the country convergence e2e,
+   *  which installs one country's rules per run. Not thread-safe by design — it
+   *  is a whole-run switch, not a scope. */
   def installRules(rs: TitleRuleSet): Unit = active = new TitleNormalizer(rs)
-
-  /** Run `body` with `rs` as the active rule set for the CURRENT THREAD only,
-   *  restoring the prior state afterwards. The scope is thread-local so a test
-   *  installing custom rules can't leak them into a suite running in parallel —
-   *  see `scopedOverride`. The body must drive its title normalisation on the
-   *  calling thread (the common case for unit specs). */
-  def withRules[A](rs: TitleRuleSet)(body: => A): A = {
-    val prev = scopedOverride.get()
-    scopedOverride.set(new TitleNormalizer(rs))
-    try body
-    finally if (prev == null) scopedOverride.remove() else scopedOverride.set(prev)
-  }
-
-  /** Restore the full in-code rule set on the GLOBAL slot — used by tests after a global swap. */
-  def resetToDefaults(): Unit = active = new TitleNormalizer(defaultRules)
 
   def cinemaClean(cinemaId: String, raw: String): String   = effective.cinemaClean(cinemaId, raw)
   def apiQuery(display: String): String                    = effective.apiQuery(display)
