@@ -56,7 +56,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
   private val PradaTitle = "Diabeł ubiera się u Prady 2"
 
   private val multikinoPrada =
-    new MultikinoClient(new FakeHttpFetch("multikino")).fetch()
+    new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).fetch()
       .find(_.movie.title == PradaTitle).get
   private val ccPlazaPrada =
     new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"))

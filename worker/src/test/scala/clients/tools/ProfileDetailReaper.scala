@@ -7,6 +7,7 @@ import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.given
 
 /**
  * Localises the `detail-reaper` thread's CPU against a REAL corpus.

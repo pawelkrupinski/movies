@@ -5,6 +5,7 @@ import models.MultikinoZabrze
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.{MultikinoClient, MultikinoParser}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Multikino ships the Polish rating in the same Vue-platform
@@ -41,10 +42,10 @@ class MultikinoParserAgeRatingSpec extends AnyFlatSpec with Matchers {
   """
 
   private def ageRatingOf(certificate: String): Option[String] =
-    MultikinoParser.parse(filmJson(certificate)).head.ageRating
+    MultikinoParser.parse(filmJson(certificate), titles = titleNormalizer).head.ageRating
 
   "MultikinoParser" should "read the Polish rating from certificate.name (real fixture)" in {
-    val movies  = new MultikinoClient(new FakeHttpFetch("new-cities"), "0003", MultikinoZabrze).fetch()
+    val movies  = new MultikinoClient(new FakeHttpFetch("new-cities"), "0003", MultikinoZabrze, titles = titleNormalizer).fetch()
     val pasazer = movies.find(_.movie.rawTitle.exists(_.toLowerCase.contains("pasażer")))
     pasazer.flatMap(_.ageRating) shouldBe Some("15+")
     // The fixture carries exactly the two "15+" films it was recorded with…

@@ -19,8 +19,8 @@ object MultikinoParser {
   /** `cinema` defaults to Poznań's Multikino (Stary Browar) so the existing
    *  parser specs and fixture stay byte-identical; the multi-city clients pass
    *  their own Multikino venue. */
-  def parse(json: String, titles: TitleNormalizer, cinema: Cinema = Multikino): Seq[CinemaMovie] =
-    (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm(_, titles, cinema)).toSeq
+  def parse(json: String, cinema: Cinema = Multikino, titles: TitleNormalizer): Seq[CinemaMovie] =
+    (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm(_, cinema, titles)).toSeq
 
   /** Strip cycle decoration so a decorated screening merges onto the same row
    *  — and enriches off the same clean title — as the regular run: "Kino na
@@ -34,7 +34,7 @@ object MultikinoParser {
   def cleanTitle(filmTitle: String, titles: TitleNormalizer): String =
     titles.cinemaClean("multikino", filmTitle)
 
-  private def parseFilm(film: JsValue, titles: TitleNormalizer, cinema: Cinema): CinemaMovie = {
+  private def parseFilm(film: JsValue, cinema: Cinema, titles: TitleNormalizer): CinemaMovie = {
     val rawFilmTitle = (film \ "filmTitle").as[String]
     // Casing is applied centrally at the scrape choke point
     // (`TitleNormalizer.recase`), not here — the Multikino API ships ALL-CAPS.

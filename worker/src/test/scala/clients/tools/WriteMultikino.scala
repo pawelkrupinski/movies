@@ -2,6 +2,7 @@ package clients.tools
 
 import tools.RealHttpFetch
 import services.cinemas.pl.MultikinoClient
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Refresh the Multikino fixture. `RecordingHttpFetch` writes every
  *  response body the client touches under `test/resources/fixtures/multikino/`,
@@ -11,7 +12,7 @@ import services.cinemas.pl.MultikinoClient
 object WriteMultikino {
   def main(args: Array[String]): Unit = {
     val fetch  = new RecordingHttpFetch("multikino", new RealHttpFetch())
-    val client = new MultikinoClient(MultikinoClient.fetchFor(fetch))
+    val client = new MultikinoClient(MultikinoClient.fetchFor(fetch), titles = titleNormalizer)
     client.fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
   }
 }

@@ -256,7 +256,8 @@ class WorkerWiring(
     zyteFetch = zyteFetch,
     flicksFetch = flicksFetch,
     vueFetch = vueFetch,
-    odeonAuthToken = odeonAuthHarvester.token)
+    odeonAuthToken = odeonAuthHarvester.token,
+    titles = titleNormalizer)
 
   // Vue/CinemaxX films API is Cloudflare-403'd from our Fly IP (like flicks) AND
   // token-gated, so it egresses residential AND host-sticky (one IP+cookie for the

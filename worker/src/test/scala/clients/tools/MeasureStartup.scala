@@ -9,6 +9,7 @@ import tools.Env
 
 import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.given
 
 /**
  *  Measures every phase of the boot hydrate path against the live Mongo

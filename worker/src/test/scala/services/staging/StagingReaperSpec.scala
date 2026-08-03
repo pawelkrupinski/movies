@@ -7,6 +7,7 @@ import services.cinemas.FakeDetailEnricher
 import services.events.{StagingNewcomerDiverted, TaskFinished}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.tasks.{InMemoryTaskQueue, StagingTaskKeys, TaskType}
+import services.movies.SingleCountryNormalizer.given
 
 /** Specs for the staging state machine: given a film's `pending_movies` state,
  *  `StagingReaper` enqueues exactly the one next step it needs, idempotently, and

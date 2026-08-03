@@ -3,6 +3,7 @@ package clients.multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.MultikinoParser
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The recorded `cinemas/0011/films` fixture has empty `trailers: []` arrays
@@ -34,22 +35,22 @@ class MultikinoParserTrailerSpec extends AnyFlatSpec with Matchers {
   """
 
   "MultikinoParser" should "lift a single YouTube trailer URL out of the trailers array" in {
-    val movies = MultikinoParser.parse(filmJson("""["https://www.youtube.com/watch?v=dQw4w9WgXcQ"]"""))
+    val movies = MultikinoParser.parse(filmJson("""["https://www.youtube.com/watch?v=dQw4w9WgXcQ"]"""), titles = titleNormalizer)
     movies.head.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
   }
 
   it should "canonicalise an /embed/ URL back to watch?v= form" in {
-    val movies = MultikinoParser.parse(filmJson("""["https://www.youtube.com/embed/dQw4w9WgXcQ"]"""))
+    val movies = MultikinoParser.parse(filmJson("""["https://www.youtube.com/embed/dQw4w9WgXcQ"]"""), titles = titleNormalizer)
     movies.head.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
   }
 
   it should "return None when trailers is empty" in {
-    val movies = MultikinoParser.parse(filmJson("""[]"""))
+    val movies = MultikinoParser.parse(filmJson("""[]"""), titles = titleNormalizer)
     movies.head.trailerUrl shouldBe None
   }
 
   it should "drop non-YouTube trailer URLs (until we learn how to embed them)" in {
-    val movies = MultikinoParser.parse(filmJson("""["https://cdn.multikino.pl/raw/trailer.mp4"]"""))
+    val movies = MultikinoParser.parse(filmJson("""["https://cdn.multikino.pl/raw/trailer.mp4"]"""), titles = titleNormalizer)
     movies.head.trailerUrl shouldBe None
   }
 }

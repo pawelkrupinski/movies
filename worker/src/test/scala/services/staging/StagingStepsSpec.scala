@@ -10,6 +10,7 @@ import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.cinemas.FakeDetailEnricher
 import tools.HttpStatusException
 import services.cinemas.pl.FilmwebShowtimesClient
+import services.movies.SingleCountryNormalizer.given
 
 /** Unit specs for the staging enrichment steps factored out of the old
  *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the

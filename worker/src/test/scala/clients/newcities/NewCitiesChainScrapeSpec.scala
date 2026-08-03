@@ -8,6 +8,7 @@ import services.cinemas._
 import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosNuxt, MultikinoClient}
 
 import java.time.LocalDate
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Replays the recorded `new-cities` corpus (see `clients.tools.RecordNewCities`)
@@ -55,7 +56,7 @@ class NewCitiesChainScrapeSpec extends AnyFlatSpec with Matchers {
     "0026" -> MultikinoRadom, "0029" -> MultikinoKielce,
     "0028" -> MultikinoRzeszow, "0003" -> MultikinoZabrze,
   ).foreach { case (id, c) =>
-    check(s"MultikinoClient (${c.displayName})", c)(new MultikinoClient(http, id, c).fetch())
+    check(s"MultikinoClient (${c.displayName})", c)(new MultikinoClient(http, id, c, titles = titleNormalizer).fetch())
   }
 
   // ── Helios venues (today pinned to each venue's fixture capture date) ─────────

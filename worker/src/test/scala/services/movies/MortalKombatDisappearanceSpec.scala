@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.RoutingHttpFetch
 import services.cinemas.pl.{CinemaCityClient, HeliosClient, MultikinoClient}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Reproduction of the "Mortal Kombat II disappears" report.
@@ -73,7 +74,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
   // "disappears" report isn't an upstream-missing case.
 
   private val multikinoMk =
-    new MultikinoClient(new FakeHttpFetch("multikino")).fetch()
+    new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).fetch()
       .find(_.movie.title == "Mortal Kombat 2").get
   private val cinemaCityMk =
     new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"))

@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.freshness.InMemoryFreshnessStore
 import services.tasks.{HandlerOutcome, StagingTaskKeys, Task, TaskType}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
+import services.movies.SingleCountryNormalizer.given
 
 /** Specs for the four thin staging handlers — each parses its payload, runs the
  *  matching `StagingSteps` step, and maps the result to a `HandlerOutcome`. */

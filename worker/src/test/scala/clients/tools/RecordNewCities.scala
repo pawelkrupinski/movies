@@ -6,6 +6,7 @@ import services.cinemas._
 import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosNuxt, KinoZorzaClient, MultikinoClient}
 
 import scala.util.Try
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Records the chain scrapes (Cinema City, Multikino, Helios) for the eight
@@ -44,7 +45,7 @@ object RecordNewCities {
       "0028" -> MultikinoRzeszow, "0003" -> MultikinoZabrze,
     )
     multikino.foreach { case (id, c) =>
-      report(s"Multikino ${c.displayName} ($id)")(new MultikinoClient(record, id, c).fetch().size)
+      report(s"Multikino ${c.displayName} ($id)")(new MultikinoClient(record, id, c, titles = titleNormalizer).fetch().size)
     }
 
     Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { config =>

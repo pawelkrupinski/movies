@@ -5,6 +5,7 @@ import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.{CharlieMonroeClient, CinemaCityClient, HeliosClient, KinoBulgarskaClient, KinoMuzaClient, KinoPalacoweClient, MultikinoClient, RialtoClient}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 // Showtime.format is a List of individual tokens. Cinemas use different
 // separators in their raw payloads ("/", " "), so we strip them at parse time
@@ -21,7 +22,7 @@ class FormatTokensSpec extends AnyFlatSpec with Matchers {
     "KinoMuza"      -> (() => new KinoMuzaClient(new FakeHttpFetch("kino-muza")).fetch()),
     "KinoPalacowe"  -> (() => new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe")).fetch()),
     "CharlieMonroe" -> (() => new CharlieMonroeClient(new FakeHttpFetch("charlie-monroe")).fetch()),
-    "Multikino"     -> (() => new MultikinoClient(new FakeHttpFetch("multikino")).fetch()),
+    "Multikino"     -> (() => new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).fetch()),
     "Rialto"        -> (() => new RialtoClient(new FakeHttpFetch("rialto")).fetch()),
     "CC Kinepolis"  -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis")).fetch("1081", CinemaCityKinepolis)),
     "CC Plaza"      -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza")).fetch("1078", CinemaCityPoznanPlaza)),

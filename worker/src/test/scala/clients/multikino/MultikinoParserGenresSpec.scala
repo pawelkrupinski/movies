@@ -3,6 +3,7 @@ package clients.multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.MultikinoParser
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Multikino's `cinemas/0011/films` API exposes a `genres` field. The recorded
@@ -32,7 +33,7 @@ class MultikinoParserGenresSpec extends AnyFlatSpec with Matchers {
   """
 
   "MultikinoParser" should "leave genres empty when the array is empty (current production shape)" in {
-    MultikinoParser.parse(filmJson("[]")).head.movie.genres shouldBe empty
+    MultikinoParser.parse(filmJson("[]"), titles = titleNormalizer).head.movie.genres shouldBe empty
   }
 
   it should "leave genres empty when the field is absent" in {
@@ -41,21 +42,21 @@ class MultikinoParserGenresSpec extends AnyFlatSpec with Matchers {
       "synopsisShort":"","cast":"","director":"","originalTitle":"",
       "movieXchangeCode":"","showingGroups":[],"trailers":[]
     }]}"""
-    MultikinoParser.parse(json).head.movie.genres shouldBe empty
+    MultikinoParser.parse(json, titles = titleNormalizer).head.movie.genres shouldBe empty
   }
 
   it should "extract genre names from a list of {name} objects" in {
     val genres = """[{"name":"Komedia"},{"name":"Romans"}]"""
-    MultikinoParser.parse(filmJson(genres)).head.movie.genres shouldBe Seq("Komedia", "Romans")
+    MultikinoParser.parse(filmJson(genres), titles = titleNormalizer).head.movie.genres shouldBe Seq("Komedia", "Romans")
   }
 
   it should "extract genre names from a list of bare strings" in {
     val genres = """["Dramat","Historyczny"]"""
-    MultikinoParser.parse(filmJson(genres)).head.movie.genres shouldBe Seq("Dramat", "Historyczny")
+    MultikinoParser.parse(filmJson(genres), titles = titleNormalizer).head.movie.genres shouldBe Seq("Dramat", "Historyczny")
   }
 
   it should "skip entries with neither a name nor a string value" in {
     val genres = """[{"name":"Komedia"},{},{"name":""},"Sci-Fi"]"""
-    MultikinoParser.parse(filmJson(genres)).head.movie.genres shouldBe Seq("Komedia", "Sci-Fi")
+    MultikinoParser.parse(filmJson(genres), titles = titleNormalizer).head.movie.genres shouldBe Seq("Komedia", "Sci-Fi")
   }
 }

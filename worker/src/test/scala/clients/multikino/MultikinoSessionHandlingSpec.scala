@@ -6,6 +6,7 @@ import tools.HttpFetch
 import services.cinemas.pl.MultikinoClient
 
 import scala.collection.mutable
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Exercises `MultikinoClient`'s built-in session handling — optimistic API
  *  call, homepage warm-up on failure, then retry — by driving `fetch()`
@@ -45,7 +46,7 @@ class MultikinoSessionHandlingSpec extends AnyFlatSpec with Matchers {
   "MultikinoClient.fetch" should "hit only the API URL when the first call succeeds" in {
     val http = programmed(MultikinoClient.ApiUrl -> Seq(Right(EmptyApi)))
 
-    new MultikinoClient(http).fetch() shouldBe empty
+    new MultikinoClient(http, titles = titleNormalizer).fetch() shouldBe empty
     http.calls.toList shouldBe List(MultikinoClient.ApiUrl)
   }
 
@@ -55,7 +56,7 @@ class MultikinoSessionHandlingSpec extends AnyFlatSpec with Matchers {
       HomeUrl                -> Seq(Right("<html/>")),
     )
 
-    new MultikinoClient(http).fetch() shouldBe empty
+    new MultikinoClient(http, titles = titleNormalizer).fetch() shouldBe empty
     http.calls.toList shouldBe List(MultikinoClient.ApiUrl, HomeUrl, MultikinoClient.ApiUrl)
   }
 
@@ -68,7 +69,7 @@ class MultikinoSessionHandlingSpec extends AnyFlatSpec with Matchers {
       HomeUrl                -> Seq(Right("<html/>")),
     )
 
-    val thrown = the[RuntimeException] thrownBy new MultikinoClient(http).fetch()
+    val thrown = the[RuntimeException] thrownBy new MultikinoClient(http, titles = titleNormalizer).fetch()
     thrown.getMessage should include ("HTTP 401 #2")
     http.calls.toList shouldBe List(MultikinoClient.ApiUrl, HomeUrl, MultikinoClient.ApiUrl)
   }

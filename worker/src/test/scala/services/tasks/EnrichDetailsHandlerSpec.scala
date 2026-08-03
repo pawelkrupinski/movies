@@ -13,6 +13,7 @@ import tools.HttpStatusException
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.given
 
 class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   import HandlerOutcome._

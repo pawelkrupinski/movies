@@ -8,10 +8,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.{MultikinoClient, MultikinoParser}
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class MultikinoClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new MultikinoClient(new FakeHttpFetch("multikino"))
+  private val client  = new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer)
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
     .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
@@ -667,14 +668,14 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
   // cleanTitle leaves them intact; the query-strip is asserted in ExtraTitleRulesSpec.
 
   "MultikinoParser.cleanTitle" should "leave the now-global Kino na obcasach / Mamoru Hosody banners intact" in {
-    MultikinoParser.cleanTitle("Kino na obcasach: Diabeł ubiera się u Prady 2") shouldBe
+    MultikinoParser.cleanTitle("Kino na obcasach: Diabeł ubiera się u Prady 2", titleNormalizer) shouldBe
       "Kino na obcasach: Diabeł ubiera się u Prady 2"
-    MultikinoParser.cleanTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas") shouldBe
+    MultikinoParser.cleanTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas", titleNormalizer) shouldBe
       "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas"
   }
 
   it should "leave an undecorated title untouched" in {
-    MultikinoParser.cleanTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
+    MultikinoParser.cleanTitle("Diabeł ubiera się u Prady 2", titleNormalizer) shouldBe "Diabeł ubiera się u Prady 2"
   }
 
 }

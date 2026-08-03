@@ -5,6 +5,7 @@ import models.{Multikino, MultikinoZloteTarasy}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.MultikinoClient
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** The client used to be hard-wired to Poznań's Stary Browar (`0011` →
  *  `Multikino`). These pin the parameterisation that lets one client serve
@@ -22,13 +23,13 @@ class MultikinoMultiCitySpec extends AnyFlatSpec with Matchers {
   "A client constructed for a non-Poznań venue" should "tag every row with that cinema" in {
     // Reuse the Poznań fixture (id 0011) but assign a Warszawa venue — proves
     // the cinema flows from the constructor through the parser to the rows.
-    val client  = new MultikinoClient(new FakeHttpFetch("multikino"), "0011", MultikinoZloteTarasy)
+    val client  = new MultikinoClient(new FakeHttpFetch("multikino"), "0011", MultikinoZloteTarasy, titles = titleNormalizer)
     val results = client.fetch()
     results should not be empty
     results.map(_.cinema).toSet shouldBe Set(MultikinoZloteTarasy)
   }
 
   "The default constructor" should "still be Poznań's Stary Browar" in {
-    new MultikinoClient(new FakeHttpFetch("multikino")).cinema shouldBe Multikino
+    new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).cinema shouldBe Multikino
   }
 }

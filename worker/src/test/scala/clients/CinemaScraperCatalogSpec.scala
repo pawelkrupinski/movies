@@ -6,6 +6,7 @@ import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.CinemaScraperCatalog
+import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.uk.{CineworldClient, FlicksClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 
@@ -45,7 +46,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl),
       zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
-      odeonAuthToken = () => None
+      odeonAuthToken = () => None, titles = titleNormalizer
     )
 
   /** An HttpFetch that fails every GET and POST with a uniquely-identifiable
@@ -244,7 +245,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = http, today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
-      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonAuthToken = () => None)
+      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonAuthToken = () => None, titles = titleNormalizer)
 
     requested.size should be > 1
     withClue(s"chains built: ${requested.mkString(", ")} — ") {

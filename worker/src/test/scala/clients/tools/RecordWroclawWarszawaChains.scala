@@ -6,6 +6,7 @@ import services.cinemas._
 import services.cinemas.pl.{CinemaCityClient, HeliosClient, HeliosNuxt, MultikinoClient}
 
 import scala.util.Try
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Records the Wrocław + Warszawa national-chain scrapes (Cinema City, Multikino,
@@ -42,7 +43,7 @@ object RecordWroclawWarszawaChains {
     )
     multikino.foreach { case (id, cinema) =>
       println(s"Multikino ${cinema.displayName} ($id)…")
-      println(s"  ${Try(new MultikinoClient(mkFetch, id, cinema).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
+      println(s"  ${Try(new MultikinoClient(mkFetch, id, cinema, titles = titleNormalizer).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
     }
 
     Seq(HeliosNuxt.Magnolia, HeliosNuxt.AlejaBielany, HeliosNuxt.BlueCity).foreach { config =>

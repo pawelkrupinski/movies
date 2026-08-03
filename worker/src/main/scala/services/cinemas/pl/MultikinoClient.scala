@@ -3,6 +3,7 @@ package services.cinemas.pl
 import models.{Cinema, CinemaMovie, Multikino}
 import tools.HttpFetch
 import services.cinemas.common.{CinemaScraper, ZyteFallback}
+import services.movies.TitleNormalizer
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the
@@ -28,11 +29,12 @@ import services.cinemas.common.{CinemaScraper, ZyteFallback}
  */
 class MultikinoClient(
   http:              HttpFetch,
-  // The country's title rules. An ordinary dependency, not a context param:
-  // every scraper is built by `CinemaScraperCatalog`, which has exactly one.
-  titles:            TitleNormalizer,
   cinemaId:          String = MultikinoClient.PoznanStaryBrowarId,
   override val cinema: Cinema = Multikino,
+  // The country's title rules. An ordinary dependency, not a context param:
+  // every scraper is built by `CinemaScraperCatalog`, which has exactly one.
+  // Last so the venue-identifying args a caller actually varies stay leading.
+  titles:            TitleNormalizer,
 ) extends CinemaScraper {
   import MultikinoClient._
 
@@ -41,7 +43,7 @@ class MultikinoClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def chain: Boolean = true
 
-  def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), titles, cinema)
+  def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema, titles)
 
   private def getApiWithRetry(): String =
     try http.get(apiUrl)
