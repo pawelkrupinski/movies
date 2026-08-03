@@ -18,6 +18,9 @@ import services.tasks.{HandlerOutcome, StagingTaskKeys, Task, TaskHandler, TaskT
  *  we give up and let the film graduate on listing-only data rather than
  *  rescheduling forever. */
 class StagingDetailHandler(steps: StagingSteps) extends TaskHandler {
+  // Anchor task payloads the way the staging pipeline anchors its rows.
+  private given services.movies.TitleNormalizer = steps.normalizer
+
   val taskType: TaskType = TaskType.StagingDetail
   def handle(task: Task): HandlerOutcome =
     StagingTaskKeys.cinemaOf(task.payload) match {
@@ -59,6 +62,9 @@ object StagingDetailHandler {
  *  also keeps `attempts` — and with it the TMDB give-up budget above — counting
  *  actual TMDB misses rather than time spent waiting on a sibling step. */
 class StagingResolveTmdbHandler(steps: StagingSteps) extends TaskHandler {
+  // Anchor task payloads the way the staging pipeline anchors its rows.
+  private given services.movies.TitleNormalizer = steps.normalizer
+
   val taskType: TaskType = TaskType.StagingResolveTmdb
   def handle(task: Task): HandlerOutcome = {
     val giveUp = task.attempts >= StagingResolveTmdbHandler.MaxResolveAttempts
@@ -80,6 +86,9 @@ object StagingResolveTmdbHandler {
 
 /** STEP 3: recover a missing IMDb id (best-effort — gives up gracefully). */
 class StagingResolveImdbIdHandler(steps: StagingSteps) extends TaskHandler {
+  // Anchor task payloads the way the staging pipeline anchors its rows.
+  private given services.movies.TitleNormalizer = steps.normalizer
+
   val taskType: TaskType = TaskType.StagingResolveImdbId
   def handle(task: Task): HandlerOutcome = {
     steps.recoverImdbFor(StagingTaskKeys.anchorOf(task.payload))
