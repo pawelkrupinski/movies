@@ -186,24 +186,24 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     //
     // Under the country-scoped rule set the row keys on the cinema's own spelling
     // and the hourly re-scrape lands on it rather than forking a second row.
-    TitleNormalizer.withRules(TitleRuleSet.forCountry(Country.Germany)) {
-      val wuerzburg = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
-      val cache     = new CaffeineMovieCache(new InMemoryMovieRepository)
-      cache.put(cache.keyOf("Minions & Monster", None),
-        MovieRecord(tmdbId = Some(1315772), data = Map[Source, SourceData](
-          (Tmdb: Source)      -> SourceData(title = Some("Minions & Monster")),
-          (wuerzburg: Source) -> SourceData(title = Some("Minions & Monster")))))
+    val german    = new TitleNormalizer(TitleRuleSet.forCountry(Country.Germany))
+    val wuerzburg = new GermanCinema("CinemaxX Würzburg", "CinemaxX Würzburg")
+    val cache     = new CaffeineMovieCache(
+      new InMemoryMovieRepository(normalizer = german), normalizer = german)
+    cache.put(cache.keyOf("Minions & Monster", None),
+      MovieRecord(tmdbId = Some(1315772), data = Map[Source, SourceData](
+        (Tmdb: Source)      -> SourceData(title = Some("Minions & Monster")),
+        (wuerzburg: Source) -> SourceData(title = Some("Minions & Monster")))))
 
-      cache.recordCinemaScrape(wuerzburg, Seq(CinemaMovie(
-        movie     = Movie("Minions & Monster", originalTitle = Some("Minions & Monsters")),
-        cinema    = wuerzburg,
-        posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
-        showtimes = Seq(Showtime(LocalDateTime.of(2026, 7, 11, 11, 30), None)))))
+    cache.recordCinemaScrape(wuerzburg, Seq(CinemaMovie(
+      movie     = Movie("Minions & Monster", originalTitle = Some("Minions & Monsters")),
+      cinema    = wuerzburg,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 7, 11, 11, 30), None)))))
 
-      val rows = cache.snapshot().map(r => (r.title, r.year)).toSet
-      withClue(s"rows after re-scrape: $rows\n") {
-        rows shouldBe Set(("Minions & Monster", None))
-      }
+    val rows = cache.snapshot().map(r => (r.title, r.year)).toSet
+    withClue(s"rows after re-scrape: $rows\n") {
+      rows shouldBe Set(("Minions & Monster", None))
     }
   }
 

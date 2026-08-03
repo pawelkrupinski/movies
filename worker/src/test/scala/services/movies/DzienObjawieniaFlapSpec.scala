@@ -114,31 +114,30 @@ class DzienObjawieniaFlapSpec extends AnyFlatSpec with Matchers {
    *  Under the country-scoped rule set the German key is the cinema's own spelling,
    *  so the settle converges. */
   it should "reach a fixpoint for a German title whose ' & ' must not become ' i '" in {
-    TitleNormalizer.withRules(TitleRuleSet.forCountry(Country.Germany)) {
-      val repo  = new InMemoryMovieRepository
-      val cache = new CaffeineMovieCache(repo)
+    val german = new TitleNormalizer(TitleRuleSet.forCountry(Country.Germany))
+    val repo   = new InMemoryMovieRepository(normalizer = german)
+    val cache  = new CaffeineMovieCache(repo, normalizer = german)
 
-      cache.recordCinemaScrape(Wuerzburg, Seq(minions))
-      cache.entries.foreach { case (k, e) =>
-        cache.settleResolved(k, e.copy(
-          tmdbId = Some(MinionsTmdbId),
-          data   = e.data + (Tmdb -> SourceData(
-            title = Some("Minions & Monster"), originalTitle = Some("Minions & Monsters")))))
-      }
-
-      cache.canonicalizeBySanitize()                        // first settle: the legitimate re-key
-      val writesAfterFirst = repo.upserts.size + repo.deletes.size
-
-      cache.canonicalizeBySanitize()                        // second settle: must be a no-op
-      val writesAfterSecond = repo.upserts.size + repo.deletes.size
-
-      withClue(
-        s"\nThe German row was re-written ${writesAfterSecond - writesAfterFirst} " +
-        s"more time(s) on a steady tick.\nstored = ${cache.snapshot().map(r => (r.title, r.year))}\n") {
-        writesAfterSecond shouldBe writesAfterFirst
-      }
-      // The key is the cinema's own spelling — no Polish conjunction injected.
-      TitleNormalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
+    cache.recordCinemaScrape(Wuerzburg, Seq(minions))
+    cache.entries.foreach { case (k, e) =>
+      cache.settleResolved(k, e.copy(
+        tmdbId = Some(MinionsTmdbId),
+        data   = e.data + (Tmdb -> SourceData(
+          title = Some("Minions & Monster"), originalTitle = Some("Minions & Monsters")))))
     }
+
+    cache.canonicalizeBySanitize()                        // first settle: the legitimate re-key
+    val writesAfterFirst = repo.upserts.size + repo.deletes.size
+
+    cache.canonicalizeBySanitize()                        // second settle: must be a no-op
+    val writesAfterSecond = repo.upserts.size + repo.deletes.size
+
+    withClue(
+      s"\nThe German row was re-written ${writesAfterSecond - writesAfterFirst} " +
+      s"more time(s) on a steady tick.\nstored = ${cache.snapshot().map(r => (r.title, r.year))}\n") {
+      writesAfterSecond shouldBe writesAfterFirst
+    }
+    // The key is the cinema's own spelling — no Polish conjunction injected.
+    german.sanitize("Minions & Monster") shouldBe "minionsmonster"
   }
 }

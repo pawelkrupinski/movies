@@ -35,7 +35,11 @@ class InMemoryMovieRepository(
   // shape — with only `screenings` the record still carries its cinema keys inline, so a
   // reader that never consults `movie_slots` still sees every cinema and the mid-migration
   // union (`SlotsRepository.merge`) is never exercised.
-  slots: Option[SlotsRepository] = None
+  slots: Option[SlotsRepository] = None,
+  // The country whose rules derive a row's `_id`, mirroring `MongoMovieRepository`.
+  // Last and defaulted so the positional constructions are unchanged; a spec that
+  // is ABOUT country scoping passes its own instance instead of swapping a global.
+  override val normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.deployment
 ) extends MovieRepository {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private given services.movies.TitleNormalizer = normalizer

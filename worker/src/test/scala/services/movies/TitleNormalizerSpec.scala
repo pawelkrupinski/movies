@@ -472,11 +472,10 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // key — so recasing this exact title is then safe and recase rightly down-cases it.
     // The invariant under test is the guard MECHANISM (refuse a recase that re-keys),
     // so we exercise it with a rule set where the drift still exists.
-    TitleNormalizer.withRules(TitleRuleSet(TitleRules.all)) {
-      val shout = "GWIEZDNE WOJNY: MANDALORIAN i GROGU"
-      recase(shout) shouldBe shout
-      TitleNormalizer.sanitize(recase(shout)) shouldBe TitleNormalizer.sanitize(shout)
-    }
+    val seedRules = new TitleNormalizer(TitleRuleSet(TitleRules.all))
+    val shout     = "GWIEZDNE WOJNY: MANDALORIAN i GROGU"
+    seedRules.recase(shout) shouldBe shout
+    seedRules.sanitize(seedRules.recase(shout)) shouldBe seedRules.sanitize(shout)
   }
 
   it should "split a programme banner and case the banner and film independently" in {

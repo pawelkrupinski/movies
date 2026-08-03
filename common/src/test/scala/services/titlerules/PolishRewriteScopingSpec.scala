@@ -26,7 +26,7 @@ import services.movies.TitleNormalizer
 class PolishRewriteScopingSpec extends AnyFlatSpec with Matchers {
 
   private def sanitizeFor(country: Country, title: String): String =
-    TitleNormalizer.withRules(TitleRuleSet.forCountry(country))(TitleNormalizer.sanitize(title))
+    new TitleNormalizer(TitleRuleSet.forCountry(country)).sanitize(title)
 
   private val GermanListing = "The Mandalorian And Grogu"
 
