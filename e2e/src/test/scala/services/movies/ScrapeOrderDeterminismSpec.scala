@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import controllers.{FilmSchedule, MovieControllerService}
 import models._
@@ -307,13 +307,13 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
   // two films together only when one spelling arrives first.
 
   private def resolvedRow(title: String, cinema: Cinema, year: Int, tmdbId: Int): (CacheKey, MovieRecord) =
-    (CacheKey(title, Some(year)),   // mirrors MovieCache.keyOf — the title's own form, no searchTitle
+    (CacheKey(title, Some(year), titleNormalizer),   // mirrors MovieCache.keyOf — the title's own form, no searchTitle
       MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
         (Tmdb: Source)   -> SourceData(title = Some(title), releaseYear = Some(year)),
         (cinema: Source) -> SourceData(title = Some(title), releaseYear = Some(year)))))
 
   private def cinemaRow(title: String, cinema: Cinema, year: Option[Int]): (CacheKey, MovieRecord) =
-    (CacheKey(title, year),         // mirrors MovieCache.keyOf — the title's own form, no searchTitle
+    (CacheKey(title, year, titleNormalizer),         // mirrors MovieCache.keyOf — the title's own form, no searchTitle
       MovieRecord(data = Map[Source, SourceData](
         (cinema: Source) -> SourceData(title = Some(title), releaseYear = year))))
 

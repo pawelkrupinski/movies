@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -56,12 +56,12 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
   // showtimes are filed.
   "a duplicate fold" should "carry the victim's showtimes onto the winner" in {
     val (screenings, repository, cache) = fixture
-    cache.put(CacheKey("Alpha", None),
+    cache.put(CacheKey("Alpha", None, titleNormalizer),
       MovieRecord(tmdbId = Some(4242), data = withShowtime(Helios, "Alpha")))
     showtimeCount(screenings) shouldBe 1
 
     // Same film, different key — this write triggers the fold.
-    cache.put(CacheKey("Alpha", Some(2026)),
+    cache.put(CacheKey("Alpha", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(4242), data = Map[Source, SourceData](
         KinoMuza -> SourceData(title = Some("Alpha")))))
 
@@ -72,10 +72,10 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
   // A RE-KEY: one row moves to a new key. Same rename, different call site.
   "a re-key" should "carry the film's showtimes to the new key" in {
     val (screenings, repository, cache) = fixture
-    cache.put(CacheKey("Beta", None), MovieRecord(data = withShowtime(Helios, "Beta")))
+    cache.put(CacheKey("Beta", None, titleNormalizer), MovieRecord(data = withShowtime(Helios, "Beta")))
     showtimeCount(screenings) shouldBe 1
 
-    cache.rekey(CacheKey("Beta", None), CacheKey("Beta", Some(2026)), identity)
+    cache.rekey(CacheKey("Beta", None, titleNormalizer), CacheKey("Beta", Some(2026), titleNormalizer), identity)
 
     withClue(s"rows=${cache.snapshot().map(r => (r.title, r.year))} deletes=${repository.deletes.size}: ")(
       showtimeCount(screenings) should be > 0)
@@ -87,9 +87,9 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
   // to end up serving both venues' screenings rather than whichever wrote last.
   "a fold of two rows that BOTH have showtimes" should "keep both venues' screenings" in {
     val (screenings, _, cache) = fixture
-    cache.put(CacheKey("Gamma", None),
+    cache.put(CacheKey("Gamma", None, titleNormalizer),
       MovieRecord(tmdbId = Some(555), data = withShowtime(Helios, "Gamma")))
-    cache.put(CacheKey("Gamma", Some(2026)),
+    cache.put(CacheKey("Gamma", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(555), data = withShowtime(KinoMuza, "Gamma")))
 
     withClue(s"rows=${cache.snapshot().map(r => (r.title, r.year))}: ")(
@@ -108,7 +108,7 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
   "a settle that only re-spells a row" should "not delete the row it is rewriting" in {
     val (screenings, repository, cache) = fixture
     // Stored all-caps; `canonical()` prefers "Zoo", so the row needs re-spelling.
-    cache.put(CacheKey("ZOO", Some(2026)),
+    cache.put(CacheKey("ZOO", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(31), data = withShowtime(Helios, "ZOO")))
     showtimeCount(screenings) shouldBe 1
     val deletesBefore = repository.deletes.size

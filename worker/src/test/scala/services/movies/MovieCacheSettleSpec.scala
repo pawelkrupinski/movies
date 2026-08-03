@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -320,7 +320,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     })
     settled.snapshot().foreach { r =>
       val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor(r.title, r.year, titleNormalizer), r.record, titleNormalizer)
-      rebooted.put(CacheKey(recovered.title, recovered.year), r.record)
+      rebooted.put(CacheKey(recovered.title, recovered.year, titleNormalizer), r.record)
     }
     val before = rebooted.snapshot().map(r => (r.title, r.year)).toSet
     rebooted.canonicalizeBySanitize()

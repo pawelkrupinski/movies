@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
@@ -59,7 +59,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
 
       // A yearless row, one cinema, real showtimes — the shape a scrape leaves behind
       // before TMDB concludes. The slot title carries the year the settle will key on.
-      cache.put(CacheKey(title, None), MovieRecord(
+      cache.put(CacheKey(title, None, titleNormalizer), MovieRecord(
         tmdbId = Some(9911),
         data = Map[Source, SourceData](Multikino -> SourceData(
           title = Some(s"$title (2026)"), showtimes = Seq(Showtime(when, None))))))

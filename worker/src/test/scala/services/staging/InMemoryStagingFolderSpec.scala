@@ -1,6 +1,6 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Helios, MikroBronowice, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -100,7 +100,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
 
     val promotions = new InMemoryStagingFolder(staging, movies).foldGroup("Kumotry")
 
-    promotions.map(_._1) shouldBe Seq(CacheKey("Kumotry", Some(2026)))
+    promotions.map(_._1) shouldBe Seq(CacheKey("Kumotry", Some(2026), titleNormalizer))
     promotions.head._2.tmdbId shouldBe Some(1454157)
     settleIsANoOpOver(movies)
   }

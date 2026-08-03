@@ -1,6 +1,6 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Cinema, Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -123,7 +123,7 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.moviesUpserts should have size 1
     plan.moviesUpserts.head._1.year shouldBe Some(2026)
     plan.moviesUpserts.head._2.data.keySet shouldBe Set(Multikino, Helios, Tmdb)
-    plan.moviesDeletes shouldBe Seq(CacheKey("Zawodowcy", Some(2025)))
+    plan.moviesDeletes shouldBe Seq(CacheKey("Zawodowcy", Some(2025), titleNormalizer))
   }
 
   // WHY a `moviesDeletes` entry must never be treated as "this film is leaving".
@@ -147,7 +147,7 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
 
     plan.moviesDeletes should have size 1
     val retired = plan.moviesDeletes.head
-    retired shouldBe CacheKey("Zawodowcy", Some(2025))
+    retired shouldBe CacheKey("Zawodowcy", Some(2025), titleNormalizer)
 
     // The retired key's cinema is present on the winner — so the row was renamed, not
     // removed, and nothing about that film has stopped screening.
@@ -239,7 +239,7 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     settleIsANoOpAfterFold(plan)
 
     plan.newPromotions shouldBe plan.moviesUpserts
-    plan.newPromotions.map(_._1) shouldBe Seq(CacheKey("Kumotry", Some(2026)))
+    plan.newPromotions.map(_._1) shouldBe Seq(CacheKey("Kumotry", Some(2026), titleNormalizer))
   }
 
   it should "NOT list a film that merely merges into an existing movies row in newPromotions" in {

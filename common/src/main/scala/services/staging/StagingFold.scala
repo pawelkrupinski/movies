@@ -112,10 +112,10 @@ object StagingFold {
     // that then collapses onto the same `(sanitize, None)` key and clobbers all but
     // one — dropping every cinema's slot but one for the all-yearless events
     // (Maraton Horrorów, Filmowe Poranki).
-    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year)(using normalizer)).toSeq.map {
+    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year, normalizer)).toSeq.map {
       case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
     }
-    val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year)(using normalizer) -> r.record)
+    val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year, normalizer) -> r.record)
     val moviesKeys  = moviesByKey.map(_._1).toSet
     // Union ACROSS the staging↔movies boundary too: `CacheKey` is case-insensitive,
     // so a staging "iron maiden" row and an already-promoted movies "Iron Maiden"

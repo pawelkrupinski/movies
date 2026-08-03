@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -52,7 +52,7 @@ class CanonicalizeRetriggerFlapSpec extends AnyFlatSpec with Matchers {
     "pick the EXACT same key for a decorated row (both key on displayTitle, so the settle never re-keys)" in {
     val record    = felliniRecord
     val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960), titleNormalizer), record, titleNormalizer)
-    val storedKey = CacheKey(recovered.title, recovered.year)
+    val storedKey = CacheKey(recovered.title, recovered.year, titleNormalizer)
     val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(storedKey -> record), titleNormalizer)
     canonicalKey shouldBe storedKey
   }
@@ -65,7 +65,7 @@ class CanonicalizeRetriggerFlapSpec extends AnyFlatSpec with Matchers {
     val record    = felliniRecord
     val id        = StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960), titleNormalizer)
     val recovered = StoredMovieRecord.fromStorage(id, record, titleNormalizer)
-    c.put(CacheKey(recovered.title, recovered.year), record)
+    c.put(CacheKey(recovered.title, recovered.year, titleNormalizer), record)
 
     c.canonicalizeBySanitize()
     info(s"retriggers on one settle: ${recorder.events.toList}")

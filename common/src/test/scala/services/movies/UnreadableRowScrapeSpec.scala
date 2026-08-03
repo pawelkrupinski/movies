@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{CinemaMovie, Helios, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -92,7 +92,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     val repo  = new Repo(Seq(stored), readable = false)
     val cache = new CaffeineMovieCache(repo)
 
-    cache.rekey(CacheKey("Live Film", Some(2026)), CacheKey("Live Film", Some(2027)), identity)
+    cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity)
 
     withClue(s"wrote ${repo.upserts.map { case (t, r) => s"$t -> ${r.data.keySet}" }}: ")(
       repo.upserts shouldBe empty)
@@ -103,7 +103,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     val repo  = new Repo(Seq(stored), readable = true)
     val cache = new CaffeineMovieCache(repo)
 
-    cache.rekey(CacheKey("Live Film", Some(2026)), CacheKey("Live Film", Some(2027)), identity)
+    cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity)
 
     val written = repo.upserts.map(_._2)
     withClue(s"wrote ${written.map(_.data.keySet)}: ")(

@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
@@ -64,13 +64,13 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
       // Order matters: the fold canonicalises onto A, making B the victim. A merge that
       // settles on the STRIPPED row's own key survives by luck (the re-stitch finds its rows
       // where it looks); this ordering is the one that does not.
-      cache.put(CacheKey(titleB, Some(2026)), MovieRecord(
+      cache.put(CacheKey(titleB, Some(2026), titleNormalizer), MovieRecord(
         tmdbId = Some(9912),
         data = Map[Source, SourceData](KinoMuranow -> SourceData(
           title = Some(titleB), showtimes = Seq(Showtime(when, None))))))
 
       // Row A: the duplicate arriving fresh — same tmdbId, different key, a DIFFERENT cinema.
-      cache.put(CacheKey(titleA, Some(2026)), MovieRecord(
+      cache.put(CacheKey(titleA, Some(2026), titleNormalizer), MovieRecord(
         tmdbId = Some(9912),
         data = Map[Source, SourceData](Multikino -> SourceData(
           title = Some(titleA), showtimes = Seq(Showtime(when, None))))))

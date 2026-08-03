@@ -37,7 +37,7 @@ private[services] object CacheKey {
    *  reaches. Taking the normalizer as a context parameter puts the choice back
    *  where the country is known, and leaves existing call sites unchanged
    *  wherever a `given` is already in scope. */
-  def apply(cleanTitle: String, year: Option[Int])(using normalizer: TitleNormalizer): CacheKey =
+  def apply(cleanTitle: String, year: Option[Int], normalizer: TitleNormalizer): CacheKey =
     new CacheKey(cleanTitle, year, normalizer.sanitize(cleanTitle))
 }
 
@@ -354,7 +354,7 @@ class CaffeineMovieCache(
   // suffix / Cykl prefix / restored) is left out — that tier now only feeds
   // `apiQuery` for external lookups, not identity.
   private[services] def keyOf(title: String, year: Option[Int]): CacheKey =
-    CacheKey(title, year)
+    CacheKey(title, year, normalizer)
 
   private[services] def get(key: CacheKey): Option[MovieRecord] =
     Option(positive.getIfPresent(key))
@@ -1636,7 +1636,7 @@ class CaffeineMovieCache(
     // instead, so the cache is lossless the moment the rule lands (the orphaned
     // Mongo `_id` is reconciled by a later scrape / the reaper).
     val byKey: Map[CacheKey, MovieRecord] =
-      rows.groupBy(r => CacheKey(r.title, r.year))
+      rows.groupBy(r => CacheKey(r.title, r.year, normalizer))
         .map { case (k, rs) => k -> MovieRecordMerge.unionAll(rs.map(_.record)) }
     // Count what this backstop reload catches that the incremental change stream missed:
     // a put whose cached value DIFFERED (a missed upsert) and a key no longer in Mongo (a
@@ -1665,7 +1665,7 @@ class CaffeineMovieCache(
     // orphan id(s). Gated on an orphan existing, so a canonical corpus writes nothing.
     val orphans = rows.collect {
       case r if r.persistedId.exists(_ != StoredMovieRecord.idFor(r.title, r.year, normalizer)) =>
-        CacheKey(r.title, r.year) -> r.persistedId.get
+        CacheKey(r.title, r.year, normalizer) -> r.persistedId.get
     }
     if (orphans.nonEmpty) {
       orphans.groupBy(_._1).foreach { case (k, items) =>
@@ -1728,7 +1728,7 @@ class CaffeineMovieCache(
    *  the identity-gate `put` (Mongo is already the source of truth here, no
    *  re-folding needed). */
   private def applyUpsert(r: StoredMovieRecord): Unit = {
-    positive.put(CacheKey(r.title, r.year), forCache(r.record))
+    positive.put(CacheKey(r.title, r.year, normalizer), forCache(r.record))
     touch()
   }
 

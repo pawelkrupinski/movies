@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 
 class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
 
-  private def key(title: String, year: Option[Int]): CacheKey = CacheKey(title, year)
+  private def key(title: String, year: Option[Int]): CacheKey = CacheKey(title, year, titleNormalizer)
 
   /** A resolved row: carries a tmdbId and a Tmdb slot whose releaseYear IS the
    *  cluster's authoritative tmdbYear. */

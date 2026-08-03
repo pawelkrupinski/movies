@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -45,13 +45,13 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
     // back empty because Mongo was not ready ("findAll() returned empty on a cold cache").
     repository.upsert("Zaplatani", Some(2010), rated(7.7, Multikino, "Zaplatani"))
     withClue("premise — the row must NOT be cache-resident, or the read under test never happens: ")(
-      cache.get(CacheKey("Zaplatani", Some(2010))) shouldBe None)
+      cache.get(CacheKey("Zaplatani", Some(2010), titleNormalizer)) shouldBe None)
 
     // A yearless row for the same film resolves, and settles onto 2010.
     val resolved = MovieRecord(tmdbId = Some(TmdbId), data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Zaplatani")),
       Tmdb   -> SourceData(title = Some("Zaplatani"), releaseYear = Some(2010))))
-    cache.settleResolved(CacheKey("Zaplatani", None), resolved)
+    cache.settleResolved(CacheKey("Zaplatani", None, titleNormalizer), resolved)
 
     // The invariant is about the CORPUS, not about which key the settle chose: a pass that
     // could not read the year it wanted may legitimately defer the re-key, but it may never
@@ -75,7 +75,7 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
     val resolved = MovieRecord(tmdbId = Some(TmdbId), data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Zaplatani")),
       Tmdb   -> SourceData(title = Some("Zaplatani"), releaseYear = Some(2010))))
-    val target = cache.settleResolved(CacheKey("Zaplatani", None), resolved)
+    val target = cache.settleResolved(CacheKey("Zaplatani", None, titleNormalizer), resolved)
 
     // The deferral above must be a deferral, not a new rule — a readable year still gets
     // the re-key AND the prior occupant folded in.
@@ -100,9 +100,9 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
     val repository = new UnreadableByIdMovieRepository()
     val cache      = new CaffeineMovieCache(repository)
 
-    cache.put(CacheKey("Zaplatani", Some(2010)), rated(7.7, Multikino, "Zaplatani"))
+    cache.put(CacheKey("Zaplatani", Some(2010), titleNormalizer), rated(7.7, Multikino, "Zaplatani"))
     // A second spelling of the same film arrives with the same tmdbId — the fold's trigger.
-    cache.put(CacheKey("Tangled", Some(2010)), rated(7.7, Helios, "Tangled"))
+    cache.put(CacheKey("Tangled", Some(2010), titleNormalizer), rated(7.7, Helios, "Tangled"))
 
     repository.failing = false
     val rows = repository.findAll()

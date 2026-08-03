@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -158,7 +158,7 @@ class RatingTasksSpec extends AnyFlatSpec with Matchers {
     fresh.markFresh(RatingTasks.tmdbResolvedAtKey(1454157), FreshnessKind.TmdbResolve, resolvedAt)
 
     val (metrics, seen) = recordingMetrics()
-    val dedup = RatingTasks.dedupKey(FreshnessKind.ImdbRating, CacheKey("Kumotry", Some(2026)), Some(1454157)) // imdb|tmdb:1454157
+    val dedup = RatingTasks.dedupKey(FreshnessKind.ImdbRating, CacheKey("Kumotry", Some(2026), titleNormalizer), Some(1454157)) // imdb|tmdb:1454157
     val h = new RatingHandler(TaskType.ImdbRating, FreshnessKind.ImdbRating, fresh, dueWindow, cadence,
       (_, _) => Some("7.5"), Clock.fixed(firstAt, ZoneOffset.UTC), metrics = metrics)
 

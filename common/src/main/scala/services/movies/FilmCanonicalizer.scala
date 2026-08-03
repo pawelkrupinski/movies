@@ -354,7 +354,7 @@ object FilmCanonicalizer {
     // Tmdb slot carries the bare base title ("Straszny film") would canonicalise
     // to that base title and collapse onto the base row. Cinema titles keep the
     // variant distinct; `displayTitle` still derives a nice label separately.
-    val slotKeys = cluster.flatMap { case (_, e) => e.cinemaData.values.flatMap(d => d.title.map(t => CacheKey(t, d.releaseYear)(using normalizer))) }
+    val slotKeys = cluster.flatMap { case (_, e) => e.cinemaData.values.flatMap(d => d.title.map(t => CacheKey(t, d.releaseYear, normalizer))) }
     val keys     = cluster.map(_._1)
     val allKeys  = slotKeys ++ keys
     val canonicalYear = clusterYear(cluster)
@@ -379,7 +379,7 @@ object FilmCanonicalizer {
     // RT/MC already slug-fold), so this re-spelling no longer shifts which fixture
     // a rating lookup hits.
     val canonicalTitle = merged.displayTitle(minSpelling, normalizer)
-    val canonicalKey   = CacheKey(canonicalTitle, canonicalYear)(using normalizer)
+    val canonicalKey   = CacheKey(canonicalTitle, canonicalYear, normalizer)
     (canonicalKey, merged)
   }
 }

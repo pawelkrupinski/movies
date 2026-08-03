@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -56,7 +56,7 @@ class UnknownBannerReDivertSpec extends AnyFlatSpec with Matchers {
     "NOT re-divert a decorated scrape whose film already sits in movies under this cinema's slot (unknown-banner flap)" in {
     val staging = new InMemoryStagingRepository
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging))
-    cache.put(CacheKey(film, Some(2026)), rowWithDecoratedSlot)
+    cache.put(CacheKey(film, Some(2026), titleNormalizer), rowWithDecoratedSlot)
 
     val before   = staging.findAll().toSet
     cache.recordCinemaScrape(cinema, Seq(decoratedScrape))

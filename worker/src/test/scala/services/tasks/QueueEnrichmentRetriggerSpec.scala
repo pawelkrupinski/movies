@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Country, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -24,7 +24,7 @@ class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
   private def drain(queue: InMemoryTaskQueue): Seq[Task] =
     Iterator.continually(queue.claim("w", 5.minutes)).takeWhile(_.isDefined).flatten.toSeq
 
-  private val filmKey    = CacheKey("Ojczyzna", Some(2026))
+  private val filmKey    = CacheKey("Ojczyzna", Some(2026), titleNormalizer)
   private val resolved = MovieRecord(tmdbId = Some(1437696), imdbId = Some("tt37304295"),
     data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Fatherland"))))
 

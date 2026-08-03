@@ -77,20 +77,20 @@ class TitleNormalizerInstanceSpec extends AnyFlatSpec with Matchers {
   // constructor, so a key silently adopted whatever rule set was global on the
   // thread that built it, including Mongo change-stream driver threads.
   "a CacheKey" should "take its identity from the country whose rules built it" in {
-    CacheKey("Minions & Monster", Some(2025))(using pl) should
-      not be CacheKey("Minions & Monster", Some(2025))(using de)
+    CacheKey("Minions & Monster", Some(2025), pl) should
+      not be CacheKey("Minions & Monster", Some(2025), de)
   }
 
   it should "merge the ampersand and conjunction spellings only where that rule applies" in {
-    CacheKey("Minions & Monster", Some(2025))(using pl) shouldBe
-      CacheKey("Minions i Monster", Some(2025))(using pl)
-    CacheKey("Minions & Monster", Some(2025))(using de) should
-      not be CacheKey("Minions i Monster", Some(2025))(using de)
+    CacheKey("Minions & Monster", Some(2025), pl) shouldBe
+      CacheKey("Minions i Monster", Some(2025), pl)
+    CacheKey("Minions & Monster", Some(2025), de) should
+      not be CacheKey("Minions i Monster", Some(2025), de)
   }
 
   it should "still key identically across countries when no scoped rule applies" in {
-    CacheKey("Top Gun: Maverick", Some(2022))(using pl) shouldBe
-      CacheKey("Top Gun: Maverick", Some(2022))(using de)
+    CacheKey("Top Gun: Maverick", Some(2022), pl) shouldBe
+      CacheKey("Top Gun: Maverick", Some(2022), de)
   }
 
   "the rules a normalizer exposes" should "be that country's filtered set" in {

@@ -1,6 +1,6 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import services.freshness.InMemoryFreshnessStore
 import services.movies.{CacheKey, InMemoryMovieRepository}
@@ -81,6 +81,6 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
     folded.head.record.imdbId shouldBe Some("tt1275779")
     folded.head.record.director should contain("Jane Doe")           // detail hint carried through the fold
     staging.findAll() shouldBe empty                                  // graduated out of pending_movies
-    promoted shouldBe Seq(CacheKey("Newcomer", Some(2026)))           // surfaced as a promotion → ratings scheduled
+    promoted shouldBe Seq(CacheKey("Newcomer", Some(2026), titleNormalizer))           // surfaced as a promotion → ratings scheduled
   }
 }

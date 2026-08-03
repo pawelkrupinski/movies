@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -26,7 +26,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
 
-    enqueuer(queue).enqueueDueFor(CacheKey("Film", None), row, now, limit = 2) shouldBe 2
+    enqueuer(queue).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now, limit = 2) shouldBe 2
 
     queue.waitingCount(TaskType.ImdbRating)    shouldBe 1
     queue.waitingCount(TaskType.FilmwebRating) shouldBe 1
@@ -37,7 +37,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
   it should "enqueue all four eligible sources when the cap allows" in {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
-    enqueuer(queue).enqueueDueFor(CacheKey("Film", None), row, now) shouldBe 4
+    enqueuer(queue).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now) shouldBe 4
     Seq(TaskType.ImdbRating, TaskType.FilmwebRating, TaskType.RtRating, TaskType.McRating)
       .foreach(queue.waitingCount(_) shouldBe 1)
   }
@@ -46,7 +46,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     val queue     = new InMemoryTaskQueue
     val freshness = new InMemoryFreshnessStore
     val enq       = new RatingEnqueuer(queue, freshness, new DueWindow(4.hours))
-    val key       = CacheKey("Film", None)
+    val key       = CacheKey("Film", None, titleNormalizer)
     val row       = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
     // Stamp all four sources fresh — the cadence now judges each "recently checked".
     Seq(FreshnessKind.ImdbRating, FreshnessKind.FilmwebRating, FreshnessKind.RtRating, FreshnessKind.McRating)
@@ -71,7 +71,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     val queue     = new InMemoryTaskQueue
     val freshness = new InMemoryFreshnessStore
     val enq       = new RatingEnqueuer(queue, freshness, new DueWindow(4.hours))
-    val key       = CacheKey("Film", None)
+    val key       = CacheKey("Film", None, titleNormalizer)
     // TMDB-resolved, but the imdbId hasn't been recovered yet.
     val row       = MovieRecord(tmdbId = Some(2))
     Seq(FreshnessKind.ImdbRating, FreshnessKind.FilmwebRating, FreshnessKind.RtRating, FreshnessKind.McRating)
@@ -92,7 +92,7 @@ class RatingEnqueuerSpec extends AnyFlatSpec with Matchers {
     val queue = new InMemoryTaskQueue
     val row   = MovieRecord(imdbId = Some("tt1"), tmdbId = Some(2))
     // Fully resolved: eligible for all four sources, cap unbounded — yet UK drops Filmweb.
-    enqueuer(queue, Country.UnitedKingdom).enqueueDueFor(CacheKey("Film", None), row, now) shouldBe 3
+    enqueuer(queue, Country.UnitedKingdom).enqueueDueFor(CacheKey("Film", None, titleNormalizer), row, now) shouldBe 3
     queue.waitingCount(TaskType.FilmwebRating) shouldBe 0
     Seq(TaskType.ImdbRating, TaskType.RtRating, TaskType.McRating)
       .foreach(queue.waitingCount(_) shouldBe 1)

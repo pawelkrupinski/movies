@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Filmweb, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -19,7 +19,7 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     MovieRecord(tmdbId = tmdbId, imdbId = imdbId, searchTitle = searchTitle, tmdbNoMatch = tmdbNoMatch,
       data = original.map(o => Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some(o)))).getOrElse(Map.empty))
 
-  private def k(title: String, year: Option[Int] = Some(2026)) = CacheKey(title, year)
+  private def k(title: String, year: Option[Int] = Some(2026)) = CacheKey(title, year, titleNormalizer)
 
   private def decide(before: MovieRecord, bk: CacheKey, after: MovieRecord, ak: CacheKey) =
     MergeRetrigger.changedEnrichments(before, bk, after, ak)

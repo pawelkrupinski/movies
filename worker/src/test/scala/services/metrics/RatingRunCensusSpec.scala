@@ -1,6 +1,6 @@
 package services.metrics
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Country, MovieRecord}
@@ -23,7 +23,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
 
   private val now = Instant.parse("2026-06-23T20:00:00Z")
 
-  private def key(title: String, year: Int) = CacheKey(title, Some(year))
+  private def key(title: String, year: Int) = CacheKey(title, Some(year), titleNormalizer)
 
   // Resolved an hour ago, both ids; imdb + fw have already run, rt + mc never have.
   private val resolvedRated = key("Resolved Rated", 2025)
@@ -179,7 +179,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     def hasResolvedSiblingByTitle(rawTitle: String): Boolean = false
     def snapshot(): Seq[StoredMovieRecord]                   = Nil
     def lastModified: Instant                                = Instant.EPOCH
-    private[services] def keyOf(title: String, year: Option[Int]): CacheKey = CacheKey(title, year)
+    private[services] def keyOf(title: String, year: Option[Int]): CacheKey = CacheKey(title, year, titleNormalizer)
     private[services] def canonicalKeyFor(k: CacheKey): Option[CacheKey]    = Some(k)
     private[services] def get(k: CacheKey): Option[MovieRecord]             = rows.find(_._1 == k).map(_._2)
     private[services] def isNegative(k: CacheKey): Boolean                  = false

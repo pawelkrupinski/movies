@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -53,21 +53,21 @@ class SourceDataConvergenceSpec extends AnyFlatSpec with Matchers {
   private def seedCorpus(cache: CaffeineMovieCache): Unit = {
     // MIGRATED + UN-MIGRATED both look the same through the cache API — the repository
     // routes showtimes into `screenings` either way. What differs is the settle they meet.
-    cache.put(CacheKey("Migrated", Some(2026)),
+    cache.put(CacheKey("Migrated", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(101), data = Map[Source, SourceData](Multikino -> slot("Migrated"))))
-    cache.put(CacheKey("Unmigrated", Some(2026)),
+    cache.put(CacheKey("Unmigrated", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(102), data = Map[Source, SourceData](Helios -> slot("Unmigrated"))))
     // MIXED: two cinemas on one film, the shape that made a shadowing read drop one.
-    cache.put(CacheKey("Mixed", Some(2026)),
+    cache.put(CacheKey("Mixed", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(103), data = Map[Source, SourceData](
         Multikino -> slot("Mixed"), KinoMuranow -> slot("Mixed"))))
     // RE-SPELLED: stored all-caps, canonical prefers title case, so the settle rewrites it.
-    cache.put(CacheKey("RESPELLED", Some(2026)),
+    cache.put(CacheKey("RESPELLED", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(104), data = Map[Source, SourceData](Helios -> slot("RESPELLED"))))
     // DUPLICATED: two keys sharing a tmdbId — the settle folds one into the other.
-    cache.put(CacheKey("Duplicated", None),
+    cache.put(CacheKey("Duplicated", None, titleNormalizer),
       MovieRecord(tmdbId = Some(105), data = Map[Source, SourceData](Multikino -> slot("Duplicated"))))
-    cache.put(CacheKey("Duplicated", Some(2026)),
+    cache.put(CacheKey("Duplicated", Some(2026), titleNormalizer),
       MovieRecord(tmdbId = Some(105), data = Map[Source, SourceData](KinoMuza -> slot("Duplicated"))))
   }
 
