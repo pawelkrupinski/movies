@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -334,7 +334,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       aliased("Tangled",   tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Multikino, cinemaTitle = "Zaplątani"),
       aliased("Zaplątani", tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Helios,    cinemaTitle = "Zaplątani")
     ))
-    TitleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe "zaplatani"
+    titleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe "zaplatani"
   }
 
   it should "keep a decorated variant's own spelling, not the base title its Tmdb slot carries" in {
@@ -353,8 +353,8 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster)
 
     // The dub keeps its own spelling; it does NOT collapse onto the base "Straszny film".
-    TitleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe
-      TitleNormalizer.sanitize("Straszny film ukraiński dubbing")
+    titleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe
+      titleNormalizer.sanitize("Straszny film ukraiński dubbing")
     canonicalKey.cleanTitle should include ("dubbing")
   }
 
@@ -403,7 +403,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     settled.distinct should have size 1
     val (canonicalKey, tmdbId) = settled.head
     canonicalKey.year shouldBe Some(2010)                          // TMDB year, not the 2012 straggler
-    TitleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe "zaplatani"  // dominant PL spelling (3 of 5)
+    titleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe "zaplatani"  // dominant PL spelling (3 of 5)
     tmdbId shouldBe Some(38757)
   }
 

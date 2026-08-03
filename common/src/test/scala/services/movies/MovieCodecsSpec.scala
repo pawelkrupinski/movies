@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.{Instant, LocalDateTime}
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 /**
  * Round-trips `StoredMovieDto` through the codec registry to confirm:
@@ -282,7 +282,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   // ── Derived title/year (no longer stored) ─────────────────────────────────
 
   it should "derive the display title from sourceData (dominant cinema form), not a stored field" in {
-    val id = s"${TitleNormalizer.sanitize("Drzewo magii")}|2026"
+    val id = s"${titleNormalizer.sanitize("Drzewo magii")}|2026"
     val record = MovieRecord(data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("Drzewo Magii")),  // over-capitalised
       Helios    -> SourceData(title = Some("Drzewo magii")),
@@ -294,7 +294,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "recover year=None from an _id with an empty year suffix" in {
-    val id = s"${TitleNormalizer.sanitize("Some Event")}|"
+    val id = s"${titleNormalizer.sanitize("Some Event")}|"
     val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Some Event"))))
     StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now()))).year shouldBe None
   }
@@ -302,21 +302,21 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   it should "derive a title that sanitizes back to the _id prefix (no re-keying churn)" in {
     // The derived title must recompute to the SAME documentId, or a later upsert
     // would orphan the row under a new _id.
-    val id = s"${TitleNormalizer.sanitize("Top Gun: Maverick")}|2022"
+    val id = s"${titleNormalizer.sanitize("Top Gun: Maverick")}|2022"
     val record = MovieRecord(data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("Top Gun: Maverick")),
       Helios    -> SourceData(title = Some("TOP GUN MAVERICK"))
     ))
     val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())))
     back.title                           shouldBe "Top Gun: Maverick"  // ladder picks punct+mixed-case
-    TitleNormalizer.sanitize(back.title) shouldBe id.split('|').head
+    titleNormalizer.sanitize(back.title) shouldBe id.split('|').head
   }
 
   it should "ignore stale top-level title/year columns on a legacy document (back-compat decode)" in {
     // Existing prod documents still carry the now-dropped `title`/`year` columns.
     // The codec must decode them without error, and `toDomain` must derive from
     // sourceData + the _id, NOT trust the stale (order-dependent) columns.
-    val id = s"${TitleNormalizer.sanitize("Wonka")}|2023"
+    val id = s"${titleNormalizer.sanitize("Wonka")}|2023"
     val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Wonka"))))
     val raw = new BsonDocument()
     codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain(id, record, Instant.now()), EncoderContext.builder().build())

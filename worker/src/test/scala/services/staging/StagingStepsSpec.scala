@@ -27,7 +27,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
   private def seeded(cinema: Cinema, title: String, year: Option[Int]): (InMemoryStagingRepository, String) = {
     val repository = new InMemoryStagingRepository
     repository.upsert(cinema, title, year, listingRow(cinema, title, year))
-    (repository, TitleNormalizer.sanitize(title))
+    (repository, titleNormalizer.sanitize(title))
   }
 
   private def steps(repository: InMemoryStagingRepository, enrichers: Seq[DetailEnricher],
@@ -53,7 +53,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Fallback", Some(2026), MovieRecord(data = Map[Source, SourceData](
       CinemaShowing.keyFor(Helios, "Fallback") -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
-    val anchor = TitleNormalizer.sanitize("Fallback")
+    val anchor = titleNormalizer.sanitize("Fallback")
     val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("native")))) // would merge if pointed at the URL
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
 
@@ -275,7 +275,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // re-enqueued StagingResolveImdbId forever (8790× observed in prod).
     val repository = new InMemoryStagingRepository
     val title = "Chłopiec na krańcach świata"
-    val anchor = TitleNormalizer.sanitize(title)
+    val anchor = titleNormalizer.sanitize(title)
     // Helios row (`_id` sorts first) has NO tmdbId; Multikino row carries tmdbId, no imdb.
     repository.upsert(Helios, title, Some(2025), MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title)))))
     repository.upsert(Multikino, title, None, MovieRecord(tmdbId = Some(1277047), data = Map[Source, SourceData](Multikino -> SourceData(title = Some(title)))))
@@ -302,7 +302,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // stamps each row with the film ITS hints resolve to. Fails before, passes now.
     val repository = new InMemoryStagingRepository
     val title = "Twins"; val year = Some(2026)
-    val anchor = TitleNormalizer.sanitize(title)
+    val anchor = titleNormalizer.sanitize(title)
     repository.upsert(Helios, title, year,
       MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), releaseYear = year, director = Seq("Dir A")))))
     repository.upsert(Multikino, title, year,

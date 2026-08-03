@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
@@ -89,7 +89,7 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
       Seq(idA, idB).foreach { id => screenings.deleteFilm(id); slots.deleteFilm(id) }
       Seq(titleA, titleB).foreach { t =>
         Await.ready(db.getCollection("movies")
-          .deleteMany(Filters.regex("_id", s"^${TitleNormalizer.sanitize(t)}\\|")).toFuture(), 10.seconds)
+          .deleteMany(Filters.regex("_id", s"^${titleNormalizer.sanitize(t)}\\|")).toFuture(), 10.seconds)
       }
       client.close()
     }

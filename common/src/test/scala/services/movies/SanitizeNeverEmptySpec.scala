@@ -22,7 +22,7 @@ import org.scalatest.matchers.should.Matchers
  * stays a pure function of what the cinemas reported.
  */
 class SanitizeNeverEmptySpec extends AnyFlatSpec with Matchers {
-  import TitleNormalizer.sanitize
+  import SingleCountryNormalizer.titleNormalizer.sanitize
 
   // The whole string is a Canonical-tier banner. Kept as a `val` so the premise assertion
   // below fails loudly if the rules ever stop consuming it, rather than the guard quietly

@@ -73,12 +73,14 @@ object RecordCorpusFixture {
       // films that happen to work. The seed is printed so a capture can be re-derived
       // from a log if anyone ever needs to.
       val seed   = java.time.Instant.now().toEpochMilli
-      val keys   = CorpusSample.pick(rows, CorpusSample.DefaultSize, new scala.util.Random(seed))
-      val sample = CorpusSample.trim(rows, keys)
+      // The corpus is this country's, so the sample must be drawn under its rules.
+      val titles = services.movies.TitleNormalizer.forCountry(country)
+      val keys   = CorpusSample.pick(rows, CorpusSample.DefaultSize, new scala.util.Random(seed), titles)
+      val sample = CorpusSample.trim(rows, keys, titles)
       val sampleKey  = s"${country.code}-sample"
       val samplePath = CorpusFixture.write(sampleKey, sample)
-      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotTitles = Some(CorpusSample.titlesOf(rows, keys))))
-      println(s"[corpus] sample seed $seed — ${keys.size} films drawn from ${CorpusSample.filmKeys(rows).size}")
+      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotTitles = Some(CorpusSample.titlesOf(rows, keys, titles))))
+      println(s"[corpus] sample seed $seed — ${keys.size} films drawn from ${CorpusSample.filmKeys(rows, titles).size}")
       println(s"[corpus] wrote $samplePath — ${sample.size} venues, ${sample.map(_.films.size).sum} listings")
       println(s"[corpus] wrote $sampleBaseline — prod's coverage of just those films")
     } finally client.close()

@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -215,7 +215,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
     // Keyed on the cinema-reported Polish title, NOT the original "tangled" (which
     // no cinema reports — that would re-spawn the duplicate on the next scrape).
-    TitleNormalizer.sanitize(r.head.title) shouldBe "zaplatani"
+    titleNormalizer.sanitize(r.head.title) shouldBe "zaplatani"
     r.head.record.tmdbId shouldBe Some(38757)
     r.head.record.cinemaData.keySet shouldBe Set(Multikino, Helios)
     c.canonicalizeBySanitize()                       // already canonical — a no-op
@@ -254,7 +254,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     c.canonicalizeBySanitize()
     val r = c.snapshot()
     r.size shouldBe 1
-    TitleNormalizer.sanitize(r.head.title) shouldBe "zaproszenie"
+    titleNormalizer.sanitize(r.head.title) shouldBe "zaproszenie"
     r.head.record.cinemaTitles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
   }
 
@@ -372,7 +372,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     // MovieRecord(), nulling every rating; now the None branch rebuilds from `stored`.
     repo.upsert("Zimno", Some(2026), ratedRecord("Zimno", 2026, 4242, Helios))
     c.recordCinemaScrape(KinoMuza, Seq(cinemaMovie("Zimno", 2026, KinoMuza)))
-    val row = c.snapshot().find(r => TitleNormalizer.sanitize(r.title) == "zimno").map(_.record)
+    val row = c.snapshot().find(r => titleNormalizer.sanitize(r.title) == "zimno").map(_.record)
     withClue(s"cold-cache scrape dropped the ratings: $row\n") {
       row.flatMap(_.imdbRating)     shouldBe Some(7.1)
       row.flatMap(_.metascore)      shouldBe Some(66)
@@ -397,7 +397,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
       (Tmdb: Source)      -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)),
       (Multikino: Source) -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
     c.settleResolved(c.keyOf("Kumotry", None), resolved)
-    val r = c.snapshot().filter(x => TitleNormalizer.sanitize(x.title) == "kumotry")
+    val r = c.snapshot().filter(x => titleNormalizer.sanitize(x.title) == "kumotry")
     withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
     val row = r.head.record
     withClue(s"the settle nulled the prior occupant's ratings: $row\n") {
@@ -416,7 +416,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     // deleted the rated oldKey doc and wrote an empty row at newKey — ratings gone.
     repo.upsert("Mróz", None, ratedRecord("Mróz", 2026, 900, Helios))
     c.rekey(c.keyOf("Mróz", None), c.keyOf("Mróz", Some(2026)), identity)
-    val r = c.snapshot().filter(x => TitleNormalizer.sanitize(x.title) == "mroz")
+    val r = c.snapshot().filter(x => titleNormalizer.sanitize(x.title) == "mroz")
     withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
     r.head.year shouldBe Some(2026)
     withClue(s"rekey lost the cold row's ratings: ${r.head.record}\n") {

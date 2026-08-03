@@ -3,10 +3,11 @@ package services.movies
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titlerules.{TitleRules, TitleRuleSet}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
-  import TitleNormalizer.mergeKey
+  import SingleCountryNormalizer.titleNormalizer.mergeKey
 
   // ── The Mandalorian merge — the headline scenario ─────────────────────────
 
@@ -94,8 +95,8 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   // by `normalize`, because a global dotted-numeral romanisation would also fire
   // on festival-edition prefixes like "17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO".)
   it should "unify the bare 'skarpetek 3' / 'skarpetek III' spellings via Roman normalisation" in {
-    TitleNormalizer.sanitize("Niesamowite przygody skarpetek 3") shouldBe
-      TitleNormalizer.sanitize("Niesamowite przygody skarpetek III")
+    titleNormalizer.sanitize("Niesamowite przygody skarpetek 3") shouldBe
+      titleNormalizer.sanitize("Niesamowite przygody skarpetek III")
   }
 
   // ── Punctuation-only duplicates ───────────────────────────────────────────
@@ -148,7 +149,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   // ── preferredDisplay ──────────────────────────────────────────────────────
 
-  import TitleNormalizer.preferredDisplay
+  import SingleCountryNormalizer.titleNormalizer.preferredDisplay
 
   "preferredDisplay" should "prefer 'i' over '&' when both spellings are present" in {
     preferredDisplay(Seq("Mandalorian & Grogu", "Mandalorian i Grogu")) shouldBe Some("Mandalorian i Grogu")
@@ -231,7 +232,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     // same raw title) into preferredDisplay. Both must end up as the full
     // "(AD + CC + PJM)" form so the user-visible title isn't truncated.
     val raw        = "Kino bez barier: Arco (AD + CC + PJM)"
-    val cleanTitle = TitleNormalizer.recase(raw)
+    val cleanTitle = titleNormalizer.recase(raw)
     preferredDisplay(Seq(raw, cleanTitle)) shouldBe Some(raw)
   }
 
@@ -272,7 +273,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   // cache card while resolving off the bare film. The display title likewise
   // keeps the banner; only its CASING is normalised (see `recase` below).
 
-  import TitleNormalizer.{apiQuery, programmePrefix, recase}
+  import SingleCountryNormalizer.titleNormalizer.{apiQuery, programmePrefix, recase}
 
   "apiQuery" should "leave 'Orwell: 2 + 2 = 5' alone (the '+ <event>' suffix must start with a letter)" in {
     apiQuery("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"

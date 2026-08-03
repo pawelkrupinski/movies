@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
@@ -82,7 +82,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     } finally {
       Seq(yearlessId, yearedId).foreach { id => screenings.deleteFilm(id); slots.deleteFilm(id) }
       Await.ready(db.getCollection("movies")
-        .deleteMany(Filters.regex("_id", s"^${TitleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
+        .deleteMany(Filters.regex("_id", s"^${titleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
       client.close()
     }
   }

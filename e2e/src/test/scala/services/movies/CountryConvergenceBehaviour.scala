@@ -647,7 +647,7 @@ abstract class CountryConvergenceBehaviour(
    *  in `pending_movies` is the churn we care about. */
   private def settleTick(w: ArchiveReplayWiring, rnd: Random): Set[(String, String)] = {
     val before = w.stagingRepository.findAll()
-      .map(r => (r.cinema.displayName, TitleNormalizer.sanitize(r.title))).toSet
+      .map(r => (r.cinema.displayName, w.stagingRepository.normalizer.sanitize(r.title))).toSet
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
 
     // Shuffled per tick so the fixpoint is asserted independent of the order
@@ -663,7 +663,7 @@ abstract class CountryConvergenceBehaviour(
     }
 
     val after = w.stagingRepository.findAll()
-      .map(r => (r.cinema.displayName, TitleNormalizer.sanitize(r.title))).toSet
+      .map(r => (r.cinema.displayName, w.stagingRepository.normalizer.sanitize(r.title))).toSet
     ready.foreach(w.eventBus.publish)
     w.drainServices()
     w.drainStaging()
@@ -1041,8 +1041,8 @@ abstract class CountryConvergenceBehaviour(
       // film's DISPLAY title, so a corpus row stored as "Cicha garden ii" is
       // legitimately emitted as "Cicha Garden II". Matching raw strings reported
       // six such films as lost when every one of them was on the page.
-      val settled  = w.movieCache.snapshot().map(r => TitleNormalizer.sanitize(r.title)).toSet
-      val emitted  = shownTitles.map(TitleNormalizer.sanitize)
+      val settled  = w.movieCache.snapshot().map(r => w.movieCache.normalizer.sanitize(r.title)).toSet
+      val emitted  = shownTitles.map(w.movieCache.normalizer.sanitize)
       val homeless = settled -- emitted
       withClue(s"${homeless.size} settled film(s) exist in the corpus but are emitted by nothing: " +
                s"${homeless.toList.sorted.take(10).mkString(", ")}\n") {

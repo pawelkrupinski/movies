@@ -1,6 +1,6 @@
 package services.readmodel
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -41,13 +41,13 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     )
   )
 
-  private val id     = s"${TitleNormalizer.sanitize("Skazani na Shawshank")}|1994"
+  private val id     = s"${titleNormalizer.sanitize("Skazani na Shawshank")}|1994"
   private val stored = StoredMovieRecord.fromStorage(id, record)
 
   private val (movie, screenings) = ReadModelProjection.project(stored)
 
   "resolve" should "materialise merged metadata and carry no source data" in {
-    movie._id shouldBe s"${TitleNormalizer.sanitize("Skazani na Shawshank")}|1994"
+    movie._id shouldBe s"${titleNormalizer.sanitize("Skazani na Shawshank")}|1994"
     movie.title shouldBe "Skazani na Shawshank"
     movie.originalTitle shouldBe Some("The Shawshank Redemption")
     movie.synopsis shouldBe Some("Chronicle of life in a state penitentiary.")
@@ -212,7 +212,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     val cards = ReadModelProjection.projectAll(twoTitleStored)
     cards.map(_._1.title) should contain theSameElementsAs Seq("Iwan Groźny", "Иван Грозный")
     ReadModelProjection.filmIds(twoTitleStored) should contain theSameElementsAs
-      Seq("iwangrozny|1944", s"${TitleNormalizer.sanitize("Иван Грозный")}|1944")
+      Seq("iwangrozny|1944", s"${titleNormalizer.sanitize("Иван Грозный")}|1944")
   }
 
   "screeningsAll" should "return exactly projectAll's screenings (metadata-free), for single- and multi-variant rows" in {

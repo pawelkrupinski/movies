@@ -2,19 +2,19 @@ package clients.kino_bulgarska
 
 import models.{KinoBulgarska, Showtime}
 import clients.tools.FakeHttpFetch
-import services.movies.TitleNormalizer
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoBulgarskaClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
 
   private val client  = new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska"))
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
-    .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
+    .map(cm => cm.copy(movie = cm.movie.copy(title = titleNormalizer.recase(cm.movie.title))))
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -193,27 +193,27 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
 
   // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertions read display titles
   "KinoBulgarskaClient.normalizeTitle" should "strip a single '– pokazy przedpremierowe' suffix" in {
-    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("POSŁANI – Pokazy przedpremierowe")) shouldBe "Posłani"
+    titleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("POSŁANI – Pokazy przedpremierowe")) shouldBe "Posłani"
   }
 
   it should "strip a single '– pokaz przedpremierowy' suffix" in {
-    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("FILM – Pokaz przedpremierowy")) shouldBe "Film"
+    titleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("FILM – Pokaz przedpremierowy")) shouldBe "Film"
   }
 
   it should "strip a single '– kino dzieci' suffix" in {
-    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("PUCIO – Kino dzieci")) shouldBe "Pucio"
+    titleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("PUCIO – Kino dzieci")) shouldBe "Pucio"
   }
 
   it should "strip chained '– pokazy przedpremierowe – kino dzieci' suffixes" in {
-    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci")) shouldBe "Drzewo magii"
+    titleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("DRZEWO MAGII – Pokazy przedpremierowe – Kino dzieci")) shouldBe "Drzewo magii"
   }
 
   it should "still strip the legacy '– poznańska premiera' suffix" in {
-    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("ROMERÍA – Poznańska premiera")) shouldBe "Romería"
+    titleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("ROMERÍA – Poznańska premiera")) shouldBe "Romería"
   }
 
   it should "leave plain titles untouched apart from sentence-casing" in {
-    TitleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("CHRONOLOGIA WODY")) shouldBe "Chronologia wody"
+    titleNormalizer.recase(KinoBulgarskaClient.normalizeTitle("CHRONOLOGIA WODY")) shouldBe "Chronologia wody"
   }
 
   // ── Trailers ──────────────────────────────────────────────────────────────

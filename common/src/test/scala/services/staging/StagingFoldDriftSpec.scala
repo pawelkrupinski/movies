@@ -1,11 +1,10 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{MikroBronowice, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
 
 /**
  * Regression for the staging "fold" loop: a concluded newcomer whose re-derived
@@ -37,8 +36,8 @@ class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
   private val idMiddle = staleId.substring(staleId.indexOf('|') + 1, staleId.lastIndexOf('|'))
 
   "a stale-keyed staging row" should "actually drift (premise check)" in {
-    TitleNormalizer.sanitize(row.title) should not be idMiddle
-    info(s"_id middle=$idMiddle  title='${row.title}'  sanitize(title)=${TitleNormalizer.sanitize(row.title)}")
+    titleNormalizer.sanitize(row.title) should not be idMiddle
+    info(s"_id middle=$idMiddle  title='${row.title}'  sanitize(title)=${titleNormalizer.sanitize(row.title)}")
   }
 
   "selectStagingGroup" should "select a row whose title sanitizes away from its _id middle" in {
@@ -48,7 +47,7 @@ class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
   it should "NOT be found by the legacy _id-middle match (documents the bug)" in {
     // What MongoStagingFolder used to do: regex the `_id` middle against the
     // re-sanitized title. The drift makes it select nothing → the fold no-op.
-    val legacyKey = TitleNormalizer.sanitize(row.title)
+    val legacyKey = titleNormalizer.sanitize(row.title)
     Seq(row).filter(_.id.matches(s"^[^|]+\\|${java.util.regex.Pattern.quote(legacyKey)}\\|.*")) shouldBe empty
   }
 

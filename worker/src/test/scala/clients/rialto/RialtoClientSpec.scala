@@ -1,20 +1,20 @@
 package clients.rialto
 
 import clients.tools.FakeHttpFetch
-import services.movies.TitleNormalizer
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{Rialto, Showtime}
 import services.cinemas.pl.RialtoClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   private val client  = new RialtoClient(new FakeHttpFetch("rialto"))
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
-    .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
+    .map(cm => cm.copy(movie = cm.movie.copy(title = titleNormalizer.recase(cm.movie.title))))
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -213,7 +213,7 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   it should "strip the suffix regardless of case and dash style" in {
     // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertion reads the display title
-    TitleNormalizer.recase(RialtoClient.normalizeTitle("OJCZYZNA – POKAZ PRZEDPREMIEROWY")) shouldBe "Ojczyzna"
+    titleNormalizer.recase(RialtoClient.normalizeTitle("OJCZYZNA – POKAZ PRZEDPREMIEROWY")) shouldBe "Ojczyzna"
   }
 
   it should "leave a title without the suffix untouched" in {
@@ -222,12 +222,12 @@ class RialtoClientSpec extends AnyFlatSpec with Matchers {
 
   it should "strip an ordinary cycle prefix" in {
     // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertion reads the display title
-    TitleNormalizer.recase(RialtoClient.normalizeTitle("DKF Absolwent: MILCZĄCA PRZYJACIÓŁKA")) shouldBe "Milcząca przyjaciółka"
+    titleNormalizer.recase(RialtoClient.normalizeTitle("DKF Absolwent: MILCZĄCA PRZYJACIÓŁKA")) shouldBe "Milcząca przyjaciółka"
   }
 
   it should "keep the 'Filmowy Klub Seniora:' prefix but capitalize the film title after it" in {
     // casing is applied centrally now (TitleNormalizer.recase); wrap so the assertion reads the display title
-    TitleNormalizer.recase(RialtoClient.normalizeTitle("Filmowy Klub Seniora: OJCZYZNA")) shouldBe "Filmowy Klub Seniora: Ojczyzna"
+    titleNormalizer.recase(RialtoClient.normalizeTitle("Filmowy Klub Seniora: OJCZYZNA")) shouldBe "Filmowy Klub Seniora: Ojczyzna"
   }
 
   // ── Showtime counts ───────────────────────────────────────────────────────

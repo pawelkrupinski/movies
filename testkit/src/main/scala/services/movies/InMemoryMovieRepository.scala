@@ -10,7 +10,7 @@ import scala.collection.mutable
  * in wherever the production cache expects a repository.
  *
  * Indexed by the same normalized documentId formula as the production repository
- * (`TitleNormalizer.sanitize(title)|year`), so case + diacritic + whitespace
+ * (`normalizer.sanitize(title)|year`), so case + diacritic + whitespace
  * variants of the same title collapse to one row exactly as they do in Mongo.
  *
  * Every upsert / delete is recorded in `upserts` / `deletes` in order so a

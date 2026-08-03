@@ -1,6 +1,6 @@
 package integration
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, ObservableFuture, SingleObservableFuture}
@@ -133,11 +133,11 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
         MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ghost in the Shell 2")))))
 
       val all     = repository.findAll()
-      val anchors = all.map(row => services.movies.TitleNormalizer.sanitize(row.title)).distinct
+      val anchors = all.map(row => titleNormalizer.sanitize(row.title)).distinct
       withClue("the fixture must produce at least two anchors: ") { anchors.size should be >= 2 }
 
       anchors.foreach { anchor =>
-        val expected = all.filter(row => services.movies.TitleNormalizer.sanitize(row.title) == anchor)
+        val expected = all.filter(row => titleNormalizer.sanitize(row.title) == anchor)
         withClue(s"anchor '$anchor': ") {
           repository.findByAnchor(anchor).map(_.id).sorted shouldBe expected.map(_.id).sorted
         }
@@ -155,10 +155,10 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       val seeder = new MongoStagingRepository(Some(db))
       seeder.upsert(Multikino, title, Some(1995), MovieRecord())
       seeder.upsert(Multikino, title, Some(2017), MovieRecord())
-      val anchor = services.movies.TitleNormalizer.sanitize(seeder.findAll().head.title)
+      val anchor = titleNormalizer.sanitize(seeder.findAll().head.title)
       // Rows for THAT anchor only — `findAll` spans every film the fixture staged, and
       // `findByAnchor` answers for one.
-      val ours   = seeder.findAll().filter(row => services.movies.TitleNormalizer.sanitize(row.title) == anchor)
+      val ours   = seeder.findAll().filter(row => titleNormalizer.sanitize(row.title) == anchor)
 
       val broken = new MongoStagingRepository(Some(db)) {
         override protected def fetchByIds(

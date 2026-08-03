@@ -512,28 +512,10 @@ object TitleNormalizer {
 
   @volatile private var active: TitleNormalizer = new TitleNormalizer(defaultRules)
 
-  // The thread-scoped override this used to carry is gone: it existed so a spec
-  // could swap rules without leaking them into a suite running beside it, and
-  // every such spec now holds its own instances instead. `installRules` keeps the
-  // one remaining global swap — the country convergence e2e, which runs a whole
-  // pipeline per country and reaches the delegates below in too many places to
-  // thread an instance through until the retroactive sweep lands.
-  private def effective: TitleNormalizer = active
-
-  /** Swap the process-wide rule set. Sole caller: the country convergence e2e,
-   *  which installs one country's rules per run. Not thread-safe by design — it
-   *  is a whole-run switch, not a scope. */
+  /** Swap the rule set `deployment` hands out. Sole caller: the country
+   *  convergence e2e, which installs one country's rules per run so the
+   *  components still defaulting to `deployment` key that country's way. Not
+   *  thread-safe by design — it is a whole-run switch, not a scope. */
   def installRules(rs: TitleRuleSet): Unit = active = new TitleNormalizer(rs)
 
-  def cinemaClean(cinemaId: String, raw: String): String   = effective.cinemaClean(cinemaId, raw)
-  def apiQuery(display: String): String                    = effective.apiQuery(display)
-  def recase(title: String): String                        = effective.recase(title)
-  def programmePrefix(title: String): Option[String]       = effective.programmePrefix(title)
-  def sanitize(title: String): String                      = effective.sanitize(title)
-  def mergeKey(title: String, allTitles: Iterable[String]): String = effective.mergeKey(title, allTitles)
-  def mergeKeyLookup(allTitles: Iterable[String]): String => String = effective.mergeKeyLookup(allTitles)
-  def preferredDisplay(titles: Iterable[String]): Option[String]    = effective.preferredDisplay(titles)
-  def chooseDisplay(perCinemaTitles: Seq[String], fallback: String,
-                    tmdbTitle: Option[String] = None): String =
-    effective.chooseDisplay(perCinemaTitles, fallback, tmdbTitle)
 }

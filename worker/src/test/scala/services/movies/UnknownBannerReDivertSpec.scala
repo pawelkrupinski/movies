@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -36,7 +36,7 @@ class UnknownBannerReDivertSpec extends AnyFlatSpec with Matchers {
   // Guard: the banner really is unsupported. If a rule ever starts stripping it, the
   // decorated and bare forms would share a key and this spec would silently stop
   // exercising the drift — fail loudly instead so it gets a fresh synthetic banner.
-  require(TitleNormalizer.sanitize(decorated) != TitleNormalizer.sanitize(film),
+  require(titleNormalizer.sanitize(decorated) != titleNormalizer.sanitize(film),
     s"the synthetic banner is now collapsed by a rule — pick a different one")
 
   // The post-fold prod state: a concluded row keyed by the BARE display title that

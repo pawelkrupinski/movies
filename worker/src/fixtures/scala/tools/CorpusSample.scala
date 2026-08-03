@@ -33,7 +33,8 @@ object CorpusSample {
   /** The sanitized key every listing of a film shares — the same identity
    *  `MovieCache` folds on, so "Diuna", "DIUNA" and "Diuna (dubbing)" are one pick
    *  rather than three. */
-  private def keyOf(film: models.CinemaMovie): String = TitleNormalizer.sanitize(film.movie.title)
+  private def keyOf(film: models.CinemaMovie, normalizer: TitleNormalizer): String =
+    normalizer.sanitize(film.movie.title)
 
   /** Every RAW title the sampled films are listed under, across every venue.
    *
@@ -45,13 +46,13 @@ object CorpusSample {
    *  out reading 79% resolved against the replay's 70%. Prod stores the cinema's own
    *  spelling on its slots, so the raw titles match exactly, with no normalisation
    *  guesswork on either side. */
-  def titlesOf(rows: Seq[ArchivedScrape], keys: Set[String]): Set[String] =
-    rows.flatMap(_.films).filter(film => keys.contains(keyOf(film))).map(_.movie.title).toSet
+  def titlesOf(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Set[String] =
+    rows.flatMap(_.films).filter(film => keys.contains(keyOf(film, normalizer))).map(_.movie.title).toSet
 
   /** Every distinct film key in the corpus, sorted — a stable universe to sample
    *  from, so the only randomness is the draw itself. */
-  def filmKeys(rows: Seq[ArchivedScrape]): Seq[String] =
-    rows.flatMap(_.films.map(keyOf)).filter(_.nonEmpty).distinct.sorted
+  def filmKeys(rows: Seq[ArchivedScrape], normalizer: TitleNormalizer): Seq[String] =
+    rows.flatMap(_.films.map(keyOf(_, normalizer))).filter(_.nonEmpty).distinct.sorted
 
   /**
    * Draw `size` film keys using `random`.
@@ -62,8 +63,8 @@ object CorpusSample {
    * hundred films for ever and stop covering anything new; drawing per-run and
    * committing the outcome gets both properties.
    */
-  def pick(rows: Seq[ArchivedScrape], size: Int, random: Random): Set[String] = {
-    val universe = filmKeys(rows)
+  def pick(rows: Seq[ArchivedScrape], size: Int, random: Random, normalizer: TitleNormalizer): Set[String] = {
+    val universe = filmKeys(rows, normalizer)
     if (universe.sizeIs <= size) universe.toSet else random.shuffle(universe).take(size).toSet
   }
 
@@ -77,12 +78,12 @@ object CorpusSample {
    * `listingComplete` flag — is carried through untouched, because the sample has to
    * be a corpus in exactly the same sense the whole one is.
    */
-  def trim(rows: Seq[ArchivedScrape], keys: Set[String]): Seq[ArchivedScrape] =
+  def trim(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Seq[ArchivedScrape] =
     rows.flatMap { row =>
       // `films` reads through `lastSuccess`, so the filter has to land there — that is
       // also what keeps the scrape's own `at` and `listingComplete` attached to the
       // listing they describe.
       row.lastSuccess.map(success => row.copy(
-        lastSuccess = Some(success.copy(films = success.films.filter(film => keys.contains(keyOf(film)))))))
+        lastSuccess = Some(success.copy(films = success.films.filter(film => keys.contains(keyOf(film, normalizer)))))))
     }.filter(_.films.nonEmpty)
 }

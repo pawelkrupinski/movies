@@ -58,9 +58,9 @@ object GenreLanguageAudit {
       // yields a local-language title, the row is fine and any Polish still on the
       // page is a stale read-model projection, not a domain-logic bug.
       println(s"    displayTitle(from key) -> '${r.displayTitle(s.title, titleNormalizer)}'")
-      println(s"    sanitize(key)='${services.movies.TitleNormalizer.sanitize(s.title)}'")
+      println(s"    sanitize(key)='${titleNormalizer.sanitize(s.title)}'")
       r.data.toSeq.collectFirst { case (_, sd) if sd.title.nonEmpty =>
-        println(s"    sanitize(cinema title)='${services.movies.TitleNormalizer.sanitize(sd.title.get)}'")
+        println(s"    sanitize(cinema title)='${titleNormalizer.sanitize(sd.title.get)}'")
       }
       // The row KEY (what the page displays) is separate from any slot's title —
       // a Polish key can outlive correctly-localized slots, so print both.

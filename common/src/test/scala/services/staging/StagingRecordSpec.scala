@@ -1,11 +1,11 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{StoredMovieDto, TitleNormalizer}
+import services.movies.StoredMovieDto
 
 import java.time.Instant
 
@@ -20,7 +20,7 @@ class StagingRecordSpec extends AnyFlatSpec with Matchers {
 
   "idFor" should "be cinemaDisplayName|sanitize(title)|year" in {
     StagingRecord.idFor(Helios, "Dzień objawienia", Some(2026)) shouldBe
-      s"${Helios.displayName}|${TitleNormalizer.sanitize("Dzień objawienia")}|2026"
+      s"${Helios.displayName}|${titleNormalizer.sanitize("Dzień objawienia")}|2026"
   }
 
   it should "leave the year segment empty for a yearless row" in {

@@ -6,6 +6,7 @@ import tools.HttpFetch
 import services.cinemas.pl.RialtoClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Rialto lists the same film under several repertoire blocks, each linking its
  *  own event page. The plain title and a "- pokaz przedpremierowy" preview
@@ -59,7 +60,7 @@ class RialtoOjczyznaReproSpec extends AnyFlatSpec with Matchers {
 
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = new RialtoClient(http).fetch()
-    .map(cm => cm.copy(movie = cm.movie.copy(title = services.movies.TitleNormalizer.recase(cm.movie.title))))
+    .map(cm => cm.copy(movie = cm.movie.copy(title = titleNormalizer.recase(cm.movie.title))))
   private def times(cm: models.CinemaMovie) = cm.showtimes.map(_.dateTime).toSet
 
   "RialtoClient" should "merge the plain and preview blocks into one Ojczyzna row" in {

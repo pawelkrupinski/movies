@@ -1,6 +1,6 @@
 package integration
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{Multikino, SourceData}
 import org.mongodb.scala.model.Filters
@@ -75,7 +75,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       screenings.findForFilm(loser) should not be empty
 
       // A staging row for the same group, concluded on the winner's year, drives the fold.
-      val stagingId = s"${Multikino.displayName}|${services.movies.TitleNormalizer.sanitize(title)}|2026"
+      val stagingId = s"${Multikino.displayName}|${titleNormalizer.sanitize(title)}|2026"
       Await.result(staging.replaceOne(Filters.eq("_id", stagingId),
         org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> 4242,
           "sourceData" -> org.mongodb.scala.Document(Multikino.displayName ->
@@ -86,7 +86,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       new MongoStagingFolder(connection).foldGroup(title)
 
       val survivors = Await.result(movies.find(Filters.regex("_id",
-        s"^${services.movies.TitleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
+        s"^${titleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
       survivors      should not be empty   // premise: the fold did run
       survivors.size shouldBe 1            // …and did collapse the two into one
@@ -105,8 +105,8 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     } finally {
       Seq(winner, loser).foreach { id => slots.deleteFilm(id); screenings.deleteFilm(id) }
       Await.ready(movies.deleteMany(Filters.regex("_id",
-        s"^${services.movies.TitleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
-      Await.ready(staging.deleteMany(Filters.regex("_id", s".*${services.movies.TitleNormalizer.sanitize(title)}.*"))
+        s"^${titleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
+      Await.ready(staging.deleteMany(Filters.regex("_id", s".*${titleNormalizer.sanitize(title)}.*"))
         .toFuture(), 10.seconds)
       client.close()
     }
@@ -122,7 +122,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   // but a tmdbId collision here would fold two unrelated films into one and delete the
   // loser, in whichever suite lost the race, so it does not get to stay a coincidence.
   private val blindTmdbId = 42431
-  private def blindSanitize = services.movies.TitleNormalizer.sanitize(blindTitle)
+  private def blindSanitize = titleNormalizer.sanitize(blindTitle)
 
   /**
    * The fold plans against RAW `movies` documents (`StoredMovieDto.toDomain`), never the
@@ -216,7 +216,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     val repository = new services.staging.MongoStagingRepository(Some(db))
     val folder     = new MongoStagingFolder(connection)
     val hintTitle  = "Fold Hint Sentinel"
-    val anchor     = services.movies.TitleNormalizer.sanitize(hintTitle)
+    val anchor     = titleNormalizer.sanitize(hintTitle)
 
     val staged = db.getCollection(StagingRepository.Collection)
     // The same raw shape the tests above use — a CONCLUDED row (tmdbId present), which is

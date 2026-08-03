@@ -471,7 +471,7 @@ trait TestWiring extends WorkerWiring {
     // TITLE re-entered the same sanitize group once per title spelling, and every fold
     // read the entire staging collection: on the UK leg that was 3,629 folds over 28,572
     // rows — ~104M decodes, 47 of the leg's 62 minutes.
-    val rowsByAnchor = stagingRepository.findAll().groupBy(row => services.movies.TitleNormalizer.sanitize(row.title))
+    val rowsByAnchor = stagingRepository.findAll().groupBy(row => stagingRepository.normalizer.sanitize(row.title))
     rowsByAnchor.foreach { case (_, rows) =>
       val title = rows.head.title
       try stagingFolder.foldGroup(title, Some(rows.map(_.id).toSet))

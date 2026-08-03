@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -85,7 +85,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
    *     any order-dependent regression reproduces deterministically. */
   private def scrapeTickObservingStaging(w: FixtureTestWiring, rnd: Random): Set[(String, String)] = {
     val stagingBefore = w.stagingRepository.findAll()
-      .map(r => (r.cinema.displayName, services.movies.TitleNormalizer.sanitize(r.title))).toSet
+      .map(r => (r.cinema.displayName, titleNormalizer.sanitize(r.title))).toSet
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
 
     val pool = Executors.newFixedThreadPool(8)
@@ -107,7 +107,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     }
 
     val stagingAfter = w.stagingRepository.findAll()
-      .map(r => (r.cinema.displayName, services.movies.TitleNormalizer.sanitize(r.title))).toSet
+      .map(r => (r.cinema.displayName, titleNormalizer.sanitize(r.title))).toSet
     w.enrichDetailsSync()
     ready.foreach(w.eventBus.publish)
     stagingAfter -- stagingBefore

@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -130,7 +130,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val outcomes = rows.permutations.map { ordered =>
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository(ordered))
       cache.backfillEmbeddedYears()
-      cache.snapshot().map(r => (TitleNormalizer.sanitize(r.title), r.year)).toSet
+      cache.snapshot().map(r => (titleNormalizer.sanitize(r.title), r.year)).toSet
     }.toSet
     outcomes shouldBe Set(Set(("lawa", Some(1989)), ("following", Some(1998))))
   }
@@ -1954,7 +1954,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val rows = cache.snapshot()
     withClue(s"expected ONE row, got ${rows.map(r => (r.title, r.year))}\n")(rows.size shouldBe 1)
     rows.head.record.cinemaData.keySet shouldBe Set(Helios, Multikino)
-    TitleNormalizer.sanitize(rows.head.title) shouldBe "zaplatani"
+    titleNormalizer.sanitize(rows.head.title) shouldBe "zaplatani"
   }
 
   it should "NOT land a decorated edition on the base film via alias-matching" in {
@@ -1964,7 +1964,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // A programme edition of the base film: its title adds the banner, so it
     // matches no TMDB alias and must stay its own row.
     cache.recordCinemaScrape(KinoMuza, Seq(cm(KinoMuza, "Zaproszenie | Kinoteka dla rodziców", Some(2022))))
-    cache.snapshot().map(r => TitleNormalizer.sanitize(r.title)).toSet shouldBe
+    cache.snapshot().map(r => titleNormalizer.sanitize(r.title)).toSet shouldBe
       Set("zaproszenie", "zaproszeniekinotekadlarodzicow")
   }
 }

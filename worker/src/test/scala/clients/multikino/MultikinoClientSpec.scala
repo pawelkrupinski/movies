@@ -2,7 +2,6 @@ package clients.multikino
 
 import models.{Multikino, Showtime}
 import clients.tools.FakeHttpFetch
-import services.movies.TitleNormalizer
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.{MultikinoClient, MultikinoParser}
@@ -15,7 +14,7 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
   private val client  = new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer)
   // casing is applied centrally now (TitleNormalizer.recase); apply it here so assertions read display titles
   private val results = client.fetch()
-    .map(cm => cm.copy(movie = cm.movie.copy(title = TitleNormalizer.recase(cm.movie.title))))
+    .map(cm => cm.copy(movie = cm.movie.copy(title = titleNormalizer.recase(cm.movie.title))))
   // Each entry now has a distinct title — the "Kino na obcasach: …" ladies-programme
   // screening keeps its banner rather than folding onto the base film — so titles
   // map 1:1 (the regular "Drugie życie" and "Kino na obcasach: Drugie życie" differ).

@@ -1,11 +1,11 @@
 package services.readmodel
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord, TitleNormalizer}
+import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
 
 import java.time.LocalDateTime
 
@@ -19,7 +19,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
   private def at(d: String): Showtime = Showtime(LocalDateTime.parse(d), bookingUrl = Some("https://book"))
 
-  private val fid = s"${TitleNormalizer.sanitize("Foo")}|2024"
+  private val fid = s"${titleNormalizer.sanitize("Foo")}|2024"
 
   private def slot(showtimes: Seq[Showtime]) =
     SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"), showtimes = showtimes)
@@ -437,7 +437,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   "reconcile after a restart" should "prune a stale film a prior process left in the read model" in {
     val repository = new InMemoryMovieRepository()
     val rm   = new InMemoryReadModelRepository()
-    def yearKey(y: Int) = s"${TitleNormalizer.sanitize("Foo")}|$y"
+    def yearKey(y: Int) = s"${titleNormalizer.sanitize("Foo")}|$y"
     // A film whose reported year was 2025 when an earlier projector ran.
     def recordYear(y: Int) =
       MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Multikino ->

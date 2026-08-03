@@ -2,6 +2,7 @@ package services.titlerules
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Unit tests for the rule-set abstraction itself — the behaviours the migration
  *  golden (which only exercises the default tiers) doesn't reach: per-cinema
@@ -36,7 +37,7 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     // The all-caps raw form: suffix stripped, casing left to canonicalizeBySanitize.
     rs.perCinema("wybrzeze", "DZIEŃ OBJAWIENIA-KINO WYBRZEŻE") shouldBe "DZIEŃ OBJAWIENIA"
     // Both now sanitise to the SAME key as the bare title — so they merge.
-    def key(t: String): String = services.movies.TitleNormalizer.sanitize(t)
+    def key(t: String): String = titleNormalizer.sanitize(t)
     key(rs.perCinema("wybrzeze", "Dzień objawienia-kino wybrzeże")) shouldBe key("Dzień objawienia")
     key(rs.perCinema("wybrzeze", "DZIEŃ OBJAWIENIA-KINO WYBRZEŻE")) shouldBe key("Dzień objawienia")
     // A title without the suffix is untouched.
