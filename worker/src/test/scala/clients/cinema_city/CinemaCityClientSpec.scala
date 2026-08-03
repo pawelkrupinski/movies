@@ -237,7 +237,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   private def failingClient(status: Int) = new CinemaCityClient(new HttpFetch {
     override def get(url: String): String = throw new HttpStatusException(status, "GET", url, None)
     override def post(url: String, body: String, contentType: String): String = get(url)
-  })
+  }, titles = titleNormalizer)
 
   "a withdrawn detail page" should "surface its 404 rather than collapsing to None" in {
     val client = failingClient(404)

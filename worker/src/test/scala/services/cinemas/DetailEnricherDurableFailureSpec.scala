@@ -7,6 +7,7 @@ import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 import services.cinemas.pl._
 import services.cinemas.uk.CineworldClient
 import tools.{HttpFetch, HttpStatusException}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One contract, asserted across EVERY deferred-detail cinema: a detail page that
@@ -34,21 +35,21 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
   /** Every deferred-detail cinema, built against a fetch that always fails. The
    *  constructor args beyond `http` don't matter here — nothing is parsed. */
   private def enrichers(http: HttpFetch): Seq[(String, DetailEnricher)] = Seq(
-    "Alternatywy"        -> new AlternatywyClient(http),
+    "Alternatywy"        -> new AlternatywyClient(http, titles = titleNormalizer),
     "Amondo"             -> new AmondoClient(http),
-    "Bilety24Organizer"  -> new Bilety24OrganizerClient(http, "https://x/org", KinoApollo),
-    "CinemaCity"         -> new CinemaCityScraper(new CinemaCityClient(http), "1081", CinemaCityKinepolis),
+    "Bilety24Organizer"  -> new Bilety24OrganizerClient(http, "https://x/org", KinoApollo, titles = titleNormalizer),
+    "CinemaCity"         -> new CinemaCityScraper(new CinemaCityClient(http, titles = titleNormalizer), "1081", CinemaCityKinepolis),
     "Cineworld"          -> new CineworldClient(http, "001", KinoApollo),
     "Cytadela"           -> new CytadelaClient(http),
     "Dcf"                -> new DcfClient(http),
     "Ekobilet"           -> new EkobiletClient(http, "slug", KinoApollo),
     "Falenica"           -> new FalenicaClient(http),
     "Iluzjon"            -> new IluzjonClient(http),
-    "KinoApollo"         -> new KinoApolloClient(http),
+    "KinoApollo"         -> new KinoApolloClient(http, titles = titleNormalizer),
     "KinoBulgarska"      -> new KinoBulgarskaClient(http),
     "KinoFenomen"        -> new KinoFenomenClient(http),
-    "KinoMuza"           -> new KinoMuzaClient(http),
-    "KinoPalacowe"       -> new KinoPalacoweClient(http),
+    "KinoMuza"           -> new KinoMuzaClient(http, titles = titleNormalizer),
+    "KinoPalacowe"       -> new KinoPalacoweClient(http, titles = titleNormalizer),
     "KinoParadox"        -> new KinoParadoxClient(http, KinoApollo),
     "KinoPodBaranami"    -> new KinoPodBaranamiClient(http, KinoApollo),
     "KinoSfinks"         -> new KinoSfinksClient(http, KinoApollo),
