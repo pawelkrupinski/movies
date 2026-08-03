@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.freshness.InMemoryFreshnessStore
 import services.tasks.{HandlerOutcome, StagingTaskKeys, Task, TaskType}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Specs for the four thin staging handlers — each parses its payload, runs the
  *  matching `StagingSteps` step, and maps the result to a `HandlerOutcome`. */
@@ -35,7 +35,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val handler = new StagingDetailHandler(steps(repository, Seq(new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("p"))))), (_, _, r) => Some(r)))
 
-    handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", Helios.displayName))) shouldBe HandlerOutcome.Done
+    handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", Helios.displayName, titleNormalizer))) shouldBe HandlerOutcome.Done
     repository.findAll().head.record.cinemaData(Helios).synopsis shouldBe Some("p")
   }
 
@@ -44,7 +44,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val handler = new StagingDetailHandler(steps(repository, Seq(new FakeEnricher(Helios, None)), (_, _, r) => Some(r)))
 
-    handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", Helios.displayName))) shouldBe a[HandlerOutcome.Reschedule]
+    handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", Helios.displayName, titleNormalizer))) shouldBe a[HandlerOutcome.Reschedule]
   }
 
   it should "give up and report Done once the retry budget is exhausted, marking detail ready so the film graduates" in {
@@ -52,7 +52,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
     repository.upsert(Helios, "Film", Some(2026), listingRow("Film"))
     val s = steps(repository, Seq(new FakeEnricher(Helios, None)), (_, _, r) => Some(r))
     val handler = new StagingDetailHandler(s)
-    val payload = StagingTaskKeys.detailPayload("Film", Helios.displayName)
+    val payload = StagingTaskKeys.detailPayload("Film", Helios.displayName, titleNormalizer)
 
     handler.handle(task(TaskType.StagingDetail, payload)) shouldBe a[HandlerOutcome.Reschedule]  // early attempt — retry
     handler.handle(task(TaskType.StagingDetail, payload, attempts = StagingDetailHandler.MaxDetailAttempts)) shouldBe HandlerOutcome.Done
@@ -62,7 +62,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   it should "skip an orphaned task for an unknown cinema" in {
     val repository = new InMemoryStagingRepository
     val handler = new StagingDetailHandler(steps(repository, Seq.empty, (_, _, r) => Some(r)))
-    handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", "No Such Cinema"))) shouldBe HandlerOutcome.Skipped
+    handler.handle(task(TaskType.StagingDetail, StagingTaskKeys.detailPayload("Film", "No Such Cinema", titleNormalizer))) shouldBe HandlerOutcome.Skipped
   }
 
   // Helios has no enricher here, so the detail gate is satisfied and these specs

@@ -27,7 +27,7 @@ class StagingDetailHandler(steps: StagingSteps) extends TaskHandler {
       case None         => HandlerOutcome.Skipped   // unknown/renamed cinema — drop the orphaned task
       case Some(cinema) =>
         val giveUp = task.attempts >= StagingDetailHandler.MaxDetailAttempts
-        if (steps.fetchDetailFor(cinema, StagingTaskKeys.anchorOf(task.payload), giveUp)) HandlerOutcome.Done
+        if (steps.fetchDetailFor(cinema, StagingTaskKeys.anchorOf(task.payload, steps.normalizer), giveUp)) HandlerOutcome.Done
         else HandlerOutcome.Reschedule(Some(s"staging detail not ready for ${cinema.displayName}"))
     }
 }
@@ -68,7 +68,7 @@ class StagingResolveTmdbHandler(steps: StagingSteps) extends TaskHandler {
   val taskType: TaskType = TaskType.StagingResolveTmdb
   def handle(task: Task): HandlerOutcome = {
     val giveUp = task.attempts >= StagingResolveTmdbHandler.MaxResolveAttempts
-    steps.resolveAndStamp(StagingTaskKeys.anchorOf(task.payload), giveUp) match {
+    steps.resolveAndStamp(StagingTaskKeys.anchorOf(task.payload, steps.normalizer), giveUp) match {
       case StagingSteps.Resolved | StagingSteps.AlreadyDone => HandlerOutcome.Done
       case StagingSteps.DetailNotReady                      => HandlerOutcome.Skipped
       case StagingSteps.TransientFailure                    => HandlerOutcome.Reschedule(Some("staging tmdb resolve transient miss"))
@@ -91,7 +91,7 @@ class StagingResolveImdbIdHandler(steps: StagingSteps) extends TaskHandler {
 
   val taskType: TaskType = TaskType.StagingResolveImdbId
   def handle(task: Task): HandlerOutcome = {
-    steps.recoverImdbFor(StagingTaskKeys.anchorOf(task.payload))
+    steps.recoverImdbFor(StagingTaskKeys.anchorOf(task.payload, steps.normalizer))
     HandlerOutcome.Done
   }
 }

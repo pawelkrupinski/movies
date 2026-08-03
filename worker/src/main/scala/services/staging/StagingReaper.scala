@@ -60,7 +60,7 @@ class StagingReaper(
    *  `StagingFold` (terminal — the fold deletes the rows) and every non-staging
    *  task type. */
   def onTaskFinished: PartialFunction[DomainEvent, Unit] = {
-    case TaskFinished(t, _, payload) if chainable(t) => enqueueNext(StagingTaskKeys.anchorOf(payload)); ()
+    case TaskFinished(t, _, payload) if chainable(t) => enqueueNext(StagingTaskKeys.anchorOf(payload, staging.normalizer)); ()
   }
 
   /** Advance the chain the moment a brand-new film lands in `pending_movies` —
@@ -110,21 +110,21 @@ class StagingReaper(
         // Some hint-combination still owes detail: finish each unready cinema's
         // detail first (one task per cinema).
         rows.filterNot(steps.detailReady).map(_.cinema).distinct.count(c =>
-          added(queue.enqueue(TaskType.StagingDetail, StagingTaskKeys.detailDedup(title, c.displayName),
-            StagingTaskKeys.detailPayload(title, c.displayName))))
+          added(queue.enqueue(TaskType.StagingDetail, StagingTaskKeys.detailDedup(title, c.displayName, staging.normalizer),
+            StagingTaskKeys.detailPayload(title, c.displayName, staging.normalizer))))
       case (Some(title), Some(StagingStep.ResolveTmdb)) =>
         countOne(queue.enqueue(TaskType.StagingResolveTmdb,
-          StagingTaskKeys.resolveTmdbDedup(title), StagingTaskKeys.titlePayload(title)))
+          StagingTaskKeys.resolveTmdbDedup(title, staging.normalizer), StagingTaskKeys.titlePayload(title)))
       case (Some(title), Some(StagingStep.ResolveImdb)) =>
         // Resolved with a tmdbId but no IMDb cross-reference, recovery not yet
         // attempted: recover before folding (best-effort — once attempted, even on
         // a no-match, `imdbRecoveryDone` is true and the film folds).
         countOne(queue.enqueue(TaskType.StagingResolveImdbId,
-          StagingTaskKeys.resolveImdbDedup(title), StagingTaskKeys.titlePayload(title)))
+          StagingTaskKeys.resolveImdbDedup(title, staging.normalizer), StagingTaskKeys.titlePayload(title)))
       case (Some(title), Some(StagingStep.Fold)) =>
         // Concluded (hit+imdb, or tmdbNoMatch): fold the whole sanitize group at
         // once (group-scoped + idempotent), one task per film.
-        countOne(queue.enqueue(TaskType.StagingFold, StagingTaskKeys.foldDedup(title), StagingTaskKeys.titlePayload(title)))
+        countOne(queue.enqueue(TaskType.StagingFold, StagingTaskKeys.foldDedup(title, staging.normalizer), StagingTaskKeys.titlePayload(title)))
       case _ => 0 // no rows for this anchor
     }
   }

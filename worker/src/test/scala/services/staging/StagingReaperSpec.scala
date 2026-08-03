@@ -7,7 +7,7 @@ import services.cinemas.FakeDetailEnricher
 import services.events.{StagingNewcomerDiverted, TaskFinished}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.tasks.{InMemoryTaskQueue, StagingTaskKeys, TaskType}
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Specs for the staging state machine: given a film's `pending_movies` state,
  *  `StagingReaper` enqueues exactly the one next step it needs, idempotently, and
@@ -32,11 +32,11 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
 
   /** Mark a film's deferred-detail fetch as done — the signal `detailReady` reads. */
   private def markDetailDone(freshness: InMemoryFreshnessStore, title: String): Unit =
-    freshness.markFresh(StagingTaskKeys.detailDedup(title, Helios.displayName), FreshnessKind.DetailEnrich)
+    freshness.markFresh(StagingTaskKeys.detailDedup(title, Helios.displayName, titleNormalizer), FreshnessKind.DetailEnrich)
 
   /** Mark IMDb recovery as already attempted (the best-effort, one-shot signal). */
   private def markImdbAttempted(freshness: InMemoryFreshnessStore, title: String): Unit =
-    freshness.markFresh(StagingTaskKeys.resolveImdbDedup(title), FreshnessKind.ImdbRating)
+    freshness.markFresh(StagingTaskKeys.resolveImdbDedup(title, titleNormalizer), FreshnessKind.ImdbRating)
 
   private def listing(title: String, year: Option[Int]): MovieRecord =
     MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some(title), filmUrl = Some("u"))))
@@ -47,21 +47,21 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
   "tick" should "enqueue a StagingDetail task for a deferred cinema whose detail hasn't landed" in {
     val (queue, reaper, _, _) = fixture(("Newcomer", Some(2026), listing("Newcomer", Some(2026))))
     reaper.tick() shouldBe 1
-    active(queue) shouldBe Seq((TaskType.StagingDetail.name, StagingTaskKeys.detailDedup("Newcomer", Helios.displayName)))
+    active(queue) shouldBe Seq((TaskType.StagingDetail.name, StagingTaskKeys.detailDedup("Newcomer", Helios.displayName, titleNormalizer)))
   }
 
   it should "enqueue StagingResolveTmdb once the detail is present" in {
     val (queue, reaper, _, freshness) = fixture(("Ready", Some(2026), listing("Ready", Some(2026))))
     markDetailDone(freshness, "Ready")
     reaper.tick() shouldBe 1
-    active(queue) shouldBe Seq((TaskType.StagingResolveTmdb.name, StagingTaskKeys.resolveTmdbDedup("Ready")))
+    active(queue) shouldBe Seq((TaskType.StagingResolveTmdb.name, StagingTaskKeys.resolveTmdbDedup("Ready", titleNormalizer)))
   }
 
   it should "enqueue StagingResolveImdbId for a resolved row missing its imdbId" in {
     val resolved = listing("Pucio", Some(2026)).copy(tmdbId = Some(1645035))   // hit, no imdbId
     val (queue, reaper, _, _) = fixture(("Pucio", Some(2026), resolved))
     reaper.tick() shouldBe 1
-    active(queue) shouldBe Seq((TaskType.StagingResolveImdbId.name, StagingTaskKeys.resolveImdbDedup("Pucio")))
+    active(queue) shouldBe Seq((TaskType.StagingResolveImdbId.name, StagingTaskKeys.resolveImdbDedup("Pucio", titleNormalizer)))
   }
 
   it should "fold (NOT re-enqueue imdb) once IMDb recovery was attempted without a match" in {
@@ -83,7 +83,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     val (queue, reaper, _, _) = fixture(("Stop Making Sense", None, unnamed))
     reaper.tick() shouldBe 1
     active(queue) shouldBe Seq(
-      (TaskType.StagingResolveImdbId.name, StagingTaskKeys.resolveImdbDedup("Stop Making Sense")))
+      (TaskType.StagingResolveImdbId.name, StagingTaskKeys.resolveImdbDedup("Stop Making Sense", titleNormalizer)))
   }
 
   // …and still folds rather than looping once that attempt has been made, whatever
@@ -100,7 +100,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     val concluded = listing("Done", Some(2026)).copy(tmdbId = Some(7), imdbId = Some("tt7"))
     val (queue, reaper, _, _) = fixture(("Done", Some(2026), concluded))
     reaper.tick() shouldBe 1
-    active(queue) shouldBe Seq((TaskType.StagingFold.name, StagingTaskKeys.foldDedup("Done")))
+    active(queue) shouldBe Seq((TaskType.StagingFold.name, StagingTaskKeys.foldDedup("Done", titleNormalizer)))
   }
 
   it should "fold the whole sanitize group as ONE task across year-variants" in {
@@ -108,7 +108,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
     val b = listing("Multi", Some(2026)).copy(tmdbId = Some(9), imdbId = Some("tt9"))
     val (queue, reaper, _, _) = fixture(("Multi", Some(2025), a), ("Multi", Some(2026), b))
     reaper.tick() shouldBe 1                                          // group-scoped fold, not per-year
-    active(queue) shouldBe Seq((TaskType.StagingFold.name, StagingTaskKeys.foldDedup("Multi")))
+    active(queue) shouldBe Seq((TaskType.StagingFold.name, StagingTaskKeys.foldDedup("Multi", titleNormalizer)))
   }
 
   it should "be idempotent — a second tick adds nothing while the step is still active" in {
@@ -129,7 +129,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
   "onNewcomerDiverted" should "kick a just-diverted newcomer's first step immediately (no tick needed)" in {
     val (queue, reaper, _, _) = fixture(("Newcomer", Some(2026), listing("Newcomer", Some(2026))))
     reaper.onNewcomerDiverted(StagingNewcomerDiverted("Newcomer"))
-    active(queue) shouldBe Seq((TaskType.StagingDetail.name, StagingTaskKeys.detailDedup("Newcomer", Helios.displayName)))
+    active(queue) shouldBe Seq((TaskType.StagingDetail.name, StagingTaskKeys.detailDedup("Newcomer", Helios.displayName, titleNormalizer)))
   }
 
   it should "ignore a finished StagingFold (terminal) and every non-staging task" in {
