@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Helios, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -40,7 +40,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   /** The `_id` the cleanup's delete would cascade against — the same formula
    *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by. */
   private def filmId(title: String, year: Option[Int]): String =
-    StoredMovieRecord.idFor(title, year)
+    StoredMovieRecord.idFor(title, year, titleNormalizer)
 
   /** Production's storage shape: showtimes in `screenings`, per-cinema slots in
    *  `movie_slots`. The corroborating read has to stitch both back, so a fake wired

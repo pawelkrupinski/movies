@@ -54,8 +54,8 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots))
-    val idA        = StoredMovieRecord.idFor(titleA, Some(2026))
-    val idB        = StoredMovieRecord.idFor(titleB, Some(2026))
+    val idA        = StoredMovieRecord.idFor(titleA, Some(2026), titleNormalizer)
+    val idB        = StoredMovieRecord.idFor(titleB, Some(2026), titleNormalizer)
     try {
       val cache = new CaffeineMovieCache(repository)
 

@@ -51,7 +51,7 @@ class CanonicalizeRetriggerFlapSpec extends AnyFlatSpec with Matchers {
   "FilmCanonicalizer.canonical vs fromStorage" should
     "pick the EXACT same key for a decorated row (both key on displayTitle, so the settle never re-keys)" in {
     val record    = felliniRecord
-    val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960)), record)
+    val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960), titleNormalizer), record, titleNormalizer)
     val storedKey = CacheKey(recovered.title, recovered.year)
     val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(storedKey -> record), titleNormalizer)
     canonicalKey shouldBe storedKey
@@ -63,8 +63,8 @@ class CanonicalizeRetriggerFlapSpec extends AnyFlatSpec with Matchers {
     val c = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = recorder)
     // Seed the cache exactly as a boot hydrate would: key = fromStorage's displayTitle.
     val record    = felliniRecord
-    val id        = StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960))
-    val recovered = StoredMovieRecord.fromStorage(id, record)
+    val id        = StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960), titleNormalizer)
+    val recovered = StoredMovieRecord.fromStorage(id, record, titleNormalizer)
     c.put(CacheKey(recovered.title, recovered.year), record)
 
     c.canonicalizeBySanitize()

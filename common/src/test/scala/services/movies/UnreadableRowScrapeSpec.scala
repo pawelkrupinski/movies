@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{CinemaMovie, Helios, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -46,7 +46,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     def findAll() = Seq.empty
     override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) =
       if (!readable) (None, false)
-      else (rows.find(r => StoredMovieRecord.idOf(r) == id), true)
+      else (rows.find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id), true)
     def delete(t: String, y: Option[Int]) = ()
     def deleteById(id: String) = ()
     def upsert(t: String, y: Option[Int], e: MovieRecord) = { upserts += ((t, e)); () }

@@ -78,7 +78,7 @@ class InMemoryMovieRepository(
     changes.dispatchUpsert(StoredMovieRecord.fromStorage(id, e.copy(data = stitchSides(
       id, e.data,
       slots.map(_.findAll()).getOrElse(Map.empty),
-      screenings.map(_.findAll()).getOrElse(Map.empty)))))
+      screenings.map(_.findAll()).getOrElse(Map.empty))), normalizer))
   }
 
   private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =
@@ -110,7 +110,7 @@ class InMemoryMovieRepository(
       // slots, and for a migrated film those are in `movie_slots`, not in the stored record.
       // Same order as `MongoMovieRepository.stitchRow`, and for the same reason.
       StoredMovieRecord.fromStorage(id,
-        s.record.copy(data = stitchSides(id, s.record.data, allSlots, allScreenings)))
+        s.record.copy(data = stitchSides(id, s.record.data, allSlots, allScreenings)), normalizer)
     }.toSeq
   }
 
@@ -267,5 +267,5 @@ class InMemoryMovieRepository(
     }
   }
 
-  private def idOf(t: String, y: Option[Int]): String = StoredMovieRecord.idFor(t, y)
+  private def idOf(t: String, y: Option[Int]): String = StoredMovieRecord.idFor(t, y, normalizer)
 }

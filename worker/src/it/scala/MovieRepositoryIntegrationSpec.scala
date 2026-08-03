@@ -1,6 +1,6 @@
 package integration
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Helios, HeliosOstrowWlkp, KinoMuranow, MovieRecord, Multikino, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
@@ -160,7 +160,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // them is the whole point: recasing the id gives "Allyouneediskill", nothing like it.
     val title  = "All You Need Is Kill"
     val year   = Some(1909)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       // Written through the split repository, so the slots land in `movie_slots` and the
       // `movies` document is left with no `sourceData` of its own — the fully-migrated
@@ -205,7 +205,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     lslot.title shouldBe Some("Listing Sentinel")  // …but the rest of the slot survives
 
     // The full-fidelity reads still carry the showtimes (the /debug details path).
-    val full = repository.findById(StoredMovieRecord.idOf(listed.get)) // imdbId tt0000011 — distinct from the casededupe sentinel
+    val full = repository.findById(StoredMovieRecord.idOf(listed.get, titleNormalizer)) // imdbId tt0000011 — distinct from the casededupe sentinel
     full.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes.size) shouldBe Some(2)
   }
 
@@ -220,12 +220,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     val title = "__integration-test-changestream__"
     val year  = Some(1901)
-    val id    = StoredMovieRecord.idFor(title, year)
+    val id    = StoredMovieRecord.idFor(title, year, titleNormalizer)
     val gotUpsert = new CountDownLatch(1)
     val gotDelete = new CountDownLatch(1)
 
     val handle = repository.watchChanges(
-      onUpsert = r   => if (StoredMovieRecord.idOf(r) == id) gotUpsert.countDown(),
+      onUpsert = r   => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) gotUpsert.countDown(),
       onDelete = did => if (did == id) gotDelete.countDown()
     )
     handle should not be empty // requires a replica set (a single-node RS counts)
@@ -253,12 +253,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     val title       = "__integration-test-apply-thread__"
     val year        = Some(1903)
-    val id          = StoredMovieRecord.idFor(title, year)
+    val id          = StoredMovieRecord.idFor(title, year, titleNormalizer)
     val applied     = new CountDownLatch(1)
     val applyThread = new AtomicReference[String]("")
 
     val handle = repository.watchChanges(
-      onUpsert = r => if (StoredMovieRecord.idOf(r) == id) { applyThread.set(Thread.currentThread().getName); applied.countDown() },
+      onUpsert = r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) { applyThread.set(Thread.currentThread().getName); applied.countDown() },
       onDelete = _ => ()
     )
     handle should not be empty
@@ -281,12 +281,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     val title = "__integration-test-shared-cursor__"
     val year  = Some(1902)
-    val id    = StoredMovieRecord.idFor(title, year)
+    val id    = StoredMovieRecord.idFor(title, year, titleNormalizer)
     val gotA  = new CountDownLatch(1)
     val gotB  = new CountDownLatch(1)
 
-    val handleA = repository.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) gotA.countDown(), _ => ())
-    val handleB = repository.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) gotB.countDown(), _ => ())
+    val handleA = repository.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) gotA.countDown(), _ => ())
+    val handleB = repository.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) gotB.countDown(), _ => ())
     handleA should not be empty
     handleB should not be empty
     repository.isWatchingChangeStream shouldBe true
@@ -321,9 +321,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
 
     val repo1   = new MongoMovieRepository(Some(db), persistResumeToken = true)
-    val idA     = StoredMovieRecord.idFor("__integration-test-resume-A__", Some(1909))
+    val idA     = StoredMovieRecord.idFor("__integration-test-resume-A__", Some(1909), titleNormalizer)
     val gotA    = new CountDownLatch(1)
-    val handle1 = repo1.watchChanges(r => if (StoredMovieRecord.idOf(r) == idA) gotA.countDown(), _ => ())
+    val handle1 = repo1.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == idA) gotA.countDown(), _ => ())
     handle1 should not be empty
     try {
       Thread.sleep(1500) // let the stream establish before the write
@@ -337,12 +337,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       // A fresh process (empty in-memory state) resumes from the persisted token.
       val repo2   = new MongoMovieRepository(Some(db), persistResumeToken = true)
-      val idB     = StoredMovieRecord.idFor("__integration-test-resume-B__", Some(1909))
-      val idC     = StoredMovieRecord.idFor("__integration-test-resume-C__", Some(1909))
+      val idB     = StoredMovieRecord.idFor("__integration-test-resume-B__", Some(1909), titleNormalizer)
+      val idC     = StoredMovieRecord.idFor("__integration-test-resume-C__", Some(1909), titleNormalizer)
       val seen    = ConcurrentHashMap.newKeySet[String]()
       val gotBC   = new CountDownLatch(2)
       val handle2 = repo2.watchChanges(r => {
-        val id = StoredMovieRecord.idOf(r)
+        val id = StoredMovieRecord.idOf(r, titleNormalizer)
         if ((id == idB || id == idC) && seen.add(id)) gotBC.countDown()
       }, _ => ())
       try {
@@ -426,8 +426,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val cache  = new CaffeineMovieCache(repo)
     val title  = "__integration-test-cache-delete__"
     val year   = Some(1910)
-    val id     = StoredMovieRecord.idFor(title, year)
-    def present = cache.snapshot().exists(r => StoredMovieRecord.idOf(r) == id)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
+    def present = cache.snapshot().exists(r => StoredMovieRecord.idOf(r, titleNormalizer) == id)
     try {
       cache.start()
       Thread.sleep(1500) // let the stream establish
@@ -450,9 +450,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val repo  = new MongoMovieRepository(changeStreamMetrics = sink)
     val title = "__integration-test-changestream-stats__"
     val year  = Some(1903)
-    val id    = StoredMovieRecord.idFor(title, year)
+    val id    = StoredMovieRecord.idFor(title, year, titleNormalizer)
     val seen  = new CountDownLatch(1)
-    val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) seen.countDown(), _ => ())
+    val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) seen.countDown(), _ => ())
     handle should not be empty
     try {
       Thread.sleep(1500)
@@ -584,7 +584,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     try {
       val title = "__integration-test-splitreads__"
       val year  = Some(1905)
-      val id    = StoredMovieRecord.idFor(title, year)
+      val id    = StoredMovieRecord.idFor(title, year, titleNormalizer)
       val key   = Multikino.displayName
       val slot  = SourceData(title = Some("SR"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/sr-1"))))
@@ -606,13 +606,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // else the reconcile projects empty showtimes and prunes web_screenings for every
       // film not re-scraped since boot (the 2026-07-02 served-films drop).
       var seen = 0
-      repo.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id)
+      repo.foreachRecord(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id)
         seen = r.record.cinemaData.get(Multikino).map(_.showtimes.size).getOrElse(0))
       seen shouldBe 2
 
       // a screenings change fans out a (stitched) upsert on the movies change stream
       val got    = new CountDownLatch(1)
-      val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r) == id) got.countDown(), _ => ())
+      val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) got.countDown(), _ => ())
       try {
         Thread.sleep(1500)
         val after2 = after.copy(data = Map[Source, SourceData](Multikino ->
@@ -641,7 +641,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     try {
       val title = "__integration-test-slotsplit__"
       val year  = Some(1907)
-      val id    = StoredMovieRecord.idFor(title, year)
+      val id    = StoredMovieRecord.idFor(title, year, titleNormalizer)
       val key   = Multikino.displayName
       val slot  = SourceData(title = Some("SS"), posterUrl = Some("https://poster/ss.png"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/ss-1"))))
@@ -679,7 +679,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       slots.findForFilm(id)  should not be empty
       repo.delete(title, year)
       slots.findForFilm(id) shouldBe empty
-    } finally { slots.deleteFilm(StoredMovieRecord.idFor("__integration-test-slotsplit__", Some(1907))); client.close() }
+    } finally { slots.deleteFilm(StoredMovieRecord.idFor("__integration-test-slotsplit__", Some(1907), titleNormalizer)); client.close() }
   }
 
   // Read flip: `movie_slots` wins when the film has rows there, and the embedded
@@ -696,7 +696,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val legacy = new MongoMovieRepository(Some(db), screenings = Some(scr)) // writes the embedded map only
     val title  = "__integration-test-slotread__"
     val year   = Some(1908)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       // Carries a showtime so `screenings` is non-empty: scanStitched treats an empty
       // screenings load as a FAILED scan (prune-safety), which would otherwise stop
@@ -722,7 +722,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // (3) the corpus scan agrees with the per-film read — the divergence that once
       // dropped 129 films is exactly what a second stitch site can reintroduce
       var scanned: Option[String] = None
-      split.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id)
+      split.foreachRecord(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id)
         scanned = r.record.cinemaData.get(Multikino).flatMap(_.posterUrl))
       scanned shouldBe Some("https://poster/split.png")
     } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
@@ -748,7 +748,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // ("Interstellar") were the only ones the settle left alone.
     val title  = "Integration Test Slottitle Dr. No"
     val year   = Some(1909)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       val slot = SourceData(title = Some(title), posterUrl = Some("https://poster/st.png"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 3, 19, 0), Some("https://book/st-1"))))
@@ -758,9 +758,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       slots.findForFilm(id) should not be empty
 
       split.findById(id).map(_.title)                              shouldBe Some(title)
-      split.findAll().find(r => StoredMovieRecord.idOf(r) == id).map(_.title) shouldBe Some(title)
+      split.findAll().find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id).map(_.title) shouldBe Some(title)
       var scanned: Option[String] = None
-      split.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id) scanned = Some(r.title))
+      split.foreachRecord(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) scanned = Some(r.title))
       scanned shouldBe Some(title)
     } finally { split.delete(title, year); slots.deleteFilm(id); client.close() }
   }
@@ -778,7 +778,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val slots  = new MongoSlotsRepository(Some(db))
     val title  = "__integration-test-slotretire__"
     val year   = Some(1909)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     // Sees the RAW movies doc — no stitching — so it can prove what is actually stored.
     val raw    = new MongoMovieRepository(Some(db))
     try {
@@ -817,7 +817,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val raw    = new MongoMovieRepository(Some(db))   // sees the stored doc, unstitched
     val title  = "__integration-test-slotpatch__"
     val year   = Some(1910)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       val slot = SourceData(title = Some("SP"), posterUrl = Some("https://poster/p1.png"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 4, 19, 0), Some("https://book/sp-1"))))
@@ -853,7 +853,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
     val title  = "__integration-test-slotfanout__"
     val year   = Some(1911)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       val slot = SourceData(title = Some("SF"), posterUrl = Some("https://poster/f1.png"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 5, 19, 0), Some("https://book/sf-1"))))
@@ -863,7 +863,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val fanouts = new java.util.concurrent.atomic.AtomicInteger(0)
       val got     = new CountDownLatch(1)
       val handle  = split.watchChanges(r =>
-        if (StoredMovieRecord.idOf(r) == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
+        if (StoredMovieRecord.idOf(r, titleNormalizer) == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
       try {
         Thread.sleep(1500)
         // metadata only: no showtime change, and `movies` no longer stores the slot
@@ -891,13 +891,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
     val title  = "__integration-test-slotlisting__"
     val year   = Some(1912)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       val slot = SourceData(title = Some("SL"), posterUrl = Some("https://poster/l1.png"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 6, 19, 0), Some("https://book/sl-1"))))
       split.upsert(title, year, MovieRecord(imdbId = Some("tt0000020"), data = Map[Source, SourceData](Multikino -> slot)))
 
-      val listed = split.findAllForListing().find(r => StoredMovieRecord.idOf(r) == id)
+      val listed = split.findAllForListing().find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id)
       listed.map(_.record.cinemaData.keySet)                         shouldBe Some(Set(Multikino))
       listed.flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe Some("https://poster/l1.png")
       // …still without showtimes, which is the whole point of this read
@@ -922,7 +922,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val raw    = new MongoMovieRepository(Some(db))
     val title  = "__integration-test-slotexpiry__"
     val year   = Some(1913)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       val early = Showtime(java.time.LocalDateTime.of(2026, 6, 7, 14, 0), Some("https://book/e-1"))
       val late  = Showtime(java.time.LocalDateTime.of(2026, 6, 7, 20, 0), Some("https://book/e-2"))
@@ -940,7 +940,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val fanouts = new AtomicInteger(0)
       val got     = new CountDownLatch(1)
       val handle  = split.watchChanges(r =>
-        if (StoredMovieRecord.idOf(r) == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
+        if (StoredMovieRecord.idOf(r, titleNormalizer) == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
       try {
         Thread.sleep(1500)
         // the 14:00 screening has passed — the scrape returns only the 20:00 one
@@ -979,7 +979,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val raw    = new MongoMovieRepository(Some(db))
     val title  = "__integration-test-slotchurn__"
     val year   = Some(1914)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     def rowStamps() = Await.result(
       db.withCodecRegistry(MovieCodecs.registry).getCollection[StoredSlotDto]("movie_slots")
         .find(org.mongodb.scala.model.Filters.eq("filmId", id)).toFuture(), 10.seconds)
@@ -1022,7 +1022,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val split  = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
     val title  = "__integration-test-slotparity__"
     val year   = Some(1915)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       val slot = SourceData(title = Some("PA"), posterUrl = Some("https://poster/pa.png"),
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 9, 19, 0), Some("https://book/pa-1"))))
@@ -1032,11 +1032,11 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         r.map(_.record.cinemaData.map { case (src, sd) => src -> sd.posterUrl })
 
       val viaFindById   = slotsOf(split.findById(id))
-      val viaFindAll    = slotsOf(split.findAll().find(r => StoredMovieRecord.idOf(r) == id))
+      val viaFindAll    = slotsOf(split.findAll().find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id))
       var scanned: Option[StoredMovieRecord] = None
-      split.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id) scanned = Some(r))
+      split.foreachRecord(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) scanned = Some(r))
       val viaForeach    = slotsOf(scanned)
-      val viaListing    = slotsOf(split.findAllForListing().find(r => StoredMovieRecord.idOf(r) == id))
+      val viaListing    = slotsOf(split.findAllForListing().find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id))
 
       val expected = Some(Map[Source, Option[String]](Multikino -> Some("https://poster/pa.png")))
       withClue("findById: ")          { viaFindById shouldBe expected }
@@ -1058,7 +1058,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     try {
       val title = "__integration-test-readpath-parity__"
       val year  = Some(1906)
-      val id    = StoredMovieRecord.idFor(title, year)
+      val id    = StoredMovieRecord.idFor(title, year, titleNormalizer)
       val slot  = SourceData(title = Some("Parity"), showtimes = Seq(
         Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p-1")),
         Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0), Some("https://book/p-2"))))
@@ -1066,9 +1066,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       def showtimesVia(r: Option[StoredMovieRecord]) = r.flatMap(_.record.cinemaData.get(Multikino)).map(_.showtimes).getOrElse(Seq.empty)
       val viaFindById = showtimesVia(repo.findById(id))
-      val viaFindAll  = showtimesVia(repo.findAll().find(r => StoredMovieRecord.idOf(r) == id))
+      val viaFindAll  = showtimesVia(repo.findAll().find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id))
       var viaForeach  = Seq.empty[Showtime]
-      repo.foreachRecord(r => if (StoredMovieRecord.idOf(r) == id) viaForeach = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+      repo.foreachRecord(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) viaForeach = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
 
       viaFindById.size shouldBe 2
       viaFindAll  shouldBe viaFindById
@@ -1078,7 +1078,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // the screenings load. Contract guard so a future "fix" to stitch it (and re-add
       // the per-scan cost) is caught.
       var viaNoStitch = Seq.empty[Showtime]
-      repo.foreachRecordWithoutShowtimes(r => if (StoredMovieRecord.idOf(r) == id) viaNoStitch = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
+      repo.foreachRecordWithoutShowtimes(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) viaNoStitch = r.record.cinemaData.get(Multikino).map(_.showtimes).getOrElse(Seq.empty))
       viaNoStitch shouldBe empty
 
       repo.delete(title, year)
@@ -1104,8 +1104,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     // batchSize 2 forces several page boundaries over the 5 seeded slots.
     val paged  = new MongoScreeningsRepository(Some(db), findAllBatchSize = 2)
     try {
-      val filmA = StoredMovieRecord.idFor("__integration-test-scr-page-A__", Some(1908))
-      val filmB = StoredMovieRecord.idFor("__integration-test-scr-page-B__", Some(1908))
+      val filmA = StoredMovieRecord.idFor("__integration-test-scr-page-A__", Some(1908), titleNormalizer)
+      val filmB = StoredMovieRecord.idFor("__integration-test-scr-page-B__", Some(1908), titleNormalizer)
       val st    = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 1, 18, 0), Some("https://book/p")))
       writer.replaceFilm(filmA, Map("aa" -> st, "bb" -> st, "cc" -> st))
       writer.replaceFilm(filmB, Map("dd" -> st, "ee" -> st))
@@ -1133,7 +1133,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val rm     = new MongoReadModelRepository(Some(db))
     val title  = "__integration-test-reconcile-noprune__"
     val year   = Some(1907)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     var expectedScrIds = Set.empty[String]
     var expectedMovIds = Set.empty[String]
     try {
@@ -1272,7 +1272,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val title  = "__integration-test-delete-plan__"
       val year   = Some(2099)
       val filter = Filters.or(
-        Filters.eq("_id", StoredMovieRecord.idFor(title, year)),
+        Filters.eq("_id", StoredMovieRecord.idFor(title, year, titleNormalizer)),
         Filters.and(Filters.eq("title", title), Filters.eq("year", 2099)))
       val plan = Await.result(coll.find(filter).explain().toFuture(), 10.seconds).toJson()
       plan        should include ("title_1_year_1")
@@ -1315,7 +1315,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "return rows in _id order (the _id-indexed scan that can't duplicate or skip)" in {
     Seq("c", "a", "b").foreach(s =>
       repository.upsert(s"__integration-test-order-${s}__", None, MovieRecord()))
-    val ids = repository.findAll().map(StoredMovieRecord.idOf).filter(_.startsWith("integrationtestorder"))
+    val ids = repository.findAll().map(StoredMovieRecord.idOf(_, titleNormalizer)).filter(_.startsWith("integrationtestorder"))
     ids        should have size 3 // all three returned — no skip
     ids shouldBe ids.sorted
   }
@@ -1334,7 +1334,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
     val paged    = new MongoMovieRepository(findAllBatchSize = 2)
     val streamed = scala.collection.mutable.ListBuffer.empty[String]
-    try paged.foreachRecord(r => streamed += StoredMovieRecord.idOf(r)) finally paged.close()
+    try paged.foreachRecord(r => streamed += StoredMovieRecord.idOf(r, titleNormalizer)) finally paged.close()
 
     streamed.size shouldBe streamed.distinct.size        // no row re-visited at a boundary
     val sentinels = streamed.filter(_.startsWith("integrationteststream"))
@@ -1362,7 +1362,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       repository.upsert(s"__integration-test-findall-page-${s}__", None, MovieRecord()))
 
     val paged = new MongoMovieRepository(findAllBatchSize = 2)
-    val ids   = try paged.findAll().map(StoredMovieRecord.idOf) finally paged.close()
+    val ids   = try paged.findAll().map(StoredMovieRecord.idOf(_, titleNormalizer)) finally paged.close()
 
     ids.size shouldBe ids.distinct.size          // no row re-visited at a page boundary
     val sentinels = ids.filter(_.startsWith("integrationtestfindallpage"))
@@ -1493,7 +1493,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val slots  = new MongoSlotsRepository(Some(db))
     val title  = "__integration-test-slot-union__"
     val year   = Some(1908)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       // Write the film with BOTH cinemas and NO slots repository wired — the un-migrated
       // shape, and exactly what the staging fold's in-transaction write leaves behind.
@@ -1528,7 +1528,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val slots  = new MongoSlotsRepository(Some(db))
     val title  = "__integration-test-slot-readfail__"
     val year   = Some(1909)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     try {
       val repo = new MongoMovieRepository(Some(db), screenings = Some(scr), slots = Some(slots))
       repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000080"),
@@ -1564,7 +1564,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val slots  = new MongoSlotsRepository(Some(db))
     val title  = "__integration-test-unreadable-scrape__"
     val year   = Some(1911)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     val when   = java.time.LocalDateTime.now().plusDays(1).withHour(20).withMinute(0).withSecond(0).withNano(0)
     try {
       // A live film showing at TWO cinemas, written through the real repository.
@@ -1612,7 +1612,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val slots  = new MongoSlotsRepository(Some(db))
     val title  = "__integration-test-unreadable-screenings__"
     val year   = Some(1912)
-    val id     = StoredMovieRecord.idFor(title, year)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
     val when   = java.time.LocalDateTime.now().plusDays(1).withHour(20).withMinute(0).withSecond(0).withNano(0)
     try {
       // A live film showing at two cinemas, written through the real repository.

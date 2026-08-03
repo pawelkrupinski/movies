@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -157,7 +157,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.put(key, mkEnrichment("tt-foo"))
     cache.get(key) should not be empty
 
-    cache.applyDelete(StoredMovieRecord.idFor("Foo", Some(2024)))
+    cache.applyDelete(StoredMovieRecord.idFor("Foo", Some(2024), titleNormalizer))
     cache.get(key) shouldBe None
 
     // A delete for an unknown id is a harmless no-op — it must not clear other rows.

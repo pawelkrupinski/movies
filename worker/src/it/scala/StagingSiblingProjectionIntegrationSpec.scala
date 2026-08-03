@@ -1,6 +1,6 @@
 package integration
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, ObservableFuture, SingleObservableFuture}

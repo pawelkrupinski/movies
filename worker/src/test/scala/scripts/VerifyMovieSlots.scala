@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.mongodb.scala.MongoClient
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, SlotsRepository, StoredMovieRecord}
@@ -57,7 +57,7 @@ object VerifyMovieSlots {
     val neither = Seq.newBuilder[String]
     val scanComplete = embeddedView.foreachRecord { row =>
       films += 1
-      val id       = StoredMovieRecord.idOf(row)
+      val id       = StoredMovieRecord.idOf(row, titleNormalizer)
       val hasRows  = stored.get(id).exists(_.nonEmpty)
       val hasInDoc = row.record.data.nonEmpty
       if (hasRows)  withSlotRows += 1

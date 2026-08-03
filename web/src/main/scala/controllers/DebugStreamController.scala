@@ -52,7 +52,7 @@ class DebugStreamController(
   private[controllers] def upsertFrame(row: StoredMovieRecord): String = {
     implicit val city: models.City = frameCity
     val html = views.html._debugRow(row, frameNormalizer).body
-    s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row)(using frameNormalizer), "html" -> html))}\n\n"
+    s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row, frameNormalizer), "html" -> html))}\n\n"
   }
 
   /** SSE frame for a deleted row: just the `_id`, so the page drops it. */

@@ -33,7 +33,7 @@ object StoredMovieRecord {
    *  formula the repository keys rows by — exposed so the change stream and the
    *  /debug live view can key DOM rows on the same id the store does. Matches
    *  the in-memory `CacheKey` normalization (case/diacritic-folded). */
-  def idFor(title: String, year: Option[Int])(using normalizer: TitleNormalizer): String =
+  def idFor(title: String, year: Option[Int], normalizer: TitleNormalizer): String =
     s"${normalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
   /** The `_id` of a stored row. Prefers the actual `persistedId` over re-deriving
@@ -44,8 +44,8 @@ object StoredMovieRecord {
    *  Mongo documents then render the same `data-id` and the /debug live view's
    *  first-match DOM lookup opens whichever row is first. The persisted `_id` is
    *  unique by construction, so keying on it keeps the rows independent. */
-  def idOf(row: StoredMovieRecord)(using TitleNormalizer): String =
-    row.persistedId.getOrElse(idFor(row.title, row.year))
+  def idOf(row: StoredMovieRecord, normalizer: TitleNormalizer): String =
+    row.persistedId.getOrElse(idFor(row.title, row.year, normalizer))
 
   /** Rebuild a stored row from its persisted `_id` and `MovieRecord`, deriving
    *  the display `title` and `year` rather than reading pinned columns — used by
@@ -65,7 +65,7 @@ object StoredMovieRecord {
    *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
    *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
    *  once the record is whole. */
-  def fromStorage(id: String, record: MovieRecord)(using normalizer: TitleNormalizer): StoredMovieRecord = {
+  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord = {
     val sep      = id.lastIndexOf('|')
     val idPrefix = if (sep >= 0) id.substring(0, sep) else id
     val year     = if (sep >= 0) id.substring(sep + 1).toIntOption else None
@@ -125,7 +125,7 @@ trait MovieRepository {
    *  The in-memory store cannot fail, so the default reports `true`. */
   def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = {
     given TitleNormalizer = normalizer
-    (findAll().find(row => StoredMovieRecord.idOf(row) == id), true)
+    (findAll().find(row => StoredMovieRecord.idOf(row, normalizer) == id), true)
   }
 
   /** The country whose rules derive a row's `_id`. Defaulted so the in-memory and
@@ -401,7 +401,7 @@ class MongoMovieRepository(
     if (storedSlots.isEmpty) r
     else {
       val stitched = r.record.copy(data = SlotsRepository.merge(r.record.data, storedSlots))
-      r.persistedId.fold(r.copy(record = stitched))(StoredMovieRecord.fromStorage(_, stitched))
+      r.persistedId.fold(r.copy(record = stitched))(StoredMovieRecord.fromStorage(_, stitched, normalizer))
     }
 
   /** Decode one stored row and re-inject its slots from `movie_slots` and its showtimes
@@ -1140,5 +1140,5 @@ class MongoMovieRepository(
   // their own row, and only one can be updated per hourly refresh tick (the
   // tick walks the deduplicated Caffeine cache).
   private def documentId(title: String, year: Option[Int]): String =
-    StoredMovieRecord.idFor(title, year)
+    StoredMovieRecord.idFor(title, year, normalizer)
 }

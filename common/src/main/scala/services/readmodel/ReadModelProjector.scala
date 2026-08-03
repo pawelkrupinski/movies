@@ -153,7 +153,7 @@ class ReadModelProjector(
     // each other's entry on every alternating change: neither ever read its own hash back,
     // every projection recomputed, and the miss rate never decayed. Keying per row makes each
     // row's entry its own.
-    val rowKey = StoredMovieRecord.idOf(stored)
+    val rowKey = StoredMovieRecord.idOf(stored, normalizer)
     val hash   = ReadModelProjection.metadataHash(stored)
     lastMetadata.get(rowKey) match {
       case Some((cachedHash, movies)) if cachedHash == hash =>
@@ -254,7 +254,7 @@ class ReadModelProjector(
     val scanComplete = movieRepository.foreachRecord { row =>
       if (row.record.readyToProject) {
         liveIds ++= ReadModelProjection.filmIds(row, normalizer)
-        liveRowKeys += StoredMovieRecord.idOf(row)
+        liveRowKeys += StoredMovieRecord.idOf(row, normalizer)
         if (reproject)
           try reprojected += project(row)
           catch { case exception: Throwable =>

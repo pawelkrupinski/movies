@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -80,7 +80,7 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
     withClue(s"rows=${cache.snapshot().map(r => (r.title, r.year))} deletes=${repository.deletes.size}: ")(
       showtimeCount(screenings) should be > 0)
     // …and specifically under the NEW id, not stranded under the old one.
-    screenings.findForFilm(StoredMovieRecord.idFor("Beta", Some(2026))).values.flatten should not be empty
+    screenings.findForFilm(StoredMovieRecord.idFor("Beta", Some(2026), titleNormalizer)).values.flatten should not be empty
   }
 
   // The showtimes must MERGE, not overwrite: a fold unions two cinemas, so the winner has

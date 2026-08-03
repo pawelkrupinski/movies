@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -66,7 +66,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
    *  asserted on live in `movie_slots`. */
   private def cinemasByFilm(w: FixtureTestWiring): Map[String, Set[String]] =
     w.movieRepository.findAll().map(r =>
-      StoredMovieRecord.idOf(r) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
+      StoredMovieRecord.idOf(r, titleNormalizer) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
 
   /** One production-shaped scrape tick that REPLICATES `runOneScrapeTick` but
    *  observes the staging sink right after the scrape phase (before it drains),

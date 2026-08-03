@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import clients.TmdbClient
 import controllers.{FilmSchedule, MovieControllerService}
@@ -237,7 +237,7 @@ abstract class CountryConvergenceBehaviour(
 
   private def cinemasByFilm(w: ArchiveReplayWiring): Map[String, Set[String]] =
     w.movieRepository.findAll().map(r =>
-      StoredMovieRecord.idOf(r) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
+      StoredMovieRecord.idOf(r, titleNormalizer) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
 
   /** ONE seeded archive + booted corpus, shared by the convergence test and the
    *  no-loss test.

@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Source, SourceData}
 import org.mongodb.scala.MongoClient
@@ -49,7 +49,7 @@ object BackfillMovieSlots {
       scanned += 1
       val embedded: Map[Source, SourceData] = row.record.data
       if (embedded.nonEmpty) {
-        val id      = StoredMovieRecord.idOf(row)
+        val id      = StoredMovieRecord.idOf(row, titleNormalizer)
         val payload = SlotsRepository.slotsOf(embedded)
         if (!dryRun) slots.replaceFilm(id, payload)
         written  += 1

@@ -1,6 +1,6 @@
 package integration
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Multikino, SourceData}
 import org.mongodb.scala.model.Filters
@@ -47,8 +47,8 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   // alongside that spec — its rows deleted mid-fold by the neighbour's purge. Anything new
   // sharing this database wants a prefix of its own, and its own cleanup.
   private val title  = "__foldorphans-it-sentinel__"
-  private val winner = StoredMovieRecord.idFor(title, Some(2026))
-  private val loser  = StoredMovieRecord.idFor(title, Some(2025))
+  private val winner = StoredMovieRecord.idFor(title, Some(2026), titleNormalizer)
+  private val loser  = StoredMovieRecord.idFor(title, Some(2025), titleNormalizer)
 
   private def sd(t: String) = SourceData(title = Some(t))
 
@@ -150,7 +150,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     val slots      = new MongoSlotsRepository(Some(db))
     val staging    = db.getCollection(StagingRepository.Collection)
     val movies     = db.getCollection(services.movies.MovieRepository.Collection)
-    val existing   = StoredMovieRecord.idFor(blindTitle, Some(2026))
+    val existing   = StoredMovieRecord.idFor(blindTitle, Some(2026), titleNormalizer)
     // The bare spelling is what the cinemas report, and it is the one the settle would key
     // on. It exists ONLY in `movie_slots` — a fully migrated film, which is what prod's
     // corpus is converging to.

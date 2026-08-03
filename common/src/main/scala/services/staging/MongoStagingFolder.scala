@@ -148,7 +148,7 @@ class MongoStagingFolder(
           Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
       val plan = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer)
       plan.moviesUpserts.foreach { case (k, record) =>
-        val id = StoredMovieRecord.idFor(k.cleanTitle, k.year)
+        val id = StoredMovieRecord.idFor(k.cleanTitle, k.year, normalizer)
         await(movies.replaceOne(session, Filters.eq("_id", id),
           StoredMovieDto.fromDomain(id, record, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
       }
@@ -172,7 +172,7 @@ class MongoStagingFolder(
       // fold side-aware means MIGRATING the loser's rows onto the winner, not deleting
       // them — a real change, not a delete.
       plan.moviesDeletes.foreach(k =>
-        await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k.cleanTitle, k.year))).toFuture()))
+        await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k.cleanTitle, k.year, normalizer))).toFuture()))
       plan.stagingDeletes.foreach(r =>
         await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()))
       // These `movies` deletes bypass MovieRepository.delete (direct in-txn deleteOne),

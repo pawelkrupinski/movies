@@ -582,9 +582,9 @@ class CaffeineMovieCache(
         // didn't happen, and deleting on that basis destroys the film's only copy. A victim
         // left behind is a duplicate row the next pass folds again (and
         // `scripts.ReapOrphanedFilmRows` clears), which is the recoverable direction.
-        val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year)
+        val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year, normalizer)
         val (moved, stranded) = victims.partition(v =>
-          repository.moveFilm(StoredMovieRecord.idFor(v.cleanTitle, v.year), canonicalId))
+          repository.moveFilm(StoredMovieRecord.idFor(v.cleanTitle, v.year, normalizer), canonicalId))
         if (stranded.nonEmpty)
           logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
             "cinemas could not be carried onto the winner — they fold again on the next pass.")
@@ -626,7 +626,7 @@ class CaffeineMovieCache(
     get(key) match {
       case cached @ Some(_) => (cached, true)
       case None =>
-        val (row, readOk) = repository.findByIdChecked(StoredMovieRecord.idFor(key.cleanTitle, key.year))
+        val (row, readOk) = repository.findByIdChecked(StoredMovieRecord.idFor(key.cleanTitle, key.year, normalizer))
         (row.map(_.record), readOk)
     }
 
@@ -792,9 +792,9 @@ class CaffeineMovieCache(
     // `moveFilm` reports false when a read or write it depended on didn't happen, and the
     // delete would otherwise destroy the film's only copy. A stranded victim stays a
     // duplicate row that folds again next pass, which is the recoverable direction.
-    val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year)
+    val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year, normalizer)
     val (moved, stranded) = victims.partition(victim =>
-      repository.moveFilm(StoredMovieRecord.idFor(victim.cleanTitle, victim.year), canonicalId))
+      repository.moveFilm(StoredMovieRecord.idFor(victim.cleanTitle, victim.year, normalizer), canonicalId))
     persist(canonical, merged)
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
@@ -960,8 +960,8 @@ class CaffeineMovieCache(
           // they are. Deferring leaves everything exactly as it was, and the settle asks
           // again next tick.
           if (oldKey != newKey &&
-              !repository.moveFilm(StoredMovieRecord.idFor(oldKey.cleanTitle, oldKey.year),
-                                   StoredMovieRecord.idFor(newKey.cleanTitle, newKey.year))) {
+              !repository.moveFilm(StoredMovieRecord.idFor(oldKey.cleanTitle, oldKey.year, normalizer),
+                                   StoredMovieRecord.idFor(newKey.cleanTitle, newKey.year, normalizer))) {
             logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
               s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): its screenings/slots could not " +
               "be carried to the new id, and re-keying without them empties the film.")
@@ -1664,7 +1664,7 @@ class CaffeineMovieCache(
     // on load). Rewrite the canonical doc with the merged record, then delete the
     // orphan id(s). Gated on an orphan existing, so a canonical corpus writes nothing.
     val orphans = rows.collect {
-      case r if r.persistedId.exists(_ != StoredMovieRecord.idFor(r.title, r.year)) =>
+      case r if r.persistedId.exists(_ != StoredMovieRecord.idFor(r.title, r.year, normalizer)) =>
         CacheKey(r.title, r.year) -> r.persistedId.get
     }
     if (orphans.nonEmpty) {
@@ -1741,7 +1741,7 @@ class CaffeineMovieCache(
   private[services] def applyDelete(id: String): Unit = {
     import scala.jdk.CollectionConverters._
     positive.asMap().keySet().asScala
-      .find(k => StoredMovieRecord.idFor(k.cleanTitle, k.year) == id)
+      .find(k => StoredMovieRecord.idFor(k.cleanTitle, k.year, normalizer) == id)
       .foreach { k =>
         positive.invalidate(k)
         // An out-of-band Mongo delete arriving via the change stream — the mirror

@@ -120,7 +120,7 @@ object StoredMovieDto {
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
     // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).
-    StoredMovieRecord.fromStorage(dto._id, record)(using normalizer)
+    StoredMovieRecord.fromStorage(dto._id, record, normalizer)
   }
 }
 

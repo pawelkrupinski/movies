@@ -168,7 +168,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   // per-source breakdown is fetched on expand from this endpoint, keyed by the
   // row's Mongo `_id`. Rendering them all inline OOM'd the view on the full corpus.
   "GET /debug/details" should "render one row's per-source breakdown in dev" in {
-    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer)
     val result = buildController(Mode.Dev).debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
 
     status(result) shouldBe OK
@@ -194,7 +194,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
 
     val (controller, _) = TestMovieController.build(resolved, Mode.Dev,
       ratingCadenceReader = cadenceReader, attemptReader = attempts)
-    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer)
     val result = controller.debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
 
     status(result) shouldBe OK
@@ -220,7 +220,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "explain an unresolved row instead of showing an empty table" in {
-    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer)
     val result = buildController(Mode.Dev).debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
     contentAsString(result) should include("No tmdbId")
   }
@@ -231,7 +231,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "404 in production like the rest of /debug" in {
-    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021))
+    val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer)
     val result = buildController(Mode.Prod).debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
     status(result) shouldBe NOT_FOUND
   }

@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Cinema, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -20,7 +20,7 @@ class VerifyMovieSlotsSpec extends AnyFlatSpec with Matchers {
   private def repoOf(rows: (String, Option[Int], MovieRecord)*): MovieRepository =
     new InMemoryMovieRepository(rows)
 
-  private def idOf(t: String) = StoredMovieRecord.idFor(t, Some(2026))
+  private def idOf(t: String) = StoredMovieRecord.idFor(t, Some(2026), titleNormalizer)
 
   "the verifier" should "pass a film whose slots live in movie_slots" in {
     val repo  = repoOf(("Migrated", Some(2026), MovieRecord(data = Map.empty[Source, SourceData])))

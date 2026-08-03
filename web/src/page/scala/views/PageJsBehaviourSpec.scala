@@ -160,7 +160,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
           CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))))
       val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), titleNormalizer, Seq.empty).body
-      slotsRowId = StoredMovieRecord.idOf(slotsRow)
+      slotsRowId = StoredMovieRecord.idOf(slotsRow, titleNormalizer)
       // Change-stream frames for the no-op-guard test, rendered by the SAME
       // `_debugRow` partial DebugStreamController ships. One re-asserts `slotsRow`
       // UNCHANGED (the common scrape-tick write, which bumps only `updatedAt`);
@@ -213,7 +213,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // debugDetails, mirroring MovieController.debugDetails.
           case p if p.startsWith("/debug/details?") =>
             val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
-            (debugRows :+ slotsRow).find(r => StoredMovieRecord.idOf(r) == id)
+            (debugRows :+ slotsRow).find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id)
               .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String]).body)
               .getOrElse("")
         },

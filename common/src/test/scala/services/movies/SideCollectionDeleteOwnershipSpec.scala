@@ -96,7 +96,7 @@ class SideCollectionDeleteOwnershipSpec extends AnyFlatSpec with Matchers {
   it should "have caught the fold cascade that emptied the boards" in {
     val revertedFoldBody =
       """plan.moviesDeletes.foreach { k =>
-        |  val loserId = StoredMovieRecord.idFor(k.cleanTitle, k.year)
+        |  val loserId = StoredMovieRecord.idFor(k.cleanTitle, k.year, titleNormalizer)
         |  await(movies.deleteOne(session, Filters.eq("_id", loserId)).toFuture())
         |  slotsColl.foreach(c      => await(c.deleteMany(session, SlotKeyed.filmFilter(loserId)).toFuture()))
         |  screeningsColl.foreach(c => await(c.deleteMany(session, SlotKeyed.filmFilter(loserId)).toFuture()))

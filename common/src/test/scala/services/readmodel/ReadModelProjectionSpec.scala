@@ -1,6 +1,6 @@
 package services.readmodel
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -42,7 +42,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
   )
 
   private val id     = s"${titleNormalizer.sanitize("Skazani na Shawshank")}|1994"
-  private val stored = StoredMovieRecord.fromStorage(id, record)
+  private val stored = StoredMovieRecord.fromStorage(id, record, titleNormalizer)
 
   private val (movie, screenings) = ReadModelProjection.project(stored, titleNormalizer)
 
@@ -70,7 +70,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         synopsis = Some("Wrocławski opis kina.\n\nAkapit drugi."), showtimes = Seq(at("2026-06-12T19:00"))),
       Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
     ))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
     m.synopsis shouldBe Some("Opis z TMDB.")                              // city-independent fallback (no cinema)
     m.synopsisByCity.keySet shouldBe Set("poznan", "wroclaw")
     m.synopsisFor(Poznan).get  should (include ("Poznański")  and not include ("Wrocławski"))
@@ -86,7 +86,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         synopsis = Some("Wrocławski opis kina, wyraźnie dłuższy niż TMDB."), showtimes = Seq(at("2026-06-12T19:00"))),
       Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
     ))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
     m.synopsisByCity.keySet shouldBe Set("wroclaw")
     m.synopsisFor(Poznan)  shouldBe Some("Opis z TMDB.")
     m.synopsisFor(Wroclaw) shouldBe Some("Wrocławski opis kina, wyraźnie dłuższy niż TMDB.")
@@ -108,7 +108,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         synopsis = Some("Warszawski opis kina, wyraźnie dłuższy niż blurb z TMDB."), showtimes = Seq(at("2026-06-12T20:00"))),
       Tmdb           -> SourceData(title = Some("X"), synopsis = Some("Opis z TMDB."))
     ))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|", rec, titleNormalizer), titleNormalizer)
     m.synopsis shouldBe Some("Opis z TMDB.")                              // shared, memoised, fallback
     m.synopsisByCity.keySet shouldBe Set("poznan", "wroclaw", "warszawa")
     m.synopsisFor(Poznan).get   should (include ("Poznański")  and not include ("Wrocławski") and not include ("Warszawski"))
@@ -150,7 +150,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
 
   it should "drop cinema slots with no showtimes" in {
     val noShows = record.copy(data = record.data + (Rialto -> SourceData(showtimes = Seq.empty)))
-    val s = ReadModelProjection.screenings(StoredMovieRecord.fromStorage(id, noShows), titleNormalizer)
+    val s = ReadModelProjection.screenings(StoredMovieRecord.fromStorage(id, noShows, titleNormalizer), titleNormalizer)
     s.map(_.cinema) should not contain "Kino Rialto"
   }
 
@@ -164,7 +164,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("X"), releaseYear = Some(2025)),
       Tmdb      -> SourceData(title = Some("X"), releaseYear = Some(2026))))
-    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|2026", record), titleNormalizer)
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("x|2026", record, titleNormalizer), titleNormalizer)
     m.releaseYear shouldBe Some(2026)
   }
 
@@ -180,7 +180,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       Multikino -> SourceData(title = Some("Kumotry"), releaseYear = Some(2025),
         showtimes = Seq(at("2026-06-12T18:00"))),
       Tmdb      -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
-    val (m, ss) = ReadModelProjection.project(StoredMovieRecord.fromStorage("kumotry|2025", record), titleNormalizer)
+    val (m, ss) = ReadModelProjection.project(StoredMovieRecord.fromStorage("kumotry|2025", record, titleNormalizer), titleNormalizer)
     m._id shouldBe "kumotry|2026"
     ss.map(_.filmId).distinct shouldBe Seq("kumotry|2026")
   }
@@ -206,7 +206,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
         genres = Seq("Dramat"))
     )
   )
-  private val twoTitleStored = StoredMovieRecord.fromStorage("iwangrozny|1944", twoTitleRecord)
+  private val twoTitleStored = StoredMovieRecord.fromStorage("iwangrozny|1944", twoTitleRecord, titleNormalizer)
 
   "projectAll" should "split one record into a card per shown title" in {
     val cards = ReadModelProjection.projectAll(twoTitleStored, titleNormalizer)

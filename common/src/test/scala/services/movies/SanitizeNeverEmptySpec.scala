@@ -1,6 +1,5 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -38,8 +37,8 @@ class SanitizeNeverEmptySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "give such a film a real `_id`, not a bare year" in {
-    StoredMovieRecord.idFor(whollyBanner, Some(1957)) should not be "|1957"
-    StoredMovieRecord.idFor(whollyBanner, Some(1957)) shouldBe s"${sanitize(whollyBanner)}|1957"
+    StoredMovieRecord.idFor(whollyBanner, Some(1957), SingleCountryNormalizer.titleNormalizer) should not be "|1957"
+    StoredMovieRecord.idFor(whollyBanner, Some(1957), SingleCountryNormalizer.titleNormalizer) shouldBe s"${sanitize(whollyBanner)}|1957"
   }
 
   // The fallback is the RAW title's key — deburred, lower-cased, punctuation stripped —

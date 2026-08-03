@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -16,20 +16,20 @@ import org.scalatest.matchers.should.Matchers
 class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
 
   "idFor" should "be sanitize(title)|year" in {
-    StoredMovieRecord.idFor("Belle", Some(2021)) shouldBe "belle|2021"
-    StoredMovieRecord.idFor("Belle", None)       shouldBe "belle|"
+    StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer) shouldBe "belle|2021"
+    StoredMovieRecord.idFor("Belle", None, titleNormalizer)       shouldBe "belle|"
   }
 
   it should "fold case + diacritic variants of the same title to one id" in {
-    val a = StoredMovieRecord.idFor("Tom i Jerry: Przygoda w muzeum", Some(2024))
-    val b = StoredMovieRecord.idFor("tom i jerry: przygoda w muzeum", Some(2024))
+    val a = StoredMovieRecord.idFor("Tom i Jerry: Przygoda w muzeum", Some(2024), titleNormalizer)
+    val b = StoredMovieRecord.idFor("tom i jerry: przygoda w muzeum", Some(2024), titleNormalizer)
     a shouldBe b
   }
 
   it should "agree with fromStorage's round-trip (the id rebuilds to the same id)" in {
-    val id      = StoredMovieRecord.idFor("Diuna", Some(2021))
-    val rebuilt = StoredMovieRecord.fromStorage(id, MovieRecord())
-    StoredMovieRecord.idOf(rebuilt) shouldBe id
+    val id      = StoredMovieRecord.idFor("Diuna", Some(2021), titleNormalizer)
+    val rebuilt = StoredMovieRecord.fromStorage(id, MovieRecord(), titleNormalizer)
+    StoredMovieRecord.idOf(rebuilt, titleNormalizer) shouldBe id
   }
 
   it should "key each stored row on its own _id, so two docs never share a DOM id" in {
@@ -41,13 +41,13 @@ class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
     // onto the first. Both rows then render the same `data-id` and the live
     // view's first-match lookup opens whichever row comes first. The id must be
     // the persisted `_id`, which is unique, not the round-trip re-derivation.
-    val baked = StoredMovieRecord.fromStorage("zabriskiepoint1970|1970", MovieRecord())
+    val baked = StoredMovieRecord.fromStorage("zabriskiepoint1970|1970", MovieRecord(), titleNormalizer)
     val clean = StoredMovieRecord.fromStorage(
       "zabriskiepoint|1970",
-      MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Zabriskie Point (1970)")))))
+      MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Zabriskie Point (1970)")))), titleNormalizer)
 
-    StoredMovieRecord.idOf(baked) shouldBe "zabriskiepoint1970|1970"
-    StoredMovieRecord.idOf(clean) shouldBe "zabriskiepoint|1970"
-    StoredMovieRecord.idOf(baked) should not be StoredMovieRecord.idOf(clean)
+    StoredMovieRecord.idOf(baked, titleNormalizer) shouldBe "zabriskiepoint1970|1970"
+    StoredMovieRecord.idOf(clean, titleNormalizer) shouldBe "zabriskiepoint|1970"
+    StoredMovieRecord.idOf(baked, titleNormalizer) should not be StoredMovieRecord.idOf(clean, titleNormalizer)
   }
 }

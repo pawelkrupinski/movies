@@ -55,7 +55,7 @@ import scala.util.Try
  */
 class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends Stoppable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
-  private given services.movies.TitleNormalizer = cache.normalizer
+  private given normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   private val scheduler = DaemonExecutors.scheduler("unscreened-cleanup")
 
@@ -105,7 +105,7 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
   /** The `_id` the delete would cascade against — the same formula
    *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by, so the
    *  record we corroborate against is exactly the one the delete would clear. */
-  private def idOf(key: CacheKey): String = StoredMovieRecord.idFor(key.cleanTitle, key.year)
+  private def idOf(key: CacheKey): String = StoredMovieRecord.idFor(key.cleanTitle, key.year, normalizer)
 
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 
