@@ -1,6 +1,6 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -19,17 +19,17 @@ class StagingRecordSpec extends AnyFlatSpec with Matchers {
       Helios -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = year)))
 
   "idFor" should "be cinemaDisplayName|sanitize(title)|year" in {
-    StagingRecord.idFor(Helios, "Dzień objawienia", Some(2026)) shouldBe
+    StagingRecord.idFor(Helios, "Dzień objawienia", Some(2026), titleNormalizer) shouldBe
       s"${Helios.displayName}|${titleNormalizer.sanitize("Dzień objawienia")}|2026"
   }
 
   it should "leave the year segment empty for a yearless row" in {
-    StagingRecord.idFor(Helios, "Kumotry", None) shouldBe s"${Helios.displayName}|kumotry|"
+    StagingRecord.idFor(Helios, "Kumotry", None, titleNormalizer) shouldBe s"${Helios.displayName}|kumotry|"
   }
 
   "fromStorage" should "recover cinema, title and year from the id" in {
-    val id  = StagingRecord.idFor(Helios, "Kumotry", Some(2026))
-    val row = StagingRecord.fromStorage(id, slot("Kumotry", Some(2026)))
+    val id  = StagingRecord.idFor(Helios, "Kumotry", Some(2026), titleNormalizer)
+    val row = StagingRecord.fromStorage(id, slot("Kumotry", Some(2026)), titleNormalizer)
     row shouldBe defined
     row.get.cinema shouldBe Helios
     row.get.year   shouldBe Some(2026)
@@ -37,12 +37,12 @@ class StagingRecordSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "recover a yearless row" in {
-    val id  = StagingRecord.idFor(Helios, "Kumotry", None)
-    StagingRecord.fromStorage(id, slot("Kumotry", None)).flatMap(r => r.year) shouldBe None
+    val id  = StagingRecord.idFor(Helios, "Kumotry", None, titleNormalizer)
+    StagingRecord.fromStorage(id, slot("Kumotry", None), titleNormalizer).flatMap(r => r.year) shouldBe None
   }
 
   it should "drop a row whose cinema segment is unknown (dropped/renamed cinema)" in {
-    StagingRecord.fromStorage("No Such Cinema|kumotry|2026", slot("Kumotry", Some(2026))) shouldBe None
+    StagingRecord.fromStorage("No Such Cinema|kumotry|2026", slot("Kumotry", Some(2026)), titleNormalizer) shouldBe None
   }
 
   "the movies storage shape" should "round-trip a 3-part staging id through the codec" in {
@@ -50,11 +50,11 @@ class StagingRecordSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(1454157),
       data   = slot("Kumotry", Some(2026)).data +
         (Tmdb -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
-    val id  = StagingRecord.idFor(Helios, "Kumotry", Some(2026))
+    val id  = StagingRecord.idFor(Helios, "Kumotry", Some(2026), titleNormalizer)
     val dto = StoredMovieDto.fromDomain(id, record, Instant.now())
     val back = StoredMovieDto.toDomain(dto, titleNormalizer).record
     back.tmdbId               shouldBe Some(1454157)
     back.data.keySet          shouldBe Set(Helios, Tmdb)
-    StagingRecord.fromStorage(id, back).map(_.cinema) shouldBe Some(Helios)
+    StagingRecord.fromStorage(id, back, titleNormalizer).map(_.cinema) shouldBe Some(Helios)
   }
 }

@@ -1,6 +1,6 @@
 package services.staging
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{MikroBronowice, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -32,7 +32,7 @@ class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
     tmdbNoMatch = true,
     searchTitle = Some("Toy Story 5- dubbing"),
     data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Toy Story 5- dubbing"))))
-  private val row     = StagingRecord.fromStorage(staleId, record).getOrElse(fail(s"fromStorage($staleId) returned None"))
+  private val row     = StagingRecord.fromStorage(staleId, record, titleNormalizer).getOrElse(fail(s"fromStorage($staleId) returned None"))
   private val idMiddle = staleId.substring(staleId.indexOf('|') + 1, staleId.lastIndexOf('|'))
 
   "a stale-keyed staging row" should "actually drift (premise check)" in {
@@ -41,7 +41,7 @@ class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
   }
 
   "selectStagingGroup" should "select a row whose title sanitizes away from its _id middle" in {
-    StagingFold.selectStagingGroup(Seq(row), row.title) shouldBe Seq(row)
+    StagingFold.selectStagingGroup(Seq(row), row.title, titleNormalizer) shouldBe Seq(row)
   }
 
   it should "NOT be found by the legacy _id-middle match (documents the bug)" in {
@@ -53,8 +53,8 @@ class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
 
   it should "still group an undecorated, non-drifting row by sanitized title" in {
     val plain   = StagingRecord(MikroBronowice, "Kumotry", Some(2026),
-      MovieRecord(tmdbNoMatch = true, data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Kumotry")))))
-    StagingFold.selectStagingGroup(Seq(plain), "Kumotry") shouldBe Seq(plain)
-    StagingFold.selectStagingGroup(Seq(plain), "Something Else") shouldBe empty
+      MovieRecord(tmdbNoMatch = true, data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Kumotry")))), titleNormalizer)
+    StagingFold.selectStagingGroup(Seq(plain), "Kumotry", titleNormalizer) shouldBe Seq(plain)
+    StagingFold.selectStagingGroup(Seq(plain), "Something Else", titleNormalizer) shouldBe empty
   }
 }

@@ -1,6 +1,6 @@
 package controllers
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.apache.pekko.actor.ActorSystem
@@ -112,7 +112,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     frames should have size 1
     val message = Json.parse(frames.head.stripPrefix("data: ").trim)
     (message \ "type").as[String] shouldBe "staging-upsert"
-    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026))
+    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026), titleNormalizer)
     val html = (message \ "html").as[String]
     html should include ("Newcomer")
     html should include ("""data-anchor="newcomer"""") // hidden source row the page folds by film
@@ -131,6 +131,6 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     frames should have size 1
     val message = Json.parse(frames.head.stripPrefix("data: ").trim)
     (message \ "type").as[String] shouldBe "staging-delete"
-    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026))
+    (message \ "id").as[String]   shouldBe StagingRecord.idFor(CinemaCityWroclavia, "Newcomer", Some(2026), titleNormalizer)
   }
 }

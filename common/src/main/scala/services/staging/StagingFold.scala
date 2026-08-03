@@ -94,7 +94,7 @@ object StagingFold {
    *  reaper groups + the gauge count on this SAME `sanitize(r.title)` key, so the
    *  fold now consumes exactly the rows the reaper classified as ready. Deletes
    *  still go through each row's persisted `id` (drift-proof), per StagingRecord. */
-  def selectStagingGroup(rows: Seq[StagingRecord], cleanTitle: String)(using normalizer: TitleNormalizer): Seq[StagingRecord] = {
+  def selectStagingGroup(rows: Seq[StagingRecord], cleanTitle: String, normalizer: TitleNormalizer): Seq[StagingRecord] = {
     val key = normalizer.sanitize(cleanTitle)
     rows.filter(r => normalizer.sanitize(r.title) == key)
   }
@@ -105,17 +105,17 @@ object StagingFold {
    *  [[reconcileTmdbIds]]). `groupByFilm` then collapses within AND across titles by
    *  shared tmdbId — the same partition the cache `canonicalizeBySanitize` settle
    *  runs over the whole corpus, applied here to the fold's neighbourhood. */
-  def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord])(using normalizer: TitleNormalizer): Plan = {
+  def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Plan = {
     // Union the per-cinema staging rows to ONE row per (sanitize, year) key FIRST,
     // restoring the one-row-per-key invariant `clusterByFilm` assumes. Without it,
     // N separate YEARLESS cinema rows would each become a rule-4 singleton cluster
     // that then collapses onto the same `(sanitize, None)` key and clobbers all but
     // one — dropping every cinema's slot but one for the all-yearless events
     // (Maraton Horrorów, Filmowe Poranki).
-    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year)).toSeq.map {
+    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year)(using normalizer)).toSeq.map {
       case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
     }
-    val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year) -> r.record)
+    val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year)(using normalizer) -> r.record)
     val moviesKeys  = moviesByKey.map(_._1).toSet
     // Union ACROSS the staging↔movies boundary too: `CacheKey` is case-insensitive,
     // so a staging "iron maiden" row and an already-promoted movies "Iron Maiden"

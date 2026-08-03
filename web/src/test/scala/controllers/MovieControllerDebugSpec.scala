@@ -1,6 +1,6 @@
 package controllers
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -241,7 +241,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   // ones must sort to the top server-side: running first, then by waiting place.
   private def staged(title: String): StagingRecord =
     StagingRecord(CinemaCityWroclavia, title, Some(2026),
-      MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title)))))
+      MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some(title)))), titleNormalizer)
   private def task(taskType: String, dedupKey: String, state: String): TaskSummary =
     TaskSummary(dedupKey, taskType, dedupKey, state, Instant.EPOCH, 0, None, None, None)
 

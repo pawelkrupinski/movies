@@ -36,14 +36,14 @@ object StagingRecord {
   /** Build a row whose `id` is the canonical `idFor` of its fields — the right
    *  default for a FRESH row (a scrape divert, a test seed). Rows read back from
    *  storage carry their persisted `_id` instead (see `fromStorage`). */
-  def apply(cinema: Source, title: String, year: Option[Int], record: MovieRecord)(using TitleNormalizer): StagingRecord =
-    StagingRecord(cinema, title, year, record, idFor(cinema, title, year))
+  def apply(cinema: Source, title: String, year: Option[Int], record: MovieRecord, normalizer: TitleNormalizer): StagingRecord =
+    StagingRecord(cinema, title, year, record, idFor(cinema, title, year, normalizer))
 
   /** The Mongo `_id` for a staging row: `cinemaDisplayName|sanitize(title)|year`.
    *  A `Cinema.displayName` never contains `|` and `sanitize` never emits one, so
    *  the first `|` ends the cinema and the last `|` precedes the year — the middle
    *  is the sanitized title (the same prefix `movies` keys its `_id` on). */
-  def idFor(cinema: Source, title: String, year: Option[Int])(using normalizer: TitleNormalizer): String =
+  def idFor(cinema: Source, title: String, year: Option[Int], normalizer: TitleNormalizer): String =
     s"${cinema.displayName}|${normalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
   /** Rebuild a staging row from its persisted `_id` + `MovieRecord`. The display
@@ -51,7 +51,7 @@ object StagingRecord {
    *  year + cinema from the `_id`. Returns None for a row whose cinema segment is
    *  unknown (a dropped/renamed cinema), matching the codec's drop-unknown-source
    *  behaviour. */
-  def fromStorage(id: String, record: MovieRecord)(using normalizer: TitleNormalizer): Option[StagingRecord] = {
+  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer): Option[StagingRecord] = {
     val firstSep = id.indexOf('|')
     val lastSep  = id.lastIndexOf('|')
     if (firstSep < 0 || lastSep <= firstSep) None
@@ -270,7 +270,7 @@ class MongoStagingRepository(
           logger.warn(s"StagingRepository.findAll keyset scan failed: ${exception.getClass.getSimpleName}: " +
             s"${exception.getMessage} — callers will see a SHORT staging view this tick (the reaper enqueues " +
             "less, the stuck-alerter reports less); it is not evidence that staging is empty")
-      )(batch => buf ++= batch.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record)))
+      )(batch => buf ++= batch.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer)))
 
       val records = buf.result()
       if (!complete) logger.warn(s"StagingRepository.findAll returned ${records.size} record(s) from an INCOMPLETE scan")
@@ -300,7 +300,7 @@ class MongoStagingRepository(
   @volatile private var anchorIndexBuilt = false
 
   private def anchorOf(id: String, record: MovieRecord): Option[String] =
-    StagingRecord.fromStorage(id, record).map(row => normalizer.sanitize(row.title))
+    StagingRecord.fromStorage(id, record, normalizer).map(row => normalizer.sanitize(row.title))
 
   private def ensureAnchorIndex(): Unit =
     if (!anchorIndexBuilt) synchronized {
@@ -321,7 +321,7 @@ class MongoStagingRepository(
     if (ids.isEmpty) Seq.empty
     else fetchByIds(c, ids) match {
       case Success(rows) =>
-        rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record).toSeq)
+        rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer).toSeq)
           .filter(row => normalizer.sanitize(row.title) == anchor)
       // NOT `Seq.empty`. A short answer here tells the reaper this film has no rows, so it
       // skips the film's next step — indistinguishable from the film being finished, and
@@ -335,7 +335,7 @@ class MongoStagingRepository(
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = {
-    val id       = StagingRecord.idFor(cinema, title, year)
+    val id       = StagingRecord.idFor(cinema, title, year, normalizer)
     val existing = recordAt(id)
     // On a fresh INSERT only (not the per-tick re-divert of an existing row), warn
     // if a movie with the same (cinema, sanitized title) is already staged under
@@ -395,7 +395,7 @@ class MongoStagingRepository(
   }
 
   def delete(cinema: Source, title: String, year: Option[Int]): Unit =
-    deleteId(StagingRecord.idFor(cinema, title, year))
+    deleteId(StagingRecord.idFor(cinema, title, year, normalizer))
 
   override def deleteRow(row: StagingRecord): Unit = deleteId(row.id)
 
@@ -416,7 +416,7 @@ class MongoStagingRepository(
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
         override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
           try Option(change.getFullDocument) match {
-            case Some(dto) => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record).foreach(onUpsert)
+            case Some(dto) => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer).foreach(onUpsert)
             // A delete (or drop/invalidate) carries no full document — the change's
             // document key holds the `_id` of the row that graduated/left.
             case None => Option(change.getDocumentKey).map(_.getString("_id").getValue).foreach(onDelete)

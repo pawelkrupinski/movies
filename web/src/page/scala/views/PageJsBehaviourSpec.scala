@@ -143,10 +143,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // (anchor `donenewcomer`, one cinema) has detail + TMDB concluded (so the
       // folded row shows ✓, ✓) and is now at IMDb recovery.
       val debugStaging = Seq(
-        StagingRecord(CinemaCityWroclavia, "Staging Film",  Some(2026), MovieRecord(detailPending = true)),
-        StagingRecord(Helios,              "Staging Film",  Some(2026), MovieRecord(detailPending = true)),
+        StagingRecord(CinemaCityWroclavia, "Staging Film",  Some(2026), MovieRecord(detailPending = true), titleNormalizer),
+        StagingRecord(Helios,              "Staging Film",  Some(2026), MovieRecord(detailPending = true), titleNormalizer),
         StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
-          MovieRecord(detailPending = false, tmdbId = Some(550))))
+          MovieRecord(detailPending = false, tmdbId = Some(550)), titleNormalizer))
       val debugHtml: String = views.html.debug(debugRows, titleNormalizer, debugStaging).body
       // A purpose-built corpus row for the Cinemas-cell layout test: ONE venue
       // (CinemaCityWroclavia) listing the film under TWO titles → `cinemaData` =

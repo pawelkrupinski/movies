@@ -131,8 +131,8 @@ class MongoStagingFolder(
       case None                     => await(staging.find(session).toFuture())
     }
     val stagingRows = StagingFold.selectStagingGroup(
-      candidates.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record)),
-      cleanTitle)
+      candidates.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer)),
+      cleanTitle, normalizer)
     if (stagingRows.isEmpty) Seq.empty
     else {
       // Movies `_id` = sanitize|year — match the sanitize group, any year.
@@ -146,7 +146,7 @@ class MongoStagingFolder(
         else await(movies.find(session, Filters.and(
           Filters.in("tmdbId", ids.toSeq*),
           Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
-      val plan = StagingFold.planGroup(stagingRows, groupRows ++ siblings)
+      val plan = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer)
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k.cleanTitle, k.year)
         await(movies.replaceOne(session, Filters.eq("_id", id),

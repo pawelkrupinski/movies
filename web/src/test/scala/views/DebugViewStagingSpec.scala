@@ -32,7 +32,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
       tmdbId = tmdbId,
       imdbId = imdbId,
       detailPending = detailPending,
-      data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))))
+      data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))), titleNormalizer)
 
   "debug view" should "render the empty staging table (header + both tbodies) when nothing is incubating" in {
     val html = views.html.debug(Seq.empty, titleNormalizer).body
@@ -83,7 +83,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
       Seq.empty, titleNormalizer,
       staging = Seq(StagingRecord(Helios, "Obscure One", Some(2026),
         MovieRecord(tmdbNoMatch = true,
-          data = Map[Source, SourceData](Helios -> SourceData(title = Some("Obscure One"))))))).body
+          data = Map[Source, SourceData](Helios -> SourceData(title = Some("Obscure One")))), titleNormalizer))).body
     html should include ("""data-tmdb-done="true"""")
   }
 

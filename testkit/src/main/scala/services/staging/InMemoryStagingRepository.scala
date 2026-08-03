@@ -43,12 +43,12 @@ class InMemoryStagingRepository(
   private def put(id: String, record: MovieRecord): Option[StagingRecord] = {
     // fromStorage returns None for an unknown/renamed cinema — match the old
     // findAll, which dropped those rows, by not retaining them.
-    val built = StagingRecord.fromStorage(id, record)
+    val built = StagingRecord.fromStorage(id, record, normalizer)
     built.fold(store.remove(id))(sr => store.put(id, sr))
     built
   }
 
-  seed.foreach { case (c, t, y, e) => put(StagingRecord.idFor(c, t, y), e) }
+  seed.foreach { case (c, t, y, e) => put(StagingRecord.idFor(c, t, y, normalizer), e) }
 
   def enabled: Boolean = true
 
@@ -59,7 +59,7 @@ class InMemoryStagingRepository(
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
-    val id       = StagingRecord.idFor(cinema, title, year)
+    val id       = StagingRecord.idFor(cinema, title, year, normalizer)
     val existing = store.get(id)
     // On a fresh INSERT only, warn if the same (cinema, sanitized title) is already
     // staged under another year-key — same detection + message as MongoStagingRepository.
@@ -81,9 +81,9 @@ class InMemoryStagingRepository(
   }
 
   def delete(cinema: Source, title: String, year: Option[Int]): Unit = lock.synchronized {
-    store.remove(StagingRecord.idFor(cinema, title, year))
+    store.remove(StagingRecord.idFor(cinema, title, year, normalizer))
     deletes.append((cinema, title, year))
-    deleteWatcher.foreach(_(StagingRecord.idFor(cinema, title, year)))
+    deleteWatcher.foreach(_(StagingRecord.idFor(cinema, title, year, normalizer)))
   }
 
   override def deleteRow(row: StagingRecord): Unit = lock.synchronized {

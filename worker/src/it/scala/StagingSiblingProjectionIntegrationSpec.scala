@@ -59,7 +59,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   private val title  = "Ghost In The Shell"
   /** Derived from `idFor`, so the seeded siblings share the prefix `upsert` will compute
    *  — a hand-written prefix silently ranges over nothing. */
-  private val prefix = StagingRecord.idFor(Multikino, title, None).stripSuffix("")
+  private val prefix = StagingRecord.idFor(Multikino, title, None, titleNormalizer).stripSuffix("")
 
   private def purge(): Unit =
     Await.result(staged.deleteMany(Filters.regex("_id", "^" + java.util.regex.Pattern.quote(prefix))).toFuture(), 30.seconds)

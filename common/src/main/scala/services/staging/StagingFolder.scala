@@ -76,7 +76,7 @@ class InMemoryStagingFolder(
    */
   def foldGroup(cleanTitle: String, candidateIds: Option[Set[String]] = None): Seq[(CacheKey, MovieRecord)] = lock.synchronized {
     val key         = normalizer.sanitize(cleanTitle)
-    val stagingRows = StagingFold.selectStagingGroup(stagingRepository.findAll(), cleanTitle)
+    val stagingRows = StagingFold.selectStagingGroup(stagingRepository.findAll(), cleanTitle, normalizer)
     if (stagingRows.isEmpty) Seq.empty
     else {
       val all        = movieRepository.findAll()
@@ -86,7 +86,7 @@ class InMemoryStagingFolder(
       val ids        = StagingFold.reconcileTmdbIds(stagingRows, groupRows)
       val siblings   = if (ids.isEmpty) Seq.empty
         else all.filter(r => r.record.tmdbId.exists(ids.contains) && normalizer.sanitize(r.title) != key)
-      val plan       = StagingFold.planGroup(stagingRows, groupRows ++ siblings)
+      val plan       = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer)
       plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
       plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
       plan.stagingDeletes.foreach(stagingRepository.deleteRow)
