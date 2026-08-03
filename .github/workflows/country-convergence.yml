@@ -87,9 +87,19 @@ jobs:
             fail-fast: false
             matrix:
                 include:
+                    # POLAND ONLY since 2026-08-02. The germany and united-kingdom
+                    # legs went with their workers. This suite measures the run
+                    # against PRODUCTION's read model (the ±5% band), and a stopped
+                    # worker freezes that baseline forever while the `cinema_scrapes`
+                    # archive keeps everything it had already recorded — so the
+                    # replay legitimately projects MORE films than prod ever folded.
+                    # Germany failed on the first run after the stop: 103 films
+                    # against a frozen prod 84, 22.6% of a 5% band, and the gap
+                    # widens with every day prod stays frozen. That is not drift
+                    # this suite exists to catch, it is the baseline being gone —
+                    # the legs could never go green again. Restore a country's row
+                    # when its worker is running again.
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample }
-                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
