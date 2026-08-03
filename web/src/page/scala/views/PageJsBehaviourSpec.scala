@@ -1536,6 +1536,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The page under test carries real posters, whose own breakages now start
+  // probes of their own — so these assert on the event this test PROVOKED
+  // (matched by the local URL in its error), never on the batch's size. A
+  // count assertion here is a race with the page's ambient image traffic.
+  private val ProbeVerdicts =
+    "_peekImgEvents().filter(e => e.host === 'images.weserv.nl' " +
+      "&& (e.error || '').includes('favicon.svg'))"
+
   it should "blame the proxy when the origin serves what weserv could not" in {
     onPath("/") { page =>
       // The probe fetches the unwrapped target for real, so point it at an
@@ -1543,15 +1551,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // answers a request weserv failed.
       page.eval(
         """(() => {
-          |  _drainImgEvents();
+          |  _resetImgProbeBudget();   // the page's own broken posters spend it
           |  const local = location.origin + '/assets/img/favicon.svg';
           |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&w=480');
           |})()""".stripMargin)
-      page.waitFor("_peekImgEvents().length === 1")
-      val queued = page.evalString("JSON.stringify(_drainImgEvents())")
-      queued should include (""""host":"images.weserv.nl"""")
-      queued should include (""""success":false""")
-      queued should include ("proxy failed, origin served it")
+      page.waitFor(s"$ProbeVerdicts.length === 1", timeoutMs = 10000)
+      val verdict = page.evalString(s"JSON.stringify($ProbeVerdicts[0])")
+      verdict should include (""""host":"images.weserv.nl"""")
+      verdict should include (""""success":false""")
+      verdict should include ("proxy failed, origin served it")
     }
   }
 
@@ -1563,6 +1571,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval(
         """(() => {
           |  _drainImgEvents();
+          |  _resetImgProbeBudget();   // the page's own broken posters spend it
           |  const local = location.origin + '/assets/img/favicon.svg';
           |  const img = document.createElement('img');
           |  const src = 'https://images.weserv.nl/?url=' + encodeURIComponent(local);
@@ -1572,32 +1581,36 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           |  img.dispatchEvent(new Event('error', { bubbles: false }));
           |  img.remove();
           |})()""".stripMargin)
-      page.waitFor("_peekImgEvents().length === 2")
-      val queued = page.evalString("JSON.stringify(_drainImgEvents())")
-      // The origin's row keeps the break the visitor saw (host carries the test
-      // server's port, as `URL.host` does) …
-      queued should include ("\"host\":\"127.0.0.1:")
+      // The break the visitor saw is queued synchronously against the origin
+      // (host carries the test server's port, as `URL.host` does) …
+      val queued = page.evalString(
+        "JSON.stringify(_peekImgEvents().filter(e => (e.host || '').startsWith('127.0.0.1')))")
       queued should include (""""proxied":true""")
-      // … and the probe's verdict adds the proxy's own failure beside it.
-      queued should include (""""host":"images.weserv.nl"""")
-      queued should include ("proxy failed, origin served it")
+      queued should include (""""success":false""")
+      // … and the probe it started adds the proxy's own failure beside it.
+      page.waitFor(s"$ProbeVerdicts.length === 1", timeoutMs = 10000)
+      page.evalString(s"$ProbeVerdicts[0].host") shouldBe "images.weserv.nl"
     }
   }
 
   it should "cap the probes one page can fire, so an outage can't double its image traffic" in {
     onPath("/") { page =>
-      page.eval(
+      // Asserted on the budget, not on 20 arriving verdicts: the counter moves
+      // synchronously as each probe fires, so this can't race the network (20
+      // loads timed out on a contended CI runner).
+      val leftAfterOverspending = page.evalString(
         """(() => {
-          |  _drainImgEvents();
+          |  _resetImgProbeBudget();
           |  const local = location.origin + '/assets/img/favicon.svg';
-          |  for (let i = 0; i < 25; i++) {
+          |  const budget = _imgProbeBudget();
+          |  for (let i = 0; i < budget + 5; i++) {
           |    _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&n=' + i);
           |  }
+          |  return String(_imgProbeBudget());
           |})()""".stripMargin)
-      page.waitFor("_peekImgEvents().length === 20")
-      // Held at the cap: the 5 probes past it were never fired, so no more
-      // verdicts can arrive.
-      page.evalString("String(_drainImgEvents().length)") shouldBe "20"
+      // Exactly spent, never overdrawn — the 5 probes past the cap returned
+      // before fetching anything.
+      leftAfterOverspending shouldBe "0"
     }
   }
 
@@ -1605,14 +1618,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       page.eval(
         """(() => {
-          |  _drainImgEvents();
+          |  _resetImgProbeBudget();
           |  const missing = location.origin + '/assets/img/no-such-poster.png';
           |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(missing));
           |})()""".stripMargin)
-      // Nothing to wait ON, so give the 404 the same beat a success would need
-      // and assert the batch never grew.
-      page.waitFor("performance.getEntriesByName(location.origin + '/assets/img/no-such-poster.png').length > 0")
-      page.evalString("JSON.stringify(_drainImgEvents())") shouldBe "[]"
+      // Wait for the 404 itself to land, then assert the probe drew no verdict
+      // from it — there is no event to wait for, only one to rule out.
+      page.waitFor("performance.getEntriesByName(location.origin + '/assets/img/no-such-poster.png').length > 0",
+        timeoutMs = 10000)
+      page.evalString(
+        "String(_peekImgEvents().filter(e => (e.error || '').includes('no-such-poster')).length)") shouldBe "0"
     }
   }
 

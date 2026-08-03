@@ -2567,6 +2567,14 @@
     window._imgIsFallback = isFallback;
     window._imgDirectUrl = directUrl;
     window._imgProbeProxyFault = probeProxyFault;
+    // Probes left before the cap. Read synchronously, so a test can assert the
+    // cap holds without waiting on 20 image loads — and without assuming the
+    // page under test spent none of the budget on its own broken posters.
+    window._imgProbeBudget = function() { return MAX_PROXY_PROBES - proxyProbes; };
+    // The page's own posters spend the budget as they break, which on a fixture
+    // page can exhaust it before a test provokes anything. Hand the budget back
+    // so a test starts from a known one.
+    window._resetImgProbeBudget = function() { proxyProbes = 0; };
     window._drainImgEvents = function() { var drained = pending; pending = []; return drained; };
     // Peek without draining, so a test can poll for the direct-origin probe's
     // asynchronous verdict and still read the batch it lands in.
