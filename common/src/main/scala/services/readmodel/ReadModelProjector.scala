@@ -54,7 +54,7 @@ class ReadModelProjector(
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
   // it rather than accepting a second, separately-wired copy that could disagree.
-  private given normalizer: services.movies.TitleNormalizer = movieRepository.normalizer
+  private val normalizer: services.movies.TitleNormalizer = movieRepository.normalizer
 
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 

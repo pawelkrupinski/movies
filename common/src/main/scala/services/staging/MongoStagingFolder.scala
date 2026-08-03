@@ -35,7 +35,6 @@ class MongoStagingFolder(
     services.movies.TitleNormalizer.deployment
 ) extends StagingFolder with Logging {
 
-  private given services.movies.TitleNormalizer = normalizer
 
   private val opTimeout  = 10.seconds
   private val maxRetries = 3

@@ -239,7 +239,6 @@ class CaffeineMovieCache(
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
   // here under another country's rules.
-  private given TitleNormalizer = normalizer
 
   // Films skipped this process's lifetime because their stored row could not be read.
   // Exposed for tests + diagnostics: a non-zero value means scrapes are landing against

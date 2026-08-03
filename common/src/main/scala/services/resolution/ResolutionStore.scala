@@ -68,7 +68,6 @@ object ResolutionStore {
 /** In-memory `ResolutionStore` for tests and Mongo-less local dev. Honours the
  *  same TTL expiry as the Mongo store via an injectable clock. */
 class InMemoryResolutionStore(clock: Clock = Clock.systemUTC()) extends ResolutionStore {
-  private given services.movies.TitleNormalizer = normalizer
   private val entries = new ConcurrentHashMap[String, (String, Instant)]()
 
   override def get(hintKey: String): Option[String] =
@@ -116,7 +115,6 @@ class MongoResolutionStore(
     services.movies.TitleNormalizer.deployment
 ) extends ResolutionStore with Logging {
 
-  private given services.movies.TitleNormalizer = normalizer
 
   private val coll: Option[MongoCollection[Document]] =
     db.map(_.getCollection(collectionName).withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))

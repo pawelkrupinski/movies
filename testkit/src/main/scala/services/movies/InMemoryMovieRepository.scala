@@ -42,7 +42,6 @@ class InMemoryMovieRepository(
   override val normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.deployment
 ) extends MovieRepository {
   // Fold titles with the rules the corpus was keyed under, not a process default.
-  private given services.movies.TitleNormalizer = normalizer
 
   override def hasScreenings: Boolean = screenings.isDefined
   override def hasSlots:      Boolean = slots.isDefined

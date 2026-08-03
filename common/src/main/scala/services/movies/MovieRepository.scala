@@ -124,7 +124,6 @@ trait MovieRepository {
    *
    *  The in-memory store cannot fail, so the default reports `true`. */
   def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = {
-    given TitleNormalizer = normalizer
     (findAll().find(row => StoredMovieRecord.idOf(row, normalizer) == id), true)
   }
 
@@ -356,7 +355,6 @@ class MongoMovieRepository(
   override val normalizer: TitleNormalizer = TitleNormalizer.deployment
 ) extends MovieRepository with Logging {
 
-  private given TitleNormalizer = normalizer
 
   override def hasScreenings: Boolean = screenings.isDefined
   override def hasSlots:       Boolean = slots.isDefined

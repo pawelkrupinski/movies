@@ -1,6 +1,6 @@
 package controllers
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -254,13 +254,13 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       task("ImdbRating",           "imdb-rating|x",                 TaskState.Waiting),  // place 2 (non-staging, bumps counter)
       task("StagingResolveImdbId", "staging-imdb|waitingfive",      TaskState.Waiting),  // place 3
     )
-    MovieController.orderStagingByQueue(rows, active).map(_.title) shouldBe
+    MovieController.orderStagingByQueue(rows, active, titleNormalizer).map(_.title) shouldBe
       Seq("Running Film", "Waiting Two", "Waiting Five", "No Task")
   }
 
   it should "keep the incoming order for equal-rank (e.g. no-task) rows — a stable sort" in {
     val rows = Seq("Zebra", "Alpha").map(staged) // both have no active task → equal rank
-    MovieController.orderStagingByQueue(rows, Seq.empty).map(_.title) shouldBe Seq("Zebra", "Alpha")
+    MovieController.orderStagingByQueue(rows, Seq.empty, titleNormalizer).map(_.title) shouldBe Seq("Zebra", "Alpha")
   }
 
   // ── /debug/queue snapshot the staging columns poll for queue places ─────────

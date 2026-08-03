@@ -40,7 +40,7 @@ class StagingSteps(
   // from it rather than a second copy that could disagree.
   /** The rules this staging pipeline anchors under — read by the task handlers
    *  that build dedup keys for the same rows. */
-  given normalizer: services.movies.TitleNormalizer = stagingRepository.normalizer
+  val normalizer: services.movies.TitleNormalizer = stagingRepository.normalizer
   import StagingSteps._
 
   /** Every staging row of the film whose title sanitizes to `anchor`, `_id`-sorted

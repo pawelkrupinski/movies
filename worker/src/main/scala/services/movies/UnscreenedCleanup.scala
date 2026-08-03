@@ -55,7 +55,7 @@ import scala.util.Try
  */
 class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends Stoppable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
-  private given normalizer: services.movies.TitleNormalizer = cache.normalizer
+  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   private val scheduler = DaemonExecutors.scheduler("unscreened-cleanup")
 

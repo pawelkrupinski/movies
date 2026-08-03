@@ -87,7 +87,7 @@ class EnrichDetailsHandler(
   clock:            Clock = Clock.systemUTC()
 ) extends TaskHandler with Logging {
 
-  private given services.movies.TitleNormalizer = cache.normalizer
+  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
   import HandlerOutcome._
 
   override val taskType: TaskType = TaskType.EnrichDetails

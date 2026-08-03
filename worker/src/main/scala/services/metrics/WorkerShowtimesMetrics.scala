@@ -41,7 +41,7 @@ class WorkerShowtimesMetrics(
   // The corpus this collector counts belongs to `countryCode`, so the film ids it
   // projects must fold titles with THAT country's rules — otherwise the gauge
   // counts ids no reader ever addresses.
-  private given normalizer: services.movies.TitleNormalizer =
+  private val normalizer: services.movies.TitleNormalizer =
     services.movies.TitleNormalizer.forCountry(
       models.Country.byCode(countryCode).getOrElse(models.Country.default))
   import WorkerShowtimesMetrics._

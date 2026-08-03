@@ -60,7 +60,7 @@ class ImdbIdResolver(
   cinemeta: Option[CinemetaClient] = None
 ) extends Drainable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
-  private given services.movies.TitleNormalizer = cache.normalizer
+  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   /**
    * Cached IMDb-id lookup shared by both call sites. Hits-only — a no-match

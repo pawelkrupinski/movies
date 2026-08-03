@@ -97,7 +97,6 @@ trait StagingRepository {
    * agree.
    */
   def findByAnchor(anchor: String): Seq[StagingRecord] = {
-    given TitleNormalizer = normalizer
     findAll().filter(row => normalizer.sanitize(row.title) == anchor)
   }
 
@@ -226,7 +225,6 @@ class MongoStagingRepository(
   override val normalizer: TitleNormalizer = TitleNormalizer.deployment
 ) extends StagingRepository with Logging {
 
-  private given TitleNormalizer = normalizer
 
   private lazy val coll: Option[MongoCollection[StoredMovieDto]] =
     sharedDb.map { db =>

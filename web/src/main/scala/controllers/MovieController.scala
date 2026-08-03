@@ -352,7 +352,7 @@ class MovieController( cc: ControllerComponents,
 
   // The country this deployment serves — the rules its corpus was keyed under,
   // so /debug orders staging rows by the same anchor the worker wrote.
-  private given normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
+  private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
   // Read the session's `userId` (set by `AuthController.callback`) and
   // resolve it to a User if the row is still there. Returns None for
@@ -657,7 +657,7 @@ class MovieController( cc: ControllerComponents,
         // The SELECTED country's rules, not the deployment's: /debug can switch
         // countries, and a row's display title must read as its own corpus keyed it.
         stack.movieRepository.normalizer,
-        MovieController.orderStagingByQueue(staged, queue.active),
+        MovieController.orderStagingByQueue(staged, queue.active, normalizer),
         current = country, sameOrigin = debugCountries.switchable))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
@@ -936,7 +936,8 @@ object MovieController {
   def orderStagingByQueue(
     staging: Seq[services.staging.StagingRecord],
     active:  Seq[services.tasks.TaskSummary],
-  )(using normalizer: TitleNormalizer): Seq[services.staging.StagingRecord] = {
+    normalizer: TitleNormalizer,
+  ): Seq[services.staging.StagingRecord] = {
     import services.tasks.TaskState
     // 1-based place of each waiting dedupKey among the waiting tasks (first seen).
     val waitingPlaces = {

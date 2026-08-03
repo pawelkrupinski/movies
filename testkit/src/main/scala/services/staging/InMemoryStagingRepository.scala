@@ -21,7 +21,6 @@ class InMemoryStagingRepository(
   override val normalizer: services.movies.TitleNormalizer =
     services.movies.TitleNormalizer.forCountry(models.Country.default)
 ) extends StagingRepository with Logging {
-  private given services.movies.TitleNormalizer = normalizer
 
   // Store the REBUILT `StagingRecord` keyed by `_id`, in a `_id`-sorted map. The
   // promoter re-reads `findAll` O(films) times per staging drain, and on a

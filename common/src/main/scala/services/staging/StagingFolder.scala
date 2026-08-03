@@ -58,7 +58,6 @@ class InMemoryStagingFolder(
   normalizer: services.movies.TitleNormalizer =
     services.movies.TitleNormalizer.deployment
 ) extends StagingFolder with Logging {
-  private given services.movies.TitleNormalizer = normalizer
   private val lock = new AnyRef
 
   /**

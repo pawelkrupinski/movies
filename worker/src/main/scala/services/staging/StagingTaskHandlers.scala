@@ -19,7 +19,7 @@ import services.tasks.{HandlerOutcome, StagingTaskKeys, Task, TaskHandler, TaskT
  *  rescheduling forever. */
 class StagingDetailHandler(steps: StagingSteps) extends TaskHandler {
   // Anchor task payloads the way the staging pipeline anchors its rows.
-  private given services.movies.TitleNormalizer = steps.normalizer
+  private val normalizer: services.movies.TitleNormalizer = steps.normalizer
 
   val taskType: TaskType = TaskType.StagingDetail
   def handle(task: Task): HandlerOutcome =
@@ -63,7 +63,7 @@ object StagingDetailHandler {
  *  actual TMDB misses rather than time spent waiting on a sibling step. */
 class StagingResolveTmdbHandler(steps: StagingSteps) extends TaskHandler {
   // Anchor task payloads the way the staging pipeline anchors its rows.
-  private given services.movies.TitleNormalizer = steps.normalizer
+  private val normalizer: services.movies.TitleNormalizer = steps.normalizer
 
   val taskType: TaskType = TaskType.StagingResolveTmdb
   def handle(task: Task): HandlerOutcome = {
@@ -87,7 +87,7 @@ object StagingResolveTmdbHandler {
 /** STEP 3: recover a missing IMDb id (best-effort — gives up gracefully). */
 class StagingResolveImdbIdHandler(steps: StagingSteps) extends TaskHandler {
   // Anchor task payloads the way the staging pipeline anchors its rows.
-  private given services.movies.TitleNormalizer = steps.normalizer
+  private val normalizer: services.movies.TitleNormalizer = steps.normalizer
 
   val taskType: TaskType = TaskType.StagingResolveImdbId
   def handle(task: Task): HandlerOutcome = {

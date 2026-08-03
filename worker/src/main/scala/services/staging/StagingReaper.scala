@@ -44,7 +44,7 @@ class StagingReaper(
 
   // Anchor rows with the rules their repository keyed them under — an anchor
   // folded any other way names a group that isn't there.
-  private given normalizer: services.movies.TitleNormalizer = staging.normalizer
+  private val normalizer: services.movies.TitleNormalizer = staging.normalizer
 
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("staging-reaper")
