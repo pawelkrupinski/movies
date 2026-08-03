@@ -10,7 +10,7 @@ import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.cinemas.FakeDetailEnricher
 import tools.HttpStatusException
 import services.cinemas.pl.FilmwebShowtimesClient
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Unit specs for the staging enrichment steps factored out of the old
  *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the
@@ -22,7 +22,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
   // key) merges into it.
   private def listingRow(cinema: Cinema, title: String, year: Option[Int]): MovieRecord =
     MovieRecord(data = Map[Source, SourceData](
-      CinemaShowing.keyFor(cinema, title) -> SourceData(title = Some(title), releaseYear = year, filmUrl = Some(s"https://x/$title"))))
+      CinemaShowing.keyFor(cinema, title, titleNormalizer) -> SourceData(title = Some(title), releaseYear = year, filmUrl = Some(s"https://x/$title"))))
 
   private def seeded(cinema: Cinema, title: String, year: Option[Int]): (InMemoryStagingRepository, String) = {
     val repository = new InMemoryStagingRepository
@@ -52,7 +52,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // rather than rescheduling until the give-up budget burns.
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Fallback", Some(2026), MovieRecord(data = Map[Source, SourceData](
-      CinemaShowing.keyFor(Helios, "Fallback") -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
+      CinemaShowing.keyFor(Helios, "Fallback", titleNormalizer) -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
     val anchor = titleNormalizer.sanitize("Fallback")
     val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("native")))) // would merge if pointed at the URL
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))

@@ -35,8 +35,8 @@ class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
   // original title and its Polish title — so the two slot keys differ.
   private val originalTitle = "The Substance"
   private val polishTitle   = "Substancja"
-  private val original = CinemaShowing.keyFor(Multikino, originalTitle)
-  private val polish   = CinemaShowing.keyFor(Multikino, polishTitle)
+  private val original = CinemaShowing.keyFor(Multikino, originalTitle, titleNormalizer)
+  private val polish   = CinemaShowing.keyFor(Multikino, polishTitle, titleNormalizer)
 
   private def slot(title: String): SourceData =
     SourceData(title = Some(title), showtimes = Seq(Showtime(now.plusHours(2), None, None, Nil)))

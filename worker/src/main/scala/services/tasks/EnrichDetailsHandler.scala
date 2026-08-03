@@ -161,7 +161,7 @@ class EnrichDetailsHandler(
             val targets: Seq[Source] =
               if (enricher.detailTarget != enricher.cinema) Seq(enricher.detailTarget)
               else {
-                val derived     = CinemaShowing.keyFor(enricher.cinema, title)
+                val derived     = CinemaShowing.keyFor(enricher.cinema, title, cache.normalizer)
                 val cinemaSlots = cache.get(rowKey).toList
                   .flatMap(_.data.keys.filter(s => Source.cinemaOf(s).contains(enricher.cinema)))
                 if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too

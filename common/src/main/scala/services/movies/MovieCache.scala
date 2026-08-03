@@ -1006,7 +1006,7 @@ class CaffeineMovieCache(
    *  the same (cinema, title) ALWAYS produces the same key so a re-scrape / fold
    *  merges in place instead of duplicating. */
   private def cinemaSlotKey(cinema: Cinema, title: String): Source =
-    CinemaShowing.keyFor(cinema, title)
+    CinemaShowing.keyFor(cinema, title, normalizer)
 
   /** Every slot this cinema currently holds in the cache. Shared by the two
    *  degraded-scrape guards, which read the same held-slot set along different

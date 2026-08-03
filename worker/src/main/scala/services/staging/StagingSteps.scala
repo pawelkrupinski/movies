@@ -99,7 +99,7 @@ class StagingSteps(
         // strand the detail (with its year/director) in a separate title-less slot
         // that never merges into the listing. A chain keeps its shared network source.
         val target =
-          if (enricher.detailTarget == enricher.cinema) CinemaShowing.keyFor(enricher.cinema, row.title)
+          if (enricher.detailTarget == enricher.cinema) CinemaShowing.keyFor(enricher.cinema, row.title, stagingRepository.normalizer)
           else enricher.detailTarget
         enricher.fetchDetail(ref) match {
           case DetailFetchOutcome.Fetched(detail) =>

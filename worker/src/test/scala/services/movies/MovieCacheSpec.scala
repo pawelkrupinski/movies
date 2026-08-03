@@ -593,7 +593,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     def rec(slotTitle: String, at: LocalDateTime) = MovieRecord(
       imdbId = Some("tt-anything"), tmdbId = Some(928344),
       data = Map[Source, SourceData](
-        CinemaShowing.keyFor(CinemaCityPoznanPlaza, slotTitle) ->
+        CinemaShowing.keyFor(CinemaCityPoznanPlaza, slotTitle, titleNormalizer) ->
           SourceData(title = Some(slotTitle), releaseYear = Some(2026), showtimes = Seq(Showtime(at, None))),
         Tmdb -> SourceData(originalTitle = Some("Original"))))
     cache.put(cache.keyOf(baseTitle, Some(2026)), rec(baseTitle, LocalDateTime.of(2026, 6, 8, 18, 0)))
@@ -1419,7 +1419,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     // The refresher visits the detail page and upgrades all three fields. The slot
     // is keyed per shown title (`CinemaShowing`), as detail enrichment now targets.
-    val muzaSlot = CinemaShowing.keyFor(KinoMuza, "Wolność po włosku")
+    val muzaSlot = CinemaShowing.keyFor(KinoMuza, "Wolność po włosku", titleNormalizer)
     cache.putIfPresent(key, current =>
       current.copy(data = current.data + (muzaSlot ->
         current.data(muzaSlot).copy(
@@ -1871,7 +1871,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.cinemaData.keySet           shouldBe Set(Helios)            // live slot gone
     // Retention is per shown-title SLOT (CinemaShowing), so a dub's blurb stays
     // attached to its own title rather than bleeding onto the base.
-    row.retainedSynopses.get(CinemaShowing.keyFor(Multikino, "Foo")) shouldBe Some(longSynopsis)
+    row.retainedSynopses.get(CinemaShowing.keyFor(Multikino, "Foo", titleNormalizer)) shouldBe Some(longSynopsis)
     row.synopsis                    shouldBe Some(longSynopsis)     // still the best one
   }
 
@@ -1900,7 +1900,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val row = cache.get(cache.keyOf("Foo", Some(2026))).get
     // The retention captured the synopsis, but the row has NO cinema slots — so
     // UnscreenedCleanup (which gates on cinemaData.isEmpty) still deletes it.
-    row.retainedSynopses.get(CinemaShowing.keyFor(Multikino, "Foo")) shouldBe Some(longSynopsis)
+    row.retainedSynopses.get(CinemaShowing.keyFor(Multikino, "Foo", titleNormalizer)) shouldBe Some(longSynopsis)
     row.cinemaData                       shouldBe empty
   }
 

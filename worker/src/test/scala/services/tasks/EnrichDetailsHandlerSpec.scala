@@ -13,7 +13,7 @@ import tools.HttpStatusException
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
   import HandlerOutcome._
@@ -94,7 +94,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     row.data.get(decorated).map(_.showtimes.size)   shouldBe Some(1)
     // No base-title phantom fabricated: still exactly one KinoApollo slot.
     row.data.keys.count(s => Source.cinemaOf(s).contains(KinoApollo)) shouldBe 1
-    row.data.get(CinemaShowing.keyFor(KinoApollo, "Dune"))            shouldBe None
+    row.data.get(CinemaShowing.keyFor(KinoApollo, "Dune", titleNormalizer))            shouldBe None
   }
 
   it should "land detail on EVERY programme-edition slot of a cinema (no phantom) when the film runs as several editions" in {
@@ -116,7 +116,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     Seq(a, b, c).foreach { s => row.data.get(s).map(_.director) shouldBe Some(Seq("Jan Komasa")) }
     // Still exactly three slots — no base-title phantom fabricated.
     row.data.keys.count(s => Source.cinemaOf(s).contains(KinoApollo)) shouldBe 3
-    row.data.get(CinemaShowing.keyFor(KinoApollo, "Ojczyzna")) shouldBe None
+    row.data.get(CinemaShowing.keyFor(KinoApollo, "Ojczyzna", titleNormalizer)) shouldBe None
   }
 
   it should "clear detailPending and publish MovieDetailsComplete (the TMDB re-trigger) once a held-back row's detail lands" in {

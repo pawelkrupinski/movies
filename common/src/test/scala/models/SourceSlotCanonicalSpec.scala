@@ -2,7 +2,7 @@ package models
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * `Source.dropSupersededCinemaSlots` removes a legacy bare-`Cinema` slot once a
@@ -13,7 +13,7 @@ import services.movies.SingleCountryNormalizer.given
  */
 class SourceSlotCanonicalSpec extends AnyFlatSpec with Matchers {
 
-  private val mkShowing = CinemaShowing.keyFor(Multikino, "Dzień objawienia")
+  private val mkShowing = CinemaShowing.keyFor(Multikino, "Dzień objawienia", titleNormalizer)
 
   "dropSupersededCinemaSlots" should "drop a bare Cinema slot superseded by a per-title slot of the same cinema" in {
     val data = Map[Source, String](Multikino -> "bare", mkShowing -> "per-title", Tmdb -> "tmdb")

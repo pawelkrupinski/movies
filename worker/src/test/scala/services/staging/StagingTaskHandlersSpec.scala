@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.freshness.InMemoryFreshnessStore
 import services.tasks.{HandlerOutcome, StagingTaskKeys, Task, TaskType}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 /** Specs for the four thin staging handlers — each parses its payload, runs the
  *  matching `StagingSteps` step, and maps the result to a `HandlerOutcome`. */
@@ -23,7 +23,7 @@ class StagingTaskHandlersSpec extends AnyFlatSpec with Matchers {
   // Slot keyed per shown title (`CinemaShowing`), as the scrape-divert path writes
   // it — so the staging detail step merges into it.
   private def listingRow(title: String): MovieRecord =
-    MovieRecord(data = Map[Source, SourceData](CinemaShowing.keyFor(Helios, title) -> SourceData(title = Some(title), filmUrl = Some("u"))))
+    MovieRecord(data = Map[Source, SourceData](CinemaShowing.keyFor(Helios, title, titleNormalizer) -> SourceData(title = Some(title), filmUrl = Some("u"))))
 
   private def steps(repository: InMemoryStagingRepository, enrichers: Seq[DetailEnricher],
                     resolve: (String, Option[Int], MovieRecord) => Option[MovieRecord],
