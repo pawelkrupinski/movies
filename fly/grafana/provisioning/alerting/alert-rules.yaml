@@ -627,27 +627,73 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
-      # ---- UK serving app down — REMOVED 2026-08-02 -------------------------
-      # There was a `showtimes-uk-serving-down` rule here, the UK sibling of the
-      # `kinowo` rule above. It is gone because showtimes-uk is gone: the UK and
-      # German deployments were stopped to cut hosting cost, so `fly_instance_up`
-      # for them is permanently ABSENT — the expected state, not an alarm.
+      # ---- UK serving app down ---------------------------------------------
+      # The showtimes-uk web app (KINOWO_COUNTRY=uk, London) is the UK-facing
+      # sibling of `kinowo`. A separate rule (not a broadened app=~ matcher on the
+      # rule above) so each app gets its own clean attribution and its own Telegram
+      # thread (the policy groups by alertname+app).
       #
-      # Deleting it rather than leaving it was mandatory. The rule carried
-      # `noDataState: Alerting` with `for: 3m` (absence WAS the alarm, which is
-      # right for an app that is supposed to be up), and the notification policy
-      # re-sends every 4h — so a stopped machine would have paged critical to
-      # Telegram forever. There is no `showtimes-de` equivalent to remove; only
-      # the country actually serving users (`kinowo`) now has a serving-down rule,
-      # which is exactly the set that should have one. Restore this rule alongside
-      # the app if the UK deployment ever comes back.
+      # ⚠️ `noDataState`/`execErrState` are OK here, NOT Alerting like the `kinowo`
+      # rule above — the ONE line that differs, and the reason is the whole story.
+      # showtimes-uk was stopped on 2026-08-02 to cut hosting cost, so
+      # `fly_instance_up{app="showtimes-uk"}` is now permanently ABSENT: the
+      # expected state, not an alarm. On Alerting, absence + `for: 3m` + the policy's
+      # 4h repeat_interval is a critical Telegram page every 4 hours, forever.
       #
+      # The rule is kept rather than deleted so the UK's monitoring survives the
+      # shutdown intact and restoring is a one-word edit. What it still catches:
+      # a machine that is UP and reporting `fly_instance_up == 0`. What it no
+      # longer catches while the app is down: the app vanishing — which is
+      # precisely the state we put it in deliberately.
+      #
+      # ON RESTORE: set both back to `Alerting`, so absence is the alarm again for
+      # an app that is once more supposed to be running. See docs/restoring-a-country.md.
+      - uid: showtimes-uk-serving-down
+        title: UK serving app down
+        condition: C
+        for: 3m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: 'showtimes-uk (UK web) is down or not reporting'
+          description: 'fly_instance_up{app="showtimes-uk"} is 0 for 3m — the UK user-facing app is unreachable. Check `fly status -a showtimes-uk` and Mongo (a Mongo hiccup blocks web boot; UK reads the same cluster, db kinowo_uk). While the UK deployment is stopped this rule is deliberately silent on absence — see the noDataState note above.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max (fly_instance_up{app="showtimes-uk"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
       # The fleet rules that reach these apps by `app=~` regex (CPU credit,
-      # throttle, memory PSI, worker starvation/crash-loop/credit) are LEFT ALONE
-      # on purpose: every one is `noDataState: OK`, so a stopped machine drops out
-      # of them silently, and the regexes stay country-blind — which is what
-      # GrafanaCountryBlindAppMatcherSpec requires while the fly.*.toml files are
-      # still checked in.
+      # throttle, memory PSI, worker starvation/crash-loop/credit) were LEFT
+      # UNTOUCHED by the shutdown: every one is already `noDataState: OK`, so a
+      # stopped machine drops out of them silently, and the regexes stay
+      # country-blind — which is what GrafanaCountryBlindAppMatcherSpec requires
+      # while the fly.*.toml files are still checked in. Same for every dashboard
+      # panel: the de/uk series simply render empty until those apps report again.
 
   # ── App uptime (the in-app /uptime health, via the web /metrics scrape) ───────
   # These watch the SAME data the public /uptime page shows — the Mongo

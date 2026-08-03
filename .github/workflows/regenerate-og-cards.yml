@@ -103,9 +103,22 @@ jobs:
                   KINOWO_COUNTRY: pl
               run: sbt "web/PageTest/runMain tools.OgCardGenerator"
 
-            # (A UK leg ran here off showtimes-uk.fly.dev until 2026-08-02 — see
-            # the header for why it had to go with the deployment, not just why
-            # it could.)
+            # The UK cards off showtimes-uk.fly.dev — English overlay ("Showtimes
+            # / Cinema listings in {city}"), 79 regions. Same generator, same
+            # asset dir; UK slugs don't collide with PL slugs.
+            #
+            # DISABLED 2026-08-02 with the UK deployment, and it could not simply be
+            # left running: `Country.ogOrigin` now falls back to the deployed host
+            # for an undeployed country, so this leg would NOT have failed loudly
+            # against a dead host — it would have screenshotted UK region slugs on
+            # kinowo.fly.dev, which 404, and opened a PR full of blank cards.
+            # Kept in place so restoring is deleting the `if: false` line.
+            - name: Regenerate per-city UK cards from live prod
+              if: false
+              env:
+                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+                  KINOWO_COUNTRY: uk
+              run: sbt "web/PageTest/runMain tools.OgCardGenerator"
 
             # Open (or update) a PR with the refreshed cards. A fixed branch means
             # a later run amends the open PR instead of stacking duplicates; if a

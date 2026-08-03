@@ -58,25 +58,60 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    # POLAND ONLY. The UK and German legs — showtimes-uk /
-                    # showtimes-de / kinowo-worker-uk / kinowo-worker-de — were
-                    # removed on 2026-08-02 when those machines were stopped to
-                    # cut hosting cost. Removing the matrix entries is what makes
-                    # the stop STICK: both skip guards below are live-machine
-                    # probes that fail OPEN, so a stopped machine reads as "no
-                    # info" and the leg would deploy and restart it on the next
-                    # push to main. Their `fly.*.toml` files stay checked in (and
-                    # the Grafana specs still assert against them), so restoring a
-                    # country is: add its two entries back here, `flyctl machines
-                    # start`, and give it a `webUrl` in `models.Country`.
+                    # `enabled: false` takes an app out of service WITHOUT deleting
+                    # its wiring — the row, its fly config and its artifact all stay
+                    # here, and restoring is one word. The guard step below turns it
+                    # into a skip.
+                    #
+                    # A flag is needed at all because stopping the machine is NOT
+                    # enough: both real skip guards below probe the LIVE machine and
+                    # fail OPEN, so a stopped app reads as "no info" and the leg
+                    # would deploy and restart it on the next push to main. This is
+                    # the switch that makes a stop stick.
+                    #
+                    # UK + Germany went `false` on 2026-08-02 to cut hosting cost.
+                    # Their `fly.*.toml` files are untouched (the Grafana specs still
+                    # assert against them), so a full restore is: flip to `true`,
+                    # `flyctl scale count 1` / `machines start`, and give the country
+                    # a `webUrl` in `models.Country`. See docs/restoring-a-country.md.
                     - app: kinowo
                       toml: fly.toml
                       bin: web
                       artifact: stage-web
+                      enabled: true
+                    # UK frontend — same `web` binary + build artifact as kinowo,
+                    # its own fly config (KINOWO_COUNTRY=uk → the kinowo_uk db).
+                    - app: showtimes-uk
+                      toml: fly.uk.toml
+                      bin: web
+                      artifact: stage-web
+                      enabled: false
+                    # DE frontend — KINOWO_COUNTRY=de → the kinowo_de db, in fra.
+                    - app: showtimes-de
+                      toml: fly.de.toml
+                      bin: web
+                      artifact: stage-web
+                      enabled: false
                     - app: kinowo-worker
                       toml: fly.worker.toml
                       bin: worker
                       artifact: stage-worker
+                      enabled: true
+                    # UK worker — same `worker` binary + artifact, split off
+                    # kinowo-worker so the full-UK scrape load gets its own 2x
+                    # machine (KINOWO_COUNTRIES=uk → the kinowo_uk db).
+                    - app: kinowo-worker-uk
+                      toml: fly.worker.uk.toml
+                      bin: worker
+                      artifact: stage-worker
+                      enabled: false
+                    # DE worker — split off kinowo-worker (KINOWO_COUNTRIES=de →
+                    # the kinowo_de db); the German roster gets its own 2x machine.
+                    - app: kinowo-worker-de
+                      toml: fly.worker.de.toml
+                      bin: worker
+                      artifact: stage-worker
+                      enabled: false
         # Every leg deploys in PARALLEL — no per-tier concurrency group. A group
         # keyed on the tier (fly-deploy-web / fly-deploy-worker) looks like it
         # serializes a tier, but GitHub keeps only ONE running + ONE pending job
@@ -126,6 +161,17 @@ jobs:
                   HEAD_MSG: ${{ github.event.head_commit.message }}
                   FORCE_WORKER: ${{ github.event.inputs.force_worker_deploy }}
               run: |
+                  # Taken out of service on purpose (matrix `enabled: false`). FIRST,
+                  # before either probe below: both of those fail OPEN, so a stopped
+                  # app would read as "no info" and get deployed and restarted. This
+                  # is the only skip reason that is a decision rather than a
+                  # measurement, so it is the only one that can be trusted about an
+                  # app that isn't running.
+                  if [ "${{ matrix.enabled }}" != "true" ]; then
+                      echo "::notice::Skipping ${{ matrix.app }} — disabled in the deploy matrix (enabled: false). Flip it to true to bring the app back; see docs/restoring-a-country.md"
+                      echo "skip=true" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
                   deployed=$(flyctl ssh console -a ${{ matrix.app }} -C 'printenv COMMIT_SHA' 2>/dev/null || echo "")
                   if [ -n "$deployed" ] && [ "$deployed" != "${{ github.sha }}" ]; then
                       if git merge-base --is-ancestor "${{ github.sha }}" "$deployed" 2>/dev/null; then

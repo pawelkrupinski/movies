@@ -402,6 +402,27 @@ abstract class CountryConvergenceBehaviour(
    *  a regression detector instead of a snapshot of one afternoon. */
   private val ProdTolerance = 0.05
 
+  /** Whether production is still PROJECTING this country — i.e. whether the
+   *  baseline the band scores against is a live reference or a headstone.
+   *
+   *  Derived from the country's `webUrl` rather than a per-spec flag, because that
+   *  is already this codebase's single "is this country deployed" lever
+   *  (`Country.switchable` reads the same field). Restoring a country therefore
+   *  re-arms its band automatically, with no second switch to remember.
+   *
+   *  Why it has to exist at all: when a country's worker is stopped, `cinema_scrapes`
+   *  and the read model freeze at the SAME instant — but not at the same POINT. The
+   *  archive keeps every scrape the worker had recorded, including the ones it had
+   *  not yet folded, so the replay legitimately projects more films than prod ever
+   *  emitted. Germany froze at 103 replayed against 84 projected: 22.6% out of a 5%
+   *  band, and constant, because neither side moves again. That is not the pipeline
+   *  regressing — it is the reference being gone, and no honest tolerance makes it
+   *  pass. The band is SKIPPED there rather than widened; widening it would blind
+   *  the countries that still have a live baseline, which is the opposite of what
+   *  this assertion is for. Every other claim in this suite scores the run against
+   *  the ARCHIVE, needs no live production, and keeps running for every country. */
+  protected def productionIsLive: Boolean = country.webUrl.isDefined
+
   /** Ratings coverage CONDITIONED on having resolved a tmdbId.
    *
    *  The headline counts conflate two different failures. A film with no tmdbId has
@@ -901,6 +922,12 @@ abstract class CountryConvergenceBehaviour(
    * The baseline ships with the corpus and is captured from the same connection at
    * the same instant (see `ProdCoverageBaseline`), so this needs no production
    * access and stays offline and reproducible like the rest of the suite.
+   *
+   * Being the assertion with an EXTERNAL reference is also the one way it can stop
+   * being answerable: it is skipped, loudly, for a country production no longer
+   * projects. See `productionIsLive` — that is a dead reference, not a wide one, so
+   * the band itself is never relaxed and every live country is scored exactly as
+   * before. A MISSING baseline still fails hard below; only a frozen one cancels.
    */
   s"the ${country.displayName} pipeline's coverage" should
     "stay within 5% of what production achieves on the same repertoire" in {
@@ -927,6 +954,19 @@ abstract class CountryConvergenceBehaviour(
            ProdCoverageBaseline.report(mine, baseline, ProdTolerance).mkString("\n  "))
 
       val offBand = ProdCoverageBaseline.divergences(mine, baseline, ProdTolerance)
+
+      // Reported above either way; only the ASSERTION is conditional. A country
+      // whose worker is stopped has a frozen baseline that the replay can no
+      // longer be scored against (see `productionIsLive`), so the numbers stay in
+      // the log to eyeball and the leg keeps every other claim it makes.
+      if (!productionIsLive)
+        cancel(
+          s"${country.displayName} is not deployed, so its production baseline is frozen and this band " +
+          s"cannot mean anything: prod stopped being projected while the archive kept the scrapes it had " +
+          s"not yet folded, so the replay is expected to exceed it (currently ${offBand.size} axis/axes " +
+          s"outside ${f"${100 * ProdTolerance}%.0f"}%). Every other assertion in this leg still ran. " +
+          s"Restoring the country's webUrl re-arms this one.")
+
       withClue(
         s"${offBand.size} coverage axis/axes drifted from production by more than " +
         f"${100 * ProdTolerance}%.0f%%:\n${offBand.mkString("\n")}\n\n" +

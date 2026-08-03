@@ -52,13 +52,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val budgets: Seq[Int] =
     """timeout-minutes:\s*(\d+)""".r.findAllMatchIn(leg).map(_.group(1).toInt).toSeq
 
-  "the convergence caller" should "run every country whose worker is live through the single-country leg workflow" in {
-    // Poland alone since 2026-08-02. The germany / united-kingdom rows were
-    // removed with their workers: this suite scores the run against PRODUCTION's
-    // read model, and a stopped worker freezes that baseline while the archive
-    // keeps growing, so those legs could never be green again. The per-country
-    // wiring below is unchanged and still guards each row that IS here.
-    countries.keySet shouldBe Set("poland")
+  "the convergence caller" should "run every country through the single-country leg workflow" in {
+    countries.keySet shouldBe Set("poland", "germany", "united-kingdom")
     caller should include("uses: ./.github/workflows/country-convergence-leg.yml")
   }
 
