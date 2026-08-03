@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
 import play.api.libs.json._
 import services.cinemas.common.AgeRating
-import services.movies.TrailerEmbed
+import services.movies.{TitleNormalizer, TrailerEmbed}
 
 import java.time.LocalDateTime
 
@@ -19,8 +19,8 @@ object MultikinoParser {
   /** `cinema` defaults to Poznań's Multikino (Stary Browar) so the existing
    *  parser specs and fixture stay byte-identical; the multi-city clients pass
    *  their own Multikino venue. */
-  def parse(json: String, cinema: Cinema = Multikino): Seq[CinemaMovie] =
-    (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm(_, cinema)).toSeq
+  def parse(json: String, titles: TitleNormalizer, cinema: Cinema = Multikino): Seq[CinemaMovie] =
+    (Json.parse(json) \ "result").as[JsArray].value.map(parseFilm(_, titles, cinema)).toSeq
 
   /** Strip cycle decoration so a decorated screening merges onto the same row
    *  — and enriches off the same clean title — as the regular run: "Kino na
@@ -29,15 +29,16 @@ object MultikinoParser {
    *  cinemas list bare; leaving the prefix on produces a Multikino-only
    *  variant TMDB / Filmweb queries can't find. Public for direct unit tests. */
   // Cycle-decoration stripping now lives in the editable "multikino" rules (see
-  // TitleRules); this delegates so it stays unit-testable here.
-  def cleanTitle(filmTitle: String): String =
-    services.movies.TitleNormalizer.cinemaClean("multikino", filmTitle)
+  // TitleRules); this delegates so it stays unit-testable here. The rules are
+  // country-scoped, so the caller says whose they are.
+  def cleanTitle(filmTitle: String, titles: TitleNormalizer): String =
+    titles.cinemaClean("multikino", filmTitle)
 
-  private def parseFilm(film: JsValue, cinema: Cinema): CinemaMovie = {
+  private def parseFilm(film: JsValue, titles: TitleNormalizer, cinema: Cinema): CinemaMovie = {
     val rawFilmTitle = (film \ "filmTitle").as[String]
     // Casing is applied centrally at the scrape choke point
     // (`TitleNormalizer.recase`), not here — the Multikino API ships ALL-CAPS.
-    val title        = cleanTitle(rawFilmTitle)
+    val title        = cleanTitle(rawFilmTitle, titles)
     val multikinoId = (film \ "filmId").asOpt[String].filter(_.nonEmpty)
     val mxcId       = (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty)
     val sessions    = (film \ "showingGroups").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)

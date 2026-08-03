@@ -28,6 +28,9 @@ import services.cinemas.common.{CinemaScraper, ZyteFallback}
  */
 class MultikinoClient(
   http:              HttpFetch,
+  // The country's title rules. An ordinary dependency, not a context param:
+  // every scraper is built by `CinemaScraperCatalog`, which has exactly one.
+  titles:            TitleNormalizer,
   cinemaId:          String = MultikinoClient.PoznanStaryBrowarId,
   override val cinema: Cinema = Multikino,
 ) extends CinemaScraper {
@@ -38,7 +41,7 @@ class MultikinoClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def chain: Boolean = true
 
-  def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), cinema)
+  def fetch(): Seq[CinemaMovie] = MultikinoParser.parse(getApiWithRetry(), titles, cinema)
 
   private def getApiWithRetry(): String =
     try http.get(apiUrl)
