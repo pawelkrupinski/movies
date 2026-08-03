@@ -51,7 +51,7 @@ object StagingRecord {
    *  year + cinema from the `_id`. Returns None for a row whose cinema segment is
    *  unknown (a dropped/renamed cinema), matching the codec's drop-unknown-source
    *  behaviour. */
-  def fromStorage(id: String, record: MovieRecord): Option[StagingRecord] = {
+  def fromStorage(id: String, record: MovieRecord)(using TitleNormalizer): Option[StagingRecord] = {
     val firstSep = id.indexOf('|')
     val lastSep  = id.lastIndexOf('|')
     if (firstSep < 0 || lastSep <= firstSep) None

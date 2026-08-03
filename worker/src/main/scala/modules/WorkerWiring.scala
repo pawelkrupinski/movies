@@ -1253,7 +1253,7 @@ class WorkerWiring(
   eventBus.subscribe { case StagingFilmEnriched(title) =>
     // Name the group's rows so the fold reads those instead of the whole collection.
     stagingFolder.foldGroup(title, Some(stagingRepository.findByAnchor(
-      services.movies.TitleNormalizer.sanitize(title)).map(_.id).toSet)).foreach { case (key, record) =>
+      titleNormalizer.sanitize(title)).map(_.id).toSet)).foreach { case (key, record) =>
       movieService.announceResolvedNewMovie(key, record)
     }
   }

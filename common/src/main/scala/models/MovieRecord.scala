@@ -224,8 +224,8 @@ case class MovieRecord(
    *  Caller supplies cleanTitle (the post-decoration-strip anchor the cache keys
    *  the row by) because the record itself doesn't carry it; it's the fallback
    *  when no cinema is scraping yet (TMDB-only row). */
-  def displayTitle(cleanTitle: String): String =
-    services.movies.TitleNormalizer.chooseDisplay(
+  def displayTitle(cleanTitle: String)(using normalizer: services.movies.TitleNormalizer): String =
+    normalizer.chooseDisplay(
       perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq,
       fallback        = cleanTitle,
       tmdbTitle       = data.get(Tmdb).flatMap(_.title))

@@ -45,6 +45,8 @@ class OmdbBackfill(
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
 
+  private given services.movies.TitleNormalizer = cache.normalizer
+
   override protected def sourceName: String = "OMDb"
 
   protected def refreshOne(key: CacheKey): Option[String] =

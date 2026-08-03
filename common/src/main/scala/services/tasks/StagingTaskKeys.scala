@@ -22,7 +22,7 @@ object StagingTaskKeys {
   val TitleKey  = "title"
   val CinemaKey = "cinema"
 
-  private def anchor(title: String): String = TitleNormalizer.sanitize(title)
+  private def anchor(title: String)(using normalizer: TitleNormalizer): String = normalizer.sanitize(title)
 
   /** The `(film, cinema)` key, taking the already-sanitized `anchor` directly.
    *  Doubles as the FreshnessStore key for "this cinema's staging detail was
@@ -31,27 +31,27 @@ object StagingTaskKeys {
    *  signal is "fetched", not "has content"). */
   def detailKey(anchor: String, cinemaDisplayName: String): String = s"staging-detail|$anchor|$cinemaDisplayName"
 
-  def detailDedup(title: String, cinemaDisplayName: String): String = detailKey(anchor(title), cinemaDisplayName)
-  def resolveTmdbDedup(title: String): String = s"staging-tmdb|${anchor(title)}"
+  def detailDedup(title: String, cinemaDisplayName: String)(using TitleNormalizer): String = detailKey(anchor(title), cinemaDisplayName)
+  def resolveTmdbDedup(title: String)(using TitleNormalizer): String = s"staging-tmdb|${anchor(title)}"
 
   /** The per-film IMDb-recovery key, taking the already-sanitized `anchor`.
    *  Doubles as the FreshnessStore key for "IMDb recovery was attempted for this
    *  film" — recovery is best-effort, so once attempted (found OR not) the film
    *  folds; without this marker a no-match would re-enqueue the step forever. */
   def imdbKey(anchor: String): String = s"staging-imdb|$anchor"
-  def resolveImdbDedup(title: String): String = imdbKey(anchor(title))
+  def resolveImdbDedup(title: String)(using TitleNormalizer): String = imdbKey(anchor(title))
 
   // Fold is GROUP-scoped (the whole sanitize group, settled together via
   // `foldGroup`) and idempotent — one task per film keyed on the anchor, no
   // per-year fan-out.
-  def foldDedup(title: String): String = s"staging-fold|${anchor(title)}"
+  def foldDedup(title: String)(using TitleNormalizer): String = s"staging-fold|${anchor(title)}"
 
-  def detailPayload(title: String, cinemaDisplayName: String): Map[String, String] =
+  def detailPayload(title: String, cinemaDisplayName: String)(using TitleNormalizer): Map[String, String] =
     Map(TitleKey -> title, CinemaKey -> cinemaDisplayName)
   def titlePayload(title: String): Map[String, String] = Map(TitleKey -> title)
 
   def titleOf(payload: Map[String, String]): String = payload.getOrElse(TitleKey, "")
-  def anchorOf(payload: Map[String, String]): String = anchor(titleOf(payload))
+  def anchorOf(payload: Map[String, String])(using TitleNormalizer): String = anchor(titleOf(payload))
   def cinemaOf(payload: Map[String, String]): Option[Source] =
     payload.get(CinemaKey).flatMap(Source.byDisplayName.get)
 }

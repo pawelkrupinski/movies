@@ -38,7 +38,9 @@ class StagingSteps(
 ) extends Logging {
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
-  private given normalizer: services.movies.TitleNormalizer = stagingRepository.normalizer
+  /** The rules this staging pipeline anchors under — read by the task handlers
+   *  that build dedup keys for the same rows. */
+  given normalizer: services.movies.TitleNormalizer = stagingRepository.normalizer
   import StagingSteps._
 
   /** Every staging row of the film whose title sanitizes to `anchor`, `_id`-sorted

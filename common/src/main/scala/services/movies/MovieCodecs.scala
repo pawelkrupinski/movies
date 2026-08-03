@@ -92,7 +92,7 @@ object StoredMovieDto {
       updatedAt         = updatedAt
     )
 
-  def toDomain(dto: StoredMovieDto): StoredMovieRecord = {
+  def toDomain(dto: StoredMovieDto)(using TitleNormalizer): StoredMovieRecord = {
     val record = MovieRecord(
       imdbId            = dto.imdbId,
       imdbRating        = dto.imdbRating,

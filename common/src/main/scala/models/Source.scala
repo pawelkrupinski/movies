@@ -43,8 +43,8 @@ object CinemaShowing {
   /** The slot key for a cinema's report of a film under `title`. The ONE rule for
    *  deriving a cinema slot key, shared by the scrape ingest, the staging write,
    *  and detail enrichment, so the same (cinema, title) always lands on one slot. */
-  def keyFor(cinema: Cinema, title: String): CinemaShowing =
-    CinemaShowing(cinema, services.movies.TitleNormalizer.sanitize(title))
+  def keyFor(cinema: Cinema, title: String)(using normalizer: services.movies.TitleNormalizer): CinemaShowing =
+    CinemaShowing(cinema, normalizer.sanitize(title))
 }
 
 object Source {
