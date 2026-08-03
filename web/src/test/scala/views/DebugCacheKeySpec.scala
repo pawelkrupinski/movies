@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import models.{MovieRecord, Source, SourceData}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The debug detail grid surfaces the row's cache key — the normalised
@@ -19,7 +20,7 @@ class DebugCacheKeySpec extends AnyFlatSpec with Matchers {
     MovieRecord(data = Map[Source, SourceData]())
 
   private def render(title: String, year: Option[Int]): String =
-    views.html.debugDetails(title, year, record).body
+    views.html.debugDetails(title, year, record, titleNormalizer).body
 
   "debugDetails" should "show the sanitized cache key with its year" in {
     render("Diabeł ubiera się u Prady", Some(2024)) should include ("diabelubierasieuprady|2024")

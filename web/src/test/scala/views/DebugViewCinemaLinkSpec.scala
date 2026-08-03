@@ -3,6 +3,7 @@ package views
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The /debug per-source breakdown makes each cinema NAME the link — there's no
@@ -21,7 +22,7 @@ class DebugViewCinemaLinkSpec extends AnyFlatSpec with Matchers {
   private val cinema = CinemaCityWroclavia
 
   private def detailsWith(slot: SourceData, cinemaUrls: Map[String, String]) =
-    views.html.debugDetails("Belle", Some(2021), MovieRecord(data = Map(cinema -> slot)), cinemaUrls).body
+    views.html.debugDetails("Belle", Some(2021), MovieRecord(data = Map(cinema -> slot)), titleNormalizer, cinemaUrls).body
 
   "debug details" should "link the cinema name to its source page when a url is known" in {
     val url  = "https://www.cinema-city.pl/kina/cinema-city/1090"

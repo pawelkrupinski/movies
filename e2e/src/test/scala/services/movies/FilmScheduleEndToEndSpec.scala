@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{given, titleNormalizer}
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import controllers.{FilmSchedule, MovieControllerService}
 import models._

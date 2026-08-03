@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.LocalDateTime
 import models.{CinemaShowing, Filmweb, Multikino, MovieRecord, Showtime, Source, SourceData}
 import services.movies.StoredMovieRecord
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 /**
  * The `movies` collection now keys every cinema slot by `CinemaShowing(cinema,
@@ -41,7 +42,7 @@ class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
     SourceData(title = Some(title), showtimes = Seq(Showtime(now.plusHours(2), None, None, Nil)))
 
   private def detailsOf(data: Map[Source, SourceData]): String =
-    views.html.debugDetails(polishTitle, Some(2024), MovieRecord(data = data)).body
+    views.html.debugDetails(polishTitle, Some(2024), MovieRecord(data = data), titleNormalizer).body
 
   "debugDetails" should "render a cinema slot keyed by CinemaShowing (the production shape)" in {
     val html = detailsOf(Map[Source, SourceData](original -> slot(originalTitle)))
@@ -90,7 +91,7 @@ class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
         original -> slot(originalTitle),
         polish   -> slot(polishTitle),
       )))
-    val html = views.html.debug(Seq(row)).body
+    val html = views.html.debug(Seq(row), titleNormalizer).body
 
     // One distinct cinema (the sort key stays the cinema count) …
     html should include ("""data-cinemas="1"""")

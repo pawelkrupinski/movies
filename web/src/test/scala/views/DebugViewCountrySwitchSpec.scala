@@ -2,6 +2,7 @@ package views
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Every debug view is implicitly scoped to the ONE country this deployment
@@ -18,7 +19,7 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
   private implicit val city: models.City = models.Poznan
 
   "debug navbar" should "name the served country without offering a dead switch" in {
-    val html = views.html.debug(Seq.empty).body
+    val html = views.html.debug(Seq.empty, titleNormalizer).body
     // KINOWO_COUNTRY unset in tests → Poland.
     html should include ("""class="debug-nav-country-label"""")
     html should include (">Polska<")
@@ -26,7 +27,7 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not link to a stopped deployment's debug page" in {
-    val html = views.html.debug(Seq.empty).body
+    val html = views.html.debug(Seq.empty, titleNormalizer).body
     html should not include ("showtimes-uk.fly.dev")
     html should not include ("showtimes-de.fly.dev")
   }
@@ -43,7 +44,7 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
   // list, so with one deployed country it too renders as the label — and the
   // wiring builds no extra stacks to switch between in the first place.
   "debug navbar (Dev, switch wired)" should "still emit no switcher when only one country is deployed" in {
-    val html = views.html.debug(Seq.empty, current = models.Country.UnitedKingdom, sameOrigin = true).body
+    val html = views.html.debug(Seq.empty, titleNormalizer, current = models.Country.UnitedKingdom, sameOrigin = true).body
     html should include ("""class="debug-nav-country-label"""")
     html should include (">United Kingdom<")   // whichever db is being viewed is still named
     html should not include ("?country=")

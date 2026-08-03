@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.{Instant, LocalDateTime}
+import services.movies.SingleCountryNormalizer.given
 
 /**
  * Round-trips `StoredMovieDto` through the codec registry to confirm:

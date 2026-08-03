@@ -2,6 +2,7 @@ package models
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.SingleCountryNormalizer.given
 
 /**
  * `Source.dropSupersededCinemaSlots` removes a legacy bare-`Cinema` slot once a

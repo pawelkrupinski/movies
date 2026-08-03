@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
 import models.{Helios, HeliosKonin, MovieRecord, Showtime, Source, SourceData}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The debug source-data view lists one slot per cinema, labelled by the
@@ -29,7 +30,7 @@ class DebugSourceCityLabelSpec extends AnyFlatSpec with Matchers {
     )
 
   private def render(cinema: models.Cinema): String =
-    views.html.debugDetails("My Film", Some(2024), recordFrom(cinema)).body
+    views.html.debugDetails("My Film", Some(2024), recordFrom(cinema), titleNormalizer).body
 
   "debugDetails source slot" should "show the cinema name with its city" in {
     render(HeliosKonin) should include ("Helios Konin · Konin")

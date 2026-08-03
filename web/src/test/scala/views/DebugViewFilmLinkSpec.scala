@@ -4,6 +4,7 @@ import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.StoredMovieRecord
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The debug page lists the *global* corpus, but the /film page it links to is
@@ -24,13 +25,13 @@ class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
   )
 
   "debug view" should "link a Wrocław-only film into /wroclaw/film, not the page's own city" in {
-    val html = views.html.debug(Seq(wroclawOnly)).body
+    val html = views.html.debug(Seq(wroclawOnly), titleNormalizer).body
     html should include ("""href="/wroclaw/film/belle"""")
     html should not include """href="/poznan/film/belle""""
   }
 
   it should "render a per-row re-enrich button posting the row's ResolveTmdb enqueue" in {
-    val html = views.html.debug(Seq(wroclawOnly)).body
+    val html = views.html.debug(Seq(wroclawOnly), titleNormalizer).body
     html should include ("class=\"reenrich\"")
     // The button targets the dev-only reenrich endpoint with this row's identity.
     // (The reverse route's `&` is HTML-escaped to `&amp;` in the attribute; the
@@ -40,7 +41,7 @@ class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "key each row by its Mongo _id so the live change stream can patch it" in {
-    val html = views.html.debug(Seq(wroclawOnly)).body
+    val html = views.html.debug(Seq(wroclawOnly), titleNormalizer).body
     html should include ("""data-id="belle|2021"""")
   }
 }
