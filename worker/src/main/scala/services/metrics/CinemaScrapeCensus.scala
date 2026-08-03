@@ -3,16 +3,12 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
-import play.api.Logging
 import services.cinemas.common.CinemaScraper
 import services.freshness.FreshnessStore
 import services.tasks.ScrapeCinemaHandler
-import tools.DaemonExecutors
 
 import java.time.{Clock, Instant}
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Surfaces how STALE a country's most-neglected cinema is — the age of the
@@ -59,8 +55,8 @@ class CinemaScrapeCensus(
   neverScraped:   Gauge,
   country:        Country,
   clock:          Clock = Clock.systemUTC(),
-  sampleInterval: FiniteDuration = CinemaScrapeCensus.DefaultSampleInterval
-) extends Logging {
+  override protected val sampleInterval: FiniteDuration = CinemaScrapeCensus.DefaultSampleInterval
+) extends SampledCensus {
   import CinemaScrapeCensus._
 
   private val countryCode = country.code
@@ -75,7 +71,6 @@ class CinemaScrapeCensus(
   oldestAge.labelValues(countryCode).set(0.0)
   neverScraped.labelValues(countryCode).set(0.0)
 
-  private val scheduler = DaemonExecutors.scheduler("cinema-scrape-census")
 
   /** Read every cinema's last-successful-scrape stamp once and publish the
    *  roster's worst case. Read-only, in-memory. */
@@ -85,15 +80,7 @@ class CinemaScrapeCensus(
     neverScraped.labelValues(countryCode).set(staleness.neverScraped.toDouble)
   }
 
-  def start(): Unit = {
-    Try(sample()).recover { case e => logger.warn(s"cinema-scrape-census initial sample failed: ${e.getMessage}") }
-    scheduler.scheduleAtFixedRate(
-      () => Try(sample()).recover { case e => logger.warn(s"cinema-scrape-census sample tick failed: ${e.getMessage}") },
-      sampleInterval.toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
-    ()
-  }
-
-  def stop(): Unit = scheduler.shutdown()
+  override protected val censusName: String = "cinema-scrape-census"
 }
 
 object CinemaScrapeCensus {

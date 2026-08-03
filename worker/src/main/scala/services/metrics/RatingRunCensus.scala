@@ -3,17 +3,13 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Country, MovieRecord}
-import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{CacheKey, MovieCacheReader}
 import services.tasks.RatingSources.RatingSource
 import services.tasks.{RatingSources, RatingTasks}
-import tools.DaemonExecutors
 
 import java.time.{Clock, Instant}
-import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Surfaces the rating runs that HAVEN'T happened — the gap the first-attempt
@@ -45,8 +41,8 @@ class RatingRunCensus(
   oldestAge:      Gauge,
   country:        Country,
   clock:          Clock = Clock.systemUTC(),
-  sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval
-) extends Logging {
+  override protected val sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval
+) extends SampledCensus {
   import RatingRunCensus._
 
   private val countryCode = country.code
@@ -61,7 +57,6 @@ class RatingRunCensus(
     oldestAge.labelValues(countryCode, s.kind.label).set(0.0)
   }
 
-  private val scheduler = DaemonExecutors.scheduler("rating-run-census")
 
   // When this census first saw each (site, row) in the backlog — the fallback
   // clock start for a row whose TMDB-resolve stamp can't exist. IMDb eligibility
@@ -94,15 +89,7 @@ class RatingRunCensus(
     }
   }
 
-  def start(): Unit = {
-    Try(sample()).recover { case e => logger.warn(s"rating-run-census initial sample failed: ${e.getMessage}") }
-    scheduler.scheduleAtFixedRate(
-      () => Try(sample()).recover { case e => logger.warn(s"rating-run-census sample tick failed: ${e.getMessage}") },
-      sampleInterval.toSeconds, sampleInterval.toSeconds, TimeUnit.SECONDS)
-    ()
-  }
-
-  def stop(): Unit = scheduler.shutdown()
+  override protected val censusName: String = "rating-run-census"
 }
 
 object RatingRunCensus {
