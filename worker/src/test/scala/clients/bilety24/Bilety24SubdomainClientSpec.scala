@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.Bilety24SubdomainClient
 
 import java.time.{LocalDate, LocalDateTime}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Kino Astra (Oborniki Śląskie) went silently empty on Filmweb, but its films
  *  are live on the surviving `kulturalne-oborniki.bilety24.pl` subdomain — whose
@@ -24,7 +25,8 @@ class Bilety24SubdomainClientSpec extends AnyFlatSpec with Matchers with OptionV
     "https://kulturalne-oborniki.bilety24.pl/repertuar/",
     KinoAstra,
     daysAhead = 1,
-    today     = LocalDate.of(2026, 6, 18)
+    today     = LocalDate.of(2026, 6, 18),
+    titles    = titleNormalizer
   ).fetch()
 
   it should "return a non-empty, single-cinema film list" in {
