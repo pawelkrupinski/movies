@@ -4,6 +4,7 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.HeliosClient
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 // Events listed under /wydarzenie/... carry their own posterPhoto in the NUXT
 // repertoire payload — independent of any parent /filmy/ entry. The Radomiak –
@@ -12,7 +13,7 @@ import services.cinemas.pl.HeliosClient
 class HeliosClientEventPosterSpec extends AnyFlatSpec with Matchers {
 
   private val fakeHttp = new FakeHttpFetch("helios/event-radomiak")
-  private val client   = new HeliosClient(fakeHttp)
+  private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer)
 
   "HeliosClient.fetch" should "expose the Radomiak event with showtimes" in {
     val event = client.fetch().find(_.movie.title.contains("Radomiak"))

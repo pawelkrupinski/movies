@@ -25,7 +25,7 @@ object RecordNewCities {
   def main(args: Array[String]): Unit = {
     val real = new RealHttpFetch()
     val record  = new RecordingHttpFetch("new-cities", real)
-    val cc   = new CinemaCityClient(record)
+    val cc   = new CinemaCityClient(record, titles = titleNormalizer)
 
     def report(label: String)(n: => Int): Unit =
       println(s"$label: ${Try(n).fold(e => s"FAIL ${e.getMessage}", x => s"$x films")}")
@@ -49,7 +49,7 @@ object RecordNewCities {
     }
 
     Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { config =>
-      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config).fetch().size)
+      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config, titles = titleNormalizer).fetch().size)
     }
 
     report("Kino Zorza (Rzeszów)")(

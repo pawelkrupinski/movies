@@ -10,6 +10,7 @@ import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 import services.cinemas.CountryNames
+import services.movies.TitleNormalizer
 
 /**
  * Kino Apollo (kinoapollo.pl/kino) — a small Poznań cinema running on WordPress +
@@ -35,7 +36,7 @@ import services.cinemas.CountryNames
  *   6. "Czytaj opis" link — `<a href="kinoapollo.pl/kino/<slug>/">` → detail page
  *   7. Poster     — `<img>` to a WordPress media URL
  */
-class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer) extends CinemaScraper with DetailEnricher {
 
   // Static film detail pages cached across passes; the repertoire listing keeps
   // the live `http` since its showtimes change every pass.
@@ -319,7 +320,7 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
   // (TitleRules); this delegates so the day-page dedup grouping still
   // collapses decorated variants onto the bare film.
   def cleanTitle(title: String): String =
-    services.movies.TitleNormalizer.cinemaClean("kino-apollo", title)
+    titles.cinemaClean("kino-apollo", title)
 
   // WordPress generates many size variants for each poster (e.g.
   // `..._plakat-200x300.jpg`, `..._plakat-683x1024.jpg`, `..._plakat-scaled.jpg`,

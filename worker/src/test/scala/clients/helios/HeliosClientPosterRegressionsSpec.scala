@@ -4,10 +4,11 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.HeliosClient
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientPosterRegressionsSpec extends AnyFlatSpec with Matchers {
   private val fakeHttp = new FakeHttpFetch("helios/posters")
-  private val client   = new HeliosClient(fakeHttp)
+  private val client   = new HeliosClient(fakeHttp, titles = titleNormalizer)
 
   private def fetch() = client.fetch()
 

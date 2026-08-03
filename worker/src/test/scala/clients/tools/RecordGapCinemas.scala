@@ -6,6 +6,7 @@ import services.cinemas._
 import services.cinemas.pl._
 
 import scala.util.Try
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Records the art-house / independent "gap" cinemas added for Filmweb parity,
@@ -24,23 +25,23 @@ object RecordGapCinemas {
 
     // ── Kraków ──
     report("Kino Pod Baranami")(new KinoPodBaranamiClient(record("kino-pod-baranami"), KinoPodBaranami).fetch().size)
-    report("Kino Kijów")(new KinoKijowClient(record("kino-kijow"), KinoKijow).fetch().size)
+    report("Kino Kijów")(new KinoKijowClient(record("kino-kijow"), KinoKijow, titles = titleNormalizer).fetch().size)
     report("Kino Kika")(new KinoKikaClient(record("kino-kika"), KinoKika).fetch().size)
     report("Kino Agrafka")(new KinoAgrafkaClient(record("kino-agrafka"), KinoAgrafka).fetch().size)
     report("Kino Paradox")(new KinoParadoxClient(record("kino-paradox"), KinoParadox).fetch().size)
     // ── Trójmiasto / Szczecin ──
     report("Cinema1 (Gdańsk)")(new MsiClient(record("cinema1"), "https://bilety.cinemaone.pl", Cinema1Gdansk).fetch().size)
     report("Kino Zamek (Szczecin)")(new KinoZamekClient(record("kino-zamek"), KinoZamekSzczecin).fetch().size)
-    report("Helios Outlet Park")(new HeliosClient(record("helios-outlet-park"), HeliosNuxt.SzczecinOutletPark).fetch().size)
+    report("Helios Outlet Park")(new HeliosClient(record("helios-outlet-park"), HeliosNuxt.SzczecinOutletPark, titles = titleNormalizer).fetch().size)
     // ── Łódź ──
-    report("Kinematograf (Łódź)")(new KinematografLodzClient(record("kinematograf-lodz"), KinematografLodz).fetch().size)
+    report("Kinematograf (Łódź)")(new KinematografLodzClient(record("kinematograf-lodz"), KinematografLodz, titles = titleNormalizer).fetch().size)
     report("NCKF (Łódź)")(new NckfClient(record("nckf"), Nckf).fetch().size)
     report("Kino Spójnia (Aleksandrów)")(new KinoSpojniaClient(record("kino-spojnia"), KinoSpojnia).fetch().size)
     report("Kino Ślęża (Sobótka)")(new KinoSlezaClient(record("kino-sleza"), KinoSleza).fetch().size)
-    report("Cyfrowe Kino (Środa Śl.)")(new CyfroweKinoClient(record("cyfrowe-kino"), KinoCyfroweKino).fetch().size)
-    report("Kino Kuźnica (Suchedniów)")(new SystemBiletowyClient(record("kino-kuznica"), "https://shd.systembiletowy.pl", KinoKuznica).fetch().size)
+    report("Cyfrowe Kino (Środa Śl.)")(new CyfroweKinoClient(record("cyfrowe-kino"), KinoCyfroweKino, titles = titleNormalizer).fetch().size)
+    report("Kino Kuźnica (Suchedniów)")(new SystemBiletowyClient(record("kino-kuznica"), "https://shd.systembiletowy.pl", KinoKuznica, titles = titleNormalizer).fetch().size)
     // ── Lublin ──
-    report("Kino CK Lublin")(new Bilety24Client(record("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin).fetch().size)
+    report("Kino CK Lublin")(new Bilety24Client(record("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin, titles = titleNormalizer).fetch().size)
     // ── Częstochowa / Radom ──
     report("OKF Iluzja")(new OkfIluzjaClient(record("okf-iluzja"), OkfIluzja).fetch().size)
     report("MCSW Elektrownia")(new McswElektrowniaCinemaClient(record("mcsw-elektrownia"), McswElektrowniaCinema).fetch().size)
@@ -62,11 +63,11 @@ object RecordGapCinemas {
     // ── Wave 3: more Filmweb-dropped venues, on existing platform clients ──
     report("Kino Centrum (Skarżysko)")(new MsiClient(record("kino-centrum-skarzysko"), "https://bilet-mck.skarzysko.pl", KinoCentrumSkarzyskoKamienna).fetch().size)
     report("Nowe Kino Warszawa (Gostynin)")(new MsiClient(record("nowe-kino-warszawa"), "https://bilety.mck-gostynin.pl", KinoNoweKinoWarszawa).fetch().size)
-    report("Farys (Biecz)")(new SystemBiletowyClient(record("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys).fetch().size)
+    report("Farys (Biecz)")(new SystemBiletowyClient(record("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys, titles = titleNormalizer).fetch().size)
     val b24 = "https://www.bilety24.pl/kino/organizator"
-    report("Kino CK (Jędrzejów)")(new Bilety24OrganizerClient(record("kino-ck"), s"$b24/centrum-kultury-w-jedrzejowie-1458", KinoCK).fetch().size)
-    report("Metalowiec (Kraśnik)")(new Bilety24OrganizerClient(record("kino-metalowiec"), s"$b24/centrum-kultury-i-promocji-w-krasniku-1529", KinoMetalowiec).fetch().size)
-    report("Kino Sokolnia (Słupca)")(new Bilety24OrganizerClient(record("kino-sokolnia"), s"$b24/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia).fetch().size)
+    report("Kino CK (Jędrzejów)")(new Bilety24OrganizerClient(record("kino-ck"), s"$b24/centrum-kultury-w-jedrzejowie-1458", KinoCK, titles = titleNormalizer).fetch().size)
+    report("Metalowiec (Kraśnik)")(new Bilety24OrganizerClient(record("kino-metalowiec"), s"$b24/centrum-kultury-i-promocji-w-krasniku-1529", KinoMetalowiec, titles = titleNormalizer).fetch().size)
+    report("Kino Sokolnia (Słupca)")(new Bilety24OrganizerClient(record("kino-sokolnia"), s"$b24/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia, titles = titleNormalizer).fetch().size)
     // ── Wave 3: bespoke own-site parsers ──
     report("Kino Krapkowice")(new KdkKrapkowiceClient(record("kino-krapkowice"), KinoKrapkowice).fetch().size)
     report("Kino Aurum (Złotoryja)")(new KinoAurumClient(record("kino-aurum"), KinoAurum).fetch().size)

@@ -11,6 +11,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import scala.concurrent.duration._
 import scala.util.Try
+import services.movies.TitleNormalizer
 
 // `today` is injected so tests can pin it: the REST `/screening` + `/event`
 // URLs bake the date window, and the recorded fixtures were captured for a
@@ -25,7 +26,8 @@ class HeliosClient(
   // every Helios location, so a film's detail body is fetched once per chain per
   // TTL instead of once per location per pass. Live screening/page fetches that
   // carry volatile showtimes stay on `http`.
-  detailHttp: Option[HttpFetch] = None
+  detailHttp: Option[HttpFetch] = None,
+  titles: TitleNormalizer
 ) extends CinemaScraper {
 
   override val cinema: Cinema = config.cinema
@@ -48,7 +50,7 @@ class HeliosClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val rest = fetchRestData()
-    val nuxt = HeliosNuxt.buildMovies(http.get(PageUrl), config)
+    val nuxt = HeliosNuxt.buildMovies(http.get(PageUrl), config, titles)
     // The NUXT `/repertuar` page is Helios's authoritative full-repertoire source
     // (it lists every screening, well beyond REST's 6-day window). helios.pl
     // intermittently 302-redirects it to the films-less homepage — server-side,
@@ -258,7 +260,7 @@ class HeliosClient(
         .flatMap(_.bookingUrl).flatMap(extractScreeningId)
         .flatMap(rest.screeningsById.get).headOption
         .flatMap(s => rest.movieDetails.get(s.movieId))
-        .filter(_.title.map(cleanTitle).contains(cm.movie.title))
+        .filter(_.title.map(cleanTitle(_, titles)).contains(cm.movie.title))
 
       cm.copy(
         movie     = cm.movie.copy(
@@ -288,10 +290,10 @@ class HeliosClient(
       .groupBy(_.movieId).toSeq
       .flatMap { case (movieId, screenings) =>
         rest.movieDetails.get(movieId)
-          .filterNot(_.title.map(cleanTitle).exists(nuxtTitles))
+          .filterNot(_.title.map(cleanTitle(_, titles)).exists(nuxtTitles))
           .map(info => CinemaMovie(
             movie = Movie(
-              title          = cleanTitle(info.title.getOrElse(movieId)),
+              title          = cleanTitle(info.title.getOrElse(movieId), titles),
               runtimeMinutes = info.duration,
               releaseYear    = info.year,
               originalTitle  = info.originalTitle,

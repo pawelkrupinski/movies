@@ -36,7 +36,7 @@ import scala.util.Try
  * fetch (TMDB enriches the rest downstream). One `CinemaMovie` per title, with
  * the screenings merged and sorted.
  */
-class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema, titles: TitleNormalizer) extends CinemaScraper {
 
   import KinoBajkaClient._
 
@@ -56,7 +56,7 @@ class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema) extends Cine
       (root \ "dni").asOpt[JsObject].toSeq.flatMap { dni =>
         dni.fields.flatMap { case (dateStr, films) =>
           dayDate(dateStr).toSeq.flatMap { date =>
-            films.asOpt[Seq[JsObject]].getOrElse(Seq.empty).flatMap(parseFilm(_, date, booking))
+            films.asOpt[Seq[JsObject]].getOrElse(Seq.empty).flatMap(parseFilm(_, date, booking, titles))
           }
         }
       }
@@ -99,9 +99,9 @@ object KinoBajkaClient {
     Try(LocalDate.parse(id)).toOption  // the `dni` keys are ISO `YYYY-MM-DD`
 
   /** Parse one film object under a day into its screenings. */
-  private def parseFilm(film: JsObject, date: LocalDate, booking: Option[String]): Seq[RawSlot] = {
+  private def parseFilm(film: JsObject, date: LocalDate, booking: Option[String], titles: TitleNormalizer): Seq[RawSlot] = {
     val title   = (film \ "t").asOpt[String]
-                    .map(t => TitleNormalizer.cinemaClean("kino-bajka", t.trim)).filter(_.nonEmpty)
+                    .map(t => titles.cinemaClean("kino-bajka", t.trim)).filter(_.nonEmpty)
     val filmUrl = (film \ "u").asOpt[String].filter(_.nonEmpty)
     val poster  = (film \ "p").asOpt[String].filter(_.nonEmpty)
     val runtime = (film \ "m").asOpt[String]

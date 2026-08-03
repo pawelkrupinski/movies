@@ -7,6 +7,7 @@ import services.cinemas.pl.HeliosClient
 
 import java.util.concurrent.CompletableFuture
 import scala.collection.mutable
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 // The `/event` endpoint returns the cinema's ENTIRE event history when called
 // without a date window — ~4400 events / 9 MB for Poznań, ~99% of them in the
@@ -29,7 +30,7 @@ class HeliosClientEventWindowSpec extends AnyFlatSpec with Matchers {
 
   "HeliosClient" should "request /event with the same date window as /screening" in {
     val fetch = new RecordingFetch
-    new HeliosClient(fetch).fetch()
+    new HeliosClient(fetch, titles = titleNormalizer).fetch()
 
     val eventUrl     = fetch.urls.find(u => u.contains("/event")).getOrElse(
       fail(s"client never requested /event; saw: ${fetch.urls.mkString(", ")}"))

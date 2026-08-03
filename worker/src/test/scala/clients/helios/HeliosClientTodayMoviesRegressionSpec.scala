@@ -6,11 +6,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.HeliosClient
 
 import java.time.LocalDate
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientTodayMoviesRegressionSpec extends AnyFlatSpec with Matchers {
 
   private val client =
-    new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"))
+    new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer)
 
   // The fixture was captured on 2026-05-13 — pin "today" to that so the
   // assertions stay deterministic. Using `LocalDate.now()` against a recorded

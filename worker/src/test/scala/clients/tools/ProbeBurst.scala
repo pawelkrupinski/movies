@@ -9,6 +9,7 @@ import services.cinemas.pl._
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Live burst probe. Wraps `RealHttpFetch` to measure, per cinema client,
  *  how aggressively it hits the real site: total requests, the MAX number
@@ -87,10 +88,10 @@ object ProbeBurst {
     "prom-kepa"     -> (f => new PromKepaClient(f)),
     "swit"          -> (f => new SwitClient(f)),
     "nove-kino"     -> (f => new NoveKinoClient(f, "atlantic", KinoAtlantic)),
-    "luna"          -> (f => new Bilety24Client(f, "https://kinoluna.bilety24.pl", KinoLuna)),
-    "elektronik"    -> (f => new Bilety24OrganizerClient(f, "https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik)),
-    "na-boku"       -> (f => new BokClient(f, "kino-na-boku", KinoNaBoku)),
-    "glebocka"      -> (f => new BokClient(f, "kino-glebocka-66", KinoGlebocka66)),
+    "luna"          -> (f => new Bilety24Client(f, "https://kinoluna.bilety24.pl", KinoLuna, titles = titleNormalizer)),
+    "elektronik"    -> (f => new Bilety24OrganizerClient(f, "https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik, titles = titleNormalizer)),
+    "na-boku"       -> (f => new BokClient(f, "kino-na-boku", KinoNaBoku, titles = titleNormalizer)),
+    "glebocka"      -> (f => new BokClient(f, "kino-glebocka-66", KinoGlebocka66, titles = titleNormalizer)),
     "kinogram"      -> (f => new KinoGramClient(f))
   )
 

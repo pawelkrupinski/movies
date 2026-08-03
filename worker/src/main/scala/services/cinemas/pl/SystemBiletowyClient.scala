@@ -32,14 +32,15 @@ import scala.util.Try
  * Previously scraped from Filmweb, which had silently gone empty for the venue
  * (every poll returned `[]`) though the cinema is open and screening.
  */
-class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema: Cinema)
+class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema: Cinema,
+                           titles: TitleNormalizer)
     extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
   override def sourceUrl: Option[String] = Some(baseUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
-    SystemBiletowyClient.parse(http.get(s"$baseUrl/index.php"), cinema, baseUrl)
+    SystemBiletowyClient.parse(http.get(s"$baseUrl/index.php"), cinema, baseUrl, titles)
 }
 
 object SystemBiletowyClient {
@@ -49,13 +50,13 @@ object SystemBiletowyClient {
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], format: List[String])
 
-  def parse(html: String, cinema: Cinema, baseUrl: String): Seq[CinemaMovie] = {
+  def parse(html: String, cinema: Cinema, baseUrl: String, titles: TitleNormalizer): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, baseUrl)
     // Per-cinema title cleanup (PerCinema rules) on top of the shared cleanTitle,
     // plus the format/language tokens peeled off the title so the dub/subtitle
     // screenings merge onto one row AND each keeps its language badge.
     def clean(raw: String): (String, List[String]) =
-      (TitleNormalizer.cinemaClean(cinema.slug, cleanTitle(raw)), ScraperParse.extractFormatTags(raw)._2)
+      (titles.cinemaClean(cinema.slug, cleanTitle(raw)), ScraperParse.extractFormatTags(raw)._2)
 
     val tblSlots = document.select("table.tbl_repertoire tr").asScala.toSeq.flatMap { tr =>
       // Only rows that are a real screening carry a repertoire/booking link.

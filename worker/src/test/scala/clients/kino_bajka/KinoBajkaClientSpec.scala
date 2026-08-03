@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoBajkaClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Replays the recorded Kino Bajka repertoire (11-07-2026 capture of
  *  `kinobajka.pl/repertuar/`) through the client. The WordPress page no longer
@@ -21,7 +22,7 @@ class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val http = new FakeHttpFetch("kino-bajka")
 
   "KinoBajkaClient" should "parse film screenings off the data-dane JSON blob" in {
-    val movies = new KinoBajkaClient(http, KinoBajka).fetch()
+    val movies = new KinoBajkaClient(http, KinoBajka, titles = titleNormalizer).fetch()
 
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoBajka)
@@ -32,7 +33,7 @@ class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "pair each showtime with its enclosing day's date and read the runtime" in {
-    val movies = new KinoBajkaClient(http, KinoBajka).fetch()
+    val movies = new KinoBajkaClient(http, KinoBajka, titles = titleNormalizer).fetch()
 
     // Pinned screening seen in the captured fixture: "Minionki i straszydła"
     // plays 11-07-2026 at 13:30 — the 13:30 lives under the 2026-07-11 `dni` key,
@@ -48,7 +49,7 @@ class KinoBajkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "merge a film's screenings across days into one CinemaMovie" in {
-    val movies = new KinoBajkaClient(http, KinoBajka).fetch()
+    val movies = new KinoBajkaClient(http, KinoBajka, titles = titleNormalizer).fetch()
 
     // "Minionki i straszydła" plays on several days; it collapses to a single row
     // whose showtimes span more than one date.

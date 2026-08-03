@@ -8,6 +8,7 @@ import tools.GetOnlyHttpFetch
 import services.cinemas.pl.KinematografLodzClient
 
 import java.time.{LocalDate, LocalDateTime}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Drives the parser directly with a self-contained minimal HTML string.
  *  No fixture files are needed because `KinematografLodzClient` exposes
@@ -69,7 +70,7 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   private val testCinema = KinoCharlie  // stand-in; real integration uses KinematografLodz
   private val today      = LocalDate.of(2026, 6, 7)
-  private val client     = new KinematografLodzClient(http, testCinema, today)
+  private val client     = new KinematografLodzClient(http, testCinema, today, titles = titleNormalizer)
 
   "KinematografLodzClient" should "return a non-empty film list" in {
     client.fetch() should not be empty

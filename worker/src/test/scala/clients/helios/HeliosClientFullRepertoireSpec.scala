@@ -7,10 +7,11 @@ import models.{Helios, Showtime}
 import services.cinemas.pl.HeliosClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientFullRepertoireSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"))
+  private val client  = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 

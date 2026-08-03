@@ -38,7 +38,8 @@ import scala.util.Try
 class KinoKijowClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  titles:           TitleNormalizer
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoKijowClient._
@@ -51,7 +52,7 @@ class KinoKijowClient(
     val pages  = ParallelDetailFetch.keyed("kino-kijow-months", months, 1.minute)(m => monthUrl(m)) { url =>
       Try(http.get(url)).toOption
     }
-    val slots = months.flatMap(m => pages.getOrElse(m, None).toSeq.flatMap(html => parseDocument(html, m)))
+    val slots = months.flatMap(m => pages.getOrElse(m, None).toSeq.flatMap(html => parseDocument(html, m, titles)))
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl), format = s.format)) { (title, _, showtimes) =>
       CinemaMovie(
@@ -96,7 +97,7 @@ object KinoKijowClient {
 
   private[cinemas] case class RawSlot(title: String, format: List[String], dateTime: LocalDateTime, bookingUrl: String)
 
-  private[cinemas] def parseDocument(html: String, month: YearMonth): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(html: String, month: YearMonth, titles: TitleNormalizer): Seq[RawSlot] = {
     val document = Jsoup.parse(html)
     document.select("div.cd-timeline-content.eventlist").asScala.toSeq.flatMap { block =>
       // Prefer the desktop hidden span; fallback to h2 text which repeats the date
@@ -110,7 +111,7 @@ object KinoKijowClient {
       // onto one film row without losing the format.
       val dateTime = parseDateTimePat(cdDate, month)
       val titleTags = h2Title(h2Text)
-        .map(t => ScraperParse.extractFormatTags(TitleNormalizer.cinemaClean("kino-kijow", t)))
+        .map(t => ScraperParse.extractFormatTags(titles.cinemaClean("kino-kijow", t)))
         .filter(_._1.nonEmpty)
 
       val bookingUrl = Option(block.selectFirst("a.btn-badge2[href^=\"/MSI/Default.aspx\"]"))

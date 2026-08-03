@@ -7,6 +7,7 @@ import tools.GetOnlyHttpFetch
 import services.cinemas.pl.HeliosClient
 
 import java.util.concurrent.CompletableFuture
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
 
@@ -42,7 +43,7 @@ class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
     override def getAsync(url: String): CompletableFuture[String] = rest.getAsync(url)
   }
 
-  private val client  = new HeliosClient(new NuxtOnlyHttpFetch)
+  private val client  = new HeliosClient(new NuxtOnlyHttpFetch, titles = titleNormalizer)
   private val results = client.fetch()
 
   "HeliosClient.fetch" should "still return NUXT movies when the REST screening API is unavailable" in {
@@ -73,6 +74,6 @@ class HeliosClientResilienceSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return no movies when the NUXT repertoire page is degraded, rather than the REST-only backfill that would prune the repertoire" in {
-    new HeliosClient(new RedirectedNuxtHttpFetch).fetch() shouldBe empty
+    new HeliosClient(new RedirectedNuxtHttpFetch, titles = titleNormalizer).fetch() shouldBe empty
   }
 }

@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.HeliosClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Regression for the recurring "(N new)" churn on Helios. A live scrape lists
  *  some films twice in one fetch under titles that the cache's normalisation
@@ -17,7 +18,7 @@ class HeliosClientMergeDuplicatesSpec extends AnyFlatSpec with Matchers {
 
   // `fetch()` is never called, so the default real HttpFetch never hits the
   // network — the constructor does no I/O.
-  private val client = new HeliosClient()
+  private val client = new HeliosClient(titles = titleNormalizer)
 
   private def st(dt: String) = Showtime(LocalDateTime.parse(dt), bookingUrl = None)
   private def cm(title: String, year: Option[Int], filmUrl: Option[String], times: String*): CinemaMovie =

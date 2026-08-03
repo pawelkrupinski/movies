@@ -8,12 +8,13 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.Bilety24Client
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** One shared client, exercised against two recorded Bilety24-hosted cinemas. */
 class Bilety24ClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   // ── Kino Luna ──────────────────────────────────────────────────────────────
-  private val luna     = new Bilety24Client(new FakeHttpFetch("kino-luna"), "https://kinoluna.bilety24.pl", KinoLuna)
+  private val luna     = new Bilety24Client(new FakeHttpFetch("kino-luna"), "https://kinoluna.bilety24.pl", KinoLuna, titles = titleNormalizer)
   private val lunaRes  = luna.fetch()
   private val lunaByT  = lunaRes.map(cm => cm.movie.title -> cm).toMap
 
@@ -51,7 +52,7 @@ class Bilety24ClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       """<div class="title-name" title="Supergirl/dubbing">Supergirl/dubbing</div>
         |<a class="b24-button" href="/kup-bilety/?id=5" title="Kup bilet - Film: Supergirl/dubbing - 2026-07-02 18:00 - Konin">
         |<span class="b24-button__format format status"></span></a>""".stripMargin
-    val m = Bilety24Client.parseEvent(html, KinoOskard, "https://ckis-konin.bilety24.pl", "5").value
+    val m = Bilety24Client.parseEvent(html, KinoOskard, "https://ckis-konin.bilety24.pl", "5", titleNormalizer).value
     m.movie.title             shouldBe "Supergirl"
     m.showtimes.map(_.format) shouldBe Seq(List("DUB"))
   }

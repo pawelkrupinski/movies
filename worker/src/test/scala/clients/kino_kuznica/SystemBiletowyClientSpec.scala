@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.SystemBiletowyClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Replays the recorded `shd.systembiletowy.pl/index.php` repertoire (the
  *  Suchedniów cultural centre's Kino Kuźnica instance) through the generic
@@ -20,7 +21,7 @@ import java.time.LocalDateTime
 class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val movies =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-kuznica"), "https://shd.systembiletowy.pl", KinoKuznica).fetch()
+    new SystemBiletowyClient(new FakeHttpFetch("kino-kuznica"), "https://shd.systembiletowy.pl", KinoKuznica, titles = titleNormalizer).fetch()
 
   "SystemBiletowyClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty
@@ -45,7 +46,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   // ── Kino Farys (Biecz, the kfb.systembiletowy.pl instance) ──────────────────
   private val farys =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys).fetch()
+    new SystemBiletowyClient(new FakeHttpFetch("kino-farys"), "https://kfb.systembiletowy.pl", KinoFarys, titles = titleNormalizer).fetch()
 
   "SystemBiletowyClient (Farys)" should "parse the Biecz instance off the same client" in {
     farys should not be empty
@@ -56,7 +57,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
 
   // ── Alternate div.event-item skin (Kino PCKul, Pszczyna) ────────────────────
   private val pckul =
-    new SystemBiletowyClient(new FakeHttpFetch("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino).fetch()
+    new SystemBiletowyClient(new FakeHttpFetch("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino, titles = titleNormalizer).fetch()
 
   "SystemBiletowyClient (alt skin)" should "parse the div.event-item Bootstrap skin" in {
     pckul should not be empty
@@ -73,7 +74,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
   // on its own VisualSoft portal, served under both the vendor subdomain
   // (kgl/kck.systembiletowy.pl) and a venue's own domain (bilety.kino.bochnia.pl).
   private def visual9(base: String, cinema: models.Cinema) =
-    new SystemBiletowyClient(new FakeHttpFetch("08-06-2026"), base, cinema).fetch()
+    new SystemBiletowyClient(new FakeHttpFetch("08-06-2026"), base, cinema, titles = titleNormalizer).fetch()
 
   "SystemBiletowyClient (visual9 skin)" should "parse Kino Kawiarnia (kgl.systembiletowy.pl)" in {
     val movies = visual9("https://kgl.systembiletowy.pl", KinoKawiarnia)
@@ -112,7 +113,7 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
         |<h3 class="event-title">Toy Story 5 - dubbing</h3><a href="/kup-bilet/1">buy</a></div>
         |<div class="event-item" data-date="2026-07-02" data-time="20:00">
         |<h3 class="event-title">Toy Story 5 - napisy</h3><a href="/kup-bilet/2">buy</a></div>""".stripMargin
-    val movies = SystemBiletowyClient.parse(html, KinoKawiarnia, "https://kawiarnia.systembiletowy.pl")
+    val movies = SystemBiletowyClient.parse(html, KinoKawiarnia, "https://kawiarnia.systembiletowy.pl", titleNormalizer)
     movies should have size 1
     movies.head.movie.title.toLowerCase        should include("toy story 5")
     movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))

@@ -9,10 +9,11 @@ import services.cinemas.common.FilmDetail
 import services.cinemas.pl.KinoPalacoweClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"))
+  private val client  = new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"), titles = titleNormalizer)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
@@ -69,7 +70,7 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
         |   "start_date":"2026-06-16","start_time":"11:00",
         |   "lead":"Film. Czas trwania: 1 godzina i 56 minut. Kraj produkcji: Polska."}
         |]}]}]}""".stripMargin
-    val movies = new KinoPalacoweClient(new RoutingHttpFetch(Map("calendar" -> json))).fetch()
+    val movies = new KinoPalacoweClient(new RoutingHttpFetch(Map("calendar" -> json)), titles = titleNormalizer).fetch()
     movies.size                               shouldBe 2
     movies.flatMap(_.movie.runtimeMinutes).toSet shouldBe Set(120, 116)  // 120 from `duration`; 116 = 1h56 from prose
   }
@@ -204,15 +205,15 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   // 'Poranek dla dzieci' + ExtraTitleRules xtra-pp-dkf-named), query-only, so the
   // decorated screening keeps its own row. cleanTitle leaves them intact.
   "KinoPalacoweClient.cleanTitle" should "leave the now-global Poranek / DKF Zamek banners intact" in {
-    KinoPalacoweClient.cleanTitle("Poranek dla dzieci: Pucio") shouldBe "Poranek dla dzieci: Pucio"
-    KinoPalacoweClient.cleanTitle("DKF Zamek: Belle") shouldBe "DKF Zamek: Belle"
+    KinoPalacoweClient.cleanTitle("Poranek dla dzieci: Pucio", titleNormalizer) shouldBe "Poranek dla dzieci: Pucio"
+    KinoPalacoweClient.cleanTitle("DKF Zamek: Belle", titleNormalizer) shouldBe "DKF Zamek: Belle"
   }
 
   it should "strip the 'WAJDA: re-wizje. ' retrospective prefix" in {
-    KinoPalacoweClient.cleanTitle("WAJDA: re-wizje. Człowiek z marmuru") shouldBe "Człowiek z marmuru"
+    KinoPalacoweClient.cleanTitle("WAJDA: re-wizje. Człowiek z marmuru", titleNormalizer) shouldBe "Człowiek z marmuru"
   }
 
   it should "leave an undecorated title untouched" in {
-    KinoPalacoweClient.cleanTitle("Osiem i pół") shouldBe "Osiem i pół"
+    KinoPalacoweClient.cleanTitle("Osiem i pół", titleNormalizer) shouldBe "Osiem i pół"
   }
 }

@@ -12,6 +12,7 @@ import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import services.movies.TitleNormalizer
 
 /**
  * Kino Kinematograf w Łodzi — the cinema inside the Muzeum Kinematografii
@@ -44,7 +45,8 @@ import scala.util.Try
 class KinematografLodzClient(
   http:             HttpFetch,
   override val cinema: Cinema,
-  today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  titles:           TitleNormalizer
 ) extends CinemaScraper {
 
   import KinematografLodzClient._
@@ -52,7 +54,7 @@ class KinematografLodzClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl), today, cinema)
+  def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl), today, cinema, titles)
 }
 
 object KinematografLodzClient {
@@ -93,20 +95,20 @@ object KinematografLodzClient {
     *   "Zawieście czerwone latarnie (1991), Zhang Yimou" → "Zawieście czerwone latarnie"
     *   "Klasyk w kinie: Rozmowa (1973)" → "Klasyk w kinie: Rozmowa"
     */
-  private[cinemas] def cleanTitle(raw: String): String =
-    services.movies.TitleNormalizer.cinemaClean("kino-kinematograf", raw)
+  private[cinemas] def cleanTitle(raw: String, titles: TitleNormalizer): String =
+    titles.cinemaClean("kino-kinematograf", raw)
 
-  private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema): Seq[CinemaMovie] = {
+  private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema, titles: TitleNormalizer): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html)
-    document.select("article.cwb-movie-item").asScala.toSeq.flatMap(parseItem(_, today, cinema))
+    document.select("article.cwb-movie-item").asScala.toSeq.flatMap(parseItem(_, today, cinema, titles))
   }
 
-  private def parseItem(item: Element, today: LocalDate, cinema: Cinema): Option[CinemaMovie] = {
+  private def parseItem(item: Element, today: LocalDate, cinema: Cinema, titles: TitleNormalizer): Option[CinemaMovie] = {
     val link = Option(item.selectFirst("a.cwb-movie-card-link[href]"))
     val rawTitle = link.map(_.attr("title"))
                      .map(_.replaceFirst("^Przejdź do seansu:\\s*", "").trim)
                      .filter(_.nonEmpty)
-    val title   = rawTitle.map(cleanTitle).filter(_.nonEmpty)
+    val title   = rawTitle.map(cleanTitle(_, titles)).filter(_.nonEmpty)
     val filmUrl = link.map(_.attr("href")).filter(_.nonEmpty)
 
     val dtText = Option(item.selectFirst("div.date-time")).map(_.text.trim).getOrElse("")

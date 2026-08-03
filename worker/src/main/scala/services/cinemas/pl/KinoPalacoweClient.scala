@@ -9,8 +9,9 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 import java.time.LocalDateTime
 import scala.util.Try
 import services.cinemas.CountryNames
+import services.movies.TitleNormalizer
 
-class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
@@ -222,7 +223,7 @@ class KinoPalacoweClient(http: HttpFetch) extends CinemaScraper with DetailEnric
     else {
       val rawTitle  = (entry \ "title").asOpt[String].getOrElse("")
       val baseTitle = rawTitle.split(" \\| ").head.trim
-      val title     = KinoPalacoweClient.cleanTitle(baseTitle)
+      val title     = KinoPalacoweClient.cleanTitle(baseTitle, titles)
       val startDate = (entry \ "start_date").asOpt[String]
       val startTime = (entry \ "start_time").asOpt[String]
 
@@ -266,6 +267,6 @@ object KinoPalacoweClient {
    *  lists under its own `Cykl „Wajda: re-wizje"` prefix — strip the Pałacowe
    *  shape here so both cinemas' screenings land on one row, not two). Public
    *  so the strip is unit-testable directly. */
-  def cleanTitle(title: String): String =
-    services.movies.TitleNormalizer.cinemaClean("kino-palacowe", title)
+  def cleanTitle(title: String, titles: TitleNormalizer): String =
+    titles.cinemaClean("kino-palacowe", title)
 }

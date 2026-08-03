@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient, CyfroweKinoClient, KinoBajkaClient, KinoKijowClient, SystemBiletowyClient}
 
 import java.time.YearMonth
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Proves the three dedicated clients route their scraped title through
  *  `TitleNormalizer.cinemaClean("<slug>", …)`, so the fourth-wave per-cinema
@@ -38,7 +39,7 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
     """<div id="rep2" data-dane='{"buy":"https://book/1","dni":{"2026-08-20":[{"t":"TOY STORY 5 2D DUB. SPS","s":[{"g":"18:00","h":"nb","x":0}]}]}}'></div>"""
 
   private def bajkaTitles() =
-    new KinoBajkaClient(NoopHttp, KinoBajka).parseHtml(bajkaHtml).map(_.movie.title)
+    new KinoBajkaClient(NoopHttp, KinoBajka, titles = titleNormalizer).parseHtml(bajkaHtml).map(_.movie.title)
 
   "KinoBajkaClient" should "strip the '2D DUB. SPS' screening-code suffix via cinemaClean" in {
     withExtras(bajkaTitles() shouldBe Seq("TOY STORY 5"))
@@ -57,7 +58,7 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
       |</div>""".stripMargin
 
   private def cyfroweTitles() =
-    CyfroweKinoClient.parse(cyfroweHtml, KinoCyfroweKino).map(_.movie.title)
+    CyfroweKinoClient.parse(cyfroweHtml, KinoCyfroweKino, titleNormalizer).map(_.movie.title)
 
   "CyfroweKinoClient" should "strip the 'Premiera!' prefix via cinemaClean" in {
     withExtras {
@@ -78,7 +79,7 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
       |</div>""".stripMargin
 
   private def kijowTitles() =
-    KinoKijowClient.parseDocument(kijowHtml, YearMonth.of(2026, 8)).map(_.title)
+    KinoKijowClient.parseDocument(kijowHtml, YearMonth.of(2026, 8), titleNormalizer).map(_.title)
 
   "KinoKijowClient" should "strip the 'Napisy PL' subtitle suffix via cinemaClean" in {
     withExtras(kijowTitles() shouldBe Seq("Diabeł ubiera się u Prady 2"))
@@ -101,7 +102,7 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
       |<a class="b24-button" title="Kup bilet - Film: Following/Kino Cafe - 2026-08-20 18:00 - Konin" href="/buy/1">Kup</a>""".stripMargin
 
   private def oskardTitle() =
-    Bilety24Client.parseEvent(oskardHtml, KinoOskard, "https://oskard.example", "ev1").map(_.movie.title)
+    Bilety24Client.parseEvent(oskardHtml, KinoOskard, "https://oskard.example", "ev1", titleNormalizer).map(_.movie.title)
 
   "Bilety24Client (Kino Oskard)" should "strip the '/Kino Cafe' venue suffix via cinemaClean" in {
     withExtras(oskardTitle() shouldBe Some("Following"))
@@ -114,7 +115,7 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
     """<a title="Film: Toy Story 5 sensoryczny - 2026-08-20 18:00 - Zgierz" href="/buy/1">Kup</a>"""
 
   private def staryMlynTitles() =
-    Bilety24OrganizerClient.parse(staryMlynHtml, KinoStaryMlyn).map(_.movie.title)
+    Bilety24OrganizerClient.parse(staryMlynHtml, KinoStaryMlyn, titleNormalizer).map(_.movie.title)
 
   "Bilety24OrganizerClient (Kino Stary Młyn)" should "strip the 'sensoryczny' suffix via cinemaClean" in {
     withExtras(staryMlynTitles() shouldBe Seq("Toy Story 5"))
@@ -131,18 +132,18 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
 
   "SystemBiletowyClient (Na Starówce)" should "strip the 'akcja lato w kinie' campaign suffix" in {
     withExtras(
-      SystemBiletowyClient.parse(systemBiletowyHtml("Toy story 5 akcja lato w kinie"), KinoNaStarowce, "https://s.example")
+      SystemBiletowyClient.parse(systemBiletowyHtml("Toy story 5 akcja lato w kinie"), KinoNaStarowce, "https://s.example", titleNormalizer)
         .map(_.movie.title) shouldBe Seq("Toy story 5"))
   }
 
   "SystemBiletowyClient (Kino Farys)" should "fix the 'Tot story 5' source typo" in {
     withExtras(
-      SystemBiletowyClient.parse(systemBiletowyHtml("Tot story 5"), KinoFarys, "https://s.example")
+      SystemBiletowyClient.parse(systemBiletowyHtml("Tot story 5"), KinoFarys, "https://s.example", titleNormalizer)
         .map(_.movie.title) shouldBe Seq("Toy Story 5"))
   }
   it should "be load-bearing — the seed rules alone leave the typo" in {
     seedOnly(
-      SystemBiletowyClient.parse(systemBiletowyHtml("Tot story 5"), KinoFarys, "https://s.example")
+      SystemBiletowyClient.parse(systemBiletowyHtml("Tot story 5"), KinoFarys, "https://s.example", titleNormalizer)
         .map(_.movie.title) shouldBe Seq("Tot story 5"))
   }
 }

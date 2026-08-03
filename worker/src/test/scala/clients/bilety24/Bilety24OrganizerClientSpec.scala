@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.Bilety24OrganizerClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Kino Kosmos, Kino Światowid and Kino Elektronik had their per-venue
  *  `*.bilety24.pl` subdomains decommissioned (DNS pointing at a dead host →
@@ -40,7 +41,7 @@ class Bilety24OrganizerClientSpec
   )
 
   forAll(venues) { (label, directory, url, cinema, titleSub, when) =>
-    lazy val movies = new Bilety24OrganizerClient(new FakeHttpFetch(directory), url, cinema).fetch()
+    lazy val movies = new Bilety24OrganizerClient(new FakeHttpFetch(directory), url, cinema, titles = titleNormalizer).fetch()
 
     it should s"return a non-empty, single-cinema film list — $label" in {
       movies should not be empty
@@ -65,7 +66,7 @@ class Bilety24OrganizerClientSpec
   // https://www.bilety24.pl/kino/1501-dzien-objawienia-157217?id=935542)
   private val kosmos =
     new Bilety24OrganizerClient(new FakeHttpFetch("kino-kosmos"),
-      "https://www.bilety24.pl/kino/organizator/kino-kosmos-1501", KinoKosmos)
+      "https://www.bilety24.pl/kino/organizator/kino-kosmos-1501", KinoKosmos, titles = titleNormalizer)
 
   it should "expose each film's /kino event page as filmUrl for deferred detail" in {
     val film = kosmos.fetch().find(_.movie.title.toLowerCase.contains("dzień objawienia")).value
@@ -99,7 +100,7 @@ class Bilety24OrganizerClientSpec
         |<a href="/kino/1-supergirl-10?id=1" title="Film: Supergirl_dubbing - 2026-06-19 18:00 - Bolesławiec">buy</a>
         |<a href="/kino/1-supergirl-11?id=2" title="Film: Supergirl_napisy - 2026-06-20 20:30 - Bolesławiec">buy</a>
         |</body></html>""".stripMargin
-    val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec)
+    val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec, titleNormalizer)
     movies.map(_.movie.title) shouldBe Seq("Supergirl")
     movies.head.showtimes.map(_.format).toSet shouldBe Set(List("DUB"), List("NAP"))
   }
@@ -115,7 +116,7 @@ class Bilety24OrganizerClientSpec
         |<a href="/kino/1-monterey-pop-10?id=1" title="Film: Monterey Pop_DKF - 2026-06-29 19:00 - Bolesławiec">buy</a>
         |<a href="/kino/1-monterey-pop-11?id=2" title="Film: Monterey Pop - 2026-06-30 20:00 - Bolesławiec">buy</a>
         |</body></html>""".stripMargin
-    val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec)
+    val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec, titleNormalizer)
     movies.map(_.movie.title) shouldBe Seq("Monterey Pop")
     movies.head.showtimes.map(_.format).toSet shouldBe Set(List.empty[String])
   }

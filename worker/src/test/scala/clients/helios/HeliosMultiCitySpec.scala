@@ -5,6 +5,7 @@ import models.HeliosBlueCity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.HeliosNuxt
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** HeliosClient/HeliosNuxt used to hard-code Poznań's page slug + REST source
  *  UUID + `Helios` cinema. These pin the per-cinema config that lets the same
@@ -27,7 +28,7 @@ class HeliosMultiCitySpec extends AnyFlatSpec with Matchers {
     // Parse the recorded Poznań page but with the Blue City config — buildMovies
     // does no I/O, so the output cinema + URLs come purely from the config.
     val html   = new FakeHttpFetch("helios/rest-enrichment").get(HeliosNuxt.Poznan.pageUrl)
-    val movies = HeliosNuxt.buildMovies(html, HeliosNuxt.BlueCity)
+    val movies = HeliosNuxt.buildMovies(html, HeliosNuxt.BlueCity, titleNormalizer)
 
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(HeliosBlueCity)

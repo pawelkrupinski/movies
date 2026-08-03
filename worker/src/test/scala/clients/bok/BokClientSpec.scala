@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.BokClient
 
 import java.time.{LocalDate, LocalDateTime}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Replays a recorded bok.waw.pl listing + its week of day pages
  *  (`/<prefix>,ts:<epoch>`) + the film detail pages through the client. The day
@@ -22,7 +23,7 @@ class BokClientSpec extends AnyFlatSpec with Matchers {
   private val today = LocalDate.of(2026, 6, 6)
 
   // ── Kino na Boku ─────────────────────────────────────────────────────────
-  private val naBoku    = new BokClient(new FakeHttpFetch("kino-na-boku"), "kino-na-boku", KinoNaBoku, today)
+  private val naBoku    = new BokClient(new FakeHttpFetch("kino-na-boku"), "kino-na-boku", KinoNaBoku, today, titles = titleNormalizer)
   private val naBokuRes = naBoku.fetch()
   private val naBokuByT = naBokuRes.map(cm => cm.movie.title -> cm).toMap
 
@@ -62,7 +63,7 @@ class BokClientSpec extends AnyFlatSpec with Matchers {
   }
 
   // ── Kino Głębocka 66 (same client, different slug prefix) ─────────────────
-  private val gleb    = new BokClient(new FakeHttpFetch("kino-glebocka-66"), "kino-glebocka-66", KinoGlebocka66, today)
+  private val gleb    = new BokClient(new FakeHttpFetch("kino-glebocka-66"), "kino-glebocka-66", KinoGlebocka66, today, titles = titleNormalizer)
   private val glebRes = gleb.fetch()
 
   "BokClient (Głębocka 66)" should "return 6 films and 9 showtimes, all tagged Głębocka 66" in {

@@ -59,15 +59,15 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).fetch()
       .find(_.movie.title == PradaTitle).get
   private val ccPlazaPrada =
-    new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"))
+    new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer)
       .fetch("1078", CinemaCityPoznanPlaza)
       .find(_.movie.title == PradaTitle).get
   private val ccKinepolisPrada =
-    new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis"))
+    new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis"), titles = titleNormalizer)
       .fetch("1081", CinemaCityKinepolis)
       .find(_.movie.title == PradaTitle).get
   private val heliosPrada =
-    new HeliosClient(new FakeHttpFetch("helios/rest-enrichment")).fetch()
+    new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer).fetch()
       .find(_.movie.title == PradaTitle).get
 
   "cinema clients" should "all fetch Diabeł ubiera się u Prady 2 from their fixtures (with showtimes)" in {

@@ -3,6 +3,7 @@ package clients.tools
 import models.{Cinema, KinoElektronik, KinoKosmos, KinoLuna, KinoSwiatowid}
 import tools.RealHttpFetch
 import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 object WriteBilety24 {
   def main(args: Array[String]): Unit = {
@@ -10,7 +11,7 @@ object WriteBilety24 {
     def record(directory: String) = new RecordingHttpFetch(directory, real)
 
     // Kino Luna is still on the legacy per-venue subdomain.
-    val luna = new Bilety24Client(record("kino-luna"), "https://kinoluna.bilety24.pl", KinoLuna)
+    val luna = new Bilety24Client(record("kino-luna"), "https://kinoluna.bilety24.pl", KinoLuna, titles = titleNormalizer)
     println("=== Luna ===")
     luna.fetch().foreach(println)
 
@@ -22,7 +23,7 @@ object WriteBilety24 {
     )
     migrated.foreach { case (directory, url, cinema) =>
       println(s"=== ${cinema.displayName} ===")
-      new Bilety24OrganizerClient(record(directory), url, cinema).fetch().foreach(println)
+      new Bilety24OrganizerClient(record(directory), url, cinema, titles = titleNormalizer).fetch().foreach(println)
     }
   }
 }

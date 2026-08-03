@@ -4,6 +4,7 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.HeliosClient
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 // Event screenings ("... w Helios Anime", concerts, sports broadcasts) are
 // excluded from the REST `/screening` endpoint entirely, so room enrichment by
@@ -14,7 +15,7 @@ import services.cinemas.pl.HeliosClient
 // anime event, which rendered without a room.
 class HeliosClientEventRoomSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new HeliosClient(new FakeHttpFetch("helios/event-room"))
+  private val client = new HeliosClient(new FakeHttpFetch("helios/event-room"), titles = titleNormalizer)
 
   "HeliosClient.fetch" should "resolve the room for an event screening absent from /screening" in {
     val aynik = client.fetch().find(_.movie.title.contains("All You Need Is Kill"))

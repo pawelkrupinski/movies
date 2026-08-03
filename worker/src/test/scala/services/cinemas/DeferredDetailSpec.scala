@@ -7,6 +7,7 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher}
 import services.cinemas.pl._
 
 import java.time.LocalDate
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Cross-client contract for every cinema that implements `DetailEnricher`: its
@@ -19,11 +20,11 @@ import java.time.LocalDate
 class DeferredDetailSpec extends AnyFlatSpec with Matchers {
 
   private val clients: Seq[(String, CinemaScraper & DetailEnricher)] = Seq(
-    ("Kino Apollo",    new KinoApolloClient(new FakeHttpFetch("kino-apollo"))),
+    ("Kino Apollo",    new KinoApolloClient(new FakeHttpFetch("kino-apollo"), titles = titleNormalizer)),
     ("Kinoteka",       new KinotekaClient(new FakeHttpFetch("kinoteka"))),
     ("Cytadela",       new CytadelaClient(new FakeHttpFetch("kino-cytadela"))),
     ("DCF",            new DcfClient(new FakeHttpFetch("dcf"))),
-    ("Kino Pałacowe",  new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"))),
+    ("Kino Pałacowe",  new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"), titles = titleNormalizer)),
     ("Amondo",         new AmondoClient(new FakeHttpFetch("kino-amondo"))),
     ("Iluzjon",        new IluzjonClient(new FakeHttpFetch("iluzjon"))),
     ("Muranów",        new MuranowClient(new FakeHttpFetch("kino-muranow"))),
@@ -34,7 +35,7 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
     ("Nowe Horyzonty", new NoweHoryzontyClient(new FakeHttpFetch("nowe-horyzonty"), LocalDate.of(2026, 6, 6))),
     ("Nove Kino",      new NoveKinoClient(new FakeHttpFetch("kino-atlantic"), "atlantic", models.KinoAtlantic)),
     ("Ujazdowski",     new UjazdowskiClient(new FakeHttpFetch("ujazdowski"))),
-    ("Cinema City",    new CinemaCityScraper(new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza")), "1078", models.CinemaCityPoznanPlaza))
+    ("Cinema City",    new CinemaCityScraper(new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer), "1078", models.CinemaCityPoznanPlaza))
   )
 
   clients.foreach { case (name, client) =>

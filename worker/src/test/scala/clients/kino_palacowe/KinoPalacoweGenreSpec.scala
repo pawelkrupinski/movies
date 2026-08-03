@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoPalacoweClient
 
 import java.nio.file.{Files, Paths}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Kino Pałacowe's "Kino bez barier" (accessible-screening) film pages tack a
@@ -18,7 +19,7 @@ import java.nio.file.{Files, Paths}
  */
 class KinoPalacoweGenreSpec extends AnyFlatSpec with Matchers {
 
-  private val client = new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"))
+  private val client = new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"), titles = titleNormalizer)
 
   private def fixture(slug: String): String =
     new String(Files.readAllBytes(

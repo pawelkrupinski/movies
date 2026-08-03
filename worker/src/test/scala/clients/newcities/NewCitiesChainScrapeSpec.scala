@@ -23,7 +23,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class NewCitiesChainScrapeSpec extends AnyFlatSpec with Matchers {
 
   private val http = new FakeHttpFetch("new-cities")
-  private val cc   = new CinemaCityClient(http)
+  private val cc   = new CinemaCityClient(http, titles = titleNormalizer)
 
   // Helios bakes the capture date into its REST URLs; pin replay to the date
   // RecordNewCities ran so the fixtures still match.
@@ -62,11 +62,11 @@ class NewCitiesChainScrapeSpec extends AnyFlatSpec with Matchers {
   // ── Helios venues (today pinned to each venue's fixture capture date) ─────────
   Seq(HeliosNuxt.Kielce, HeliosNuxt.Rzeszow)
     .foreach { config =>
-      check(s"HeliosClient (${config.cinema.displayName})", config.cinema)(new HeliosClient(http, config, captureDate).fetch())
+      check(s"HeliosClient (${config.cinema.displayName})", config.cinema)(new HeliosClient(http, config, captureDate, titles = titleNormalizer).fetch())
     }
   // Radom + Sosnowiec: re-recorded under the renamed `kino-helios` slug.
   Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec)
     .foreach { config =>
-      check(s"HeliosClient (${config.cinema.displayName})", config.cinema)(new HeliosClient(http, config, captureDateRadomSosnowiec).fetch())
+      check(s"HeliosClient (${config.cinema.displayName})", config.cinema)(new HeliosClient(http, config, captureDateRadomSosnowiec, titles = titleNormalizer).fetch())
     }
 }

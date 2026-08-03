@@ -7,8 +7,9 @@ import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
+import services.movies.TitleNormalizer
 
-class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
+class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, titles: TitleNormalizer) {
 
   private val BaseApiUrl = CinemaCityClient.BaseApiUrl
   // Per-film detail-page fetch path. Defaults to `http`; the composition root
@@ -117,7 +118,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
     slotsByFilm.toSeq.flatMap { case (filmId, slots) =>
       info.get(filmId).map { fi =>
         CinemaMovie(
-          movie       = Movie(CinemaCityClient.cleanTitle(fi.name), fi.runtimeMinutes, fi.releaseYear, rawTitle = Some(fi.name)),
+          movie       = Movie(CinemaCityClient.cleanTitle(fi.name, titles), fi.runtimeMinutes, fi.releaseYear, rawTitle = Some(fi.name)),
           cinema      = cinema,
           posterUrl   = fi.posterLink,
           filmUrl     = fi.filmLink,
@@ -157,8 +158,8 @@ object CinemaCityClient {
    *  ("Odyseja ukraiński dubbing") is a genuinely separate Ukrainian-language
    *  screening, NOT a format variant: stripping only the trailing "dubbing" would
    *  leave a dangling "ukraiński", so that variant is left whole. */
-  def cleanTitle(name: String): String = {
-    val decorated = services.movies.TitleNormalizer.cinemaClean("cinema-city", name)
+  def cleanTitle(name: String, titles: TitleNormalizer): String = {
+    val decorated = titles.cinemaClean("cinema-city", name)
     if (LanguageDubSuffixRe.findFirstIn(decorated).isDefined) decorated
     else ScraperParse.stripFormatTags(decorated)
   }

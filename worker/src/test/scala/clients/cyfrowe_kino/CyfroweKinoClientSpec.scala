@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.CyfroweKinoClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Replays the recorded `dksrodaslaska.pl/aktualny-repertuar/` WordPress
  *  listing for Cyfrowe Kino (Środa Śląska) through the client.
@@ -18,7 +19,7 @@ import java.time.LocalDateTime
  *  site. */
 class CyfroweKinoClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies = new CyfroweKinoClient(new FakeHttpFetch("cyfrowe-kino")).fetch()
+  private val movies = new CyfroweKinoClient(new FakeHttpFetch("cyfrowe-kino"), titles = titleNormalizer).fetch()
 
   "CyfroweKinoClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty

@@ -10,10 +10,11 @@ import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper}
 import tools.{HttpFetch, HttpStatusException}
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
 
-  private val kinepolisClient = new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis"))
+  private val kinepolisClient = new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis"), titles = titleNormalizer)
   private val kinepolis   = kinepolisClient.fetch("1081", CinemaCityKinepolis)
   private val byKinepolis = kinepolis.map(cm => cm.movie.title -> cm).toMap
 
@@ -24,7 +25,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   private def detailFor(title: String): Option[FilmDetail] =
     byKinepolis(title).filmUrl.flatMap(kinepolisClient.fetchFilmDetail)
 
-  private val plaza   = new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza")).fetch("1078", CinemaCityPoznanPlaza)
+  private val plaza   = new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer).fetch("1078", CinemaCityPoznanPlaza)
   private val byPlaza = plaza.map(cm => cm.movie.title -> cm).toMap
 
   // ─── Kinepolis: totals ────────────────────────────────────────────────────
@@ -216,7 +217,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // spec replays are all "na", so the positive case reads a real non-na film page
   // from the 08-06-2026 corpus (zawodowcy = 12-plus, skarpetek = 5-plus).
 
-  private val agedClient = new CinemaCityClient(new clients.tools.FakeHttpFetch("08-06-2026"))
+  private val agedClient = new CinemaCityClient(new clients.tools.FakeHttpFetch("08-06-2026"), titles = titleNormalizer)
 
   it should "strip the '-plus' suffix off ageRestrictionName to a bare numeric rating" in {
     agedClient.fetchFilmDetail("https://www.cinema-city.pl/filmy/zawodowcy/8118s2r")
@@ -712,7 +713,7 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // fails, exactly as it would have before the strip was added.
 
   "CinemaCityClient.cleanTitle" should "strip the ' - powrót do kin' re-release suffix" in {
-    CinemaCityClient.cleanTitle("Top Gun - powrót do kin") shouldBe "Top Gun"
+    CinemaCityClient.cleanTitle("Top Gun - powrót do kin", titleNormalizer) shouldBe "Top Gun"
   }
 
   // The "Ladies Night - " and "Kolekcja Mamoru Hosody: " banners are no longer
@@ -721,13 +722,13 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // decorated screening keeps its own row instead of folding into the base film.
   // cleanTitle leaves them intact; the query-strip is asserted in ExtraTitleRulesSpec.
   it should "leave the now-global Ladies Night / Mamoru Hosody banners intact" in {
-    CinemaCityClient.cleanTitle("Ladies Night - Narodziny gwiazdy") shouldBe "Ladies Night - Narodziny gwiazdy"
-    CinemaCityClient.cleanTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas") shouldBe
+    CinemaCityClient.cleanTitle("Ladies Night - Narodziny gwiazdy", titleNormalizer) shouldBe "Ladies Night - Narodziny gwiazdy"
+    CinemaCityClient.cleanTitle("Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas", titleNormalizer) shouldBe
       "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas"
   }
 
   it should "leave an undecorated title untouched" in {
-    CinemaCityClient.cleanTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
+    CinemaCityClient.cleanTitle("Diabeł ubiera się u Prady 2", titleNormalizer) shouldBe "Diabeł ubiera się u Prady 2"
   }
 
   // ─── cleanTitle: strip trailing screen-format / version tags ──────────────
@@ -737,18 +738,18 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
   // Strip them so the format-decorated entry collapses onto the plain film.
 
   it should "strip a trailing '3D IMAX' screen-format tag" in {
-    CinemaCityClient.cleanTitle("Afrykanska Przygoda 3D IMAX") shouldBe "Afrykanska Przygoda"
+    CinemaCityClient.cleanTitle("Afrykanska Przygoda 3D IMAX", titleNormalizer) shouldBe "Afrykanska Przygoda"
   }
 
   it should "strip a trailing '(lektor)' version tag" in {
-    CinemaCityClient.cleanTitle("500 mil (lektor)") shouldBe "500 mil"
+    CinemaCityClient.cleanTitle("500 mil (lektor)", titleNormalizer) shouldBe "500 mil"
   }
 
   it should "NOT mistake a trailing numeral for a 2D/3D tag" in {
-    CinemaCityClient.cleanTitle("Minecraft: Film 2") shouldBe "Minecraft: Film 2"
+    CinemaCityClient.cleanTitle("Minecraft: Film 2", titleNormalizer) shouldBe "Minecraft: Film 2"
   }
 
   it should "leave a foreign-language dub variant whole (no dangling 'ukraiński')" in {
-    CinemaCityClient.cleanTitle("Odyseja ukraiński dubbing") shouldBe "Odyseja ukraiński dubbing"
+    CinemaCityClient.cleanTitle("Odyseja ukraiński dubbing", titleNormalizer) shouldBe "Odyseja ukraiński dubbing"
   }
 }

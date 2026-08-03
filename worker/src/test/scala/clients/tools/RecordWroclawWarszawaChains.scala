@@ -21,7 +21,7 @@ object RecordWroclawWarszawaChains {
   def main(args: Array[String]): Unit = {
     val record = new RecordingHttpFetch("08-06-2026", new RealHttpFetch())
 
-    val cc = new CinemaCityClient(record)
+    val cc = new CinemaCityClient(record, titles = titleNormalizer)
     val cinemaCity = Seq(
       "1097" -> CinemaCityWroclavia, "1067" -> CinemaCityKorona,
       "1074" -> CinemaCityArkadia, "1061" -> CinemaCityBemowo, "1096" -> CinemaCityGaleriaPolnocna,
@@ -48,7 +48,7 @@ object RecordWroclawWarszawaChains {
 
     Seq(HeliosNuxt.Magnolia, HeliosNuxt.AlejaBielany, HeliosNuxt.BlueCity).foreach { config =>
       println(s"Helios ${config.cinema.displayName}…")
-      println(s"  ${Try(new HeliosClient(record, config).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
+      println(s"  ${Try(new HeliosClient(record, config, titles = titleNormalizer).fetch().size).fold(e => s"FAIL ${e.getMessage}", n => s"$n films")}")
     }
   }
 }

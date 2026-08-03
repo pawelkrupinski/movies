@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoKijowClient
 
 import java.time.{LocalDate, LocalDateTime}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Replays the recorded `kupbilet.kijow.pl/MSI/mvc/pl?sort=Date&date=2026-06`
  *  page (07-06-2026 capture) through the client. The page covers June 2026;
@@ -16,7 +17,7 @@ import java.time.{LocalDate, LocalDateTime}
 class KinoKijowClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("kino-kijow")
-  private val client = new KinoKijowClient(http, KinoKijow, LocalDate.of(2026, 6, 7))
+  private val client = new KinoKijowClient(http, KinoKijow, LocalDate.of(2026, 6, 7), titles = titleNormalizer)
 
   "KinoKijowClient" should "return a non-empty film list" in {
     client.fetch() should not be empty

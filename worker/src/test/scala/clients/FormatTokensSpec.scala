@@ -19,14 +19,14 @@ class FormatTokensSpec extends AnyFlatSpec with Matchers {
 
   private val clients: Seq[(String, () => Seq[CinemaMovie])] = Seq(
     "KinoBulgarska" -> (() => new KinoBulgarskaClient(new FakeHttpFetch("kino-bulgarska")).fetch()),
-    "KinoMuza"      -> (() => new KinoMuzaClient(new FakeHttpFetch("kino-muza")).fetch()),
-    "KinoPalacowe"  -> (() => new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe")).fetch()),
+    "KinoMuza"      -> (() => new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer).fetch()),
+    "KinoPalacowe"  -> (() => new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"), titles = titleNormalizer).fetch()),
     "CharlieMonroe" -> (() => new CharlieMonroeClient(new FakeHttpFetch("charlie-monroe")).fetch()),
     "Multikino"     -> (() => new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).fetch()),
     "Rialto"        -> (() => new RialtoClient(new FakeHttpFetch("rialto")).fetch()),
-    "CC Kinepolis"  -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis")).fetch("1081", CinemaCityKinepolis)),
-    "CC Plaza"      -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza")).fetch("1078", CinemaCityPoznanPlaza)),
-    "Helios"        -> (() => new HeliosClient(new FakeHttpFetch("helios/rest-enrichment")).fetch()),
+    "CC Kinepolis"  -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-kinepolis"), titles = titleNormalizer).fetch("1081", CinemaCityKinepolis)),
+    "CC Plaza"      -> (() => new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer).fetch("1078", CinemaCityPoznanPlaza)),
+    "Helios"        -> (() => new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer).fetch()),
   )
 
   for ((name, run) <- clients) {
@@ -41,21 +41,21 @@ class FormatTokensSpec extends AnyFlatSpec with Matchers {
   // ── Cross-cinema sample (using known fixture data) ────────────────────────
 
   it should "produce 'IMAX 2D NAP' when Plaza's IMAX 2D + subtitled screening is space-joined" in {
-    val plaza  = new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza")).fetch("1078", CinemaCityPoznanPlaza)
+    val plaza  = new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer).fetch("1078", CinemaCityPoznanPlaza)
     val imax2D = plaza.flatMap(_.showtimes).find(_.format == List("IMAX", "2D", "NAP"))
     imax2D                              shouldBe defined
     imax2D.get.format.mkString(" ")     shouldBe "IMAX 2D NAP"
   }
 
   it should "produce 'IMAX 3D NAP' / 'IMAX 3D DUB' for Plaza's IMAX 3D screenings" in {
-    val plaza  = new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza")).fetch("1078", CinemaCityPoznanPlaza)
+    val plaza  = new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer).fetch("1078", CinemaCityPoznanPlaza)
     val imax3D = plaza.flatMap(_.showtimes).filter(_.format.startsWith(List("IMAX", "3D")))
     imax3D                              should not be empty
     imax3D.map(_.format.mkString(" ")).toSet shouldBe Set("IMAX 3D NAP", "IMAX 3D DUB")
   }
 
   it should "produce '2D NAP ATMOS' when Helios joins multi-token formats for display" in {
-    val helios = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment")).fetch()
+    val helios = new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer).fetch()
     val triple = helios.flatMap(_.showtimes).find(_.format == List("2D", "NAP", "ATMOS"))
     triple                              shouldBe defined
     triple.get.format.mkString(" ")     shouldBe "2D NAP ATMOS"

@@ -44,7 +44,8 @@ import scala.util.Try
  * One instance per venue, captured by its `organizerUrl` + `cinema`, so adding
  * a bilety24-hosted cinema is a catalog line, not a new client (OCP).
  */
-class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override val cinema: Cinema)
+class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override val cinema: Cinema,
+                              titles: TitleNormalizer)
     extends CinemaScraper with DetailEnricher {
 
   // Event pages are static across passes for a live film, so cache them.
@@ -71,7 +72,7 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
     DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(html => Bilety24OrganizerClient.parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] =
-    Bilety24OrganizerClient.parse(http.get(organizerUrl), cinema)
+    Bilety24OrganizerClient.parse(http.get(organizerUrl), cinema, titles)
 }
 
 object Bilety24OrganizerClient {
@@ -96,7 +97,7 @@ object Bilety24OrganizerClient {
                             format: List[String])
 
 
-  def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
+  def parse(html: String, cinema: Cinema, titles: TitleNormalizer): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("a[title]").asScala.toSeq.flatMap { a =>
@@ -121,7 +122,7 @@ object Bilety24OrganizerClient {
 
     SlotsToMovies.fold(
       slots.filter(_.title.nonEmpty),
-      titleOf    = s => TitleNormalizer.cinemaClean(cinema.slug, s.title),
+      titleOf    = s => titles.cinemaClean(cinema.slug, s.title),
       showtimeOf = s => Showtime(s.dateTime, s.eventUrl, format = s.format)
     ) { (title, group, showtimes) =>
       CinemaMovie(

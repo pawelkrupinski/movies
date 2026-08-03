@@ -3,6 +3,7 @@ package services.cinemas.pl
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
 import services.cinemas.common.CinemaScraper
+import services.movies.TitleNormalizer
 
 import java.time.{LocalDate, ZoneId}
 import scala.concurrent.duration._
@@ -33,7 +34,8 @@ class Bilety24SubdomainClient(
   repertuarUrl: String,
   override val cinema: Cinema,
   daysAhead:    Int       = 9,
-  today:        LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today:        LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  titles:       TitleNormalizer
 ) extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(repertuarUrl)
@@ -48,7 +50,7 @@ class Bilety24SubdomainClient(
     val byDate = ParallelDetailFetch.keyed(
       "bilety24-subdomain-day", dates, 1.minute, maxConcurrent = 2
     )(d => s"$repertuarUrl${sep}b24_day=$d") { url =>
-      Try(http.get(url)).toOption.toSeq.flatMap(html => Bilety24OrganizerClient.parse(html, cinema))
+      Try(http.get(url)).toOption.toSeq.flatMap(html => Bilety24OrganizerClient.parse(html, cinema, titles))
     }
 
     // Merge across days: the same film recurs on several dates, so union each

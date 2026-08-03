@@ -9,6 +9,7 @@ import services.cinemas.pl.HeliosClient
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Chain-level detail dedup: a film's `/api/movie/{id}` detail is identical
@@ -36,8 +37,8 @@ class HeliosClientDetailDedupSpec extends AnyFlatSpec with Matchers {
   "Two Helios locations sharing one detail cache" should "fetch each film's detail only once" in {
     val http        = counting()
     val sharedDetail = new CachingDetailFetch(http, 6.hours)
-    val locationA   = new HeliosClient(http, detailHttp = Some(sharedDetail))
-    val locationB   = new HeliosClient(http, detailHttp = Some(sharedDetail))
+    val locationA   = new HeliosClient(http, detailHttp = Some(sharedDetail), titles = titleNormalizer)
+    val locationB   = new HeliosClient(http, detailHttp = Some(sharedDetail), titles = titleNormalizer)
 
     locationA.fetch()
     val afterFirst = http.movieGets.get()
@@ -50,8 +51,8 @@ class HeliosClientDetailDedupSpec extends AnyFlatSpec with Matchers {
 
   it should "re-fetch per location WITHOUT a shared cache (control — proves the cache is what dedups)" in {
     val http      = counting()
-    val locationA = new HeliosClient(http) // detailHttp defaults to http — no caching
-    val locationB = new HeliosClient(http)
+    val locationA = new HeliosClient(http, titles = titleNormalizer) // detailHttp defaults to http — no caching
+    val locationB = new HeliosClient(http, titles = titleNormalizer)
 
     locationA.fetch()
     val afterFirst = http.movieGets.get()

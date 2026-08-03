@@ -9,8 +9,10 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+import services.movies.TitleNormalizer
 
-class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")))
+class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+                     titles: TitleNormalizer)
   extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
   val cinema: Cinema = KinoMuza
@@ -123,7 +125,7 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
   // The "| najlepsze z najgorszych" series-tag strip now lives in the editable
   // "kino-muza" rules (see TitleRules).
   private def cleanTitle(raw: String): String =
-    services.movies.TitleNormalizer.cinemaClean("kino-muza", raw)
+    titles.cinemaClean("kino-muza", raw)
 
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val document      = Jsoup.parse(html)

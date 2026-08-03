@@ -8,6 +8,7 @@ import services.cinemas.common.FilmDetail
 import services.cinemas.pl.KinoApolloClient
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
 
@@ -15,7 +16,7 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
   // fetch() returns BARE movies (showtimes + poster + filmUrl); detail is
   // fetched separately via fetchFilmDetail. The structural assertions below run
   // on these bare results.
-  private val client  = new KinoApolloClient(fake)
+  private val client  = new KinoApolloClient(fake, titles = titleNormalizer)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 

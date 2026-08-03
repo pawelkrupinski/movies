@@ -7,13 +7,14 @@ import models.{KinoOskard, Showtime}
 import services.cinemas.pl.Bilety24Client
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** CKiS Konin "Oskard" uses the Bilety24 platform but books via
  *  /b24-do-miejsc-numerowanych-i-nienumerowanych/ instead of the usual
  *  /kup-bilety/ path. Recorded 2026-06-07 via WriteOskard. */
 class Bilety24OskardSpec extends AnyFlatSpec with Matchers {
 
-  private val oskard    = new Bilety24Client(new FakeHttpFetch("kino-oskard"), "https://ckis-konin.bilety24.pl", KinoOskard)
+  private val oskard    = new Bilety24Client(new FakeHttpFetch("kino-oskard"), "https://ckis-konin.bilety24.pl", KinoOskard, titles = titleNormalizer)
   private val oskardRes = oskard.fetch()
   private val oskardByT = oskardRes.map(cm => cm.movie.title -> cm).toMap
 

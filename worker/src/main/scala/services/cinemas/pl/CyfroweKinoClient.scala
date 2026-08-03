@@ -30,14 +30,15 @@ import scala.util.Try
  * Previously scraped from Filmweb, which had silently gone empty for the venue
  * (every poll returned `[]`) though the cinema is open and screening.
  */
-class CyfroweKinoClient(http: HttpFetch, override val cinema: Cinema = KinoCyfroweKino)
+class CyfroweKinoClient(http: HttpFetch, override val cinema: Cinema = KinoCyfroweKino,
+                        titles: TitleNormalizer)
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CyfroweKinoClient.BaseUrl)
   override def sourceUrl: Option[String] = Some(CyfroweKinoClient.BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    CyfroweKinoClient.parse(http.get(CyfroweKinoClient.RepertoireUrl), cinema)
+    CyfroweKinoClient.parse(http.get(CyfroweKinoClient.RepertoireUrl), cinema, titles)
 }
 
 object CyfroweKinoClient {
@@ -50,13 +51,13 @@ object CyfroweKinoClient {
   // Segments that are version / age-rating metadata, not part of the title.
   private val NoiseSeg  = """(?i)^(napisy|dubbing|dubbing i napisy|napisy i dubbing|lektor|2D|3D|od\s+lat\s+\d+|od\s+\d+\s+lat|b/o|\d+\+)$""".r
 
-  def parse(html: String, cinema: Cinema): Seq[CinemaMovie] =
-    Jsoup.parse(html, BaseUrl).select("div.amy-movie-item").asScala.toSeq.flatMap(parseMovie(_, cinema))
+  def parse(html: String, cinema: Cinema, titles: TitleNormalizer): Seq[CinemaMovie] =
+    Jsoup.parse(html, BaseUrl).select("div.amy-movie-item").asScala.toSeq.flatMap(parseMovie(_, cinema, titles))
 
-  private def parseMovie(item: Element, cinema: Cinema): Option[CinemaMovie] =
+  private def parseMovie(item: Element, cinema: Cinema, titles: TitleNormalizer): Option[CinemaMovie] =
     for {
       rawTitle <- Option(item.selectFirst("h3.amy-movie-field-title a")).map(_.text)
-      title     = TitleNormalizer.cinemaClean("cyfrowe-kino", cleanTitle(rawTitle)) if title.nonEmpty
+      title     = titles.cinemaClean("cyfrowe-kino", cleanTitle(rawTitle)) if title.nonEmpty
       showtimes = parseShowtimes(item)
       if showtimes.nonEmpty
     } yield CinemaMovie(

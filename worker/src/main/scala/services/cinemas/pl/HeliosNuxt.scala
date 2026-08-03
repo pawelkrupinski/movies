@@ -5,6 +5,7 @@ import play.api.libs.json._
 
 import java.time.LocalDateTime
 import scala.util.Try
+import services.movies.TitleNormalizer
 
 /** Per-cinema Helios configuration: which `Cinema` the scrape feeds, the page
  *  URL slug (`<citySlug>/<cinemaSlug>`) whose `/repertuar` carries the NUXT
@@ -109,9 +110,9 @@ object HeliosNuxt {
   // the whole chain served the decorated title as its own row instead of merging
   // onto the bare film. A double space is never meaningful in a film title, so
   // this loses nothing.
-  def cleanTitle(title: String): String = {
+  def cleanTitle(title: String, titles: TitleNormalizer): String = {
     val collapsed = InteriorWhitespace.replaceAllIn(title, " ")
-    val cleaned   = services.movies.TitleNormalizer.cinemaClean("helios", collapsed)
+    val cleaned   = titles.cinemaClean("helios", collapsed)
     if (FormatTail.findFirstMatchIn(cleaned).isDefined) FormatTail.replaceFirstIn(cleaned, "").trim
     else cleaned
   }
@@ -121,14 +122,14 @@ object HeliosNuxt {
   private val FormatTail =
     """(?i)\s+[-–—|/]\s*(?:(?:2D|3D|IMAX|4DX|DUBBING|DUBB|DUB|NAPISY|NAP|LEKTOR|LEK)\b[\s/]*)+$""".r
 
-  def buildMovies(html: String, config: HeliosCinema = Poznan): Seq[CinemaMovie] = {
+  def buildMovies(html: String, config: HeliosCinema = Poznan, titles: TitleNormalizer): Seq[CinemaMovie] = {
     val parsed   = parseNuxtPage(html, config.baseUrl)
     val nuxtRows = parsed.showtimesByMovie.toSeq.flatMap { case (movieId, slots) =>
       parsed.movies.get(movieId).map(movie => movie -> slots)
     }
 
     nuxtRows
-      .groupBy { case (m, _) => cleanTitle(m.title) }
+      .groupBy { case (m, _) => cleanTitle(m.title, titles) }
       .toSeq
       .map { case (title, rows) =>
         val movies = rows.map(_._1)

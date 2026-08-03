@@ -6,6 +6,7 @@ import tools.GetOnlyHttpFetch
 import services.cinemas.common.CinemaClientMarkers
 
 import java.time.LocalDate
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The /uptime client markers are derived from the live `CinemaScraperCatalog`:
@@ -97,7 +98,7 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "link a Bilety24-platform venue to its bilety24 base URL" in {
-    // Kino Luna is wired `new Bilety24Client(http, "https://kinoluna.bilety24.pl", …)`,
+    // Kino Luna is wired `new Bilety24Client(http, "https://kinoluna.bilety24.pl", …, titles = titleNormalizer)`,
     // and the client surfaces that base URL as its public page.
     sourceUrls("Kino Luna") shouldBe "https://kinoluna.bilety24.pl"
   }

@@ -3,6 +3,7 @@ package clients.helios
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.HeliosNuxt
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Helios bakes a screen-format/version tail into some Nuxt titles
  *  ("Babystar - 2D NAP"). The 2D/NAP it implies is already parsed into
@@ -12,11 +13,11 @@ import services.cinemas.pl.HeliosNuxt
 class HeliosNuxtFormatStripSpec extends AnyFlatSpec with Matchers {
 
   "HeliosNuxt.cleanTitle" should "strip a trailing '- 2D NAP' screen-format tag" in {
-    HeliosNuxt.cleanTitle("Babystar - 2D NAP") shouldBe "Babystar"
+    HeliosNuxt.cleanTitle("Babystar - 2D NAP", titleNormalizer) shouldBe "Babystar"
   }
 
   it should "leave a plain title untouched" in {
-    HeliosNuxt.cleanTitle("Babystar") shouldBe "Babystar"
+    HeliosNuxt.cleanTitle("Babystar", titleNormalizer) shouldBe "Babystar"
   }
 
   // Helios's strand tags are single-space literals ("- Salon Kultury Helios"),
@@ -26,10 +27,10 @@ class HeliosNuxtFormatStripSpec extends AnyFlatSpec with Matchers {
   // Helios" row instead of merging onto "Odyseja". The strip must tolerate
   // irregular whitespace around the separator and tag words.
   it should "strip the 'Salon Kultury Helios' strand tag even with a doubled space" in {
-    HeliosNuxt.cleanTitle("Odyseja -  Salon Kultury Helios") shouldBe "Odyseja"
+    HeliosNuxt.cleanTitle("Odyseja -  Salon Kultury Helios", titleNormalizer) shouldBe "Odyseja"
   }
 
   it should "strip the 'Salon Kultury Helios' strand tag with a single space" in {
-    HeliosNuxt.cleanTitle("Odyseja - Salon Kultury Helios") shouldBe "Odyseja"
+    HeliosNuxt.cleanTitle("Odyseja - Salon Kultury Helios", titleNormalizer) shouldBe "Odyseja"
   }
 }

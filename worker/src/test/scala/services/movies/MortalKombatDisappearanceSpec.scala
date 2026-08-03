@@ -77,12 +77,12 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     new MultikinoClient(new FakeHttpFetch("multikino"), titles = titleNormalizer).fetch()
       .find(_.movie.title == "Mortal Kombat 2").get
   private val cinemaCityMk =
-    new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"))
+    new CinemaCityClient(new FakeHttpFetch("cinema-city-plaza"), titles = titleNormalizer)
       .fetch("1078", CinemaCityPoznanPlaza)
       .filter(_.movie.title == "Mortal Kombat II")
       .head
   private val heliosMk =
-    new HeliosClient(new FakeHttpFetch("helios/rest-enrichment")).fetch()
+    new HeliosClient(new FakeHttpFetch("helios/rest-enrichment"), titles = titleNormalizer).fetch()
       .filter(_.movie.title == "Mortal Kombat II")
       .head
 

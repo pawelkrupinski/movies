@@ -10,6 +10,7 @@ import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import services.movies.TitleNormalizer
 
 /**
  * Cinemas run by Białołęcki Ośrodek Kultury — Kino na Boku and Kino Głębocka 66
@@ -29,7 +30,8 @@ import scala.util.Try
  * runtime / poster) and to recover the biletyna booking links the day cards omit.
  */
 class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
-                today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper {
+                today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+                titles: TitleNormalizer) extends CinemaScraper {
 
   private val BaseUrl  = "https://bok.waw.pl"
   private val Warsaw   = ZoneId.of("Europe/Warsaw")
@@ -92,7 +94,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
       val href  = card.attr("href")
       val slug  = href.stripPrefix(s"/$prefix/").stripPrefix("/")
       val rawTitle = Option(card.selectFirst("div.fs-30.fw-black")).map(_.text)
-      val title = rawTitle.map(BokClient.cleanTitle).filter(_.nonEmpty)
+      val title = rawTitle.map(BokClient.cleanTitle(_, titles)).filter(_.nonEmpty)
       val times = card.select("span.movieshow-list-movie-descr").asScala.toSeq
         .flatMap(s => ScraperParse.parseHHmm(s.text.trim))
       title.filter(_ => times.nonEmpty && slug.matches("[a-z0-9-]+"))
@@ -165,8 +167,8 @@ object BokClient {
   // BoK venues share the "bok" key (see TitleRuleKey).
   /** Clean a BoK card/h2 title: drop the trailing ALL-CAPS promo tag, keep any
    *  recurring-programme banner, and normalise whitespace. */
-  def cleanTitle(raw: String): String =
-    services.movies.TitleNormalizer.cinemaClean("bok", raw)
+  def cleanTitle(raw: String, titles: TitleNormalizer): String =
+    titles.cinemaClean("bok", raw)
 
   /** "05.06" (DD.MM, no year) → a date; year from `today`, rolling forward when
    *  the month is already behind us. */

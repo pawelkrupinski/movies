@@ -9,6 +9,7 @@ import services.cinemas.common.DetailEnricher
 import services.cinemas.pl.AlternatywyClient
 
 import java.time.{LocalDate, LocalDateTime}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Replays a recorded capture of Kino Alternatywy's own WordPress repertoire page
@@ -20,7 +21,7 @@ import java.time.{LocalDate, LocalDateTime}
 class AlternatywyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today  = LocalDate.of(2026, 6, 7)
-  private val client = new AlternatywyClient(new FakeHttpFetch("alternatywy"), today = today)
+  private val client = new AlternatywyClient(new FakeHttpFetch("alternatywy"), today = today, titles = titleNormalizer)
   private lazy val movies = client.fetch()
 
   "AlternatywyClient" should "assemble the sala: auditorium screenings from the repertoire page" in {
@@ -57,10 +58,10 @@ class AlternatywyClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   "cleanTitle" should "strip the Okładka prefix and typographic quotes" in {
-    AlternatywyClient.cleanTitle("Okładka „Zemsta”") shouldBe "Zemsta"
-    AlternatywyClient.cleanTitle("Okładka Wielkie Artystki") shouldBe "Wielkie Artystki"
-    AlternatywyClient.cleanTitle("Okładka \"Bravo lata 90!\"") shouldBe "Bravo lata 90!"
-    AlternatywyClient.cleanTitle("Okładka „Flying Lion”  Adam Święs Trio") shouldBe "Flying Lion Adam Święs Trio"
+    AlternatywyClient.cleanTitle("Okładka „Zemsta”", titleNormalizer) shouldBe "Zemsta"
+    AlternatywyClient.cleanTitle("Okładka Wielkie Artystki", titleNormalizer) shouldBe "Wielkie Artystki"
+    AlternatywyClient.cleanTitle("Okładka \"Bravo lata 90!\"", titleNormalizer) shouldBe "Bravo lata 90!"
+    AlternatywyClient.cleanTitle("Okładka „Flying Lion”  Adam Święs Trio", titleNormalizer) shouldBe "Flying Lion Adam Święs Trio"
   }
 
   it should "fetch synopsis, director, and production country/year from the detail page" in {

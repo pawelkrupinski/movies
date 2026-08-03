@@ -27,7 +27,8 @@ class Bilety24Client(
   http:        HttpFetch,
   baseUrl:     String,
   override val cinema: Cinema,
-  listingPath: String = "/repertuar/"
+  listingPath: String = "/repertuar/",
+  titles:      TitleNormalizer
 ) extends ChunkedCinemaScraper {
 
   private val EventLinkPat = """/wydarzenie/\?id=(\d+)""".r
@@ -44,7 +45,7 @@ class Bilety24Client(
    *  chunk. The default `reduceChunks` groups by `filmUrl` (the unique event URL),
    *  so each event stays its own entry exactly as the old flat scrape produced. */
   def fetchChunk(eventId: String): Seq[CinemaMovie] =
-    Bilety24Client.parseEvent(http.get(s"$baseUrl/wydarzenie/?id=$eventId"), cinema, baseUrl, eventId).toSeq
+    Bilety24Client.parseEvent(http.get(s"$baseUrl/wydarzenie/?id=$eventId"), cinema, baseUrl, eventId, titles).toSeq
 }
 
 object Bilety24Client {
@@ -54,7 +55,7 @@ object Bilety24Client {
   private val DateTimeFmt     = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
   private val RuntimePat      = """(\d+)\s*min""".r
 
-  def parseEvent(html: String, cinema: Cinema, baseUrl: String, eventId: String): Option[CinemaMovie] = {
+  def parseEvent(html: String, cinema: Cinema, baseUrl: String, eventId: String, titles: TitleNormalizer): Option[CinemaMovie] = {
     val document = Jsoup.parse(html)
 
     // Peel a language/format suffix ("Supergirl/dubbing", "… /napisy") off the
@@ -64,7 +65,7 @@ object Bilety24Client {
     // is the fallback for the (common) case where the button format span is empty.
     val titled   = Option(document.selectFirst("div.title-name[title]")).map(_.attr("title").trim)
       .orElse(Option(document.selectFirst(".title-name")).map(_.text.trim))
-      .map(t => TitleNormalizer.cinemaClean(cinema.slug, t))
+      .map(t => titles.cinemaClean(cinema.slug, t))
       .filter(_.nonEmpty)
       .map(ScraperParse.extractFormatTags)
     val title    = titled.map(_._1)

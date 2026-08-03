@@ -7,6 +7,7 @@ import services.cinemas.pl._
 
 import java.time.LocalDate
 import scala.util.Try
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Records the cinemas switched off Filmweb in the "replace-all" batch into the
  *  08-06-2026 whole-corpus fixture set (so e2e + page snapshots render their
@@ -27,10 +28,10 @@ object RecordReplaceBatch {
     // ── Chains: Helios (native REST) + Cinema City ──
     Seq(HeliosNuxt.Starachowice, HeliosNuxt.Krosno, HeliosNuxt.Tczew, HeliosNuxt.Zory,
         HeliosNuxt.Lubin, HeliosNuxt.OstrowWielkopolski, HeliosNuxt.KedzierzynKozle).foreach { config =>
-      rep(config.cinema.displayName)(new HeliosClient(corpus, config, today).fetch().size)
+      rep(config.cinema.displayName)(new HeliosClient(corpus, config, today, titles = titleNormalizer).fetch().size)
     }
     rep("Cinema City Ruda Śląska")(
-      new CinemaCityScraper(new CinemaCityClient(corpus), "1062", CinemaCity).fetch().size)
+      new CinemaCityScraper(new CinemaCityClient(corpus, titles = titleNormalizer), "1062", CinemaCity).fetch().size)
 
     // ── Ekobilet (5) ──
     val eko: Seq[(String, Cinema)] = Seq(
@@ -42,18 +43,18 @@ object RecordReplaceBatch {
     val sb: Seq[(String, Cinema)] = Seq(
       "https://bilety.pckul.pl" -> KinoPckulKino, "https://bilety.mok.zory.pl" -> KinoNaStarowce,
       "https://ock.systembiletowy.pl" -> KinoNaszeKino)
-    sb.foreach { case (base, c) => rep(c.displayName)(new SystemBiletowyClient(corpus, base, c).fetch().size) }
+    sb.foreach { case (base, c) => rep(c.displayName)(new SystemBiletowyClient(corpus, base, c, titles = titleNormalizer).fetch().size) }
 
 
     // ── Existing-client one-offs ──
     rep("Kinoteatr Rondo")(new BiletynaClient(corpus, "https://biletyna.pl/Chelmno/Kinoteatr-Rondo", KinoRondo).fetch().size)
     rep("Forum (Bolesławiec)")(new Bilety24OrganizerClient(corpus,
       "https://www.bilety24.pl/kino/organizator/boleslawiecki-osrodek-kultury-miedzynarodowe-centrum-ceramiki-kino-forum-1586",
-      KinoForumBoleslawiec).fetch().size)
+      KinoForumBoleslawiec, titles = titleNormalizer).fetch().size)
 
     // ── Per-client fixtures for the new specs ──
     println("--- spec fixtures ---")
     rep("ekobilet spec (Meduza)")(new EkobiletClient(record("kino-meduza"), "opolskielamy", KinoMeduza, today).fetch().size)
-    rep("systembiletowy-alt spec")(new SystemBiletowyClient(record("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino).fetch().size)
+    rep("systembiletowy-alt spec")(new SystemBiletowyClient(record("kino-pckul"), "https://bilety.pckul.pl", KinoPckulKino, titles = titleNormalizer).fetch().size)
   }
 }

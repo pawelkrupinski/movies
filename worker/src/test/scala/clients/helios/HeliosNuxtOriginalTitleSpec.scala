@@ -6,6 +6,7 @@ import services.cinemas.pl.HeliosNuxt
 
 import java.io.File
 import scala.io.{Codec, Source}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** The Helios NUXT repertoire blob carries `titleOriginal` next to each film's
  *  `title`/`slug`. `buildMovies` lifts it onto `Movie.originalTitle` as a TMDB
@@ -20,7 +21,7 @@ class HeliosNuxtOriginalTitleSpec extends AnyFlatSpec with Matchers {
   }
 
   private val byTitle =
-    HeliosNuxt.buildMovies(html, HeliosNuxt.Poznan).map(cm => cm.movie.title -> cm).toMap
+    HeliosNuxt.buildMovies(html, HeliosNuxt.Poznan, titleNormalizer).map(cm => cm.movie.title -> cm).toMap
 
   "HeliosNuxt.buildMovies" should "set originalTitle from the NUXT titleOriginal field, kept raw" in {
     byTitle.get("Pianista").flatMap(_.movie.originalTitle) shouldBe Some("The Pianist (re-release)")

@@ -11,6 +11,7 @@ import java.util.Locale
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import services.movies.TitleNormalizer
 
 /**
  * Ursynowskie Centrum Kultury „Alternatywy" (Warszawa). Filmweb carries no
@@ -36,7 +37,8 @@ import scala.util.Try
  */
 class AlternatywyClient(
   http:  HttpFetch,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  titles: TitleNormalizer
 ) extends CinemaScraper with OnlyMovieEventsFilter with DetailEnricher {
   import AlternatywyClient._
 
@@ -104,7 +106,7 @@ class AlternatywyClient(
     val Seq(dayStr, monthStr, timeStr, roomStr) = quad
     if (!roomStr.toLowerCase.startsWith("sala:")) return None
     val rawTitle = img.attr("alt")
-    val title    = cleanTitle(rawTitle)
+    val title    = cleanTitle(rawTitle, titles)
     if (title.isEmpty) return None
     for {
       day        <- Try(dayStr.toInt).toOption
@@ -144,8 +146,8 @@ object AlternatywyClient {
    *  `Okładka` / quotes / whitespace cleanup now lives in the editable
    *  "kino-alternatywy" rules (see TitleRules); this delegates so it stays
    *  unit-testable here. */
-  def cleanTitle(alt: String): String =
-    services.movies.TitleNormalizer.cinemaClean("kino-alternatywy", alt)
+  def cleanTitle(alt: String, titles: TitleNormalizer): String =
+    titles.cinemaClean("kino-alternatywy", alt)
 
   /** Parse a `/<slug>/` detail page into a [[FilmDetail]]. The synopsis prose is
    *  the post-content widget; the director + production countries/year sit in a
