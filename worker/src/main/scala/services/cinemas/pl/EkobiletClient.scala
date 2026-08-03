@@ -4,7 +4,7 @@ import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -70,9 +70,12 @@ class EkobiletClient(
 
   /** Deferred per-film detail — the synopsis off the off-canvas info panel, the
    *  only film-level field ekobilet exposes. None on a fetch failure so the task
-   *  stays stale and retries rather than recording an empty result as fresh. */
+   *  stays stale and retries rather than recording an empty result as fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   // Two-level scrape: the listing (landing + dated pages) discovers the films and
   // their detail-page URLs (the PLAN), then each film's detail page yields its

@@ -4,7 +4,7 @@ import models._
 import org.jsoup.nodes.{Element, TextNode}
 import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.Locale
@@ -87,9 +87,12 @@ class KinoPodBaranamiClient(
    *  None when nothing useful parsed, so the task stays stale and retries rather
    *  than recording an empty result as fresh. NB: the page also carries a `ul.when`
    *  screening list, but we read ONLY the static fields — showings stay sourced
-   *  (live) from the listing, which keeps this fetch safely deferrable/cacheable. */
+   *  (live) from the listing, which keeps this fetch safely deferrable/cacheable.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(http.getBytes(ref)).toOption
+    DetailFetchOutcome.transientToNone(http.getBytes(ref))
       .map(bytes => parseDetail(new String(bytes, "ISO-8859-2")))
       .filter(d => d.synopsis.nonEmpty || d.director.nonEmpty || d.cast.nonEmpty ||
                    d.runtimeMinutes.nonEmpty || d.originalTitle.nonEmpty)

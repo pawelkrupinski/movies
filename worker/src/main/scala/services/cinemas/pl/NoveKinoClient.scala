@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -79,9 +79,12 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's filmUrl (`…/film.php?id=<id>`). None on fetch failure so the task
-   *  stays stale and is retried. */
+   *  stays stale and is retried.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
       val detail = NoveKinoClient.parseDetail(html)
       FilmDetail(
         synopsis    = detail.synopsis,

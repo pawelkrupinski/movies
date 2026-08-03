@@ -5,7 +5,7 @@ import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
 import org.jsoup.nodes.Document
 import services.movies.TitleNormalizer
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -63,9 +63,12 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
   /** Deferred per-film detail off the `/kino/<slug>` event page — synopsis and
    *  poster only (bilety24 exposes no structured year/director/cast). None on a
    *  fetch failure so the task stays stale and retries rather than recording an
-   *  empty result as fresh. */
+   *  empty result as fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map(html => Bilety24OrganizerClient.parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(html => Bilety24OrganizerClient.parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] =
     Bilety24OrganizerClient.parse(http.get(organizerUrl), cinema)

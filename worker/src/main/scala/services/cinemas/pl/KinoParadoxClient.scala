@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -71,9 +71,12 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
 
   /** Deferred per-film detail — the EnrichDetails task calls this with the slot's
    *  `/naekranie/<slug>` filmUrl (UTF-8). None when nothing useful parsed, so the
-   *  task stays stale and retries rather than recording an empty result fresh. */
+   *  task stays stale and retries rather than recording an empty result fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(http.get(ref)).toOption.map(parseDetail)
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
       .filter(d => d.synopsis.nonEmpty || d.director.nonEmpty || d.runtimeMinutes.nonEmpty || d.genres.nonEmpty)
 }
 

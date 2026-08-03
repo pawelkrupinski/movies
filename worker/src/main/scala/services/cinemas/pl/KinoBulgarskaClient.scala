@@ -4,7 +4,7 @@ import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -74,9 +74,12 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's filmUrl. None on a fetch failure so the task stays stale and is
-   *  retried by the next scrape rather than recording an empty result as fresh. */
+   *  retried by the next scrape rather than recording an empty result as fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(http.get(ref)).toOption.flatMap(parseTrailer).map(url => FilmDetail(trailerUrl = Some(url)))
+    DetailFetchOutcome.transientToNone(http.get(ref)).flatMap(parseTrailer).map(url => FilmDetail(trailerUrl = Some(url)))
 
   /** Trailer URL parsed from a Bulgarska film page. Returns the canonical
    *  `youtube.com/watch?v=ID` form when the iframe holds a YouTube video;

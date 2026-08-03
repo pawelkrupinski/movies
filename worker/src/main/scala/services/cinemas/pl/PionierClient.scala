@@ -4,7 +4,7 @@ import tools.{CachingDetailFetch, HttpFetch}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element, TextNode}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -59,9 +59,12 @@ class PionierClient(http: HttpFetch, override val cinema: Cinema = KinoPionier)
   /** Deferred per-film detail — director, production year, countries, genres,
    *  cast and runtime off the `<b>Label:</b>value` block, plus a stand-alone
    *  synopsis paragraph when the page keeps one. None on a fetch failure so the
-   *  task stays stale and retries rather than recording an empty result. */
+   *  task stays stale and retries rather than recording an empty result.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] = {
     val document = Jsoup.parse(http.get(PageUrl))

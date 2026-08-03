@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
@@ -90,9 +90,12 @@ class UjazdowskiClient(
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's film-page URL. Only the synopsis + bracketed original title come
    *  from the detail page (the meta line on the listing supplies everything
-   *  else). None on fetch failure so the task stays stale and is retried. */
+   *  else). None on fetch failure so the task stays stale and is retried.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map(Jsoup.parse).map { document =>
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(Jsoup.parse).map { document =>
       FilmDetail(
         // Some descriptions embed a source/related link as plain-text URL; strip
         // it so the synopsis stays prose-only. cleanSynopsis also keeps the

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -122,9 +122,12 @@ class KinoApolloClient(http: HttpFetch) extends CinemaScraper with DetailEnriche
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's filmUrl. None on a fetch failure so the task stays stale and is
-   *  retried by the next scrape rather than recording an empty result as fresh. */
+   *  retried by the next scrape rather than recording an empty result as fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
       val m = parseDetail(html)
       FilmDetail(
         synopsis       = m.synopsis,

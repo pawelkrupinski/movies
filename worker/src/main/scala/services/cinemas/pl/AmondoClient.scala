@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -68,9 +68,12 @@ class AmondoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's filmUrl (e.g. `https://kinoamondo.pl/movies/<slug>/`). None on fetch
    *  failure so the task stays stale and is retried rather than recording an
-   *  empty result as fresh. */
+   *  empty result as fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
       val detail = AmondoClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

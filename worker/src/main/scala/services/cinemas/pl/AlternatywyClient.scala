@@ -4,7 +4,7 @@ import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.{LocalDate, ZoneId}
 import java.util.Locale
@@ -54,9 +54,12 @@ class AlternatywyClient(
 
   /** Deferred per-film detail — the EnrichDetails task calls this with the slot's
    *  `/<slug>/` filmUrl (UTF-8 WordPress/Elementor). None when nothing useful
-   *  parsed, so the task stays stale and retries. */
+   *  parsed, so the task stays stale and retries.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(http.get(ref)).toOption.map(parseDetail)
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
       .filter(d => d.synopsis.nonEmpty || d.director.nonEmpty)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =

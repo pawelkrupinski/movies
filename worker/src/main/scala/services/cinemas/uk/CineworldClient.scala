@@ -1,11 +1,10 @@
 package services.cinemas.uk
 
 import models.{Cinema, CinemaMovie, CineworldChain, Source}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, FilmDetail, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 import tools.HttpFetch
 
 import java.time.{LocalDate, ZoneId}
-import scala.util.Try
 
 /**
  * Cineworld — the UK's second-largest chain (87 sites), served off the same
@@ -64,9 +63,12 @@ class CineworldClient(
   /** Fetch + parse one film's detail page by the `filmUrl` the listing left on
    *  the movie. Same `http` the listing scrape uses. None on fetch failure so
    *  the task stays stale and is retried rather than recording an empty result
-   *  as fresh. */
+   *  as fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(http.get(ref)).toOption.map(CineworldParser.parseDetail)
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(CineworldParser.parseDetail)
 
   /** The venue's public page. Cineworld's canonical URL is
    *  `/cinemas/<slug>/<siteCode>` and the numeric site code alone resolves it —

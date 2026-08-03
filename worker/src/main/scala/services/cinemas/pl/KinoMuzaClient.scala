@@ -4,7 +4,7 @@ import org.jsoup.nodes.Document
 import models.*
 import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters.*
@@ -103,9 +103,12 @@ class KinoMuzaClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of
    *  failure so the task stays stale and is retried rather than recording an
    *  empty result as fresh; a page that simply lacks a synopsis still returns
    *  `Some` (with whatever fields it does carry), marking the row fresh so it
-   *  isn't refetched until the freshness window lapses. */
+   *  isn't refetched until the freshness window lapses.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(http.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       val document = Jsoup.parse(html)
       FilmDetail(
         synopsis   = parseSynopsis(document),

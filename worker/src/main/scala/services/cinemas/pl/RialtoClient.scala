@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -101,9 +101,12 @@ class RialtoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
    *  the movie's filmUrl (the event page URL). Parses genres, synopsis,
    *  director, runtime, year, and countries from the event page. None on
    *  fetch failure so the task stays stale and is retried rather than
-   *  recording an empty result as fresh. */
+   *  recording an empty result as fresh.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
       val document    = Jsoup.parse(html)
       val genres = parseGenres(html)
       val synopsisOpt = Option(document.selectFirst("span.text")).flatMap { span =>

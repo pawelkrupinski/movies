@@ -4,7 +4,7 @@ import play.api.libs.json.Json
 import models._
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -88,9 +88,12 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's filmUrl (`https://www.kinonh.pl/op.s?id=<id>`). None on fetch failure
-   *  so the task stays stale and is retried. */
+   *  so the task stays stale and is retried.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
       val detail = NoweHoryzontyClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -74,9 +74,12 @@ class KinoFenomenClient(
   override def defersTmdbResolution: Boolean = false
 
   /** Deferred per-film detail — the EnrichDetails task calls this with the slot's
-   *  `/artist/view/id/<id>` filmUrl. None when nothing useful parsed. */
+   *  `/artist/view/id/<id>` filmUrl. None when nothing useful parsed.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(http.get(ref)).toOption.map(parseDetail)
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
       .filter(d => d.synopsis.nonEmpty || d.cast.nonEmpty || d.director.nonEmpty)
 }
 

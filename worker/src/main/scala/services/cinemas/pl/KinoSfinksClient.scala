@@ -4,7 +4,7 @@ import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -64,9 +64,12 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema)
 
   /** Deferred per-film detail — runtime, genres, country, production year,
    *  director and cast off the `box-iobiekt` block. None on a fetch failure so
-   *  the task stays stale and retries rather than recording an empty result. */
+   *  the task stays stale and retries rather than recording an empty result.
+   *
+   *  A durable 404/410 escapes rather than folding into None, so a page that is
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] = {
     val firstHtml = http.get(PageUrl)
