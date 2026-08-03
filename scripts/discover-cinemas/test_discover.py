@@ -44,7 +44,7 @@ case object HomeManchester extends Cinema("HOME Manchester", "HOME")
 
 CATALOG_SCALA = '''  private val cardiffScrapers: Seq[CinemaScraper] = Seq(
     flicks("chapter-cardiff", ChapterCardiff),
-    flicks("cineworld-cardiff", CineworldCardiff),
+    cineworldUk("cardiff", CineworldCardiff),
   )
   private val manchesterScrapers: Seq[CinemaScraper] = Seq(
     flicks("home-manchester", HomeManchester),
@@ -53,6 +53,15 @@ CATALOG_SCALA = '''  private val cardiffScrapers: Seq[CinemaScraper] = Seq(
     "cardiff" -> cardiffScrapers,
     "manchester" -> manchesterScrapers,
   )
+'''
+
+# Chain venues are catalogued under their own-site client (above), so their Flicks
+# slug — the aggregator FALLBACK — lives only here.
+CHAIN_FALLBACK_SCALA = '''object ChainFlicksFallback {
+  val slugs: Map[Cinema, String] = Map(
+    CineworldCardiff -> "cineworld-cardiff",
+  )
+}
 '''
 
 SITEMAP = """<?xml version="1.0"?><urlset>
@@ -72,9 +81,11 @@ class EnumerationTests(unittest.TestCase):
              "premiere-cinema-cardiff", "odeon-luxe-manchester"},
         )
 
-    def test_wired_slugs(self):
+    def test_wired_slugs_spans_flicks_and_chain_fallback(self):
+        # cineworld-cardiff is wired own-site-primary, so it appears only in the
+        # fallback map — it is still WIRED and must never read as a new candidate.
         self.assertEqual(
-            d.wired_slugs(CATALOG_SCALA),
+            d.wired_slugs(CATALOG_SCALA, CHAIN_FALLBACK_SCALA),
             {"chapter-cardiff", "cineworld-cardiff", "home-manchester"},
         )
 
@@ -84,7 +95,7 @@ class EnumerationTests(unittest.TestCase):
 
     def test_diff_new_and_gone(self):
         flicks = d.sitemap_slugs(SITEMAP)
-        wired = d.wired_slugs(CATALOG_SCALA)
+        wired = d.wired_slugs(CATALOG_SCALA, CHAIN_FALLBACK_SCALA)
         exclude = {"odeon-luxe-manchester"}  # pretend this one is defunct
         self.assertEqual(sorted(flicks - wired - exclude), ["premiere-cinema-cardiff"])
         self.assertEqual(wired - flicks - exclude, set())
@@ -224,16 +235,21 @@ class RealRepoInvariantTests(unittest.TestCase):
         "omniplex-armagh", "vue-cinemas-shepherd-s-bush",
     }
 
+    def _wired(self):
+        return d.wired_slugs(d.read_text(d.CATALOG_SCALA), d.read_text(d.CHAIN_FALLBACK_SCALA))
+
     def test_defunct_are_excluded_and_unwired(self):
-        exclude = d.load_exclude(open(d.EXCLUDE_TXT).read())
-        wired = d.wired_slugs(open(d.CATALOG_SCALA).read())
+        exclude = d.load_exclude(d.read_text(d.EXCLUDE_TXT))
+        wired = self._wired()
         for slug in self.DEFUNCT:
             self.assertIn(slug, exclude, f"{slug} missing from exclude.txt")
             self.assertNotIn(slug, wired, f"{slug} is still wired in the catalog")
 
     def test_surviving_siblings_still_wired(self):
-        # the real venues we kept must NOT have been swept up by the deletion
-        wired = d.wired_slugs(open(d.CATALOG_SCALA).read())
+        # the real venues we kept must NOT have been swept up by the deletion —
+        # the three chain venues among them are wired own-site-primary, so they
+        # count as wired only via the Flicks-fallback map.
+        wired = self._wired()
         for slug in ("vue-cinemas-westfield-shepherd-s-bush", "curzon-canterbury-riverside",
                      "vue-cinemas-purley-way-croydon", "everyman-cinema-durham"):
             self.assertIn(slug, wired, f"{slug} was removed by mistake")

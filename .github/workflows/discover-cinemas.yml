@@ -9,7 +9,9 @@ name: Discover UK cinemas
 # sitemap-cinemas.xml; scripts/discover-cinemas/discover.py diffs that against the
 # slugs we already wire (minus scripts/discover-cinemas/exclude.txt, the known-
 # defunct venues) and splices compilable Scala for each genuinely new venue,
-# assigning it to the nearest wired UK city by coordinates.
+# assigning it to the nearest wired UK city by coordinates. "Already wired" spans
+# both the `flicks(...)` catalogue lines and the chain venues catalogued
+# own-site-primary, whose Flicks slug lives in worker/.../ChainFlicksFallback.scala.
 #
 # Venues it can't wire safely — London (needs a manual area-group), name
 # collisions, no coordinates, or no sessions this week — are PARKED into the PR

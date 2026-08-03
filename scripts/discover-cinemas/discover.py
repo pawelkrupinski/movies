@@ -9,6 +9,11 @@ files:
   * worker/.../services/cinemas/CinemaScraperCatalog.scala — a `flicks("<slug>",
     Obj)` line inside the city's `<city>Scrapers` Seq.
 
+UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) are the exception:
+they are catalogued under their own-site client, and keep their Flicks slug only as
+the aggregator fallback in ChainFlicksFallback.scala. They are wired all the same,
+so both files are read when deciding what is already covered.
+
 Flicks publishes every cinema in sitemap-cinemas.xml. This tool diffs that list
 against the slugs we already wire (minus an exclude list of known-defunct venues)
 and, for each genuinely new venue, resolves its display name + coordinates +
@@ -49,7 +54,20 @@ CITY_SCALA = os.path.join(REPO, "common/src/main/scala/models/City.scala")
 CATALOG_SCALA = os.path.join(
     REPO, "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala"
 )
+CHAIN_FALLBACK_SCALA = os.path.join(
+    REPO, "worker/src/main/scala/services/cinemas/ChainFlicksFallback.scala"
+)
 EXCLUDE_TXT = os.path.join(os.path.dirname(__file__), "exclude.txt")
+
+
+def read_text(path: str) -> str:
+    with open(path) as f:
+        return f.read()
+
+
+def write_text(path: str, text: str) -> None:
+    with open(path, "w") as f:
+        f.write(text)
 
 
 # ── HTTP ────────────────────────────────────────────────────────────────────
@@ -68,9 +86,18 @@ def sitemap_slugs(text: str) -> set[str]:
     return set(re.findall(r"/cinema/([a-z0-9-]+)/", text))
 
 
-def wired_slugs(catalog_text: str) -> set[str]:
-    """The Flicks slugs we already wire — the first arg of each flicks(...)."""
-    return set(re.findall(r'flicks\("([^"]+)"', catalog_text))
+def wired_slugs(catalog_text: str, chain_fallback_text: str) -> set[str]:
+    """Every Flicks slug we already cover, however the venue is catalogued.
+
+    Two wirings, both of which make a slug NOT a new candidate:
+      * `flicks("<slug>", Obj)` in the catalog — Flicks is the primary scraper.
+      * `Obj -> "<slug>"` in ChainFlicksFallback — a chain venue catalogued under
+        its own-site client (Cineworld / Vue / Showcase / Everyman / Odeon), with
+        Flicks kept only as the aggregator fallback.
+    """
+    flicks_primary = re.findall(r'flicks\("([^"]+)"', catalog_text)
+    chain_fallback = re.findall(r'->\s*"([^"]+)"', chain_fallback_text)
+    return set(flicks_primary) | set(chain_fallback)
 
 
 def load_exclude(text: str) -> set[str]:
@@ -352,13 +379,13 @@ def main(argv=None) -> int:
 
     today = dt.date.fromisoformat(args.today) if args.today else dt.date.today()
 
-    cinema_text = open(CINEMA_SCALA).read()
-    catalog_text = open(CATALOG_SCALA).read()
-    cities = parse_uk_cities(open(CITY_SCALA).read())
+    cinema_text = read_text(CINEMA_SCALA)
+    catalog_text = read_text(CATALOG_SCALA)
+    cities = parse_uk_cities(read_text(CITY_SCALA))
 
     flicks = sitemap_slugs(fetch(SITEMAP))
-    wired = wired_slugs(catalog_text)
-    exclude = load_exclude(open(EXCLUDE_TXT).read())
+    wired = wired_slugs(catalog_text, read_text(CHAIN_FALLBACK_SCALA))
+    exclude = load_exclude(read_text(EXCLUDE_TXT))
 
     new_slugs = sorted(flicks - wired - exclude)
     gone = wired - flicks - exclude
@@ -385,13 +412,13 @@ def main(argv=None) -> int:
 
     if args.apply and plan.wire:
         new_cinema, new_catalog = apply_plan(cinema_text, catalog_text, plan)
-        open(CINEMA_SCALA, "w").write(new_cinema)
-        open(CATALOG_SCALA, "w").write(new_catalog)
+        write_text(CINEMA_SCALA, new_cinema)
+        write_text(CATALOG_SCALA, new_catalog)
 
     report = render_report(plan, applied=args.apply and bool(plan.wire))
     print(report)
     if args.report_path:
-        open(args.report_path, "w").write(report + "\n")
+        write_text(args.report_path, report + "\n")
     return 0
 
 
