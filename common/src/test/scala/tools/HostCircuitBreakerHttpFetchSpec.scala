@@ -42,6 +42,25 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     delegate.calls.get() shouldBe 4
   }
 
+  // An open breaker otherwise erases the only useful fact about the outage: every
+  // caller reports "circuit open for X", the real error never reaches uptime again,
+  // and why the host went away has to be rediscovered by hand. It took a full
+  // investigation to learn that Kino Wybrzeże's TLS certificate had expired — which
+  // its very first failure had said plainly, before the breaker began swallowing it.
+  it should "carry the failure that opened it, so a blocked host still says why" in {
+    val expiredCert: String => String = _ =>
+      throw new javax.net.ssl.SSLHandshakeException("PKIX path validation failed: validity check failed")
+    val delegate = new FakeDelegate(expiredCert)
+    val cb = breaker(delegate)
+    (1 to 4).foreach(_ => a[javax.net.ssl.SSLHandshakeException] should be thrownBy cb.get(urlA))
+
+    val blocked = intercept[CircuitOpenException](cb.get(urlA))
+    blocked.lastFailure.value should include("SSLHandshakeException")
+    blocked.lastFailure.value should include("validity check failed")
+    blocked.getMessage should include(s"circuit open for $hostA")   // the original shape is preserved
+    blocked.getMessage should include("last failure: ")
+  }
+
   it should "stay closed below the threshold" in {
     val delegate = new FakeDelegate(timeout)
     val cb = breaker(delegate)

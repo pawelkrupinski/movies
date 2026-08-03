@@ -17,8 +17,10 @@ import scala.concurrent.duration._
  *  `openForMs` is exposed so a caller that can DEFER its work rather than fail it
  *  can wait exactly as long as the block has left to run, instead of guessing —
  *  see `services.tasks.HandlerOutcome.Deferred`. */
-class CircuitOpenException(val host: String, val openForMs: Long)
-  extends java.io.IOException(s"circuit open for $host (${openForMs}ms before half-open)")
+class CircuitOpenException(val host: String, val openForMs: Long, val lastFailure: Option[String] = None)
+  extends java.io.IOException(
+    s"circuit open for $host (${openForMs}ms before half-open)" +
+      lastFailure.fold("")(cause => s"; last failure: $cause"))
 
 /**
  * A per-host circuit breaker wrapping any [[HttpFetch]]. When a host racks up
@@ -90,23 +92,24 @@ class HostCircuitBreakerHttpFetch(
 
   /** A trip-worthy failure — count it; open (or re-open) at the threshold, and say
    *  which of the two it was. */
-  private def onFailure(host: String): Unit = {
+  private def onFailure(host: String, cause: Throwable): Unit = {
     val opened   = new AtomicBoolean(false)
     val reopened = new AtomicBoolean(false)
+    val why      = Some(HostCircuitBreakerHttpFetch.describe(cause))
     breakers.compute(host, (_, prev) => {
       val wasOpen  = prev != null && prev.openUntil.isDefined
       val failures = (if (prev == null) 0 else prev.failures) + 1
       if (failures >= failureThreshold) {
         (if (wasOpen) reopened else opened).set(true)
-        Breaker(failures, Some(now().plusMillis(openDuration.toMillis)))
-      } else Breaker(failures, None)
+        Breaker(failures, Some(now().plusMillis(openDuration.toMillis)), why)
+      } else Breaker(failures, None, why)
     })
     if (opened.get())
-      announce(logger.warn(_), s"Circuit OPEN for $host after $failureThreshold consecutive failures — " +
-        s"skipping all calls to it for ${openDuration.toSeconds}s.")
+      announce(logger.warn(_), s"Circuit OPEN for $host after $failureThreshold consecutive failures " +
+        s"(last: ${why.getOrElse("unknown")}) — skipping all calls to it for ${openDuration.toSeconds}s.")
     else if (reopened.get())
-      announce(logger.warn(_), s"Circuit for $host STILL open — its half-open probe failed too; " +
-        s"skipping all calls to it for another ${openDuration.toSeconds}s.")
+      announce(logger.warn(_), s"Circuit for $host STILL open — its half-open probe failed too " +
+        s"(last: ${why.getOrElse("unknown")}); skipping all calls to it for another ${openDuration.toSeconds}s.")
   }
 
   /** Trip-worthy = the host is failing to serve us: a timeout (request OR connect —
@@ -139,25 +142,26 @@ class HostCircuitBreakerHttpFetch(
    *  elapsed went to the wire together, which is not the "one trial call" this
    *  breaker promises. Re-arming also means a probe that never returns can't wedge
    *  the host shut: the next cooldown admits a fresh one. */
-  private def admit(host: String): Long = {
+  private def admit(host: String): (Long, Option[String]) = {
     val remaining = new AtomicLong(0L)
+    val cause     = new java.util.concurrent.atomic.AtomicReference[Option[String]](None)
     breakers.compute(host, (_, prev) =>
       if (prev == null) null // no breaker for this host — closed, nothing to claim
       else prev.openUntil match {
         case None => prev // accruing failures but closed
         case Some(until) =>
           val left = JDuration.between(now(), until).toMillis
-          if (left > 0L) { remaining.set(left); prev }
-          else Breaker(prev.failures, Some(now().plusMillis(openDuration.toMillis)))
+          if (left > 0L) { remaining.set(left); cause.set(prev.lastFailure); prev }
+          else Breaker(prev.failures, Some(now().plusMillis(openDuration.toMillis)), prev.lastFailure)
       })
-    remaining.get()
+    (remaining.get(), cause.get())
   }
 
   private def guarded[T](url: String)(block: => T): T = hostOf(url) match {
     case None => block // unparseable host — nothing to key a breaker on
     case Some(host) =>
-      val remaining = admit(host)
-      if (remaining > 0L) throw new CircuitOpenException(host, remaining)
+      val (remaining, why) = admit(host)
+      if (remaining > 0L) throw new CircuitOpenException(host, remaining, why)
       try { val result = block; onSuccess(host); result }
       // A NON-trip-worthy throw — a 404, a parse error — means the host ANSWERED, so it is
       // alive and the breaker closes exactly as a 200 would close it. Letting it fall
@@ -166,7 +170,7 @@ class HostCircuitBreakerHttpFetch(
       // came back 404 would leave the host blocked for another full `openDuration` on the
       // strength of a reply that proves it recovered.
       catch {
-        case e: Throwable if isTripWorthy(e) => onFailure(host); throw e
+        case e: Throwable if isTripWorthy(e) => onFailure(host, e); throw e
         case e: Throwable                    => onSuccess(host); throw e
       }
   }
@@ -180,14 +184,15 @@ class HostCircuitBreakerHttpFetch(
   override def getAsync(url: String): CompletableFuture[String] = hostOf(url) match {
     case None => delegate.getAsync(url)
     case Some(host) =>
-      val remaining = admit(host)
-      if (remaining > 0L) CompletableFuture.failedFuture(new CircuitOpenException(host, remaining))
+      val (remaining, why) = admit(host)
+      if (remaining > 0L) CompletableFuture.failedFuture(new CircuitOpenException(host, remaining, why))
       else delegate.getAsync(url).handle[String]((result, throwable) => {
         if (throwable == null) { onSuccess(host); result }
         // Same rule as `guarded`: a non-trip-worthy failure is the host answering, which
         // closes the breaker rather than leaving a re-armed window in place.
         else {
-          if (isTripWorthy(unwrap(throwable))) onFailure(host) else onSuccess(host)
+          val failure = unwrap(throwable)
+          if (isTripWorthy(failure)) onFailure(host, failure) else onSuccess(host)
           throw throwable
         }
       })
@@ -195,7 +200,24 @@ class HostCircuitBreakerHttpFetch(
 }
 
 object HostCircuitBreakerHttpFetch {
-  /** Per-host state: consecutive trip-worthy failures, and (once tripped) the
-   *  instant the breaker goes half-open. `openUntil = None` ⇒ closed. */
-  private[tools] case class Breaker(failures: Int, openUntil: Option[Instant])
+  /** Per-host state: consecutive trip-worthy failures, (once tripped) the instant
+   *  the breaker goes half-open, and WHY it last failed. `openUntil = None` ⇒ closed.
+   *
+   *  `lastFailure` exists because an open breaker otherwise erases the only useful
+   *  fact about the outage. Every call to a blocked host reports "circuit open for
+   *  X", the real error never reaches uptime again, and the reason the host went
+   *  away has to be rediscovered by hand — a whole investigation to learn that Kino
+   *  Wybrzeże's TLS certificate had expired (2026-07-18), which the first failure
+   *  had said plainly before the breaker started swallowing it. */
+  private[tools] case class Breaker(failures: Int, openUntil: Option[Instant], lastFailure: Option[String] = None)
+
+  /** The causing failure as one short line for the breaker to carry — type plus
+   *  message, since `SSLHandshakeException` and `HttpTimeoutException` are already
+   *  half the diagnosis. Bounded, because it rides in an exception message that
+   *  uptime truncates. */
+  private def describe(cause: Throwable): String = {
+    val message = Option(cause.getMessage).getOrElse("")
+    val line    = if (message.isEmpty) cause.getClass.getSimpleName else s"${cause.getClass.getSimpleName}: $message"
+    if (line.length <= 120) line else line.take(117) + "..."
+  }
 }
