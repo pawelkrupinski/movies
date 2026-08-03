@@ -71,7 +71,7 @@ class MongoCachingDetailFetch(
           // gated on a fetch that will not start succeeding. Remembering it here (rather
           // than only in-process) is the point of this class: one server learning a page
           // is gone spares the whole fleet. Everything else stays uncached and retries.
-          case failure: HttpStatusException if MongoCachingDetailFetch.DurableFailureStatuses(failure.code) =>
+          case failure: HttpStatusException if HttpStatusException.isDurable(failure.code) =>
             store(c, url, Left(failure.code))
             throw failure
         }
@@ -120,10 +120,4 @@ class MongoCachingDetailFetch(
         (exception: Throwable) => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}")
       )
     }.recover { case exception => logger.debug(s"Detail-cache write failed for $url: ${exception.getMessage}") }
-}
-
-object MongoCachingDetailFetch {
-  /** Statuses that describe the URL rather than the moment — the same set
-   *  `CachingDetailFetch` and `EnrichmentCache.isDurable` use, for the same reason. */
-  private val DurableFailureStatuses = Set(404, 410)
 }

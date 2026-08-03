@@ -25,6 +25,18 @@ class HttpStatusException(
 ) extends RuntimeException(s"HTTP $code for $method ${RedactedUrl(url)}")
 
 object HttpStatusException {
+  /** Statuses that describe the URL rather than the moment: asking again buys
+   *  the same answer, however long you wait, so a caller should remember the
+   *  verdict instead of retrying. Everything else (timeout, 5xx, 429) says
+   *  something about right now and stays retryable.
+   *
+   *  One definition, because several places draw this exact line and must not
+   *  drift apart: both detail-page caches ([[CachingDetailFetch]],
+   *  `MongoCachingDetailFetch`) remember a durable failure for their TTL, and
+   *  `EnrichDetailsHandler` stamps a durably-gone detail as fetched so its
+   *  reaper backs off to the refresh window instead of retrying every tick. */
+  def isDurable(code: Int): Boolean = code == 404 || code == 410
+
   /** Parse a `Retry-After` header value. Honors the delta-seconds form ("120")
    *  that TMDB and most APIs send; the rarer HTTP-date form falls back to `None`
    *  (callers apply their own default pause). Pure — takes no clock. */

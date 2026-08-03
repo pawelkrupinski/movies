@@ -6,7 +6,7 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
 import services.UptimeMonitor
-import services.cinemas.common.DetailEnricher
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 
 import java.time.{Clock, Instant}
 
@@ -70,9 +70,11 @@ object EnrichDetailsTasks {
  * not a separate rolling TTL: when it didn't, the reaper enqueued a row on its
  * phase boundary while the handler skipped it as still-fresh, so the same row
  * churned the queue every tick without ever refreshing (see [[DueWindow]]). A
- * failed fetch (`fetchFilmDetail` → None) is reported `Done` without marking
- * fresh, so the cinema's next scrape re-enqueues it rather than the worker
- * spinning.
+ * TRANSIENTLY failed fetch is reported `Done` without marking fresh, so the
+ * cinema's next scrape re-enqueues it rather than the worker spinning. A
+ * DURABLY gone page (404/410) is stamped instead — there, leaving it stale is
+ * what makes the worker spin, because an unstamped key is due on every reaper
+ * tick forever. See [[services.cinemas.common.DetailFetchOutcome]].
  */
 class EnrichDetailsHandler(
   enrichersByGroup: Map[String, DetailEnricher],
@@ -103,11 +105,37 @@ class EnrichDetailsHandler(
         // single network-level service (e.g. "Cinema City Enrichment").
         val service = enricher.enrichmentServiceOverride
           .getOrElse(UptimeMonitor.enrichmentService(enricher.cinema.displayName))
-        enricher.fetchFilmDetail(task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")) match {
-          case None =>
-            uptime.recordFailure(service, s"detail fetch returned nothing for ${task.payload.getOrElse(EnrichDetailsTasks.TitleKey, key)}")
+        val label = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, key)
+        enricher.fetchDetail(task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")) match {
+          case DetailFetchOutcome.Failed =>
+            uptime.recordFailure(service, s"detail fetch returned nothing for $label")
             Done // failed/absent — not marked fresh, the next scrape re-enqueues
-          case Some(detail) =>
+          case DetailFetchOutcome.Gone(code) =>
+            // The page is gone (404/410), not failing. Leaving it stale is a
+            // livelock: with no stamp `DueWindow.isDue` is unconditionally true, so
+            // DetailReaper re-enqueues this film every tick — once a minute, forever
+            // — and each pass records another /uptime failure. Two such films held
+            // the Cinema City chain row at ~90% failures and, since a bucket keeps
+            // only 10 error strings, hid every other Cinema City enrichment failure
+            // behind them.
+            //
+            // So stamp it. This is NOT claiming a detail landed — nothing reads
+            // DetailEnrich freshness as "we have data", only as "we asked recently"
+            // (this handler's own due gate, and DetailReaper's `detailOutstanding`).
+            // It costs nothing in recovery either: both detail caches already pin a
+            // durable failure for 12h, so a retry inside this 6h window was being
+            // answered from cache anyway. If the film comes back under a NEW url the
+            // listing scrape rewrites the slot's `filmUrl`, and the next window
+            // fetches it.
+            //
+            // Releasing `detailOutstanding` also unsticks the worse case this hid: a
+            // row held `detailPending` on a detail that 404s from the start never
+            // cleared, so it stayed out of the read model — invisible on the site —
+            // permanently. `reapStuckPending` can now let it through.
+            uptime.recordFailure(service, s"detail page gone (HTTP $code) for $label")
+            freshness.markFresh(key, FreshnessKind.DetailEnrich)
+            Done
+          case DetailFetchOutcome.Fetched(detail) =>
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
             val rowKey = cache.keyOf(title, year)

@@ -93,8 +93,26 @@ trait DetailEnricher {
   def defersTmdbResolution: Boolean = true
   /** Fetch + parse one film's detail by the reference the listing scrape left on
    *  the movie (its `filmUrl`). None on failure/absence, so the task stays
-   *  stale and is retried rather than recording an empty result as fresh. */
+   *  stale and is retried rather than recording an empty result as fresh.
+   *
+   *  A client MAY let a durable `HttpStatusException` (404/410) escape instead of
+   *  folding it into None — that is how it opts into [[DetailFetchOutcome.Gone]]
+   *  and stops the handler retrying a dead page every tick. Swallowing it stays
+   *  correct, just noisier. */
   def fetchFilmDetail(ref: String): Option[FilmDetail]
+
+  /** [[fetchFilmDetail]] as the enrichment handler needs to hear it: a failure
+   *  that describes the URL (404/410) told apart from one that describes the
+   *  moment. See [[DetailFetchOutcome]] for why the difference matters — the
+   *  handler stamps the first and retries the second every tick.
+   *
+   *  `final`, because the classification is one rule and must not fork per
+   *  client: a client opts into `Gone` purely by letting the durable
+   *  `HttpStatusException` escape its fetch (see
+   *  [[DetailFetchOutcome.transientToNone]]), and one that still swallows it
+   *  keeps the every-tick retry unchanged. */
+  final def fetchDetail(ref: String): DetailFetchOutcome =
+    DetailFetchOutcome.of(scala.util.Try(fetchFilmDetail(ref)))
 
   /** The per-film detail URL this enricher can actually fetch for `record` — the
    *  cinema's own event-page reference from its source slot — or None when there

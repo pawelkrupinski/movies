@@ -5,8 +5,9 @@ import org.scalatest.OptionValues._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, Showtime}
-import services.cinemas.common.FilmDetail
-import services.cinemas.pl.CinemaCityClient
+import services.cinemas.common.{DetailFetchOutcome, FilmDetail}
+import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper}
+import tools.{HttpFetch, HttpStatusException}
 
 import java.time.LocalDateTime
 
@@ -222,6 +223,35 @@ class CinemaCityClientSpec extends AnyFlatSpec with Matchers {
       .flatMap(_.ageRating) shouldBe Some("12")
     agedClient.fetchFilmDetail("https://www.cinema-city.pl/filmy/niesamowite-przygody-skarpetek/7251d2r")
       .flatMap(_.ageRating) shouldBe Some("5")
+  }
+
+  // ─── A detail page the chain has taken down ───────────────────────────────
+  //
+  // Cinema City pulls a film's page once its run ends, and the row survives in
+  // the corpus still carrying that `filmUrl`. Folding the 404 into None makes it
+  // indistinguishable from a timeout, and an unclassified failure is never
+  // stamped fresh — so DetailReaper re-enqueues the film every tick, forever.
+  // That is what held the live "Cinema City Enrichment" row at ~90% failures.
+
+  private def failingClient(status: Int) = new CinemaCityClient(new HttpFetch {
+    override def get(url: String): String = throw new HttpStatusException(status, "GET", url, None)
+    override def post(url: String, body: String, contentType: String): String = get(url)
+  })
+
+  "a withdrawn detail page" should "surface its 404 rather than collapsing to None" in {
+    val client = failingClient(404)
+    val thrown = intercept[HttpStatusException](client.fetchFilmDetail("https://www.cinema-city.pl/filmy/tafiti/7541d2r"))
+    thrown.code shouldBe 404
+    // What the enrichment handler actually sees, via the DetailEnricher seam.
+    new CinemaCityScraper(client, "1081", CinemaCityKinepolis)
+      .fetchDetail("https://www.cinema-city.pl/filmy/tafiti/7541d2r") shouldBe DetailFetchOutcome.Gone(404)
+  }
+
+  it should "still swallow a TRANSIENT failure, so the detail is retried next tick" in {
+    val client = failingClient(503)
+    client.fetchFilmDetail("https://www.cinema-city.pl/filmy/tafiti/7541d2r") shouldBe None
+    new CinemaCityScraper(client, "1081", CinemaCityKinepolis)
+      .fetchDetail("https://www.cinema-city.pl/filmy/tafiti/7541d2r") shouldBe DetailFetchOutcome.Failed
   }
 
   it should "treat ageRestrictionName 'na' as no age rating" in {

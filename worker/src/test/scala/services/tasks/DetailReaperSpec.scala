@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.pl.FilmwebShowtimesClient
+import tools.HttpStatusException
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.duration._
@@ -217,5 +218,56 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
     bus.published.size shouldBe 1
+  }
+
+  // The livelock this reaper drove in prod: a film whose detail page the cinema
+  // took down after its run never got a freshness stamp, so it came due on EVERY
+  // tick — the "Cinema City Enrichment" row ran at ~90% failures on two such
+  // films, once a minute, indefinitely. Drives the real reaper→handler→reaper
+  // cycle rather than asserting the stamp in isolation, because it is the second
+  // tick going quiet that is the actual fix.
+  it should "stop re-enqueueing a film whose detail page is durably gone, instead of once per tick" in {
+    val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    // ONE DueWindow instance across reaper and handler — they must agree on "due".
+    val window = new DueWindow(6.hours)
+    val gone   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
+    val r = new DetailReaper(Seq(gone), cache, queue, fresh, new InProcessEventBus(), dueWindow = window)
+    val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
+      new services.UptimeMonitor(), new InProcessEventBus(), window)
+
+    r.tick() shouldBe 1
+    // Run the task the way the worker does, so the queue is clear for the next tick
+    // and only the freshness stamp can hold the film back.
+    val task = queue.claim("worker", 1.minute, Instant.now()).getOrElse(fail("nothing queued"))
+    h.handle(task) shouldBe HandlerOutcome.Done
+    queue.complete(task.id, "worker")
+
+    r.tick() shouldBe 0
+    gone.calls shouldBe 1
+  }
+
+  it should "release a detail-pending row whose only detail page is durably gone, so it is not hidden forever" in {
+    val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    cache.putIfPresent(cache.keyOf("Dune", None), _.copy(detailPending = true))
+    val window = new DueWindow(6.hours)
+    val gone   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
+    val bus = new CapturingBus
+    val r = new DetailReaper(Seq(gone), cache, queue, fresh, bus, dueWindow = window)
+    val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
+      new services.UptimeMonitor(), new InProcessEventBus(), window)
+
+    // Before the detail is even attempted the row is legitimately outstanding.
+    r.reapStuckPending() shouldBe 0
+    r.tick() shouldBe 1
+    val task = queue.claim("worker", 1.minute, Instant.now()).getOrElse(fail("nothing queued"))
+    h.handle(task) shouldBe HandlerOutcome.Done
+
+    // Now the detail is settled-unfetchable, so the row must reach the read model
+    // rather than staying `detailPending` — invisible on the site — indefinitely.
+    r.reapStuckPending() shouldBe 1
+    cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
+    bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Dune")
   }
 }

@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.UptimeMonitor
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
+import tools.HttpStatusException
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -214,6 +215,49 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe false
     cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(KinoApollo)).flatMap(_.synopsis) shouldBe None
     failures(uptime, EnrichmentService) shouldBe 1 // red/yellow on the enrichment bar
+  }
+
+  // A page the cinema has taken down is not a failing fetch, it is a settled
+  // answer. Left stale it never gets a freshness stamp, `DueWindow.isDue` is then
+  // unconditionally true, and DetailReaper re-enqueues the film every tick —
+  // once a minute, forever, each pass burning an /uptime failure. Two such films
+  // held prod's "Cinema City Enrichment" row at ~90% failures.
+  it should "stamp a DURABLY gone detail page, so the film stops being retried every tick" in {
+    val cache    = seededCache("Dune")
+    val fresh    = new InMemoryFreshnessStore
+    val uptime   = new UptimeMonitor()
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow)
+    val task     = taskFor("kino-apollo", cache, "Dune", enricher)
+
+    h.handle(task) shouldBe Done
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe true
+    failures(uptime, EnrichmentService) shouldBe 1 // still reported — once per window, not once a minute
+    // Stamping is "we asked", never "we have data": no detail is invented for the row.
+    cache.get(cache.keyOf("Dune", None)).flatMap(_.cinemaData.get(KinoApollo)).flatMap(_.synopsis) shouldBe None
+
+    // The stamp is what closes the loop: the next pass inside the window is
+    // skipped at pickup instead of re-fetching a page that will not come back.
+    h.handle(task) shouldBe Skipped
+    enricher.calls shouldBe 1
+  }
+
+  it should "leave a TRANSIENTLY failed detail stale, so the next tick still retries it" in {
+    val cache    = seededCache("Dune")
+    val fresh    = new InMemoryFreshnessStore
+    val uptime   = new UptimeMonitor()
+    // 503 describes the moment, not the url — the every-tick retry is correct here.
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      failure = Some(new HttpStatusException(503, "GET", "http://ref", None)))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, uptime, noBus, dueWindow)
+    val task     = taskFor("kino-apollo", cache, "Dune", enricher)
+
+    h.handle(task) shouldBe Done
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich) shouldBe false
+    failures(uptime, EnrichmentService) shouldBe 1
+    h.handle(task) shouldBe Done // still due, fetched again
+    enricher.calls shouldBe 2
   }
 
   // Requirement: a task with exactly the same definition (enrich a specific film

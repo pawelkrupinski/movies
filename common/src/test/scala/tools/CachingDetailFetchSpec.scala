@@ -58,7 +58,7 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
    *  Cinema City between them serve 98 permanently-missing detail pages in the Polish
    *  corpus; with every failure re-tried, each one is re-fetched on EVERY scrape pass,
    *  forever, and the film it belongs to never gets the year/director its TMDB
-   *  resolution is gated on. Same {404, 410} rule `EnrichmentCache.isDurable` uses. */
+   *  resolution is gated on. Same {404, 410} rule `HttpStatusException.isDurable` draws. */
   it should "remember a 404, so a permanently-missing detail page is fetched once" in {
     val under = new CountingFetch(Map("gone" -> (() => throw new HttpStatusException(404, "GET", "gone", None))))
     val c = new CachingDetailFetch(under, ttl = 1.hour)

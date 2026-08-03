@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -74,11 +74,12 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
   override val detailGroup: String = "kinomuzeum"
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
-   *  movie's filmUrl (e.g. `https://artmuseum.pl/wydarzenia/<slug>`). None on
-   *  fetch failure so the task stays stale and is retried rather than recording
-   *  an empty result as fresh. */
+   *  movie's filmUrl (e.g. `https://artmuseum.pl/wydarzenia/<slug>`). None on a
+   *  TRANSIENT fetch failure so the task stays stale and is retried rather than
+   *  recording an empty result as fresh; a 404/410 escapes so a withdrawn event
+   *  page is stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailHttp.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
       val detail = KinomuzeumClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

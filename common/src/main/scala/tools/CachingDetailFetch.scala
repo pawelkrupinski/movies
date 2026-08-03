@@ -56,9 +56,9 @@ class CachingDetailFetch(
         // buys nothing: it is the same answer, and the film whose detail this is stays
         // gated on a fetch that will not start succeeding. Every OTHER failure —
         // timeouts, 5xx, rate limits — says something about right now, and stays
-        // uncached so the next pass retries it. Same {404, 410} line
-        // `EnrichmentCache.isDurable` draws, for the same reason.
-        case failure: HttpStatusException if CachingDetailFetch.DurableFailureStatuses(failure.code) =>
+        // uncached so the next pass retries it. The {404, 410} line lives in
+        // `HttpStatusException.isDurable` — one definition, several callers.
+        case failure: HttpStatusException if HttpStatusException.isDurable(failure.code) =>
           cache.put(url, CachingDetailFetch.Gone(failure.code))
           throw failure
       }
@@ -83,9 +83,6 @@ object CachingDetailFetch {
   private final case class Body(body: String) extends Outcome
   private final case class Gone(code: Int)    extends Outcome
 
-  /** Statuses that describe the URL rather than the moment. Kept identical to
-   *  `EnrichmentCache.isDurable`'s set — the two answer the same question. */
-  private val DurableFailureStatuses = Set(404, 410)
   /** Detail metadata is effectively static per film; refreshing twice a day is
    *  plenty fresh while cutting ~all of the redundant per-pass detail fetches. */
   val DefaultTtl: FiniteDuration = 12.hours

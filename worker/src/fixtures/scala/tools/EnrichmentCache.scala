@@ -191,12 +191,10 @@ object EnrichmentCache {
    * said more definitely. 403 is NOT here: on these hosts it is a Cloudflare block,
    * which is exactly the kind of thing that clears by tomorrow.
    */
-  private val DurableFailureStatuses = Set(404, 410)
-
   /** Whether an outcome should outlive the run that saw it. Successes always;
    *  failures only when the status says something permanent about the URL. */
   def isDurable(response: CachedResponse): Boolean = response match {
-    case CachedResponse.Failed(status, _, _) => status.exists(DurableFailureStatuses.contains)
+    case CachedResponse.Failed(status, _, _) => status.exists(HttpStatusException.isDurable)
     case _                                   => true
   }
 

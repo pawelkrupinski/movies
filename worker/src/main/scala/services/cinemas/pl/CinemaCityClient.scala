@@ -3,7 +3,7 @@ package services.cinemas.pl
 import tools.HttpFetch
 import play.api.libs.json._
 import models.{Cinema, CinemaMovie, Movie, Showtime}
-import services.cinemas.common.{AgeRating, FilmDetail}
+import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
@@ -48,10 +48,14 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None) {
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's film-page URL (Cinema City's `link`). Goes through the shared
-   *  `detailFetch` so a film's page is fetched once per chain per TTL. None on
-   *  fetch failure so the task stays stale and is retried. */
+   *  `detailFetch` so a film's page is fetched once per chain per TTL.
+   *
+   *  None on a TRANSIENT failure so the task stays stale and is retried next
+   *  tick. A 404/410 escapes instead: a film whose page the chain has taken down
+   *  after its run must be stamped, not retried every minute forever — see
+   *  [[DetailFetchOutcome]]. */
   def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    Try(detailFetch.get(ref)).toOption.map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val detail = CinemaCityClient.parseDetails(html)
       FilmDetail(
         synopsis   = detail.synopsis,
