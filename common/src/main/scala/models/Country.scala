@@ -176,6 +176,26 @@ object Country {
     singular.orElse(if (listed.sizeIs == 1) listed.headOption else None)
   }
 
+  /** The countries a process was configured for when NO single one can be chosen:
+   *  `KINOWO_COUNTRIES` naming several with no `KINOWO_COUNTRY` to disambiguate.
+   *
+   *  Exists because [[soleFrom]] answers None for TWO different situations that
+   *  must not be treated alike — nothing configured at all (a dev box or a spec,
+   *  where defaulting to Poland is right) and several configured (a multi-country
+   *  worker, where defaulting to Poland is the 2026 incident: CinemaxX Würzburg's
+   *  "Minions & Monster" keyed `minionsimonster` under Polish rules). Empty in the
+   *  first case, the listed countries in the second. */
+  def ambiguousFrom(country: Option[String], countries: Option[String]): List[Country] = {
+    val listed = countries
+      .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).flatMap(byCode).toList.distinct)
+      .getOrElse(Nil)
+    if (country.flatMap(byCode).isDefined || listed.sizeIs <= 1) Nil else listed
+  }
+
+  /** [[ambiguousFrom]] over this process's environment. */
+  def ambiguousFromEnv: List[Country] =
+    ambiguousFrom(Env.get("KINOWO_COUNTRY"), Env.get("KINOWO_COUNTRIES"))
+
   /** The Mongo database name for a GIVEN country: an explicit `MONGODB_DB` wins
    *  (local dev / overrides), otherwise it is DERIVED from the country's own
    *  database. The pure per-country core the WORKER resolves each of its N

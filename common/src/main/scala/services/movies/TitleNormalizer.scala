@@ -332,8 +332,21 @@ object TitleNormalizer {
    *  A multi-country worker still gets Poland here, which is why
    *  `WorkerMain.unsupportedCountries` keeps refusing to boot one until the
    *  remaining call sites are injected and this default can be deleted. */
-  def deployment: TitleNormalizer =
-    forCountry(Country.soleFromEnv.getOrElse(Country.default))
+  def deployment: TitleNormalizer = rulesFor(Country.ambiguousFromEnv, Country.soleFromEnv)
+
+  /** Pure core of [[deployment]] — the choice, testable without touching process
+   *  state. A process configured for SEVERAL countries has no one rule set, so it
+   *  is refused rather than silently given Poland's: that silent fallback is what
+   *  stored CinemaxX Würzburg's "Minions & Monster" as "Minions i Monster" and
+   *  served it to German users under a key no German cinema slot can produce.
+   *  Nothing configured is NOT ambiguous — a dev box or a spec gets Poland. */
+  private[movies] def rulesFor(ambiguous: List[Country], sole: Option[Country]): TitleNormalizer =
+    if (ambiguous.isEmpty) forCountry(sole.getOrElse(Country.default))
+    else sys.error(
+      s"No sole country: KINOWO_COUNTRIES names ${ambiguous.map(_.code).mkString(", ")} and " +
+      "KINOWO_COUNTRY does not disambiguate, so there is no one rule set this process " +
+      "can normalise titles under. Pass a TitleNormalizer explicitly instead of relying " +
+      "on TitleNormalizer.deployment.")
 
   // Precompiled hot-path patterns. `sanitize` / `stripPunct` run per movie ×
   // per cinema × per tick (plus every staging row and read-model projection);
