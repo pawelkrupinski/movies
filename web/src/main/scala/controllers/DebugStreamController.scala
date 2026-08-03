@@ -40,14 +40,19 @@ class DebugStreamController(
     DevMode.gate(environment)(Ok.chunked(eventSource(request)).as("text/event-stream"))
   }
 
+  // The country these SSE frames render under. /debug is a single-country page,
+  // so both frame renderers share one instance rather than each deriving its own.
+  private val frameCity: models.City = models.City.all.head
+  private val frameNormalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.forCountry(models.Country.of(frameCity))
+
   /** SSE frame for an upserted row: render `_debugRow` to HTML and ship it with
    *  the row's `_id` so the page can replace-or-insert it. The row's details cell
    *  ships empty (lazily fetched on expand), so no cinema-URL map is needed. */
   private[controllers] def upsertFrame(row: StoredMovieRecord): String = {
-    implicit val city: models.City = models.City.all.head
-    given normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.forCountry(models.Country.of(city))
-    val html = views.html._debugRow(row, normalizer).body
-    s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row), "html" -> html))}\n\n"
+    implicit val city: models.City = frameCity
+    val html = views.html._debugRow(row, frameNormalizer).body
+    s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row)(using frameNormalizer), "html" -> html))}\n\n"
   }
 
   /** SSE frame for a deleted row: just the `_id`, so the page drops it. */
@@ -57,7 +62,7 @@ class DebugStreamController(
   /** SSE frame for an upserted staging row: render `_stagingRow` and ship it with
    *  the row's `pending_movies` `_id` so the page can replace-or-insert it. */
   private[controllers] def stagingUpsertFrame(row: StagingRecord): String = {
-    val html = views.html._stagingRow(row).body
+    val html = views.html._stagingRow(row, frameNormalizer.sanitize(row.title)).body
     s"data: ${Json.stringify(Json.obj("type" -> "staging-upsert", "id" -> row.id, "html" -> html))}\n\n"
   }
 

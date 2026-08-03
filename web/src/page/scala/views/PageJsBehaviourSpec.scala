@@ -1,6 +1,6 @@
 package views
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import testsupport.TestMessages.given
 
@@ -147,7 +147,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         StagingRecord(Helios,              "Staging Film",  Some(2026), MovieRecord(detailPending = true)),
         StagingRecord(CinemaCityWroclavia, "Done Newcomer", Some(2025),
           MovieRecord(detailPending = false, tmdbId = Some(550))))
-      val debugHtml: String = views.html.debug(debugRows, debugStaging).body
+      val debugHtml: String = views.html.debug(debugRows, titleNormalizer, debugStaging).body
       // A purpose-built corpus row for the Cinemas-cell layout test: ONE venue
       // (CinemaCityWroclavia) listing the film under TWO titles → `cinemaData` =
       // 1 distinct cinema, `cinemaSlots` = 2 per-title slots, so `_debugRow`
@@ -159,7 +159,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         data = Map(
           CinemaShowing(CinemaCityWroclavia, "slots-film")     -> SourceData(title = Some("Slots Film")),
           CinemaShowing(CinemaCityWroclavia, "slots-film-org") -> SourceData(title = Some("Slots Film Org")))))
-      val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), Seq.empty).body
+      val slotsDebugHtml: String = views.html.debug(Seq(slotsRow), titleNormalizer, Seq.empty).body
       slotsRowId = StoredMovieRecord.idOf(slotsRow)
       // Change-stream frames for the no-op-guard test, rendered by the SAME
       // `_debugRow` partial DebugStreamController ships. One re-asserts `slotsRow`
@@ -167,12 +167,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // the other adds a SHOWTIME to an existing slot — a real change that leaves
       // the light data row byte-identical (same cinema count, same ids), so only
       // the details digest can tell the two apart.
-      slotsUnchangedFrame = views.html._debugRow(slotsRow).body
+      slotsUnchangedFrame = views.html._debugRow(slotsRow, titleNormalizer).body
       slotsChangedFrame = views.html._debugRow(slotsRow.copy(record = slotsRow.record.copy(
         data = slotsRow.record.data.map { case (showing, source) =>
           showing -> source.copy(showtimes = Seq(
             Showtime(LocalDateTime.of(2026, 6, 8, 18, 30), bookingUrl = Some("https://example.test/book"))))
-        }))).body
+        })), titleNormalizer).body
       // The queue snapshot the page polls (/debug/queue). "Staging Film"'s detail
       // fetch is being worked on (▶ running); "Done Newcomer"'s IMDb recovery
       // waits at place #1 (the only waiting task). The dedup keys mirror the real
@@ -214,7 +214,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if p.startsWith("/debug/details?") =>
             val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
             (debugRows :+ slotsRow).find(r => StoredMovieRecord.idOf(r) == id)
-              .map(r => views.html.debugDetails(r.title, r.year, r.record, Map.empty[String, String]).body)
+              .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String]).body)
               .getOrElse("")
         },
         // /debug/queue is JSON the page fetches and parses; served as such.

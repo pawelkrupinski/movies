@@ -154,7 +154,7 @@
    /debug/queue poll so the highest-in-queue film stays on top, and shows only the
    first `StagingRowLimit` films. Source rows are added/removed live off the
    `pending_movies` change stream; the header count is the film total. *@
-<h1>Pending enrichment (staging) · <span id="staging-count">@staging.map(r => TitleNormalizer.sanitize(r.title)).distinct.size</span> films</h1>
+<h1>Pending enrichment (staging) · <span id="staging-count">@staging.map(r => normalizer.sanitize(r.title)).distinct.size</span> films</h1>
 <div class="summary">Newcomer films incubating in <code>pending_movies</code> — folded across cinemas (Cinemas = how many report the film). Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage (Detail only once all cinemas are done), the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit films, re-sorted live by queue place (most imminent first).</div>
 <table id="staging-t">
   <thead>
@@ -162,7 +162,7 @@
   </thead>
   <tbody id="staging-src">
   @for(r <- staging) {
-    @_stagingRow(r)
+    @_stagingRow(r, normalizer.sanitize(r.title))
   }
   </tbody>
   <tbody id="staging-folded"></tbody>

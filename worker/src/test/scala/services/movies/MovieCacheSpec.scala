@@ -1464,7 +1464,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("B", Some(2026))).get.cinemaData should not contain key (Multikino)
   }
 
-  // Cross-script protection now comes from `titleNormalizer.sanitize` keeping
+  // Cross-script protection now comes from `TitleNormalizer.sanitize` keeping
   // Unicode letters: Cyrillic and Latin titles produce different normalised
   // forms, so the redirect filter can't merge them. No explicit cross-script
   // filter on `put` is needed — and `cinemaTitles` itself is derived from

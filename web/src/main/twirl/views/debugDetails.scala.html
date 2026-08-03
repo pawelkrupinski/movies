@@ -13,7 +13,7 @@
      (`sanitize(title)|year`). Every cinema spelling of a film normalises to
      this, so it's what tells you whether two rows are the same entry. *@
   <dt>cacheKey</dt>
-  <dd>@TitleNormalizer.sanitize(title)@year.map("|" + _).getOrElse("")</dd>
+  <dd>@normalizer.sanitize(title)@year.map("|" + _).getOrElse("")</dd>
 
   <dt>displayTitle</dt>
   <dd>@e.displayTitle(title, normalizer)</dd>

@@ -1,6 +1,5 @@
 @import services.staging.StagingRecord
-@import services.movies.TitleNormalizer
-@(r: StagingRecord)
+@(r: StagingRecord, anchor: String)
 @*
  * Hidden per-cinema SOURCE row for the /debug staging table — a data carrier,
  * not a displayed row. The visible table folds these by film (`data-anchor` =
@@ -18,7 +17,7 @@
  *@
 <tr class="data" hidden
     data-row-id="@r.id"
-    data-anchor="@TitleNormalizer.sanitize(r.title)"
+    data-anchor="@anchor"
     data-cinema="@r.cinema.displayName"
     data-title="@r.title"
     data-year="@r.year.map(_.toString).getOrElse("")"
