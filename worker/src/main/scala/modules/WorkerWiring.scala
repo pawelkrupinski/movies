@@ -749,6 +749,12 @@ class WorkerWiring(
   lazy val cinemaScrapeCensus: services.metrics.CinemaScrapeCensus =
     new services.metrics.CinemaScrapeCensus(cinemaScrapers, freshnessStore,
       workerMetrics.scrapeOldestAgeGauge, workerMetrics.scrapeNeverScrapedGauge, country)
+  // The other half of that picture: cinemas that scrape FINE and produce nothing.
+  // A drifted selector keeps its scrape fresh, so the census above reads it as
+  // healthy — only the archive remembers when a cinema last had real content.
+  lazy val cinemaContentCensus: services.metrics.CinemaContentCensus =
+    new services.metrics.CinemaContentCensus(cinemaScrapers, scrapeArchive,
+      workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, country)
   // Metered (counts every enqueue attempt, incl. cache-served duplicates) wraps the
   // local dedup cache (skips the redundant enqueue round-trip) wraps Mongo.
   lazy val taskQueue: TaskQueue =
@@ -1325,6 +1331,7 @@ class WorkerWiring(
     ratingRunCensus.start()
     // Census the roster's worst-case scrape staleness (off-band, in-memory scan).
     cinemaScrapeCensus.start()
+    cinemaContentCensus.start()
   }
 
   /** Event-cascade drain order, producer→consumer (see monolith comment). Only
@@ -1335,6 +1342,7 @@ class WorkerWiring(
   def stop(): Unit = {
     envConfigService.stop()
     cinemaScrapeCensus.stop()
+    cinemaContentCensus.stop()
     ratingRunCensus.stop()
     corpusScan.stop()
     // jvmVitals is process-level (shared WorkerMetrics bundle); WorkerMain stops it.

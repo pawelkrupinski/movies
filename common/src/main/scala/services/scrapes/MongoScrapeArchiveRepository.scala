@@ -7,7 +7,7 @@ import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.codecs.Macros
-import org.mongodb.scala.model.{Filters, Indexes, Updates}
+import org.mongodb.scala.model.{Filters, Indexes, Projections, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import services.movies.JavaTimeCodecs
@@ -60,6 +60,11 @@ case class StoredScrapeDto(
   lastBarren:      Option[BarrenAttemptDto]
 )
 
+/** The projection the barren census reads: a cinema and when it last produced
+ *  films. Its own DTO because decoding `StoredScrapeDto` would pull every archived
+ *  film along with the one timestamp wanted. */
+case class ContentStampDto(_id: String, scrapedAt: Option[Instant])
+
 object StoredScrapeDto {
 
   def toFilmDto(f: CinemaMovie): ArchivedFilmDto =
@@ -106,6 +111,7 @@ object ScrapeArchiveCodecs {
   val registry: CodecRegistry = fromRegistries(
     fromCodecs(JavaTimeCodecs.localDateTime),
     fromProviders(
+      Macros.createCodecProviderIgnoreNone[ContentStampDto](),
       Macros.createCodecProviderIgnoreNone[Showtime](),
       Macros.createCodecProviderIgnoreNone[Movie](),
       Macros.createCodecProviderIgnoreNone[ArchivedFilmDto](),
@@ -202,6 +208,46 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
    * emptiness themselves — `CountryConvergenceBehaviour` refuses to seed a corpus
    * from one.
    */
+  /** Paged exactly like `findAll` and for the same reason — the row COUNT, not
+   *  the row size, is what recurses the driver's completion chain into a
+   *  StackOverflowError — but projected down to `_id` + `scrapedAt` so a reading
+   *  that only wants timestamps doesn't drag every archived film across with it.
+   *
+   *  An incomplete scan yields an EMPTY map, never the rows it managed to get.
+   *  The caller counts cinemas that have produced nothing; a short read would
+   *  hand it a list of cinemas that merely weren't fetched, and it would publish
+   *  that as an outage. */
+  def lastContentAt(): Map[String, Option[Instant]] = coll.toSeq.flatMap { c =>
+    val stamps    = c.withDocumentClass[ContentStampDto]()
+    val collected = Seq.newBuilder[ContentStampDto]
+    val complete  = services.movies.KeysetScan.scan[ContentStampDto](
+      label          = "ScrapeArchiveRepository content-stamp batch",
+      batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
+      maxAttempts    = 5,
+      initialBackoff = 2.seconds,
+      keyOf          = _._id,
+      fetchPage      = (afterId, limit) => {
+        val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+        Await.result(
+          stamps.find(filter)
+            .projection(Projections.include("scrapedAt"))
+            .sort(org.mongodb.scala.model.Sorts.ascending("_id"))
+            .limit(limit).toFuture(),
+          60.seconds)
+      },
+      onIncomplete   = exception =>
+        logger.warn(s"ScrapeArchiveRepository.lastContentAt incomplete after retries: " +
+          s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
+    )(batch => collected ++= batch)
+
+    if (complete) collected.result().map(d => d._id -> d.scrapedAt)
+    else {
+      logger.warn(s"ScrapeArchiveRepository.lastContentAt discarding ${collected.result().size} row(s) from an " +
+        "incomplete scan — returning empty so unfetched cinemas are never counted as barren")
+      Seq.empty
+    }
+  }.toMap
+
   def findAll(): Seq[ArchivedScrape] = coll.toSeq.flatMap { c =>
     val collected = Seq.newBuilder[StoredScrapeDto]
     val complete  = services.movies.KeysetScan.scan[StoredScrapeDto](

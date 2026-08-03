@@ -108,6 +108,39 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers {
     } finally purge()
   }
 
+  // The barren census reads through this projection rather than `findAll`, because
+  // an ArchivedScrape carries its whole parsed listing and the census wants one
+  // instant per cinema. Worth an integration test because the projection is real
+  // BSON: a mis-named field decodes to None, which the census would then publish as
+  // "this cinema has never produced anything".
+  it should "project the last content timestamp without decoding the archived films" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
+      repository.lastContentAt().get(Multikino.displayName).flatten shouldBe Some(Noon)
+    } finally purge()
+  }
+
+  it should "keep reporting the last CONTENT timestamp after the cinema goes blank" in {
+    // The whole point: a cinema that keeps scraping cleanly and returning nothing
+    // must keep aging from its last real listing, not reset to the blank attempt.
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(scraped(Morning, Seq(minimal)))
+      repository.record(blank(Noon))
+      repository.record(blank(Evening))
+      repository.lastContentAt().get(Multikino.displayName).flatten shouldBe Some(Morning)
+    } finally purge()
+  }
+
+  it should "report None for a cinema that has only ever come back blank" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(blank(Noon))
+      repository.lastContentAt().get(Multikino.displayName) shouldBe Some(None)
+    } finally purge()
+  }
+
   it should "replace the row on re-scrape rather than accumulate" in {
     val repository = new MongoScrapeArchiveRepository(Some(db))
     try {

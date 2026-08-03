@@ -133,6 +133,21 @@ trait ScrapeArchiveRepository {
    *  few thousand rows, so this is a bounded read, unlike the film collections. */
   def findAll(): Seq[ArchivedScrape]
 
+  /** When each archived cinema last produced ANY films, keyed by display name.
+   *  Absent from the map, or `None`, both mean the same thing: no content-bearing
+   *  scrape has ever been recorded for it.
+   *
+   *  Deliberately not `findAll().map(...)`. An `ArchivedScrape` carries its entire
+   *  parsed listing, so decoding every row to read one timestamp each hauls the
+   *  whole corpus across the wire to answer a question about a few hundred
+   *  instants — on the country whose archive is largest, exactly the read that has
+   *  already crashed this collection once.
+   *
+   *  Empty on a read that could not be completed, NOT a partial map: the caller is
+   *  measuring which cinemas have gone quiet, and a short read would hand it a
+   *  pile of cinemas that merely weren't fetched. A failed read is not data. */
+  def lastContentAt(): Map[String, Option[Instant]]
+
   def close(): Unit = ()
 }
 
@@ -165,6 +180,7 @@ object ScrapeArchiveRepository {
     protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit    = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
     def findAll(): Seq[ArchivedScrape]               = Seq.empty
+    def lastContentAt(): Map[String, Option[Instant]] = Map.empty
   }
 }
 
@@ -193,4 +209,9 @@ class InMemoryScrapeArchiveRepository extends ScrapeArchiveRepository {
 
   def findAll(): Seq[ArchivedScrape] =
     byCinema.synchronized(byCinema.values.toSeq)
+
+  // No projection to make here — the rows are already in memory, so reading the
+  // stamp off each is the whole job. The Mongo one earns its own query.
+  def lastContentAt(): Map[String, Option[Instant]] =
+    byCinema.synchronized(byCinema.view.mapValues(_.contentAt).toMap)
 }
