@@ -4,13 +4,13 @@ import models.{Cinema, CinemaShowing, Helios, Multikino, MovieRecord, Source, So
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.InMemoryFreshnessStore
-import services.movies.{MovieService, TitleNormalizer}
+import services.movies.TitleNormalizer
 import services.titlerules.{TitleRules, TitleRuleSet}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.cinemas.FakeDetailEnricher
 import tools.HttpStatusException
 import services.cinemas.pl.FilmwebShowtimesClient
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 /** Unit specs for the staging enrichment steps factored out of the old
  *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the
@@ -226,7 +226,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
     s.fetchDetailFor(Helios, anchor); s.resolveAndStamp(anchor)
     s.recoverImdbFor(anchor)
-    searchedFor shouldBe Some(MovieService.apiQuery("Pucio"))
+    searchedFor shouldBe Some(titleNormalizer.apiQuery("Pucio"))
     repository.findAll().head.record.imdbId shouldBe Some("tt42003604")
   }
 
@@ -246,7 +246,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.tmdbNoMatch shouldBe true
     s.recoverImdbFor(anchor)
 
-    searchedFor shouldBe Some(MovieService.apiQuery("Stop Making Sense"))
+    searchedFor shouldBe Some(titleNormalizer.apiQuery("Stop Making Sense"))
     repository.findAll().head.record.imdbId shouldBe Some("tt0088178")
     // The no-match is LIFTED, so the reaper routes the film back through ResolveTmdb
     // where the id becomes a tmdbId. Leaving it concluded would fold the film with an

@@ -1,6 +1,7 @@
 package scripts
 
-import services.movies.{MongoMovieRepository, MovieService, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, StoredMovieRecord}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Audit duplicate rows across alternative merge keys.
@@ -45,9 +46,9 @@ object DuplicateAudit {
 
     // Helpers — the sanitized title is the same form the production documentId
     // already uses, just without the |year suffix.
-    def titleKey(t: String): String = MovieService.normalize(t)
+    def titleKey(t: String): String = titleNormalizer.sanitize(t)
     def directorKey(d: Seq[String]): String =
-      if (d.nonEmpty) MovieService.normalize(d.mkString(", ")) else ""
+      if (d.nonEmpty) titleNormalizer.sanitize(d.mkString(", ")) else ""
 
     auditStrategy("Strategy 1: by sanitized title alone (drop year)", rows)(r => titleKey(r.title))
     auditStrategy("Strategy 2: by (sanitized title, normalized director)", rows) { r =>

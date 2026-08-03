@@ -2,7 +2,6 @@ package services.cinemas.pl
 
 import tools.{HeliosFetch, HttpFetch, ParallelDetailFetch}
 import models._
-import services.movies.MovieService
 import play.api.libs.json._
 import services.cinemas.common.CinemaScraper
 import services.cinemas.pl.HeliosNuxt.{BookingBase, cleanTitle}
@@ -341,7 +340,7 @@ class HeliosClient(
   /** Collapse entries that are the same film listed twice in one scrape.
    *
    *  Helios surfaces a film under more than one raw title that the cache's row
-   *  identity (`MovieService.normalize`) treats as one:
+   *  identity (`TitleNormalizer.sanitize`) treats as one:
    *    - a `/wydarzenie` event page and a `/filmy` film page differing only in
    *      case ("Drzewo Magii" vs "Drzewo magii"), and
    *    - a REST-only entry whose title carries a stray trailing space
@@ -360,7 +359,7 @@ class HeliosClient(
       (if (m.filmUrl.exists(_.contains("/filmy/"))) 4 else 0) +
         (if (m.filmUrl.isDefined) 2 else 0) +
         (if (m.movie.releaseYear.isDefined) 1 else 0)
-    movies.groupBy(m => MovieService.normalize(m.movie.title)).values.toSeq.map { group =>
+    movies.groupBy(m => titles.sanitize(m.movie.title)).values.toSeq.map { group =>
       group.reduce { (a, b) =>
         val (primary, other) = if (rank(a) >= rank(b)) (a, b) else (b, a)
         primary.copy(

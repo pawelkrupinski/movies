@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.MovieService
 import tools.RealHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class MovieServiceSpec extends AnyFlatSpec with Matchers {
 
@@ -15,39 +16,39 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // whitespace or punctuation.
 
   "normalize" should "lowercase the input and remove whitespace/punctuation" in {
-    MovieService.normalize("Drzewo Magii") shouldBe "drzewomagii"
+    titleNormalizer.sanitize("Drzewo Magii") shouldBe "drzewomagii"
   }
 
   it should "strip Polish diacritics so two spellings hit the same key" in {
-    MovieService.normalize("Łzy Morza")    shouldBe "lzymorza"
-    MovieService.normalize("Łzy Morza")    shouldBe MovieService.normalize("lzy morza")
-    MovieService.normalize("Diabeł")       shouldBe "diabel"
-    MovieService.normalize("Sprawiedliwość owiec") shouldBe "sprawiedliwoscowiec"
+    titleNormalizer.sanitize("Łzy Morza")    shouldBe "lzymorza"
+    titleNormalizer.sanitize("Łzy Morza")    shouldBe titleNormalizer.sanitize("lzy morza")
+    titleNormalizer.sanitize("Diabeł")       shouldBe "diabel"
+    titleNormalizer.sanitize("Sprawiedliwość owiec") shouldBe "sprawiedliwoscowiec"
   }
 
   it should "collapse runs of whitespace and trim" in {
-    MovieService.normalize("  Drzewo   Magii  ") shouldBe "drzewomagii"
+    titleNormalizer.sanitize("  Drzewo   Magii  ") shouldBe "drzewomagii"
   }
 
   it should "preserve Cyrillic letters but drop the Cyrillic-side whitespace, keying the numeral in Arabic" in {
     // Non-Latin scripts keep their letters (so the row's documentId isn't empty);
     // the Arabic '2' is kept as Arabic (Roman folds onto it, not the reverse).
-    MovieService.normalize("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "дияволноситьпрада2"
+    titleNormalizer.sanitize("ДИЯВОЛ НОСИТЬ ПРАДА 2") shouldBe "дияволноситьпрада2"
   }
 
   it should "fold colon/space punctuation differences to the same key" in {
     // This is what gives "Prady 2" and "Prady II" the same documentId: the Roman
     // form folds onto the Arabic one, so the key matches the spelling cinemas use.
-    MovieService.normalize("Top Gun Maverick")  shouldBe "topgunmaverick"
-    MovieService.normalize("Top Gun: Maverick") shouldBe "topgunmaverick"
-    MovieService.normalize("Mortal Kombat 2")   shouldBe "mortalkombat2"
-    MovieService.normalize("Mortal Kombat II")  shouldBe "mortalkombat2"
+    titleNormalizer.sanitize("Top Gun Maverick")  shouldBe "topgunmaverick"
+    titleNormalizer.sanitize("Top Gun: Maverick") shouldBe "topgunmaverick"
+    titleNormalizer.sanitize("Mortal Kombat 2")   shouldBe "mortalkombat2"
+    titleNormalizer.sanitize("Mortal Kombat II")  shouldBe "mortalkombat2"
   }
 
   it should "fold the '& vs i' / 'Gwiezdne Wojny:' display-merge rules into the key" in {
-    val k1 = MovieService.normalize("Mandalorian & Grogu")
-    val k2 = MovieService.normalize("Mandalorian i Grogu")
-    val k3 = MovieService.normalize("Gwiezdne Wojny: Mandalorian i Grogu")
+    val k1 = titleNormalizer.sanitize("Mandalorian & Grogu")
+    val k2 = titleNormalizer.sanitize("Mandalorian i Grogu")
+    val k3 = titleNormalizer.sanitize("Gwiezdne Wojny: Mandalorian i Grogu")
     k1 shouldBe k2
     k2 shouldBe k3
   }
@@ -59,19 +60,19 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // the row as a no-match — the order-dependent root cause of the "Zawieście
   // czerwone latarnie" (Zhang Yimou) snapshot fragmentation.
   "directorNameMatches" should "match the same name in swapped token order (Yimou Zhang ↔ Zhang Yimou)" in {
-    assert(MovieService.directorNameMatches("Yimou Zhang", "Zhang Yimou"))
-    assert(MovieService.directorNameMatches("Zhang Yimou", "Yimou Zhang"))
+    assert(MovieService.directorNameMatches("Yimou Zhang", "Zhang Yimou", titleNormalizer))
+    assert(MovieService.directorNameMatches("Zhang Yimou", "Yimou Zhang", titleNormalizer))
   }
 
   it should "tolerate diacritics and a comma-free single surname (partial name)" in {
-    assert(MovieService.directorNameMatches("Helgestad", "Asgeir Helgestad"))
-    assert(MovieService.directorNameMatches("Pedro Almodovar", "Pedro Almodóvar"))
+    assert(MovieService.directorNameMatches("Helgestad", "Asgeir Helgestad", titleNormalizer))
+    assert(MovieService.directorNameMatches("Pedro Almodovar", "Pedro Almodóvar", titleNormalizer))
   }
 
   it should "reject two genuinely different directors" in {
-    assert(!MovieService.directorNameMatches("Christopher Nolan", "Steven Spielberg"))
+    assert(!MovieService.directorNameMatches("Christopher Nolan", "Steven Spielberg", titleNormalizer))
     // Shares one token but not the other — not the same person.
-    assert(!MovieService.directorNameMatches("John Smith", "John Doe"))
+    assert(!MovieService.directorNameMatches("John Smith", "John Doe", titleNormalizer))
   }
 
   // ── Cross-variant lookups via the stable documentId ──────────────────────────
@@ -116,29 +117,29 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   }
 
   "apiQuery" should "strip a Kino Apollo Cykl prefix with straight quotes" in {
-    MovieService.apiQuery("""Cykl "Kultowa klasyka" - Zawieście czerwone latarnie""") shouldBe
+    titleNormalizer.apiQuery("""Cykl "Kultowa klasyka" - Zawieście czerwone latarnie""") shouldBe
       "Zawieście czerwone latarnie"
   }
 
   it should "strip a Cykl prefix with Polish curly quotes" in {
-    MovieService.apiQuery("""Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)""") shouldBe
+    titleNormalizer.apiQuery("""Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)""") shouldBe
       "Człowiek z marmuru"
   }
 
   it should "strip a bilingual ' / English Title (year)' suffix" in {
-    MovieService.apiQuery("Bez znieczulenia / Rough Treatment (1978)") shouldBe "Bez znieczulenia"
+    titleNormalizer.apiQuery("Bez znieczulenia / Rough Treatment (1978)") shouldBe "Bez znieczulenia"
   }
 
   it should "strip a 'z autorską narracją <person>' narration-event suffix (en-dash or bare)" in {
     // A live-narrated special screening: the suffix must not reach TMDB, or the row
     // resolves order-dependently (only when a sibling cinema's bare-title hint had
     // already merged in) — the Klątwa doliny węży split.
-    MovieService.apiQuery("Klątwa doliny węży – z autorską narracją Łony") shouldBe "Klątwa doliny węży"
-    MovieService.apiQuery("\"Klątwa doliny węży\" z autorską narracją Łony") shouldBe "\"Klątwa doliny węży\""
+    titleNormalizer.apiQuery("Klątwa doliny węży – z autorską narracją Łony") shouldBe "Klątwa doliny węży"
+    titleNormalizer.apiQuery("\"Klątwa doliny węży\" z autorską narracją Łony") shouldBe "\"Klątwa doliny węży\""
   }
 
   it should "strip a 'z prelekcją' lecture-event suffix" in {
-    MovieService.apiQuery("Człowiek z marmuru z prelekcją filmoznawcy") shouldBe "Człowiek z marmuru"
+    titleNormalizer.apiQuery("Człowiek z marmuru z prelekcją filmoznawcy") shouldBe "Człowiek z marmuru"
   }
 
   it should "strip a ' + prelekcja…' event suffix for upstream lookups" in {
@@ -146,7 +147,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     // lecture + meeting). The display row keeps it (sanitize keeps the suffix)
     // so it stays its own card, but the external-API query drops it so both
     // rows enrich off the same base title. See TitleNormalizerSpec for the rationale.
-    MovieService.apiQuery("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem") shouldBe
+    titleNormalizer.apiQuery("Znaki Pana Śliwki + prelekcja i spotkanie z Damianem Dudkiem") shouldBe
       "Znaki Pana Śliwki"
   }
 
@@ -154,18 +155,18 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // titles to before the first `+`, so "Orwell: 2 + 2 = 5" became "Orwell: 2"
   // and TMDB found a different film. Require a letter after the `+`.
   it should "leave 'Orwell: 2 + 2 = 5' intact (the + is part of the title, not an event suffix)" in {
-    MovieService.apiQuery("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
+    titleNormalizer.apiQuery("Orwell: 2 + 2 = 5") shouldBe "Orwell: 2 + 2 = 5"
   }
 
   it should "leave clean titles untouched" in {
-    MovieService.apiQuery("Drzewo Magii") shouldBe "Drzewo Magii"
-    MovieService.apiQuery("Mortal Kombat II") shouldBe "Mortal Kombat II"
+    titleNormalizer.apiQuery("Drzewo Magii") shouldBe "Drzewo Magii"
+    titleNormalizer.apiQuery("Mortal Kombat II") shouldBe "Mortal Kombat II"
   }
 
   it should "leave dashes inside the title alone (e.g. 're-wizje' inside the cycle name)" in {
     // The Cykl regex requires spaces around the dash separator, so a dash
     // inside the cycle name's quoted text doesn't trigger an early cut.
-    MovieService.apiQuery("""Cykl „Wajda: re-wizje" - Brzezina / The Birch Wood (1970)""") shouldBe
+    titleNormalizer.apiQuery("""Cykl „Wajda: re-wizje" - Brzezina / The Birch Wood (1970)""") shouldBe
       "Brzezina"
   }
 
@@ -176,48 +177,48 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // under the original film, so we strip the decoration for the lookup key.
 
   it should "strip an English anniversary suffix" in {
-    MovieService.apiQuery("Top Gun 40th Anniversary") shouldBe "Top Gun"
+    titleNormalizer.apiQuery("Top Gun 40th Anniversary") shouldBe "Top Gun"
   }
 
   it should "strip a Polish 'rocznica' suffix with a pipe separator" in {
-    MovieService.apiQuery("Top gun | 40 rocznica") shouldBe "Top gun"
+    titleNormalizer.apiQuery("Top gun | 40 rocznica") shouldBe "Top gun"
   }
 
   it should "strip a Polish 'Rocznica' suffix with dot separators" in {
-    MovieService.apiQuery("Kosmiczny mecz. 30. Rocznica") shouldBe "Kosmiczny mecz"
+    titleNormalizer.apiQuery("Kosmiczny mecz. 30. Rocznica") shouldBe "Kosmiczny mecz"
   }
 
   it should "leave a standalone 'Rocznica' title untouched (it's a real Polish film)" in {
-    MovieService.apiQuery("Rocznica") shouldBe "Rocznica"
+    titleNormalizer.apiQuery("Rocznica") shouldBe "Rocznica"
   }
 
   it should "leave 'Top Gun: Maverick' untouched (it's a sequel, not an anniversary)" in {
-    MovieService.apiQuery("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
+    titleNormalizer.apiQuery("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
   }
 
   // ── Restoration / remaster decoration ─────────────────────────────────────
 
   it should "strip a Polish remaster suffix with a period separator" in {
-    MovieService.apiQuery("Rejs. Wersja zremasterowana") shouldBe "Rejs"
+    titleNormalizer.apiQuery("Rejs. Wersja zremasterowana") shouldBe "Rejs"
     // For the real Multikino 'Żywot Briana' rows the studio-attribution rule
     // (xtra-zywot-briana-monty-suffix) folds the query further to the bare film
     // (TMDB 583, unique), so apiQuery resolves the whole decorated title at once.
-    MovieService.apiQuery("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana") shouldBe
+    titleNormalizer.apiQuery("Żywot Briana Grupy Monty Pythona. Wersja zremasterowana") shouldBe
       "Żywot Briana"
   }
 
   it should "strip a Polish 'wersja oryginalna' suffix with an en-dash separator" in {
-    MovieService.apiQuery("Moulin Rouge! – wersja oryginalna") shouldBe "Moulin Rouge!"
-    MovieService.apiQuery("Romeo i Julia – wersja oryginalna") shouldBe "Romeo i Julia"
+    titleNormalizer.apiQuery("Moulin Rouge! – wersja oryginalna") shouldBe "Moulin Rouge!"
+    titleNormalizer.apiQuery("Romeo i Julia – wersja oryginalna") shouldBe "Romeo i Julia"
   }
 
   it should "strip a hypothetical English '4K Restored' suffix" in {
-    MovieService.apiQuery("Drama 4K Restored")   shouldBe "Drama"
-    MovieService.apiQuery("Blade Runner 4K Remaster") shouldBe "Blade Runner"
+    titleNormalizer.apiQuery("Drama 4K Restored")   shouldBe "Drama"
+    titleNormalizer.apiQuery("Blade Runner 4K Remaster") shouldBe "Blade Runner"
   }
 
   it should "leave 'X-Men 2' / 'Mortal Kombat II' untouched (numeric sequels, not anniversaries)" in {
-    MovieService.apiQuery("X-Men 2")           shouldBe "X-Men 2"
-    MovieService.apiQuery("Mortal Kombat II")  shouldBe "Mortal Kombat II"
+    titleNormalizer.apiQuery("X-Men 2")           shouldBe "X-Men 2"
+    titleNormalizer.apiQuery("Mortal Kombat II")  shouldBe "Mortal Kombat II"
   }
 }

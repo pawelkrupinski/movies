@@ -3,7 +3,8 @@ package services.tasks
 import models.{Country, MovieRecord}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.movies.{CacheKey, EnrichmentRetrigger, MovieService, RetriggerKind}
+import services.movies.{CacheKey, EnrichmentRetrigger, RetriggerKind}
+import services.movies.TitleNormalizer
 
 /**
  * Turns the cache's per-case merge retriggers into worker TASKS. When a merge
@@ -36,7 +37,11 @@ class QueueEnrichmentRetrigger(
   // [[RatingEnqueuer]]. Defaults to Poland so tests and single-country paths keep
   // the historical (Filmweb-on) behaviour; the worker wiring passes the actual
   // per-country value.
-  country: Country = Country.default
+  country: Country = Country.default,
+  // The country's title rules. Required rather than derived from `country`:
+  // Scala forbids a default that references an earlier parameter, and deriving
+  // one silently would let a non-default country key through Poland's rules.
+  normalizer: TitleNormalizer
 ) extends EnrichmentRetrigger with Logging {
 
   // The rating task types whose handler THIS country wires — the single source of
@@ -90,5 +95,5 @@ class QueueEnrichmentRetrigger(
    *  `MovieService.publishTmdbOutcome`: the row's stable searchTitle, else its
    *  TMDB original title, else the api-query form of the clean title. */
   private def searchTitleOf(key: CacheKey, record: MovieRecord): String =
-    record.searchTitle.orElse(record.originalTitle).getOrElse(MovieService.searchQuery(key.cleanTitle))
+    record.searchTitle.orElse(record.originalTitle).getOrElse(normalizer.searchQuery(key.cleanTitle))
 }

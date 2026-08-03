@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{Country, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -15,7 +15,7 @@ class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
   private def fixtureFor(country: Country) = {
     val queue   = new InMemoryTaskQueue
     val fresh   = new InMemoryFreshnessStore
-    val trigger = new QueueEnrichmentRetrigger(queue, fresh, country)
+    val trigger = new QueueEnrichmentRetrigger(queue, fresh, country, titleNormalizer)
     (queue, fresh, trigger)
   }
 

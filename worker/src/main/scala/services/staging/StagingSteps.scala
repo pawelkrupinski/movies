@@ -3,7 +3,7 @@ package services.staging
 import models.{CinemaShowing, MovieRecord, Source, SourceData, Tmdb}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.movies.{MovieRecordMerge, MovieService, TitleNormalizer}
+import services.movies.{MovieRecordMerge, TitleNormalizer}
 import services.resolution.ResolutionKeys
 import services.tasks.StagingTaskKeys
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
@@ -246,7 +246,7 @@ class StagingSteps(
     // ("Kicia Kocia w przedszkolu" 2024) whose year matches none of them.
     fresh.filter(_.record.tmdbId.isDefined).groupBy(_.record.tmdbId).values.foreach { group =>
       group.find(_.record.imdbId.isEmpty).foreach { needy =>
-        val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
+        val search = needy.record.originalTitle.getOrElse(stagingRepository.normalizer.apiQuery(needy.title))
         val years  = group.flatMap(_.year).distinct.sorted
         val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
         tries.iterator.flatMap(y => recoverImdbId(search, y, needy.record)).nextOption().foreach { id =>
@@ -282,7 +282,7 @@ class StagingSteps(
         .filter(r => r.record.tmdbId.isEmpty && r.record.imdbId.isEmpty)
         .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     unidentified.headOption.foreach { needy =>
-      val search = needy.record.originalTitle.getOrElse(MovieService.apiQuery(needy.title))
+      val search = needy.record.originalTitle.getOrElse(stagingRepository.normalizer.apiQuery(needy.title))
       val years  = unidentified.flatMap(_.year).distinct.sorted
       val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
       tries.iterator.flatMap(y => recoverImdbId(search, y, needy.record)).nextOption().foreach { id =>

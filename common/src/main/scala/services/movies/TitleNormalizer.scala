@@ -65,6 +65,18 @@ class TitleNormalizer(val rules: TitleRuleSet) {
    *  `FilmCanonicalizer.groupByFilm`'s search-title edge. */
   def apiQuery(display: String): String = rules.search(display)
 
+  /** The external-search form of a title: `apiQuery` (decoration strip) over the
+   *  banner-aware re-cased title, so the query a resolver sends is normalised
+   *  regardless of how a cinema spelled it (ALL-CAPS, all-lower, mixed). A pure
+   *  function of its input — no scrape-order dependence — and, applied to a row's
+   *  canonical `cleanTitle`, it reproduces the cased query the per-client casing
+   *  used to produce (now that cinema slots keep their raw spelling).
+   *
+   *  Lives here rather than on `MovieService` because it composes two of THIS
+   *  instance's rules; a caller holding the normalizer should not have to route
+   *  through the enrichment service to combine them. */
+  def searchQuery(title: String): String = apiQuery(recase(title))
+
   /** Display-side casing applied to EVERY scraper's title at the scrape choke
    *  point (`MovieCache.recordCinemaScrape`). Banner-aware: when a leading
    *  banner rule matches (any programme prefix, the Cykl prefix, …), split at

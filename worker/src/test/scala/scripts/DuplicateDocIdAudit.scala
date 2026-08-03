@@ -2,12 +2,12 @@ package scripts
 
 import org.mongodb.scala.{MongoClient, ObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document
-import services.movies.MovieService
 import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Diagnostic: list every `(title, year)` in `movies` that has more than one
@@ -50,7 +50,7 @@ object DuplicateDocumentIdAudit {
     titleYearDupes.toSeq
       .sortBy { case ((t, _), _) => t.toLowerCase }
       .foreach { case ((title, year), documents) =>
-        val expectedId = s"${MovieService.normalize(title)}|${year.map(_.toString).getOrElse("")}"
+        val expectedId = s"${titleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
         println(s"── '$title' (${year.getOrElse("—")})  → documentId-now-would-be: $expectedId")
         documents.foreach { d =>
           val id     = Try(d.get("_id").get.asString().getValue).toOption.getOrElse("?")
@@ -82,7 +82,7 @@ object DuplicateDocumentIdAudit {
         val id    = Try(d.get("_id").get.asString().getValue).toOption.getOrElse("?")
         val title = Try(d.get("title").get.asString().getValue).toOption.getOrElse("?")
         val year  = Option(d.get("year").orNull).flatMap(v => Try(v.asInt32().getValue).toOption)
-        val expectedId = s"${MovieService.normalize(title)}|${year.map(_.toString).getOrElse("")}"
+        val expectedId = s"${titleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
         val matches = if (id == expectedId) "  (matches documentId formula)" else "  (MISMATCH — delete by _id wouldn't find this)"
         println(s"    _id=$id  title='$title' year=${year.getOrElse("—")}  expected=$expectedId$matches")
       }

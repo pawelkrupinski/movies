@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import services.movies.{CacheKey, MovieCache, MovieService}
+import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
@@ -66,7 +66,7 @@ class MetascoreRatings(
       // `apiQuery` strips accessibility-programme decoration so an "Kino
       // bez barier: Arco (AD)" row queries MC as just "Arco". Cache key
       // stays decorated so the accessibility screening keeps its own row.
-      val cleanLookup = MovieService.searchQuery(key.cleanTitle)
+      val cleanLookup = cache.normalizer.searchQuery(key.cleanTitle)
       val linkTitle   = e.originalTitle.getOrElse(cleanLookup)
       val mcFallback  = if (linkTitle != cleanLookup) Some(cleanLookup) else None
       val details    = tmdb.details(tmdbId)

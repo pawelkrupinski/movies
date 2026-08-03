@@ -2,7 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import models.{Filmweb, Source, SourceData}
-import services.movies.{CacheKey, EmbeddedYear, MovieCache, MovieService}
+import services.movies.{CacheKey, EmbeddedYear, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
@@ -148,7 +148,7 @@ class FilmwebRatings(
         None
     }
     if (e.imdbId.isEmpty)
-      onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
+      onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(cache.normalizer.apiQuery(key.cleanTitle)))
     change
   }
 
@@ -172,7 +172,7 @@ class FilmwebRatings(
         // so a film TMDB missed can now be found via Filmweb's data.
         cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
         if (e.imdbId.isEmpty)
-          onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(MovieService.apiQuery(key.cleanTitle)))
+          onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(cache.normalizer.apiQuery(key.cleanTitle)))
         if (changed) fw.rating.map(RatingDisplay.label) else None
       case None =>
         logger.info(s"Filmweb: $label → no match")
@@ -208,7 +208,7 @@ class FilmwebRatings(
     // "Kino bez barier: Freak Show (AD)" queries upstream as just
     // "Freak Show". Cache key keeps the full form so this row stays
     // distinct from the DKF / regular screening of the same film.
-    val linkTitle = MovieService.searchQuery(key.cleanTitle)
+    val linkTitle = cache.normalizer.searchQuery(key.cleanTitle)
     val details   = e.tmdbId.flatMap(tmdb.details)
     val fallback  = e.originalTitle
       .orElse(details.flatMap(_.englishTitle))

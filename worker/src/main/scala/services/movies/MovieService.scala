@@ -451,7 +451,7 @@ class MovieService(
       // particular) land an imdbId → rating AND a resolved year that stabilises its
       // read-model key, instead of waiting hours for the sweep. The id is the only
       // effect; ratings follow once the reaper sees the now-eligible row.
-      val searchTitle = record.searchTitle.orElse(record.originalTitle).getOrElse(MovieService.searchQuery(key.cleanTitle))
+      val searchTitle = record.searchTitle.orElse(record.originalTitle).getOrElse(cache.normalizer.searchQuery(key.cleanTitle))
       logger.info(s"TMDB: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match; publishing ImdbIdMissing(search='$searchTitle') to attempt id recovery")
       bus.publish(ImdbIdMissing(key.cleanTitle, key.year, searchTitle))
     }
@@ -472,7 +472,7 @@ class MovieService(
         // ship an originalTitle, so accessibility-decorated rows ("Kino bez
         // barier: Freak Show (AD)") query IMDb as just "Freak Show". TMDB's
         // originalTitle, when present, is already canonical and needs no stripping.
-        val searchTitle = movieRecord.searchTitle.orElse(movieRecord.originalTitle).getOrElse(MovieService.searchQuery(finalKey.cleanTitle))
+        val searchTitle = movieRecord.searchTitle.orElse(movieRecord.originalTitle).getOrElse(cache.normalizer.searchQuery(finalKey.cleanTitle))
         logger.info(s"TMDB: '${finalKey.cleanTitle}' (${finalKey.year.getOrElse("?")}) → matched tmdbId=${movieRecord.tmdbId.getOrElse("—")} (no IMDb cross-reference yet); publishing ImdbIdMissing(search='$searchTitle')")
         bus.publish(ImdbIdMissing(finalKey.cleanTitle, finalKey.year, searchTitle))
     }
@@ -892,7 +892,7 @@ class MovieService(
     // (`searchTitleCandidates` is pre-sorted), so resolution is order-independent.
     val candidates = MovieService
       .searchTitleCandidates(title, originalTitle, extraTitles)
-      .flatMap(t => Seq(MovieService.apiQuery(t), MovieService.searchQuery(t)))
+      .flatMap(t => Seq(cache.normalizer.apiQuery(t), cache.normalizer.searchQuery(t)))
       .filter(_.nonEmpty).distinct
     // Director hints drawn from the WHOLE merged row, not just the one cinema
     // event that happened to trigger this stage. Every cinema fires its own
@@ -1077,7 +1077,7 @@ class MovieService(
           if (cinemaNames.isEmpty) Some(hit)
           else {
             val tmdbNames = tmdb.directorsFor(hit.id)
-            val matches = tmdbNames.exists(t => cinemaNames.exists(c => MovieService.directorNameMatches(c, t)))
+            val matches = tmdbNames.exists(t => cinemaNames.exists(c => MovieService.directorNameMatches(c, t, cache.normalizer)))
             if (matches) Some(hit) else None
           }
       }
@@ -1110,9 +1110,9 @@ class MovieService(
     director.flatMap { directory =>
       tmdb.findPerson(directory.split(",").head.trim).flatMap { personId =>
         val credits = tmdb.personDirectorCredits(personId)
-        val wanted  = candidates.iterator.map(MovieService.normalize).filter(_.nonEmpty).toSet
+        val wanted  = candidates.iterator.map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
         def titleOf(f: TmdbClient.SearchResult): Set[String] =
-          (Seq(f.title) ++ f.originalTitle.toSeq).map(MovieService.normalize).filter(_.nonEmpty).toSet
+          (Seq(f.title) ++ f.originalTitle.toSeq).map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
         // Fuzzy title match, scoped to THIS director's filmography (a small, trusted
         // set): a cinema's spelling of a foreign title drifts from TMDB's ("Guru" vs
         // Yann Gozlan's "Gourou"), so an exact match misses and the year-only `byYear`
@@ -1178,7 +1178,7 @@ class MovieService(
       .flatMap(d => tmdb.findPerson(d.split(",").head.trim).iterator.flatMap(tmdb.personDirectorCredits))
       .toSeq.distinctBy(_.id)
     def titles(f: TmdbClient.SearchResult): Set[String] =
-      (Seq(f.title) ++ f.originalTitle.toSeq).map(MovieService.normalize).filter(_.nonEmpty).toSet
+      (Seq(f.title) ++ f.originalTitle.toSeq).map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
     credits.find(_.id == id).fold(id) { resolved =>
       // `minOption.getOrElse(id)`, not `.min`: the adjacency filter is EMPTY
       // whenever the resolved credit carries no TMDB release year (its own
@@ -1226,7 +1226,6 @@ object MovieService {
   // Corpus-independent — the same title always produces the same key, so
   // cache lookups + Mongo upserts are stable across refresh ticks regardless
   // of which other films happen to be in the cache at the moment.
-  def normalize(title: String): String = TitleNormalizer.sanitize(title)
 
   /** Levenshtein edit distance — used to fuzzy-match a cinema's spelling of a
    *  foreign title against a director's filmography ("guru" ↔ "gourou"). Plain
@@ -1254,7 +1253,7 @@ object MovieService {
    *   1. Substring on the collapsed (`normalize`d) forms — a single surname
    *      vs the full name, or one of a film's several credited directors.
    *   2. Word-token-set containment — `nameTokens` splits each name on word
-   *      boundaries (BEFORE `normalize` collapses whitespace away), so the same
+   *      boundaries (BEFORE `sanitize` collapses whitespace away), so the same
    *      name in a different order matches: a cinema reporting a Chinese /
    *      Hungarian / Korean name given-first ("Yimou Zhang") verifies against
    *      TMDB's native family-first credit ("Zhang Yimou"). Order-sensitive
@@ -1262,21 +1261,21 @@ object MovieService {
    *      no-match that only recovered if a SIBLING cinema happened to report the
    *      canonical order — an arrival-order dependence. Set containment (not
    *      strict equality) keeps signal 1's partial-name tolerance. */
-  def directorNameMatches(cinemaName: String, tmdbName: String): Boolean = {
-    val (a, b) = (normalize(cinemaName), normalize(tmdbName))
+  def directorNameMatches(cinemaName: String, tmdbName: String, normalizer: TitleNormalizer): Boolean = {
+    val (a, b) = (normalizer.sanitize(cinemaName), normalizer.sanitize(tmdbName))
     if (a.nonEmpty && b.nonEmpty && (a.contains(b) || b.contains(a))) true
     else {
-      val (ca, ct) = (nameTokens(cinemaName), nameTokens(tmdbName))
+      val (ca, ct) = (nameTokens(cinemaName, normalizer), nameTokens(tmdbName, normalizer))
       ca.nonEmpty && ct.nonEmpty && (ca.subsetOf(ct) || ct.subsetOf(ca))
     }
   }
 
-  /** The set of word tokens in a person name, each `normalize`d (diacritics
+  /** The set of word tokens in a person name, each `sanitize`d (diacritics
    *  folded, lowercased), split on any non-letter/digit FIRST so the word
-   *  boundaries survive — unlike `normalize`, which collapses the whole string
+   *  boundaries survive — unlike `sanitize`, which collapses the whole string
    *  to one alphanumeric token. "Zhang Yimou" → {"zhang", "yimou"}. */
-  private[movies] def nameTokens(name: String): Set[String] =
-    name.split("[^\\p{L}\\p{N}]+").iterator.map(normalize).filter(_.nonEmpty).toSet
+  private[movies] def nameTokens(name: String, normalizer: TitleNormalizer): Set[String] =
+    name.split("[^\\p{L}\\p{N}]+").iterator.map(normalizer.sanitize).filter(_.nonEmpty).toSet
 
   /** Aggressive stripping for external-API queries: the anniversary / restored /
    *  wersja / Cykl / slash decoration PLUS the accessibility-programme decoration
@@ -1285,15 +1284,7 @@ object MovieService {
    *  a decoration / programme edition keys by its own form and stays a separate
    *  card (see `TitleNormalizer.sanitize` and `MovieCache.keyOf`); it just
    *  resolves to the base film's ratings. */
-  def apiQuery(display: String): String = TitleNormalizer.apiQuery(display)
 
-  /** The external-search form of a title: `apiQuery` (decoration strip) over the
-   *  banner-aware re-cased title, so the query a resolver sends is normalised
-   *  regardless of how a cinema spelled it (ALL-CAPS, all-lower, mixed). A pure
-   *  function of its input — no scrape-order dependence — and, applied to a row's
-   *  canonical `cleanTitle`, it reproduces the cased query the per-client casing
-   *  used to produce (now that cinema slots keep their raw spelling). */
-  def searchQuery(title: String): String = TitleNormalizer.apiQuery(TitleNormalizer.recase(title))
 
   /** TMDB title-search candidates for a row, in priority order: the row's title,
    *  the cinema-provided original title, then every other reported title
