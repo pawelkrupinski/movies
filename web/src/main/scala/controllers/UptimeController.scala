@@ -219,16 +219,31 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  service row. The two are worth separating: a failed primary is a poster
    *  the visitor watched break, whereas a failed fallback is only a dead spare
    *  behind a poster that may have rendered fine. Merging them would let a
-   *  broken spare mask — or fake — a user-visible outage. */
+   *  broken spare mask — or fake — a user-visible outage.
+   *
+   *  `proxied` says the browser asked weserv for the image rather than the
+   *  origin, and gives the PROXY a row of its own without recreating the
+   *  collapsed one. It feeds that row successes only: an `<img>` error carries
+   *  no status, so a proxied failure is as likely to be the origin's fault as
+   *  the proxy's, and charging it to the proxy would paint the row red on every
+   *  CDN outage. The one failure attributable to weserv — it broke a poster the
+   *  origin was willing to serve — can only be established by re-requesting the
+   *  image direct, which the tracker does client-side and posts as an ordinary
+   *  event against `images.weserv.nl`. */
   def imgEvent: Action[JsValue] = adminAction(parse.json) { request =>
     val events = (request.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
     events.foreach { e =>
       val host     = (e \ "host").asOpt[String].getOrElse("unknown")
       val success  = (e \ "success").asOpt[Boolean].getOrElse(false)
       val fallback = (e \ "fallback").asOpt[Boolean].getOrElse(false)
+      val proxied  = (e \ "proxied").asOpt[Boolean].getOrElse(false)
       val service  = if (fallback) s"img: $host${UptimeController.FallbackSuffix}" else s"img: $host"
-      if (success) monitor.recordSuccess(service)
-      else {
+      if (success) {
+        monitor.recordSuccess(service)
+        // Every poster weserv served, primary or spare, so the proxy's row has
+        // green bars and a denominator its failures can be read against.
+        if (proxied) monitor.recordSuccess(UptimeController.ProxyService)
+      } else {
         val error = (e \ "error").asOpt[String].getOrElse("image load failed")
         monitor.recordFailure(service, error.take(200))
       }
@@ -353,6 +368,11 @@ object UptimeController {
    *  row (`img: m.media-amazon.com · fallback`). Mirrors the `·` separator the
    *  page already uses for a triage row's cinema/city hover title. */
   val FallbackSuffix = " · fallback"
+
+  /** The image proxy's own row. Named like any other origin row so a
+   *  proxy-fault event the browser posts (host = `images.weserv.nl`) lands in
+   *  the same place as the proxied successes fanned out here. */
+  val ProxyService = s"img: ${tools.PosterProxy.ProxyHost}"
 }
 
 /** A row promoted into the leading "Failing" / "No screenings" triage sections,

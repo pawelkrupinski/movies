@@ -65,7 +65,15 @@ class TestHttpServer(
           } else {
             val bytes = Files.readAllBytes(file)
             val ct = if (path.endsWith(".css"))  "text/css; charset=UTF-8"
-                     else if (path.endsWith(".js")) "application/javascript; charset=UTF-8"
+                     else if (path.endsWith(".js"))  "application/javascript; charset=UTF-8"
+                     // Images need their real type: an <img> pointed at one of
+                     // these is how the img-tracker's direct-origin probe is
+                     // exercised, and Chrome refuses an SVG served as
+                     // octet-stream outright.
+                     else if (path.endsWith(".png")) "image/png"
+                     else if (path.endsWith(".svg")) "image/svg+xml"
+                     else if (path.endsWith(".webp")) "image/webp"
+                     else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) "image/jpeg"
                      else "application/octet-stream"
             exception.getResponseHeaders.add("Content-Type", ct)
             exception.sendResponseHeaders(200, bytes.length.toLong)

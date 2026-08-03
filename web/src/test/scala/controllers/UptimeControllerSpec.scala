@@ -285,4 +285,57 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     status(ctl.imgEvent(imgEvents(Json.obj("success" -> false)))) shouldBe NO_CONTENT
     monitor.services should contain ("img: unknown")
   }
+
+  // ── The proxy's own row ────────────────────────────────────────────────────
+  //
+  // Unwrapping the proxy gave every CDN its own row but left weserv itself with
+  // none, so its own failures — a policy block at its edge (`400 Domain or TLD
+  // blocked by policy`, the acsta.net case), a 404 because the origin 403s
+  // weserv's IP (amazon, multikino), a weserv outage — were all charged to the
+  // origin. `proxied` restores a row for the proxy WITHOUT recreating the
+  // collapsed one: a proxied success feeds it (so it has green bars and a
+  // denominator), while a proxied FAILURE does not, because an <img> error
+  // carries no status and could equally be the origin's fault. Only the
+  // browser's direct re-probe can tell the two apart, and it posts its verdict
+  // as an ordinary event against the proxy host.
+
+  private def counts(monitor: UptimeMonitor, service: String) =
+    monitor.history(service).foldLeft((0, 0)) { case ((s, f), b) => (s + b.successes, f + b.failures) }
+
+  "the image proxy's row" should "count every poster weserv served, alongside the origin's own row" in {
+    val (ctl, monitor) = imgController
+    status(ctl.imgEvent(imgEvents(
+      Json.obj("host" -> "image.tmdb.org",  "success" -> true, "proxied" -> true),
+      Json.obj("host" -> "image.tmdb.org",  "success" -> true, "proxied" -> true),
+      Json.obj("host" -> "www.multikino.pl", "success" -> true)   // SkipHosts: never went through weserv
+    ))) shouldBe NO_CONTENT
+
+    counts(monitor, "img: image.tmdb.org")   shouldBe ((2, 0))
+    counts(monitor, "img: images.weserv.nl") shouldBe ((2, 0))   // the two proxied loads, not the direct one
+  }
+
+  it should "not blame the proxy for a failure that may well be the origin's" in {
+    val (ctl, monitor) = imgController
+    status(ctl.imgEvent(imgEvents(
+      Json.obj("host" -> "image.tmdb.org", "success" -> false, "proxied" -> true,
+               "error" -> "img load failed")
+    ))) shouldBe NO_CONTENT
+
+    counts(monitor, "img: image.tmdb.org")   shouldBe ((0, 1))
+    // Unattributed: the proxy row stays out of it until the direct probe rules.
+    monitor.services should not contain ("img: images.weserv.nl")
+  }
+
+  it should "record the probe's verdict when the origin served what the proxy could not" in {
+    val (ctl, monitor) = imgController
+    status(ctl.imgEvent(imgEvents(
+      Json.obj("host" -> "image.tmdb.org", "success" -> false, "proxied" -> true,
+               "error" -> "img load failed"),
+      Json.obj("host" -> "images.weserv.nl", "success" -> false,
+               "error" -> "proxy failed, origin served it (https://image.tmdb.org/p/a.jpg)")
+    ))) shouldBe NO_CONTENT
+
+    counts(monitor, "img: images.weserv.nl") shouldBe ((0, 1))
+    monitor.history("img: images.weserv.nl").flatMap(_.errors).mkString should include ("proxy failed, origin served it")
+  }
 }

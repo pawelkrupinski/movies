@@ -1488,6 +1488,134 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── The proxy's own row: `proxied` + the direct-origin probe ───────────────
+  //
+  // Unwrapping the proxy left weserv itself with no row, so its own failures
+  // (edge policy block, an origin 403ing its IP, an outage) were charged to the
+  // origin. `proxied` marks the traffic weserv served; the probe is what lets
+  // that row take a FAILURE, since an <img> error carries no status and only a
+  // direct re-request can say whose fault the break was.
+
+  it should "mark a proxied poster as proxied, and a directly-served one as not" in {
+    onPath("/") { page =>
+      val queued = page.evalString(
+        """(() => {
+          |  _drainImgEvents();
+          |  const load = (src) => {
+          |    const img = document.createElement('img');
+          |    img.dataset.originalSrc = src;
+          |    img.setAttribute('src', src);
+          |    document.body.appendChild(img);
+          |    img.dispatchEvent(new Event('load', { bubbles: false }));
+          |    img.remove();
+          |  };
+          |  load('https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg');
+          |  load('https://www.multikino.pl/media/x.jpg');   // SkipHosts: never proxied
+          |  return JSON.stringify(_drainImgEvents());
+          |})()""".stripMargin)
+      queued should include ("""{"host":"image.tmdb.org","success":true,"proxied":true}""")
+      queued should include ("""{"host":"www.multikino.pl","success":true}""")
+    }
+  }
+
+  it should "still count a weserv URL with no inner target against the proxy" in {
+    onPath("/") { page =>
+      page.evalBool("_imgDirectUrl('https://images.weserv.nl/?w=480') === ''") shouldBe true
+    }
+  }
+
+  it should "unwrap the direct origin URL a probe would re-request" in {
+    onPath("/") { page =>
+      // PosterProxy hands weserv a scheme-less target so the proxy picks the
+      // scheme; the browser can't, so https:// goes back on.
+      page.evalString("_imgDirectUrl('https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg&w=480')") shouldBe
+        "https://image.tmdb.org/p/a.jpg"
+      page.evalString("_imgDirectUrl('https://images.weserv.nl/?url=http%3A%2F%2Fkino.pl%2Fa.jpg')") shouldBe
+        "http://kino.pl/a.jpg"
+      page.evalString("_imgDirectUrl('https://m.media-amazon.com/images/M/x.jpg')") shouldBe ""
+    }
+  }
+
+  it should "blame the proxy when the origin serves what weserv could not" in {
+    onPath("/") { page =>
+      // The probe fetches the unwrapped target for real, so point it at an
+      // image this test server holds: a 200 stands in for the origin that
+      // answers a request weserv failed.
+      page.eval(
+        """(() => {
+          |  _drainImgEvents();
+          |  const local = location.origin + '/assets/img/favicon.svg';
+          |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&w=480');
+          |})()""".stripMargin)
+      page.waitFor("_peekImgEvents().length === 1")
+      val queued = page.evalString("JSON.stringify(_drainImgEvents())")
+      queued should include (""""host":"images.weserv.nl"""")
+      queued should include (""""success":false""")
+      queued should include ("proxy failed, origin served it")
+    }
+  }
+
+  // The two above drive the probe directly; this one goes through the real
+  // capture-phase error listener, so it proves a broken poster actually starts
+  // a probe rather than the probe merely working when called.
+  it should "probe the origin when a proxied poster breaks, and queue both verdicts" in {
+    onPath("/") { page =>
+      page.eval(
+        """(() => {
+          |  _drainImgEvents();
+          |  const local = location.origin + '/assets/img/favicon.svg';
+          |  const img = document.createElement('img');
+          |  const src = 'https://images.weserv.nl/?url=' + encodeURIComponent(local);
+          |  img.dataset.originalSrc = src;
+          |  img.setAttribute('src', src);
+          |  document.body.appendChild(img);
+          |  img.dispatchEvent(new Event('error', { bubbles: false }));
+          |  img.remove();
+          |})()""".stripMargin)
+      page.waitFor("_peekImgEvents().length === 2")
+      val queued = page.evalString("JSON.stringify(_drainImgEvents())")
+      // The origin's row keeps the break the visitor saw (host carries the test
+      // server's port, as `URL.host` does) …
+      queued should include ("\"host\":\"127.0.0.1:")
+      queued should include (""""proxied":true""")
+      // … and the probe's verdict adds the proxy's own failure beside it.
+      queued should include (""""host":"images.weserv.nl"""")
+      queued should include ("proxy failed, origin served it")
+    }
+  }
+
+  it should "cap the probes one page can fire, so an outage can't double its image traffic" in {
+    onPath("/") { page =>
+      page.eval(
+        """(() => {
+          |  _drainImgEvents();
+          |  const local = location.origin + '/assets/img/favicon.svg';
+          |  for (let i = 0; i < 25; i++) {
+          |    _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&n=' + i);
+          |  }
+          |})()""".stripMargin)
+      page.waitFor("_peekImgEvents().length === 20")
+      // Held at the cap: the 5 probes past it were never fired, so no more
+      // verdicts can arrive.
+      page.evalString("String(_drainImgEvents().length)") shouldBe "20"
+    }
+  }
+
+  it should "stay silent when the origin is down too — that failure is the origin's" in {
+    onPath("/") { page =>
+      page.eval(
+        """(() => {
+          |  _drainImgEvents();
+          |  const missing = location.origin + '/assets/img/no-such-poster.png';
+          |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(missing));
+          |})()""".stripMargin)
+      // Nothing to wait ON, so give the 404 the same beat a success would need
+      // and assert the batch never grew.
+      page.waitFor("performance.getEntriesByName(location.origin + '/assets/img/no-such-poster.png').length > 0")
+      page.evalString("JSON.stringify(_drainImgEvents())") shouldBe "[]"
+    }
+  }
+
   // ── Filtry dropdown ───────────────────────────────────────────────────────
 
   "the Filtry dropdown" should "narrow badges to 3D-only when Wymiar = 3D" in {

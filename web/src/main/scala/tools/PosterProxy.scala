@@ -39,6 +39,11 @@ import java.net.URLEncoder
  * rather than a broken-image icon.
  */
 object PosterProxy {
+  /** The proxy's host. Public because it names the proxy's own /uptime row
+   *  ([[controllers.UptimeController.ProxyService]]) and the tracker unwraps
+   *  posters by comparing against it — one spelling, one source of truth. */
+  val ProxyHost = "images.weserv.nl"
+
   // Card is ~240 CSS-px wide; bump to 480 to look crisp at DPR 2.
   // 480 is a reasonable cap — bigger uploads at the origin are just
   // wasted bytes on the wire.
@@ -144,6 +149,6 @@ object PosterProxy {
     val host     = stripped.takeWhile(_ != '/').toLowerCase
     if (SkipHosts.contains(host) || skipsDomain(host)) return None
     val encoded = URLEncoder.encode(stripped, "UTF-8")
-    Some(s"https://images.weserv.nl/?url=$encoded&w=$w&h=$h&fit=cover&a=attention&output=$output")
+    Some(s"https://$ProxyHost/?url=$encoded&w=$w&h=$h&fit=cover&a=attention&output=$output")
   }
 }
