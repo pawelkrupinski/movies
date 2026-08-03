@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{given, titleNormalizer}
 
 import controllers.{FilmSchedule, MovieControllerService}
 import models._
@@ -238,8 +238,8 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
         "Zawodowcy",
         "ZAWODOWCY"
       )
-      enrichment.displayTitle(AnchorTitle) shouldBe AnchorTitle
-      regular.movie.title                  shouldBe enrichment.displayTitle(AnchorTitle)
+      enrichment.displayTitle(AnchorTitle, titleNormalizer) shouldBe AnchorTitle
+      regular.movie.title                  shouldBe enrichment.displayTitle(AnchorTitle, titleNormalizer)
 
       // Provenance: every cinema that reported this row contributes a slot in
       // `cinemaData`. Year-divergence is intentional — Charlie Monroe drops

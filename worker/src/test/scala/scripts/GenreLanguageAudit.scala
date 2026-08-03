@@ -3,6 +3,7 @@ package scripts
 import models.{Country, Filmweb, Source, Tmdb}
 import services.MongoConnection
 import services.movies.MongoMovieRepository
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Read-only diagnostic: for a country's corpus, report WHICH source slot supplies
@@ -56,7 +57,7 @@ object GenreLanguageAudit {
       // Run the REAL display logic over the REAL stored record: if this already
       // yields a local-language title, the row is fine and any Polish still on the
       // page is a stale read-model projection, not a domain-logic bug.
-      println(s"    displayTitle(from key) -> '${r.displayTitle(s.title)}'")
+      println(s"    displayTitle(from key) -> '${r.displayTitle(s.title, titleNormalizer)}'")
       println(s"    sanitize(key)='${services.movies.TitleNormalizer.sanitize(s.title)}'")
       r.data.toSeq.collectFirst { case (_, sd) if sd.title.nonEmpty =>
         println(s"    sanitize(cinema title)='${services.movies.TitleNormalizer.sanitize(sd.title.get)}'")

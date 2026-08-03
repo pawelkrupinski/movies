@@ -3,7 +3,7 @@
 @import java.time.format.DateTimeFormatter
 @import java.time.{Instant, ZoneOffset}
 @import services.attempts.{AttemptOutcome, SourceAttemptStatus}
-@(title: String, year: Option[Int], e: MovieRecord, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil)
+@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.movies.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
 @dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}
 
@@ -16,7 +16,7 @@
   <dd>@TitleNormalizer.sanitize(title)@year.map("|" + _).getOrElse("")</dd>
 
   <dt>displayTitle</dt>
-  <dd>@e.displayTitle(title)</dd>
+  <dd>@e.displayTitle(title, normalizer)</dd>
 
   <dt>cinemaTitles (variants)</dt>
   <dd>

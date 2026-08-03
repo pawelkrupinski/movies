@@ -19,5 +19,10 @@ import models.Country
  * identical helper lives in `common/src/test`; there is no module both can share.
  */
 object SingleCountryNormalizer {
-  given TitleNormalizer = TitleNormalizer.forCountry(Country.default)
+  /** The named instance. Prefer this: APIs are moving to an ordinary
+   *  `normalizer` parameter, so a spec that passes it explicitly says which
+   *  country's rules it means at the call site. */
+  val titleNormalizer: TitleNormalizer = TitleNormalizer.forCountry(Country.default)
+
+  given TitleNormalizer = titleNormalizer
 }

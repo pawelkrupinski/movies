@@ -13,7 +13,7 @@
  * expand. Rendering every row's breakdown up front built one giant HTML string
  * that OOM'd the view on the full corpus.
  *@
-@(row: StoredMovieRecord)(implicit city: models.City)
+@(row: StoredMovieRecord, normalizer: services.movies.TitleNormalizer)(implicit city: models.City)
 @defining(StoredMovieRecord.idOf(row)(using services.movies.TitleNormalizer.forCountry(models.Country.of(city)))) { id =>
 @defining(row.title) { title =>
 @defining(row.year)  { year =>
@@ -41,7 +41,7 @@
      into a city the film actually plays in, not this page's own city
      (which would 404 for any out-of-city row). Falls back to the page
      city for a stored row with no live showtimes anywhere. *@
-  <td class="title"><a href="@FilmHref(e.displayTitle(title), e.cities.headOption.getOrElse(city))">@title</a></td>
+  <td class="title"><a href="@FilmHref(e.displayTitle(title, normalizer), e.cities.headOption.getOrElse(city))">@title</a></td>
   <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
   <td class="year">@e.releaseYear.map(_.toString).getOrElse("—")</td>
   @* How many distinct cinemas currently screen this title (TMDB/IMDb slots

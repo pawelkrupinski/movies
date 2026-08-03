@@ -62,7 +62,7 @@ object ReadModelProjection {
    *  the resolved title is byte-identical to the pre-split output. */
   def resolve(stored: StoredMovieRecord)(using normalizer: TitleNormalizer): ResolvedMovie = {
     val r     = stored.record
-    val title = r.displayTitle(stored.title)
+    val title = r.displayTitle(stored.title, normalizer)
     ResolvedMovie(
       _id                = filmId(stored),
       title              = title,
@@ -204,7 +204,7 @@ object ReadModelProjection {
    *  resolved year. */
   private def variantFilmId(stored: StoredMovieRecord, sources: Set[Source])(using normalizer: TitleNormalizer): String = {
     val scoped = stored.record.scopedToSources(sources)
-    s"${normalizer.sanitize(scoped.displayTitle(stored.title))}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
+    s"${normalizer.sanitize(scoped.displayTitle(stored.title, normalizer))}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
   }
 
   /** Project one display-title variant. Shared facts (poster, year, genres,
@@ -215,7 +215,7 @@ object ReadModelProjection {
   private def projectVariant(stored: StoredMovieRecord, sources: Set[Source])(using normalizer: TitleNormalizer): (ResolvedMovie, Seq[CityScreening]) = {
     val r      = stored.record
     val scoped = r.scopedToSources(sources)
-    val title  = scoped.displayTitle(stored.title)
+    val title  = scoped.displayTitle(stored.title, normalizer)
     val fid    = s"${normalizer.sanitize(title)}|${r.resolvedYear.map(_.toString).getOrElse("")}"
     val movie  = resolve(stored).copy(
       _id            = fid,

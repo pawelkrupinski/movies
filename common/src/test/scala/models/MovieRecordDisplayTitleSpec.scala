@@ -2,6 +2,7 @@ package models
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * `MovieRecord.displayTitle` — deterministic, scrape-order-independent choice
@@ -26,7 +27,7 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
       KinoApollo -> SourceData(title = Some("Drzewo magii")),
       Tmdb       -> SourceData(title = Some("Drzewo magii"))
     ))
-    record.displayTitle("Drzewo magii") shouldBe "Drzewo magii"
+    record.displayTitle("Drzewo magii", titleNormalizer) shouldBe "Drzewo magii"
   }
 
   it should "ignore a TMDB title that resolved to a DIFFERENT clean key (mis-resolution)" in {
@@ -36,7 +37,7 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
       Multikino -> SourceData(title = Some("Drzewo magii")),
       Tmdb      -> SourceData(title = Some("Some Other Movie"))
     ))
-    record.displayTitle("Drzewo magii") shouldBe "Drzewo magii"
+    record.displayTitle("Drzewo magii", titleNormalizer) shouldBe "Drzewo magii"
   }
 
   it should "name the row by the dominant clean form, dropping a minority misspelling" in {
@@ -48,7 +49,7 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
       KinoApollo          -> SourceData(title = Some("Wonka")),
       CinemaCityWroclavia -> SourceData(title = Some("Wokna"))
     ))
-    record.displayTitle("Wonka") shouldBe "Wonka"
+    record.displayTitle("Wonka", titleNormalizer) shouldBe "Wonka"
   }
 
   it should "keep the diacritic spelling in the cinema fallback (no TMDB)" in {
@@ -58,7 +59,7 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
       Multikino  -> SourceData(title = Some("Diabeł")),
       KinoApollo -> SourceData(title = Some("Diabel"))
     ))
-    record.displayTitle("Diabel") shouldBe "Diabeł"
+    record.displayTitle("Diabel", titleNormalizer) shouldBe "Diabeł"
   }
 
   it should "reject a malformed ALL-CAPS TMDB title and keep the cinema spelling" in {
@@ -69,7 +70,7 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
       KinoApollo -> SourceData(title = Some("All You Need Is Kill")),
       Tmdb       -> SourceData(title = Some("ALL YOU NEED IS KILL"))
     ))
-    record.displayTitle("All You Need Is Kill") shouldBe "All You Need Is Kill"
+    record.displayTitle("All You Need Is Kill", titleNormalizer) shouldBe "All You Need Is Kill"
   }
 
   it should "reject a TMDB title carrying edge junk and keep the cinema spelling" in {
@@ -77,7 +78,7 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
       Multikino -> SourceData(title = Some("Zaproszenie")),
       Tmdb      -> SourceData(title = Some("Zaproszenie."))
     ))
-    record.displayTitle("Zaproszenie") shouldBe "Zaproszenie"
+    record.displayTitle("Zaproszenie", titleNormalizer) shouldBe "Zaproszenie"
   }
 
   it should "reject a double-spaced TMDB title and keep the cinema spelling" in {
@@ -86,11 +87,11 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
       KinoApollo -> SourceData(title = Some("Super mario galaxy film")),
       Tmdb       -> SourceData(title = Some("Super Mario  Galaxy Film"))
     ))
-    record.displayTitle("Super Mario Galaxy Film") shouldBe "Super Mario Galaxy Film"
+    record.displayTitle("Super Mario Galaxy Film", titleNormalizer) shouldBe "Super Mario Galaxy Film"
   }
 
   it should "fall back to cleanTitle when no cinema is scraping yet" in {
     val record = MovieRecord(data = Map[Source, SourceData](Imdb -> SourceData()))
-    record.displayTitle("Anchor Title") shouldBe "Anchor Title"
+    record.displayTitle("Anchor Title", titleNormalizer) shouldBe "Anchor Title"
   }
 }

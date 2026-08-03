@@ -45,7 +45,7 @@ class OmdbBackfill(
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
 
-  private given services.movies.TitleNormalizer = cache.normalizer
+  private given normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   override protected def sourceName: String = "OMDb"
 
@@ -61,7 +61,7 @@ class OmdbBackfill(
         //    cinema display title is the fallback spelling.
         val foundImdbId =
           if (wantImdbId)
-            omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle)).distinct, key.year, e.director.toSet)
+            omdb.findImdbId((e.originalTitle.toSeq :+ e.displayTitle(key.cleanTitle, normalizer)).distinct, key.year, e.director.toSet)
           else None
         // 2. Recover a missing RT url via the imdb id we have (or just found).
         val effectiveId = e.imdbId.orElse(foundImdbId)
@@ -81,7 +81,7 @@ class OmdbBackfill(
             rottenTomatoesUrl = cur.rottenTomatoesUrl.orElse(foundRtUrl)
           ))
           val badge = (foundImdbId.map("imdbId " + _).toSeq ++ foundRtUrl.map(_ => "RT-link").toSeq).mkString(", ")
-          logger.info(s"OMDb: '${e.displayTitle(key.cleanTitle)}' (${key.year.getOrElse("?")}) recovered $badge")
+          logger.info(s"OMDb: '${e.displayTitle(key.cleanTitle, normalizer)}' (${key.year.getOrElse("?")}) recovered $badge")
           Some(badge)
         }
       }

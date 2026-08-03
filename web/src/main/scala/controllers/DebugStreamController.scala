@@ -45,8 +45,8 @@ class DebugStreamController(
    *  ships empty (lazily fetched on expand), so no cinema-URL map is needed. */
   private[controllers] def upsertFrame(row: StoredMovieRecord): String = {
     implicit val city: models.City = models.City.all.head
-    given services.movies.TitleNormalizer = services.movies.TitleNormalizer.forCountry(models.Country.of(city))
-    val html = views.html._debugRow(row).body
+    given normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.forCountry(models.Country.of(city))
+    val html = views.html._debugRow(row, normalizer).body
     s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row), "html" -> html))}\n\n"
   }
 

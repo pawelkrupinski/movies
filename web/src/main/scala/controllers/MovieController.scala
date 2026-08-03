@@ -654,6 +654,9 @@ class MovieController( cc: ControllerComponents,
       val staged = staging.sortBy(r => (r.title.toLowerCase, r.cinema.displayName))
       Ok(views.html.debug(
         movies.sortBy(_.title.toLowerCase),
+        // The SELECTED country's rules, not the deployment's: /debug can switch
+        // countries, and a row's display title must read as its own corpus keyed it.
+        stack.movieRepository.normalizer,
         MovieController.orderStagingByQueue(staged, queue.active),
         current = country, sameOrigin = debugCountries.switchable))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
@@ -700,7 +703,8 @@ class MovieController( cc: ControllerComponents,
           // is the whole cost (see `buildFrom`).
           val statuses = services.attempts.FilmAttemptReport.buildFrom(
             row.record.tmdbId, stack.attemptReader, stack.ratingCadenceReader)
-          Ok(views.html.debugDetails(row.title, row.year, row.record, cinemaSourceUrls(), statuses))
+          Ok(views.html.debugDetails(row.title, row.year, row.record,
+            stack.movieRepository.normalizer, cinemaSourceUrls(), statuses))
         case None      => NotFound("no such row")
       }
     }

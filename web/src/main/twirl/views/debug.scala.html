@@ -2,7 +2,7 @@
 @import services.movies.TitleNormalizer
 @import services.staging.StagingRecord
 @import controllers.MovieController
-@(rows: Seq[StoredMovieRecord], staging: Seq[StagingRecord] = Seq.empty, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false)(implicit city: models.City)
+@(rows: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -188,7 +188,7 @@
   </thead>
   <tbody>
     @for(row <- rows) {
-      @_debugRow(row)
+      @_debugRow(row, normalizer)
     }
   </tbody>
 </table>

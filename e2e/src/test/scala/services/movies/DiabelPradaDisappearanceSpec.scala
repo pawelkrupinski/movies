@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{given, titleNormalizer}
 
 import clients.TmdbClient
 import clients.tools.FakeHttpFetch
@@ -194,7 +194,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
         Helios                -> SourceData(title = Some("ДИЯВОЛ НОСИТЬ ПРАДА 2"),       releaseYear = Some(2026))
       )
     )
-    e.displayTitle("Diabeł ubiera się u Prady 2") shouldBe "Diabeł ubiera się u Prady 2"
+    e.displayTitle("Diabeł ubiera się u Prady 2", titleNormalizer) shouldBe "Diabeł ubiera się u Prady 2"
   }
 
   it should "still pick the proper-cased variant when only Latin forms compete" in {
@@ -205,7 +205,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
         Helios                -> SourceData(title = Some("top gun: maverick"), releaseYear = Some(2022))
       )
     )
-    e.displayTitle("Top Gun: Maverick") shouldBe "Top Gun: Maverick"
+    e.displayTitle("Top Gun: Maverick", titleNormalizer) shouldBe "Top Gun: Maverick"
   }
 
   // ── Regression: prevent the duplicate from being created in the first place ──

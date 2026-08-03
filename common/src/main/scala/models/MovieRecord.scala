@@ -216,15 +216,19 @@ case class MovieRecord(
     cinemaData.toSeq.sortBy { case (c, _) => Source.priority.getOrElse(c, Int.MaxValue) }
 
   /** Display title for the row, derived deterministically (no scrape-order
-   *  dependence) by the shared `TitleNormalizer.chooseDisplay` ladder: dominant
-   *  clean form across the per-cinema reported titles → the `Tmdb` slot's Polish
-   *  title (when it shares that identity and is well-formed) → the cinema
+   *  dependence) by the shared `chooseDisplay` ladder: dominant clean form
+   *  across the per-cinema reported titles → the `Tmdb` slot's Polish title
+   *  (when it shares that identity and is well-formed) → the cinema
    *  `preferredDisplay` ladder → `recase`.
    *
    *  Caller supplies cleanTitle (the post-decoration-strip anchor the cache keys
    *  the row by) because the record itself doesn't carry it; it's the fallback
-   *  when no cinema is scraping yet (TMDB-only row). */
-  def displayTitle(cleanTitle: String)(using normalizer: services.movies.TitleNormalizer): String =
+   *  when no cinema is scraping yet (TMDB-only row).
+   *
+   *  `normalizer` is an ordinary parameter, not a context one: the display
+   *  ladder is country-specific, and the Twirl templates that render a row have
+   *  no given in scope — making it implicit silently broke `web`. */
+  def displayTitle(cleanTitle: String, normalizer: services.movies.TitleNormalizer): String =
     normalizer.chooseDisplay(
       perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq,
       fallback        = cleanTitle,

@@ -378,7 +378,7 @@ object FilmCanonicalizer {
     // break. The rating SEARCH query is now case/diacritic-folded (FilmwebClient;
     // RT/MC already slug-fold), so this re-spelling no longer shifts which fixture
     // a rating lookup hits.
-    val canonicalTitle = merged.displayTitle(minSpelling)
+    val canonicalTitle = merged.displayTitle(minSpelling, normalizer)
     val canonicalKey   = CacheKey(canonicalTitle, canonicalYear)
     (canonicalKey, merged)
   }

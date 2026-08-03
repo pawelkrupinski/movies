@@ -12,5 +12,8 @@ import models.Country
  * logic, move it into `common/src/main` and have both delegate.
  */
 object SingleCountryNormalizer {
-  given TitleNormalizer = TitleNormalizer.forCountry(Country.default)
+  /** The named instance — see the `testkit` copy. */
+  val titleNormalizer: TitleNormalizer = TitleNormalizer.forCountry(Country.default)
+
+  given TitleNormalizer = titleNormalizer
 }

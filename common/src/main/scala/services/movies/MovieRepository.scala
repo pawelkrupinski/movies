@@ -65,11 +65,11 @@ object StoredMovieRecord {
    *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
    *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
    *  once the record is whole. */
-  def fromStorage(id: String, record: MovieRecord)(using TitleNormalizer): StoredMovieRecord = {
+  def fromStorage(id: String, record: MovieRecord)(using normalizer: TitleNormalizer): StoredMovieRecord = {
     val sep      = id.lastIndexOf('|')
     val idPrefix = if (sep >= 0) id.substring(0, sep) else id
     val year     = if (sep >= 0) id.substring(sep + 1).toIntOption else None
-    StoredMovieRecord(record.displayTitle(idPrefix), year, record, persistedId = Some(id))
+    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, persistedId = Some(id))
   }
 }
 
