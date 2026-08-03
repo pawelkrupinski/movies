@@ -107,7 +107,7 @@ object WorkerSourceFilmsMetrics {
         // `screeningsAll` skips the `resolve`/synopsis/ratings materialisation
         // `projectAll` does (this census re-reads the whole corpus every 5 min,
         // and that metadata work was the worker's single biggest CPU consumer).
-        Try(ReadModelProjection.screeningsAll(stored)(using normalizer)) match {
+        Try(ReadModelProjection.screeningsAll(stored, normalizer)) match {
           case Success(cards) =>
             cards.foreach { screenings =>
               qualifyingKeys(screenings, bySlug, clock).foreach(key => acc(key) += 1)

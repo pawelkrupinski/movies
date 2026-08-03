@@ -1,6 +1,6 @@
 package integration
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models.{Helios, HeliosOstrowWlkp, KinoMuranow, MovieRecord, Multikino, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
@@ -1147,7 +1147,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // What the film SHOULD project to (via the stitched findById read path) — the
       // screening ids the reconcile must WRITE and RETAIN. Non-empty proves the film
       // is projectable at all; the reconcile then must produce the same set.
-      val projected  = services.readmodel.ReadModelProjection.projectAll(repo.findById(id).get)
+      val projected  = services.readmodel.ReadModelProjection.projectAll(repo.findById(id).get, titleNormalizer)
       expectedScrIds = projected.flatMap(_._2).map(_._id).toSet
       expectedMovIds = projected.map(_._1._id).toSet
       expectedScrIds should not be empty

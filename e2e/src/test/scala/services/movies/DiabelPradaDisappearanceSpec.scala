@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import clients.TmdbClient
 import clients.tools.FakeHttpFetch
@@ -163,7 +163,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       // The read model drops tmdbId/imdbId, so identify Prada via the cache and
       // match the rendered rows by film id.
       val pradaFilmIds = cache.snapshot().filter(r => isPrada(r.record))
-        .map(services.readmodel.ReadModelProjection.filmId).toSet
+        .map(services.readmodel.ReadModelProjection.filmId(_, titleNormalizer)).toSet
       val rendered = ctrl.toSchedules(Poznan, pinnedNow)
       val pradaSchedules = rendered.filter(s => pradaFilmIds.contains(s.resolved._id))
 

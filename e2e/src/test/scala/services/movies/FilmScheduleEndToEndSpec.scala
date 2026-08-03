@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import controllers.{FilmSchedule, MovieControllerService}
 import models._
@@ -106,7 +106,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
   // are stripped of showtime lists (index-only cache).
   private lazy val recordByFilmId: Map[String, MovieRecord] =
     wiring.movieRepository.findAll().flatMap { r =>
-      services.readmodel.ReadModelProjection.filmIds(r).map(_ -> r.record)
+      services.readmodel.ReadModelProjection.filmIds(r, titleNormalizer).map(_ -> r.record)
     }.toMap
   private def recordFor(s: FilmSchedule): Option[MovieRecord] = recordByFilmId.get(s.resolved._id)
 

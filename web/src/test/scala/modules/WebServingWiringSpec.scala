@@ -1,6 +1,5 @@
 package modules
 
-import services.movies.SingleCountryNormalizer.given
 
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
@@ -66,8 +65,8 @@ class WebServingWiringSpec extends AnyFlatSpec with Matchers {
       val store = new InMemoryReadModelRepository()
       seed.foreach { case (title, year, record) =>
         val stored = StoredMovieRecord(title, year, record)
-        store.upsertMovie(ReadModelProjection.resolve(stored))
-        ReadModelProjection.screenings(stored).foreach(store.upsertScreening)
+        store.upsertMovie(ReadModelProjection.resolve(stored, titleNormalizer))
+        ReadModelProjection.screenings(stored, titleNormalizer).foreach(store.upsertScreening)
       }
       store
     }

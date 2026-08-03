@@ -1,6 +1,6 @@
 package services.readmodel
 
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -520,7 +520,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val olderRow = yearVariant(2025, Seq(at("2026-06-12T20:00")))
     val newerRow = yearVariant(2026, Seq(at("2026-06-12T20:00")))
     // Both rows really do land on ONE card — the premise of the whole test.
-    ReadModelProjection.filmId(olderRow) shouldBe ReadModelProjection.filmId(newerRow)
+    ReadModelProjection.filmId(olderRow, titleNormalizer) shouldBe ReadModelProjection.filmId(newerRow, titleNormalizer)
 
     // Prime both: the first projection of each row is a legitimate recompute.
     projector.onMovieUpsert(olderRow)

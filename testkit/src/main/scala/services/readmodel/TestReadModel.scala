@@ -1,6 +1,6 @@
 package services.readmodel
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.MovieRecord
 import services.movies.StoredMovieRecord
@@ -16,7 +16,7 @@ object TestReadModel {
    *  `FilmSchedule.resolved` and `_movieCard` carry. Reuses the production
    *  projection so a view spec exercises the same materialisation as serving. */
   def resolved(title: String, year: Option[Int], record: MovieRecord): models.ResolvedMovie =
-    ReadModelProjection.resolve(StoredMovieRecord(title, year, record))
+    ReadModelProjection.resolve(StoredMovieRecord(title, year, record), titleNormalizer)
 
   /** The `ResolvedRatings` a record projects to — what `_ratingBadges` renders. */
   def ratings(title: String, record: MovieRecord): models.ResolvedRatings =
@@ -28,7 +28,7 @@ object TestReadModel {
       val stored = StoredMovieRecord(title, year, record)
       // Split-aware: a multi-title record fans out into one card per shown title,
       // exactly as the worker's projector publishes it.
-      ReadModelProjection.projectAll(stored).foreach { case (movie, screenings) =>
+      ReadModelProjection.projectAll(stored, titleNormalizer).foreach { case (movie, screenings) =>
         store.upsertMovie(movie)
         screenings.foreach(store.upsertScreening)
       }

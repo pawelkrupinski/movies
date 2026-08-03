@@ -41,7 +41,7 @@ class WorkerShowtimesMetrics(
   // The corpus this collector counts belongs to `countryCode`, so the film ids it
   // projects must fold titles with THAT country's rules — otherwise the gauge
   // counts ids no reader ever addresses.
-  private given services.movies.TitleNormalizer =
+  private given normalizer: services.movies.TitleNormalizer =
     services.movies.TitleNormalizer.forCountry(
       models.Country.byCode(countryCode).getOrElse(models.Country.default))
   import WorkerShowtimesMetrics._
@@ -51,7 +51,7 @@ class WorkerShowtimesMetrics(
   for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(0.0)
 
   def startSample(): CorpusRowSampler = new CorpusRowSampler {
-    private val tally = new ShowtimeTally(cities, clock)
+    private val tally = new ShowtimeTally(cities, clock, normalizer)
 
     def accept(row: StoredMovieRecord): Unit = tally.accept(row)
 
@@ -88,13 +88,13 @@ object WorkerShowtimesMetrics {
    *  exactly as the read model does (per-title split + cinema→city bucketing) and gated on
    *  `readyToProject`; a row that fails to project is skipped, matching the projector's
    *  per-row resilience. */
-  class ShowtimeTally(cities: Seq[City], clock: Clock)(using services.movies.TitleNormalizer) {
+  class ShowtimeTally(cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer) {
     private val bySlug = cities.map(c => c.slug -> c).toMap
     private val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
 
     def accept(stored: StoredMovieRecord): Unit =
       if (stored.record.readyToProject)
-        Try(ReadModelProjection.screeningsAll(stored)) match {
+        Try(ReadModelProjection.screeningsAll(stored, normalizer)) match {
           case Success(cards) =>
             cards.foreach { screenings =>
               // Each CityScreening is (film, city, cinema); sum its upcoming slots into
@@ -116,8 +116,8 @@ object WorkerShowtimesMetrics {
 
   /** The tally over a fixed set of rows — the pure-logic entry point the specs drive;
    *  production folds the same [[ShowtimeTally]] row-by-row off the shared scan. */
-  def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock)(using services.movies.TitleNormalizer): Map[String, Int] = {
-    val tally = new ShowtimeTally(cities, clock)
+  def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer): Map[String, Int] = {
+    val tally = new ShowtimeTally(cities, clock, normalizer)
     rows.iterator.foreach(tally.accept)
     tally.counts
   }

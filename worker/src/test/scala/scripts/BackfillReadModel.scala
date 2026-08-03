@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.mongodb.scala.MongoClient
 import services.movies.{MongoMovieRepository, MovieRepository}
@@ -31,7 +31,7 @@ object BackfillReadModel {
    *  exercises it with in-memory repos. Returns
    *  (moviesWritten, screeningsWritten, moviesPruned, screeningsPruned). */
   def run(movieRepository: MovieRepository, readModel: ReadModelReader & ReadModelWriter): (Int, Int, Int, Int) = {
-    val projected = movieRepository.findAll().flatMap(ReadModelProjection.projectAll)
+    val projected = movieRepository.findAll().flatMap(ReadModelProjection.projectAll(_, titleNormalizer))
     projected.foreach { case (movie, screenings) =>
       readModel.upsertMovie(movie)
       screenings.foreach(readModel.upsertScreening)

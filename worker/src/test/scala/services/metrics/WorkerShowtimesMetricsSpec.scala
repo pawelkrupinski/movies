@@ -1,6 +1,6 @@
 package services.metrics
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Source, SourceData}
@@ -33,7 +33,7 @@ class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
       .map(_.trim.split("\\s+").last.toDouble)
 
   "countAll" should "sum upcoming showtimes per city, dropping past slots" in {
-    val counts = WorkerShowtimesMetrics.countAll(corpus, models.City.all, clock)
+    val counts = WorkerShowtimesMetrics.countAll(corpus, models.City.all, clock, titleNormalizer)
 
     // Poznań: (today+tomorrow) 2 + (today) 1 = 3; the past-only slot drops out.
     counts.getOrElse("poznan", 0)  shouldBe 3
@@ -43,14 +43,14 @@ class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "count individual slots, not films (a film with two upcoming slots counts twice)" in {
     val counts = WorkerShowtimesMetrics.countAll(
-      Seq(row("Double", ready(Helios, 9, today, tomorrow))), models.City.all, clock)
+      Seq(row("Double", ready(Helios, 9, today, tomorrow))), models.City.all, clock, titleNormalizer)
     counts.getOrElse("poznan", 0) shouldBe 2
   }
 
   it should "exclude a film whose TMDB enrichment hasn't concluded (not ready to project)" in {
     val pending = MovieRecord(data = Map[Source, SourceData](Helios -> slot(tomorrow))) // no tmdbId, no tmdbNoMatch
     pending.readyToProject shouldBe false
-    val counts = WorkerShowtimesMetrics.countAll(Seq(row("Pending", pending)), models.City.all, clock)
+    val counts = WorkerShowtimesMetrics.countAll(Seq(row("Pending", pending)), models.City.all, clock, titleNormalizer)
     counts.getOrElse("poznan", 0) shouldBe 0
   }
 

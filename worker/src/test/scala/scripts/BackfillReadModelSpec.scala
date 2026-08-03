@@ -1,6 +1,6 @@
 package scripts
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -23,14 +23,14 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     )
 
   private def filmId(title: String, year: Int): String =
-    ReadModelProjection.filmId(StoredMovieRecord(title, Some(year), record(title, year)))
+    ReadModelProjection.filmId(StoredMovieRecord(title, Some(year), record(title, year)), titleNormalizer)
 
   // Seed the read model with a film that no longer exists in `movies` — the
   // backfill must prune it.
   private def seedStale(readModel: InMemoryReadModelRepository): Unit = {
     val stale = StoredMovieRecord("Stale", Some(2000), record("Stale", 2000))
-    readModel.upsertMovie(ReadModelProjection.resolve(stale))
-    ReadModelProjection.screenings(stale).foreach(readModel.upsertScreening)
+    readModel.upsertMovie(ReadModelProjection.resolve(stale, titleNormalizer))
+    ReadModelProjection.screenings(stale, titleNormalizer).foreach(readModel.upsertScreening)
   }
 
   "BackfillReadModel.run" should "populate the read model from movies and prune stale derived documents" in {

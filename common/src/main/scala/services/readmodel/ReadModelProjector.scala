@@ -54,7 +54,7 @@ class ReadModelProjector(
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
   // it rather than accepting a second, separately-wired copy that could disagree.
-  private given services.movies.TitleNormalizer = movieRepository.normalizer
+  private given normalizer: services.movies.TitleNormalizer = movieRepository.normalizer
 
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
@@ -157,7 +157,7 @@ class ReadModelProjector(
     val hash   = ReadModelProjection.metadataHash(stored)
     lastMetadata.get(rowKey) match {
       case Some((cachedHash, movies)) if cachedHash == hash =>
-        val screenings = ReadModelProjection.screeningsAll(stored)
+        val screenings = ReadModelProjection.screeningsAll(stored, normalizer)
         if (screenings.sizeIs == movies.size) {
           metrics.recordMetadataProjection(reused = true)
           movies.zip(screenings)
@@ -167,7 +167,7 @@ class ReadModelProjector(
   }
 
   private def recomputeMetadata(rowKey: String, hash: Int, stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
-    val variants = ReadModelProjection.projectAll(stored)
+    val variants = ReadModelProjection.projectAll(stored, normalizer)
     lastMetadata.update(rowKey, hash -> variants.map(_._1))
     metrics.recordMetadataProjection(reused = false)
     variants
@@ -253,7 +253,7 @@ class ReadModelProjector(
     var reprojected = 0
     val scanComplete = movieRepository.foreachRecord { row =>
       if (row.record.readyToProject) {
-        liveIds ++= ReadModelProjection.filmIds(row)
+        liveIds ++= ReadModelProjection.filmIds(row, normalizer)
         liveRowKeys += StoredMovieRecord.idOf(row)
         if (reproject)
           try reprojected += project(row)
