@@ -519,7 +519,7 @@ class CaffeineMovieCache(
   }
 
   private def canonicalizeGroups(pairs: Seq[(CacheKey, MovieRecord)]): Unit =
-    FilmCanonicalizer.groupByFilm(pairs)
+    FilmCanonicalizer.groupByFilm(pairs, normalizer)
       .foreach(component => FilmCanonicalizer.clusterByFilm(component).foreach(collapseCluster))
 
   /** Collapse ONE cluster (rows that are the same film) to a single canonical
@@ -533,7 +533,7 @@ class CaffeineMovieCache(
    *  repository's last-written title). So `invalidate` every key, then `put` under the
    *  canonical string, rewriting BOTH stores — but only when something differs. */
   private def collapseCluster(cluster: Seq[(CacheKey, MovieRecord)]): Unit = {
-    val (canonical, merged) = FilmCanonicalizer.canonical(cluster)
+    val (canonical, merged) = FilmCanonicalizer.canonical(cluster, normalizer)
     val keys = cluster.map(_._1)
     // The union base `canonical()` merged onto — the row that would have stood
     // without the merge (mirrors `MovieRecordMerge.unionAll`'s pick). Comparing
@@ -736,7 +736,7 @@ class CaffeineMovieCache(
     val concluded = positive.asMap().asScala.iterator
       .collect { case (k, e) if e.tmdbConcluded &&
         (normalizer.sanitize(k.cleanTitle) == norm ||
-         (FilmCanonicalizer.isBareFilmTitle((k, e)) &&
+         (FilmCanonicalizer.isBareFilmTitle((k, e), normalizer) &&
           e.tmdbTitleAliases.exists(a => normalizer.sanitize(a) == norm))) => k }
       .toSeq
     // Prefer a row whose OWN key IS this title over one that matches only via a
@@ -780,7 +780,7 @@ class CaffeineMovieCache(
     // (matched by sanitize via `concludedKeyFor`) wouldn't find it and would
     // re-spawn the duplicate. One rule for both fold paths keeps the stored
     // result a pure function of the row set, not arrival order.
-    val (canonical, merged) = FilmCanonicalizer.canonical(Seq(siblingKey -> siblingRecord, newKey -> newRecord))
+    val (canonical, merged) = FilmCanonicalizer.canonical(Seq(siblingKey -> siblingRecord, newKey -> newRecord), normalizer)
     val victims = Seq(siblingKey, newKey).distinct.filterNot(_ == canonical)
     // Carry each loser's screenings + slots onto the canonical id BEFORE persisting. A merge
     // is a rename too: the losing row's showtimes are filed under ITS id, while the record we
@@ -1208,7 +1208,7 @@ class CaffeineMovieCache(
     val knownAliases: Set[String] =
       if (staging.isEmpty) Set.empty
       else positive.asMap().asScala.iterator
-        .collect { case (k, e) if e.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, e)) =>
+        .collect { case (k, e) if e.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, e), normalizer) =>
           e.tmdbTitleAliases.iterator.map(normalizer.sanitize) }
         .flatten.toSet
     // Widened recognition: index every movies row by each of its CINEMA SLOTS'

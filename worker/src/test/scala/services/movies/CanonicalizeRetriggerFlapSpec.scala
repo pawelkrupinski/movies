@@ -1,6 +1,6 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -53,7 +53,7 @@ class CanonicalizeRetriggerFlapSpec extends AnyFlatSpec with Matchers {
     val record    = felliniRecord
     val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960)), record)
     val storedKey = CacheKey(recovered.title, recovered.year)
-    val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(storedKey -> record))
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(storedKey -> record), titleNormalizer)
     canonicalKey shouldBe storedKey
   }
 

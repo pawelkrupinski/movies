@@ -1,6 +1,6 @@
 package services.metrics
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Source, SourceData}
@@ -35,7 +35,7 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
       .map(_.trim.split("\\s+").last.toDouble)
 
   "countAll" should "count distinct ready films per city, by scope" in {
-    val counts = WorkerSourceFilmsMetrics.countAll(corpus, models.City.all, clock)
+    val counts = WorkerSourceFilmsMetrics.countAll(corpus, models.City.all, clock, titleNormalizer)
 
     // Poznań: 2 films with a future showing (past-only drops out); 1 shows tomorrow.
     counts.getOrElse(("poznan", Scope.All), 0)      shouldBe 2
@@ -50,7 +50,7 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
     // holds it back, so the source gauge must not count it either.
     val pending = MovieRecord(data = Map[Source, SourceData](Helios -> slot(tomorrow))) // no tmdbId, no tmdbNoMatch
     pending.readyToProject shouldBe false
-    val counts = WorkerSourceFilmsMetrics.countAll(Seq(row("Pending", pending)), models.City.all, clock)
+    val counts = WorkerSourceFilmsMetrics.countAll(Seq(row("Pending", pending)), models.City.all, clock, titleNormalizer)
 
     counts.getOrElse(("poznan", Scope.All), 0)      shouldBe 0
     counts.getOrElse(("poznan", Scope.Tomorrow), 0) shouldBe 0

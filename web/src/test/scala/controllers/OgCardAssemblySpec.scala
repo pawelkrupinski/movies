@@ -1,6 +1,6 @@
 package controllers
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{Movie, MovieRecord, ResolvedRatings}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -37,7 +37,7 @@ class OgCardAssemblySpec extends AnyFlatSpec with Matchers {
     // ("Kino bez barier: Freak Show" → "Freak Show"), so they're one film/poster.
     val out = OgCardAssembly.distinctByMovie(Seq(
       sched("Freak Show"), sched("Kino bez barier: Freak Show"), sched("Toy Story 5"))
-    ).map(_.movie.title)
+    , titleNormalizer).map(_.movie.title)
     out shouldBe Seq("Freak Show", "Toy Story 5")
   }
 
@@ -48,30 +48,30 @@ class OgCardAssemblySpec extends AnyFlatSpec with Matchers {
       sched("Ziemia obiecana", Some("https://cdn/generic.jpg")),
       sched("Brzezina",        Some("https://cdn/generic.jpg")),
       sched("Toy Story 5",     Some("https://cdn/toy.jpg")))
-    ).map(_.movie.title)
+    , titleNormalizer).map(_.movie.title)
     out shouldBe Seq("Ziemia obiecana", "Toy Story 5")
   }
 
   "dailyCardFilms" should "rotate to a different, non-overlapping set each day (stable within a day)" in {
     val pool = (1 to 12).map(i => sched(s"Film $i", Some(s"https://cdn/$i.jpg")))
-    val d1 = OgCardAssembly.dailyCardFilms(pool, epochDay = 100, count = 5).map(_.movie.title)
-    val d2 = OgCardAssembly.dailyCardFilms(pool, epochDay = 101, count = 5).map(_.movie.title)
+    val d1 = OgCardAssembly.dailyCardFilms(pool, epochDay = 100, count = 5, titleNormalizer).map(_.movie.title)
+    val d2 = OgCardAssembly.dailyCardFilms(pool, epochDay = 101, count = 5, titleNormalizer).map(_.movie.title)
     d1 should have size 5
     d2 should have size 5
     d1 should not equal d2              // a different day shows a different set
     d1.intersect(d2) shouldBe empty     // count-per-day step → adjacent days disjoint
-    OgCardAssembly.dailyCardFilms(pool, 100, 5).map(_.movie.title) shouldBe d1 // deterministic
+    OgCardAssembly.dailyCardFilms(pool, 100, 5, titleNormalizer).map(_.movie.title) shouldBe d1 // deterministic
   }
 
   it should "drop films without a poster (no grey slots) and survive an empty pool" in {
-    OgCardAssembly.dailyCardFilms(Seq(sched("No poster", None)), epochDay = 1, count = 5) shouldBe empty
+    OgCardAssembly.dailyCardFilms(Seq(sched("No poster", None)), epochDay = 1, count = 5, titleNormalizer) shouldBe empty
   }
 
   it should "cycle through the FULL repertoire, not just the first 40" in {
     val pool = (1 to 50).map(i => sched(s"Film $i", Some(s"https://cdn/$i.jpg")))
     // epochDay 9, count 5 → window starts at index 45, so films 46–50 show —
     // unreachable when the pool was capped at the first 40.
-    OgCardAssembly.dailyCardFilms(pool, epochDay = 9, count = 5).map(_.movie.title) should contain ("Film 50")
+    OgCardAssembly.dailyCardFilms(pool, epochDay = 9, count = 5, titleNormalizer).map(_.movie.title) should contain ("Film 50")
   }
 
   "ratingTokens" should "emit a token per set source, skipping the unset ones" in {

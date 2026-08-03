@@ -52,7 +52,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       unresolved("Dzień objawienia", Some(2025), cinema = Multikino)
     )
 
-    val (canonicalKey, merged) = FilmCanonicalizer.canonical(cluster)
+    val (canonicalKey, merged) = FilmCanonicalizer.canonical(cluster, titleNormalizer)
 
     // TMDB's resolved year is authoritative, overriding the cinema-reported 2025.
     canonicalKey.year shouldBe Some(2026)
@@ -68,7 +68,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       unresolved("Savage House", Some(2024), cinema = Multikino)
     )
 
-    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster)
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster, titleNormalizer)
 
     canonicalKey.cleanTitle shouldBe "Savage House"
   }
@@ -81,7 +81,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       unresolved("SAVAGE HOUSE", None, cinema = Multikino)
     )
 
-    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster)
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster, titleNormalizer)
 
     // Year falls back to the lowest present year (no tmdbYear anywhere).
     canonicalKey.year shouldBe Some(2024)
@@ -95,7 +95,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       unresolved("Mystery Film", None, cinema = Multikino)
     )
 
-    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster)
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster, titleNormalizer)
 
     canonicalKey.year shouldBe None
   }
@@ -141,7 +141,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // order-dependent "Głos Hind Rajab" / Kino Amondo split). It stays yearless.
     val row = key("Głos Hind Rajab", None) -> MovieRecord(
       data = Map[Source, SourceData](Helios -> SourceData(title = Some("Głos Hind Rajab"), releaseYear = Some(2022))))
-    val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(row))
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(row), titleNormalizer)
     canonicalKey.year shouldBe None
   }
 
@@ -174,7 +174,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       aliased("Zaplątani", tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Helios,    cinemaTitle = "Zaplątani")
     )
     Seq(rows, rows.reverse).foreach { ordered =>
-      val components = FilmCanonicalizer.groupByFilm(ordered)
+      val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
       withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
         components should have size 1
         val clusters = FilmCanonicalizer.clusterByFilm(components.head)
@@ -201,7 +201,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
         englishTitle = Some("Left-Handed Girl"))
     )
     Seq(rows, rows.reverse).foreach { ordered =>
-      val components = FilmCanonicalizer.groupByFilm(ordered)
+      val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
       withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
         components should have size 1
         FilmCanonicalizer.clusterByFilm(components.head) should have size 1
@@ -225,7 +225,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       unresolved("The mandalorian and grogu", None, cinema = KinoMuza)
     )
     Seq(rows, rows.reverse).foreach { ordered =>
-      val components = FilmCanonicalizer.groupByFilm(ordered)
+      val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
       withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
         components should have size 1
         val clusters = FilmCanonicalizer.clusterByFilm(components.head)
@@ -250,7 +250,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
         originalTitle = "The Invitation", cinema = Helios, cinemaTitle = "Zaproszenie"),
       unresolved("Zaproszenie | Kinoteka dla rodziców", None, cinema = Kinoteka)
     )
-    FilmCanonicalizer.groupByFilm(rows) should have size 1
+    FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 1
   }
 
   it should "fold an UNRESOLVED Cyrillic-titled row onto its Latin base by ROMANIZED search title" in {
@@ -266,7 +266,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
         originalTitle = "Moana", cinema = Helios, cinemaTitle = "Vaiana"),
       unresolved("Ваяна", Some(2026), cinema = Multikino)
     )
-    FilmCanonicalizer.groupByFilm(rows) should have size 1
+    FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 1
   }
 
   it should "fold prefix- and suffix-decorated unresolved editions onto their base via the token-run edge" in {
@@ -280,7 +280,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       unresolved("Fight Club Maraton Grozy", None, cinema = Multikino),   // base is a PREFIX run
       unresolved("Nocny Pokaz Fight Club", None, cinema = Kinoteka)       // base is a SUFFIX run
     )
-    FilmCanonicalizer.groupByFilm(rows) should have size 1
+    FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 1
   }
 
   it should "REFUSE a token-run fold when the edition edge-matches two DIFFERENT resolved films (ambiguous)" in {
@@ -294,7 +294,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       resolved("Beta Gamma", tmdbId = 2, tmdbYear = 2021, cinema = Multikino),
       unresolved("Alfa Beta Gamma", None, cinema = Kinoteka)
     )
-    FilmCanonicalizer.groupByFilm(rows) should have size 3
+    FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 3
   }
 
   it should "fold a programme/decorated edition sharing the base tmdbId into one record" in {
@@ -308,13 +308,13 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       aliased("Zaproszenie",                       tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Helios,   cinemaTitle = "Zaproszenie"),
       aliased("Zaproszenie | Kinoteka dla rodziców", tmdbId = 9001, tmdbYear = 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Kinoteka, cinemaTitle = "Zaproszenie | Kinoteka dla rodziców")
     )
-    val components = FilmCanonicalizer.groupByFilm(rows)
+    val components = FilmCanonicalizer.groupByFilm(rows, titleNormalizer)
     withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
       components should have size 1
     }
     val clusters = FilmCanonicalizer.clusterByFilm(components.head)
     clusters should have size 1                                       // one tmdbId → one film
-    val (_, merged) = FilmCanonicalizer.canonical(clusters.head)
+    val (_, merged) = FilmCanonicalizer.canonical(clusters.head, titleNormalizer)
     merged.cinemaTitles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
   }
 
@@ -322,7 +322,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val components = FilmCanonicalizer.groupByFilm(Seq(
       resolved("Diuna", tmdbId = 100, tmdbYear = 1984, cinema = KinoMuza),
       resolved("Diuna", tmdbId = 200, tmdbYear = 2021, cinema = KinoMuzeumGdansk)
-    ))
+    ), titleNormalizer)
     components should have size 1                                  // same sanitized title → one component
     FilmCanonicalizer.clusterByFilm(components.head) should have size 2  // split back out by tmdbId
   }
@@ -333,7 +333,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val (canonicalKey, _) = FilmCanonicalizer.canonical(Seq(
       aliased("Tangled",   tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Multikino, cinemaTitle = "Zaplątani"),
       aliased("Zaplątani", tmdbId = 38757, tmdbYear = 2010, tmdbTitle = "Zaplątani", originalTitle = "Tangled", cinema = Helios,    cinemaTitle = "Zaplątani")
-    ))
+    ), titleNormalizer)
     titleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe "zaplatani"
   }
 
@@ -350,7 +350,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
           Helios -> SourceData(title = Some("Straszny film ukraiński dubbing"), releaseYear = Some(2026))))
     )
 
-    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster)
+    val (canonicalKey, _) = FilmCanonicalizer.canonical(cluster, titleNormalizer)
 
     // The dub keeps its own spelling; it does NOT collapse onto the base "Straszny film".
     titleNormalizer.sanitize(canonicalKey.cleanTitle) shouldBe
@@ -389,13 +389,13 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val allCinemas = Set[Source](Helios, Multikino, KinoMuza, KinoMuzeumGdansk, Kinoteka)
 
     val settled = rows.permutations.toList.map { ordered =>
-      val clusters = FilmCanonicalizer.groupByFilm(ordered).flatMap(FilmCanonicalizer.clusterByFilm)
+      val clusters = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer).flatMap(FilmCanonicalizer.clusterByFilm)
       withClue(s"order ${ordered.map(r => (r._1.cleanTitle, r._1.year))} → " +
                s"${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
         clusters should have size 1
         clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe allCinemas
       }
-      val (canonicalKey, merged) = FilmCanonicalizer.canonical(clusters.head)
+      val (canonicalKey, merged) = FilmCanonicalizer.canonical(clusters.head, titleNormalizer)
       (canonicalKey, merged.tmdbId)
     }
 

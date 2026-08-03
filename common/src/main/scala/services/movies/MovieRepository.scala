@@ -421,7 +421,7 @@ class MongoMovieRepository(
       logger.warn(s"MovieRepository: skipping ${dto._id} — its movie_slots read failed, and serving the row " +
         "without them would present a live film as having no cinemas.")
       None
-    } else Some(stitchRow(StoredMovieDto.toDomain(dto),
+    } else Some(stitchRow(StoredMovieDto.toDomain(dto, normalizer),
       screenings.map(_.findForFilm(dto._id)).getOrElse(Map.empty), storedSlots))
   }
 
@@ -534,7 +534,7 @@ class MongoMovieRepository(
           s"${ids.size} film(s) (screenings ok=$scrOk, slots ok=$slotsOk) — treating the scan as " +
           "incomplete so a reconcile cannot prune films whose cinemas it could not see.")
       }
-      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto),
+      onBatch(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto, normalizer),
         pageScr.getOrElse(dto._id, Map.empty), pageSlots.getOrElse(dto._id, Map.empty))))
     }
     moviesComplete && sideReadsComplete
@@ -636,7 +636,7 @@ class MongoMovieRepository(
         if (!slotsRead)
           logger.warn("MovieRepository.findAllForListing: movie_slots load failed — every migrated film will " +
             "list with no cinemas. The listing is stale, not the corpus.")
-        rows.map(dto => stitchSlots(StoredMovieDto.toDomain(dto), allSlots.getOrElse(dto._id, Map.empty)))
+        rows.map(dto => stitchSlots(StoredMovieDto.toDomain(dto, normalizer), allSlots.getOrElse(dto._id, Map.empty)))
       }.recover {
         case exception: Throwable =>
           logger.warn(s"MovieRepository.findAllForListing failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
@@ -668,7 +668,7 @@ class MongoMovieRepository(
    *  does, so each row's showtimes are empty. Cheap enough to run on a 5-min metrics timer
    *  without a repeated full-collection screenings read. See the trait doc for the invariant. */
   override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean =
-    scanByKeyset(_.foreach(dto => f(StoredMovieDto.toDomain(dto))))
+    scanByKeyset(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
 
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
    *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`
@@ -844,7 +844,7 @@ class MongoMovieRepository(
               // the replace carries exactly the diff the `$set` path would, every other
               // field preserved. Absent row → nothing to replace → report not-present.
               val current = Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
-                .map(dto => StoredMovieDto.toDomain(dto).record)
+                .map(dto => StoredMovieDto.toDomain(dto, normalizer).record)
               dottedReplaceRecord(current, patch) match {
                 case Some(merged) =>
                   Await.result(c.replaceOne(Filters.eq("_id", id),

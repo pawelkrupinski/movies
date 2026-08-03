@@ -9,7 +9,7 @@ import tools.Env
 
 import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration._
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  *  Measures every phase of the boot hydrate path against the live Mongo
@@ -98,7 +98,7 @@ object MeasureStartup {
       fmt(s"   streamed find() — total wall time",        t4 - t3)
 
       // Phase 5: StoredMovieDto → StoredMovieRecord conversion.
-      val converted: Seq[StoredMovieRecord] = rows.map(StoredMovieDto.toDomain)
+      val converted: Seq[StoredMovieRecord] = rows.map(StoredMovieDto.toDomain(_, titleNormalizer))
       val t5 = System.nanoTime()
       fmt(s"5. StoredMovieDto.toDomain × ${rows.size}", t5 - t4)
 

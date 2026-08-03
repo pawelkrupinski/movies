@@ -270,7 +270,7 @@ class MongoStagingRepository(
           logger.warn(s"StagingRepository.findAll keyset scan failed: ${exception.getClass.getSimpleName}: " +
             s"${exception.getMessage} — callers will see a SHORT staging view this tick (the reaper enqueues " +
             "less, the stuck-alerter reports less); it is not evidence that staging is empty")
-      )(batch => buf ++= batch.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record)))
+      )(batch => buf ++= batch.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record)))
 
       val records = buf.result()
       if (!complete) logger.warn(s"StagingRepository.findAll returned ${records.size} record(s) from an INCOMPLETE scan")
@@ -321,7 +321,7 @@ class MongoStagingRepository(
     if (ids.isEmpty) Seq.empty
     else fetchByIds(c, ids) match {
       case Success(rows) =>
-        rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).toSeq)
+        rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record).toSeq)
           .filter(row => normalizer.sanitize(row.title) == anchor)
       // NOT `Seq.empty`. A short answer here tells the reaper this film has no rows, so it
       // skips the film's next step — indistinguishable from the film being finished, and
@@ -380,7 +380,7 @@ class MongoStagingRepository(
    *  enrichment across a re-scrape. Best-effort — None on any read failure. */
   private def recordAt(id: String): Option[MovieRecord] = coll.flatMap { c =>
     Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds))
-      .toOption.flatMap(_.headOption).map(dto => StoredMovieDto.toDomain(dto).record)
+      .toOption.flatMap(_.headOption).map(dto => StoredMovieDto.toDomain(dto, normalizer).record)
   }
 
   private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
@@ -416,7 +416,7 @@ class MongoStagingRepository(
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
         override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit =
           try Option(change.getFullDocument) match {
-            case Some(dto) => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto).record).foreach(onUpsert)
+            case Some(dto) => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record).foreach(onUpsert)
             // A delete (or drop/invalidate) carries no full document — the change's
             // document key holds the `_id` of the row that graduated/left.
             case None => Option(change.getDocumentKey).map(_.getString("_id").getValue).foreach(onDelete)

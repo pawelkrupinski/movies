@@ -352,7 +352,7 @@ class MovieController( cc: ControllerComponents,
 
   // The country this deployment serves — the rules its corpus was keyed under,
   // so /debug orders staging rows by the same anchor the worker wrote.
-  private given TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
+  private given normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
   // Read the session's `userId` (set by `AuthController.callback`) and
   // resolve it to a User if the row is still there. Returns None for
@@ -881,7 +881,7 @@ class MovieController( cc: ControllerComponents,
       // A different (deduped, poster-bearing) set of the city's films each day —
       // and the cache key carries the date so the card regenerates daily.
       val day   = java.time.LocalDate.now(c.zoneId)
-      val films = OgCardAssembly.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5)
+      val films = OgCardAssembly.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5, normalizer)
         .map(OgCardAssembly.toCityCardFilm)
       val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), c.country.brandName, films)
       // 1h, not a day: the card tracks the live repertoire (which shifts through

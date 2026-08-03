@@ -70,7 +70,7 @@ object OgCardAssembly {
    *  unrelated films that share one image (a retrospective on a single generic
    *  placeholder) don't both appear — was already taken. Keeps the first
    *  (earliest-showing) row. */
-  def distinctByMovie(schedules: Seq[FilmSchedule])(using normalizer: TitleNormalizer): Seq[FilmSchedule] = {
+  def distinctByMovie(schedules: Seq[FilmSchedule], normalizer: TitleNormalizer): Seq[FilmSchedule] = {
     val seenKeys, seenPosters = scala.collection.mutable.Set.empty[String]
     schedules.filter { s =>
       val key    = normalizer.apiQuery(s.movie.title).toLowerCase
@@ -85,8 +85,8 @@ object OgCardAssembly {
    *  poster-bearing repertoire — so a different (and, day to day, non-overlapping)
    *  set of posters shows each day, cycling through every film over time,
    *  deterministically (stable within a day, fresh the next). */
-  def dailyCardFilms(schedules: Seq[FilmSchedule], epochDay: Long, count: Int)(using TitleNormalizer): Seq[FilmSchedule] = {
-    val pool = distinctByMovie(schedules).filter(_.posterUrl.exists(_.nonEmpty))
+  def dailyCardFilms(schedules: Seq[FilmSchedule], epochDay: Long, count: Int, normalizer: TitleNormalizer): Seq[FilmSchedule] = {
+    val pool = distinctByMovie(schedules, normalizer).filter(_.posterUrl.exists(_.nonEmpty))
     if (pool.isEmpty) Nil
     else {
       val start = Math.floorMod(epochDay * count, pool.length.toLong).toInt

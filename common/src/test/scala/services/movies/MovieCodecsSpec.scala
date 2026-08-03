@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.{Instant, LocalDateTime}
-import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Round-trips `StoredMovieDto` through the codec registry to confirm:
@@ -47,7 +47,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val dto = StoredMovieDto.fromDomain("test|1900", record, Instant.parse("2026-05-17T10:00:00Z"))
 
     val decoded = roundTrip(dto)
-    val back = StoredMovieDto.toDomain(decoded)
+    val back = StoredMovieDto.toDomain(decoded, titleNormalizer)
     // title/year are derived, not stored: year from the _id, title from
     // sourceData (here there are no cinema slots, so it falls back to the
     // _id's sanitized prefix — `displayTitle` then re-cases that all-lowercase
@@ -62,7 +62,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(imdbId = Some("tt0000002"))
     val dto = StoredMovieDto.fromDomain("sparse|", record, Instant.parse("2026-05-17T10:00:00Z"))
 
-    val back = StoredMovieDto.toDomain(roundTrip(dto))
+    val back = StoredMovieDto.toDomain(roundTrip(dto), titleNormalizer)
     back.year                      shouldBe None
     back.record.imdbId             shouldBe Some("tt0000002")
     back.record.imdbRating         shouldBe None
@@ -97,7 +97,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     )
     val dto = StoredMovieDto.fromDomain("mixed|2025", record, Instant.now())
 
-    val back = StoredMovieDto.toDomain(roundTrip(dto))
+    val back = StoredMovieDto.toDomain(roundTrip(dto), titleNormalizer)
     back.record.data.keySet           shouldBe Set(Tmdb, Imdb, Helios)
     back.record.data(Tmdb)            shouldBe tmdbSlot
     back.record.data(Imdb)            shouldBe imdbSlot
@@ -112,7 +112,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   it should "round-trip a cinema slot's ageRating certificate" in {
     val slot   = SourceData(title = Some("Cineworld film"), ageRating = Some("12A"))
     val record = MovieRecord(data = Map[Source, SourceData](Helios -> slot))
-    val back   = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("cert|2026", record, Instant.now())))
+    val back   = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("cert|2026", record, Instant.now())), titleNormalizer)
     back.record.data(Helios).ageRating shouldBe Some("12A")
     back.record.ageRating              shouldBe Some("12A")
   }
@@ -125,7 +125,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(data = Map[Source, SourceData](Tmdb -> slot))
     val dto    = StoredMovieDto.fromDomain("mario|2026", record, Instant.now())
 
-    val back = StoredMovieDto.toDomain(roundTrip(dto))
+    val back = StoredMovieDto.toDomain(roundTrip(dto), titleNormalizer)
     back.record.data(Tmdb).language shouldBe Some("de-DE")
     back.record.data(Tmdb)          shouldBe slot
   }
@@ -139,7 +139,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     codec.encode(new BsonDocumentWriter(raw), dto, EncoderContext.builder().build())
     raw.getDocument("sourceData").getDocument(Tmdb.displayName).containsKey("language") shouldBe false
 
-    StoredMovieDto.toDomain(roundTrip(dto)).record.data(Tmdb).language shouldBe None
+    StoredMovieDto.toDomain(roundTrip(dto), titleNormalizer).record.data(Tmdb).language shouldBe None
   }
 
   it should "round-trip Showtimes including dateTime, room, format" in {
@@ -151,7 +151,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(data = Map[Source, SourceData](Multikino -> slot))
     val dto = StoredMovieDto.fromDomain("st|2026", record, Instant.now())
 
-    val back = StoredMovieDto.toDomain(roundTrip(dto))
+    val back = StoredMovieDto.toDomain(roundTrip(dto), titleNormalizer)
     val decodedShowtimes = back.record.data(Multikino).showtimes
     decodedShowtimes              should have size 2
     decodedShowtimes.head         shouldBe showtimes.head
@@ -177,7 +177,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       org.bson.BsonString("legacy slot")))
 
     val decoded = outerCodec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build())
-    val back = StoredMovieDto.toDomain(decoded)
+    val back = StoredMovieDto.toDomain(decoded, titleNormalizer)
     back.record.data.keySet shouldBe Set(Tmdb)
   }
 
@@ -200,7 +200,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val sourceData = raw.getDocument("sourceData")
     sourceData.put(Multikino.displayName, sourceData.get(perTitle.displayName))
 
-    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
     back.record.data.keySet          shouldBe Set(perTitle, Tmdb)
     back.record.cinemaSlots.map(_._1) shouldBe Seq(perTitle)  // exactly one cinema slot — no bare duplicate
   }
@@ -209,13 +209,13 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     // No CinemaShowing slot for the cinema → the bare slot is the only one, not a
     // duplicate, so it survives decode untouched (re-keyed on its next scrape).
     val record = MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Legacy"))))
-    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("legacy|2026", record, Instant.now())))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("legacy|2026", record, Instant.now())), titleNormalizer)
     back.record.data.keySet shouldBe Set(Helios)
   }
 
   it should "round-trip the tmdbNoMatch / detailPending conclusion markers when set" in {
     val record = MovieRecord(imdbId = Some("tt0000004"), tmdbNoMatch = true, detailPending = true)
-    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("conc|2025", record, Instant.now())))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("conc|2025", record, Instant.now())), titleNormalizer)
     back.record.tmdbNoMatch   shouldBe true
     back.record.detailPending shouldBe true
   }
@@ -225,7 +225,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val raw = new BsonDocument()
     codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacy|2025", record, Instant.now()), EncoderContext.builder().build())
     raw.remove("tmdbNoMatch"); raw.remove("detailPending")  // a document written before the fields existed
-    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
     back.record.tmdbNoMatch   shouldBe false
     back.record.detailPending shouldBe false
   }
@@ -235,7 +235,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](Tmdb -> SourceData(synopsis = Some("tmdb"))),
       retainedSynopses = Map[Source, String](Multikino -> "long retained blurb", Helios -> "short")
     )
-    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("ret|2025", record, Instant.now())))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("ret|2025", record, Instant.now())), titleNormalizer)
     back.record.retainedSynopses shouldBe Map[Source, String](Multikino -> "long retained blurb", Helios -> "short")
   }
 
@@ -244,7 +244,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val raw = new BsonDocument()
     codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legret|2025", record, Instant.now()), EncoderContext.builder().build())
     raw.remove("retainedSynopses")  // a document written before the field existed
-    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
     back.record.retainedSynopses shouldBe Map.empty
   }
 
@@ -262,7 +262,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       StoredMovieDto.fromDomain("migrated|2026", record, Instant.now()), EncoderContext.builder().build())
     raw.remove("sourceData")  // exactly what the slot migration leaves behind
 
-    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
     back.record.data   shouldBe Map.empty
     back.record.imdbId shouldBe Some("tt0000099")
   }
@@ -275,7 +275,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     val raw = new BsonDocument()
     codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("retunk|2025", record, Instant.now()), EncoderContext.builder().build())
     raw.getDocument("retainedSynopses").put("DeprecatedCinema", new org.bson.BsonString("orphan"))
-    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
     back.record.retainedSynopses shouldBe Map[Source, String](Multikino -> "kept")
   }
 
@@ -288,7 +288,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       Helios    -> SourceData(title = Some("Drzewo magii")),
       Tmdb      -> SourceData(title = Some("Drzewo magii"))   // canonical casing
     ))
-    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())), titleNormalizer)
     back.title shouldBe "Drzewo magii"
     back.year  shouldBe Some(2026)
   }
@@ -296,7 +296,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   it should "recover year=None from an _id with an empty year suffix" in {
     val id = s"${titleNormalizer.sanitize("Some Event")}|"
     val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Some Event"))))
-    StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now()))).year shouldBe None
+    StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())), titleNormalizer).year shouldBe None
   }
 
   it should "derive a title that sanitizes back to the _id prefix (no re-keying churn)" in {
@@ -307,7 +307,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       Multikino -> SourceData(title = Some("Top Gun: Maverick")),
       Helios    -> SourceData(title = Some("TOP GUN MAVERICK"))
     ))
-    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())))
+    val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain(id, record, Instant.now())), titleNormalizer)
     back.title                           shouldBe "Top Gun: Maverick"  // ladder picks punct+mixed-case
     titleNormalizer.sanitize(back.title) shouldBe id.split('|').head
   }
@@ -323,7 +323,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     raw.put("title", new org.bson.BsonString("STALE PINNED TITLE"))
     raw.put("year",  new org.bson.BsonInt32(1999))
 
-    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()))
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
     back.title shouldBe "Wonka"     // from sourceData, not the stale column
     back.year  shouldBe Some(2023)  // from the _id, not the stale column
   }

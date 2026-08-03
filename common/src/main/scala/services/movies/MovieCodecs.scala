@@ -92,7 +92,7 @@ object StoredMovieDto {
       updatedAt         = updatedAt
     )
 
-  def toDomain(dto: StoredMovieDto)(using TitleNormalizer): StoredMovieRecord = {
+  def toDomain(dto: StoredMovieDto, normalizer: TitleNormalizer): StoredMovieRecord = {
     val record = MovieRecord(
       imdbId            = dto.imdbId,
       imdbRating        = dto.imdbRating,
@@ -120,7 +120,7 @@ object StoredMovieDto {
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
     // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).
-    StoredMovieRecord.fromStorage(dto._id, record)
+    StoredMovieRecord.fromStorage(dto._id, record)(using normalizer)
   }
 }
 

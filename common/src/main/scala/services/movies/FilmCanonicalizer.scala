@@ -174,7 +174,7 @@ object FilmCanonicalizer {
    *  edge — an UNRESOLVED row is adopted onto a resolved row only when the resolved
    *  row is a bare film title, so a decorated edition's alias never adopts a
    *  genuinely-new bare film. */
-  private[services] def isBareFilmTitle(row: (CacheKey, MovieRecord))(using normalizer: TitleNormalizer): Boolean = {
+  private[services] def isBareFilmTitle(row: (CacheKey, MovieRecord), normalizer: TitleNormalizer): Boolean = {
     val norm = normalizer.sanitize(row._1.cleanTitle)
     row._2.tmdbTitleAliases.exists(a => normalizer.sanitize(a) == norm)
   }
@@ -196,7 +196,7 @@ object FilmCanonicalizer {
    *  same-title row a per-title group saw still clusters together — plus the
    *  cross-title bare-alias rows. Each component is then sub-clustered by
    *  [[clusterByFilm]]. */
-  def groupByFilm(rows: Seq[(CacheKey, MovieRecord)])(using normalizer: TitleNormalizer): Seq[Seq[(CacheKey, MovieRecord)]] = {
+  def groupByFilm(rows: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer): Seq[Seq[(CacheKey, MovieRecord)]] = {
     val n      = rows.length
     val parent = Array.tabulate(n)(identity)
     def find(x: Int): Int = {
@@ -241,7 +241,7 @@ object FilmCanonicalizer {
     // contains the base title ("Zaproszenie | Kinoteka dla rodziców") never matches.
     val resolvedBareByAlias: Map[String, Seq[Int]] =
       rows.indices
-        .filter(i => rows(i)._2.tmdbId.isDefined && isBareFilmTitle(rows(i)))
+        .filter(i => rows(i)._2.tmdbId.isDefined && isBareFilmTitle(rows(i), normalizer))
         .flatMap(i => rows(i)._2.tmdbTitleAliases.map(a => normalizer.sanitize(a) -> i))
         .groupBy(_._1).view.mapValues(_.map(_._2)).toMap
     rows.indices.foreach { j =>
@@ -345,7 +345,7 @@ object FilmCanonicalizer {
    *  the production-year 2025 row attached to a TMDB-2026 resolved cluster)
    *  can't clobber the resolved row's tmdbId/imdbId/ratings. Order independent
    *  for the per-source `data` (it's a keyed merge). */
-  def canonical(cluster: Seq[(CacheKey, MovieRecord)])(using normalizer: TitleNormalizer): (CacheKey, MovieRecord) = {
+  def canonical(cluster: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer): (CacheKey, MovieRecord) = {
     // Every reported variant: each CINEMA slot's derived title plus the rows'
     // current keys. Enrichment-source slots (Tmdb/Imdb/Filmweb) are excluded on
     // purpose: a row's identity spelling must come from what CINEMAS call it, not
@@ -354,7 +354,7 @@ object FilmCanonicalizer {
     // Tmdb slot carries the bare base title ("Straszny film") would canonicalise
     // to that base title and collapse onto the base row. Cinema titles keep the
     // variant distinct; `displayTitle` still derives a nice label separately.
-    val slotKeys = cluster.flatMap { case (_, e) => e.cinemaData.values.flatMap(d => d.title.map(t => CacheKey(t, d.releaseYear))) }
+    val slotKeys = cluster.flatMap { case (_, e) => e.cinemaData.values.flatMap(d => d.title.map(t => CacheKey(t, d.releaseYear)(using normalizer))) }
     val keys     = cluster.map(_._1)
     val allKeys  = slotKeys ++ keys
     val canonicalYear = clusterYear(cluster)
@@ -379,7 +379,7 @@ object FilmCanonicalizer {
     // RT/MC already slug-fold), so this re-spelling no longer shifts which fixture
     // a rating lookup hits.
     val canonicalTitle = merged.displayTitle(minSpelling, normalizer)
-    val canonicalKey   = CacheKey(canonicalTitle, canonicalYear)
+    val canonicalKey   = CacheKey(canonicalTitle, canonicalYear)(using normalizer)
     (canonicalKey, merged)
   }
 }

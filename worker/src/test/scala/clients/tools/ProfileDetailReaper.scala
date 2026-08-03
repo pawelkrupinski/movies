@@ -7,7 +7,7 @@ import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Localises the `detail-reaper` thread's CPU against a REAL corpus.
@@ -64,7 +64,7 @@ object ProfileDetailReaper {
       val db: MongoDatabase = client.getDatabase(dbName).withCodecRegistry(MovieCodecs.registry)
       val movies: MongoCollection[StoredMovieDto] = db.getCollection[StoredMovieDto]("movies")
       val raw: Seq[StoredMovieRecord] =
-        Await.result(movies.find().toFuture(), 120.seconds).map(StoredMovieDto.toDomain)
+        Await.result(movies.find().toFuture(), 120.seconds).map(StoredMovieDto.toDomain(_, titleNormalizer))
       println(s"  raw `movies` decode: ${raw.size} records, ${raw.map(_.record.cinemaSlots.size).sum} cinema slots")
 
       // The cache holds STITCHED rows — slots unioned from the `movie_slots` side
