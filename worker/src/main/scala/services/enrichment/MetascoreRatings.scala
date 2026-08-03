@@ -91,7 +91,7 @@ class MetascoreRatings(
       // re-fetch. On a cache HIT the closure is skipped, `freshScore` stays
       // None, and the caller reads the score via `metascoreFor`.
       var freshScore: Option[Int] = None
-      val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(linkTitle, mcFallback, year)) {
+      val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(linkTitle, mcFallback, year, cache.normalizer)) {
         // One attempt across all three candidate titles rather than three
         // independent ones: same ladder, same order, but the titles share a
         // fetch memo so a slug an earlier title already probed isn't probed

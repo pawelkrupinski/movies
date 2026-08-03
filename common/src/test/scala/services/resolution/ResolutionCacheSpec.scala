@@ -1,6 +1,6 @@
 package services.resolution
 
-import services.movies.SingleCountryNormalizer.given
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -245,9 +245,9 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     val calls = new AtomicInteger(0)
     def resolve(): Option[String] = { calls.incrementAndGet(); None }
 
-    cache.getOrResolve(ResolutionKeys.mc("Odyseja", None, Some(2026)))(resolve())
+    cache.getOrResolve(ResolutionKeys.mc("Odyseja", None, Some(2026), titleNormalizer))(resolve())
     cache.forget("Odyseja")
-    cache.getOrResolve(ResolutionKeys.mc("Odyseja", None, Some(2026)))(resolve())
+    cache.getOrResolve(ResolutionKeys.mc("Odyseja", None, Some(2026), titleNormalizer))(resolve())
 
     calls.get() shouldBe 2
   }

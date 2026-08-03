@@ -23,31 +23,31 @@ object ResolutionKeys {
   // normalizer is a context parameter rather than read from a global. A hint key
   // is looked up by the enrichment that wrote it, always within one country's
   // corpus, so the given is in scope wherever these are called.
-  private def norm(title: String)(using normalizer: TitleNormalizer): String = normalizer.sanitize(title)
+  private def norm(title: String, normalizer: TitleNormalizer): String = normalizer.sanitize(title)
   private def year(y: Option[Int]): String = y.map(_.toString).getOrElse("")
-  private def directors(ds: Iterable[String])(using TitleNormalizer): String =
-    ds.map(d => norm(d)).filter(_.nonEmpty).toSeq.distinct.sorted.mkString(",")
-  private def opt(s: Option[String])(using TitleNormalizer): String = s.map(t => norm(t)).getOrElse("")
+  private def directors(ds: Iterable[String], normalizer: TitleNormalizer): String =
+    ds.map(d => norm(d, normalizer)).filter(_.nonEmpty).toSeq.distinct.sorted.mkString(",")
+  private def opt(s: Option[String], normalizer: TitleNormalizer): String = s.map(t => norm(t, normalizer)).getOrElse("")
 
   /** TMDB id resolution: search title + year + director set + original title. */
-  def tmdb(cleanTitle: String, year: Option[Int], directors: Iterable[String], originalTitle: Option[String])(using TitleNormalizer): String =
-    Seq("tmdb", norm(cleanTitle), this.year(year), this.directors(directors), opt(originalTitle)).mkString(Sep)
+  def tmdb(cleanTitle: String, year: Option[Int], directors: Iterable[String], originalTitle: Option[String], normalizer: TitleNormalizer): String =
+    Seq("tmdb", norm(cleanTitle, normalizer), this.year(year), this.directors(directors, normalizer), opt(originalTitle, normalizer)).mkString(Sep)
 
   /** IMDb id recovery: search title + year. */
-  def imdb(searchTitle: String, year: Option[Int])(using TitleNormalizer): String =
-    Seq("imdb", norm(searchTitle), this.year(year)).mkString(Sep)
+  def imdb(searchTitle: String, year: Option[Int], normalizer: TitleNormalizer): String =
+    Seq("imdb", norm(searchTitle, normalizer), this.year(year)).mkString(Sep)
 
   /** Filmweb url: title + year + fallback title + director set. */
-  def filmweb(title: String, year: Option[Int], fallback: Option[String], directors: Iterable[String])(using TitleNormalizer): String =
-    Seq("filmweb", norm(title), this.year(year), opt(fallback), this.directors(directors)).mkString(Sep)
+  def filmweb(title: String, year: Option[Int], fallback: Option[String], directors: Iterable[String], normalizer: TitleNormalizer): String =
+    Seq("filmweb", norm(title, normalizer), this.year(year), opt(fallback, normalizer), this.directors(directors, normalizer)).mkString(Sep)
 
   /** Rotten Tomatoes url: title + fallback title + year. */
-  def rt(title: String, fallback: Option[String], year: Option[Int])(using TitleNormalizer): String =
-    Seq("rt", norm(title), opt(fallback), this.year(year)).mkString(Sep)
+  def rt(title: String, fallback: Option[String], year: Option[Int], normalizer: TitleNormalizer): String =
+    Seq("rt", norm(title, normalizer), opt(fallback, normalizer), this.year(year)).mkString(Sep)
 
   /** Metacritic url: title + fallback title + year. */
-  def mc(title: String, fallback: Option[String], year: Option[Int])(using TitleNormalizer): String =
-    Seq("mc", norm(title), opt(fallback), this.year(year)).mkString(Sep)
+  def mc(title: String, fallback: Option[String], year: Option[Int], normalizer: TitleNormalizer): String =
+    Seq("mc", norm(title, normalizer), opt(fallback, normalizer), this.year(year)).mkString(Sep)
 
   /** True when `hintKey` was built for the film whose cache key title is
    *  `cleanTitle` — i.e. that title appears as one of the key's fields.
@@ -64,8 +64,8 @@ object ResolutionKeys {
    *  on it would silently miss the entry we most want gone. A forced re-enrich
    *  means "forget what we concluded about this title", and clearing a same-title
    *  remake's entry too is harmless — it re-resolves on its next pass. */
-  def belongsTo(hintKey: String, cleanTitle: String)(using TitleNormalizer): Boolean = {
-    val title = norm(cleanTitle)
+  def belongsTo(hintKey: String, cleanTitle: String, normalizer: TitleNormalizer): Boolean = {
+    val title = norm(cleanTitle, normalizer)
     // -1 keeps trailing empty fields (an absent fallback / year), so a key ending
     // in a blank field still splits into the full field list.
     title.nonEmpty && hintKey.split("\\|", -1).contains(title)

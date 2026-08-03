@@ -234,7 +234,7 @@ class FilmwebRatings(
     // cache MISS so the rating + genres are kept exactly as before; on a cache
     // HIT only the url is known, so rebuild the rating + genres from it.
     var fresh: Option[FilmwebClient.FilmwebInfo] = None
-    val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, effectiveYear, fallback, directors)) {
+    val cachedUrl = filmwebLinkCache.getOrResolve(ResolutionKeys.filmweb(linkTitle, effectiveYear, fallback, directors, cache.normalizer)) {
       val info = filmweb.lookup(linkTitle, effectiveYear, fallback, directors, referenceSynopsis)
       fresh = info
       info.map(_.url)

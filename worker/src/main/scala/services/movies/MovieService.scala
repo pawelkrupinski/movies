@@ -942,7 +942,7 @@ class MovieService(
     val effectiveYear = year
       .orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
       .orElse(reportedYears.headOption)
-    val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle)
+    val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle, cache.normalizer)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
     // this thread), so the caller keeps the hit's title/year as a fallback when
     // the full-details fetch fails. On a cache HIT the loader doesn't run and it

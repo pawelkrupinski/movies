@@ -87,7 +87,7 @@ class ImdbIdResolver(
     MovieService.searchTitleCandidates(searchTitle, originalTitle = None)
       .map(cache.normalizer.apiQuery).filter(_.nonEmpty).distinct
       .iterator
-      .flatMap(query => imdbIdCache.getOrResolve(ResolutionKeys.imdb(query, year))(
+      .flatMap(query => imdbIdCache.getOrResolve(ResolutionKeys.imdb(query, year, cache.normalizer))(
         Try(imdb.findId(query, year)).toOption.flatten))
       .nextOption()
 

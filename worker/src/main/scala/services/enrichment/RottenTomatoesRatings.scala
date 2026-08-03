@@ -76,7 +76,7 @@ class RottenTomatoesRatings(
         .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
       // Cache the whole slug-probe chain keyed by the primary identity, so a
       // cache hit skips the RT HTTP probes entirely.
-      val resolved = rtLinkCache.getOrResolve(ResolutionKeys.rt(linkTitle, rtFallback, year)) {
+      val resolved = rtLinkCache.getOrResolve(ResolutionKeys.rt(linkTitle, rtFallback, year, cache.normalizer)) {
         // One attempt across all three candidate titles rather than three
         // independent ones: same ladder, same order, but the titles share a
         // fetch memo so a slug an earlier title already probed isn't probed

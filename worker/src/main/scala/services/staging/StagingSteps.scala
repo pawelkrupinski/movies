@@ -214,7 +214,7 @@ class StagingSteps(
    *  director/title — see `resolveAndStamp`. */
   private def hintGroupKey(r: StagingRecord): String = {
     val cinemaOnly = r.record.copy(data = r.record.data - Tmdb)
-    ResolutionKeys.tmdb(r.title, r.year, cinemaOnly.director, cinemaOnly.cinemaOriginalTitle)
+    ResolutionKeys.tmdb(r.title, r.year, cinemaOnly.director, cinemaOnly.cinemaOriginalTitle, stagingRepository.normalizer)
   }
 
   /** STEP 3 (per film): recover a missing IMDb cross-reference and stamp it onto

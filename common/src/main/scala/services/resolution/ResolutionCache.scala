@@ -140,7 +140,7 @@ class WriteThroughResolutionCache(
    *  re-warm it from the row we are about to delete. */
   override def forget(cleanTitle: String): Unit = {
     import scala.jdk.CollectionConverters._
-    cache.invalidateAll(cache.asMap().keySet().asScala.filter(ResolutionKeys.belongsTo(_, cleanTitle)).toSeq.asJava)
+    cache.invalidateAll(cache.asMap().keySet().asScala.filter(ResolutionKeys.belongsTo(_, cleanTitle, store.normalizer)).toSeq.asJava)
     store.removeForFilm(cleanTitle)
     ()
   }

@@ -82,7 +82,7 @@ class InMemoryResolutionStore(clock: Clock = Clock.systemUTC()) extends Resoluti
 
   override def removeForFilm(cleanTitle: String): Int = {
     import scala.jdk.CollectionConverters._
-    val doomed = entries.keySet.asScala.filter(ResolutionKeys.belongsTo(_, cleanTitle)).toSeq
+    val doomed = entries.keySet.asScala.filter(ResolutionKeys.belongsTo(_, cleanTitle, normalizer)).toSeq
     doomed.foreach(entries.remove)
     doomed.size
   }
@@ -161,7 +161,7 @@ class MongoResolutionStore(
     Try {
       val ids = Await.result(c.find().projection(Projections.include("_id")).toFuture(), 10.seconds)
         .map(_.getString("_id"))
-        .filter(ResolutionKeys.belongsTo(_, cleanTitle))
+        .filter(ResolutionKeys.belongsTo(_, cleanTitle, normalizer))
       if (ids.isEmpty) 0
       else {
         Await.result(c.deleteMany(Filters.in("_id", ids*)).toFuture(), 10.seconds)
