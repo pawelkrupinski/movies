@@ -6,7 +6,7 @@ import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{MovieRecordMerge, MovieService, TitleNormalizer}
 import services.resolution.ResolutionKeys
 import services.tasks.StagingTaskKeys
-import services.cinemas.common.DetailEnricher
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 
 /**
  * The shared business logic for incubating a `pending_movies` newcomer — the
@@ -99,8 +99,8 @@ class StagingSteps(
         val target =
           if (enricher.detailTarget == enricher.cinema) CinemaShowing.keyFor(enricher.cinema, row.title)
           else enricher.detailTarget
-        enricher.fetchFilmDetail(ref) match {
-          case Some(detail) =>
+        enricher.fetchDetail(ref) match {
+          case DetailFetchOutcome.Fetched(detail) =>
             val before = row.record.data.getOrElse(target, SourceData())
             val after  = detail.mergeInto(before)
             val merged = row.record.copy(data = row.record.data + (target -> after))
@@ -122,7 +122,17 @@ class StagingSteps(
               logger.info(s"Staging: '${row.title}' ← detail from ${row.cinema.displayName}" +
                           s" (${SourceData.fieldsGained(before, after).mkString(", ")})")
             true
-          case None => detailPresent(row, target)                       // fetch failed — already-merged still counts
+          case DetailFetchOutcome.Gone(code) =>
+            // The page is gone for good (404/410), so no number of retries will land
+            // this detail. Spinning the row to its give-up budget just delays the same
+            // outcome, so treat it as nothing-more-owed and let the film through on its
+            // listing alone — the `giveUp` degrade, arrived at immediately instead of
+            // after the budget. Says so out loud, because "detail never came" and "the
+            // page no longer exists" want different answers from whoever reads this log.
+            logger.info(s"Staging: '${row.title}' detail page for ${row.cinema.displayName} is gone (HTTP $code) — " +
+                        s"degrading to listing-only rather than retrying a dead url")
+            true
+          case DetailFetchOutcome.Failed => detailPresent(row, target)  // fetch failed — already-merged still counts
         }
     }
 

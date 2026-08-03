@@ -7,19 +7,14 @@ import services.freshness.InMemoryFreshnessStore
 import services.movies.{MovieService, TitleNormalizer}
 import services.titlerules.{TitleRules, TitleRuleSet}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
+import services.cinemas.FakeDetailEnricher
+import tools.HttpStatusException
 import services.cinemas.pl.FilmwebShowtimesClient
 
 /** Unit specs for the staging enrichment steps factored out of the old
  *  `StagingPromoter` — the same scenarios, now exercised per discrete step (the
  *  shape the queue handlers + reaper consume). */
 class StagingStepsSpec extends AnyFlatSpec with Matchers {
-
-  private class FakeEnricher(val cinema: Cinema, detail: Option[FilmDetail], defer: Boolean = true)
-    extends DetailEnricher {
-    def detailGroup = "fake"
-    override def defersTmdbResolution: Boolean = defer
-    def fetchFilmDetail(ref: String): Option[FilmDetail] = detail
-  }
 
   // Slot keyed per shown title (`CinemaShowing`), exactly as the scrape-divert path
   // writes a newcomer's slot — so the staging detail step (which targets the same
@@ -41,7 +36,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
   "fetchDetailFor" should "fetch + merge a deferred cinema's detail into its row" in {
     val (repository, anchor) = seeded(Helios, "Newcomer", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("A plot"), director = Seq("Jane Doe"))))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("A plot"), director = Seq("Jane Doe"))))
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
 
     s.fetchDetailFor(Helios, anchor) shouldBe true
@@ -58,7 +53,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.upsert(Helios, "Fallback", Some(2026), MovieRecord(data = Map[Source, SourceData](
       CinemaShowing.keyFor(Helios, "Fallback") -> SourceData(title = Some("Fallback"), filmUrl = Some(FilmwebShowtimesClient.filmPageUrl(1089))))))
     val anchor = TitleNormalizer.sanitize("Fallback")
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("native")))) // would merge if pointed at the URL
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("native")))) // would merge if pointed at the URL
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
 
     s.fetchDetailFor(Helios, anchor) shouldBe true                    // ready at once — no loop, no give-up needed
@@ -71,7 +66,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // filmUrl that 404s every pass): without a give-up the staging-detail step
     // reschedules forever; with it the film graduates on listing-only data.
     val (repository, anchor) = seeded(Helios, "Stuck", Some(2026))
-    val enricher = new FakeEnricher(Helios, detail = None)            // deferred fetch never lands
+    val enricher = new FakeDetailEnricher(Helios, "fake", detail = None)            // deferred fetch never lands
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
 
     s.fetchDetailFor(Helios, anchor) shouldBe false                  // not ready yet — keep retrying
@@ -80,9 +75,33 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     s.detailReady(repository.findAll().head) shouldBe true           // marked fresh → resolve can proceed
   }
 
+  // A client that lets a durable 404 escape (so the enrichment handler can stamp it
+  // instead of retrying forever) sends that exception through THIS path too. Matching
+  // on Some/None let it propagate out of the staging step and fail the whole task —
+  // and the row would then burn its retry budget on an exception rather than degrade.
+  it should "degrade at once when the detail page is durably gone, instead of throwing or spinning to give-up" in {
+    val (repository, anchor) = seeded(Helios, "Withdrawn", Some(2026))
+    val enricher = new FakeDetailEnricher(Helios, "fake",
+      failure = Some(new HttpStatusException(404, "GET", "https://x/Withdrawn", None)))
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe true          // no throw, and no waiting for the give-up budget
+    s.detailReady(repository.findAll().head) shouldBe true  // marked fresh → the film graduates on its listing
+  }
+
+  it should "keep retrying a TRANSIENTLY failing detail rather than degrading early" in {
+    val (repository, anchor) = seeded(Helios, "Flaky", Some(2026))
+    val enricher = new FakeDetailEnricher(Helios, "fake",
+      failure = Some(new HttpStatusException(503, "GET", "https://x/Flaky", None)))
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe false         // still owed — a 503 says "right now", not "forever"
+    s.detailReady(repository.findAll().head) shouldBe false
+  }
+
   "resolveAndStamp" should "resolve with the merged detail hints and stamp the hit on every row" in {
     val (repository, anchor) = seeded(Helios, "Newcomer", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(director = Seq("Jane Doe"))))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(director = Seq("Jane Doe"))))
     var sawDirector = false
     val s = steps(repository, Seq(enricher), (_, _, record) => {
       sawDirector = record.cinemaData.get(Helios).exists(_.director.contains("Jane Doe"))
@@ -97,7 +116,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
   it should "stamp a definitive no-match (tmdbNoMatch)" in {
     val (repository, anchor) = seeded(Helios, "Obscure", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("x"))))
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r.copy(tmdbNoMatch = true)))
 
     s.fetchDetailFor(Helios, anchor)
@@ -149,7 +168,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
   it should "report DetailNotReady (and NOT call resolve) for a deferred cinema whose detail hasn't landed" in {
     val (repository, anchor) = seeded(Helios, "Pending", Some(2026))
-    val enricher = new FakeEnricher(Helios, detail = None)            // detail keeps failing
+    val enricher = new FakeDetailEnricher(Helios, "fake", detail = None)            // detail keeps failing
     var resolveCalled = false
     val s = steps(repository, Seq(enricher), (_, _, _) => { resolveCalled = true; None })
 
@@ -159,7 +178,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
   it should "report TransientFailure on a transient TMDB miss (retry next pass)" in {
     val (repository, anchor) = seeded(Helios, "Flaky", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("x"))))
     val s = steps(repository, Seq(enricher), (_, _, _) => None)
 
     s.fetchDetailFor(Helios, anchor)
@@ -180,7 +199,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     // promoter fetched it before folding; the queue path must too, or the folded
     // movies row loses its synopsis.
     val (repository, anchor) = seeded(Helios, "Display", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("syn"))), defer = false)
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("syn"))), defersTmdb = false)
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r.copy(tmdbId = Some(1))))
 
     s.resolveAndStamp(anchor) shouldBe StagingSteps.DetailNotReady          // detail step hasn't run yet
@@ -198,7 +217,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
   "recoverImdbFor" should "recover a missing imdbId when TMDB resolved without a cross-reference" in {
     val (repository, anchor) = seeded(Helios, "Pucio", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("x"))))
     var searchedFor = Option.empty[String]
     val s = steps(repository, Seq(enricher),
       resolve = (_, _, r) => Some(r.copy(tmdbId = Some(1645035))),    // hit, but imdbId empty
@@ -308,7 +327,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
 
   it should "not call recovery when TMDB already shipped a cross-reference" in {
     val (repository, anchor) = seeded(Helios, "HasImdb", Some(2026))
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(synopsis = Some("x"))))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("x"))))
     var recoverCalled = false
     val s = steps(repository, Seq(enricher),
       resolve = (_, _, r) => Some(r.copy(tmdbId = Some(7), imdbId = Some("tt0000007"))),
@@ -328,7 +347,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
   "fetchDetailFor" should "report which fields a detail merge actually contributed" in {
     // No year on the listing — the diverted-newcomer shape the detail exists to fill.
     val (repository, anchor) = seeded(Helios, "Newcomer", None)
-    val enricher = new FakeEnricher(Helios, Some(FilmDetail(releaseYear = Some(1982), director = Seq("Wim Wenders"))))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(releaseYear = Some(1982), director = Seq("Wim Wenders"))))
     val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
 
     s.fetchDetailFor(Helios, anchor) shouldBe true
@@ -342,7 +361,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
   // …and an EMPTY page gains nothing, which is the case that used to be silent.
   it should "gain no fields from a detail page that parses to nothing" in {
     val (repository, anchor) = seeded(Helios, "Thin", None)
-    val s = steps(repository, Seq(new FakeEnricher(Helios, Some(FilmDetail()))), (_, _, r) => Some(r))
+    val s = steps(repository, Seq(new FakeDetailEnricher(Helios, "fake", Some(FilmDetail()))), (_, _, r) => Some(r))
 
     s.fetchDetailFor(Helios, anchor) shouldBe true          // the fetch RAN — still ready
     val slot = repository.findAll().head.record.cinemaData(Helios)

@@ -18,11 +18,13 @@ class FakeDetailEnricher(
   detail:          Option[FilmDetail] = None,
   target:          Option[Source]     = None,
   uptimeOverride:  Option[String]     = None,
-  failure:         Option[Throwable]  = None
+  failure:         Option[Throwable]  = None,
+  defersTmdb:      Boolean            = true
 ) extends DetailEnricher {
   var calls = 0
   override def detailTarget: Source = target.getOrElse(cinema)
   override def enrichmentServiceOverride: Option[String] = uptimeOverride
+  override def defersTmdbResolution: Boolean = defersTmdb
   override def fetchFilmDetail(ref: String): Option[FilmDetail] = {
     calls += 1
     failure.foreach(throw _)
