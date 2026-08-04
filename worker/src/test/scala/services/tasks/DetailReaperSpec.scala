@@ -55,15 +55,34 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
    *  [[services.movies.DepthGuardUnderSplitSpec]], where the same divergence silently
    *  disabled the degraded-scrape depth guard. */
   private def splitCacheWith(filmUrl: Option[String]) = {
-    val cache = new CaffeineMovieCache(
-      new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                  slots      = Some(new InMemorySlotsRepository)),
-      new InProcessEventBus(), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots      = Some(new InMemorySlotsRepository))
+    val cache = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
     cache.recordCinemaScrape(KinoApollo, Seq(bare))
-    cache
+    (cache, repository)
+  }
+
+  /** The showtimes the film actually HAS — read from storage, since under the split
+   *  that is the only place they survive. */
+  private def storedShowtimes(repository: InMemoryMovieRepository): Seq[Showtime] =
+    repository.findAll().flatMap(_.record.data.values).flatMap(_.showtimes).toSeq
+
+  /** The showtimes the reaper can see — it walks `cache.entries`, and every resident
+   *  slot has been through `ShowtimesDigest.stripForCache`. */
+  private def cachedShowtimes(cache: CaffeineMovieCache): Seq[Showtime] =
+    cache.entries.flatMap(_._2.data.values).flatMap(_.showtimes).toSeq
+
+  /** The split's defining asymmetry, asserted before each test that depends on it:
+   *  the film IS screening — one upcoming showtime, stored — and the cache the
+   *  reaper walks holds NONE of it. Pinning both halves is the point: if
+   *  `stripForCache` ever stops stripping, these fixtures quietly stop covering the
+   *  thing they exist to cover, and only this assertion would say so. */
+  private def assertScreeningButStripped(cache: CaffeineMovieCache, repository: InMemoryMovieRepository): Unit = {
+    storedShowtimes(repository).count(_.isUpcoming(LocalDateTime.now())) shouldBe 1
+    cachedShowtimes(cache) shouldBe empty
   }
 
   /** Seed the cache with `n` distinct deferred films, each carrying a filmUrl —
@@ -126,9 +145,30 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   // reaper enqueued nothing, ever. This is the only fixture here stored the way
   // production stores; any future ended-film gate has to keep it green.
   it should "enqueue a due detail when showtimes live in their own collection, as production stores them" in {
-    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    reaper(splitCacheWith(Some("http://ref")), queue, fresh).tick() shouldBe 1
+    val (cache, repository) = splitCacheWith(Some("http://ref"))
+    val (queue, fresh)      = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    assertScreeningButStripped(cache, repository)
+
+    reaper(cache, queue, fresh).tick() shouldBe 1
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
+  }
+
+  // The OTHER half of the same gate. `detailOutstanding` gated on the same rule as
+  // `tick`, so it too read "ended" for the whole corpus — and `reapStuckPending`
+  // then released every detailPending row on every tick, publishing a spurious
+  // MovieDetailsComplete for each. A future ended-film gate placed only here would
+  // slip past the tick test above, so this pins it separately.
+  it should "keep a detail-pending row that still owes a fetch when showtimes live in their own collection" in {
+    val (cache, repository) = splitCacheWith(Some("http://ref"))
+    val (queue, fresh)      = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    assertScreeningButStripped(cache, repository)
+
+    val key = cache.keyOf("Dune", None)
+    cache.putIfPresent(key, _.copy(detailPending = true))
+    val bus = new CapturingBus
+    reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 0
+    cache.get(key).map(_.detailPending) shouldBe Some(true)
+    bus.published shouldBe empty
   }
 
   it should "skip a film with no filmUrl (no detail reference to fetch)" in {
