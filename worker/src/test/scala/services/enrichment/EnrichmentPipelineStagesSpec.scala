@@ -268,12 +268,20 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // credits should reject Grizzly Falls (directed by Stewart Raffill) and
   // fall back to walking Helgestad's TMDB filmography to find a 2026 hit.
 
-  it should "accept the title-search candidate when its director matches the cinema's reported director" in {
+  it should "resolve a director-bearing row by walking that director's filmography" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
 
+    // This used to assert the opposite mechanism — that a title-search candidate
+    // is ACCEPTED once its credits name the reported director. That check can't
+    // separate two films by the SAME director (Gozlan's "Gourou" vs "Dalloway"
+    // both pass it), so it no longer resolves anything; the walk does. Same film,
+    // same expected ids, via the path that can actually tell siblings apart.
     val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie" -> Mk2Search,
+      "/search/person" -> """{"results":[{"id":1500000,"name":"Simon McQuoid","known_for_department":"Directing"}]}""",
+      "/person/1500000/movie_credits" -> ("""{"crew":[{"id":931285,"title":"Mortal Kombat II","original_title":"Mortal Kombat II",""" +
+        """"release_date":"2026-05-06","department":"Directing","job":"Director","popularity":223.66}]}"""),
       "/movie/931285/credits" -> """{"id":931285,"crew":[{"id":1,"name":"Simon McQuoid","job":"Director","department":"Directing"}]}""",
       "/external_ids" -> Mk2ExternalIds
     ))
@@ -314,16 +322,31 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     // recover the id via the suggestion endpoint.
     val frostExternalIds = """{"id":1648927,"imdb_id":""}"""
 
+    // Nothing in "Frost uten Snø og Is" shares a word with "Niedźwiedzica", so the
+    // year-pinned credit needs corroboration from something the title can't give.
+    // The cinema publishes the running time — as cinema listings routinely do —
+    // and it agrees with TMDB's 95 minutes. Without that the row would (rightly)
+    // refuse: a credit picked on the year alone is how "Głos Hind Rajab" became
+    // "Lombard". See `DirectorWalkResolvesSpec`.
+    val frostDetails = """{"id":1648927,"title":"Frost Without Snow and Ice","original_title":"Frost uten Snø og Is","release_date":"2026-04-09","runtime":95}"""
+
     val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie"                 -> wrongTitleHit,
       "/movie/50416/credits"          -> wrongCredits,
       "/search/person"                -> personSearch,
       "/person/2200772/movie_credits" -> helgestadCredits,
-      "/movie/1648927/external_ids"   -> frostExternalIds
+      "/movie/1648927/external_ids"   -> frostExternalIds,
+      "/movie/1648927?"               -> frostDetails
     ))
     val tmdb = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val service  = new MovieService(cache, bus, tmdb)
     bus.subscribe(service.onMovieDetailsComplete)
+
+    // The cinema slot the scrape would have written before the detail event
+    // fires — it publishes the running time, which is what corroborates the
+    // year-pinned credit once the Polish title matches nothing on TMDB.
+    cache.put(cache.keyOf("Niedźwiedzica", Some(2026)), MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Niedźwiedzica"), director = Seq("Asgeir Helgestad"), runtimeMinutes = Some(95)))))
 
     bus.publish(MovieDetailsComplete("Niedźwiedzica", Some(2026), None, Some("Asgeir Helgestad")))
 

@@ -65,6 +65,12 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     http = new RoutingHttpFetch(Map(
       "/search/movie" -> ("""{"results":[{"id":1275779,"title":"Dzień objawienia",""" +
         """"original_title":"The Revelation","release_date":"2026-01-01","popularity":99.0}]}"""),
+      // Every slot reports "Steven Spielberg", and a director-bearing row resolves
+      // by WALKING that filmography — so the fake must serve the person endpoints
+      // the real API does. See `DirectorWalkResolvesSpec`.
+      "/search/person" -> """{"results":[{"id":488,"name":"Steven Spielberg","known_for_department":"Directing"}]}""",
+      "/person/488/movie_credits" -> ("""{"crew":[{"id":1275779,"title":"Dzień objawienia",""" +
+        """"original_title":"The Revelation","release_date":"2026-01-01","department":"Directing","job":"Director","popularity":99.0}]}"""),
       "/external_ids" -> """{"id":1275779,"imdb_id":"tt15047880"}""",
       "/credits"      -> """{"crew":[{"job":"Director","name":"Steven Spielberg"}]}"""
     ), getOnly = true),

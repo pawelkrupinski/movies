@@ -458,19 +458,35 @@ class TmdbClient(
     }.getOrElse(Seq.empty)
   }.getOrElse(Seq.empty)
 
-  /** TMDB person id for a name search, or None when the search returns no
-   *  Directing-known hit. Picks the highest-popularity match whose
-   *  `known_for_department` is "Directing" — keeps us from matching an actor
-   *  who happens to share a name with a director. */
-  def findPerson(name: String): Option[Int] = authHeader.flatMap { auth =>
+  /** TMDB person id for a name search — the first of [[findPersonCandidates]].
+   *  Callers that can VERIFY the choice against a filmography should walk the
+   *  candidates instead; this is for callers with nothing to check against. */
+  def findPerson(name: String): Option[Int] = findPersonCandidates(name).headOption
+
+  /** Every plausible TMDB person for a name, Directing-known first and otherwise
+   *  in TMDB's own (popularity) order.
+   *
+   *  The single top hit is wrong often enough to matter once the director walk is
+   *  the whole resolution. Two shapes seen in the live corpus: a DUPLICATE stub
+   *  with no credits ranked above the real person ("Chan-wook Park" → a "Park Chan
+   *  Wook" entry with zero directing credits, while the real one is 5646), and an
+   *  ALIAS collision ("Andrew Stanton" → Jim Wynorski, who lists it among his many
+   *  pseudonyms). Both resolve to a person whose filmography simply doesn't contain
+   *  the film — which is exactly the evidence needed to reject them, so the walk
+   *  picks the person rather than trusting the ranking.
+   *
+   *  Capped: past a handful of same-name people the extra credit fetches cost more
+   *  than they can plausibly recover. Directing-known first keeps the common case
+   *  at one round-trip — an actor sharing a director's name is still skipped, just
+   *  no longer fatally when TMDB ranks a credit-less stub above the real one. */
+  def findPersonCandidates(name: String): Seq[Int] = authHeader.map { auth =>
     Try {
       val body = httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth)
       val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      rows.find(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
-        .orElse(rows.headOption)
-        .flatMap(r => (r \ "id").asOpt[Int])
-    }.toOption.flatten
-  }
+      val (directing, others) = rows.partition(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
+      (directing ++ others).flatMap(r => (r \ "id").asOpt[Int]).distinct.take(TmdbClient.MaxPersonCandidates)
+    }.getOrElse(Seq.empty)
+  }.getOrElse(Seq.empty)
 
   /** A person's movies as a director — the films they're credited for in the
    *  Directing department. Returns the same `SearchResult` shape so the
@@ -520,6 +536,12 @@ class TmdbClient(
 }
 
 object TmdbClient {
+  /** How many same-name people the director walk will try before giving up. Two
+   *  covers the observed failures (a credit-less duplicate or an alias ranked
+   *  above the real person); the rest is headroom that still bounds the extra
+   *  credit fetches a common name like "John Smith" would otherwise cost. */
+  private[clients] val MaxPersonCandidates = 4
+
   /** The `certification` for `country` (ISO-3166-1, e.g. "GB"/"DE"/"PL") from a
    *  release-dates block: the matching `results[].iso_3166_1` entry's first non-blank
    *  `release_dates[].certification`, verbatim. None when the country isn't listed or

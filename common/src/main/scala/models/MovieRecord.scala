@@ -514,10 +514,17 @@ case class MovieRecord(
   def cinemaOriginalTitle: Option[String] =
     prioritizedCinema.iterator.flatMap(_._2.originalTitle).nextOption()
 
-  /** Cinema-reported director(s) — first non-empty with Multikino preferred.
-   *  Separate from `director` (which falls back to the TMDB/IMDb slots for
-   *  display): this is what the cinemas themselves published, and it is the only
-   *  form fit to HINT a TMDB resolution.
+  /** Every director the cinemas reported — the UNION across their slots, not the
+   *  first non-empty one. Separate from `director` (which falls back to the
+   *  TMDB/IMDb slots for display): this is what the cinemas themselves published,
+   *  and it is the only form fit to HINT a TMDB resolution.
+   *
+   *  The union is load-bearing for DETERMINISM. A "first non-empty in priority
+   *  order" reading changes its answer as cinemas arrive — a higher-priority
+   *  cinema landing later displaces the hint a partial group already resolved
+   *  under, so the same corpus settles differently depending on scrape order
+   *  (`StagingOrderDeterminismSpec`). A union only ever grows, so every arrival
+   *  order converges on the same hint set.
    *
    *  Feeding `director` to the resolver let a resolution corroborate its own
    *  output. The derived slots carry the director of whatever film was matched,
@@ -531,7 +538,19 @@ case class MovieRecord(
    *  Same reasoning as `cinemaOriginalTitle` directly above — these two are the
    *  cinema-side hint pair the TMDB search runs on. */
   def cinemaDirector: Seq[String] =
-    prioritizedCinema.iterator.map(_._2.director).find(_.nonEmpty).getOrElse(Seq.empty)
+    prioritizedCinema.flatMap(_._2.director).map(_.trim).filter(_.nonEmpty).distinct.sorted
+
+  /** Every runtime the cinemas reported, de-duplicated and sorted. Separate from
+   *  `runtimeMinutes`, which falls back to the TMDB slot: these are what the
+   *  cinemas themselves published, so they can CORROBORATE a candidate resolution
+   *  without the answer being derived from the resolution it is checking. */
+  def cinemaRuntimesMinutes: Seq[Int] =
+    prioritizedCinema.flatMap(_._2.runtimeMinutes).distinct.sorted
+
+  /** Every cast name the cinemas reported, de-duplicated and sorted. Cinema-only
+   *  for the same reason as [[cinemaRuntimesMinutes]]. */
+  def cinemaCast: Seq[String] =
+    prioritizedCinema.flatMap(_._2.cast).map(_.trim).filter(_.nonEmpty).distinct.sorted
 
   /** Best available original (production-language) title across sources —
    *  the TMDB-resolved one first, then IMDb's `originalTitleText`, then

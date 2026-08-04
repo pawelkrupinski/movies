@@ -10,7 +10,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Regression tests for the "Kurozając i świątynia świstaka" class of bug:
- * a film whose Polish title has no entry on TMDB resolves only via the
+ * a film the TMDB title SEARCH doesn't return resolves only via the
  * `directorWalk` path. When the first cinema to scrape it doesn't report a
  * director (CinemaCity, Charlie Monroe), the TMDB stage misses and
  * `cache.markMissing(key)` poisons the negative cache. The next cinema
@@ -50,17 +50,25 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   }
 
   // TMDB stub modelling the real Kurozając resolution chain:
-  //   - title search returns nothing (TMDB has no Polish title for this film)
+  //   - the title SEARCH returns nothing, so the director walk is the only way in
   //   - `findPerson("Benjamin Mousquet")` → personId 2905749
   //   - `personDirectorCredits(2905749)` → one credit with releaseYear=2025
   //     pointing at tmdbId 1215532
   //   - `imdbId(1215532)` → tt31260224
+  //
+  // The credit carries the Polish `title` beside the French `original_title`,
+  // which is what TMDB's pl-PL credits actually return for this film (verified
+  // against the live API and the recorded corpus). The stub used to give only the
+  // foreign titles, from back when TMDB had no Polish entry for it — harmless
+  // while a year-pinned credit was accepted on the year alone, but a credit must
+  // now agree with the cinema's title on at least one distinctive word, so a stale
+  // fake would model a resolution that reality no longer needs the year for.
   private def kurozajacTmdb(): TmdbClient = new TmdbClient(
     http = new StubFetch(Map(
       "/search/movie"  -> """{"results":[]}""",
       "/search/person" -> s"""{"results":[{"id":$PersonId,"name":"Benjamin Mousquet","known_for_department":"Directing"}]}""",
       s"/person/$PersonId/movie_credits" -> s"""{"crew":[
-        |{"id":$TmdbId,"title":"Hopper et le Secret de la Marmotte","original_title":"Chickenhare and the Secret of the Groundhog",
+        |{"id":$TmdbId,"title":"Kurozając i świątynia Świstaka","original_title":"Hopper et le secret de la marmotte",
         | "release_date":"2025-08-13","department":"Directing","popularity":4.0}
         |]}""".stripMargin,
       s"/movie/$TmdbId/external_ids" -> s"""{"id":$TmdbId,"imdb_id":"$ImdbId"}"""
@@ -160,6 +168,16 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       contain allOf ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Possession", "Opętanie", "ŻUŁAWSKI. KINO EKSTAZY")
     MovieService.searchTitleCandidates("Ojczyzna (pokaz przedpremierowy)", None) should contain ("Ojczyzna")
     MovieService.searchTitleCandidates("Plain Title", None) shouldBe Seq("Plain Title")
+  }
+
+  // A banner is joined with a dash as often as a pipe. "500 mil" is the worked
+  // example: TMDB's Polish title is exactly "500 mil", so the film should resolve
+  // on its title alone — but the whole decorated string was the only candidate, so
+  // it fell through to the year-pinned branch instead. Both dash forms occur.
+  it should "split a dash-joined programme banner, without touching hyphenated words" in {
+    MovieService.searchTitleCandidates("Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil", None) should contain ("500 mil")
+    MovieService.searchTitleCandidates("Ladies Night - Narodziny gwiazdy", None) should contain ("Narodziny gwiazdy")
+    MovieService.searchTitleCandidates("Spider-Man", None) shouldBe Seq("Spider-Man")
   }
 
   it should "also draw on the row's other reported titles (cinemaTitles + slot originals), de-decorated" in {

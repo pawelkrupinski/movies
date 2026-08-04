@@ -52,17 +52,27 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
     """{"results":[{"id":931285,"title":"Mortal Kombat II","original_title":"Mortal Kombat II",""" +
     """"release_date":"2026-05-06","popularity":223.66}]}"""
   private val Mk2ExternalIds = """{"id":931285,"imdb_id":"tt17490712"}"""
-  // `/movie/931285/credits` — `resolveTmdb` now verifies a title hit against the
-  // row's reported director (Multikino + Helios both report "Simon McQuoid"),
-  // which keeps resolution order-independent. The credit must be present for the
-  // verification to pass, exactly as the recorded fixture corpus carries it.
+  // `/movie/931285/credits` — the reported-director re-verification in
+  // `needsTmdbResolution` reads it, so a correctly-resolved row isn't churned.
   private val Mk2Credits = """{"crew":[{"job":"Director","name":"Simon McQuoid"}]}"""
+  // Multikino + Helios both report "Simon McQuoid", and a director-bearing row
+  // resolves by WALKING that filmography — the title search alone no longer
+  // resolves one (it can't separate two films by the same director). The fake
+  // has to serve the person endpoints the real API does, or the walk finds
+  // nothing and the row correctly refuses. See `DirectorWalkResolvesSpec`.
+  private val McQuoidPerson =
+    """{"results":[{"id":1500000,"name":"Simon McQuoid","known_for_department":"Directing"}]}"""
+  private val McQuoidCredits =
+    """{"crew":[{"id":931285,"title":"Mortal Kombat II","original_title":"Mortal Kombat II",""" +
+    """"release_date":"2026-05-06","department":"Directing","job":"Director","popularity":223.66}]}"""
 
   private def tmdbStub() = new TmdbClient(
     http = new RoutingHttpFetch(Map(
-      "/search/movie" -> Mk2Search,
-      "/external_ids" -> Mk2ExternalIds,
-      "/credits"      -> Mk2Credits
+      "/search/movie"                 -> Mk2Search,
+      "/search/person"                -> McQuoidPerson,
+      "/person/1500000/movie_credits" -> McQuoidCredits,
+      "/external_ids"                 -> Mk2ExternalIds,
+      "/credits"                      -> Mk2Credits
     ), getOnly = true),
     apiKey = Some("stub")
   )

@@ -541,7 +541,7 @@ showings:
 
 === Brzezina ===
 displayTitle:      Brzezina
-cinemaTitles:      BRZEZINA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Brzezina | Brzezina (The Birch Wood) | WAJDA: re-wizje: Brzezina | Wajda re-wizje: brzezina | Wajda: Re-wizje. Brzezina
+cinemaTitles:      Brzezina | Brzezina (The Birch Wood) | WAJDA: re-wizje: Brzezina | Wajda re-wizje: brzezina | Wajda: Re-wizje. Brzezina
 runtimeMinutes:    99
 releaseYear:       1970
 countries:         Polska
@@ -570,7 +570,6 @@ cinemaScrapes:
   Kino Pod Baranami / Brzezina (The Birch Wood) / —
   Kino Wisła / WAJDA: re-wizje: Brzezina / 1970
   Kino za Rogiem Cafe / Brzezina / —
-  Kinoteka / BRZEZINA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin / 2026
 showings:
   2026-07-14  Kino Muza                     20:30 Sala 1
   2026-07-26  Kino Pałacowe                 16:00 Sala 1 - Kinowa
@@ -1109,7 +1108,7 @@ showings:
 
 === Cinema Italia Oggi: Takie jest życie ===
 displayTitle:      Cinema Italia Oggi: Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -1148,6 +1147,7 @@ cinemaScrapes:
   Kino Pionier 1907 / TAKIE JEST ŻYCIE / 2025
   Kino Pod Baranami / Takie jest życie / —
   Kino Przedwiośnie / Portret Kobiety: Takie jest życie / 2025
+  Kino Rialto / Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE / 2025
   KinoGram / MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie / 2025
 showings:
   2026-07-12  Kino Pałacowe                 15:30 Sala 1 - Kinowa
@@ -1301,7 +1301,7 @@ showings:
 
 === Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
 displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU\ Wajda: re-wizje | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Człowiek z marmuru – wajda: re- wizje | Człowiek z marmuru. Wajda re-wizje | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1323,6 +1323,7 @@ cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
 cinemaScrapes:
   Bałtyk / Wajda: Re-wizje. Człowiek z marmuru / —
+  Centrum 3D / Człowiek z marmuru. Wajda re-wizje / —
   Forum / CZŁOWIEK Z MARMURU / —
   Kino Agrafka / CZŁOWIEK Z MARMURU / 1977
   Kino Amok / Człowiek z marmuru / —
@@ -1344,17 +1345,19 @@ cinemaScrapes:
   Kino Pionier 1907 / Człowiek z marmuru / 1976
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
+  Kino Sokół / CZŁOWIEK Z MARMURU\ Wajda: re-wizje / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
+  Kino Zamek / Człowiek z marmuru – wajda: re- wizje / 1976
   Kino nad Wartą / CZŁOWIEK Z MARMURU / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
-  Kinoteka / CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin / 2026
+  Kino ŚDK / Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru / —
   OKF Iluzja / CZŁOWIEK Z MARMURU / MAN OF MARBLE / —
 showings:
   2026-06-14  Kino Apollo                   15:00
 
 === Człowiek z marmuru ===
 displayTitle:      Człowiek z marmuru
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU\ Wajda: re-wizje | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Człowiek z marmuru – wajda: re- wizje | Człowiek z marmuru. Wajda re-wizje | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1376,6 +1379,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
 cinemaScrapes:
   Bałtyk / Wajda: Re-wizje. Człowiek z marmuru / —
+  Centrum 3D / Człowiek z marmuru. Wajda re-wizje / —
   Forum / CZŁOWIEK Z MARMURU / —
   Kino Agrafka / CZŁOWIEK Z MARMURU / 1977
   Kino Amok / Człowiek z marmuru / —
@@ -1397,10 +1401,12 @@ cinemaScrapes:
   Kino Pionier 1907 / Człowiek z marmuru / 1976
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
+  Kino Sokół / CZŁOWIEK Z MARMURU\ Wajda: re-wizje / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
+  Kino Zamek / Człowiek z marmuru – wajda: re- wizje / 1976
   Kino nad Wartą / CZŁOWIEK Z MARMURU / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
-  Kinoteka / CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin / 2026
+  Kino ŚDK / Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru / —
   OKF Iluzja / CZŁOWIEK Z MARMURU / MAN OF MARBLE / —
 showings:
   2026-06-30  Kino Malta Charlie Monroe     15:30 Sala Audrey
@@ -1716,7 +1722,7 @@ showings:
 
 === Drugie życie ===
 displayTitle:      Drugie życie
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -1834,7 +1840,6 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
-  Kino Zamek / Drugie życie (calle málaga) / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -1860,7 +1865,7 @@ showings:
 
 === Drugie życie - Kino Kobiet ===
 displayTitle:      Drugie życie - Kino Kobiet
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -1976,7 +1981,6 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
-  Kino Zamek / Drugie życie (calle málaga) / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -2199,7 +2203,7 @@ showings:
 
 === Dzień objawienia ===
 displayTitle:      Dzień objawienia
-cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie | Pokaz przedpremierowy: dzień objawienia
+cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
 runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
@@ -2344,7 +2348,7 @@ cinemaScrapes:
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
-  Kinoteka / Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie / 2026
+  Kinoteka / Dzień objawienia | Kino przy herbatce / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / —
   Max Kino / Dzień objawienia / —
@@ -2381,7 +2385,7 @@ showings:
 
 === Dzień objawienia ukraiński dubbing ===
 displayTitle:      Dzień objawienia ukraiński dubbing
-cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie | Pokaz przedpremierowy: dzień objawienia
+cinemaTitles:      DZIEŃ OBJAWIENIA | DZIEŃ OBJAWIENIA - 2D napisy - Premiera Krajowa | Dzień Objawienia | Dzień objawienia | Dzień objawienia ukraiński dubbing | Dzień objawienia | Kino przy herbatce | Pokaz przedpremierowy: dzień objawienia
 runtimeMinutes:    146
 releaseYear:       2026
 countries:         USA
@@ -2523,7 +2527,7 @@ cinemaScrapes:
   KinoGram / Dzień objawienia / 2026
   Kinomax / Dzień objawienia / —
   Kinoteatr Rondo / Dzień objawienia / —
-  Kinoteka / Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie / 2026
+  Kinoteka / Dzień objawienia | Kino przy herbatce / 2026
   Klaps / Dzień Objawienia / —
   Kozienicki Dom Kultury / Dzień objawienia / —
   Max Kino / Dzień objawienia / —
@@ -2631,14 +2635,14 @@ displayTitle:      Fałszerz stulecia
 cinemaTitles:      Fałszerz stulecia
 runtimeMinutes:    128
 releaseYear:       2026
-countries:         Francja
+countries:         Francja, Belgia
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/8210752.3.jpg
 synopsis.length:   389
-cast:              Reda Kateb, Sara Giraudeau, Bastien Bouillon
+cast:              Reda Kateb, Sara Giraudeau, Bastien Bouillon, Quentin Dolmaire, Pierre Lottin
 director:          Jean-Paul Salomé
 tmdbId:            1376415
 imdbId:            tt35495035
-originalTitle:     L’affaire Bojarski
+originalTitle:     L'Affaire Bojarski
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
@@ -2752,34 +2756,53 @@ showings:
 
 === Filmowy Klub Seniora: 18 lecie - Takie Jest Życie ===
 displayTitle:      Filmowy Klub Seniora: 18 lecie - Takie Jest Życie
-cinemaTitles:      Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
-posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/takie-jest-zycie-plakat11.jpg
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/Takie-jest-zycie_B1-1-scaled.jpg
 synopsis.length:   830
-cast:              —
+cast:              Virginia Raffaele, Diego Abatantuono, Aldo Baglio, Ignazio Giuseppe Loi, Geppi Cucciari, David Budroni Language Italian
 director:          Riccardo Milani
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
+tmdbId:            1397375
+imdbId:            tt34905624
+originalTitle:     La vita va così
+imdbRating:        6.5
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     7.2
 metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/life_is_life
+filmwebUrl:        https://www.filmweb.pl/film/Takie+jest+%C5%BCycie-2025-10102549
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157176
 cinemaScrapes:
+  Centrum 3D Przemyśl / TAKIE JEST ŻYCIE / —
+  Dolnośląskie Centrum Filmowe / Takie jest życie / 2025
+  Forum / Takie jest życie / —
+  Gdyńskie Centrum Filmowe / Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE / —
+  Kino 60 Krzeseł / Takie jest życie / —
+  Kino Apollo / Takie jest życie / —
+  Kino Atlantic / Best Film ON Tour: Takie jest życie - przedpremiera / 2025
+  Kino Bajka / Takie jest życie / —
+  Kino CK Lublin / Takie jest życie / —
+  Kino Forum / Best Film on Tour: Takie jest życie / —
+  Kino IKM / Takie jest życie / —
+  Kino Luna / BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej / —
+  Kino Muranów / Takie jest życie / 2025
+  Kino Oskard / Kino Konesera: Takie jest życie / —
+  Kino Pałacowe / Takie jest życie / 2025
+  Kino Pionier 1907 / TAKIE JEST ŻYCIE / 2025
+  Kino Pod Baranami / Takie jest życie / —
+  Kino Przedwiośnie / Portret Kobiety: Takie jest życie / 2025
   Kino Rialto / Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE / 2025
+  KinoGram / MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie / 2025
 showings:
   2026-06-30  Kino Rialto                   13:00 · 15:30
 
 === Filmowy Klub Seniora: Drugie życie ===
 displayTitle:      Filmowy Klub Seniora: Drugie życie
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -2895,7 +2918,6 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
-  Kino Zamek / Drugie życie (calle málaga) / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -3161,16 +3183,16 @@ releaseYear:       2026
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/8243730.3.jpg
 synopsis.length:   514
-cast:              Pierre Niney, Marion Barbeau, Anthony Bajon
+cast:              Pierre Niney, Marion Barbeau, Anthony Bajon, Christophe Montenez, Jonathan Turnbull
 director:          Yann Gozlan
 tmdbId:            1259983
 imdbId:            tt31777964
 originalTitle:     Gourou
 imdbRating:        —
-metascore:         70
+metascore:         —
 rottenTomatoes:    —
 filmwebRating:     6.0
-metacriticUrl:     https://www.metacritic.com/movie/guru
+metacriticUrl:     —
 rottenTomatoesUrl: —
 filmwebUrl:        https://www.filmweb.pl/film/Guru-2026-10081716
 cinemaFilmUrls:
@@ -3691,7 +3713,7 @@ showings:
 
 === Kino bez barier: Drugie życie (AD + CC + PJM) ===
 displayTitle:      Kino bez barier: Drugie życie (AD + CC + PJM)
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -3807,7 +3829,6 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
-  Kino Zamek / Drugie życie (calle málaga) / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -3825,7 +3846,7 @@ showings:
 
 === Kino bez barier: Drugie życie (AD + CC) ===
 displayTitle:      Kino bez barier: Drugie życie (AD + CC)
-cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie (calle málaga) | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
+cinemaTitles:      DRUGIE ŻYCIE | Dkf: drugie życie | Drugie życie | Drugie życie - Kino Kobiet | Drugie życie - pokaz przedpremierowy | Drugie życie | KINO PRZYJAZNE RODZICOM | Drugie życie | Kino przy herbatce | Drugie życie | przedpremierowo | Drugie życie- kino dla seniorów | Filmoterapia z Inspirą: Drugie życie | Filmowy Klub Seniora - Drugie życie | Filmowy Klub Seniora i Seniorki: DRUGIE ŻYCIE | Filmowy Klub Seniora: DRUGIE ŻYCIE | KINO SENIORA | Drugie życie | Kino Dostępne: Drugie życie | Kino Konesera: Drugie życie | Kino bez barier: Drugie życie (AD + CC + PJM) | Kino bez barier: Drugie życie (AD + CC) | Pora dla Seniora: Drugie życie - pokaz przedpremierowy | SILNE RAZEM (34. EDYCJA) - DRUGIE ŻYCIE | Tani wtorek: DRUGIE ŻYCIE | „Drugie życie” | specjalny pokaz w ramach cyklu dziewiarskiego OCZKO NA FILM
 runtimeMinutes:    116
 releaseYear:       2025
 countries:         Hiszpania, Niemcy, Francja, Belgia, Maroko
@@ -3941,7 +3962,6 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
-  Kino Zamek / Drugie życie (calle málaga) / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -4185,7 +4205,7 @@ showings:
 
 === Kosmiczny mecz ===
 displayTitle:      Kosmiczny mecz
-cinemaTitles:      Kosmiczny mecz
+cinemaTitles:      Kosmiczny Mecz 30. Rocznica | Kosmiczny mecz | Kosmiczny mecz. 30 rocznica
 runtimeMinutes:    88
 releaseYear:       1996
 countries:         USA
@@ -4241,6 +4261,11 @@ cinemaScrapes:
   Cinema City Wroclavia / Kosmiczny mecz / 1996
   Cinema City Zakopianka / Kosmiczny mecz / 1996
   Cinema City Zielona Góra / Kosmiczny mecz / 1996
+  Gdyńskie Centrum Filmowe / Kosmiczny mecz. 30 rocznica / —
+  Kino Kultura / Kosmiczny mecz. 30 rocznica / —
+  Kino Nowe Horyzonty / Kosmiczny Mecz 30. Rocznica / 1996
+  Koneckie Centrum Kultury / Kosmiczny mecz. 30 rocznica / —
+  Na Starówce / Kosmiczny mecz. 30 rocznica / —
 showings:
   2026-06-08  Cinema City Kinepolis         17:30 Sala 2 2D/DUB
   2026-06-08  Cinema City Poznań Plaza      15:50 Sala 2 2D/DUB
@@ -4361,26 +4386,26 @@ cinemaScrapes:
 showings:
   2026-06-12  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
-=== Kurozając i Świątynia Świstaka ===
-displayTitle:      Kurozając i Świątynia Świstaka
+=== Kurozając i świątynia Świstaka ===
+displayTitle:      Kurozając i świątynia Świstaka
 cinemaTitles:      KUROZAJĄC I ŚWIĄTYNIA ŚWISTAKA | Kurozając i Świątynia Świstaka | Kurozając i świątynia Świstaka | Kurozając i świątynia Świstaka (2025) | Kurozając i świątynia świstaka
 runtimeMinutes:    88
-releaseYear:       2026
+releaseYear:       2025
 countries:         Francja, Belgia, USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg
 synopsis.length:   590
 cast:              Karol Jankiewicz, Martyna Byczkowska, Artur Barciś, Krystian Embradora, Igor Pawłowski
 director:          Benjamin Mousquet
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
+tmdbId:            1215532
+imdbId:            tt31260224
+originalTitle:     Hopper et le secret de la marmotte
 imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     —
+filmwebRating:     6.1
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Kurozaj%C4%85c+i+%C5%9Bwi%C4%85tynia+%C5%9Awistaka-2025-10088886
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/kurozajac-i-swiatynia-swistaka/7921d2r
 cinemaScrapes:
@@ -4840,7 +4865,7 @@ showings:
 
 === Milczenie owiec ===
 displayTitle:      Milczenie owiec
-cinemaTitles:      Klasyk w kinie: Milczenie owiec | Klasyka w kinie Atlantic: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec - pokazy specjalne
+cinemaTitles:      Klasyk w kinie: Milczenie owiec | Klasyka w kinie Atlantic: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec - pokazy specjalne | Milczenie owiec – jonathan demme
 runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
@@ -4939,6 +4964,7 @@ cinemaScrapes:
   Kino Sfinks / MILCZENIE OWIEC / —
   Kino Studyjne Kadr / Milczenie owiec / —
   Kino Wisła / Milczenie owiec - pokazy specjalne / 1991
+  Kino Zamek / Milczenie owiec – jonathan demme / 1991
   KinoPort / Milczenie owiec / 1991
   OKF Iluzja / Milczenie owiec / —
   Planet Cinema / Milczenie owiec / —
@@ -5800,7 +5826,7 @@ releaseYear:       2025
 countries:         Hiszpania
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8191D2R.jpg
 synopsis.length:   331
-cast:              Miki Esparbé, Jordi Catalán, Àngels Gonyalons
+cast:              Jordi Catalán, Miki Esparbé, Àngels Gonyalons, Berto Romero, Anna Castillo
 director:          Javier Ruiz Caldera
 tmdbId:            1306284
 imdbId:            tt32676674
@@ -5829,7 +5855,7 @@ showings:
 
 === Noce Cabirii ===
 displayTitle:      Noce Cabirii
-cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Noce Cabirii | FEDERICO FELLINI: ciao a tutti! | FEDERICO FELLINI: ciao a tutti! - Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!: Noce Cabirii | Federico Fellini: NOCE CABIRII | Federico Fellini: ciao a tutti! – Noce Cabirii | Noce Cabirii | Noce Cabirii (1957) | Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti! | Noce Cabirii | FEDERICO FELLINI: ciao a tutti!
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Noce Cabirii | FEDERICO FELLINI: ciao a tutti! - Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti!: Noce Cabirii | Federico Fellini: NOCE CABIRII | Federico Fellini: ciao a tutti! – Noce Cabirii | Noce Cabirii | Noce Cabirii (1957) | Noce Cabirii (1957) | FEDERICO FELLINI: ciao a tutti! | Noce Cabirii | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    110
 releaseYear:       1957
 countries:         Włochy, Francja
@@ -5853,7 +5879,6 @@ cinemaFilmUrls:
 cinemaScrapes:
   Janosik / FEDERICO FELLINI: ciao a tutti!: Noce Cabirii / —
   Kino 60 Krzeseł / Noce Cabirii / —
-  Kino Agrafka / FEDERICO FELLINI: ciao a tutti! / 1957
   Kino Kinematograf / Federico Fellini: ciao a tutti! – Noce Cabirii / 1957
   Kino Muza / Noce Cabirii / 1957
   Kino Nowe Horyzonty / Noce Cabirii / 1957
@@ -5873,7 +5898,7 @@ showings:
 
 === Nowa fala ===
 displayTitle:      Nowa fala
-cinemaTitles:      Nowa Fala | Nowa fala
+cinemaTitles:      Nowa Fala | Nowa fala | UNLIMITED SHOW - Nowa Fala
 runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
@@ -5887,13 +5912,37 @@ originalTitle:     Nouvelle Vague
 imdbRating:        7.3
 metascore:         76
 rottenTomatoes:    92
-filmwebRating:     6.6
+filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/nouvelle-vague
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/nouvelle_vague_2025
-filmwebUrl:        https://www.filmweb.pl/film/Nowa+fala-2025-10053131
+filmwebUrl:        —
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/nowa-fala/
 cinemaScrapes:
+  Cinema City / — / —
+  Cinema City Arkadia / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Bielsko-Biała / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Bonarka / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Bydgoszcz / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Bytom / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Czerwona Droga / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Elbląg / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Galeria Północna / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Gliwice / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Kazimierz / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Lublin Plaza / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Manufaktura / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Mokotów / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Poznań Plaza / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Promenada / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Ruda Śląska / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Rybnik / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Silesia / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Sosnowiec / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Wałbrzych / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Wolność / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Wroclavia / UNLIMITED SHOW - Nowa Fala / 2025
+  Cinema City Zielona Góra / UNLIMITED SHOW - Nowa Fala / 2025
   Kino Muranów / Nowa Fala / 2025
   Kino Muza / Nowa fala / 2025
   Kino Nowe Horyzonty / Nowa Fala / 2025
@@ -6366,7 +6415,7 @@ showings:
 
 === Osiem i pół ===
 displayTitle:      Osiem i pół
-cinemaTitles:      DKF Rozpięci: FEDERICO FELLINI: ciao a tutti! | FEDERICO FELLINI: Ciao a tutti! - Osiem i pół | FEDERICO FELLINI: ciao a tutti! - Osiem i pół (1963) | Federico Fellini: OSIEM I PÓŁ | Federico Fellini: ciao a tutti! – Osiem i pół | Osiem i pół | Osiem i pół (1963) | Osiem i pół | FEDERICO FELLINI: ciao a tutti!
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Osiem i pół | FEDERICO FELLINI: ciao a tutti! - Osiem i pół (1963) | Federico Fellini: OSIEM I PÓŁ | Federico Fellini: ciao a tutti! – Osiem i pół | Osiem i pół | Osiem i pół (1963) | Osiem i pół | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    138
 releaseYear:       1963
 countries:         Włochy, Francja
@@ -6388,7 +6437,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/osiem-i-pol/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14402-osiem-i-po-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
-  Kino Agrafka / DKF Rozpięci: FEDERICO FELLINI: ciao a tutti! / 1963
   Kino Kinematograf / Federico Fellini: ciao a tutti! – Osiem i pół / 1963
   Kino Muza / Osiem i pół / 1963
   Kino Pałacowe / Osiem i pół / 1963
@@ -6740,19 +6788,19 @@ runtimeMinutes:    122
 releaseYear:       2001
 countries:         Francja, Niemcy
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/amelia_01_1080_x_1080.jpg
-synopsis.length:   109
-cast:              —
+synopsis.length:   530
+cast:              Audrey Tautou, Mathieu Kassovitz, Rufus, Serge Merlin, Jamel Debbouze
 director:          Jean-Pierre Jeunet
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            194
+imdbId:            tt0211915
+originalTitle:     Le Fabuleux Destin d'Amélie Poulain
+imdbRating:        8.3
+metascore:         37
+rottenTomatoes:    90
+filmwebRating:     7.6
+metacriticUrl:     https://www.metacritic.com/movie/amelia
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/le_fabuleux_destin_damelie_poulain
+filmwebUrl:        https://www.filmweb.pl/film/Amelia-2001-31416
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/13125-plenerowe-paacowe-amelia/
 cinemaScrapes:
@@ -6904,7 +6952,7 @@ showings:
 
 === Plenerowe Pałacowe: Donnie Darko ===
 displayTitle:      Plenerowe Pałacowe: Donnie Darko
-cinemaTitles:      Plenerowe Pałacowe: Donnie Darko
+cinemaTitles:      Donnie darko – amerykańska klasyka | Plenerowe Pałacowe: Donnie Darko
 runtimeMinutes:    117
 releaseYear:       2001
 countries:         Kanada, USA, Wielka Brytania
@@ -6926,6 +6974,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14612-plenerowe-paacowe-donnie-darko/
 cinemaScrapes:
   Kino Pałacowe / Plenerowe Pałacowe: Donnie Darko / 2001
+  Kino Zamek / Donnie darko – amerykańska klasyka / 2001
 showings:
   2026-07-22  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 
@@ -7380,7 +7429,7 @@ releaseYear:       2025
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/MV5BZWI5MWI1NGEtMzJkMC00NWE5LTlmZDgtNTE3NmMwZDhiZWJkXkEyXkFqcGc@._V1_FMjpg_UX1000_-590x800.jpg
 synopsis.length:   957
-cast:              Salif Cissé, Denis Podalydès, Aure Atika
+cast:              Salif Cissé, Denis Podalydès, Clara Bretheau, Aure Atika, Manon Clavel
 director:          Fabienne Godet
 tmdbId:            1158616
 imdbId:            tt29291318
@@ -7405,7 +7454,7 @@ showings:
 
 === Podziemny krąg ===
 displayTitle:      Podziemny krąg
-cinemaTitles:      Classy Monday - Podziemny krąg | Klasyka na TOPie: Podziemny krąg | PODZIEMNY KRĄG | Podziemny Krąg (Fight Club) | Podziemny Krąg „Fight Club” | Podziemny krąg | Podziemny krąg (pokaz w DKF Megaron) | Podziemny krąg (re-release) | Podziemny krąg | DKF | Tani wtorek: PODZIEMNY KRĄG
+cinemaTitles:      Classy Monday - Podziemny krąg | Klasyka na TOPie: Podziemny krąg | PODZIEMNY KRĄG | Podziemny Krąg (Fight Club) | Podziemny Krąg „Fight Club” | Podziemny krąg | Podziemny krąg (pokaz w DKF Megaron) | Podziemny krąg (re-release) | Podziemny krąg - zrekonstruowana wersja 4K | Podziemny krąg | DKF | Tani wtorek: PODZIEMNY KRĄG
 runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
@@ -7522,6 +7571,7 @@ cinemaScrapes:
   Kino Pod Baranami / Podziemny krąg / —
   Kino Sfinks / Tani wtorek: PODZIEMNY KRĄG / —
   Kino Spektrum / Podziemny krąg / —
+  Kino Wisła / Podziemny krąg - zrekonstruowana wersja 4K / 1999
   KinoGram / Podziemny Krąg (Fight Club) / 1999
   Kinoteka / Podziemny krąg / 2026
   OKF Iluzja / Podziemny krąg / —
@@ -7809,7 +7859,7 @@ showings:
 
 === Poranek dla dzieci: Pucio ===
 displayTitle:      Poranek dla dzieci: Pucio
-cinemaTitles:      PUCIO | Poranek dla dzieci: Pucio | Pucio
+cinemaTitles:      Mały Kinematograf – Pucio | PUCIO | Poranek dla dzieci: Pucio | Pucio
 runtimeMinutes:    50
 releaseYear:       2026
 countries:         Polska
@@ -7849,6 +7899,7 @@ cinemaScrapes:
   Kino Bułgarska 19 / PUCIO / 2026
   Kino Diana / Pucio / —
   Kino Kika / PUCIO / —
+  Kino Kinematograf / Mały Kinematograf – Pucio / 2026
   Kino Nowe Horyzonty / Pucio / 2026
   Kino Pałacowe / Poranek dla dzieci: Pucio / 2026
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
@@ -8097,7 +8148,7 @@ showings:
 
 === Projekt Hail Mary ===
 displayTitle:      Projekt Hail Mary
-cinemaTitles:      21 i 22 Jump Street – podwójny seans | Projekt Hail Mary | Projekt Hail Mary | Kinoteka dla rodzica
+cinemaTitles:      Projekt Hail Mary | Projekt Hail Mary | Kinoteka dla rodzica
 runtimeMinutes:    156
 releaseYear:       2026
 countries:         USA
@@ -8210,7 +8261,7 @@ releaseYear:       2026
 countries:         Francja
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/8236185.3.jpg
 synopsis.length:   460
-cast:              Louis Garrel, Camille Cottin, Pierre Lottin
+cast:              Louis Garrel, Camille Cottin, Simon Boublil, Alexis Rosenstiehl, Pierre Lottin
 director:          Olivier Nakache, Eric Toledano
 tmdbId:            1404684
 imdbId:            tt36842933
@@ -8391,7 +8442,7 @@ showings:
 
 === Pucio ===
 displayTitle:      Pucio
-cinemaTitles:      PUCIO | Poranek dla dzieci: Pucio | Pucio
+cinemaTitles:      Mały Kinematograf – Pucio | PUCIO | Poranek dla dzieci: Pucio | Pucio
 runtimeMinutes:    50
 releaseYear:       2026
 countries:         Polska
@@ -8431,6 +8482,7 @@ cinemaScrapes:
   Kino Bułgarska 19 / PUCIO / 2026
   Kino Diana / Pucio / —
   Kino Kika / PUCIO / —
+  Kino Kinematograf / Mały Kinematograf – Pucio / 2026
   Kino Nowe Horyzonty / Pucio / 2026
   Kino Pałacowe / Poranek dla dzieci: Pucio / 2026
   Kino Sokół Dąbrowa Tarnowska / PUCIO / —
@@ -8514,7 +8566,7 @@ showings:
 
 === Rozmowa ===
 displayTitle:      Rozmowa
-cinemaTitles:      Klasyk w kinie: Rozmowa | Klasyka w kinie Atlantic: Rozmowa | Rozmowa
+cinemaTitles:      Klasyk w kinie: Rozmowa | Klasyka w kinie Atlantic: Rozmowa | Rozmowa | Rozmowa - pożegnanie z filmem
 runtimeMinutes:    113
 releaseYear:       1974
 countries:         USA
@@ -8542,6 +8594,7 @@ cinemaScrapes:
   Kino Muranów / Rozmowa / 1974
   Kino Pałacowe / Rozmowa / 1974
   Kino U-jazdowski / Rozmowa / 1974
+  Kino za Rogiem Cafe / Rozmowa - pożegnanie z filmem / —
   Kinoteka / Rozmowa / 2026
 showings:
   2026-06-08  Kino Pałacowe                 20:00 Sala 1 - Kinowa
@@ -8675,7 +8728,7 @@ showings:
 
 === Sny o słoniach ===
 displayTitle:      Sny o słoniach
-cinemaTitles:      SNY O SŁONIACH | Seans przedpremierowy. Sny o słoniach | Sny o słoniach | Wtorki dla seniora: Sny o słoniach (seans z prelekcją)
+cinemaTitles:      SNY O SŁONIACH | Seans przedpremierowy. Sny o słoniach | Sny o słoniach | Sny o słoniach - w ramach cyklu Kino Międzygatunkowe | Wtorki dla seniora: Sny o słoniach (seans z prelekcją)
 runtimeMinutes:    98
 releaseYear:       2026
 countries:         USA
@@ -8706,6 +8759,7 @@ cinemaScrapes:
   Kino Muranów / Sny o słoniach / 2025
   Kino Muzeum / SNY O SŁONIACH / 2025
   Kino NCKF EC1 / Wtorki dla seniora: Sny o słoniach (seans z prelekcją) / —
+  Kino Paradox / Sny o słoniach - w ramach cyklu Kino Międzygatunkowe / 2025
   Kino Pionier 1907 / SNY O SŁONIACH / 2026
   Kino Praha / Sny o słoniach / —
   Kino Spektrum / Sny o słoniach / —
@@ -8793,7 +8847,7 @@ showings:
 
 === Straszny film ===
 displayTitle:      Straszny film
-cinemaTitles:      STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -8947,7 +9001,7 @@ showings:
 
 === Straszny film ukraiński dubbing ===
 displayTitle:      Straszny film ukraiński dubbing
-cinemaTitles:      STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -9398,7 +9452,7 @@ showings:
 
 === Takie jest życie ===
 displayTitle:      Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -9438,6 +9492,7 @@ cinemaScrapes:
   Kino Pionier 1907 / TAKIE JEST ŻYCIE / 2025
   Kino Pod Baranami / Takie jest życie / —
   Kino Przedwiośnie / Portret Kobiety: Takie jest życie / 2025
+  Kino Rialto / Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE / 2025
   KinoGram / MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie / 2025
 showings:
   2026-06-16  Kino Pałacowe                 19:00 Sala 1 - Kinowa
@@ -10029,23 +10084,23 @@ showings:
 
 === Unlimited Show - Nowa Fala ===
 displayTitle:      Unlimited Show - Nowa Fala
-cinemaTitles:      UNLIMITED SHOW - Nowa Fala
-runtimeMinutes:    106
+cinemaTitles:      Nowa Fala | Nowa fala | UNLIMITED SHOW - Nowa Fala
+runtimeMinutes:    105
 releaseYear:       2025
 countries:         Francja, USA
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7678S2R.jpg
+posterUrl:         https://www.kinomuza.pl/content/uploads/2025/11/AA1MbUuf-540x800.jpg
 synopsis.length:   624
-cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin
+cast:              Guillaume Marbeck, Zoey Deutch, Aubry Dullin, Adrien Rouyard, Antoine Besson
 director:          Richard Linklater
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
+tmdbId:            1254808
+imdbId:            tt31688586
+originalTitle:     Nouvelle Vague
+imdbRating:        7.3
+metascore:         76
+rottenTomatoes:    92
 filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
+metacriticUrl:     https://www.metacritic.com/movie/nouvelle-vague
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/nouvelle_vague_2025
 filmwebUrl:        —
 cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/unlimited-show-nowa-fala/7678s2r
@@ -10074,6 +10129,11 @@ cinemaScrapes:
   Cinema City Wolność / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Wroclavia / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Zielona Góra / UNLIMITED SHOW - Nowa Fala / 2025
+  Kino Muranów / Nowa Fala / 2025
+  Kino Muza / Nowa fala / 2025
+  Kino Nowe Horyzonty / Nowa Fala / 2025
+  Kino Pionier 1907 / Nowa Fala / 2025
+  Kino Pod Baranami / Nowa fala / —
 showings:
   2026-06-18  Cinema City Poznań Plaza      19:00 Sala 5 2D/NAP
 
@@ -10889,7 +10949,7 @@ showings:
 
 === Znaki Pana Śliwki ===
 displayTitle:      Znaki Pana Śliwki
-cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki | Znaki Pana Śliwki + spotkanie z reżyserami | Znaki pana Śliwki | Znaki pana śliwki
+cinemaTitles:      ZNAKI PANA ŚLIWKI | Znaki Pana Śliwki | Znaki Pana Śliwki + spotkanie z reżyserami | Znaki Pana Śliwki - w ramach cyklu Twarda Sztuka x Paradox | Znaki pana Śliwki | Znaki pana śliwki
 runtimeMinutes:    72
 releaseYear:       2026
 countries:         Polska
@@ -10925,6 +10985,7 @@ cinemaScrapes:
   Kino Muza / Znaki Pana Śliwki / 2025
   Kino Nowe Horyzonty / Znaki Pana Śliwki / 2025
   Kino Orzeł / Znaki Pana Śliwki + spotkanie z reżyserami / —
+  Kino Paradox / Znaki Pana Śliwki - w ramach cyklu Twarda Sztuka x Paradox / 2025
   Kino Spektrum / Znaki Pana Śliwki / —
   Kino Studyjne Kadr / Znaki pana Śliwki / —
   Kinoteatr Rialto / Znaki Pana Śliwki / —

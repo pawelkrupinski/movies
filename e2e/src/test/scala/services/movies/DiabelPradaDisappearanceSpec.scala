@@ -36,17 +36,27 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     """{"results":[{"id":928344,"title":"Diabeł ubiera się u Prady 2","original_title":"The Devil Wears Prada 2",""" +
     """"release_date":"2026-05-01","popularity":120.0}]}"""
   private val PradaExternalIds = """{"id":928344,"imdb_id":"tt12340108"}"""
-  // `/movie/928344/credits` — `resolveTmdb` now verifies a title hit against the
-  // row's reported director (Multikino reports "David Frankel" for this film),
-  // keeping resolution order-independent. The credit must be present for the
-  // verification to pass, exactly as the recorded fixture corpus carries it.
+  // `/movie/928344/credits` — read by the reported-director re-verification in
+  // `needsTmdbResolution`, so a correctly-resolved row isn't churned.
   private val PradaCredits = """{"crew":[{"job":"Director","name":"David Frankel"}]}"""
+  // Multikino reports "David Frankel", and a director-bearing row resolves by
+  // WALKING that filmography — a title search alone no longer resolves one, since
+  // it can't separate two films by the same director. The fake has to serve the
+  // person endpoints the real API does, or the walk finds nothing and the row
+  // correctly refuses. See `DirectorWalkResolvesSpec`.
+  private val FrankelPerson =
+    """{"results":[{"id":54269,"name":"David Frankel","known_for_department":"Directing"}]}"""
+  private val FrankelCredits =
+    """{"crew":[{"id":928344,"title":"Diabeł ubiera się u Prady 2","original_title":"The Devil Wears Prada 2",""" +
+    """"release_date":"2026-05-01","department":"Directing","job":"Director","popularity":120.0}]}"""
 
   private def tmdbStub() = new TmdbClient(
     http = new RoutingHttpFetch(Map(
-      "/search/movie" -> PradaSearch,
-      "/external_ids" -> PradaExternalIds,
-      "/credits"      -> PradaCredits
+      "/search/movie"               -> PradaSearch,
+      "/search/person"              -> FrankelPerson,
+      "/person/54269/movie_credits" -> FrankelCredits,
+      "/external_ids"               -> PradaExternalIds,
+      "/credits"                    -> PradaCredits
     ), getOnly = true),
     apiKey = Some("stub")
   )

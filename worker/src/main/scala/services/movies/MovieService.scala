@@ -283,12 +283,20 @@ class MovieService(
     }
   }
 
-  /** The directors reported for a row — every cinema slot's plus the triggering
+  /** The directors reported for a row — every CINEMA slot's plus the triggering
    *  event's — normalised the same way `resolveTmdb` derives its hint, as one
    *  comma-joined, de-duplicated, sorted string (empty when none). Sorted so the
-   *  re-verification is a pure function of the row's state, not arrival order. */
+   *  re-verification is a pure function of the row's state, not arrival order.
+   *
+   *  `cinemaDirector`, never `data.values` — this feeds the contradiction check
+   *  in `needsTmdbResolution`, and reading the derived `Tmdb`/`Imdb`/`Filmweb`
+   *  slots let the WRONG film's own director verify the wrong film. The check
+   *  could then never fire: "Dreams" sat on Haugerud's "Drømmer" while its only
+   *  cinema said Michel Franco, and every re-scrape confirmed it. Sourced from
+   *  the cinemas alone the contradiction fires and the row re-resolves itself,
+   *  so this whole class heals without an operator (`DirectorWalkResolvesSpec`). */
   private def reportedDirectors(existing: Option[MovieRecord], eventDirector: Option[String]): String =
-    (eventDirector.toSeq.flatMap(_.split(",")) ++ existing.map(_.data.values.flatMap(_.director).toSeq).getOrElse(Nil))
+    (eventDirector.toSeq.flatMap(_.split(",")) ++ existing.map(_.cinemaDirector).getOrElse(Nil))
       .map(_.trim).filter(_.nonEmpty).distinct.sorted.mkString(",")
 
   /** Reset a row to its scraped-only form ([[MovieRecord.scrapedOnly]]) and re-key it
@@ -622,9 +630,22 @@ class MovieService(
     // happens for very recent releases and occasional TMDB data hiccups. A
     // DIFFERENT tmdbId accepts the new film's ids (even None) so a stale id
     // can't leak across.
-    val preserveImdbId   = existing.tmdbId.contains(tmdbId)
-    val resolvedImdbId   = externalIds.imdbId.orElse(if (preserveImdbId) existing.imdbId else None)
-    val resolvedWikidata = externalIds.wikidataId.orElse(if (preserveImdbId) existing.wikidataId else None)
+    val sameFilm         = existing.tmdbId.contains(tmdbId)
+    val resolvedImdbId   = externalIds.imdbId.orElse(if (sameFilm) existing.imdbId else None)
+    val resolvedWikidata = externalIds.wikidataId.orElse(if (sameFilm) existing.wikidataId else None)
+    // Every rating url and score describes a FILM, so they follow the film.
+    // Carrying them forward unconditionally meant a corrected row kept the WRONG
+    // film's numbers until each source's own refresh cadence came round: prod
+    // served Michel Franco's "Dreams" with the Norwegian film's
+    // `/movie/dreams-drommer` and metascore 81 long after the tmdbId was fixed.
+    //
+    // The trigger is a film that demonstrably CHANGED — not merely "not the same
+    // one". A row resolving for the FIRST time has no previous tmdbId, so there is
+    // nothing stale to drop and a rating a refresher already wrote must survive
+    // (`TmdbCarryForwardReadFailureSpec`). Once cleared, the `*Ratings` enrichers
+    // re-resolve from the new identity.
+    val differentFilm = existing.tmdbId.exists(_ != tmdbId)
+    def ifSameFilm[A](value: Option[A]): Option[A] = if (differentFilm) None else value
     // Carry the cinema-side fields forward — the TMDB stage doesn't own cinema
     // data; without this a fresh resolve would wipe every cinema's slot.
     val carriedData      = existing.data
@@ -692,15 +713,15 @@ class MovieService(
     }
     MovieRecord(
       imdbId            = resolvedImdbId,
-      imdbRating        = existing.imdbRating,
-      metascore         = existing.metascore,
-      filmwebUrl        = existing.filmwebUrl,
-      filmwebRating     = existing.filmwebRating,
-      rottenTomatoes    = existing.rottenTomatoes,
+      imdbRating        = ifSameFilm(existing.imdbRating),
+      metascore         = ifSameFilm(existing.metascore),
+      filmwebUrl        = ifSameFilm(existing.filmwebUrl),
+      filmwebRating     = ifSameFilm(existing.filmwebRating),
+      rottenTomatoes    = ifSameFilm(existing.rottenTomatoes),
       tmdbId            = Some(tmdbId),
       wikidataId        = resolvedWikidata,
-      metacriticUrl     = existing.metacriticUrl,
-      rottenTomatoesUrl = existing.rottenTomatoesUrl,
+      metacriticUrl     = ifSameFilm(existing.metacriticUrl),
+      rottenTomatoesUrl = ifSameFilm(existing.rottenTomatoesUrl),
       // A resolve clears any prior `tmdbNoMatch` (default `false` here); carry a
       // pending deferred-detail fetch forward so resolving TMDB first doesn't
       // prematurely mark the row detail-done.
@@ -986,22 +1007,29 @@ class MovieService(
           // order-independent, so the row resolves to the same film every run.
           // Director-walk each reported director in turn (sorted) so a row whose
           // first-sorted director name happens to miss still recovers via the others.
-          // Director-walk FIRST when the row reports a director: it walks the
-          // director's filmography and picks the title-matching credit by lowest id
-          // — deterministic across a TMDB adjacent-year DUPLICATE of one film (Yann
-          // Gozlan's "Gourou"). The year-scoped title search below would otherwise
-          // pick the duplicate matching the row's KEY year, and that key year drifts
-          // with scrape/merge order, flipping the id (StagingOrderDeterminismSpec).
-          // The search stays the fallback for a row whose director TMDB can't find.
-          val byDirector = rowDirectors.iterator.flatMap(d => directorWalk(Some(d), effectiveYear, candidates)).nextOption()
-          // The row's own cinema blurb (Polish, same language as TMDB's pl-PL
-          // `overview`) breaks a same-year same-title tie inside `pickBest`; None
-          // when no cinema published one, leaving the search unchanged.
-          val cinemaSynopsis = row.synopsisCinema
-          byDirector.orElse(
-            candidates.iterator
-              .flatMap(q => verifyByDirector(tmdb.search(q, effectiveYear, cinemaSynopsis), Some(rowDirectors.mkString(",")).filter(_.nonEmpty)))
-              .nextOption())
+          // When the row reports a director, the WALK is the resolution — the only
+          // one. It walks the director's filmography and picks the title-matching
+          // credit by lowest id, deterministic across a TMDB adjacent-year
+          // DUPLICATE of one film (Yann Gozlan's "Gourou").
+          //
+          // There is deliberately NO title-search fallback here. Verifying a search
+          // hit by director only asks "do this candidate's credits name the reported
+          // director" — which cannot separate two films by the SAME director. Gozlan's
+          // "Gourou" and "Dalloway" both pass that check, so whichever the title
+          // search happened to return won, and the answer moved with the row's
+          // (merge-order-dependent) key year. Walking the filmography and matching the
+          // title is what actually picks between them; when the walk can't find the
+          // film, no match is the honest answer, not a rubber-stamped guess
+          // (`DirectorWalkResolvesSpec`). Director-LESS rows are unaffected — they
+          // still take the strict unambiguous-search branch above, which never picks
+          // between candidates either.
+          // The row's own cinema-published runtime and cast travel with the walk so
+          // a year-pinned credit can be corroborated by something other than the
+          // title. CINEMA-only, like every other hint here — reading the merged
+          // fields would hand the check the previous resolution's own numbers.
+          rowDirectors.iterator
+            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast))
+            .nextOption()
         }
       freshHit = hit
       hit.map(_.id.toString)
@@ -1112,12 +1140,19 @@ class MovieService(
    *       2026) can't be disambiguated by year, so the walk abstains rather than
    *       guess the first — better no ratings than another film's ratings. */
   private def directorWalk(
-    director:   Option[String],
-    year:       Option[Int],
-    candidates: Seq[String] = Nil
+    director:       Option[String],
+    year:           Option[Int],
+    candidates:     Seq[String] = Nil,
+    cinemaRuntimes: Seq[Int] = Nil,
+    cinemaCast:     Seq[String] = Nil
   ): Option[TmdbClient.SearchResult] = {
     director.flatMap { directory =>
-      tmdb.findPerson(directory.split(",").head.trim).flatMap { personId =>
+      // Try each person the name could mean, in turn — TMDB's top hit is wrong
+      // often enough (a credit-less duplicate stub, or an alias another director
+      // lists) that trusting it costs the whole resolution now the walk is the
+      // only resolver. A person whose filmography doesn't contain the film simply
+      // yields nothing here, which is exactly the signal to try the next one.
+      tmdb.findPersonCandidates(directory.split(",").head.trim).iterator.zipWithIndex.flatMap { case (personId, candidateIndex) =>
         val credits = tmdb.personDirectorCredits(personId)
         val wanted  = candidates.iterator.map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
         def titleOf(f: TmdbClient.SearchResult): Set[String] =
@@ -1149,11 +1184,79 @@ class MovieService(
         // remake is still kept apart by the ±1-year window; only a true adjacent-year
         // duplicate ties, and lowest-id breaks that tie deterministically
         // (StagingOrderDeterminismSpec).
-        val byTitle = if (wanted.isEmpty) None else credits.filter { f =>
+        // An EXACT title outranks a merely close one. `titleClose` is fuzzy on
+        // purpose, and a SEQUEL sits one character from the film it follows
+        // ("Diabeł ubiera się u Prady 2" vs "…u Prady", "Piep*zyć Mickiewicza 3"
+        // vs "…Mickiewicza"), so both survive the filter and the lowest-id
+        // tie-break — written to collapse a TMDB duplicate of ONE film — hands the
+        // row the OLDER one. A year normally hides it, but the year arrives with
+        // whichever cinema publishes it, so rows scraped before that resolved
+        // year-less onto the wrong film and the corpus settled differently per
+        // arrival order (`StagingOrderDeterminismSpec`). Lowest-id still breaks
+        // ties among equally exact credits, which is the case it was written for.
+        val eligible = if (wanted.isEmpty) Seq.empty else credits.filter { f =>
           titleClose(f) && year.forall(y => f.releaseYear.forall(fy => math.abs(fy - y) <= 1))
-        }.minByOption(_.id)
+        }
+        val exactTitle = eligible.filter(f => titleOf(f).exists(wanted.contains))
+        val byTitle    = (if (exactTitle.nonEmpty) exactTitle else eligible).minByOption(_.id)
+        // The year-pinned branch below exists for films whose Polish title has no
+        // TMDB entry at all: pl-PL credits fall back to the ORIGINAL title, so
+        // "Giulietta i duchy" faces "Giulietta degli spiriti" and `titleClose`
+        // cannot bridge that. But pinning on the year ALONE asserts nothing about
+        // the film, and a single cinema publishing a wrong director or year then
+        // resolves confidently to a stranger — "Głos Hind Rajab" became Łukasz
+        // Kowalski's "Lombard", "Zawieście czerwone latarnie" a different Zhang
+        // Yimou film.
+        //
+        // So the year picks the candidate and the TITLE still has to corroborate
+        // it, just loosely enough to survive translation: the two must share a
+        // distinctive word. Titles of the same film keep a proper noun across
+        // languages ("Giulietta", "Munch", "Mavka"); unrelated films share nothing.
+        // Short tokens are excluded because articles and particles ("i", "de",
+        // "la", "the") coincide constantly and would wave anything through.
+        // Transliterate before folding: `sanitize` keeps only a-z0-9, so a
+        // Cyrillic word reduces to nothing and "Mavka. Prawdziwy mit" looks
+        // unrelated to TMDB's "Мавка. Справжній міф" — the SAME proper noun, just
+        // in another alphabet. Ukrainian releases and dubs are a standing part of
+        // the Polish corpus, so the shared word has to survive the script.
+        def tokens(s: String): Set[String] =
+          MovieService.latinise(s).split("[^\\p{L}\\p{N}]+").iterator
+            .map(cache.normalizer.sanitize).filter(_.length >= MovieService.DistinctiveTitleToken).toSet
+
+        def corroboratedByTitle(f: TmdbClient.SearchResult): Boolean = {
+          val creditTokens = (Seq(f.title) ++ f.originalTitle.toSeq).flatMap(tokens).toSet
+          candidates.iterator.map(tokens).exists(w => w.intersect(creditTokens).nonEmpty)
+        }
+
+        // When the title is FULLY translated it keeps nothing to share — "Trener
+        // Tenisa" against "Il Maestro", "Kochanie" against "Gioia mia" — and the
+        // year-pinned branch is the only way those resolve. Runtime and cast are
+        // evidence the title cannot give and translation cannot touch, and both
+        // arrive in the ONE `fullDetails` call, fetched only when the cheap title
+        // check has already failed.
+        //
+        // Measured over the corpus they separate the cases cleanly: the genuine
+        // translations agree on runtime to within a minute or two (125/125, 98/97,
+        // 93/95) while the bogus matches are nowhere near (89 against Lombard's 78,
+        // 142 against Codename Cougar's 76). Cast is the stronger signal where a
+        // cinema publishes one — an actor's name is a proper noun in every
+        // language — though the cinemas behind these particular rows publish none.
+        // ANY reported runtime agreeing is enough, rather than a single chosen one:
+        // cinemas disagree by a minute or two, and picking "the" runtime would make
+        // the answer depend on which cinema had arrived (`StagingOrderDeterminismSpec`).
+        def corroboratedByFacts(f: TmdbClient.SearchResult): Boolean =
+          (cinemaRuntimes.nonEmpty || cinemaCast.nonEmpty) && {
+            val full = tmdb.fullDetails(f.id)
+            val runtimeAgrees = full.flatMap(_.runtimeMinutes).exists(actual =>
+              cinemaRuntimes.exists(reported => math.abs(actual - reported) <= MovieService.RuntimeAgreementMinutes))
+            val castAgrees = full.exists { d =>
+              val theirs = d.cast.map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
+              cinemaCast.map(cache.normalizer.sanitize).exists(n => n.nonEmpty && theirs.contains(n))
+            }
+            runtimeAgrees || castAgrees
+          }
         val byYear = year.flatMap(y => credits.filter(_.releaseYear.contains(y)) match {
-          case Seq(only) =>
+          case Seq(only) if corroboratedByTitle(only) || corroboratedByFacts(only) =>
             // Collapse a TMDB adjacent-year DUPLICATE of one film: if the year-pinned
             // credit shares its title with a credit ±1 year off (the same film entered
             // twice — "Gourou" as both 2025/1315702 and 2026/1259983), they're ONE
@@ -1161,13 +1264,13 @@ class MovieService(
             // whichever duplicate sits at it (StagingOrderDeterminismSpec).
             Some(credits.filter(f => titleOf(f) == titleOf(only) &&
               f.releaseYear.exists(fy => math.abs(fy - y) <= 1)).minBy(_.id))
-          case _         => None         // 0 or >1 at the exact year → can't disambiguate, don't guess
+          case _         => None         // 0 or >1 at the exact year, or no title corroboration → don't guess
         })
         byTitle.orElse(byYear).map { film =>
-          logger.info(s"Director-walk: '$directory' year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
+          logger.info(s"Director-walk: '$directory' (person $personId) year=${year.getOrElse("?")} → tmdbId=${film.id} '${film.originalTitle.getOrElse(film.title)}'")
           film
         }
-      }
+      }.nextOption()
     }
   }
 
@@ -1205,6 +1308,41 @@ class MovieService(
 }
 
 object MovieService {
+  /** Shortest word length that counts as EVIDENCE two titles are the same film.
+   *  Four keeps the proper nouns a translation preserves ("Munch", "Mavka",
+   *  "Giulietta") while dropping the articles and particles that coincide between
+   *  unrelated titles in every language ("i", "de", "la", "the", "und"). */
+  private[movies] val DistinctiveTitleToken = 4
+
+  /** How far a cinema's published runtime may sit from TMDB's and still count as
+   *  the same film. Two minutes is what the corpus shows genuine pairs differing
+   *  by (rounding, and whether the credits roll is counted); the wrong matches it
+   *  has to exclude are out by tens of minutes, so there is no need to stretch it. */
+  private[movies] val RuntimeAgreementMinutes = 2
+
+  /** Cyrillic → Latin, for comparing a title against one written in another
+   *  alphabet. Scoped deliberately to the director-walk's corroboration check —
+   *  cache keys and display titles are NOT run through it, so nothing about how a
+   *  film is stored or shown changes. Ukrainian and Russian letters only, which is
+   *  what the Polish corpus actually carries (Ukrainian releases and dubs).
+   *
+   *  Digraphs first, so `щ`→"shch" isn't clipped by the `ш`→"sh" rule. Soft and
+   *  hard signs vanish, as they do in every romanisation. */
+  private val CyrillicToLatin: Seq[(String, String)] = Seq(
+    "щ" -> "shch", "ж" -> "zh", "ч" -> "ch", "ш" -> "sh", "ц" -> "ts", "х" -> "kh",
+    "ю" -> "iu", "я" -> "ia", "є" -> "ie", "ї" -> "i", "й" -> "i",
+    "а" -> "a", "б" -> "b", "в" -> "v", "г" -> "h", "ґ" -> "g", "д" -> "d",
+    "е" -> "e", "з" -> "z", "и" -> "y", "і" -> "i", "к" -> "k", "л" -> "l",
+    "м" -> "m", "н" -> "n", "о" -> "o", "п" -> "p", "р" -> "r", "с" -> "s",
+    "т" -> "t", "у" -> "u", "ф" -> "f", "ы" -> "y", "э" -> "e", "ё" -> "e",
+    "ь" -> "", "ъ" -> ""
+  )
+
+  /** Rewrite any Cyrillic in `s` as Latin, leaving everything else untouched. */
+  private[movies] def latinise(s: String): String =
+    if (!s.exists(c => Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CYRILLIC)) s
+    else CyrillicToLatin.foldLeft(s.toLowerCase) { case (acc, (from, to)) => acc.replace(from, to) }
+
   /** What a completed resolution reports back to its callers: the row as re-read
    *  from the cache (`cached`), backfilled from the record we just persisted
    *  (`resolved`) for anything the re-read lacks.
@@ -1307,8 +1445,17 @@ object MovieService {
   def searchTitleCandidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] = {
     def deDecorate(t: String): Seq[String] = {
       val pipeParts       = if (t.contains(" | ")) t.split("""\s+\|\s+""").toIndexedSeq else Nil
+      // A programme banner is joined with a DASH as often as a pipe or a colon
+      // ("Filmoczule Dla Edukacji … – 500 mil", "Ladies Night - Narodziny
+      // gwiazdy"), and the film's own title is the part after it. Hyphen, en dash
+      // and em dash all appear; the surrounding spaces are what mark it as a
+      // separator rather than a hyphenated word ("Spider-Man" is untouched).
+      // Purely ADDITIVE — the undivided title stays a candidate — and a candidate
+      // only ever becomes a resolution by matching, so an over-eager split on a
+      // title that genuinely contains " - " costs nothing.
+      val dashParts       = if (t.matches(""".*\s[-–—]\s.*""")) t.split("""\s+[-–—]\s+""").toIndexedSeq else Nil
       val noTrailingParen = t.replaceAll("""\s*\([^)]*\)\s*$""", "").trim
-      (Seq(t) ++ pipeParts :+ noTrailingParen)
+      (Seq(t) ++ pipeParts ++ dashParts :+ noTrailingParen)
     }
     (Seq(title) ++ originalTitle.toSeq ++ extraTitles)
       .map(_.trim).filter(_.nonEmpty).distinct
