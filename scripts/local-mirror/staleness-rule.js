@@ -22,17 +22,25 @@
 const STALENESS_LIMITS = { maxLagMs: 30 * 60 * 1000, maxCountDrift: 0.02 };
 
 // observed: { prodCount, mirrorCount, prodMaxUpdatedAtMs, mirrorMaxUpdatedAtMs,
-//             missingCollections } — counts from `movies`, the newest
-// `updatedAt` across the collections that carry one, and the mirrored
-// collections prod has documents for while the mirror has none. Timestamps are
-// epoch millis or null (a collection with no docs, or none carrying
-// `updatedAt`).
+//             missingCollections, seedIncomplete } — counts from `movies`, the
+// newest `updatedAt` across the collections that carry one, the mirrored
+// collections prod has documents for while the mirror has none, and whether the
+// last seed left its unfinished mark behind. Timestamps are epoch millis or null
+// (a collection with no docs, or none carrying `updatedAt`).
 // Returns { stale, reason } — `reason` is what mirror.sh logs, so it has to
 // read as an explanation on its own.
 function stalenessVerdict(observed, limits) {
   const lim = limits || STALENESS_LIMITS;
   const { prodCount, mirrorCount, prodMaxUpdatedAtMs, mirrorMaxUpdatedAtMs } = observed;
   const missing = observed.missingCollections || [];
+
+  // First, because a torn snapshot makes every signal below it lie. seed.js
+  // copies collection by collection, dropping each before refilling it, so a
+  // seed killed partway leaves `movies` (copied first) fresh and complete while
+  // a later collection is empty or truncated — count, lag and missing-collection
+  // checks all come back healthy on a mirror that is a fragment.
+  if (observed.seedIncomplete)
+    return { stale: true, reason: "last seed did not finish — snapshot is torn" };
 
   if (mirrorCount === 0) return { stale: true, reason: "mirror is empty" };
 

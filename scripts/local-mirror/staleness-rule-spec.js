@@ -62,5 +62,15 @@ check("a mirrored collection prod has but the mirror lacks re-seeds",
 check("nothing missing does not re-seed",
   { ...caughtUp, missingCollections: [] }, false);
 
+// A seed that died partway leaves a snapshot torn in ways NO other signal here
+// sees: `movies` is fresh (it is copied first), so count and lag both read
+// healthy, and a collection copied down to 11600 of prod's 14400 documents has
+// documents — so `missingCollections` stays empty. Only the seed's own
+// unfinished mark says the snapshot is a fragment.
+check("a seed that never finished re-seeds",
+  { ...caughtUp, seedIncomplete: true }, true);
+check("a finished seed does not re-seed",
+  { ...caughtUp, seedIncomplete: false }, false);
+
 if (failures > 0) { print(`[spec] ${failures} failure(s)`); quit(1); }
 print("[spec] all cases pass");

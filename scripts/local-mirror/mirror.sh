@@ -43,11 +43,26 @@ envval() {
   { grep -E "^$1=" "$ROOT/.env.local" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
     | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
 }
-SRC="$(envval MONGODB_URI)"
-DST="$(envval MONGODB_MOVIES_MIRROR_URI)"
-[ -n "$SRC" ] || { echo "[mirror] set MONGODB_URI in .env.local (prod tunnel = sync source)" >&2; exit 1; }
-[ -n "$DST" ] || { echo "[mirror] set MONGODB_MOVIES_MIRROR_URI in .env.local (local mirror = sync target)" >&2; exit 1; }
-RESEED="${1:-}"
+# Reading .env.local is a STARTUP step, not a load-time one: mirror-resilience-spec.sh
+# sources this file for `supervise_db` alone and supplies its own endpoints, and it
+# must not need — or touch — real credentials to do that.
+load_endpoints() {
+  SRC="$(envval MONGODB_URI)"
+  DST="$(envval MONGODB_MOVIES_MIRROR_URI)"
+  [ -n "$SRC" ] || { echo "[mirror] set MONGODB_URI in .env.local (prod tunnel = sync source)" >&2; exit 1; }
+  [ -n "$DST" ] || { echo "[mirror] set MONGODB_MOVIES_MIRROR_URI in .env.local (local mirror = sync target)" >&2; exit 1; }
+
+  # Tune the prod source connection: zlib wire compression so the seed cursor and
+  # change stream carry ~6x less data over the tunnel (the uncompressed mongodump
+  # cursor drops mid-transfer; this is the same path the app's findAll uses), and
+  # a 10s server-selection timeout so a brief tunnel slowdown doesn't fail the
+  # watch. Appended only when the URI doesn't already set them.
+  SRCZ="$SRC"
+  local join
+  case "$SRCZ" in *\?*) join="&" ;; *) join="?" ;; esac
+  case "$SRCZ" in *compressors=*) ;; *) SRCZ="$SRCZ${join}compressors=zlib"; join="&" ;; esac
+  case "$SRCZ" in *serverSelectionTimeoutMS=*) ;; *) SRCZ="$SRCZ${join}serverSelectionTimeoutMS=10000" ;; esac
+}
 
 # ── Keep our own log from growing without bound ──────────────────────────────
 # Under launchd this process's stdout IS $MIRROR_LOG, and nothing else rotates
@@ -67,16 +82,6 @@ rotate_log() {
   rm -f "$trimmed"
   echo "[mirror] log passed $((MAX_LOG_BYTES / 1024 / 1024))MB — trimmed to its last $LOG_KEEP_LINES lines"
 }
-
-# Tune the prod source connection: zlib wire compression so the seed cursor and
-# change stream carry ~6x less data over the tunnel (the uncompressed mongodump
-# cursor drops mid-transfer; this is the same path the app's findAll uses), and
-# a 10s server-selection timeout so a brief tunnel slowdown doesn't fail the
-# watch. Appended only when the URI doesn't already set them.
-SRCZ="$SRC"
-case "$SRCZ" in *\?*) JOIN="&" ;; *) JOIN="?" ;; esac
-case "$SRCZ" in *compressors=*) ;; *) SRCZ="$SRCZ${JOIN}compressors=zlib"; JOIN="&" ;; esac
-case "$SRCZ" in *serverSelectionTimeoutMS=*) ;; *) SRCZ="$SRCZ${JOIN}serverSelectionTimeoutMS=10000" ;; esac
 
 # ── Resilience helpers ───────────────────────────────────────────────────────
 # Ensure the prod tunnel (sync source) is reachable, starting — and keeping
@@ -126,6 +131,26 @@ discover_dbs() {
 
 reseed()   { mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
 
+# Re-seed, treating a failure as a recoverable cycle rather than the end of this
+# supervisor — 0 to carry on, non-zero for the caller to `continue` on.
+#
+# The seed was the ONE fallible step running bare under `set -e`, and a seed is
+# exactly when the tunnel is under most load. When it dropped mid-copy
+# (2026-08-02) mongosh exited non-zero and `set -e` killed all three
+# supervisors outright; the parent then sat in `wait` forever, so launchd saw a
+# live process and never restarted it, and the mirror stayed frozen — mid-seed,
+# `movie_slots` dropped and never refilled — for two days while /debug served
+# 934 films with zero cinemas apiece. Every other fallible step here already
+# wraps itself this way; this one didn't.
+reseed_or_wait() {
+  local srcdb="$1" code
+  set +e; reseed "$srcdb"; code=$?; set -e
+  [ "$code" -eq 0 ] && return 0
+  echo "[mirror] $srcdb: seed failed (exit $code) — retrying in 30s"
+  sleep 30
+  return 1
+}
+
 # ── Noticing that mirror-targets.js changed under a RUNNING mirror ────────────
 # Every mongosh invocation below re-reads mirror-targets.js, so a new collection
 # is picked up the next time one STARTS. The catch is that a healthy `tail.js`
@@ -141,7 +166,9 @@ reseed()   { mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --
 # The digest covers the SET of names only, so editing a comment or reordering
 # the literal doesn't churn every tailer (targets-fingerprint.js).
 TARGETS_POLL="${KINOWO_MIRROR_TARGETS_POLL:-60}"
-TARGETS_FP_FILE="$(mktemp -t kinowo-mirror-targets)"
+# Created at startup, not on `source` — sourcing this file must leave no temp
+# file behind. `published_fingerprint` reads "unset" as "don't know", like every
+# other unreadable digest.
 
 # `--nodb`: this needs no server, so a down tunnel can't stop us noticing an
 # edit. Empty output (a syntax error in the file, a missing mongosh) is treated
@@ -152,7 +179,7 @@ targets_fingerprint() {
 
 # What the children compare against. Falls back to the last good value rather
 # than to empty, so one failed read can't look like an edit.
-published_fingerprint() { cat "$TARGETS_FP_FILE" 2>/dev/null; }
+published_fingerprint() { cat "${TARGETS_FP_FILE:-}" 2>/dev/null; }
 
 # Does this database's mirror need a full re-seed before it is worth tailing?
 # staleness.js exits 3 when the mirror has drifted beyond what resuming a change
@@ -182,7 +209,11 @@ supervise_db() {
     if ! ensure_local_mongo; then echo "[mirror] $srcdb: local Mongo unavailable — retrying in 5s"; sleep 5; continue; fi
     if ! ensure_tunnel;     then echo "[mirror] $srcdb: tunnel unavailable — retrying in 5s";     sleep 5; continue; fi
 
-    if [ "$force" = "1" ] || needs_reseed "$srcdb"; then reseed "$srcdb"; force=0; fi
+    if [ "$force" = "1" ] || needs_reseed "$srcdb"; then
+      # `force` stays set on failure: a forced re-seed still owes one next cycle.
+      reseed_or_wait "$srcdb" || continue
+      force=0
+    fi
 
     # The list this tailer is about to pin. Captured BEFORE launching it, so an
     # edit landing mid-launch is caught on the next poll rather than missed.
@@ -214,7 +245,9 @@ supervise_db() {
     if [ "$retargeted" = "1" ]; then fails=0; continue; fi
 
     if [ "$code" -eq 2 ]; then
-      echo "[mirror] $srcdb: resume token expired — re-seeding…"; reseed "$srcdb"; fails=0; continue
+      echo "[mirror] $srcdb: resume token expired — re-seeding…"
+      reseed_or_wait "$srcdb" || continue
+      fails=0; continue
     fi
     # A stream that ends immediately, over and over, is the shape that filled the
     # log with ~1000 identical lines: back off as the failures pile up, and after
@@ -230,11 +263,18 @@ supervise_db() {
 }
 
 # ── Fan out: one supervised tailer per database ──────────────────────────────
+# Everything below runs only when this file is EXECUTED. Sourced (by
+# mirror-resilience-spec.sh, which drives `supervise_db` against stubs) it must
+# define the functions and stop — no .env.local read, no tunnel, no children.
+[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0
+
 # The tunnel has to be up before we can list databases, so ensure it first;
 # after that each child re-ensures it independently. `cleanup` already kills our
 # flyctl proxy on exit — extend it to take the children down with us, so Ctrl-C
 # doesn't strand N background mongosh processes.
-FORCE_RESEED="$([ "$RESEED" = "--reseed" ] && echo 1 || echo 0)"
+load_endpoints
+TARGETS_FP_FILE="$(mktemp -t kinowo-mirror-targets)"
+FORCE_RESEED="$([ "${1:-}" = "--reseed" ] && echo 1 || echo 0)"
 until ensure_local_mongo && ensure_tunnel; do echo "[mirror] waiting for local Mongo + tunnel…"; sleep 5; done
 
 DBS="$(discover_dbs)"

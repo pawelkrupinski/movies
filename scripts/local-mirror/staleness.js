@@ -48,6 +48,9 @@ const verdict = stalenessVerdict({
   mirrorMaxUpdatedAtMs: maxUpdatedAtMs(dstDb),
   missingCollections: MIRRORED_COLLECTIONS.filter(
     name => hasDocuments(srcDb, name) && !hasDocuments(dstDb, name)),
+  // Left behind by a seed that never reached its last collection (seed.js).
+  seedIncomplete: dstDb.getCollection("__mirror_state")
+    .find({ _id: SRC_DB + ":seed" }, { _id: 1 }).limit(1).toArray().length > 0,
 });
 
 print(`[stale] ${SRC_DB}: ${verdict.stale ? "STALE" : "ok"} — ${verdict.reason}`);

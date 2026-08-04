@@ -146,6 +146,14 @@ either signal trips:
   a pointless re-seed every night.
 - **count drift** — `movies` off by more than 2%. Deletes carry no `updatedAt`,
   so a mirror that missed only deletions keeps pace on lag while over-reporting.
+- **a torn snapshot** — the previous seed left its unfinished mark behind.
+  `seed.js` copies collection by collection, dropping each before refilling it,
+  so a seed killed partway leaves `movies` (copied first) complete and current
+  while a later collection is empty or truncated: lag, drift and the
+  missing-collection check all read healthy on a mirror that is a fragment. The
+  mark is the only thing that sees it (found 2026-08-04: `/debug` listing 934
+  films with **zero cinemas apiece** because `movie_slots` had been dropped and
+  never refilled).
 
 A check that itself fails (tunnel blip) means *tail anyway* and re-judge next
 cycle — a broken gate must never block the sync. The thresholds live in
@@ -155,6 +163,25 @@ cycle — a broken gate must never block the sync. The thresholds live in
 mongosh --nodb --quiet --file scripts/local-mirror/staleness-rule.js \
                        --file scripts/local-mirror/staleness-rule-spec.js
 ```
+
+### Recovery paths are the daemon — so they're tested
+
+`mirror.sh` runs under `set -euo pipefail` with each database's `supervise_db`
+in a **background subshell**, so any bare non-zero exit inside one kills that
+supervisor silently, and the parent goes on `wait`ing — which launchd reads as a
+healthy process and never restarts. That is exactly what a dropped tunnel did on
+2026-08-02: the seed's `mongosh` exited non-zero, all three supervisors died at
+once, and the mirror sat frozen mid-seed for two days. Every fallible step
+therefore wraps itself (`set +e` … `set -e`, or `|| continue`), and the shape is
+asserted against stubs — no Mongo, no tunnel:
+
+```
+scripts/local-mirror/mirror-resilience-spec.sh
+```
+
+`mirror.sh` is sourceable for that spec: everything below the
+`[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is
+executed, so sourcing defines the functions and reads no `.env.local`.
 
 ## Sync the admin-curated `titleRules` into `kinowo_local`
 

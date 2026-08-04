@@ -12,6 +12,20 @@ const srcDb = db.getSiblingDB(SRC_DB);
 const dstDb = new Mongo(DST).getDB(mirrorDbFor(SRC_DB));
 
 print(`[seed] ${SRC_DB} → ${mirrorDbFor(SRC_DB)}…`);
+
+// Drop-then-refill is not atomic and not resumable: a seed that dies partway
+// leaves the collections it had reached fresh, the one it was mid-copy on
+// TRUNCATED, the one it had just dropped EMPTY, and the rest stale — and every
+// one of those reads to a caller as ordinary data. That is how /debug came to
+// list 934 films with zero cinemas apiece: `movie_slots` was dropped and never
+// refilled, and staleness.js's existence check ("prod has documents, the mirror
+// has none") is blind to a collection that was merely truncated. So say out
+// loud that a seed is in flight, and only clear it on the last collection —
+// staleness-rule.js reads an uncleared mark as "re-seed", which is the only
+// thing that repairs a torn snapshot.
+const state = dstDb.getCollection("__mirror_state");
+state.updateOne({ _id: SRC_DB + ":seed" }, { $set: { incomplete: true } }, { upsert: true });
+
 MIRRORED_COLLECTIONS.forEach(name => {
   const src = srcDb.getCollection(name);
   const dst = dstDb.getCollection(name);
@@ -25,7 +39,9 @@ MIRRORED_COLLECTIONS.forEach(name => {
   print(`[seed]   ${name}: ${n} docs`);
 });
 
+// Every collection copied → the snapshot is whole again.
+state.deleteOne({ _id: SRC_DB + ":seed" });
 // Fresh snapshot → drop this database's stale resume token so its tailer starts
 // from now. Keyed by source database, since each database gets its own stream.
-dstDb.getCollection("__mirror_state").deleteOne({ _id: SRC_DB });
+state.deleteOne({ _id: SRC_DB });
 print(`[seed] ${SRC_DB} done`);
