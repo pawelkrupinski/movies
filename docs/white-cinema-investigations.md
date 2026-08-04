@@ -197,6 +197,18 @@ working as designed on a venue on summer break.
   fixable from our side — the cinema must renew its certificate.
   **needs-human, five runs old: decide whether to retire the venue rather than
   keep retrying it indefinitely.**
+  **→ RESOLVED 2026-08-04, and the venue is NOT retired.** "Nothing fixable from
+  our side" was one assumption short: the portal also answers on plain HTTP —
+  200, the byte-identical month page, no redirect to HTTPS — so the expired
+  certificate is only load-bearing if we insist on the `https://` scheme. The
+  catalog now wires `http://bilety.rck.kolobrzeg.pl`, the same way the other
+  own-site venues that never offered working TLS (Kino Moskwa, Kino Sokół, Kino
+  Bułgarska) have always been wired. Worth generalising next time a host goes red
+  on TLS: probe `http://` before writing the venue off, because a cert that
+  expires is a *scheme* problem, not a reachability one. (No CA bundling could
+  have helped — `TlsTrust` already carries the `home pl DV TLS G2 R35 CA`
+  intermediate that issued this leaf; an expired leaf fails validation regardless
+  of anchors.)
 
 ---
 
@@ -744,6 +756,8 @@ secrets are now unread by any code path and can be unset at leisure.
   publishes only a JPEG. Unchanged.
 - **Wybrzeże** — expired TLS certificate at the source, four runs old. Nothing we
   can do from our side; worth a human deciding whether to retire the venue.
+  **→ resolved in the 2026-08-04 pass above: the portal serves the same page over
+  plain HTTP, so the venue was re-wired `http://` rather than retired.**
 - **The DE open-air cohort and the 55 remaining UK Flicks venues** — genuine
   aggregator coverage gaps. Fixing them means bespoke own-site clients per venue,
   which is a project, not a white-run change. The Old Court above is the template
