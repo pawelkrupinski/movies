@@ -4,8 +4,6 @@ import models.{MovieRecord, Source}
 import play.api.Logging
 import services.staging.StagingRepository
 
-import java.util.concurrent.{Executors, TimeUnit}
-import scala.util.Try
 
 /**
  * Sends the cinemas of a row's SECOND film back to staging, so each film ends up
@@ -26,6 +24,14 @@ import scala.util.Try
  * original title, so they resolve apart), and the fold gives each cluster its own
  * `movies` row. Dropping the slots here also means the next scrape tick sees the
  * cinema as untouched on the old row, so nothing is left pointing at both.
+ *
+ * Runs as part of the SETTLE pass, alongside the other consolidations that bring
+ * the corpus to its steady state — a mixed row is a consolidation problem, and
+ * settle is where the cache already re-keys and merges. It is also the backstop:
+ * `MovieCache.recordCinemaScrape` now refuses the merge in the first place when a
+ * cinema's listing contradicts the row, so this only has to clear rows that merged
+ * before that check existed, or whose contradiction surfaced later in a detail
+ * fetch rather than in the listing.
  *
  * Deliberately conservative — see `MixedFilmDetector`. Only a positive
  * contradiction between what two cinemas PUBLISHED counts, never one cinema
@@ -66,25 +72,4 @@ class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository) extends L
     }
   }
 
-  // A mixed row only appears when a cinema starts screening a same-titled film, so
-  // this is rare and never urgent — a slow cadence keeps it off the hot path. The
-  // startup delay lets the cache rehydrate first, so the sweep sees the real corpus
-  // rather than an empty one.
-  private val scheduler = Executors.newSingleThreadScheduledExecutor(r => {
-    val t = new Thread(r, "mixed-film-splitter"); t.setDaemon(true); t
-  })
-  private val StartupDelaySeconds = 300L
-  private val RunEveryHours       = 6L
-
-  def start(): Unit = {
-    logger.info(s"Mixed-film split scheduled every ${RunEveryHours}h (first run in ${StartupDelaySeconds}s).")
-    scheduler.scheduleAtFixedRate(
-      () => Try(splitMixedRows()).recover {
-        case exception => logger.warn(s"Mixed-film split tick failed: ${exception.getMessage}")
-      },
-      StartupDelaySeconds, RunEveryHours * 3600, TimeUnit.SECONDS
-    )
-  }
-
-  def stop(): Unit = scheduler.shutdown()
 }

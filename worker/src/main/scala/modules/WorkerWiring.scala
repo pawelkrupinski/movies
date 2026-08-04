@@ -977,7 +977,7 @@ class WorkerWiring(
   // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
   def settleIntervalSeconds: FiniteDuration =
     Env.positiveLong("KINOWO_SETTLE_INTERVAL_SECONDS", SettleReaper.DefaultInterval.toSeconds).seconds
-  lazy val settleReaper = new SettleReaper(() => movieService.settle(),
+  lazy val settleReaper = new SettleReaper(() => { movieService.settle(); mixedFilmSplitter.splitMixedRows(); () },
     interval = settleIntervalSeconds, runStore = scheduledRunStore)
 
   // OMDb identifier backfill runs as a coarse worker TASK (TaskType.RefreshAllOmdb,
@@ -1127,7 +1127,7 @@ class WorkerWiring(
     new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore),
-    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { movieService.settle(); services.tasks.BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { movieService.settle(); mixedFilmSplitter.splitMixedRows(); services.tasks.BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
     new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
@@ -1290,7 +1290,6 @@ class WorkerWiring(
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().
     unscreenedCleanup.start()
-    mixedFilmSplitter.start()
     // Tag each cinema with its scraper-client marker (shared platform client vs a
     // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
     // (transitions only fire on change, so an in-flight fallback would otherwise go
@@ -1369,7 +1368,6 @@ class WorkerWiring(
     freshnessStore.close()
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
-    mixedFilmSplitter.stop()
     readModelProjector.stop()
     movieCache.stop()
     readModelRepository.close()

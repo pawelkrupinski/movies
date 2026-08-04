@@ -18,7 +18,7 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
   private def slot(director: Seq[String], original: Option[String], runtime: Option[Int] = None) =
     SourceData(title = Some("x"), director = director, originalTitle = original, runtimeMinutes = runtime)
 
-  "a row whose cinemas name different directors" should "split, with the odd one out as the stray" in {
+  "a row whose cinemas publish different original titles" should "split, with the odd one out as the stray" in {
     // "Obcy": 2 cinemas on Ozon's L'étranger, 1 on Brandt Andersen's film.
     val record = MovieRecord(data = Map[Source, SourceData](
       Multikino    -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120)),
@@ -61,6 +61,28 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(data = Map[Source, SourceData](
       Multikino -> slot(Seq("Luc Besson"), Some("Joan of Arc")),
       Helios    -> slot(Seq.empty, Some("Joan of Arc"))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  /** Cinemas credit different ROLES for the same film. "Drzewo magii" is directed
+   *  by Ben Gregor and written by Simon Farnaby, and cinemas print one or the
+   *  other, so the names never overlap while the film is plainly the same one.
+   *  Treating a differing director as evidence of a second film churned this and
+   *  two others on every scrape tick (`ReScrapeIdempotencySpec`) — which is why
+   *  the original title, not the director, is what decides. */
+  it should "not split when cinemas credit different people for the same film" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq("Ben Gregor"), Some("The Magic Faraway Tree")),
+      Helios    -> slot(Seq("Simon Farnaby"), Some("The Magic Faraway Tree"))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  it should "not split on a differing director when neither publishes an original title" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq("Ben Gregor"), None),
+      Helios    -> slot(Seq("Simon Farnaby"), None)))
 
     MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
   }
