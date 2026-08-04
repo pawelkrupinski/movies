@@ -22,7 +22,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     val retriggered = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
     val cache = new CaffeineMovieCache(movies, retrigger = new EnrichmentRetrigger {
       def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
-    })
+    }, normalizer = titleNormalizer)
     val before = cache.snapshot().map(r => (r.title, r.year)).toSet
     cache.canonicalizeBySanitize()
     withClue(s"a settle changed the folded movies state — folder ≠ settle: $before -> ${cache.snapshot().map(r => (r.title, r.year)).toSet}\n")(

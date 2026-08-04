@@ -41,7 +41,7 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     }
     val cache = new CaffeineMovieCache(repoOf(rows*), retrigger = new EnrichmentRetrigger {
       def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
-    })
+    }, normalizer = titleNormalizer)
     val before = cache.snapshot().map(r => (r.title, r.year)).toSet
     cache.canonicalizeBySanitize()
     withClue(s"a settle RE-KEYED the folded state — fold ≠ settle:\n  before=$before\n  after=${cache.snapshot().map(r => (r.title, r.year)).toSet}\n")(

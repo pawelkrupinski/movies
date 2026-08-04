@@ -7,6 +7,7 @@ import services.titlerules.TitleRuleSet
 
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Fast (in-memory, ms) reproduction of the re-scrape FLAPPING the heavy
@@ -56,7 +57,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     // showtimes under a retired id is visible here instead of only against real Mongo.
     val screenings = new InMemoryScreeningsRepository
     val repository = new InMemoryMovieRepository(screenings = Some(screenings))
-    val cache      = new CaffeineMovieCache(repository, mergeMetrics = merges)
+    val cache      = new CaffeineMovieCache(repository, mergeMetrics = merges, normalizer = titleNormalizer)
     reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
     cache.canonicalizeBySanitize()
     // Mark concluded (no-TMDB), the state the real flapping films are in.
@@ -129,7 +130,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     // the read-model projection splits it back into its own CARD by shown title.
     // Both shown titles survive as cinema slots so the split can recover them.
     val tmdbId = 1127625
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     cache.put(cache.keyOf("Ścieżki życia", Some(2025)),
       MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
         (Tmdb: Source)   -> SourceData(title = Some("Ścieżki życia"), releaseYear = Some(2025)),
@@ -162,7 +163,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     // cinema's 1957 is >±1 off, so `concludedKeyFor` misses and the redirect path
     // runs — it must NOT promote the resolved row onto the cinema's ALL-CAPS / 1957
     // key. A resolved row's key is authoritative.
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     cache.put(cache.keyOf("Północ, północny zachód", Some(1959)),
       MovieRecord(tmdbId = Some(213), data = Map[Source, SourceData](
         (Tmdb: Source)     -> SourceData(title = Some("Północ, północny zachód"), releaseYear = Some(1959)),

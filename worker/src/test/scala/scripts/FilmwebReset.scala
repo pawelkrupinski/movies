@@ -66,7 +66,7 @@ object FilmwebReset {
     // Building CaffeineMovieCache(repository) AFTER the wipe means hydration sees
     // the cleared values; refreshOneSync's filmwebUrl=None branch runs the
     // full lookup (search → /info → optional /preview → /rating).
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)
     // `MovieService.get` is the only public window into the cache from a
     // script — used post-refresh to read back the newly-resolved values.

@@ -55,7 +55,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     val yearlessId = StoredMovieRecord.idFor(title, None, titleNormalizer)
     val yearedId   = StoredMovieRecord.idFor(title, Some(2026), titleNormalizer)
     try {
-      val cache = new CaffeineMovieCache(repository)
+      val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
       // A yearless row, one cinema, real showtimes — the shape a scrape leaves behind
       // before TMDB concludes. The slot title carries the year the settle will key on.
@@ -114,7 +114,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
         val cache = new CaffeineMovieCache(new MongoMovieRepository(
           Some(ownClient.getDatabase(dbName)),
           screenings = Some(new MongoScreeningsRepository(Some(ownClient.getDatabase(dbName)))),
-          slots      = Some(new MongoSlotsRepository(Some(ownClient.getDatabase(dbName)))), normalizer = titleNormalizer))
+          slots      = Some(new MongoSlotsRepository(Some(ownClient.getDatabase(dbName)))), normalizer = titleNormalizer), normalizer = titleNormalizer)
         cache.backfillEmbeddedYears()
       } finally ownClient.close()
 

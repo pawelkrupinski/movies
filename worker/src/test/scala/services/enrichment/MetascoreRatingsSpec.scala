@@ -6,6 +6,7 @@ import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{GetOnlyHttpFetch, RealHttpFetch, UpstreamNotFound}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Tests for `MetascoreRatings` — mirrors `ImdbRatingsSpec` but for the
@@ -56,7 +57,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(
       ("The Dark Knight", Some(2008), mkEnrichment("tt0468569", mcUrl = Some(Url), metascore = Some(70)))
     ))
-    val cache  = new CaffeineMovieCache(repository)
+    val cache  = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val mc     = mcStub(Map(Url -> Some(85)))
     val rates  = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), mc)
 
@@ -69,7 +70,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(
       ("The Dark Knight", Some(2008), mkEnrichment("tt0468569", mcUrl = Some(Url), metascore = Some(85)))
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upserts.clear()
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), mcStub(Map(Url -> Some(85))))
 
@@ -82,7 +83,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(
       ("Indie Film", Some(2025), mkEnrichment("tt9", mcUrl = Some(Url), metascore = Some(70)))
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), mcStub(Map(Url -> None)))
 
     rates.refreshOneSync(cache.keyOf("Indie Film", Some(2025)))
@@ -95,7 +96,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "swallow MC fetch failures (network blip, Cloudflare challenge) without throwing" in {
     val repository  = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt9", mcUrl = Some(Url), metascore = Some(70)))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val brokenMc = new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("boom")
     })
@@ -113,7 +114,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   // page for this film (every probe 404s), and the row is left clean.
   it should "leave the row clean when Metacritic has no page for the film" in {
     val repository  = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt9", mcUrl = None, metascore = None))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = UpstreamNotFound(url)
     }))
@@ -124,7 +125,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
     }))
@@ -143,7 +144,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
       ("C", None, mkEnrichment("tt3", mcUrl = Some(url3), metascore = Some(100))),
       ("D", None, mkEnrichment("tt4", mcUrl = None,       metascore = None))   // skipped: no URL
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), mcStub(Map(
       Url  -> Some(85),    // changed
       url2 -> Some(74),    // unchanged
@@ -189,7 +190,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Harry Potter and the Philosopher's Stone")))
       ))
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     // MC stub: 404 for both philosophers slug variants, 200 + JSON-LD for sorcerers.
     val mc = new MetacriticClient(new GetOnlyHttpFetch {
       def get(rawUrl: String): String = {
@@ -225,7 +226,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     val gets = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
       ("Foo", Some(2024), MovieRecord(tmdbId = Some(42)))   // no metacriticUrl → discovery
-    )))
+    )), normalizer = titleNormalizer)
     val rates = new MetascoreRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None), countingMc(gets))
 
     rates.refreshOneSync(cache.keyOf("Foo", Some(2024)))
@@ -247,7 +248,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   private def twoStingRows() = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
     ("The Sting", Some(2024), MovieRecord(tmdbId = Some(42))),
     ("The Sting", Some(2025), MovieRecord(tmdbId = Some(99)))
-  )))
+  )), normalizer = titleNormalizer)
   private val TheSting = "https://www.metacritic.com/movie/the-sting"
   private val Sting    = "https://www.metacritic.com/movie/sting"
   private def stingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =

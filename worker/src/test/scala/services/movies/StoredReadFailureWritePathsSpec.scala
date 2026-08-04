@@ -38,7 +38,7 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
    */
   "the settle's prior-occupant fold" should "not overwrite a year it merely FAILED to read" in {
     val repository = new UnreadableByIdMovieRepository()
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     // The prior occupant of (Zaplatani, 2010): enriched, rated, in Mongo, and NOT
     // cache-resident. Written to the repository AFTER the cache boot-hydrated, which is
     // how the row is reached in prod — a second worker's write, or a hydrate that came
@@ -68,7 +68,7 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
 
   it should "re-key onto the resolved year as usual once that read works" in {
     val repository = new UnreadableByIdMovieRepository()
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upsert("Zaplatani", Some(2010), rated(7.7, Multikino, "Zaplatani"))
     repository.failing = false
 
@@ -98,7 +98,7 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
    */
   "the same-tmdbId fold" should "not depend on a repository read at all" in {
     val repository = new UnreadableByIdMovieRepository()
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     cache.put(CacheKey("Zaplatani", Some(2010), titleNormalizer), rated(7.7, Multikino, "Zaplatani"))
     // A second spelling of the same film arrives with the same tmdbId — the fold's trigger.

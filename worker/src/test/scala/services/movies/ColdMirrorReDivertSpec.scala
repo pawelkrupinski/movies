@@ -4,6 +4,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.staging.InMemoryStagingRepository
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Reproduces the post-reboot corpus re-divert flap (panel-36 `kinowo_worker_corpus_movies`
@@ -54,7 +55,7 @@ class ColdMirrorReDivertSpec extends AnyFlatSpec with Matchers {
     val repo    = new BootBlackoutRepository(Seq(("Toy Story 5", Some(2026), knownRow)))
     // Boots cold: bootHydrate's findAll sees the blackout, so the mirror is empty
     // even though "Toy Story 5" is persisted in `movies`.
-    val cache   = new CaffeineMovieCache(repo, staging = Some(staging))
+    val cache   = new CaffeineMovieCache(repo, staging = Some(staging), normalizer = titleNormalizer)
     repo.blackout = false // Mongo recovered; the pre-boot row is now visible to findAll, but not to the cold mirror.
 
     val before   = staging.findAll().toSet

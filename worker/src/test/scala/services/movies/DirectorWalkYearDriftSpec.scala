@@ -5,6 +5,7 @@ import models.{KinoMuza, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Regression: "Mi Amor" (Kino Muza, reports director "Guillaume Nicloux",
@@ -65,7 +66,7 @@ class DirectorWalkYearDriftSpec extends AnyFlatSpec with Matchers {
     val seed = MovieRecord(data = Map[Source, SourceData](
       KinoMuza -> SourceData(title = Some(Title), director = Seq(Director), releaseYear = Some(2025))))
     val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new services.events.InProcessEventBus()
     val service = new MovieService(cache, bus, miAmorTmdb())
 

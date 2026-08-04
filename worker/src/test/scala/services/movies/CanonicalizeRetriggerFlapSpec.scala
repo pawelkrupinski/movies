@@ -60,7 +60,7 @@ class CanonicalizeRetriggerFlapSpec extends AnyFlatSpec with Matchers {
   "canonicalizeBySanitize" should
     "be a no-op (no retrigger) on a re-settle of already-stored decorated rows — the per-deploy flap" in {
     val recorder = new Recorder
-    val c = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = recorder)
+    val c = new CaffeineMovieCache(new InMemoryMovieRepository, retrigger = recorder, normalizer = titleNormalizer)
     // Seed the cache exactly as a boot hydrate would: key = fromStorage's displayTitle.
     val record    = felliniRecord
     val id        = StoredMovieRecord.idFor("Federico Fellini: Słodkie życie", Some(1960), titleNormalizer)

@@ -15,7 +15,7 @@ object RefreshOneFilmweb {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
     val repository  = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch), new FilmwebClient(new RealHttpFetch))
 
     def show(label: String): Unit =

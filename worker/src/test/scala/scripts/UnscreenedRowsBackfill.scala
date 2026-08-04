@@ -44,7 +44,7 @@ object UnscreenedRowsBackfill {
     }
     if (orphans.size > Sample) println(s"  (+ ${orphans.size - Sample} more)")
 
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val cleanup = new UnscreenedCleanup(cache, repository)
     val removed = cleanup.removeUnscreened()
     repository.close()

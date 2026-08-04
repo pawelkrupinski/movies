@@ -282,7 +282,7 @@ abstract class CountryConvergenceBehaviour(
         // `CountryConvergenceBehaviour.this` — inside the anonymous `ArchiveReplayWiring`
         // both this spec's `country` and the wiring's are in scope, and they are the same
         // value; naming the spec's is what disambiguates.
-        enrichmentLanguage = CountryConvergenceBehaviour.this.country.language)
+        enrichmentLanguage = CountryConvergenceBehaviour.this.country.language, normalizer = titleNormalizer)
     }
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded

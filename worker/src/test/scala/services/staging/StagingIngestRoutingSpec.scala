@@ -7,6 +7,7 @@ import services.events.{InProcessEventBus, StagingNewcomerDiverted}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Phase 3: with a staging sink wired, a genuinely-new film is diverted to
  *  `pending_movies` (one row per cinema|title|year) instead of `movies`; a film
@@ -24,7 +25,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
       cast = Nil, director = Nil, showtimes = Seq(Showtime(When, bookingUrl = None)))
 
   private def cacheWithStaging(repository: InMemoryMovieRepository, staging: InMemoryStagingRepository): CaffeineMovieCache =
-    new CaffeineMovieCache(repository, new InProcessEventBus, staging = Some(staging))
+    new CaffeineMovieCache(repository, new InProcessEventBus, staging = Some(staging), normalizer = titleNormalizer)
 
   "a genuinely-new film" should "be diverted to staging, not movies" in {
     val staging = new InMemoryStagingRepository
@@ -41,7 +42,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
     val bus     = new InProcessEventBus
     val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
     bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, bus, staging = Some(staging))
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, bus, staging = Some(staging), normalizer = titleNormalizer)
 
     cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
     kicked.toSeq shouldBe Seq("Brand New Film")                 // first divert → one event
@@ -55,7 +56,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
     val bus     = new InProcessEventBus
     val kicked  = scala.collection.mutable.ArrayBuffer.empty[String]
     bus.subscribe { case StagingNewcomerDiverted(title) => kicked += title }
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, bus, staging = Some(staging))
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, bus, staging = Some(staging), normalizer = titleNormalizer)
     cache.put(cache.keyOf("Kumotry", Some(2026)),
       MovieRecord(tmdbId = Some(1454157), data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026)))))
@@ -108,7 +109,7 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   "no staging sink (default)" should "leave every scrape landing in movies" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, new InProcessEventBus) // staging = None
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, new InProcessEventBus, normalizer = titleNormalizer) // staging = None
     cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
     cache.entries should have size 1
   }

@@ -13,6 +13,7 @@ import tools.HttpStatusException
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
@@ -34,7 +35,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with one KinoApollo film carrying (optionally) a filmUrl —
    *  exactly what a bare deferred scrape persists. */
   private def cacheWith(filmUrl: Option[String]) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
     val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
@@ -49,7 +50,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed one KinoApollo film whose ONLY showtime is in the past — a film whose run
    *  has ended. Its slot and filmUrl are retained exactly as production keeps them. */
   private def endedFilm() = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
     val bare  = CinemaMovie(Movie("Ended"), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.now().minusDays(3), Some("https://book"))))
@@ -60,7 +61,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   /** Seed the cache with `n` distinct deferred films, each carrying a filmUrl —
    *  a synchronized stale cohort, as a re-key / title-rule wave produces. */
   private def cacheWithMany(n: Int) = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
     val films = (1 to n).map { i =>
       CinemaMovie(Movie(s"Film $i"), KinoApollo, posterUrl = None, filmUrl = Some(s"http://ref/$i"),
         synopsis = None, cast = Seq.empty, director = Seq.empty,

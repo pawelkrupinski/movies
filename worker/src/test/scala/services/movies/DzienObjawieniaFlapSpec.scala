@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.titlerules.TitleRuleSet
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * REGRESSION for the prod "Dzień objawienia" merge→split flap.
@@ -69,7 +70,7 @@ class DzienObjawieniaFlapSpec extends AnyFlatSpec with Matchers {
   "canonicalizeBySanitize" should
     "reach a fixpoint for a film whose cinemas SHOUT the title (no per-tick re-write)" in {
     val repo  = new InMemoryMovieRepository
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
 
     // Two cinemas, one SHOUTING — both sanitize to `dzienobjawienia`, so they
     // merge into one row; the canonical spelling settles to "Dzień objawienia".

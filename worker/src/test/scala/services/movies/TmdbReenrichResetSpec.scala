@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The operator's forced re-enrich (the /debug button) re-resolves off SCRAPED data,
@@ -64,7 +65,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
 
   private def wire(): (CaffeineMovieCache, MovieService) = {
     val repository = new InMemoryMovieRepository(Seq((Title, Some(1982), lockedRow())))
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     (cache, new MovieService(cache, new InProcessEventBus(), tmdb()))
   }
 

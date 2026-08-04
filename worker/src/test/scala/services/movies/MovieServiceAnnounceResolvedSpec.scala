@@ -38,7 +38,7 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
     // gate the EnrichmentReaper uses, so this exercises the actual newcomer kick.
     val enqueuer  = new RatingEnqueuer(queue, freshness, new DueWindow(4.hours))
     val service = new MovieService(
-      new CaffeineMovieCache(new InMemoryMovieRepository()), bus, deadTmdb, freshness = freshness,
+      new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer), bus, deadTmdb, freshness = freshness,
       enqueueNewcomerRatings = (key, record) => { enqueuer.enqueueDueFor(key, record, Instant.parse("2026-06-21T00:00:00Z")); () })
     (service, seen, freshness, queue)
   }

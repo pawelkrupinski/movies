@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Regression tests for the "Kurozając i świątynia świstaka" class of bug:
@@ -77,7 +78,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
 
   "needsTmdbResolution (bus path)" should "bypass the isNegative short-circuit when a fresh director hint arrives" in {
     val repository  = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service   = new MovieService(cache, bus, kurozajacTmdb())
     bus.subscribe(service.onMovieDetailsComplete)
@@ -104,7 +105,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // scrape-tick into a TMDB hammer for known misses.
   it should "still short-circuit on isNegative when the event carries no new hints" in {
     val repository  = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     // Tmdb stub that throws on any access — proves we never tried.
     val tmdb  = new TmdbClient(http = new GetOnlyHttpFetch {
@@ -134,7 +135,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](Helios -> heliosSlot)
     )
     val repository  = new InMemoryMovieRepository(Seq((Title, Year, seeded)))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service   = new MovieService(cache, new InProcessEventBus(), kurozajacTmdb())
 
     service.retryUnresolvedTmdb()
@@ -171,7 +172,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
 
   "resolveTmdb" should "resolve a decorated title from its own original-title search candidate (no sibling needed)" in {
     val repository  = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     // The decorated title finds nothing on TMDB; searching the cinema's original
     // title "Possession" finds the film. No sibling row exists and the event
@@ -203,7 +204,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // variant resolved to a no-match while the corpus-wide direct path resolved it.
   "resolveStagingRecord" should "mine search candidates from the passed row's cinema titles (cache-free)" in {
     val repository  = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb  = new TmdbClient(http = new StubFetch(Map(
       // The bare staging title finds nothing; the cinema-reported title does.
       "query=Backrooms"           -> """{"results":[{"id":1083381,"title":"Backrooms","original_title":"Backrooms","release_date":"2026-01-01","popularity":9.0}]}""",
@@ -242,7 +243,7 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
    */
   it should "use a year a cinema slot reported when the row itself carries none" in {
     val repository = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb  = new TmdbClient(http = new StubFetch(Map(
       // Year-scoped search finds the film; the year-less one is ambiguous and refused.
       "year=1982"                 -> """{"results":[{"id":118257,"title":"Room 666","original_title":"Chambre 666","release_date":"1982-05-01","popularity":5.0}]}""",

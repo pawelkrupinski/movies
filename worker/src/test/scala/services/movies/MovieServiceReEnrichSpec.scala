@@ -8,6 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import tools.RoutingHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Tests for `MovieService.reEnrichSync`.
@@ -73,7 +74,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val repository     = new InMemoryMovieRepository(Seq(
       ("Powrót do przyszłości", Some(2026), mkEnrichment("tt-old-wrong-id"))
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service   = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = service.reEnrichSync("Powrót do przyszłości", Some(2026))
@@ -94,7 +95,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repository     = new InMemoryMovieRepository()
-    val cache    = new CaffeineMovieCache(repository)
+    val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = service.reEnrichSync("Powrót do przyszłości", Some(2026))
@@ -113,7 +114,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val original = mkEnrichment("tt-original", orig = Some("Keep me"))
     val repository     = new InMemoryMovieRepository(Seq(("Title", Some(2024), original)))
-    val cache    = new CaffeineMovieCache(repository)
+    val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = service.reEnrichSync("Title", Some(2024))
@@ -129,7 +130,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val repository     = new InMemoryMovieRepository()  // empty
-    val cache    = new CaffeineMovieCache(repository)
+    val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service      = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     val result = service.reEnrichSync("Powrót do przyszłości", Some(2026))
@@ -147,7 +148,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   "resolveTmdbOnce(force = true)" should "write the resolved imdbId through the cache and return true (concluded)" in {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val service  = new MovieService(cache, new InProcessEventBus(), tmdb)
 
     service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
@@ -160,7 +161,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   // leaving the reaper's cadence gate to (wrongly) skip the still-stamped sources.
   it should "kick a forced rating re-fetch for the re-resolved row (carrying the resolved ids the sources key on)" in {
     val tmdb    = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val kicked  = scala.collection.mutable.ListBuffer.empty[(CacheKey, MovieRecord)]
     val service = new MovieService(cache, new InProcessEventBus(), tmdb,
       forceRatingRefresh = (k, r) => { kicked += ((k, r)); () })
@@ -180,7 +181,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
   // different film until the entry expired.
   it should "forget the film's memoised resolutions, so the re-resolve re-probes instead of replaying" in {
     val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
-    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val forgotten = scala.collection.mutable.ListBuffer.empty[String]
     val service   = new MovieService(cache, new InProcessEventBus(), tmdb,
       forgetResolutions = title => { forgotten += title; () })
@@ -192,7 +193,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
 
   it should "NOT forget resolutions on a normal (unforced) resolve — the cache is there to be used" in {
     val tmdb      = new TmdbClient(http = tmdbWithYearFallback(), apiKey = Some("stub"))
-    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val forgotten = scala.collection.mutable.ListBuffer.empty[String]
     val service   = new MovieService(cache, new InProcessEventBus(), tmdb,
       forgetResolutions = title => { forgotten += title; () })

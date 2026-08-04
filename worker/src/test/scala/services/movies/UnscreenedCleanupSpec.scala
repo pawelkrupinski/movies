@@ -74,7 +74,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
       ("With",    Some(2026), withCinema),
       ("Without", Some(2025), withoutCinema)
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 
@@ -93,7 +93,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
       ("Drama",   Some(2026), mkRecord("tt1", Map(Helios -> cinemaSlot))),
       ("Erupcja", Some(2026), mkRecord("tt2", Map(Helios -> cinemaSlot)))
     ))
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val cleanup = new UnscreenedCleanup(cache, repository)
 
     cleanup.removeUnscreened()                 shouldBe 0
@@ -103,7 +103,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
 
   it should "count rows correctly when called on an empty cache" in {
     val (repository, _) = splitRepository()
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 0
   }
 
@@ -113,7 +113,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // screening and must survive. The slot lands AFTER the cache hydrates, which is what
     // makes the two views disagree.
     val (repository, slots) = splitRepository(Seq(("Filipinana", Some(2026), mkRecord("tt9", Map.empty))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     slots.upsertSlot(filmId("Filipinana", Some(2026)), Helios.displayName, cinemaSlot)
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
@@ -130,7 +130,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // an honest, successful, EMPTY answer and convicts a film that is playing tonight —
     // the guard has to read the union, which is what every serving reader already reads.
     val (repository, _) = splitRepository(Seq(("Clarissa", Some(2026), mkRecord("tt8", Map.empty))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.putEmbeddedOutOfBand("Clarissa", Some(2026), mkRecord("tt8", Map(Helios -> cinemaSlot)))
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
@@ -144,7 +144,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // A failed read is not data: it cannot distinguish "no cinemas" from
     // "Mongo did not answer", so it must never authorise a delete.
     val (delegate, _) = splitRepository(Seq(("Blogoslawieni", Some(2026), mkRecord("tt7", Map.empty))))
-    val cache = new CaffeineMovieCache(delegate)
+    val cache = new CaffeineMovieCache(delegate, normalizer = titleNormalizer)
 
     val removed = new UnscreenedCleanup(cache, new UnreadableMovieRepository(delegate)).removeUnscreened()
 
@@ -156,7 +156,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   it should "still delete a row both the cache AND a healthy durable read call empty" in {
     // Genuine expiry — the one case that legitimately removes a row.
     val (repository, _) = splitRepository(Seq(("Dkfzakopeta", Some(2026), mkRecord("tt6", Map.empty))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 

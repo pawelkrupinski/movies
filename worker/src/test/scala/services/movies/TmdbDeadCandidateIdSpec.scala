@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.resolution.ResolutionCache
 import tools.{GetOnlyHttpFetch, HttpStatusException}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * TMDB deletes movie entries (duplicates, cancelled productions, re-merged
@@ -63,7 +64,7 @@ class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
   "a search hit whose TMDB id no longer exists" should
     "conclude as a no-match instead of retrying the dead id forever" in {
     val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ids        = new RecordingResolutionCache
 
     val resolved = serviceOver(cache, new StubTmdb(404), ids)
@@ -83,7 +84,7 @@ class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
 
   it should "still DEFER when the same fetch fails transiently" in {
     val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     val resolved = serviceOver(cache, new StubTmdb(503), new RecordingResolutionCache)
       .resolveTmdbOnce(Title, Year, None, None, force = false)

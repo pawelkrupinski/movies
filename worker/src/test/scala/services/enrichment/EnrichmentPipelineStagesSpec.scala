@@ -10,6 +10,7 @@ import tools.Eventually.eventually
 import tools.{HttpFetch, RoutingHttpFetch}
 
 import scala.collection.mutable
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Tests for the two-stage enrichment pipeline:
@@ -55,7 +56,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // ── the async TMDB stage writes the resolved row to the cache ──
 
   "the async TMDB stage" should "write tmdbId + imdbId to the cache after a successful resolution" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val service = new MovieService(cache, new InProcessEventBus(), tmdbStub())
 
     // The async path goes through `MovieDetailsComplete` → needsTmdbResolution →
@@ -75,7 +76,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")),
       apiKey = Some("stub")
     )
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val service = new MovieService(cache, new InProcessEventBus(), emptyTmdb)
 
     service.onMovieDetailsComplete(MovieDetailsComplete("Unknown Title", None))
@@ -95,7 +96,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
         MovieRecord(data = Map[Source, SourceData](
           Multikino -> SourceData(title = Some("Some Local Premiere"), releaseYear = Some(2026)))))
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service   = new MovieService(cache, new InProcessEventBus(), emptyTmdb)
     val key   = cache.keyOf("Some Local Premiere", Some(2026))
     // Not yet concluded (no tmdbId, no no-match) → held back from the read model.
@@ -122,7 +123,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   "reEnrichSync" should "fill the row's IMDb rating when chained with imdbRatings.refreshOneSync" in {
     val bus      = new InProcessEventBus()
     val imdbHttp = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql))
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val ratings  = new ImdbRatings(cache, new ImdbClient(http = imdbHttp))
     val service      = new MovieService(cache, bus, tmdbStub())
 
@@ -149,7 +150,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
       ("Mortal Kombat II", Some(2026), seed)
-    )))
+    )), normalizer = titleNormalizer)
     // TMDB search returns the same tmdbId 931285 but external_ids has no imdb_id.
     val tmdbHttp = new RoutingHttpFetch(Map(
       "/search/movie" -> Mk2Search,
@@ -179,7 +180,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
       ("Mortal Kombat II", Some(2026), seed)
-    )))
+    )), normalizer = titleNormalizer)
     // TMDB now resolves to a DIFFERENT tmdbId (931285) AND that one has no
     // imdb cross-reference (yet). The old imdbId is about the wrong film and
     // must not leak into the new row.
@@ -209,7 +210,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     )
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
       ("Mortal Kombat II", Some(2026), seed)
-    )))
+    )), normalizer = titleNormalizer)
     val brokenImdb = new ImdbClient(http = new HttpFetch {
       override def get(url: String): String = throw new RuntimeException("network blip")
       override def post(url: String, body: String, contentType: String): String = get(url)
@@ -240,7 +241,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
         (Multikino: Source) -> SourceData(title = Some("Mortal Kombat II"),
           showtimes = Seq(Showtime(java.time.LocalDateTime.parse("2026-07-12T20:00"), None, None, Nil)))))
     val repo  = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repo)         // hydrates from an EMPTY repo → cache stays cold
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)         // hydrates from an EMPTY repo → cache stays cold
     // Land the enriched row in `movies` ONLY — the cache never saw it, exactly the
     // cold / evicted state the resolve rebuild reads as empty.
     repo.upsert("Mortal Kombat II", Some(2026), seed)
@@ -268,7 +269,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // fall back to walking Helgestad's TMDB filmography to find a 2026 hit.
 
   it should "accept the title-search candidate when its director matches the cinema's reported director" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
 
     val tmdbHttp = new RoutingHttpFetch(Map(
@@ -290,7 +291,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "walk the director's TMDB filmography when the title candidate has a different director (Niedźwiedzica regression)" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val missing  = mutable.ListBuffer.empty[DomainEvent]
     bus.subscribe { case m: services.events.ImdbIdMissing => missing.append(m) }
@@ -340,7 +341,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   it should "leave behaviour unchanged when the cinema doesn't report a director" in {
     // Mortal Kombat II without a director hint: the existing TMDB title-search
     // path runs and stores the canonical row. Director verification is opt-in.
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
 
     val service = new MovieService(cache, bus, tmdbStub())
@@ -354,7 +355,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // ── Daily TMDB retry ──────────────────────────────────────────────────────
 
   "retryUnresolvedTmdb" should "clear the negative cache so previously-failed lookups get another shot" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val key   = cache.keyOf("Some Film", Some(2026))
     cache.markMissing(key)
     cache.isNegative(key) shouldBe true
@@ -382,7 +383,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       data              = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
     val repository  = new InMemoryMovieRepository(Seq(("Mortal Kombat II", Some(2026), incomplete)))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     // TMDB stub throws on any call — we assert the retry never reaches it for an
     // already-resolved row (no /search/movie lands).
@@ -406,7 +407,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       data   = Map[Source, SourceData](Multikino -> SourceData(title = Some("Mortal Kombat II")))
     )
     val repository  = new InMemoryMovieRepository(Seq(("Mortal Kombat II", Some(2026), seed)))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val service  = new MovieService(cache, new InProcessEventBus(), tmdbStub())
 
     service.retryUnresolvedTmdb()
@@ -423,7 +424,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
   // ── MovieDetailsComplete triggers TMDB stage; TMDB skip-when-cached short-circuit ───
 
   "onMovieDetailsComplete" should "schedule TMDB stage when the row isn't cached" in {
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val bus      = new InProcessEventBus()
 
     val service  = new MovieService(cache, bus, tmdbStub())
@@ -444,7 +445,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(931285),
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat II", Some(2026), seed))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat II", Some(2026), seed))), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
 
     // A recording TMDB http: if the stage ran it would hit /search/movie. We
@@ -471,7 +472,7 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
       tmdbId = Some(931285),
       data   = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II")))
     )
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat II", Some(2026), seed))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat II", Some(2026), seed))), normalizer = titleNormalizer)
 
     val imdb        = new ImdbClient(http = new RoutingHttpFetch(Map("caching.graphql.imdb.com" -> Mk2ImdbGraphql)))
     val imdbRatings = new ImdbRatings(cache, imdb)

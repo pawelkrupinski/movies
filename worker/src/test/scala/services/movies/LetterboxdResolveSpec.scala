@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.enrichment.{LetterboxdClient, LetterboxdIdResolver}
 import services.events.InProcessEventBus
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * A tmdbId-less row can carry a known `imdbId` (OMDb backfill recovers one for
@@ -34,7 +35,7 @@ class LetterboxdResolveSpec extends AnyFlatSpec with Matchers {
       imdbId = Some(imdbId),
       data   = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(title)))
     )
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed))))
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed))), normalizer = titleNormalizer)
   }
 
   // TMDB routes where fuzzy search AND /find both miss, but the crosswalk-

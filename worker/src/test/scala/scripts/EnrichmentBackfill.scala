@@ -41,7 +41,7 @@ object EnrichmentBackfill {
     // and IMDb stages synchronously. MC / RT URL discovery + score scrape
     // now live in their dedicated ratings classes; the script invokes them
     // directly per row so a single backfill pass covers everything.
-    val cache       = new CaffeineMovieCache(repository)
+    val cache       = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb        = new TmdbClient(new RealHttpFetch)
     val imdbRatings = new ImdbRatings(cache, new ImdbClient(new RealHttpFetch))
     val mcRatings   = new MetascoreRatings(cache, tmdb, new MetacriticClient(new RealHttpFetch))

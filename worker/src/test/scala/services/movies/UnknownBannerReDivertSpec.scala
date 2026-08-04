@@ -55,7 +55,7 @@ class UnknownBannerReDivertSpec extends AnyFlatSpec with Matchers {
   "recordCinemaScrape" should
     "NOT re-divert a decorated scrape whose film already sits in movies under this cinema's slot (unknown-banner flap)" in {
     val staging = new InMemoryStagingRepository
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging))
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
     cache.put(CacheKey(film, Some(2026), titleNormalizer), rowWithDecoratedSlot)
 
     val before   = staging.findAll().toSet

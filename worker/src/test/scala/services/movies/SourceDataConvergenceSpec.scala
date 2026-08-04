@@ -42,7 +42,7 @@ class SourceDataConvergenceSpec extends AnyFlatSpec with Matchers {
   private def fixture = {
     val screenings = new InMemoryScreeningsRepository
     val repository = new InMemoryMovieRepository(screenings = Some(screenings))
-    (screenings, repository, new CaffeineMovieCache(repository))
+    (screenings, repository, new CaffeineMovieCache(repository, normalizer = titleNormalizer))
   }
 
 

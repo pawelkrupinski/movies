@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Regression guard: a director-less first scrape of a same-title, same-year TMDB
@@ -71,7 +72,7 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     // CinemaCity scraped it first, no director reported.
     val seed  = MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(Title))))
     val repository  = new InMemoryMovieRepository(Seq((Title, Year, seed)))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service   = new MovieService(cache, bus, visitorTmdb())
     val key   = cache.keyOf(Title, Year)

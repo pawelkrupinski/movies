@@ -134,7 +134,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     val w = new FixtureTestWiring(Fixture) {
       override lazy val movieCache = new services.movies.CaffeineMovieCache(
         movieRepository, eventBus, staging = Some(stagingRepository),
-        retrigger = enrichmentRetrigger, mergeMetrics = merges)
+        retrigger = enrichmentRetrigger, mergeMetrics = merges, normalizer = titleNormalizer)
     }
     w.bootStartup()
     // ONE settle. Settling twice would let a corpus that needs two passes to stop
@@ -248,7 +248,7 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     // is by `sanitize`, so Caffeine keeps the key object it already has and a re-derived
     // spelling is silently discarded. An empty cache has nothing to keep, so the stored
     // corpus alone decides the keys — exactly as at boot.
-    val rebooted = new CaffeineMovieCache(w.movieRepository)
+    val rebooted = new CaffeineMovieCache(w.movieRepository, normalizer = titleNormalizer)
     val afterHydrate = rebooted.snapshot().map(r => (r.title, r.year)).toSet
     info(s"rebooted with ${afterHydrate.size} row(s) from storage")
     withClue(s"a cold hydrate rebuilt keys the settle did not write — " +

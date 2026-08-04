@@ -6,6 +6,7 @@ import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.HttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Tests for `ImdbRatings` — the extracted IMDb-stage class. Covers the
@@ -37,7 +38,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   "refreshOneSync" should "fetch the rating and write it back when it differs from the cached value" in {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
@@ -47,7 +48,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "not write back when the fetched rating equals the cached value (idempotent)" in {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(7.4)))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upserts.clear()
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4)))
 
@@ -66,7 +67,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   it should "be a no-op when the row has no imdbId (TMDB resolved without a cross-reference)" in {
     val tmdbOnly = MovieRecord(tmdbId = Some(42))
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), tmdbOnly)))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     // ImdbClient must never be invoked — the stub throws on any request.
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
@@ -77,7 +78,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = throw new RuntimeException("should not be called")
       override def post(url: String, body: String, contentType: String): String = get(url)
@@ -94,7 +95,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("B", None, mkEnrichment("tt2", rating = Some(6.0))),
       ("C", None, mkEnrichment("tt3", rating = Some(7.0)))
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, imdbStub(Map(
       "tt1" -> 7.4,  // changed
       "tt2" -> 6.0,  // unchanged
@@ -115,7 +116,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("C", None, mkEnrichment("tt3", rating = Some(7.0))),  // changes → 8.1
       ("D", None, MovieRecord(tmdbId = Some(1)))             // no imdbId → skipped (not walked)
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0, "tt3" -> 8.1)))
 
     val summary = ratings.refreshAll()
@@ -132,7 +133,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
       ("A", None, MovieRecord(imdbId = Some("tt1"), imdbRating = Some(5.0), tmdbId = Some(101))),
       ("B", None, MovieRecord(imdbId = Some("tt2"), imdbRating = Some(6.0), tmdbId = Some(102)))
     ))
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val cadence = new services.cadence.InMemoryRatingCadenceStore
     val ratings = new ImdbRatings(cache, imdbStub(Map("tt1" -> 7.4, "tt2" -> 6.0)),  // A moves, B unchanged
       (key, tmdbId, v) => cadence.record(services.tasks.RatingTasks.dedupKey(services.freshness.FreshnessKind.ImdbRating, key, tmdbId), v))
@@ -159,7 +160,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   "refreshOneSync" should "propagate a blocked source instead of reporting 'no rating'" in {
     val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, blockedImdb(403))
 
     a[tools.HttpStatusException] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
@@ -169,7 +170,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     // The freeze-don't-blank guarantee, asserted rather than assumed: a failed
     // refresh must never degrade a rating we already had.
     val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, blockedImdb(403))
 
     an[Exception] should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
@@ -178,7 +179,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "still report None (no throw) when IMDb genuinely has no such title" in {
     val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1"))))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val ratings = new ImdbRatings(cache, blockedImdb(404))
 
     ratings.refreshOneSync(cache.keyOf("Foo", Some(2024))) shouldBe None

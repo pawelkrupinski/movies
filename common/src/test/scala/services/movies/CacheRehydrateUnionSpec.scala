@@ -4,6 +4,7 @@ import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData, 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titlerules.{RuleScope, TitleRule, TitleRules, TitleRuleSet}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Pins the fix for the late-added-merge-rule data-loss bug: when a merge-key
  *  rule (a Canonical-tier unification — NOT a GlobalStructural decoration strip,
@@ -78,7 +79,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   "settle after a pure load" should "collapse two same-tmdbId rows that differ only by year" in {
     val cache = new CaffeineMovieCache(repositoryOf(
-      resolvedRow(2025, Multikino), resolvedRow(2026, CinemaCityKinepolis)))
+      resolvedRow(2025, Multikino), resolvedRow(2026, CinemaCityKinepolis)), normalizer = titleNormalizer)
     cache.entries should have size 2            // pure load leaves the cross-year split
     cache.canonicalizeBySanitize()              // the SettleReaper's settle collapses it
     cache.entries should have size 1
@@ -105,7 +106,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   it should "attach an unresolved ±1-year row to its resolved same-title cluster" in {
     val cache = new CaffeineMovieCache(repositoryOf(
-      unresolved2025Row(Multikino), resolved2026Row(CinemaCityKinepolis)))
+      unresolved2025Row(Multikino), resolved2026Row(CinemaCityKinepolis)), normalizer = titleNormalizer)
     cache.entries should have size 2            // pure load
     cache.canonicalizeBySanitize()              // settle attaches the ±1-year row
     cache.entries should have size 1
@@ -132,12 +133,12 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   "boot hydrate" should "retry an empty findAll (Mongo not ready) so quiescent rows still load" in {
     val cache = new CaffeineMovieCache(
-      flakeyRepository(base), bootHydrateMaxAttempts = 5, bootHydrateRetryMillis = 20)
+      flakeyRepository(base), bootHydrateMaxAttempts = 5, bootHydrateRetryMillis = 20, normalizer = titleNormalizer)
     cache.entries should have size 1   // boot retried past the empty first findAll
   }
 
   it should "give up after the configured attempts on a genuinely empty repository" in {
-    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = 3, bootHydrateRetryMillis = 5)
+    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = 3, bootHydrateRetryMillis = 5, normalizer = titleNormalizer)
     cache.entries should have size 0  // no rows, and it didn't hang
   }
 }

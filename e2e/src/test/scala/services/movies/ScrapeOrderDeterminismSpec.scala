@@ -108,7 +108,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // `recordCinemaScrape` returns every film's canonical key. With staging on it
     // would divert newcomers and return nothing to harvest from.
     val w = new FixtureTestWiring(Fixture) {
-      override lazy val movieCache = new CaffeineMovieCache(movieRepository, eventBus, staging = None)
+      override lazy val movieCache = new CaffeineMovieCache(movieRepository, eventBus, staging = None, normalizer = titleNormalizer)
     }
     val rows = mutable.ListBuffer.empty[(String, Option[Int], Cinema, CinemaMovie)]
     w.cinemaScrapers.foreach { scraper =>
@@ -321,7 +321,7 @@ class ScrapeOrderDeterminismSpec extends AnyFlatSpec with Matchers {
    *  distinct settled row-sets. Order-independence ⇒ exactly one. */
   private def settledAcrossOrders(rows: Seq[(CacheKey, MovieRecord)]): Set[Set[(String, Option[Int])]] =
     rows.permutations.map { ordered =>
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
       ordered.foreach { case (k, e) => cache.put(k, e) }
       cache.canonicalizeBySanitize()
       cache.snapshot().map(r => (r.title, r.year)).toSet

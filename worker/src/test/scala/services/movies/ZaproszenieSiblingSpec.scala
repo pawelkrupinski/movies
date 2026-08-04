@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Regression for the "Zaproszenie 2026 stuck tmdb-unresolved" bug.
@@ -93,7 +94,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
 
   "needsTmdbResolution" should
     "resolve a different-year film that carries its own cinema slots, despite a resolved same-title sibling" in {
-    val cache = new CaffeineMovieCache(seededRepository())
+    val cache = new CaffeineMovieCache(seededRepository(), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     val service   = new MovieService(cache, bus, inviteTmdb())
     bus.subscribe(service.onMovieDetailsComplete)
@@ -120,7 +121,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(
       (Title, Some(2022), MovieRecord(imdbId = Some("tt12873562"), tmdbId = Some(Sibling2022)))
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
     // TMDB stub that throws on any access — proves we never tried.
     val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
@@ -154,7 +155,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
       (Title, None, MovieRecord(data = Map[Source, SourceData](
         Helios -> SourceData(title = Some(Title), director = Seq("Olivia Wilde")))))
     ))
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus     = new InProcessEventBus()
     val service = new MovieService(cache, bus, ambiguousTmdb())
     bus.subscribe(service.onMovieDetailsComplete)
@@ -177,7 +178,7 @@ class ZaproszenieSiblingSpec extends AnyFlatSpec with Matchers {
       (Title, None, MovieRecord(data = Map[Source, SourceData](
         Helios -> SourceData(title = Some(Title)))))
     ))
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus     = new InProcessEventBus()
     val service = new MovieService(cache, bus, ambiguousTmdb())
     bus.subscribe(service.onMovieDetailsComplete)

@@ -41,7 +41,7 @@ object FilmwebUrlAudit {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)
     }
-    val cache   = new CaffeineMovieCache(repository)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb    = new TmdbClient(new RealHttpFetch)
     val filmweb = new FilmwebClient(new RealHttpFetch)
     val ratings = new FilmwebRatings(cache, tmdb, filmweb)

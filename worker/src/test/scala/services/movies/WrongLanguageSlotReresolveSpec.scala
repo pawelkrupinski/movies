@@ -8,6 +8,7 @@ import services.events.InProcessEventBus
 import tools.GetOnlyHttpFetch
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The German deployment was serving Polish TMDB content: Berlin listed
@@ -82,7 +83,7 @@ class WrongLanguageSlotReresolveSpec extends AnyFlatSpec with Matchers {
 
   private def wire(): (CaffeineMovieCache, MovieService) = {
     val repository = new InMemoryMovieRepository(Seq((Title, Some(2026), polishSlotRow())))
-    val cache      = new CaffeineMovieCache(repository, new InProcessEventBus())
+    val cache      = new CaffeineMovieCache(repository, new InProcessEventBus(), normalizer = titleNormalizer)
     cache.recordCinemaScrape(KinoApollo, Seq(CinemaMovie(
       Movie(Title), KinoApollo, None, None, None, Seq.empty, Seq.empty,
       Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), Some("https://book"))))))

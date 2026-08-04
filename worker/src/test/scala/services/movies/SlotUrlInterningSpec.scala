@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * A film's poster / film-page / trailer URL is the SAME string at every cinema
@@ -43,7 +44,7 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
   )
 
   private def slotsForOneFilmAtTwoCinemas(): Seq[SourceData] = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty), normalizer = titleNormalizer)
     val a = OdeonNorwich
     val b = BfiLondonSouthbank
     cache.recordCinemaScrape(a, Seq(showing(a)))

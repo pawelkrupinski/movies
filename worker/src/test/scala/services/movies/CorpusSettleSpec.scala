@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Regression for the stranded "Dzień objawienia" duplicate: a film reported by
@@ -36,7 +37,7 @@ class CorpusSettleSpec extends AnyFlatSpec with Matchers {
     (cinema: Source) -> SourceData(title = Some("Dzień objawienia"))
 
   "MovieService.settle" should "collapse a yearless unresolved row into its resolved yeared sibling" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
 
     // The resolved yeared row (Helios-class cinemas reported releaseYear=2026,
     // TMDB resolved it) …

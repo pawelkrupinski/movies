@@ -10,6 +10,7 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * A chunked cinema is scraped one DATE at a time. When some of those chunks never land,
@@ -64,7 +65,7 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
     val queue     = new InMemoryTaskQueue
     val store     = new InMemoryChunkScrapeStore
     val freshness = new InMemoryFreshnessStore
-    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache     = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     // The REAL publish path: runner → MovieCache.recordCinemaScrape, which is where the
     // prune lives. The existing ChunkScrapeFlowSpec stubs this out, which is exactly why
     // it never saw this.

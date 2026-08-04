@@ -8,6 +8,7 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeOutcome}
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * `CinemaScrapeRunner` is the one place both scrape paths converge — a
@@ -36,7 +37,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
 
   private def runnerWith(archive: InMemoryScrapeArchiveRepository) =
     new CinemaScrapeRunner(
-      new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus()),
+      new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer),
       new InProcessEventBus(),
       deferredCinemas = Set.empty,
       scrapeArchive   = archive
@@ -117,7 +118,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
 
   it should "still scrape normally when no archive is wired" in {
     val runner = new CinemaScrapeRunner(
-      new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus()),
+      new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer),
       new InProcessEventBus(),
       deferredCinemas = Set.empty
     )

@@ -9,6 +9,7 @@ import tools.GetOnlyHttpFetch
 import java.net.URLDecoder
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Tests for `OmdbBackfill` — the OMDb IDENTIFIER backfill. It fills a missing
@@ -40,7 +41,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   )
 
   private def cacheWith(record: MovieRecord) =
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Film", Some(2024), record))))
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Film", Some(2024), record))), normalizer = titleNormalizer)
   private def keyOf(cache: CaffeineMovieCache) = cache.keyOf("Film", Some(2024))
 
   // ── golden path: recover both identifiers ─────────────────────────────────────
@@ -79,7 +80,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
 
   it should "make NO write when OMDb can supply neither identifier" in {
     val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), MovieRecord())))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     repository.upserts.clear()
     // ?t= returns no match, ?i= unreachable (no id) → nothing to write.
     val omdb = new OMDbClient(
@@ -132,7 +133,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       ("B", None, MovieRecord(imdbId = Some("tt0002"))),                                   // only RT url missing
       ("C", None, MovieRecord(imdbId = Some("tt0003"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified → skip
     ))
-    val cache = new CaffeineMovieCache(repository)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     new OmdbBackfill(cache, omdbStub).refreshAll()
 
     cache.get(cache.keyOf("A", None)).get.imdbId            shouldBe Some("tt0133093") // recovered
@@ -152,7 +153,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
       ("C", None, MovieRecord()),                                                       // missing both
       ("D", None, MovieRecord(imdbId = Some("tt9"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified
     ))
-    val cache    = new CaffeineMovieCache(repository)
+    val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val attempts = new CountingOmdbAttemptStore
     new OmdbBackfill(cache, omdbStub, attempts).refreshAll()
 

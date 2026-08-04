@@ -10,11 +10,12 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.events.InProcessEventBus
 
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class DetailTaskEnqueuerSpec extends AnyFlatSpec with Matchers {
 
   private def fixture = {
-    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus())
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
     val queue    = new InMemoryTaskQueue
     val fresh    = new InMemoryFreshnessStore
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")

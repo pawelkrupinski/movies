@@ -10,6 +10,7 @@ import tools.RoutingHttpFetch
 
 import java.time.Instant
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Single-movie TMDB resolution is a real queued `ResolveTmdb` task in the
@@ -35,7 +36,7 @@ class MovieServiceResolveTaskSpec extends AnyFlatSpec with Matchers {
 
   "onMovieDetailsComplete" should "enqueue a ResolveTmdb task carrying the director hint for an unresolved film" in {
     val queue = new InMemoryTaskQueue()
-    val service   = serviceEnqueueing(queue, new CaffeineMovieCache(new InMemoryMovieRepository()))
+    val service   = serviceEnqueueing(queue, new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer))
 
     service.onMovieDetailsComplete(
       MovieDetailsComplete("Interstellar", Some(2014), originalTitle = None, director = Some("Christopher Nolan")))
@@ -50,7 +51,7 @@ class MovieServiceResolveTaskSpec extends AnyFlatSpec with Matchers {
 
   it should "not enqueue for a film already resolved (no churn, no phantom queue place)" in {
     val queue = new InMemoryTaskQueue()
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository())
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     cache.put(cache.keyOf("Resolved Film", Some(2020)), MovieRecord(tmdbId = Some(99)))
     val service = serviceEnqueueing(queue, cache)
 

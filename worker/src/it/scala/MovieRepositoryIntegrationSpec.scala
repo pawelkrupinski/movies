@@ -423,7 +423,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val repo   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
-    val cache  = new CaffeineMovieCache(repo)
+    val cache  = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     val title  = "__integration-test-cache-delete__"
     val year   = Some(1910)
     val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
@@ -1579,7 +1579,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // boot-hydrates EMPTY and the per-film read fails too.
       val blindRepo = new MongoMovieRepository(Some(db), screenings = Some(scr),
         slots = Some(new UnreadableSlotsRepository), normalizer = titleNormalizer)
-      val cache = new CaffeineMovieCache(blindRepo)
+      val cache = new CaffeineMovieCache(blindRepo, normalizer = titleNormalizer)
 
       // …and Multikino's scrape lands, as it would on any ordinary tick.
       cache.recordCinemaScrape(Multikino, Seq(CinemaMovie(

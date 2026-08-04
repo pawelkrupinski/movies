@@ -48,7 +48,7 @@ object EmbeddedYearBackfill {
     }
 
     val startedAtMs = System.currentTimeMillis()
-    val cache       = new CaffeineMovieCache(repository)
+    val cache       = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val tmdb        = new TmdbClient(new RealHttpFetch)
     val service     = new MovieService(cache, new InProcessEventBus(), tmdb)
 

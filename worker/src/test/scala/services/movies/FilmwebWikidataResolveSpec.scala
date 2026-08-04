@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.WikidataClient
 import services.events.InProcessEventBus
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Once Filmweb enrichment is un-gated for `tmdbId`-less rows (see
@@ -43,7 +44,7 @@ class FilmwebWikidataResolveSpec extends AnyFlatSpec with Matchers {
       filmwebUrl = Some(filmwebUrl),
       data       = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(title)))
     )
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, Some(year), seed))))
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, Some(year), seed))), normalizer = titleNormalizer)
   }
 
   // TMDB stubs: fuzzy search always misses (the realistic case — Filmweb is the

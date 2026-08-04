@@ -9,6 +9,7 @@ import java.time.Instant
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Direct unit tests for the two `ResolveDispatcher` impls extracted from
@@ -47,7 +48,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
   }
 
   private val keyOf: (String, Option[Int]) => CacheKey =
-    new CaffeineMovieCache(new InMemoryMovieRepository()).keyOf
+    new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer).keyOf
 
   "InlineResolveDispatcher" should "run the resolve callback once for a key" in {
     val ec    = DaemonExecutors.boundedEC("inline-dispatch-test", 4)

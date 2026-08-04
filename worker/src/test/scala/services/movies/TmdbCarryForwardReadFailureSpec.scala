@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.resolution.ResolutionCache
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The last instance of "a failed read is not an absent row" in the write paths.
@@ -56,7 +57,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
     "defer rather than write the film stripped of its cinemas and ratings" in {
     val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
     // The read the carry-forward depends on cannot be answered. Everything else is normal.
-    val cache = new CaffeineMovieCache(repository) {
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer) {
       override private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean) =
         (None, false)
     }
@@ -75,7 +76,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
   // The read succeeding must still resolve normally — the guard must not cost a resolve.
   it should "resolve normally when the carry-forward read succeeds" in {
     val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     serviceOver(cache).resolveTmdbOnce(Title, Year, None, None, force = false) shouldBe true
 

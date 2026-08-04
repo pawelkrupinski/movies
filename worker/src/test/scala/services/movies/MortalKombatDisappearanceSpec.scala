@@ -109,7 +109,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
   // synchronous TMDB resolution — the slot we just wrote is gone.
 
   it should "preserve Multikino's slot when the TMDB stage resolves the row" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     val service   = new MovieService(cache, new InProcessEventBus, tmdbStub())
 
     cache.recordCinemaScrape(Multikino, Seq(multikinoMk))
@@ -153,7 +153,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
   for (ordering <- scrapes.permutations.toList) {
     val label = ordering.map(_.cinema.getClass.getSimpleName.stripSuffix("$")).mkString(" → ")
     s"scrape order $label" should "leave exactly one visible Mortal Kombat II row (no merger run)" in {
-      val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
       val bus   = new InProcessEventBus
       val service   = new MovieService(cache, bus, tmdbStub())
 

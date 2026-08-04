@@ -8,6 +8,7 @@ import services.events.InProcessEventBus
 import tools.RoutingHttpFetch
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Regression for the flickering "Dzień objawienia" — a film reported WITH a
@@ -81,7 +82,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // ── PART B: a re-scrape folds into the concluded row, by title + opt. year ──
 
   "a later yearless scrape" should "fold into an already-resolved sibling instead of stranding a held-back row" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
 
     // The resolved, year-bearing row (Helios reported 2026, TMDB resolved it) …
     cache.put(cache.keyOf(Title, Some(2026)),
@@ -111,7 +112,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // fresh Polish scrape simply lands on it. (The display split into a card per
   // shown title lives in the read-model projection — see ReadModelProjectionSpec.)
   "a same-tmdbId Ukrainian sibling" should "fold onto the Polish-keyed row at put time, and a later scrape lands on the one row" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
 
     val uaTitle = "Denʹ istyny - UA"
     // The Ukrainian-keyed sibling: resolved to the same film (same tmdbId).
@@ -138,7 +139,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // (the old single-slot loss) or spinning the dub off into its own movies row. The
   // read model splits the record into a card per shown title; storage stays one row.
   "a re-scrape of a same-cinema dub" should "keep the dub as its own per-cinema SLOT in the base record, not a separate row" in {
-    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     val dubTitle = "Dzień objawienia ukraiński dubbing"
 
     // Folded prod state: the base row carries Helios (base title) AND Cinema City's
@@ -169,7 +170,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // within ±1 (the same adjacency `clusterByFilm` uses), else every tick
   // re-spawns a held-back `kumotry|2025` beside the resolved `kumotry|2026`.
   "a later ±1-year scrape" should "fold into the concluded sibling instead of spawning an off-by-one duplicate" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
 
     // The resolved row at the TMDB release year 2026 …
     cache.put(cache.keyOf(Title, Some(2026)),
@@ -200,7 +201,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // while a cinema detail is still outstanding; the detail only adds
   // cinema-specific extras the resolved row doesn't need to be displayable.
   "a TMDB-resolved row with a still-pending cinema detail" should "project anyway, not be held back" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     cache.put(cache.keyOf(Title, Some(2026)),
       MovieRecord(tmdbId = Some(1275779), imdbId = Some("tt15047880"),
         detailPending = true, data = Map(slot(Helios, Some(2026)))))
@@ -214,7 +215,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // out of the read model. The resolved-row relaxation above must not weaken
   // either case.
   "an unresolved row with a pending detail" should "stay held back until detail concludes" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     cache.put(cache.keyOf(Title, Some(2026)),
       MovieRecord(tmdbNoMatch = true, detailPending = true, data = Map(slot(Helios, Some(2026)))))
     projectedCinemas(cache) shouldBe empty
@@ -226,7 +227,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   // ── PART A: conclusion settles the film's group in one merged write ─────────
 
   "a TMDB HIT" should "fold a stranded yearless sibling onto the resolved row at conclusion" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     val movieService = service(cache, tmdbHit())
 
     // Unresolved pair, as a concurrent scrape leaves it: yeared Helios + yearless Multikino.
@@ -245,7 +246,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   }
 
   "a TMDB MISS" should "still fold a stranded yearless sibling onto the concluded row" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository)
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     val movieService = service(cache, tmdbMiss())
 
     cache.put(cache.keyOf(Title, Some(2026)), MovieRecord(data = Map(slot(Helios, Some(2026)))))

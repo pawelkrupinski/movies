@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import tools.GetOnlyHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * When the SEARCH TITLE is the only signal (no year, no director, no
@@ -36,7 +37,7 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
   // A bare-title row: one cinema slot, no year, no director, no original title.
   private def bareRow(title: String): CaffeineMovieCache = {
     val seed = MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some(title))))
-    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed))))
+    new CaffeineMovieCache(new InMemoryMovieRepository(Seq((title, None, seed))), normalizer = titleNormalizer)
   }
 
   "the TMDB stage" should "NOT resolve a title-only row when the search returns several same-title films" in {
@@ -101,7 +102,7 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
   it should "still resolve via the popularity pick when a YEAR disambiguates (guard is title-only)" in {
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("Zaproszenie"), releaseYear = Some(2026))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Zaproszenie", Some(2026), seed))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Zaproszenie", Some(2026), seed))), normalizer = titleNormalizer)
     val search = s"""{"results":[${result(950028, "Zaproszenie", "2026-06-25", 4.7)}]}"""
     val service = new MovieService(cache, new InProcessEventBus(),
       tmdb(
@@ -116,7 +117,7 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
   it should "resolve a year-bearing row when the year-scoped search's TOP hit is an exact-title match (several same-year films)" in {
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("Sundown"), releaseYear = Some(2021))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Sundown", Some(2021), seed))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Sundown", Some(2021), seed))), normalizer = titleNormalizer)
     // Three 2021 films; the exact-title "Sundown" is the most popular, so after the
     // popularity sort it's the top hit. searchUnique refuses (count != 1); the new
     // year + exact-top rule resolves to it rather than leaving the row unenriched.
@@ -134,7 +135,7 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
   it should "NOT resolve a year-bearing row when the year-scoped search's TOP hit is NOT exact (no popularity guess)" in {
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("Labirynt"), releaseYear = Some(2024))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Labirynt", Some(2024), seed))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Labirynt", Some(2024), seed))), normalizer = titleNormalizer)
     // The most-popular 2024 hit is a SUBSTRING match, not exact; the exact title is
     // absent from the top → refuse rather than guess. (No /external_ids stub — a
     // resolve would throw on the unstubbed call, so a silent guess fails loudly.)
@@ -152,7 +153,7 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     // Both are exact matches — searchYearExactTop picks the most-popular one.
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("The Visitor"), releaseYear = Some(2022))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("The Visitor", Some(2022), seed))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("The Visitor", Some(2022), seed))), normalizer = titleNormalizer)
     val search = """{"results":[
       |{"id":881487,"title":"Gość","original_title":"The Visitor","release_date":"2022-10-07","popularity":1.413},
       |{"id":1026057,"title":"The Visitor","original_title":"The Visitor","release_date":"2022-06-01","popularity":0.145}
@@ -192,7 +193,7 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     // year must win — a 2015-scoped exact-title top resolves, the (1926) is ignored.
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("Generał (1926)"), releaseYear = Some(2015))))
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Generał (1926)", Some(2015), seed))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Generał (1926)", Some(2015), seed))), normalizer = titleNormalizer)
     val search = s"""{"results":[${result(700, "Generał", "2015-05-01", 8.0)},${result(701, "Generał brygady", "2015-01-01", 2.0)}]}"""
     val service = new MovieService(cache, new InProcessEventBus(),
       tmdb(

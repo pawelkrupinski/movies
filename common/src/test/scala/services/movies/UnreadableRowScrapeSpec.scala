@@ -64,7 +64,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   "a scrape landing on a film whose stored row cannot be READ" should
     "not rewrite that film as if only this cinema showed it" in {
     val repo  = new Repo(Seq(stored), readable = false)
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
 
     // Nothing may be written. Any upsert here carries ONLY Multikino, and `upsert` hands
@@ -78,7 +78,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // scraping. A row that is genuinely ABSENT is a real newcomer and must still be written.
   it should "still record a genuinely new film when the read succeeded and found nothing" in {
     val repo  = new Repo(Seq.empty, readable = true)
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Brand New")))
 
     repo.upserts.map(_._1)      should contain ("Brand New")
@@ -90,7 +90,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // prunes the film's whole board off the back of it. Deferring costs one settle tick.
   "a re-key whose stored row cannot be READ" should "be deferred, not written from nothing" in {
     val repo  = new Repo(Seq(stored), readable = false)
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
 
     cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity)
 
@@ -101,7 +101,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
   it should "still re-key normally when the row reads back" in {
     val repo  = new Repo(Seq(stored), readable = true)
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
 
     cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity)
 
@@ -114,7 +114,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // behaviour the guard must not cost us.
   it should "merge onto the stored row when the read succeeded, keeping the other cinemas" in {
     val repo  = new Repo(Seq(stored), readable = true)
-    val cache = new CaffeineMovieCache(repo)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
 
     val written = repo.upserts.map(_._2)

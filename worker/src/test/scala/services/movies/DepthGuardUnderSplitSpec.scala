@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The degraded-scrape DEPTH guard, exercised against PRODUCTION's storage shape — the
@@ -43,7 +44,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
 
   it should "discard a depth-degraded tick when showtimes and slots live in their own collections" in {
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     storedShowtimes(repository, "Film 1") shouldBe 12
@@ -56,7 +57,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
 
   it should "still apply a plausible shrink under the split (a real schedule change)" in {
     val repository = splitRepository()
-    val cache      = new CaffeineMovieCache(repository)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 10))

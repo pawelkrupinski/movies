@@ -233,8 +233,10 @@ class CaffeineMovieCache(
   // single-country constructions are unchanged. Every `CacheKey` this cache
   // builds — including the ones built on the change-stream driver thread and in
   // the rehydrate scheduler — keys through THIS instance, which is what makes
-  // the cache's identity country-correct rather than process-global.
-  override val normalizer: TitleNormalizer = TitleNormalizer.deployment
+  // the cache's identity country-correct rather than process-global. REQUIRED,
+  // not defaulted: this is the production cache, and every CacheKey it builds
+  // is a row identity.
+  override val normalizer: TitleNormalizer
 ) extends MovieCache with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built

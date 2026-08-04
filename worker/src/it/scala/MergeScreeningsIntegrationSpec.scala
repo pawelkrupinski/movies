@@ -57,7 +57,7 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     val idA        = StoredMovieRecord.idFor(titleA, Some(2026), titleNormalizer)
     val idB        = StoredMovieRecord.idFor(titleB, Some(2026), titleNormalizer)
     try {
-      val cache = new CaffeineMovieCache(repository)
+      val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
       // Row B FIRST, so by the time A arrives B is resident in the cache STRIPPED — its
       // showtimes live only in `screenings` under B's own id, the slot carrying just a digest.
