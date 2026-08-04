@@ -1,12 +1,13 @@
 package services.cinemas.pl
 
 import models._
-import org.jsoup.nodes.{Element, TextNode}
+import org.jsoup.nodes.{Element, Node, TextNode}
+import org.jsoup.select.NodeVisitor
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -72,20 +73,42 @@ object ArtKinoKrosnoClient {
    *  (the photo banner, the empty `&nbsp;` spacers) yields nothing. */
   private def parseDay(p: Element, today: LocalDate): Seq[RawSlot] =
     dateOf(p, today) match {
-      case None => Seq.empty
-      case Some(date) =>
-        p.select("a[href*=wydarzenie]").asScala.toSeq.flatMap { link =>
-          for {
-            time  <- timeBefore(link)
-            title = ScraperParse.sentenceCase(link.text.trim) if title.nonEmpty
-            dt    <- Try(LocalDateTime.of(date, time)).toOption
-          } yield RawSlot(
-            title    = title,
-            dateTime = dt,
-            filmUrl  = Option(link.attr("abs:href")).filter(_.nonEmpty)
-          )
-        }
+      case None       => Seq.empty
+      case Some(date) => slotsIn(p, date)
     }
+
+  /** The day's screenings, read by walking the `<p>` in document order and
+   *  pairing each film anchor with the most recent `HH:MM` seen before it.
+   *
+   *  Deliberately not "the anchor's previous sibling": the venue has published
+   *  the same line in at least two shapes — the flat `HH:MM - <a>TITLE</a>`,
+   *  and one where the time sits in its own coloured `<span>` with the anchor
+   *  buried several spans deeper (`<span><span>13:45 -</span> <a>PUCIO</a></span>`).
+   *  A time is CONSUMED by the anchor it pairs with, so an anchor with no time
+   *  of its own yields nothing rather than borrowing the previous line's. */
+  private def slotsIn(p: Element, date: LocalDate): Seq[RawSlot] = {
+    val slots            = Seq.newBuilder[RawSlot]
+    var pending: Option[LocalTime] = None
+
+    p.traverse(new NodeVisitor {
+      def head(node: Node, depth: Int): Unit = node match {
+        case text: TextNode =>
+          ScraperParse.parseHHmm(text.text).foreach(time => pending = Some(time))
+        case link: Element if link.tagName == "a" && link.attr("href").contains("wydarzenie") =>
+          val title = ScraperParse.sentenceCase(link.text.trim)
+          for {
+            time <- pending if title.nonEmpty
+            dt   <- Try(LocalDateTime.of(date, time)).toOption
+          } {
+            slots += RawSlot(title, dt, Option(link.attr("abs:href")).filter(_.nonEmpty))
+            pending = None
+          }
+        case _ => ()
+      }
+    })
+
+    slots.result()
+  }
 
   /** The screening date from the `<p>`'s `font-size: x-large` header span,
    *  inferring the year from `today` (a month earlier than today's rolls to
@@ -94,15 +117,17 @@ object ArtKinoKrosnoClient {
     for {
       header <- Option(p.selectFirst("span[style*=x-large]")).map(_.text)
       m      <- DatePat.findFirstMatchIn(header)
-      month  <- ScraperParse.PolishMonths.get(m.group(2).toLowerCase)
+      month  <- monthOf(m.group(2))
       year   = if (month < today.getMonthValue) today.getYear + 1 else today.getYear
       date   <- Try(LocalDate.of(year, month, m.group(1).toInt)).toOption
     } yield date
 
-  /** The `HH:MM` in the text node immediately preceding the film anchor — the
-   *  page renders each line as `<br/>14:15 - <a>TITLE</a>`, so the time lives in
-   *  the anchor's previous sibling text node. */
-  private def timeBefore(link: Element): Option[java.time.LocalTime] =
-    Option(link.previousSibling()).collect { case t: TextNode => t.text }
-      .flatMap(ScraperParse.parseHHmm)
+  /** The month number for a header's month word, falling back to its first
+   *  three letters when the full word isn't a month — the headers are typed by
+   *  hand and do get misspelled ("4 sieprnia"), which would otherwise drop a
+   *  whole day of screenings. The three-letter prefixes are unambiguous across
+   *  all twelve Polish months. */
+  private def monthOf(word: String): Option[Int] =
+    ScraperParse.PolishMonths.get(word.toLowerCase)
+      .orElse(ScraperParse.polishMonthAbbrev(word.take(3)))
 }
