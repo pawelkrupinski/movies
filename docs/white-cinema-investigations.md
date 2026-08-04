@@ -40,6 +40,163 @@ and so you can re-check whether a previously-broken venue has recovered.
    3 are all `zero`. Skip `*|enrichment` services. Service name = the cinema's
    `displayName` (`common/.../models/Cinema.scala`); map it to its client in
    `worker/.../services/cinemas/CinemaScraperCatalog.scala`.
+4. **`uptimeBuckets` only retains ~24 h.** Every service's oldest surviving
+   bucket is a day old, so "has this venue EVER been green?" is only answerable
+   within that window — and a country whose worker has been stopped for more
+   than a day has an EMPTY `uptimeBuckets`, not a white one. Since 2026-08-02
+   that is DE and UK (see the `poland-only` memory), so a sweep now reaches
+   Poland only; do not read their zero counts as "nothing wrong".
+
+---
+
+## 2026-08-04
+
+**Poland only, and that is not a shortcut** — `kinowo_de` and `kinowo_uk` both
+hold **zero** `uptimeBuckets` because their workers stopped on 2026-08-02 and
+the collection's retention is ~24 h. There is no DE/UK uptime signal to read at
+all this run; both countries' `web_movies` still hold their last projection
+(1,239 / 1,703 rows). PL: **21 white, 1 red**, newest bucket 2026-08-04 06:00
+UTC, out of 349 services.
+
+**One real bug found and fixed — artKino (Krosno), `fixed` @a56453c4b.** Of the
+five venues new to the white set this run, one was a genuine parser break and
+four are genuinely un-programmed.
+
+**Set changes vs 2026-07-31 (18 white then, 21 now):**
+- **FELL OFF (1):** Cyfrowe Kino (Środa Śląska) — green in every one of its last
+  24 buckets. Recovered on its own.
+- **NEW (5):** **artKino** (real bug, fixed), **Kino MDK** (Radomsko),
+  **Miejskie Centrum Kultury** (Aleksandrów Kujawski), **Piast** (Ostrzeszów),
+  **Kino Ślęża** (Sobótka). All five belong to cities added in the recent
+  8-city expansion, so none of them appears in any earlier entry in this log —
+  they are new to the roster, not newly broken.
+- **Carried over (16):** unchanged from last run's list.
+
+### artKino (Krosno) — `fixed` @a56453c4b
+
+`ArtKinoKrosnoClient`, own-site scraper on
+`artkino.rckp.krosno.pl/strona-375-repertuar.html`. **White through its entire
+retained bucket history (24/24 zero) while the page was fully programmed** —
+34 screenings across 12 day headers, 2–13 August.
+
+Root cause is markup drift, and specifically drift in the ONE structural
+assumption the parser made. It read the time out of the anchor's immediately
+preceding text node, which is exactly how the page used to render a line:
+
+```html
+<br/>14:15 - <a href="/wydarzenie-…">TOY STORY 5</a>
+```
+
+The venue has since restyled every line so the time sits in its own coloured
+span, and the anchor is frequently buried several spans deeper still:
+
+```html
+<span style="color:#993300;"><span style="color:#000000;">13:45 -</span> <a href="…">PUCIO</a></span>
+<span style="color:#993300;"><span style="color:#000000;">15:00 -</span>&nbsp;<span class="filmInfo__info …"><span itemprop="name"><span style="color:#993300;"><a href="…">…</a>
+```
+
+The anchor's previous sibling is now a bare space (or nothing at all), so
+`timeBefore` returned `None` for all 34 links and the client emitted an empty
+list — a silent zero, not an error, hence white rather than red.
+
+**Fix:** walk the day's `<p>` in document order and pair each film anchor with
+the most recent `HH:MM` seen before it, instead of reaching for one specific
+sibling. That reads both shapes. The time is *consumed* by the anchor it pairs
+with, so an anchor with no time of its own still yields nothing rather than
+inheriting the previous line's — the conservative behaviour the old code had.
+
+**Second defect, same page, found while testing:** one day header read
+`4 sieprnia (wtorek)` — a hand-typed transposition of "sierpnia". The exact-match
+month lookup dropped that whole day (3 screenings). The month word now falls
+back to its first three letters via the existing `ScraperParse.polishMonthAbbrev`;
+the three-letter prefixes are unambiguous across all twelve Polish months.
+
+**Tests:** `ArtKinoKrosnoClientSpec` now replays TWO recorded captures — the new
+`art-kino-krosno` (today, restyled) and the previous capture kept as
+`art-kino-krosno-plain-time-lines` (2026-06-23, flat lines), so the parser is
+held to both shapes. Fail-before / pass-after confirmed: against the new
+capture the old parser returned `List()` and 5 of 6 tests failed; after the fix
+all 6 pass. `sbt testUnit` green — 4,408 tests, 0 failures.
+
+No snapshot layer shifted: the e2e corpus stores already-parsed scrape *records*
+(`cinema-scrapes-pl.json.gz`), and the raw-HTML replay dir `08-06-2026` has no
+`artkino.rckp.krosno.pl` host, so no artKino path feeds `expected-schedules.txt`,
+`read-model-snapshot.json` or the rendered HTML.
+
+### Kino MDK (Radomsko) — `intentionally-dormant`
+
+`Bilety24OrganizerClient` on
+`bilety24.pl/kino/organizator/miejski-dom-kultury-w-radomsku-1546`. The one
+venue this run that went white *during* the retained window — green until the
+**2026-08-03 17:15 UTC** bucket, white since. Worth writing down how it was
+settled, because the first read of it was wrong:
+
+- Organiser page: `Film:` = **0** (37 Koncert, 20 Spektakl, 2 Wydarzenie,
+  2 Wystawa). So the source really is empty of films.
+- The venue's own site `mdkradomsko.pl/kino-radomsko/` **looks** like a live
+  film programme — VAIANA, ZWIERZOGRÓD 2, MŁODY WASZYNGTON, plus Wajda /
+  Fellini / Konwicki retrospectives, with July-2026 poster uploads. That reads
+  as "our source went empty while the venue is screening", i.e. the classic
+  move-to-own-site case.
+- **It isn't.** Every one of those cards links to a `pec-events` detail page
+  and **all three film pages carry "TO WYDARZENIE JUŻ SIĘ ODBYŁO"** ("this
+  event has already taken place"). The posters are stale; the films finished.
+- The venue also runs its own bilety24 storefront, `mdkradomsko.bilety24.pl`,
+  whose *Repertuar* page lists three theatre pieces (MATKA, MATKA ODCHODZI,
+  STARA KOBIETA WYSIADUJE) and **no films**.
+
+Two independent surfaces plus the detail pages agree: the summer film run ended
+on 3 August and nothing has replaced it yet. Our parser is right. **Re-check
+next run** — this is the venue most likely to come back on its own, and if it
+returns films on the storefront but NOT on the central organiser page, that is
+the trigger to repoint the client.
+
+### Miejskie Centrum Kultury (Aleksandrów Kujawski) — `intentionally-dormant`
+
+`BiletynaClient` on `biletyna.pl/Aleksandrow-Kujawski/Miejskie-Centrum-Kultury`.
+The JSON-LD `Place.events` array holds exactly 4 entries, **0** of them
+`ScreeningEvent`: 3 × `MusicEvent` + 1 × `ComedyEvent` (Czerwone Gitary, Paweł
+Stasiak, Kabaret Chyba, "Zaduszki Muzyczne"), dated 2026-09-12 → 2027-01-09.
+The venue's own `mckaleksandrowkujawski.pl` embeds the same biletyna widget and
+shows the identical non-film lineup. Not a cinema-shaped programme at all right
+now.
+
+### Piast (Ostrzeszów) — `intentionally-dormant`
+
+`Bilety24OrganizerClient` on
+`bilety24.pl/kino/organizator/kino-piast-w-ostrzeszowie-601`: `Film:` = **0**
+(31 Koncert, 8 Spektakl, 3 Wydarzenie, 1 Wystawa). The venue's own domain
+`ock.ostrzeszow.pl` redirects to `ock-ostrzeszow.bilety24.pl`, which
+independently shows 3 concerts and no films — its entire web presence is that
+storefront, so there is no third surface to contradict the two.
+
+**Latent heads-up (not a bug today):** our organiser URL 301-redirects —
+`kino-piast-w-ostrzeszowie-601` → `ostrzeszowskie-centrum-kultury-601`. Same
+numeric id, redirect followed, fetch succeeds, so nothing is broken and there is
+no fail-before behaviour to test. But the venue has renamed itself away from
+"Kino Piast" in bilety24's own slug, which is the shape that bit Helios before.
+If bilety24 ever stops honouring the old slug this goes red, and the fix is to
+update the URL in `CinemaScraperCatalog`.
+
+### Kino Ślęża (Sobótka) — `intentionally-dormant`
+
+`KinoSlezaClient` on `rcks.pl/kino-sleza/repertuar/` — this IS the venue's own
+official site, so there is no second source to check. Exactly one `div.movie`
+block, and it is not a film: it is titled "Wakacyjna przerwa 🌞" and reads *"Nasze
+kino robi krótką wakacyjną przerwę… Do zobaczenia już wkrótce w Kinie Ślęża!"*.
+Its `<h6>Seans:</h6>` has no `<ul><li>` beneath it, so `parseShowtimes` returns
+empty and the `showtimes.nonEmpty` filter correctly drops the block. Parser
+working as designed on a venue on summer break.
+
+### PL out-of-scope RED (not white — fetch failure, different mode)
+
+- **Wybrzeże** — 3-scrape-failing for the **fifth** run running (07-21, 07-24,
+  07-28, 07-31, 08-04): `CircuitOpenException: circuit open for
+  bilety.rck.kolobrzeg.pl`, behind an `SSLHandshakeException
+  (certificate_expired)` at the source. The breaker is doing its job. Nothing
+  fixable from our side — the cinema must renew its certificate.
+  **needs-human, five runs old: decide whether to retire the venue rather than
+  keep retrying it indefinitely.**
 
 ---
 
