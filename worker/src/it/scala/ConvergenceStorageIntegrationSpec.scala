@@ -32,8 +32,41 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
+  /** The 2026-08-04 regression, in the layer that can catch it in seconds rather
+   *  than in an hour-long corpus replay.
+   *
+   *  A convergence storage is built once per COUNTRY leg. It used to read
+   *  `TitleNormalizer.deployment`, which made the choice invisible; a mechanical
+   *  sweep then filled the seam with `SingleCountryNormalizer` — Poland's — and
+   *  the Germany and UK legs keyed their corpora through the Polish " & " -> " i "
+   *  unification. `wallaceigromitthecurseofthewererabbit` and
+   *  `patgarrettibillythekid` in a UK corpus; `bloodisinners` in a German one.
+   *
+   *  Asserted by BEHAVIOUR under a country whose rules differ from the default,
+   *  because identity would not catch it: in a test JVM naming no country,
+   *  `deployment` and `SingleCountryNormalizer` are the same memoised Poland
+   *  instance. Germany is the country that disagrees, so Germany is the probe.
+   *
+   *  This is the ConvergenceStorage twin of `WorkerWiringNormalizerIntegrationSpec`,
+   *  which has asserted the same property of the PRODUCTION root all along — the
+   *  replay harness was simply never held to it. */
+  it should "key through the country it was built for, not the single-country default" in {
+    val de = ConvergenceStorage.mongo(
+      Env.get("MONGODB_URI").get, "normalizer-scope-spec",
+      services.movies.TitleNormalizer.forCountry(models.Country.Germany))
+    try {
+      withClue("a German leg must not fold ' & ' to the Polish ' i ': ") {
+        de.movies.normalizer.sanitize("Minions & Monster")  shouldBe "minionsmonster"
+        de.staging.normalizer.sanitize("Minions & Monster") shouldBe "minionsmonster"
+      }
+      // …and Poland's really does differ, so the assertion above is not vacuous.
+      services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+        .sanitize("Minions & Monster") shouldBe "minionsimonster"
+    } finally de.close()
+  }
+
   "a Mongo convergence storage" should "expose one database to its repositories and its connection alike" in {
-    val storage = ConvergenceStorage.mongo(Env.get("MONGODB_URI").get, "storage-agreement-spec")
+    val storage = ConvergenceStorage.mongo(Env.get("MONGODB_URI").get, "storage-agreement-spec", titleNormalizer)
     try {
       storage.staging.upsert(Multikino, "Ghost In The Shell", Some(2017), MovieRecord())
 

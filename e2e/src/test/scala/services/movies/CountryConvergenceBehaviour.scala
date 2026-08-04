@@ -100,7 +100,7 @@ abstract class CountryConvergenceBehaviour(
    * could not produce it because the database was never there to disagree.
    */
   private lazy val storage: ConvergenceStorage =
-    ConvergenceStorage.fromEnv(s"convergence-$corpusKey")
+    ConvergenceStorage.fromEnv(s"convergence-$corpusKey", TitleNormalizer.forCountry(country))
 
   /** The per-pass databases, so `afterAll` can drop them. Each is isolated; none may
    *  outlive the run. */
@@ -818,7 +818,7 @@ abstract class CountryConvergenceBehaviour(
     // that.
     // Short on purpose: the database name carries a pid and a nanosecond stamp, and
     // Mongo caps the whole thing at 63 characters.
-    val passStorage = ConvergenceStorage.fromEnv(s"${country.code}p${seed - OrderSeed}")
+    val passStorage = ConvergenceStorage.fromEnv(s"${country.code}p${seed - OrderSeed}", TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget

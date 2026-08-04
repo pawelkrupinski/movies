@@ -9,6 +9,7 @@ import services.enrichment.{MongoOmdbAttemptStore, OmdbAttemptStore}
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
 import services.staging._
 import services.tasks.{ChunkScrapeStore, MongoChunkScrapeStore, MongoTaskQueue, TaskQueue}
+import services.movies.TitleNormalizer
 
 /**
  * Where a convergence run keeps the state it is making claims about: a real MongoDB.
@@ -78,9 +79,9 @@ object ConvergenceStorage {
    * exact shape of the enrichment gate that resolved 0 of 892 films while three specs
    * passed. An unreachable database fails the run rather than degrading it.
    */
-  def fromEnv(purpose: String): ConvergenceStorage =
+  def fromEnv(purpose: String, normalizer: TitleNormalizer): ConvergenceStorage =
     Env.get("MONGODB_URI").filter(_.nonEmpty)
-      .map(uri => mongo(uri, purpose))
+      .map(uri => mongo(uri, purpose, normalizer))
       .getOrElse(throw new IllegalStateException(
         "MONGODB_URI is not set. This suite runs on a real database only — there is no " +
         "in-memory storage any more, because a claim proved against a map is not a claim " +
@@ -90,7 +91,13 @@ object ConvergenceStorage {
   /** A uniquely-named throwaway database on `uri`, dropped by [[ConvergenceStorage.close]].
    *  Unique per run so the three country legs — and anything else on the `it` layer —
    *  can share one cluster without colliding, including with a re-run of themselves. */
-  def mongo(uri: String, purpose: String): ConvergenceStorage = {
+  /** `normalizer` is REQUIRED, not read from `TitleNormalizer.deployment`: this storage
+   *  is built once per COUNTRY leg, and reading a process-wide default made the choice
+   *  invisible. A mechanical sweep then filled the seam with Poland's instance and the
+   *  German and UK legs keyed their corpora through the Polish " & " -> " i "
+   *  unification — `wallaceigromitthecurseofthewererabbit` in a UK corpus (2026-08-04).
+   *  Naming the country here is what makes that a compile-time question. */
+  def mongo(uri: String, purpose: String, normalizer: TitleNormalizer): ConvergenceStorage = {
     // The name is taken FROM the opened database, never generated a second time.
     // `IsolatedMongoDatabase.nameFor` embeds `System.nanoTime()`, so calling it again for
     // the connection produced a DIFFERENT database from the one the repositories were
@@ -99,10 +106,11 @@ object ConvergenceStorage {
     // reached `movies`, the suite reported `resolved NOTHING — 0 films`, and nothing
     // anywhere was in error — each half was doing exactly what it was told.
     val database = IsolatedMongoDatabase.open(uri, purpose)
-    new MongoConvergenceStorage(database, uri, database.name)
+    new MongoConvergenceStorage(database, uri, database.name, normalizer)
   }
 
-  private final class MongoConvergenceStorage(database: MongoDatabase, uri: String, name: String)
+  private final class MongoConvergenceStorage(database: MongoDatabase, uri: String, name: String,
+                                              normalizer: TitleNormalizer)
     extends ConvergenceStorage {
 
     override val describe = s"MongoDB $name"
@@ -135,11 +143,11 @@ object ConvergenceStorage {
     // (`installRules(forCountry(country))`) before touching these lazy vals. A
     // Poland-default here keyed the German and UK corpora through Polish rules —
     // `minionsimonster` all over again, and the convergence legs caught it.
-    override lazy val movies     = new MongoMovieRepository(shared, fallbackToOwnInit = false, normalizer = TitleNormalizer.deployment)
+    override lazy val movies     = new MongoMovieRepository(shared, fallbackToOwnInit = false, normalizer = normalizer)
     override lazy val screenings = new MongoScreeningsRepository(shared)
     override lazy val slots      = new MongoSlotsRepository(shared)
     override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared)
-    override lazy val staging    = new MongoStagingRepository(shared, normalizer = TitleNormalizer.deployment)
+    override lazy val staging    = new MongoStagingRepository(shared, normalizer = normalizer)
     override lazy val archive    = new MongoScrapeArchiveRepository(shared)
     override lazy val tasks: TaskQueue              = new MongoTaskQueue(shared)
     override lazy val freshness: FreshnessStore     = new MongoFreshnessStore(shared)
@@ -147,7 +155,7 @@ object ConvergenceStorage {
     override lazy val omdbAttempt: OmdbAttemptStore = new MongoOmdbAttemptStore(shared)
 
     override def stagingFolder(movieRepository: MovieRepository): StagingFolder =
-      new MongoStagingFolder(connection, normalizer = TitleNormalizer.deployment)
+      new MongoStagingFolder(connection, normalizer = normalizer)
 
     // Only OURS. `closeAll` drops every isolated database in the process, which is fine
     // when a leg is the only holder and destructive the moment anything else is.
