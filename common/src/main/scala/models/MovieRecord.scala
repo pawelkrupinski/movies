@@ -514,6 +514,25 @@ case class MovieRecord(
   def cinemaOriginalTitle: Option[String] =
     prioritizedCinema.iterator.flatMap(_._2.originalTitle).nextOption()
 
+  /** Cinema-reported director(s) — first non-empty with Multikino preferred.
+   *  Separate from `director` (which falls back to the TMDB/IMDb slots for
+   *  display): this is what the cinemas themselves published, and it is the only
+   *  form fit to HINT a TMDB resolution.
+   *
+   *  Feeding `director` to the resolver let a resolution corroborate its own
+   *  output. The derived slots carry the director of whatever film was matched,
+   *  so a mis-resolved row grew a second "reported" director — and since the
+   *  hints are sorted and the director-walk takes the first that hits, which film
+   *  the row re-resolved to came down to alphabetical order. Kino Malta's
+   *  "Dreams" reports Michel Franco, but the row's earlier match to Dag Johan
+   *  Haugerud's "Drømmer" sorted first and re-won every time, so Michel Franco
+   *  was never tried (`MovieServiceTmdbHintsSpec`).
+   *
+   *  Same reasoning as `cinemaOriginalTitle` directly above — these two are the
+   *  cinema-side hint pair the TMDB search runs on. */
+  def cinemaDirector: Seq[String] =
+    prioritizedCinema.iterator.map(_._2.director).find(_.nonEmpty).getOrElse(Seq.empty)
+
   /** Best available original (production-language) title across sources —
    *  the TMDB-resolved one first, then IMDb's `originalTitleText`, then
    *  whatever a cinema's own API exposed (only Multikino does), then Filmweb's

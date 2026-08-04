@@ -176,11 +176,7 @@ class DetailReaper(
     cache.entries.foreach { case (key, record) =>
       if (record.detailPending && !detailOutstanding(key, record)) {
         cache.putIfPresent(key, _.copy(detailPending = false))
-        val row = cache.get(key)
-        bus.publish(MovieDetailsComplete(
-          key.cleanTitle, key.year,
-          row.flatMap(_.cinemaOriginalTitle),
-          row.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))))
+        bus.publish(MovieDetailsComplete.forRow(key.cleanTitle, key.year, cache.get(key)))
         released += 1
       }
     }

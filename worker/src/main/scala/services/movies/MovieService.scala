@@ -821,7 +821,7 @@ class MovieService(
    *  a cached row — used by the retry sweeps and as the fallback hints in
    *  `resolveTmdbOnce` when the dispatch carried none (the operator re-enrich). */
   private def tmdbHints(e: MovieRecord): (Option[String], Option[String]) =
-    (e.cinemaOriginalTitle, if (e.director.nonEmpty) Some(e.director.mkString(", ")) else None)
+    (e.cinemaOriginalTitle, if (e.cinemaDirector.nonEmpty) Some(e.cinemaDirector.mkString(", ")) else None)
 
 
   // ── TMDB resolution ────────────────────────────────────────────────────────
@@ -894,9 +894,9 @@ class MovieService(
       .searchTitleCandidates(title, originalTitle, extraTitles)
       .flatMap(t => Seq(cache.normalizer.apiQuery(t), cache.normalizer.searchQuery(t)))
       .filter(_.nonEmpty).distinct
-    // Director hints drawn from the WHOLE merged row, not just the one cinema
-    // event that happened to trigger this stage. Every cinema fires its own
-    // `MovieDetailsComplete`, so the triggering event's director varied with
+    // Director hints drawn from EVERY cinema slot on the merged row, not just the
+    // one cinema event that happened to trigger this stage. Every cinema fires its
+    // own `MovieDetailsComplete`, so the triggering event's director varied with
     // arrival order (Helios/Multikino report a director, CinemaCity/Charlie
     // Monroe don't) — and a director-bearing trigger that failed verification
     // poisoned the negative cache (`markMissing`) before a director-less trigger
@@ -904,8 +904,17 @@ class MovieService(
     // event won the per-key `pending` race. Sourcing the hints from the row's
     // own slots (sorted) makes the resolution a deterministic function of the
     // row's state — every event computes the same outcome, so the race is moot.
-    val rowDirectors = (director.toSeq.flatMap(_.split(",")) ++
-      row.data.values.flatMap(_.director).toSeq)
+    // CINEMA slots only, though. Mining `row.data.values` swept in the derived
+    // `Tmdb`/`Imdb`/`Filmweb` slots too — the previous resolution's own output —
+    // so a mis-resolved row corroborated itself: it grew a second "reported"
+    // director (the wrong film's), and because the hints are `.sorted` and the
+    // walk below takes the FIRST that hits, which film the row re-resolved to
+    // came down to alphabetical order. Kino Malta's "Dreams" reports Michel
+    // Franco; the row's stale match to Dag Johan Haugerud's "Drømmer" sorted
+    // ahead of it and re-won every cycle, so Michel Franco was never walked at
+    // all (`MovieServiceTmdbHintsSpec`). `cinemaOriginalTitle`, the other half of
+    // this hint pair, is cinema-only for exactly the same reason.
+    val rowDirectors = (director.toSeq.flatMap(_.split(",")) ++ row.cinemaDirector)
       .map(_.trim).filter(_.nonEmpty).distinct.sorted
 
     // Cache the id resolution per hint-combination: two cinema rows (or two

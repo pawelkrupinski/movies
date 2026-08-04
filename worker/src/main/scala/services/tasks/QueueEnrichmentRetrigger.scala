@@ -70,7 +70,10 @@ class QueueEnrichmentRetrigger(
         queue.enqueue(
           TaskType.ResolveTmdb,
           EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year),
-          EnrichTaskKeys.resolveTmdbPayload(key.cleanTitle, key.year, record.director.headOption, record.originalTitle))
+          // `cinemaDirector`, not `director`: the latter falls back to the derived
+          // Tmdb/Imdb/Filmweb slots, which would hand the re-resolve the previous
+          // resolution's own director as evidence (see `MovieRecord.cinemaDirector`).
+          EnrichTaskKeys.resolveTmdbPayload(key.cleanTitle, key.year, record.cinemaDirector.headOption, record.originalTitle))
       case RetriggerKind.ResolveImdbId =>
         queue.enqueue(
           TaskType.ResolveImdbId,

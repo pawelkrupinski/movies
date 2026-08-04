@@ -52,6 +52,23 @@ case class MovieDetailsComplete(
   director:      Option[String] = None
 ) extends DomainEvent
 
+object MovieDetailsComplete {
+  /** The event for a cached row, with both hints read off its CINEMA slots.
+   *
+   *  Shared by the two publishers that announce a row whose detail has just
+   *  settled (`EnrichDetailsHandler`, `DetailReaper`) so the pair can't drift
+   *  apart again: they used to build this inline, taking `cinemaOriginalTitle`
+   *  (cinema-only) but plain `director` (which falls back to the derived
+   *  `Tmdb`/`Imdb`/`Filmweb` slots). That fed a previous resolution's own output
+   *  back in as a hint for re-resolving the same row — see
+   *  `MovieRecord.cinemaDirector`. */
+  def forRow(title: String, year: Option[Int], row: Option[models.MovieRecord]): MovieDetailsComplete =
+    MovieDetailsComplete(
+      title, year,
+      row.flatMap(_.cinemaOriginalTitle),
+      row.map(_.cinemaDirector).filter(_.nonEmpty).map(_.mkString(", ")))
+}
+
 /** A *new* `(cinema, title, year)` tuple was just persisted to the cache (and
  *  written through to Mongo) by `recordCinemaScrape`. Fires only on the
  *  *first* observation of that tuple on the row — repeat ticks for the same

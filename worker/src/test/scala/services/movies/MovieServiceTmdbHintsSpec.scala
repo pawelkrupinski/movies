@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{Helios, MovieRecord, Source, SourceData}
+import models.{Filmweb, Helios, Imdb, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
@@ -25,8 +25,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *
  *   1. Skip the negative-cache short-circuit when a fresh `director` or
  *      `originalTitle` hint is present.
- *   2. Pull `director` + `cinemaOriginalTitle` from the existing row and pass
- *      them to `resolveTmdbOnce` during the retry.
+ *   2. Pull `cinemaDirector` + `cinemaOriginalTitle` from the existing row and
+ *      pass them to `resolveTmdbOnce` during the retry.
  *
  * Both specs use the real `directorWalk` chain end-to-end (search returns
  * nothing → `findPerson` → `personDirectorCredits` → `imdbId`) against a
@@ -222,6 +222,68 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     resolved.flatMap(_.tmdbId) shouldBe Some(1083381)
     resolved.flatMap(_.imdbId) shouldBe Some("tt9999999")
     cache.get(cache.keyOf("Premiera", Some(2026))) shouldBe None // never touched the cache
+  }
+
+  /**
+   * A resolution must never be corroborated by its OWN output.
+   *
+   * `resolveTmdbId` mined its director hints from `row.data.values` — EVERY slot,
+   * including the derived `Tmdb`/`Imdb`/`Filmweb` ones the previous resolution
+   * stamped on. So a row that resolved to the wrong film grew a second "reported"
+   * director: the wrong film's. The hints are `.sorted` and the walk takes the
+   * FIRST that hits, so which film the row re-resolved to came down to alphabetical
+   * order between the cinema's director and the mis-resolution's own.
+   *
+   * Poland's Kino Malta "Dreams" is the worked example. The cinema reports Michel
+   * Franco (its `/movies/dreams` page names him, with the Mexican ballet-dancer
+   * synopsis); the row had resolved to Dag Johan Haugerud's Norwegian "Drømmer"
+   * (tmdb 1228682, tt30810787), so the Tmdb/Imdb/Filmweb slots all said Haugerud.
+   * `["Dag Johan Haugerud", "Michel Franco"].sorted` walks Haugerud first, his 2024
+   * credit pins on the key year the mis-resolution itself had set, and the wrong
+   * answer re-confirms itself — Michel Franco is never tried at all. The row served
+   * a chimera: Franco's director + synopsis beside Drømmer's cast, original title
+   * and ratings.
+   *
+   * `cinemaOriginalTitle` is already cinema-only for exactly this reason; the
+   * director hint is its missing sibling.
+   */
+  it should "mine director hints from CINEMA slots only, never from the derived TMDB/IMDb/Filmweb slots" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    // Title search is useless here (as in production: "Dreams" is ambiguous), so
+    // directorWalk is the only path that can resolve — which director it walks
+    // FIRST is the whole test.
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"                    -> """{"results":[]}""",
+      "query=Michel+Franco"              -> """{"results":[{"id":5000,"name":"Michel Franco","known_for_department":"Directing"}]}""",
+      "query=Dag+Johan+Haugerud"         -> """{"results":[{"id":6000,"name":"Dag Johan Haugerud","known_for_department":"Directing"}]}""",
+      "/person/5000/movie_credits"       -> """{"crew":[
+        |{"id":1134463,"title":"Dreams","original_title":"Dreams: Sueños",
+        | "release_date":"2025-07-10","department":"Directing","popularity":6.2}
+        |]}""".stripMargin,
+      "/person/6000/movie_credits"       -> """{"crew":[
+        |{"id":1228682,"title":"Sny o miłości","original_title":"Drømmer",
+        | "release_date":"2024-10-04","department":"Directing","popularity":8.0}
+        |]}""".stripMargin,
+      "/movie/1134463/external_ids"      -> """{"id":1134463,"imdb_id":"tt31710990"}""",
+      "/movie/1228682/external_ids"      -> """{"id":1228682,"imdb_id":"tt30810787"}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // Production's row shape: ONE cinema slot naming Michel Franco, and three
+    // derived slots carrying the previous (wrong) resolution's director.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios  -> SourceData(title = Some("Dreams"), director = Seq("Michel Franco")),
+      Tmdb    -> SourceData(director = Seq("Dag Johan Haugerud"), releaseYear = Some(2024)),
+      Imdb    -> SourceData(director = Seq("Dag Johan Haugerud")),
+      Filmweb -> SourceData(director = Seq("Dag Johan Haugerud"))
+    ))
+    // Year 2024 is the mis-resolution's own year, baked into the canonical key —
+    // it must not be able to pin Haugerud's same-year credit either.
+    val resolved = service.resolveStagingRecord("Dreams", Some(2024), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(1134463)
+    resolved.flatMap(_.imdbId) shouldBe Some("tt31710990")
   }
 
   /**

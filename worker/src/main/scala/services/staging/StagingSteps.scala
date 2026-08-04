@@ -208,14 +208,16 @@ class StagingSteps(
   /** The hint-combination a row resolves under — title + year + director set +
    *  original title, the same hints the TMDB resolver and its cache key use, so
    *  rows that would resolve identically group together. Computed from CINEMA/
-   *  detail hints only (the stamped `Tmdb` slot is dropped) so a row's group key
-   *  stays STABLE across re-resolution: a concluded row keeps grouping with its
-   *  still-arriving same-film siblings instead of drifting onto TMDB's own
-   *  director/title — see `resolveAndStamp`. */
-  private def hintGroupKey(r: StagingRecord): String = {
-    val cinemaOnly = r.record.copy(data = r.record.data - Tmdb)
-    ResolutionKeys.tmdb(r.title, r.year, cinemaOnly.director, cinemaOnly.cinemaOriginalTitle, stagingRepository.normalizer)
-  }
+   *  detail hints only so a row's group key stays STABLE across re-resolution: a
+   *  concluded row keeps grouping with its still-arriving same-film siblings
+   *  instead of drifting onto TMDB's own director/title — see `resolveAndStamp`.
+   *
+   *  `cinemaDirector`/`cinemaOriginalTitle` are the cinema-only accessors the
+   *  resolver itself now hints from, so this key is once again exactly the
+   *  combination it resolves under. Dropping the `Tmdb` slot by hand was the old
+   *  spelling and left the equally-derived `Imdb`/`Filmweb` slots in. */
+  private def hintGroupKey(r: StagingRecord): String =
+    ResolutionKeys.tmdb(r.title, r.year, r.record.cinemaDirector, r.record.cinemaOriginalTitle, stagingRepository.normalizer)
 
   /** STEP 3 (per film): recover a missing IMDb cross-reference and stamp it onto
    *  every row — the promoter's inline recovery, now its own retryable task. A

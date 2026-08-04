@@ -185,13 +185,7 @@ class EnrichDetailsHandler(
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)
             // The detail just landed → enrich the film now, with the better hints.
-            if (wasPending) {
-              val row = cache.get(rowKey)
-              bus.publish(MovieDetailsComplete(
-                title, year,
-                row.flatMap(_.cinemaOriginalTitle),
-                row.map(_.director).filter(_.nonEmpty).map(_.mkString(", "))))
-            }
+            if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))
             Done
         }
     }
