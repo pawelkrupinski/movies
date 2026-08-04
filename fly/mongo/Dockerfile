@@ -44,4 +44,21 @@ RUN openssl rand -base64 756 > /etc/mongo-keyfile \
 # volume — while still being an explicit bound rather than relying on the default.
 # (Also set live via setParameter on 2026-06-10; this line makes it survive a
 # redeploy/restart.)
-CMD ["mongod", "--ipv6", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile", "--wiredTigerCacheSizeGB", "0.25", "--setParameter", "diagnosticDataCollectionDirectorySizeMB=300"]
+#
+# `--setParameter tcmallocReleaseRate=5.0` (default 1.0) makes tcmalloc hand
+# freed pages back to the OS faster. Measured on 2026-08-04: mongod's RSS had
+# grown to 665mb over six days of uptime, but only 363mb of that was live
+# allocation — 272mb was tcmalloc's page-heap FREE pool, held rather than
+# returned. tcmalloc does not sense system memory pressure, so on the 1gb box
+# that pool is pure risk: it is indistinguishable from real demand right up to
+# the point the kernel OOM-kills mongod. Releasing faster costs some CPU on the
+# allocator path, which is the cheaper side of that trade here — the dataset is
+# small and the box is memory-bound, not CPU-bound.
+#
+# Verified startup-settable before shipping (it is documented as runtime-settable,
+# and a parameter mongod rejects at boot would have taken the cluster down): a
+# throwaway `mongod --dbpath /tmp/probe --port 27099 --setParameter
+# tcmallocReleaseRate=5.0` logged `Applied --setParameter options` with
+# `{"tcmallocReleaseRate":{"default":1,"value":5}}` and reached "Waiting for
+# connections". Re-check that on a major-version bump.
+CMD ["mongod", "--ipv6", "--bind_ip_all", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile", "--wiredTigerCacheSizeGB", "0.25", "--setParameter", "diagnosticDataCollectionDirectorySizeMB=300", "--setParameter", "tcmallocReleaseRate=5.0"]

@@ -33,17 +33,18 @@ primary_region = "arn"
   # resizing the machine back to 1gb, after measuring that the box fits: WT
   # cache is pinned at 256mb and saturates there regardless of box size, live
   # tcmalloc allocation is ~363mb total, and warm RSS settles at ~423mb of the
-  # 961mb the VM actually reports. Note that RSS creeps toward ~665mb over a
-  # week of uptime — that growth is tcmalloc's page-heap free pool (272mb of
-  # it after 6 days), not live data, and tcmallocReleaseRate is at its 1.0
-  # default. Still ~30% headroom, but that pool is the thing to watch.
+  # 961mb the VM actually reports. RSS did creep toward ~665mb over a week of
+  # uptime, but 272mb of that was tcmalloc's page-heap free pool rather than
+  # live data — the Dockerfile now sets tcmallocReleaseRate=5.0 to bound that
+  # growth, so treat a rising RSS here as real demand and go look at what
+  # changed.
   #
   # What actually OOM-killed the 1gb box on 2026-07-29 was not steady state:
   # it was the country-convergence suite tunnelled at PROD Mongo, whose
   # `convergence_test` DB reached 372mb — bigger than all three prod DBs put
-  # together. That DB is still present (191mb on disk, now emptied), so the
-  # trigger is dormant rather than gone. Running convergence against prod
-  # Mongo will re-arm it; point it at a local mongod instead.
+  # together. That DB was dropped on 2026-08-04 (it had aged down to 1 document
+  # in 193mb of never-compacted space), but the suite will happily recreate it:
+  # the trigger is REMOVED, not disarmed. Point convergence at a local mongod.
   memory = "1gb"
 
 # TCP liveness check on the mongod port. Mongo has no [[services]] (it stays on
