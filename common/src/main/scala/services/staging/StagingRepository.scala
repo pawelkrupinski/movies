@@ -100,9 +100,9 @@ trait StagingRepository {
     findAll().filter(row => normalizer.sanitize(row.title) == anchor)
   }
 
-  /** The country whose rules anchor these rows. Defaulted like
+  /** The country whose rules anchor these rows. ABSTRACT, like
    *  `MovieRepository.normalizer`; the worker wires its own. */
-  def normalizer: TitleNormalizer = TitleNormalizer.deployment
+  def normalizer: TitleNormalizer
 
   /** Write-through upsert of one cinema's row, keyed by `idFor(cinema, title,
    *  year)` — the scrape-divert path, called on every tick a newcomer is still
@@ -205,6 +205,10 @@ object StagingRepository {
    *  build). `findAll` is empty and writes are dropped. */
   val empty: StagingRepository = new StagingRepository {
     def enabled: Boolean = false
+    // Holds no rows, so nothing is ever anchored — but the member is abstract
+    // now, and naming the fallback HERE is the point: it is visible rather than
+    // inherited by omission.
+    val normalizer: TitleNormalizer = TitleNormalizer.deployment
     def findAll(): Seq[StagingRecord] = Seq.empty
     def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = ()
     def delete(cinema: Source, title: String, year: Option[Int]): Unit = ()

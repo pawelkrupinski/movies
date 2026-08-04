@@ -56,6 +56,9 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
    *  `readOk = false`, the "I could not tell you" answer that must never be
    *  mistaken for "this film has no cinemas". */
   private class UnreadableMovieRepository(delegate: InMemoryMovieRepository) extends MovieRepository {
+    // Same rules as the repository it wraps — a fake that keyed differently from
+    // its delegate would be a fake that disagrees with itself.
+    val normalizer: services.movies.TitleNormalizer = delegate.normalizer
     override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = (None, false)
     def enabled: Boolean                                              = true
     def findAll(): Seq[StoredMovieRecord]                             = delegate.findAll()

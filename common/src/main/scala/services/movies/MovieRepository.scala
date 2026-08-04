@@ -130,8 +130,9 @@ trait MovieRepository {
   /** The country whose rules derive a row's `_id`. Defaulted so the in-memory and
    *  inline test implementations need not carry one; `MongoMovieRepository`
    *  overrides it from its constructor, which is the only place the choice is
-   *  load-bearing (the id it writes IS the row's identity). */
-  def normalizer: TitleNormalizer = TitleNormalizer.deployment
+   *  load-bearing (the id it writes IS the row's identity). ABSTRACT, so a new
+   *  implementation cannot inherit a process default by omission. */
+  def normalizer: TitleNormalizer
 
   /** Like [[findAll]] but with each source's `showtimes` list dropped — the
    *  rows for a LISTING that renders only per-cinema metadata + counts, never

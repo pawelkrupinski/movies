@@ -37,6 +37,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   /** Records what the cache writes back, and can be told to fail its per-row read — the
    *  one thing that separates "absent" from "unreadable". */
   private class Repo(rows: Seq[StoredMovieRecord], readable: Boolean) extends MovieRepository {
+    val normalizer: TitleNormalizer = titleNormalizer
     val upserts = scala.collection.mutable.ListBuffer.empty[(String, MovieRecord)]
     def enabled = true
     // EMPTY — `findAll` returns `Seq.empty` on an incomplete scan, so the boot hydrate

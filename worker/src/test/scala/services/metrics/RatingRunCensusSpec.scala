@@ -176,6 +176,7 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   private def cacheOf(rows: Seq[(CacheKey, MovieRecord)]): MovieCacheReader = new MovieCacheReader {
+    val normalizer: services.movies.TitleNormalizer          = titleNormalizer
     def hasResolvedSiblingByTitle(rawTitle: String): Boolean = false
     def snapshot(): Seq[StoredMovieRecord]                   = Nil
     def lastModified: Instant                                = Instant.EPOCH

@@ -55,9 +55,9 @@ trait MovieCacheReader {
    *  surface because the enrichers and the read-model projection hold a cache and
    *  need to fold titles the same way it did — a resolution hint key or a
    *  projected `_id` built under different rules addresses a row that isn't
-   *  there. Defaulted like `MovieRepository.normalizer` so in-memory and inline
-   *  test caches need not supply one. */
-  def normalizer: TitleNormalizer = TitleNormalizer.deployment
+   *  there. ABSTRACT: an implementation that could silently fall back to a
+   *  process default is how a German title came to be keyed `minionsimonster`. */
+  def normalizer: TitleNormalizer
 
   /** True when some existing cache row's cleanTitle normalises to the same
    *  form as `rawTitle` AND has been TMDB-resolved (tmdbId set). */

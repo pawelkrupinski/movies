@@ -19,6 +19,7 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
         Tmdb   -> SourceData(title = Some(title), releaseYear = Some(tmdbYear)))), titleNormalizer)
 
   private def repoOf(rows: StoredMovieRecord*): MovieRepository = new MovieRepository {
+    val normalizer: services.movies.TitleNormalizer = titleNormalizer
     def enabled = true
     def findAll() = rows.toSeq
     def delete(t: String, y: Option[Int]) = ()

@@ -19,6 +19,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   private def repositoryOf(rows: StoredMovieRecord*): MovieRepository = new MovieRepository {
+    val normalizer: TitleNormalizer = titleNormalizer
     def enabled = true
     def findAll() = rows.toSeq
     def delete(t: String, y: Option[Int]) = ()
@@ -121,6 +122,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   private def flakeyRepository(row: StoredMovieRecord): MovieRepository = {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     new MovieRepository {
+      val normalizer: TitleNormalizer = titleNormalizer
       def enabled = true
       def findAll() = if (calls.getAndIncrement() == 0) Seq.empty else Seq(row)
       def delete(t: String, y: Option[Int]) = ()

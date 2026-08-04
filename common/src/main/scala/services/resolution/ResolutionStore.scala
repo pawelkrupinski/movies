@@ -32,9 +32,8 @@ trait ResolutionStore {
   /** The country whose rules built the hint keys held here. A key embeds
    *  `sanitize`d title fields, so `ResolutionKeys.belongsTo` can only match keys
    *  folded the same way. Defaulted like `MovieRepository.normalizer` so test and
-   *  in-memory stores need not carry one. */
-  def normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.deployment
+   *  ABSTRACT, so a store cannot inherit a process default by omission. */
+  def normalizer: services.movies.TitleNormalizer
 
   /** The stored value for `hintKey`, or None if never stored or older than the TTL. */
   def get(hintKey: String): Option[String]
@@ -67,7 +66,12 @@ object ResolutionStore {
 
 /** In-memory `ResolutionStore` for tests and Mongo-less local dev. Honours the
  *  same TTL expiry as the Mongo store via an injectable clock. */
-class InMemoryResolutionStore(clock: Clock = Clock.systemUTC()) extends ResolutionStore {
+class InMemoryResolutionStore(
+  clock: Clock = Clock.systemUTC(),
+  // Test / Mongo-less local dev only, so a single-country default is right here.
+  override val normalizer: services.movies.TitleNormalizer =
+    services.movies.TitleNormalizer.deployment
+) extends ResolutionStore {
   private val entries = new ConcurrentHashMap[String, (String, Instant)]()
 
   override def get(hintKey: String): Option[String] =

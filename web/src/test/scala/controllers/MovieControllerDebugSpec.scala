@@ -126,6 +126,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       override def findAll(): Seq[services.movies.StoredMovieRecord] = { rendezvous(); super.findAll() }
     }
     val stagingRepo = new services.staging.StagingRepository {
+      val normalizer: services.movies.TitleNormalizer = titleNormalizer
       def enabled: Boolean = true
       def findAll(): Seq[services.staging.StagingRecord] = { rendezvous(); Seq.empty }
       def upsert(cinema: models.Source, title: String, year: Option[Int], record: MovieRecord): Unit = ()
