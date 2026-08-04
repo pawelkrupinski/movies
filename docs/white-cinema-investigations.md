@@ -210,6 +210,101 @@ working as designed on a venue on summer break.
   intermediate that issued this leaf; an expired leaf fails validation regardless
   of anchors.)
 
+### Re-sweep the same day, 07:45 UTC — independent confirmation, no new bug
+
+The morning run above was interrupted mid-merge, so a second sweep was run from
+scratch rather than trusting its log: the white set was rebuilt from prod
+`uptimeBuckets` without reading the entry above, then every venue in it was
+re-fetched live. Both halves reproduce the morning's findings exactly, and the
+two fixes that landed between the sweeps are confirmed working in prod.
+
+**PL: 20 white, 0 red**, out of 350 services (310 after dropping `*|enrichment`
+and `img:` rows), newest bucket 2026-08-04 07:45 UTC. Against the morning's
+**21 white / 1 red**, both deltas are the fixes:
+
+- **artKino — the fix works.** Zero for its entire retained history through the
+  06:15 bucket, then **green at 07:15** — the first scrape after @a56453c4b
+  deployed. It has left the white set.
+- **Wybrzeże — the red is gone**, and the venue did not have to be retired
+  (@b51d129a9, plain HTTP). The RED set is now **empty**, the first run in five
+  with nothing failing at fetch.
+
+**Only one venue changed state inside the retained window**, and it is the one
+the morning run already singled out: **Kino MDK** (green ×10, then white from
+the 2026-08-03 17:15 UTC bucket). The other 19 are white across every retained
+bucket — long-dormant, not newly broken. That distribution is itself the
+evidence that no parser broke recently: markup drift lands as a green→white
+transition, and there is exactly one, already diagnosed.
+
+**All 20 sources re-fetched live: every one returned HTTP 200, and none carries
+a film programme.** The verdicts are not inferred from our own parser's silence
+— five venues say so in their own words on the page we scrape:
+
+| Venue | The source's own words |
+|---|---|
+| Patria | `Brak filmu` on every day 04.08 → 10.08 |
+| Kino Świt | `Brak nadchodzących seansów filmowych.` |
+| Kino Ślęża | `Wakacyjna przerwa 🌞` |
+| Studio (Opole) | `W czasie wakacji nasze kino jest nieczynne… Startujemy już 3 września` |
+| Kino MDK | organiser listing is `MATKA ODCHODZI` + symphonic concerts, no film |
+
+The rest agree by structure rather than by wording: all four biletyna venues
+carry **zero** `ScreeningEvent` entries — Kino PDK against 1 `TheaterEvent` + 1
+`ComedyEvent`, Kino Tur against 1 `ComedyEvent`, MCK Aleksandrów against 3
+`MusicEvent` + 1 `ComedyEvent`, and ADA Kino Studyjne against no events of any
+type at all (an entirely unprogrammed venue page); the bilety24
+organiser pages (nad Wartą, Wisła Brzeszcze, Piast) list no film category; and
+both Filmweb-backed venues return a literal `[]` from the seances API on **every
+one of the next 15 days** — `cinema/1645` (DKF Politechnika) and `cinema/2405`
+(Kino Zachęta), the static ids the catalog wires. For the university film club
+that is the academic summer break already logged on 2026-06-28.
+
+#### Kino Zachęta (Kleczew) — `intentionally-dormant`, and the usual fix is foreclosed
+
+Worth its own note, because this is the venue in the set that best fits the
+"Filmweb went silently empty → move it to its own site" pattern, and the fix
+does not exist here. Three independent checks:
+
+- **Filmweb agrees it is empty, and says so in words, not by omission.** The
+  cinema's own showtimes page renders *"Niestety to kino nie oferuje seansów w
+  najbliższym czasie"*. So `[]` is Filmweb reporting no programme, not Filmweb
+  having dropped the venue — the page and the id (2405) both still resolve.
+- **The venue is also absent from Filmweb's `/showtimes/Kleczew` city listing**
+  (6 cinemas, none of them Zachęta). Harmless today because the catalog wires
+  the id statically, but it means `FilmwebCinemaIdResolver` could not re-derive
+  this id if the static one ever had to be replaced.
+- **Its own site cannot be scraped instead.** `bckkleczew.pl/repertuar.html`
+  publishes the repertoire as a single JPEG (`od2407.jpg` — the "from 24.07"
+  poster) with no HTML showtimes anywhere on the page, and the host 403s any
+  non-browser user-agent. There is no own-site scraper to move to; reading it
+  would need OCR. The one local-news mirror (`hejkleczew.pl`) last updated in
+  **December 2025**, so it is not a source either.
+
+Do not re-open this one as "Filmweb went empty, repoint it" on a future run —
+the empty result is correct, and there is nowhere to repoint it to. If the venue
+does go dark permanently, retiring it is the only option, not a new client.
+
+**Kino Zamek (Szczecin) re-checked and still not actionable.** Its MSI page is
+the liveliest of the twenty — 8 distinct times, 113 KB — but August is `lato na
+tarasach` concerts, `CZERWONY KAPTUREK` for children and theatre. The venue
+publishes a `Kino` subcategory filter and currently has nothing under it, so the
+standing festival filter-gap `needs-human` cannot be reproduced, let alone
+tested, until it programmes films again.
+
+**Unrelated oddity, logged not chased:** `mdk.opole.pl/kino-studio.html` now
+carries injected Russian casino spam in its body text ("…самоуверенных
+хайроллеров"). It is on the venue's page, not ours, and `KinoStudioClient` reads
+only structured showtime blocks so nothing leaks into our titles today. Worth
+remembering if that venue ever starts emitting nonsense film titles — the page
+is compromised, not the parser.
+
+**Verdict: no code change this sweep.** Every white venue is film-dormant at
+source, and the one recent transition is a repertoire ending, not drift. The
+next run's re-check list is unchanged: **Kino MDK** first (most likely to
+return, and if it returns films on `mdkradomsko.bilety24.pl` but not on the
+central organiser page, that is the trigger to repoint the client), then
+**Studio** after 3 Sept and **DKF Politechnika** when the academic year starts.
+
 ---
 
 ## 2026-07-31
