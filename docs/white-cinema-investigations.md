@@ -284,6 +284,48 @@ Do not re-open this one as "Filmweb went empty, repoint it" on a future run —
 the empty result is correct, and there is nowhere to repoint it to. If the venue
 does go dark permanently, retiring it is the only option, not a new client.
 
+#### Kino Sfinks — the calendar is still empty, but the blind spot is `fixed` @73f19c8a5
+
+Re-checked the 2026-07-11 `needs-human` in full: **every** per-day page
+`/wydarzenia-2026-08-04…20.html`, the month page, all seven
+`wydarzenia-kategoria-*.html` pages and the unfiltered listing render
+`div.empty-results` → "Brak wydarzeń", 0 rows. (The film titles now visible on
+the harmonogram — VINCI 2, KOMPLETNIE NIEZNANY — are ZAPOWIEDZI teaser panels
+carrying no date or time, not screenings.) So the original verdict stands: with
+no film-row markup rendered anywhere, the parser still cannot be rebuilt or
+test-backed, and that half remains **needs-human**.
+
+But re-reading `KinoSfinksClient` while confirming that turned up something
+that *was* fixable, and is the more valuable half. The client selects
+`table.widok_listy tbody tr[onclick]` — the table this site removed site-wide —
+so it returns an empty list for **two different reasons at once**: the venue is
+dormant, AND we can no longer read the page. Both painted white, which is
+precisely why the CMS migration went unnoticed for five runs: a silent zero is
+indistinguishable from a dormant venue, so nothing ever escalated.
+
+The fix does not guess at the new markup. It only refuses to call a parse
+"empty" unless the page *accounts* for being empty — either it rendered the
+listing table (zero films is then a real category-filter result) or it rendered
+the CMS's own `empty-results` marker. A page with neither is a failed scrape,
+not an empty one, and throws. Same guard as `KinoStudioClient` / `MsiClient` /
+`KinoAwangarda2Client` / `KinoPatriaClient`.
+
+Net effect: **nothing changes today** — the marker is present, so Sfinks stays
+correctly white — and the day the venue repopulates into markup this parser
+cannot read, it goes **red** instead of staying white forever. That is the day
+the parser becomes rebuildable, and it will now announce itself instead of
+having to be rediscovered by a future sweep.
+
+**Tests:** two real captures recorded — `kino-sfinks-empty-calendar` (today's
+empty harmonogram → must return empty, must NOT throw) and
+`kino-sfinks-shape-drift` (today's site root standing in for the schedule URL
+serving something that isn't the schedule, the Helios slug-rename shape → must
+throw). Fail-before/pass-after confirmed: the drift test failed with "no
+exception was thrown" before the change. `sbt testUnit` green (4,410 tests) and
+`FilmScheduleEndToEndSpec` green. No snapshot layer shifted — all six Sfinks
+fixtures in the `08-06-2026` raw-HTML corpus carry `widok_listy`, so the guard
+never fires there and the pipeline's output is byte-identical.
+
 **Kino Zamek (Szczecin) re-checked and still not actionable.** Its MSI page is
 the liveliest of the twenty — 8 distinct times, 113 KB — but August is `lato na
 tarasach` concerts, `CZERWONY KAPTUREK` for children and theatre. The venue
@@ -298,8 +340,11 @@ only structured showtime blocks so nothing leaks into our titles today. Worth
 remembering if that venue ever starts emitting nonsense film titles — the page
 is compromised, not the parser.
 
-**Verdict: no code change this sweep.** Every white venue is film-dormant at
-source, and the one recent transition is a repertoire ending, not drift. The
+**Verdict: no white venue is white because of a parser bug** — every one is
+film-dormant at source, and the one recent transition is a repertoire ending,
+not drift. **One code change did come out of the sweep** (`fixed` @73f19c8a5,
+Kino Sfinks): not a venue restored, but a blind spot closed, which is what a
+re-read of the longest-standing `needs-human` turned up. See its section above. The
 next run's re-check list is unchanged: **Kino MDK** first (most likely to
 return, and if it returns films on `mdkradomsko.bilety24.pl` but not on the
 central organiser page, that is the trigger to repoint the client), then
