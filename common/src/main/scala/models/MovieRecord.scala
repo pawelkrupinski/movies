@@ -116,17 +116,6 @@ case class MovieRecord(
   def cinemaShowings: Seq[(Cinema, SourceData)] =
     cinemaSlots.flatMap { case (source, sd) => Source.cinemaOf(source).map(_ -> sd) }
 
-  /** Is this film still playing ANYWHERE at `now` — does any cinema slot hold a
-   *  showtime that hasn't passed? Ended films are retained (their slots and
-   *  showtimes stay), so "has cinema slots" does NOT mean "is screening", and
-   *  anything that should only work on the live corpus has to ask this instead.
-   *
-   *  Uses [[Showtime.isUpcoming]], the same grace-window rule the web's list
-   *  views and the worker's source-films gauge filter by, so a film counts as
-   *  screening here for exactly as long as it is visible there. */
-  def stillScreening(now: java.time.LocalDateTime): Boolean =
-    cinemaSlots.exists { case (_, sd) => sd.showtimes.exists(_.isUpcoming(now)) }
-
   /** One representative slot per cinema — the keyed view the per-cinema accessors
    *  (`filmUrlFor`, `showtimesFor`) and detail enrichment use. When a venue holds
    *  several title-slots, the highest-priority/title one wins deterministically;

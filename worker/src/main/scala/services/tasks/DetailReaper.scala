@@ -10,7 +10,7 @@ import services.movies.{CacheKey, MovieCache}
 import services.Stoppable
 import services.cinemas.common.DetailEnricher
 
-import java.time.{Clock, Instant, LocalDateTime}
+import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import scala.concurrent.duration._
 import scala.util.Try
@@ -146,20 +146,17 @@ class DetailReaper(
     val rows = cache.entries.iterator
     while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
-      // Only films still playing — see `stillScreening`.
-      if (stillScreening(record, now)) {
-        // Drive off the row's OWN venues, not the whole enricher list — see
-        // `enrichersByCinema`. `cinemaData` is computed once here and reused, because
-        // it sorts + rebuilds a Map on every call.
-        val cinemaData = record.cinemaData
-        val venues = cinemaData.keysIterator
-        while (venues.hasNext && enqueued < cap) {
-          val es = enrichersByCinema.getOrElse(venues.next(), Nil).iterator
-          while (es.hasNext && enqueued < cap) {
-            val e = es.next()
-            e.nativeDetailRefIn(cinemaData).foreach { ref =>
-              if (EnrichDetailsTasks.enqueueIfDue(queue, freshness, dueWindow, e, key, ref, now)) enqueued += 1
-            }
+      // Drive off the row's OWN venues, not the whole enricher list — see
+      // `enrichersByCinema`. `cinemaData` is computed once here and reused, because
+      // it sorts + rebuilds a Map on every call.
+      val cinemaData = record.cinemaData
+      val venues = cinemaData.keysIterator
+      while (venues.hasNext && enqueued < cap) {
+        val es = enrichersByCinema.getOrElse(venues.next(), Nil).iterator
+        while (es.hasNext && enqueued < cap) {
+          val e = es.next()
+          e.nativeDetailRefIn(cinemaData).foreach { ref =>
+            if (EnrichDetailsTasks.enqueueIfDue(queue, freshness, dueWindow, e, key, ref, now)) enqueued += 1
           }
         }
       }
@@ -195,36 +192,16 @@ class DetailReaper(
    *  native (fetchable) `filmUrl` slot whose detail isn't fresh yet. While true
    *  the row legitimately stays `detailPending` (and `tick` keeps the fetch
    *  enqueued). A Filmweb-fallback row's filmweb.pl URL is NOT native, so such a
-   *  row is never "outstanding" and `reapStuckPending` releases it. */
-  /** Whether this reaper still has business with a row: is the film playing
-   *  anywhere at `at`?
+   *  row is never "outstanding" and `reapStuckPending` releases it.
    *
-   *  Ended films are RETAINED, slots and `filmUrl`s intact, so without this the
-   *  reaper refreshes the detail of every film that ever screened. That is not
-   *  merely wasted work: a cinema withdraws a film's detail page once its run
-   *  ends, so the rows this skips are exactly the ones whose urls have started
-   *  404ing. `EnrichDetailsHandler`'s Gone branch stops that becoming a per-tick
-   *  retry; this stops us asking at all.
-   *
-   *  A film that pauses and returns re-enters the moment its next showtime lands,
-   *  so nothing has to un-skip it.
-   *
-   *  BOTH `tick` and `detailOutstanding` gate on this, and must keep doing so: if
-   *  the reaper stopped enqueueing a row's detail while `detailOutstanding` still
-   *  called it owed, a `detailPending` row would never be released and would sit
-   *  out of the read model — invisible on the site — forever.
-   *
-   *  Showtimes are local wall-clock times and a row can span cities, so this reads
-   *  `now` in the clock's own zone rather than pretending to a per-city precision
-   *  it doesn't need. With the worker's UTC clock that runs a couple of hours
-   *  BEHIND Polish local time, which errs towards keeping a film eligible slightly
-   *  too long — the safe direction for a gate whose failure mode is dropping a
-   *  live film's enrichment. */
-  private def stillScreening(record: MovieRecord, at: Instant): Boolean =
-    record.stillScreening(LocalDateTime.ofInstant(at, clock.getZone))
-
+   *  Note this asks nothing about whether the film is still PLAYING: a gate on
+   *  that (worthwhile — a cinema withdraws a film's detail page once its run
+   *  ends, which is what makes ended rows 404) has to answer from data the cache
+   *  actually holds. `SourceData.showtimes` is not that, because the read-split
+   *  strips every resident slot's showtime list to `Nil`; asking it took ALL
+   *  detail enrichment down for 16h on 2026-08-03. `EnrichDetailsHandler`'s Gone
+   *  branch is what currently bounds the withdrawn-page retry. */
   private def detailOutstanding(key: CacheKey, record: MovieRecord): Boolean = {
-    if (!stillScreening(record, clock.instant())) return false  // ended — nothing owed, so the flag must not hold it
     val cinemaData = record.cinemaData // once, and only the row's own venues — see `tick`
     cinemaData.keysIterator.exists { venue =>
       enrichersByCinema.getOrElse(venue, Nil).exists { e =>

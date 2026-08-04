@@ -1,7 +1,7 @@
 package services.tasks
 
 import models.{CinemaMovie, KinoApollo, Movie, Showtime}
-import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository}
 import services.cinemas.FakeDetailEnricher
 import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsComplete}
 import org.scalatest.matchers.should.Matchers
@@ -19,11 +19,10 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
 
   private val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo")
 
-  /** A showtime that keeps its film "currently screening" — the reaper only works
-   *  the live corpus. Relative to now, not a fixed date, because a hardcoded one
-   *  silently ages into the past and turns every fixture here into an ended film.
-   *  Far enough out to also sit ahead of the synthetic `t0` the phase-spread tests
-   *  tick from. */
+  /** A showtime that keeps its film currently screening. Relative to now, not a
+   *  fixed date, so it cannot silently age into the past — which is what a future
+   *  ended-film gate would then read every fixture here as. Far enough out to also
+   *  sit ahead of the synthetic `t0` the phase-spread tests tick from. */
   private def screeningSoon = LocalDateTime.now().plusMonths(6)
 
   private class CapturingBus extends EventBus {
@@ -47,13 +46,22 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
                      bus: EventBus = new InProcessEventBus()) =
     new DetailReaper(Seq(enricher), cache, queue, fresh, bus)
 
-  /** Seed one KinoApollo film whose ONLY showtime is in the past — a film whose run
-   *  has ended. Its slot and filmUrl are retained exactly as production keeps them. */
-  private def endedFilm() = {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
-    val bare  = CinemaMovie(Movie("Ended"), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
+  /** The same seed as [[cacheWith]], but stored PRODUCTION's way: showtimes in
+   *  `screenings`, slots in `movie_slots`. Every other fixture here wires a bare
+   *  `InMemoryMovieRepository` — the one shape that keeps showtime lists resident —
+   *  so a reaper rule that reads `SourceData.showtimes` passes all of them while
+   *  being dead on a real worker, because `CaffeineMovieCache.forCache` strips those
+   *  lists to `Nil` the moment `repository.hasScreenings` is true. Cf.
+   *  [[services.movies.DepthGuardUnderSplitSpec]], where the same divergence silently
+   *  disabled the degraded-scrape depth guard. */
+  private def splitCacheWith(filmUrl: Option[String]) = {
+    val cache = new CaffeineMovieCache(
+      new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                  slots      = Some(new InMemorySlotsRepository)),
+      new InProcessEventBus(), normalizer = titleNormalizer)
+    val bare  = CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None, filmUrl = filmUrl,
       synopsis = None, cast = Seq.empty, director = Seq.empty,
-      showtimes = Seq(Showtime(LocalDateTime.now().minusDays(3), Some("https://book"))))
+      showtimes = Seq(Showtime(screeningSoon, Some("https://book"))))
     cache.recordCinemaScrape(KinoApollo, Seq(bare))
     cache
   }
@@ -107,6 +115,19 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   "DetailReaper.tick" should "enqueue a detail task for each deferred film that has a filmUrl and isn't fresh" in {
     val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
     reaper(cacheWith(Some("http://ref")), queue, fresh).tick() shouldBe 1
+    queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
+  }
+
+  // The regression that took EVERY cinema's detail enrichment down for 16h on
+  // 2026-08-03 (deployed 14:19Z, last detail freshness stamp of any group 14:18Z).
+  // A `stillScreening` gate was added to `tick` to stop refreshing ended films, but
+  // it asked `SourceData.showtimes` — which the read-split strips off every
+  // cache-resident record — so it read "ended" for the entire live corpus and the
+  // reaper enqueued nothing, ever. This is the only fixture here stored the way
+  // production stores; any future ended-film gate has to keep it green.
+  it should "enqueue a due detail when showtimes live in their own collection, as production stores them" in {
+    val (queue, fresh) = (new InMemoryTaskQueue, new InMemoryFreshnessStore)
+    reaper(splitCacheWith(Some("http://ref")), queue, fresh).tick() shouldBe 1
     queue.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
@@ -245,39 +266,6 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   // films, once a minute, indefinitely. Drives the real reaper→handler→reaper
   // cycle rather than asserting the stamp in isolation, because it is the second
   // tick going quiet that is the actual fix.
-  // The root cause behind the withdrawn-page livelock: a cinema pulls a film's
-  // detail page once its run ends, and ended films are RETAINED with their slots
-  // and filmUrls, so the reaper kept refreshing detail for films nobody can see.
-  it should "skip a film whose run has ended, rather than refreshing detail for it forever" in {
-    val (cache, queue, fresh) = (endedFilm(), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    reaper(cache, queue, fresh).tick() shouldBe 0
-  }
-
-  it should "resume the moment an ended film gets a new showtime, so a paused run needs no un-skipping" in {
-    val (cache, queue, fresh) = (endedFilm(), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    reaper(cache, queue, fresh).tick() shouldBe 0
-
-    // The next scrape finds the film back on the schedule.
-    val returning = CinemaMovie(Movie("Ended"), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
-      synopsis = None, cast = Seq.empty, director = Seq.empty,
-      showtimes = Seq(Showtime(LocalDateTime.now().plusDays(2), Some("https://book"))))
-    cache.recordCinemaScrape(KinoApollo, Seq(returning))
-
-    reaper(cache, queue, fresh).tick() shouldBe 1
-  }
-
-  it should "release a detail-pending row whose run has ended, so the skip can't hide it forever" in {
-    // tick and detailOutstanding MUST gate on the same rule. If only tick skipped
-    // ended films, a row still flagged detailPending would never be released and
-    // would sit out of the read model permanently.
-    val (cache, queue, fresh) = (endedFilm(), new InMemoryTaskQueue, new InMemoryFreshnessStore)
-    cache.putIfPresent(cache.keyOf("Ended", None), _.copy(detailPending = true))
-    val bus = new CapturingBus
-    reaper(cache, queue, fresh, bus).reapStuckPending() shouldBe 1
-    cache.get(cache.keyOf("Ended", None)).map(_.detailPending) shouldBe Some(false)
-    bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Ended")
-  }
-
   it should "stop re-enqueueing a film whose detail page is durably gone, instead of once per tick" in {
     val (cache, queue, fresh) = (cacheWith(Some("http://ref")), new InMemoryTaskQueue, new InMemoryFreshnessStore)
     // ONE DueWindow instance across reaper and handler — they must agree on "due".
