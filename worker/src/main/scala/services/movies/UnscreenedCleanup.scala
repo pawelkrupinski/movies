@@ -105,7 +105,7 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
   /** The `_id` the delete would cascade against — the same formula
    *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by, so the
    *  record we corroborate against is exactly the one the delete would clear. */
-  private def idOf(key: CacheKey): String = StoredMovieRecord.idFor(key.cleanTitle, key.year, normalizer)
+  private def idOf(key: CacheKey): String = StoredMovieRecord.idFor(key)
 
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 

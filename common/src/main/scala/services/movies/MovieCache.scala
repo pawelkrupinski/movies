@@ -448,9 +448,9 @@ class CaffeineMovieCache(
 
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
-    val target = normalizer.sanitize(key.cleanTitle)
+    val target = key.normalized
     val sameTitle = positive.asMap().asScala.keysIterator
-      .filter(k => normalizer.sanitize(k.cleanTitle) == target).toSeq
+      .filter(k => k.normalized == target).toSeq
     // Prefer a row at this EXACT year. A same-title row at a DIFFERENT year is a
     // distinct film — a remake or re-release carrying the original's name
     // ("Zaproszenie" 2022 "The Invitation" vs 2026 "The Invite", "Diuna" 1984 vs
@@ -556,9 +556,9 @@ class CaffeineMovieCache(
     // new spelling still drives a re-key: `recordCinemaScrape` merges it onto the
     // row and `FilmCanonicalizer.canonical` moves the canonical, so the ROW key
     // then differs and trips the guard.
-    val canonicalSanitized = normalizer.sanitize(canonical.cleanTitle)
+    val canonicalSanitized = canonical.normalized
     val needsFix = keys.sizeIs > 1 ||
-      keys.exists(k => normalizer.sanitize(k.cleanTitle) == canonicalSanitized &&
+      keys.exists(k => k.normalized == canonicalSanitized &&
         (k.cleanTitle != canonical.cleanTitle || k.year != canonical.year))
     if (needsFix) {
       withTitleLock(canonical.cleanTitle) {
@@ -583,9 +583,9 @@ class CaffeineMovieCache(
         // didn't happen, and deleting on that basis destroys the film's only copy. A victim
         // left behind is a duplicate row the next pass folds again (and
         // `scripts.ReapOrphanedFilmRows` clears), which is the recoverable direction.
-        val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year, normalizer)
+        val canonicalId = StoredMovieRecord.idFor(canonical)
         val (moved, stranded) = victims.partition(v =>
-          repository.moveFilm(StoredMovieRecord.idFor(v.cleanTitle, v.year, normalizer), canonicalId))
+          repository.moveFilm(StoredMovieRecord.idFor(v), canonicalId))
         if (stranded.nonEmpty)
           logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
             "cinemas could not be carried onto the winner — they fold again on the next pass.")
@@ -627,7 +627,7 @@ class CaffeineMovieCache(
     get(key) match {
       case cached @ Some(_) => (cached, true)
       case None =>
-        val (row, readOk) = repository.findByIdChecked(StoredMovieRecord.idFor(key.cleanTitle, key.year, normalizer))
+        val (row, readOk) = repository.findByIdChecked(StoredMovieRecord.idFor(key))
         (row.map(_.record), readOk)
     }
 
@@ -670,7 +670,7 @@ class CaffeineMovieCache(
           s"to fold into the resolved row; leaving '${oldKey.cleanTitle}' on its own key this pass.")
       val target = if (targetReadable) wanted else oldKey
       val base        = priorTarget.fold(resolved)(t => MovieRecordMerge.union(resolved, t))
-      val norm        = normalizer.sanitize(oldKey.cleanTitle)
+      val norm        = oldKey.normalized
       // Fold ONLY the YEARLESS + IDLESS same-title strays onto the resolved row.
       // These are exactly `clusterByFilm`'s rule (4) rows: with no year and no
       // tmdbId they can belong to no OTHER film in the group, so attaching them
@@ -685,7 +685,7 @@ class CaffeineMovieCache(
       // row's OWN key, not a recomputed canonical spelling, for the same reason.
       val strays = positive.asMap().asScala.toSeq.filter { case (k, e) =>
         k != oldKey && k != target && k.year.isEmpty && e.tmdbId.isEmpty &&
-        normalizer.sanitize(k.cleanTitle) == norm
+        k.normalized == norm
       }
       // ONE write carrying every cinema (the resolved row's first
       // `readyToProject` upsert is already complete), so the read model is
@@ -716,7 +716,7 @@ class CaffeineMovieCache(
    *  2026 — the "two copies of Kumotry" bug). Ties break on `canonicalRank`. */
   private def concludedKeyFor(primary: CacheKey): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
-    val norm = normalizer.sanitize(primary.cleanTitle)
+    val norm = primary.normalized
     // A scrape lands on a concluded row when its title matches that row's key, OR
     // one of the row's TMDB aliases (its Polish / original title). The alias arm
     // lands a cinema's original-language listing of a film ("Tangled") straight on
@@ -736,7 +736,7 @@ class CaffeineMovieCache(
     // (its sanitize matches no alias).
     val concluded = positive.asMap().asScala.iterator
       .collect { case (k, e) if e.tmdbConcluded &&
-        (normalizer.sanitize(k.cleanTitle) == norm ||
+        (k.normalized == norm ||
          (FilmCanonicalizer.isBareFilmTitle((k, e), normalizer) &&
           e.tmdbTitleAliases.exists(a => normalizer.sanitize(a) == norm))) => k }
       .toSeq
@@ -749,7 +749,7 @@ class CaffeineMovieCache(
     // first in the canonicalRank tie-break ("De" < "Dz"), splitting the Polish
     // film across two ever-growing rows the sanitize-keyed canonicalize can't
     // re-merge. So resolve key-matches first, alias-only matches only as fallback.
-    val (keyMatches, aliasOnly) = concluded.partition(k => normalizer.sanitize(k.cleanTitle) == norm)
+    val (keyMatches, aliasOnly) = concluded.partition(k => k.normalized == norm)
     def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
       case None    => cands.minByOption(canonicalRank)
       case Some(y) =>
@@ -793,9 +793,9 @@ class CaffeineMovieCache(
     // `moveFilm` reports false when a read or write it depended on didn't happen, and the
     // delete would otherwise destroy the film's only copy. A stranded victim stays a
     // duplicate row that folds again next pass, which is the recoverable direction.
-    val canonicalId = StoredMovieRecord.idFor(canonical.cleanTitle, canonical.year, normalizer)
+    val canonicalId = StoredMovieRecord.idFor(canonical)
     val (moved, stranded) = victims.partition(victim =>
-      repository.moveFilm(StoredMovieRecord.idFor(victim.cleanTitle, victim.year, normalizer), canonicalId))
+      repository.moveFilm(StoredMovieRecord.idFor(victim), canonicalId))
     persist(canonical, merged)
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
@@ -930,7 +930,7 @@ class CaffeineMovieCache(
    *  TMDB stage when a no-year scrape's resolved year promotes the row
    *  to a year-keyed identity. */
   private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit = {
-    require(normalizer.sanitize(oldKey.cleanTitle) == normalizer.sanitize(newKey.cleanTitle),
+    require(oldKey.normalized == newKey.normalized,
       s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
     withTitleLock(oldKey.cleanTitle) {
       // `stored` (cache-or-Mongo): a cold `oldKey` read EMPTY would be re-`put` at
@@ -961,8 +961,8 @@ class CaffeineMovieCache(
           // they are. Deferring leaves everything exactly as it was, and the settle asks
           // again next tick.
           if (oldKey != newKey &&
-              !repository.moveFilm(StoredMovieRecord.idFor(oldKey.cleanTitle, oldKey.year, normalizer),
-                                   StoredMovieRecord.idFor(newKey.cleanTitle, newKey.year, normalizer))) {
+              !repository.moveFilm(StoredMovieRecord.idFor(oldKey),
+                                   StoredMovieRecord.idFor(newKey))) {
             logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
               s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): its screenings/slots could not " +
               "be carried to the new id, and re-keying without them empties the film.")
@@ -1197,7 +1197,7 @@ class CaffeineMovieCache(
     // prior-slot carry-forward + the staging prune below).
     val knownSanitized: Set[String] =
       if (staging.isEmpty) Set.empty
-      else positive.asMap().asScala.keysIterator.map(k => normalizer.sanitize(k.cleanTitle)).toSet
+      else positive.asMap().asScala.keysIterator.map(k => k.normalized).toSet
     // Sanitized TMDB aliases (Polish + original title) of every CONCLUDED, BARE
     // row, so a cinema's original-language listing of a known film ("Tangled") is
     // recognised as already-known and lands on the existing resolved row instead
@@ -1559,12 +1559,12 @@ class CaffeineMovieCache(
   private def redirectToExistingVariant(primary: CacheKey): Option[CacheKey] = {
     if (positive.getIfPresent(primary) != null) return None
     import scala.jdk.CollectionConverters._
-    val normalizedRaw = normalizer.sanitize(primary.cleanTitle)
+    val normalizedRaw = primary.normalized
     // Match by cleanTitle normalisation. Cross-script titles produce
     // different normalised forms (sanitize keeps Unicode letters), so a
     // Cyrillic row can't be matched by a Latin scrape and vice versa.
     val candidates = positive.asMap().asScala.iterator
-      .filter { case (k, _) => normalizer.sanitize(k.cleanTitle) == normalizedRaw }
+      .filter { case (k, _) => k.normalized == normalizedRaw }
       .map(_._1)
       .toSet  // unique by CacheKey (which dedups by normalized form)
     if (candidates.size == 1) Some(candidates.head) else None
@@ -1574,7 +1574,7 @@ class CaffeineMovieCache(
     import scala.jdk.CollectionConverters._
     val normalizedRaw = normalizer.sanitize(rawTitle)
     positive.asMap().asScala.iterator.exists { case (k, e) =>
-      e.tmdbId.isDefined && normalizer.sanitize(k.cleanTitle) == normalizedRaw
+      e.tmdbId.isDefined && k.normalized == normalizedRaw
     }
   }
 
@@ -1742,7 +1742,7 @@ class CaffeineMovieCache(
   private[services] def applyDelete(id: String): Unit = {
     import scala.jdk.CollectionConverters._
     positive.asMap().keySet().asScala
-      .find(k => StoredMovieRecord.idFor(k.cleanTitle, k.year, normalizer) == id)
+      .find(k => StoredMovieRecord.idFor(k) == id)
       .foreach { k =>
         positive.invalidate(k)
         // An out-of-band Mongo delete arriving via the change stream — the mirror

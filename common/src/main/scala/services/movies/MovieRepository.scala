@@ -36,6 +36,14 @@ object StoredMovieRecord {
   def idFor(title: String, year: Option[Int], normalizer: TitleNormalizer): String =
     s"${normalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
+  /** The same `_id`, for a caller that already holds the key. A [[CacheKey]]
+   *  carries the normalised form it was BUILT with, so this needs no normalizer
+   *  and cannot re-derive a different one: re-sanitizing `k.cleanTitle` with
+   *  today's rules would silently disagree with the key's own identity if the
+   *  two rule sets ever differed. Most callers are in this shape. */
+  def idFor(k: CacheKey): String =
+    s"${k.normalized}|${k.year.map(_.toString).getOrElse("")}"
+
   /** The `_id` of a stored row. Prefers the actual `persistedId` over re-deriving
    *  `idFor(title, year)`: the display `title` is derived from `sourceData`, so a
    *  clean doc whose cinema reports the title WITH the year baked in (e.g.
