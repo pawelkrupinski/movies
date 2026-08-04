@@ -27,6 +27,24 @@ class TitleNormalizerInstanceSpec extends AnyFlatSpec with Matchers {
     uk.sanitize("Minions & Monster") shouldBe "minionsmonster"
   }
 
+  /** The keys that actually broke, from the 2026-08-04 convergence run: the
+   *  replay harness handed the UK and Germany legs POLAND's instance, so the
+   *  Polish " & " -> " i " unification keyed British and German films through a
+   *  conjunction those languages do not use. Verbatim, because "& -> i" reads
+   *  harmless until you see  in a UK corpus. */
+  it should "not put the Polish conjunction into a British or German title" in {
+    val wallace = "Wallace & Gromit: The Curse of the Were-Rabbit"
+    pl.sanitize(wallace) shouldBe "wallaceigromitthecurseofthewererabbit"  // what the leg WRONGLY produced
+    uk.sanitize(wallace) shouldBe "wallacegromitthecurseofthewererabbit"   // what it must produce
+    de.sanitize(wallace) shouldBe "wallacegromitthecurseofthewererabbit"
+
+    pl.sanitize("Pat Garrett & Billy the Kid") shouldBe "patgarrettibillythekid"
+    uk.sanitize("Pat Garrett & Billy the Kid") shouldBe "patgarrettbillythekid"
+
+    pl.sanitize("B-Movie: Lust & Sound in West Berlin 1979") shouldBe "bmovielustisoundinwestberlin1979"
+    de.sanitize("B-Movie: Lust & Sound in West Berlin 1979") shouldBe "bmovielustsoundinwestberlin1979"
+  }
+
   it should "scope the Poland-only Mandalorian rewrite too" in {
     // German cinemas list this as "The Mandalorian And Grogu"; the Poland-only
     // rule maps it onto the Polish canonical, which pinned a Berlin row.

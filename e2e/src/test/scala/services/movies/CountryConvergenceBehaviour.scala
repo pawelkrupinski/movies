@@ -1,6 +1,5 @@
 package services.movies
 
-import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import clients.TmdbClient
 import controllers.{FilmSchedule, MovieControllerService}
@@ -237,7 +236,7 @@ abstract class CountryConvergenceBehaviour(
 
   private def cinemasByFilm(w: ArchiveReplayWiring): Map[String, Set[String]] =
     w.movieRepository.findAll().map(r =>
-      StoredMovieRecord.idOf(r, titleNormalizer) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
+      StoredMovieRecord.idOf(r, w.movieRepository.normalizer) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
 
   /** ONE seeded archive + booted corpus, shared by the convergence test and the
    *  no-loss test.
@@ -282,7 +281,8 @@ abstract class CountryConvergenceBehaviour(
         // `CountryConvergenceBehaviour.this` — inside the anonymous `ArchiveReplayWiring`
         // both this spec's `country` and the wiring's are in scope, and they are the same
         // value; naming the spec's is what disambiguates.
-        enrichmentLanguage = CountryConvergenceBehaviour.this.country.language, normalizer = titleNormalizer)
+        enrichmentLanguage = CountryConvergenceBehaviour.this.country.language,
+        normalizer = TitleNormalizer.forCountry(CountryConvergenceBehaviour.this.country))
     }
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
