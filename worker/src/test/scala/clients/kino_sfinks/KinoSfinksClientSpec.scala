@@ -73,4 +73,35 @@ class KinoSfinksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val client = new KinoSfinksClient(http, KinoSfinks)
     client.fetchFilmDetail("https://kinosfinks.okn.edu.pl/wydarzenie-9999-brak-szczegoly-9999.html") shouldBe None
   }
+
+  // ── Empty vs. drifted: the difference between white and red ────────────────
+  //
+  // Both of the fixtures below parse to ZERO screenings, and the venue has been
+  // white on /uptime since 2026-07-11 because of it. The two causes need
+  // OPPOSITE outcomes: a venue with nothing scheduled is a legitimate empty
+  // scrape (white), while a page that no longer carries the schedule at all is
+  // a scrape FAILURE (red). Reporting both as "0 showtimes" is what let the
+  // site's CMS migration sit undiagnosed — a silent zero is indistinguishable
+  // from a dormant venue. Same guard as MsiClient's all-months-failed throw.
+
+  it should "report zero screenings, not a failure, when the site says there are no events" in {
+    val emptyCalendar = new FakeHttpFetch("kino-sfinks-empty-calendar")
+
+    // Live capture 2026-08-04: the venue has nothing scheduled in ANY category
+    // through October, so the harmonogram renders the CMS's own empty marker
+    // (`div.empty-results` → "Brak wydarzeń") in place of the listing.
+    new KinoSfinksClient(emptyCalendar, KinoSfinks).fetch() shouldBe empty
+  }
+
+  it should "fail loudly when the schedule page carries neither a listing nor an empty marker" in {
+    val drifted = new FakeHttpFetch("kino-sfinks-shape-drift")
+
+    // Live capture 2026-08-04 of the site ROOT, standing in for the schedule URL
+    // silently serving something that isn't the schedule — the shape that bit
+    // Helios (slug rename → 302 to the homepage → 0 films, recorded green-ish).
+    // No listing table and no empty marker means we cannot conclude "no
+    // screenings", so this must surface as a failed scrape rather than an empty one.
+    val thrown = the[RuntimeException] thrownBy new KinoSfinksClient(drifted, KinoSfinks).fetch()
+    thrown.getMessage should include("kinosfinks.okn.edu.pl")
+  }
 }

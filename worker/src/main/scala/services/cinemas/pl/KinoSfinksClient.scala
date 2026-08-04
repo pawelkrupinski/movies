@@ -39,6 +39,16 @@ import scala.util.Try
  * tolerantly — a missing page just contributes nothing (the recorded fixture
  * is page 1 only).
  *
+ * An empty parse is only reported as an empty scrape when the page accounts for
+ * it — see [[KinoSfinksClient.accountsForEmptyListing]]. As of 2026-08 the venue
+ * has nothing scheduled in any category and the site has moved off the
+ * `widok_listy` table onto per-day URLs and CMS panels, so this parser reads
+ * zero rows for BOTH reasons at once. The guard is what keeps those two
+ * distinguishable: while the CMS still renders its "Brak wydarzeń" marker the
+ * scrape stays white (correctly dormant), and the moment the venue repopulates
+ * into markup this parser cannot read, it goes red instead of silently staying
+ * white forever.
+ *
  * `defersTmdbResolution = false`: the row resolves straight from its clean
  * title (the listing carries no identity hints), and the detail metadata —
  * including the production year — merges in asynchronously when the detail
@@ -85,6 +95,18 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema)
     val documents = firstDocument +: extraPaths.flatMap(p => extraDocuments.getOrElse(p, None))
 
     val slots = documents.flatMap(parseDocument)
+
+    // A zero-screening parse is only believable when the page ACCOUNTS for being
+    // empty. If no page rendered either the listing table or the CMS's own
+    // "Brak wydarzeń" marker, we are not looking at a schedule at all — report a
+    // failure so it surfaces RED on /uptime rather than white, where it would be
+    // indistinguishable from a genuinely film-dormant venue. Same guard as
+    // KinoStudioClient / MsiClient / KinoAwangarda2Client / KinoPatriaClient.
+    if (slots.isEmpty && !documents.exists(accountsForEmptyListing))
+      throw new IllegalStateException(
+        s"No schedule at $PageUrl — the page rendered neither a `table.$ListingClass` " +
+        s"nor a `div.$EmptyMarkerClass` empty marker (CMS migration? soft-404?)")
+
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
       CinemaMovie(
         movie     = Movie(title),
@@ -111,6 +133,20 @@ object KinoSfinksClient {
   // cultural events on the same harmonogram lack it. This is the film filter.
   private val FilmCategory = "Seanse"
 
+  // The listing table, and the CMS's marker for "this calendar has no entries".
+  private val ListingClass     = "widok_listy"
+  private val EmptyMarkerClass = "empty-results"
+
+  /** Does this page explain a zero-screening parse? Either it rendered the
+    * listing table — so "no films" is a real filter result, the schedule holding
+    * only non-film events — or it rendered the CMS's own empty marker
+    * (`div.empty-results` → "Brak wydarzeń"), meaning nothing is scheduled at
+    * all. A page carrying NEITHER is not a schedule we recognise, and its
+    * emptiness says nothing about the venue's programme. */
+  private def accountsForEmptyListing(document: Document): Boolean =
+    !document.select(s"table.$ListingClass").isEmpty ||
+      !document.select(s"div.$EmptyMarkerClass").isEmpty
+
   private val DateFmt = DateTimeFormatter.ofPattern("dd-MM-yyyy")
   private val DatePat = """(\d{2}-\d{2}-\d{4})""".r
   private val NextPagePat = """/wydarzenia-harmonogram-strona-\d+\.html""".r
@@ -134,7 +170,7 @@ object KinoSfinksClient {
   /** Parse one harmonogram page into its film screenings. */
   private def parseDocument(document: org.jsoup.nodes.Document): Seq[RawSlot] = {
     var carriedDate: Option[LocalDate] = None
-    document.select("table.widok_listy tbody tr[onclick]").asScala.toSeq.flatMap { row =>
+    document.select(s"table.$ListingClass tbody tr[onclick]").asScala.toSeq.flatMap { row =>
       // The date cell is only populated on the first row of each day; carry the
       // last seen date forward to the day's remaining rows.
       cellDate(row).foreach(d => carriedDate = Some(d))
