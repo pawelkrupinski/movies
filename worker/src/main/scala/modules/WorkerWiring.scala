@@ -7,7 +7,7 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, 
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import tools.{CountingHttpFetch, DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, StagingFilmEnriched, TaskFinished}
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MixedFilmSplitter, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
@@ -678,6 +678,9 @@ class WorkerWiring(
     // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.
     wikidata = Some(wikidataClient))
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache, movieRepository)
+  // Undoes a title collision that merged two different films onto one row —
+  // the stray cinemas go back through staging and come out as their own record.
+  lazy val mixedFilmSplitter = new MixedFilmSplitter(movieCache, stagingRepository)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
   // Hold the first scrape back from boot so the cold-boot scrape burst doesn't
@@ -1287,6 +1290,7 @@ class WorkerWiring(
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().
     unscreenedCleanup.start()
+    mixedFilmSplitter.start()
     // Tag each cinema with its scraper-client marker (shared platform client vs a
     // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
     // (transitions only fire on change, so an in-flight fallback would otherwise go
@@ -1365,6 +1369,7 @@ class WorkerWiring(
     freshnessStore.close()
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
+    mixedFilmSplitter.stop()
     readModelProjector.stop()
     movieCache.stop()
     readModelRepository.close()
