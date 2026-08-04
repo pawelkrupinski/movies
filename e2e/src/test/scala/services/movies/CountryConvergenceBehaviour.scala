@@ -700,8 +700,25 @@ abstract class CountryConvergenceBehaviour(
       val emissions = new AtomicInteger(0)
       w.movieRepository.watchChanges(_ => { emissions.incrementAndGet(); () }, _ => { emissions.incrementAndGet(); () })
 
+      val splitsBefore = w.movieService.mixedFilmSplits
       w.movieService.settle()
       w.movieCache.canonicalizeBySanitize()
+
+      // The settle also SPLITS a row found to hold two different films, and over a
+      // real country's corpus it must find none. A handful of genuine title
+      // collisions exist in production ("Joanna d'Arc" carrying both Besson's 1999
+      // film and Pálmason's 2025 one), but they are rare and none is in these
+      // replays — so a split firing here means the detector has begun reading
+      // ORDINARY data as two films, which costs a good row its cinemas. That
+      // failure mode is not hypothetical: a director disagreement (cinemas credit
+      // different roles), an uncorroborated title difference (one film named in two
+      // languages) and a screening year printed for a repertory title each had to
+      // be abandoned as evidence, and each was caught only by counting.
+      withClue(s"settle split ${w.movieService.mixedFilmSplits - splitsBefore} cinema slot(s) out of " +
+               s"${country.displayName}'s settled corpus as belonging to a second film — " +
+               s"on a corpus that holds no mixed row, so the detector is reading ordinary data as two films: ") {
+        w.movieService.mixedFilmSplits shouldBe splitsBefore
+      }
 
       val after        = keySet(w)
       val cinemasAfter = cinemasByFilm(w)

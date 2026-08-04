@@ -100,7 +100,12 @@ class MovieService(
   // misses — but only under hard year corroboration (see `resolveTmdbId`). Same
   // `WikidataClient` `ImdbIdResolver` uses; default None so specs resolve as
   // before; `Wiring` injects it.
-  wikidata:             Option[WikidataClient]        = None
+  wikidata:             Option[WikidataClient]        = None,
+  // Where a row holding TWO different films sends the cinemas of the second one:
+  // `settle` re-diverts them here and the ordinary staging path gives each film a
+  // record of its own (see `MixedFilmSplitter`). Defaults to the no-op repository,
+  // so a caller without staging simply never splits.
+  staging:              services.staging.StagingRepository = services.staging.StagingRepository.empty
 ) extends Drainable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
@@ -149,7 +154,34 @@ class MovieService(
    *  `backfillEmbeddedYears` first re-keys any yearless row whose title carries a
    *  delimited year onto that year (then canonicalizes) — the settle-path home for
    *  the title-year persist, off the async resolve so it can't race `canonicalRank`. */
-  def settle(): Unit = cache.backfillEmbeddedYears()
+  def settle(): Unit = {
+    cache.backfillEmbeddedYears()
+    // Part of the settle proper, not a sweep of its own: a row holding two films is
+    // a consolidation problem, and settle is where the cache already re-keys and
+    // merges. Being here also puts it under the convergence suite's settle
+    // assertion — "a further settle changes no key, moves no film's cinemas, folds
+    // no row and writes nothing" — which is the guarantee a splitter most needs,
+    // since a split that the next scrape undoes would churn forever.
+    splitsSoFar += mixedFilmSplitter.splitMixedRows()
+    ()
+  }
+
+  private lazy val mixedFilmSplitter = new MixedFilmSplitter(cache, staging)
+
+  @volatile private var splitsSoFar = 0
+
+  /** How many cinema slots settle has re-diverted as belonging to a SECOND film,
+   *  cumulative over this service's life.
+   *
+   *  Exposed so the corpus-wide suites can assert it stays ZERO. A healthy corpus
+   *  needs no splitting — the rows that do are a handful of genuine title
+   *  collisions, and neither fixture corpus holds one. So any split firing over a
+   *  replayed corpus means the detector has started reading ordinary data as two
+   *  films, which is the failure mode that matters: it costs a good row its
+   *  cinemas. Three separate signals had to be abandoned for exactly that
+   *  (director, uncorroborated title, screening-year), each caught only because
+   *  something counted. */
+  def mixedFilmSplits: Int = splitsSoFar
 
   /** Drain the dispatcher's owned pool so any in-flight inline TMDB resolution
    *  finishes — its upserts hit Mongo and its `ImdbIdMissing` event fires (the id
@@ -1153,7 +1185,15 @@ class MovieService(
       // only resolver. A person whose filmography doesn't contain the film simply
       // yields nothing here, which is exactly the signal to try the next one.
       tmdb.findPersonCandidates(directory.split(",").head.trim).iterator.zipWithIndex.flatMap { case (personId, candidateIndex) =>
-        val credits = tmdb.personDirectorCredits(personId)
+        // Directing credits first — the common case, unchanged. A cinema that
+        // printed the WRITER instead ("Drzewo magii" is directed by Ben Gregor and
+        // written by Simon Farnaby, and cinemas print either) would otherwise walk
+        // an empty filmography and resolve to nothing, so fall back to what this
+        // person WROTE. Same response, same round-trip — TMDB returns the whole
+        // crew — and every guard below is unchanged, so widening where the film may
+        // be FOUND does not widen what counts as a match.
+        val directed = tmdb.personDirectorCredits(personId)
+        val credits  = if (directed.nonEmpty) directed else tmdb.personWriterCredits(personId)
         val wanted  = candidates.iterator.map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
         def titleOf(f: TmdbClient.SearchResult): Set[String] =
           (Seq(f.title) ++ f.originalTitle.toSeq).map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet

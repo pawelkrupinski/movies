@@ -96,8 +96,17 @@ class MetascoreRatings(
         // independent ones: same ladder, same order, but the titles share a
         // fetch memo so a slug an earlier title already probed isn't probed
         // again ("The Sting" and "Sting" both end at /movie/sting).
+        // The film's own director — the one thing that tells two same-titled,
+        // same-year films apart on a rating site.
+        //
+        // From `directorsFor`, NOT the row's `Tmdb` slot: the slot keeps only the
+        // localised credit, so an anime directed by 秋本賢一郎 would never meet
+        // Metacritic's "Kenichiro Akimoto" and a perfectly good link would be
+        // thrown away. `directorsFor` returns the localised AND native-script
+        // spellings, so either side's rendering matches.
+        val directors = tmdb.directorsFor(tmdbId)
         val resolved = metacritic.resolveAcross(
-          Seq(linkTitle) ++ englishTitle ++ usTitle, mcFallback, year)
+          Seq(linkTitle) ++ englishTitle ++ usTitle, mcFallback, year, directors)
         freshScore = resolved.flatMap(_.metascore)
         resolved.map(_.url)
       }

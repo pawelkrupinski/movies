@@ -18,6 +18,9 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
   private def slot(director: Seq[String], original: Option[String], runtime: Option[Int] = None) =
     SourceData(title = Some("x"), director = director, originalTitle = original, runtimeMinutes = runtime)
 
+  // The two real splits are corroborated by runtime or year, so the cases that
+  // MUST split carry them; the cases that must NOT split carry agreeing ones.
+
   "a row whose cinemas publish different original titles" should "split, with the odd one out as the stray" in {
     // "Obcy": 2 cinemas on Ozon's L'étranger, 1 on Brandt Andersen's film.
     val record = MovieRecord(data = Map[Source, SourceData](
@@ -29,14 +32,8 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     strays.map(_._1) shouldBe Seq(KinoMuranow: Source)
   }
 
-  "a row holding two films of the same title" should "split even at one slot each" in {
-    // "Joanna d'Arc": Besson's 1999 film and Pálmason's 2025 one.
-    val record = MovieRecord(data = Map[Source, SourceData](
-      KinoMuranow -> slot(Seq("Luc Besson"), Some("Joan of Arc"), Some(160)),
-      Helios      -> slot(Seq.empty, Some("Jóhanna af Örk"))))
-
-    MixedFilmDetector.strays(record, titleNormalizer) should have size 1
-  }
+  // ("Joanna d'Arc" — the other production row — is covered below, with the years
+  // its cinemas actually publish; a differing title needs corroborating.)
 
   // ── What must NOT split ───────────────────────────────────────────────────
 
@@ -79,10 +76,103 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
   }
 
+  // ── The scrape boundary: don't create the mixed row at all ────────────────
+
+  "an incoming listing for a different film" should "be recognised before it is merged" in {
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120))))
+
+    MixedFilmDetector.wouldAddASecondFilm(
+      row, Some("I Was A Stranger"), Some(103), Some(2024), titleNormalizer) shouldBe true
+  }
+
+  /** The listing field the smaller cinemas fill with the POLISH title. It differs
+   *  from the row's real original title, but agrees on runtime and year — so
+   *  corroboration waves it through, where an uncorroborated gate re-diverted nine
+   *  known films on every tick. */
+  "an incoming listing that merely echoes the Polish title" should "still merge" in {
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120))))
+
+    MixedFilmDetector.wouldAddASecondFilm(
+      row, Some("Obcy"), Some(120), None, titleNormalizer) shouldBe false
+  }
+
+  "an incoming listing with nothing to corroborate it" should "still merge" in {
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120))))
+
+    MixedFilmDetector.wouldAddASecondFilm(
+      row, Some("I Was A Stranger"), None, None, titleNormalizer) shouldBe false
+  }
+
   it should "not split on a differing director when neither publishes an original title" in {
     val record = MovieRecord(data = Map[Source, SourceData](
       Multikino -> slot(Seq("Ben Gregor"), None),
       Helios    -> slot(Seq("Simon Farnaby"), None)))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  /** What cinemas actually publish, measured against TMDB across the corpus: a
+   *  fifth of original titles "disagree", and almost all of that is spelling
+   *  variants and decorations rather than a different film — "Terminator 2:
+   *  Judgement Day (re-release)" beside another cinema's "Terminator 2: Judgment
+   *  Day". Folding each title to one string and testing containment calls those
+   *  two different films; comparing WORDS does not. */
+  it should "not split on a spelling variant or a decoration in the original title" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq.empty, Some("Terminator 2: Judgement Day (re-release)")),
+      Helios    -> slot(Seq.empty, Some("Terminator 2: Judgment Day"))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  it should "not split when one cinema publishes the English title and another the original" in {
+    // Also real: a cinema prints the international release title where TMDB (and
+    // another cinema) carry the original. They share the distinctive word.
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq.empty, Some("Ghost in the Shell")),
+      Helios    -> slot(Seq.empty, Some("GHOST IN THE SHELL"))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  /** A third of the corpus's original-title disagreements are the SAME film named
+   *  in two languages — "Candidates of Death" beside "Kandydaci śmierci", "Otto e
+   *  mezzo" beside "8½". No word bridges those, so on the title alone two cinemas
+   *  listing one film that way would split it. Runtime and year are language-proof
+   *  and agree when it really is one film. */
+  it should "not split two languages of one title when runtime and year agree" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq.empty, Some("Candidates of Death"), Some(94)).copy(releaseYear = Some(2026)),
+      Helios    -> slot(Seq.empty, Some("Kandydaci śmierci"),   Some(94)).copy(releaseYear = Some(2026))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  it should "still split when the runtimes disagree as well as the titles" in {
+    // "Obcy": Ozon's 120 minutes against Brandt Andersen's 103.
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino   -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120)).copy(releaseYear = Some(2025)),
+      KinoMuranow -> slot(Seq("Brandt Andersen"), Some("I Was A Stranger"), Some(103)).copy(releaseYear = Some(2025))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) should have size 1
+  }
+
+  it should "still split when the years disagree as well as the titles" in {
+    // "Joanna d'Arc": Besson's 1999 film against the Icelandic 2025 one.
+    val record = MovieRecord(data = Map[Source, SourceData](
+      KinoMuranow -> slot(Seq("Luc Besson"), Some("Joan of Arc"), Some(160)).copy(releaseYear = Some(1999)),
+      Helios      -> slot(Seq.empty, Some("Jóhanna af Örk"), None).copy(releaseYear = Some(2025))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) should have size 1
+  }
+
+  it should "not split on a differing title alone, with nothing to corroborate it" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq.empty, Some("Candidates of Death"), None),
+      Helios    -> slot(Seq.empty, Some("Kandydaci śmierci"),   None)))
 
     MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
   }

@@ -82,13 +82,14 @@ class MetacriticClient(http: HttpFetch) {
    *  title's full ladder in turn, `fallback` belonging to the first title — so
    *  this removes repeat requests without changing which page wins. */
   def resolveAcross(
-    titles:   Seq[String],
-    fallback: Option[String] = None,
-    year:     Option[Int]    = None
+    titles:    Seq[String],
+    fallback:  Option[String] = None,
+    year:      Option[Int]    = None,
+    directors: Set[String]    = Set.empty
   ): Option[Resolved] = {
     val attempt = new MetacriticClient(new MemoizedHttpFetch(http))
     titles.iterator.zipWithIndex
-      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year) }
+      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year, directors) }
       .nextOption()
   }
 
@@ -96,13 +97,33 @@ class MetacriticClient(http: HttpFetch) {
    *  search-page scrape for each. Private because the memo that makes the
    *  ladder cheap lives in [[resolveAcross]] — calling this directly would
    *  bypass it. */
-  private def probeLadder(title: String, fallback: Option[String], year: Option[Int]): Option[Resolved] = {
+  private def probeLadder(title: String, fallback: Option[String], year: Option[Int], directors: Set[String]): Option[Resolved] = {
     val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    canonicalResolve(title, year)
-      .orElse(effectiveFallback.flatMap(t => canonicalResolve(t, year)))
-      .orElse(searchAndPickBest(title, year).map(Resolved(_, None)))
-      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)).map(Resolved(_, None)))
+    canonicalResolve(title, year, directors)
+      .orElse(effectiveFallback.flatMap(t => canonicalResolve(t, year, directors)))
+      .orElse(searchAndPickBest(title, year).flatMap(url => verified(url, directors)))
+      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)).flatMap(url => verified(url, directors)))
   }
+
+  /** Read a search-derived page and keep it only if it is the right film.
+   *
+   *  The search path used to return its pick unread, so a page that title+year
+   *  could not separate from the real one was stored unchecked — which is how
+   *  Michel Franco's "Dreams" ended up on Haugerud's `/movie/dreams-drommer`,
+   *  both being 2025 films of that name. Reading the page also yields its
+   *  Metascore, which this path previously left as None. */
+  private def verified(url: String, directors: Set[String]): Option[Resolved] =
+    if (directors.isEmpty) Some(Resolved(url, None))   // nothing to check it against
+    else EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(url))) match {
+      // Read and CONTRADICTED — a different film, drop it.
+      case Some(body) if !MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)) => None
+      // Read and consistent — keep it, and take the Metascore while we have the page.
+      case Some(body) => Some(Resolved(url, MetacriticClient.parseMetascore(body)))
+      // Could not read it. Silence is not contradiction: the search already
+      // matched this page on title and year, so keep it exactly as before rather
+      // than letting an unreadable page throw a good link away.
+      case None => Some(Resolved(url, None))
+    }
 
   /** Canonical URL ONLY if any candidate returns 200; otherwise None. Tries
    *  the primary slug first and a leading-article-stripped variant second
@@ -125,7 +146,7 @@ class MetacriticClient(http: HttpFetch) {
    *  is wide enough to keep legitimate cross-region drift (a film's TMDB origin
    *  year vs Metacritic's later US date — "Picnic at Hanging Rock" is 1975 vs
    *  1979) while rejecting the decade-plus gaps that mark a different film. */
-  def canonicalResolve(title: String, year: Option[Int] = None): Option[Resolved] =
+  def canonicalResolve(title: String, year: Option[Int] = None, directors: Set[String] = Set.empty): Option[Resolved] =
     candidateSlugs(title, year).iterator
       .flatMap { slug =>
         // 404 = "that slug isn't a film", which is what the ladder probes for, so
@@ -134,6 +155,10 @@ class MetacriticClient(http: HttpFetch) {
         // is not an answer. See tools.EnrichmentRead.
         EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug")))
           .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
+          // Title and year are not always enough to name a film: Metacritic
+          // carries two 2025 "Dreams", Franco's and Haugerud's, and the slug
+          // probe hit whichever it hit. The page names its own director.
+          .filter(body => MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)))
           .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
       }
       .nextOption()
@@ -327,6 +352,37 @@ object MetacriticClient {
    *  Used only to reject a probed page whose year contradicts the film we're
    *  resolving — see [[yearsCompatible]]. */
   def parseReleaseYear(html: String): Option[Int] = JsonLdAggregateRating.datePublishedYear(html)
+
+  /** Could a page naming `theirs` be the film whose directors are `ours`?
+   *
+   *  Silent unless BOTH sides name somebody — a page that lists no director, or a
+   *  film we hold none for, is not evidence of anything and must not be rejected.
+   *  Names are compared by their word tokens so ordering and punctuation don't
+   *  matter ("Zhang Yimou" / "Yimou Zhang"), and one name's tokens CONTAINED in
+   *  another's counts, so a co-director credit still meets a single name. */
+  def directorsCompatible(ours: Set[String], theirs: Set[String]): Boolean = {
+    // Fold the spelling before comparing. Rating sites and TMDB render the same
+    // person differently: Metacritic writes "Ken'ichirô Akimoto" where TMDB has
+    // "Kenichiro Akimoto" — an apostrophe that must not split the name in two, and
+    // a circumflex that must not make it a different word. Dropping apostrophes
+    // and folding diacritics first makes both read as {kenichiro, akimoto}.
+    def tokens(name: String): Set[String] = {
+      // `\u0142` is its own codepoint, not a base letter plus a mark, so NFD leaves it
+      // alone and "Micha\u0142" would never meet "Michal" \u2014 the same special case the
+      // corpus's own `TitleNormalizer` carries.
+      val folded = java.text.Normalizer
+        .normalize(name.toLowerCase.replace("'", "").replace("\u2019", ""), java.text.Normalizer.Form.NFD)
+        .replaceAll("\\p{M}", "")
+        .replace("\u0142", "l")
+      folded.split("[^\\p{L}\\p{N}]+").filter(_.length >= 2).toSet
+    }
+    if (ours.isEmpty || theirs.isEmpty) true
+    else {
+      val a = ours.map(tokens).filter(_.nonEmpty)
+      val b = theirs.map(tokens).filter(_.nonEmpty)
+      a.isEmpty || b.isEmpty || a.exists(x => b.exists(y => x.subsetOf(y) || y.subsetOf(x)))
+    }
+  }
 
   /** How far a probed page's release year may sit from the film's before we
    *  treat it as a different film. Set generously (15y) to absorb legitimate

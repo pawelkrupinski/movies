@@ -1249,6 +1249,15 @@ class CaffeineMovieCache(
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
         _.findAll().iterator.collect { case r if r.cinema == cinema => normalizer.sanitize(r.title) -> r }.toMap
       }
+    // The row a sanitized title currently lives on, for the different-film check
+    // below. Canonical pick (lowest `canonicalRank`) so the answer doesn't depend on
+    // which year-variant the map happened to iterate first.
+    val rowFor: String => Option[MovieRecord] =
+      positive.asMap().asScala.toSeq
+        .groupBy { case (k, _) => k.normalized }
+        .view.mapValues(_.minBy { case (k, _) => canonicalRank(k) }._2)
+        .toMap
+        .get
     val divertedSanitized = scala.collection.mutable.Set.empty[String]
     // Titles diverted into staging for the FIRST time this cinema (no prior row) —
     // the newcomers whose initial step StagingReaper should kick off an event,
@@ -1265,8 +1274,19 @@ class CaffeineMovieCache(
       // `movies` yet — AND it isn't a known film listed under another language (an
       // alias of a concluded row). (Same-tick spelling variants already collapsed
       // in `deduped`.)
-      val divert       = staging.isDefined && !knownSanitized(norm) && !knownAliases(norm) &&
-                         !knownByCinemaSlot((cinema, norm))
+      // …or a film this cinema is showing that is NOT the film the row already
+      // describes. Without this, a row keyed by TITLE alone absorbs any same-titled
+      // film — "Joanna d'Arc" ends up carrying both Besson's 1999 picture and
+      // Pálmason's 2025 one and resolves to neither. Diverting sends it down the
+      // newcomer path, where it resolves on its own hints and folds into its own
+      // row. Needs a differing original title CORROBORATED by runtime or year, so a
+      // cinema that merely prints the Polish title in `originalTitle` — common on
+      // the smaller sites — is waved through (see `MixedFilmDetector`).
+      val aDifferentFilm = staging.isDefined && rowFor(norm).exists(record =>
+        MixedFilmDetector.wouldAddASecondFilm(
+          record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, normalizer))
+      val divert       = staging.isDefined && ((!knownSanitized(norm) && !knownAliases(norm) &&
+                         !knownByCinemaSlot((cinema, norm))) || aDifferentFilm)
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
       // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
       // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)

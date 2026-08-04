@@ -899,10 +899,10 @@ tmdbId:            381341
 imdbId:            tt4901306
 originalTitle:     Perfetti sconosciuti
 imdbRating:        7.7
-metascore:         63
+metascore:         —
 rottenTomatoes:    79
 filmwebRating:     7.6
-metacriticUrl:     https://www.metacritic.com/movie/perfect-strangers-perfectos-desconocidos
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/perfetti_sconosciuti_2016
 filmwebUrl:        https://www.filmweb.pl/film/Dobrze+si%C4%99+k%C5%82amie+w+mi%C5%82ym+towarzystwie-2016-752725
 cinemaFilmUrls:
@@ -954,10 +954,10 @@ tmdbId:            1510325
 imdbId:            tt36454256
 originalTitle:     Gioia mia
 imdbRating:        7.1
-metascore:         71
+metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
-metacriticUrl:     https://www.metacritic.com/movie/sweetheart
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/sweetheart_2025
 filmwebUrl:        —
 cinemaFilmUrls:
@@ -3991,10 +3991,10 @@ tmdbId:            1451034
 imdbId:            tt5089534
 originalTitle:     Freak Show
 imdbRating:        6.5
-metascore:         54
+metascore:         —
 rottenTomatoes:    54
 filmwebRating:     6.8
-metacriticUrl:     https://www.metacritic.com/movie/freak-show
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/freak_show
 filmwebUrl:        https://www.filmweb.pl/film/Freak+Show-2026-10065590
 cinemaFilmUrls:
@@ -4019,10 +4019,10 @@ tmdbId:            1451034
 imdbId:            tt5089534
 originalTitle:     Freak Show
 imdbRating:        6.5
-metascore:         54
+metascore:         —
 rottenTomatoes:    54
 filmwebRating:     6.8
-metacriticUrl:     https://www.metacritic.com/movie/freak-show
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/freak_show
 filmwebUrl:        https://www.filmweb.pl/film/Freak+Show-2026-10065590
 cinemaFilmUrls:
@@ -6075,10 +6075,10 @@ tmdbId:            1429348
 imdbId:            tt36243564
 originalTitle:     L'Étranger
 imdbRating:        7.1
-metascore:         32
+metascore:         —
 rottenTomatoes:    91
 filmwebRating:     6.9
-metacriticUrl:     https://www.metacritic.com/movie/the-stranger
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/the_stranger_2025
 filmwebUrl:        https://www.filmweb.pl/film/Obcy-2025-10089279
 cinemaFilmUrls:
@@ -6109,7 +6109,7 @@ imdbRating:        8.1
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     7.7
-metacriticUrl:     https://www.metacritic.com/movie/obsession
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/obsession
 filmwebUrl:        https://www.filmweb.pl/film/Obsesja-2025-10094250
 cinemaFilmUrls:
@@ -6795,10 +6795,10 @@ tmdbId:            194
 imdbId:            tt0211915
 originalTitle:     Le Fabuleux Destin d'Amélie Poulain
 imdbRating:        8.3
-metascore:         37
+metascore:         —
 rottenTomatoes:    90
 filmwebRating:     7.6
-metacriticUrl:     https://www.metacritic.com/movie/amelia
+metacriticUrl:     —
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/le_fabuleux_destin_damelie_poulain
 filmwebUrl:        https://www.filmweb.pl/film/Amelia-2001-31416
 cinemaFilmUrls:

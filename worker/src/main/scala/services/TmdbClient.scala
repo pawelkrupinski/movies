@@ -491,11 +491,24 @@ class TmdbClient(
   /** A person's movies as a director — the films they're credited for in the
    *  Directing department. Returns the same `SearchResult` shape so the
    *  caller can reuse picking / sorting logic. */
-  def personDirectorCredits(personId: Int): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
+  def personDirectorCredits(personId: Int): Seq[TmdbClient.SearchResult] =
+    personCredits(personId, "Directing")
+
+  /** The films this person is credited on as a WRITER.
+   *
+   *  Cinemas do not reliably print the director. "Drzewo magii" is directed by Ben
+   *  Gregor and written by Simon Farnaby, and some cinemas print the writer — so a
+   *  walk over directing credits alone finds nothing for them and the film goes
+   *  unresolved. Same response, same round-trip (TMDB returns the whole crew), just
+   *  the other department. */
+  def personWriterCredits(personId: Int): Seq[TmdbClient.SearchResult] =
+    personCredits(personId, "Writing")
+
+  private def personCredits(personId: Int, department: String): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
     Try {
       val body = httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth)
       (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        .filter(c => (c \ "department").asOpt[String].contains("Directing"))
+        .filter(c => (c \ "department").asOpt[String].contains(department))
         .flatMap { js =>
           for {
             id <- (js \ "id").asOpt[Int]

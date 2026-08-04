@@ -7,6 +7,8 @@ import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 
 import scala.collection.mutable
 
+import services.enrichment.scraping.JsonLdAggregateRating
+
 class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   "slugify" should "lowercase + hyphenate a plain title" in {
@@ -594,5 +596,67 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     c.resolveAcross(Seq("Poczatek", "Inception", "Never Reached"), None, None).map(_.url) shouldBe
       Some("https://www.metacritic.com/movie/inception")
     fetch.requested.exists(_.contains("never-reached")) shouldBe false
+  }
+
+  // ── Two same-titled films of the same year ────────────────────────────────
+  //
+  // Metacritic carries TWO 2025 films called "Dreams": Michel Franco's and Dag
+  // Johan Haugerud's. Title and year matched both, the first won, and Franco's
+  // film was given the Norwegian one's page and its metascore of 81 — a wrong
+  // answer that survived a full re-enrich because it re-derived identically.
+  // The page names its own director, which is what separates them.
+
+  /** The JSON-LD shape Metacritic actually serves (verified against the live
+   *  `/movie/dreams-drommer` page). */
+  private def pageFor(director: String, year: String): String =
+    s"""<html><head><script type="application/ld+json">
+       |{"@type":"Movie","name":"Dreams","datePublished":"$year-05-01",
+       | "director":[{"@type":"Person","name":"$director"}],
+       | "aggregateRating":{"@type":"AggregateRating","ratingValue":81}}
+       |</script></head><body></body></html>""".stripMargin
+
+  "directorNames" should "read the director out of a Metacritic page's JSON-LD" in {
+    JsonLdAggregateRating.directorNames(pageFor("Dag Johan Haugerud", "2025")) shouldBe Set("Dag Johan Haugerud")
+  }
+
+  "directorsCompatible" should "reject a page naming a different director" in {
+    MetacriticClient.directorsCompatible(Set("Michel Franco"), Set("Dag Johan Haugerud")) shouldBe false
+  }
+
+  /** Real: Metacritic's `/movie/all-you-need-is-kill-2025` credits "Ken'ichirô
+   *  Akimoto" where TMDB has "Kenichiro Akimoto". Splitting on the apostrophe and
+   *  keeping the circumflex made those two different people, and a correct link
+   *  was thrown away. */
+  it should "accept the same person spelled with apostrophes or accents" in {
+    MetacriticClient.directorsCompatible(Set("Kenichiro Akimoto"), Set("Ken'ichirô Akimoto")) shouldBe true
+    MetacriticClient.directorsCompatible(Set("Michał Żurawski"), Set("Michal Zurawski"))      shouldBe true
+  }
+
+  it should "accept the same person written either way round, or with a co-director" in {
+    MetacriticClient.directorsCompatible(Set("Zhang Yimou"), Set("Yimou Zhang"))            shouldBe true
+    MetacriticClient.directorsCompatible(Set("Joel Coen"), Set("Joel Coen", "Ethan Coen"))  shouldBe true
+  }
+
+  it should "stay silent when either side names nobody" in {
+    // A page listing no director is not evidence of a different film, and neither
+    // is a film we hold no director for. Rejecting on a gap would lose every
+    // legitimate link where one side simply doesn't publish one.
+    MetacriticClient.directorsCompatible(Set.empty, Set("Dag Johan Haugerud")) shouldBe true
+    MetacriticClient.directorsCompatible(Set("Michel Franco"), Set.empty)      shouldBe true
+  }
+
+  "canonicalResolve" should "refuse a same-title same-year page by a different director" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String = pageFor("Dag Johan Haugerud", "2025")
+    })
+    c.canonicalResolve("Dreams", Some(2025), Set("Michel Franco")) shouldBe None
+  }
+
+  it should "still accept the page when the director agrees" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String = pageFor("Michel Franco", "2025")
+    })
+    c.canonicalResolve("Dreams", Some(2025), Set("Michel Franco")).map(_.url) shouldBe
+      Some("https://www.metacritic.com/movie/dreams-2025")
   }
 }

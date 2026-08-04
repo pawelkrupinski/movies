@@ -296,6 +296,8 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     val emissions = new AtomicInteger(0)
     w.movieRepository.watchChanges(_ => { emissions.incrementAndGet(); () }, _ => { emissions.incrementAndGet(); () })
 
+    val splitsBefore = w.movieService.mixedFilmSplits
+
     // Run IDENTICAL re-scrape ticks until the corpus reaches an emission-free
     // FIXPOINT — two consecutive zero-emission ticks. The prod-meaningful CHURN
     // invariants (NO fold merges, NO re-diversion of a known film) must hold on
@@ -351,6 +353,19 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
       s"A settled corpus must not re-fold or re-divert under identical re-scrape, but:\n" +
         s"${churn.mkString("\n")}\n") {
       churn.toList shouldBe empty
+    }
+
+    // 2) …and settle never decides one of these rows holds a SECOND film. This
+    // corpus contains no genuine title collision, so a split here means the
+    // detector is reading ordinary data as two films and is about to take a good
+    // row's cinemas away. It has been wrong three times in exactly that way — on a
+    // director disagreement (cinemas credit different roles), on a title difference
+    // with nothing corroborating it (one film named in two languages), and on a
+    // screening year printed for a repertory title ("Rozmowa", 1974, listed as
+    // 2026 with "The Converastion" mistyped). Each was caught only by counting.
+    withClue(s"settle split ${w.movieService.mixedFilmSplits - splitsBefore} cinema slot(s) out of a " +
+             s"corpus that holds no mixed row: ") {
+      w.movieService.mixedFilmSplits shouldBe splitsBefore
     }
   }
 }

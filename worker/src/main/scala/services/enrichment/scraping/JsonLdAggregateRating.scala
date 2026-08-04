@@ -44,6 +44,30 @@ object JsonLdAggregateRating {
    *  a title-slug can collide with an unrelated film of the same name (e.g.
    *  "The North" 2026 de-articles to the slug of Rob Reiner's "North" 1994).
    *  Returns None when no JSON-LD block carries a parseable `datePublished`. */
+  /** The `director` names in a page's JSON-LD, if it names any.
+   *
+   *  Metacritic publishes them as `"director":[{"@type":"Person","name":"…"}]`.
+   *  A rating site's page is identified by its TITLE and YEAR alone otherwise,
+   *  and that is not always enough: Metacritic carries TWO 2025 films called
+   *  "Dreams" — Michel Franco's and Dag Johan Haugerud's — so title+year matched
+   *  both and the first won, giving Franco's film the Norwegian one's score. The
+   *  director is what tells them apart, exactly as it does in the TMDB walk. */
+  def directorNames(html: String): Set[String] = {
+    val document = Jsoup.parse(html)
+    document.select("script[type=application/ld+json]").asScala.iterator
+      .map(_.data())
+      .flatMap { raw =>
+        Try(Json.parse(raw)).toOption.toSeq.flatMap { js =>
+          val node = js \ "director"
+          node.asOpt[Seq[JsValue]].getOrElse(node.asOpt[JsValue].toSeq)
+            .flatMap(d => (d \ "name").asOpt[String].orElse(d.asOpt[String]))
+        }
+      }
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .toSet
+  }
+
   def datePublishedYear(html: String): Option[Int] = {
     val document = Jsoup.parse(html)
     document.select("script[type=application/ld+json]").asScala.iterator

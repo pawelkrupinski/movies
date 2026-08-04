@@ -7,7 +7,7 @@ import services.alerts.{FallbackAlert, FilmwebDropAlerter, StagingStuckAlerter, 
 import services.freshness.{FreshnessKind, FreshnessStore, MongoFreshnessStore}
 import tools.{CountingHttpFetch, DaemonExecutors, Env, ExecutionBudget, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HostScrapeStats, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ResidentialProxy, ScrapeCities, SessionWarmingHttpFetch, SharedExecutionBudget, StickyShardHttpFetch, ThrottledHttpFetch}
 import services.events.{EventBus, ImdbIdMissing, InProcessEventBus, StagingFilmEnriched, TaskFinished}
-import services.movies.{CaffeineMovieCache, MixedFilmSplitter, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieRepository, MovieService, QueueResolveDispatcher, UnscreenedCleanup}
 import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
@@ -676,11 +676,10 @@ class WorkerWiring(
     letterboxdIdResolver = Some(letterboxdIdResolver),
     // Same WikidataClient ImdbIdResolver uses — lets a tmdbId-less row with a
     // Filmweb URL resolve via P5032 → P4947 (corroborated) once Filmweb is un-gated.
-    wikidata = Some(wikidataClient))
+    wikidata = Some(wikidataClient),
+    // Where `settle` re-diverts the cinemas of a row's second film.
+    staging = stagingRepository)
   lazy val unscreenedCleanup = new UnscreenedCleanup(movieCache, movieRepository)
-  // Undoes a title collision that merged two different films onto one row —
-  // the stray cinemas go back through staging and come out as their own record.
-  lazy val mixedFilmSplitter = new MixedFilmSplitter(movieCache, stagingRepository)
 
   // ── Task queue (scrape scheduling) ──────────────────────────────────────────
   // Hold the first scrape back from boot so the cold-boot scrape burst doesn't
@@ -977,7 +976,7 @@ class WorkerWiring(
   // one-row-per-film invariant once per the SAME 30-min window (cluster-claimed).
   def settleIntervalSeconds: FiniteDuration =
     Env.positiveLong("KINOWO_SETTLE_INTERVAL_SECONDS", SettleReaper.DefaultInterval.toSeconds).seconds
-  lazy val settleReaper = new SettleReaper(() => { movieService.settle(); mixedFilmSplitter.splitMixedRows(); () },
+  lazy val settleReaper = new SettleReaper(() => movieService.settle(),
     interval = settleIntervalSeconds, runStore = scheduledRunStore)
 
   // OMDb identifier backfill runs as a coarse worker TASK (TaskType.RefreshAllOmdb,
@@ -1127,7 +1126,7 @@ class WorkerWiring(
     new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore),
-    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { movieService.settle(); mixedFilmSplitter.splitMixedRows(); services.tasks.BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { movieService.settle(); services.tasks.BulkRefreshResult.message("consolidation complete") }, bulkTaskResultStore),
     new ResolveTmdbHandler(movieService.resolveTmdbOnce),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the

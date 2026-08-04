@@ -419,6 +419,69 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
     resolved.flatMap(_.tmdbId) shouldBe Some(1314481)
   }
 
+  // ── 3g. The name a cinema prints may be the WRITER ───────────────────────
+
+  /** Cinemas do not reliably print the director. "Drzewo magii" is directed by Ben
+   *  Gregor and WRITTEN by Simon Farnaby, and cinemas print one or the other — a
+   *  fact that already cost this repo a false "two different films" split, because
+   *  the two names never overlap on what is plainly one film.
+   *
+   *  So the walk should follow the writer too. Its guards are unchanged: the credit
+   *  still has to match the title (or a corroborated year), so widening WHERE the
+   *  film may be found doesn't widen what counts as a match. Directing credits are
+   *  tried first, so nothing about the common case changes; writing is the fallback
+   *  for a row that would otherwise resolve to nothing at all.
+   */
+  it should "follow the writer's filmography when the cinema credits the writer" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":1215930,"name":"Simon Farnaby","known_for_department":"Writing"}]}""",
+      // Farnaby DIRECTED none of these; the film is among what he WROTE.
+      "/person/1215930/movie_credits" -> """{"crew":[
+        |{"id":1140521,"title":"Drzewo magii","original_title":"The Magic Faraway Tree",
+        | "release_date":"2025-12-12","department":"Writing","job":"Writer","popularity":8.0}
+        |]}""".stripMargin,
+      "/movie/1140521/external_ids" -> """{"id":1140521,"imdb_id":"tt21276604"}""",
+      "/movie/1140521?"             -> """{"id":1140521,"title":"Drzewo magii","original_title":"The Magic Faraway Tree","release_date":"2025-12-12","runtime":96}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Drzewo magii"), director = Seq("Simon Farnaby"), releaseYear = Some(2025))))
+    val resolved = service.resolveStagingRecord("Drzewo magii", Some(2025), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(1140521)
+  }
+
+  /** Widening to writers must not widen what counts as a MATCH. A writer's
+   *  filmography is long, and a year-pinned credit from it needs the same
+   *  corroboration as any other — an unrelated title with nothing to back it stays
+   *  refused. */
+  it should "still refuse an uncorroborated year-only match from a writer's filmography" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":1215930,"name":"Simon Farnaby","known_for_department":"Writing"}]}""",
+      "/person/1215930/movie_credits" -> """{"crew":[
+        |{"id":555001,"title":"Coś zupełnie innego","original_title":"Something Else Entirely",
+        | "release_date":"2025-03-03","department":"Writing","job":"Writer","popularity":4.0}
+        |]}""".stripMargin,
+      "/movie/555001?" -> """{"id":555001,"title":"Coś zupełnie innego","original_title":"Something Else Entirely","release_date":"2025-03-03","runtime":140}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // Shares no word with the credit, and the runtime disagrees (96 vs 140).
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Drzewo magii"), director = Seq("Simon Farnaby"),
+                           releaseYear = Some(2025), runtimeMinutes = Some(96))))
+    val resolved = service.resolveStagingRecord("Drzewo magii", Some(2025), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe None
+  }
+
   // ── 4. A " - " programme banner must not hide the film's own title ────────
 
   /** "Ladies Night - Narodziny gwiazdy" is a programme banner joined with a

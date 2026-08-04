@@ -1438,14 +1438,13 @@
     "ratings" : {
       "imdb" : 7.8,
       "imdbUrl" : "https://www.imdb.com/title/tt9660502/",
-      "metascore" : 51,
-      "metacriticUrl" : "https://www.metacritic.com/movie/close",
+      "metacriticUrl" : "https://www.metacritic.com/search/Close/?category=2",
       "rottenTomatoes" : 91,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/close_2022",
       "filmweb" : 7.6,
       "filmwebUrl" : "https://www.filmweb.pl/film/Blisko-2022-10009831"
     },
-    "weightedRating" : 7.4,
+    "weightedRating" : 8.166666666666666,
     "synopsisByCity" : { },
     "ageRating" : "12"
   }, {
@@ -1601,12 +1600,11 @@
     "ratings" : {
       "imdb" : 6.7,
       "imdbUrl" : "https://www.imdb.com/title/tt18557754/",
-      "metascore" : 42,
-      "metacriticUrl" : "https://www.metacritic.com/movie/boss",
+      "metacriticUrl" : "https://www.metacritic.com/search/Boss/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/boss",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Boss"
     },
-    "weightedRating" : 5.45,
+    "weightedRating" : 6.7,
     "synopsisByCity" : { }
   }, {
     "_id" : "botticelliflorencjaimedyceusze|",
@@ -2237,14 +2235,13 @@
     "ratings" : {
       "imdb" : 7.7,
       "imdbUrl" : "https://www.imdb.com/title/tt4901306/",
-      "metascore" : 63,
-      "metacriticUrl" : "https://www.metacritic.com/movie/perfect-strangers-perfectos-desconocidos",
+      "metacriticUrl" : "https://www.metacritic.com/search/Perfetti+sconosciuti/?category=2",
       "rottenTomatoes" : 79,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/perfetti_sconosciuti_2016",
       "filmweb" : 7.6,
       "filmwebUrl" : "https://www.filmweb.pl/film/Dobrze+si%C4%99+k%C5%82amie+w+mi%C5%82ym+towarzystwie-2016-752725"
     },
-    "weightedRating" : 7.375,
+    "weightedRating" : 7.733333333333334,
     "synopsisByCity" : { }
   }, {
     "_id" : "cinemaitaliaoggijedenszkolnyrok|2025",
@@ -2283,8 +2280,7 @@
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt36454256/",
-      "metascore" : 71,
-      "metacriticUrl" : "https://www.metacritic.com/movie/sweetheart",
+      "metacriticUrl" : "https://www.metacritic.com/search/Gioia+mia/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/sweetheart_2025",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Gioia+mia"
     },
@@ -2743,13 +2739,12 @@
     "ratings" : {
       "imdb" : 5,
       "imdbUrl" : "https://www.imdb.com/title/tt35449513/",
-      "metascore" : 79,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-assistant",
+      "metacriticUrl" : "https://www.metacritic.com/search/Cz%C5%82owiek+do+wszystkiego/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/czlowiek_do_wszystkiego",
       "filmweb" : 6.2,
       "filmwebUrl" : "https://www.filmweb.pl/film/Cz%C5%82owiek+do+wszystkiego-2025-10071180"
     },
-    "weightedRating" : 6.366666666666667,
+    "weightedRating" : 5.6,
     "synopsisByCity" : { }
   }, {
     "_id" : "czlowiekslon|1980",
@@ -3002,7 +2997,7 @@
     "ratings" : {
       "imdb" : 6.9,
       "imdbUrl" : "https://www.imdb.com/title/tt15678738/",
-      "metacriticUrl" : "https://www.metacritic.com/movie/david",
+      "metacriticUrl" : "https://www.metacritic.com/search/David/?category=2",
       "rottenTomatoes" : 80,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/david_2025",
       "filmweb" : 7.3,
@@ -3497,7 +3492,7 @@
     "ratings" : {
       "imdb" : 6.8,
       "imdbUrl" : "https://www.imdb.com/title/tt34381258/",
-      "metacriticUrl" : "https://www.metacritic.com/movie/good-boy",
+      "metacriticUrl" : "https://www.metacritic.com/search/Good+Boy/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/good_boy",
       "filmweb" : 7.3,
       "filmwebUrl" : "https://www.filmweb.pl/film/Dobry+ch%C5%82opiec-2025-10064809"
@@ -3585,14 +3580,13 @@
     "ratings" : {
       "imdb" : 7.7,
       "imdbUrl" : "https://www.imdb.com/title/tt4901306/",
-      "metascore" : 63,
-      "metacriticUrl" : "https://www.metacritic.com/movie/perfect-strangers-perfectos-desconocidos",
+      "metacriticUrl" : "https://www.metacritic.com/search/Perfetti+sconosciuti/?category=2",
       "rottenTomatoes" : 79,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/perfetti_sconosciuti_2016",
       "filmweb" : 7.6,
       "filmwebUrl" : "https://www.filmweb.pl/film/Dobrze+si%C4%99+k%C5%82amie+w+mi%C5%82ym+towarzystwie-2016-752725"
     },
-    "weightedRating" : 7.375,
+    "weightedRating" : 7.733333333333334,
     "synopsisByCity" : { }
   }, {
     "_id" : "dolinaissyponiedzialkizkonwickimpisarzscenarzystarezyser|1982",
@@ -5396,14 +5390,13 @@
     "ratings" : {
       "imdb" : 6.5,
       "imdbUrl" : "https://www.imdb.com/title/tt5089534/",
-      "metascore" : 54,
-      "metacriticUrl" : "https://www.metacritic.com/movie/freak-show",
+      "metacriticUrl" : "https://www.metacritic.com/search/Freak+Show/?category=2",
       "rottenTomatoes" : 54,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/freak_show",
       "filmweb" : 6.8,
       "filmwebUrl" : "https://www.filmweb.pl/film/Freak+Show-2026-10065590"
     },
-    "weightedRating" : 6.025,
+    "weightedRating" : 6.233333333333334,
     "synopsisByCity" : { }
   }, {
     "_id" : "fridakahloikonicznaartystka|2020",
@@ -6362,14 +6355,13 @@
     "ratings" : {
       "imdb" : 6.5,
       "imdbUrl" : "https://www.imdb.com/title/tt5089534/",
-      "metascore" : 54,
-      "metacriticUrl" : "https://www.metacritic.com/movie/freak-show",
+      "metacriticUrl" : "https://www.metacritic.com/search/Freak+Show/?category=2",
       "rottenTomatoes" : 54,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/freak_show",
       "filmweb" : 6.8,
       "filmwebUrl" : "https://www.filmweb.pl/film/Freak+Show-2026-10065590"
     },
-    "weightedRating" : 6.025,
+    "weightedRating" : 6.233333333333334,
     "synopsisByCity" : { }
   }, {
     "_id" : "kinobezbarierfreakshowadcc|2026",
@@ -6388,14 +6380,13 @@
     "ratings" : {
       "imdb" : 6.5,
       "imdbUrl" : "https://www.imdb.com/title/tt5089534/",
-      "metascore" : 54,
-      "metacriticUrl" : "https://www.metacritic.com/movie/freak-show",
+      "metacriticUrl" : "https://www.metacritic.com/search/Freak+Show/?category=2",
       "rottenTomatoes" : 54,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/freak_show",
       "filmweb" : 6.8,
       "filmwebUrl" : "https://www.filmweb.pl/film/Freak+Show-2026-10065590"
     },
-    "weightedRating" : 6.025,
+    "weightedRating" : 6.233333333333334,
     "synopsisByCity" : { }
   }, {
     "_id" : "kinobezbarierpiesnilasuadccpjm|2025",
@@ -10281,24 +10272,26 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "moonpandaija|2025",
-    "title" : "Moon: Panda i ja",
-    "originalTitle" : "Moon The Panda",
+    "title" : "Moon. Panda i ja",
+    "originalTitle" : "Moon le Panda",
     "posterUrl" : "https://kinobajka.pl/wp-content/uploads/2026/01/8222987.10.webp",
-    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/moonpandaplakat.jpg" ],
+    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/moonpandaplakat.jpg", "https://image.tmdb.org/t/p/w500/2jcQNxdAt6ory848JlVGIuKbuKe.jpg", "https://m.media-amazon.com/images/M/MV5BYzdjYzliMjAtNTIxMC00YTZhLTk2M2MtZjEwMWIwYWY0YTQzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 99,
     "releaseYear" : 2025,
     "genres" : [ "Familijny", "Przygodowy" ],
     "countries" : [ "Belgia", "Francja" ],
     "directors" : [ "Prune de Maistre" ],
-    "cast" : [ "Noe Liu Martane", "Sylvia Chang", "Ye Liu" ],
-    "synopsis" : "12-letni Tian z powodu słabych wyników w szkole zostaje wysłany do babci. Daleko od miasta, w tajemniczych chińskich górach, w sekrecie przed wszystkimi zaprzyjaźnia się z pandą, którą nazywa Moon. To początek niezwykłej przygody, która odmieni jego życie oraz życie jego rodziny.",
+    "cast" : [ "刘诺一", "刘烨", "Alexandra Lamy", "Nina Yé", "張艾嘉" ],
+    "synopsis" : "Tian miał 12 lat, kiedy z powodu słabych wyników w szkole został wysłany do babci. Daleko od miasta, w tajemniczych chińskich górach, potajemnie zaprzyjaźnia się z pandą, której nadaje imię Moon. To początek niesamowitej przygody, która na zawsze odmieni życie jego i jego rodziny.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Moon%3A+Panda+i+ja/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Moon%3A+Panda+i+ja",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Moon%3A+Panda+i+ja"
+      "imdb" : 5.2,
+      "imdbUrl" : "https://www.imdb.com/title/tt35705226/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Moon+le+Panda/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/moon_the_panda",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Moon+le+Panda"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 5.2,
     "synopsisByCity" : { },
     "ageRating" : "6"
   }, {
@@ -11615,14 +11608,13 @@
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt36243564/",
-      "metascore" : 32,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-stranger",
+      "metacriticUrl" : "https://www.metacritic.com/search/L%27%C3%89tranger/?category=2",
       "rottenTomatoes" : 91,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_stranger_2025",
       "filmweb" : 6.9,
       "filmwebUrl" : "https://www.filmweb.pl/film/Obcy-2025-10089279"
     },
-    "weightedRating" : 6.574999999999999,
+    "weightedRating" : 7.7,
     "synopsisByCity" : { }
   }, {
     "_id" : "oblednycyfrowycyrkostatniakt|",
@@ -11657,7 +11649,7 @@
     "ratings" : {
       "imdb" : 8.1,
       "imdbUrl" : "https://www.imdb.com/title/tt37287335/",
-      "metacriticUrl" : "https://www.metacritic.com/movie/obsession",
+      "metacriticUrl" : "https://www.metacritic.com/search/Obsession/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/obsession",
       "filmweb" : 7.7,
       "filmwebUrl" : "https://www.filmweb.pl/film/Obsesja-2025-10094250"
@@ -12977,14 +12969,13 @@
     "ratings" : {
       "imdb" : 8.3,
       "imdbUrl" : "https://www.imdb.com/title/tt0211915/",
-      "metascore" : 37,
-      "metacriticUrl" : "https://www.metacritic.com/movie/amelia",
+      "metacriticUrl" : "https://www.metacritic.com/search/Le+Fabuleux+Destin+d%27Am%C3%A9lie+Poulain/?category=2",
       "rottenTomatoes" : 90,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/le_fabuleux_destin_damelie_poulain",
       "filmweb" : 7.6,
       "filmwebUrl" : "https://www.filmweb.pl/film/Amelia-2001-31416"
     },
-    "weightedRating" : 7.15,
+    "weightedRating" : 8.299999999999999,
     "synopsisByCity" : { }
   }, {
     "_id" : "plenerowepalacowebaltyk|2025",
@@ -14380,14 +14371,13 @@
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0094374/",
-      "metascore" : 45,
-      "metacriticUrl" : "https://www.metacritic.com/movie/above-the-law",
+      "metacriticUrl" : "https://www.metacritic.com/search/%E5%9F%B7%E6%B3%95%E5%85%88%E9%8B%92/?category=2",
       "rottenTomatoes" : 84,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/righting_wrongs_1986",
       "filmweb" : 6.7,
       "filmwebUrl" : "https://www.filmweb.pl/film/Poza+prawem-1986-103188"
     },
-    "weightedRating" : 6.675000000000001,
+    "weightedRating" : 7.400000000000001,
     "synopsisByCity" : { }
   }, {
     "_id" : "pozaprawem|",
