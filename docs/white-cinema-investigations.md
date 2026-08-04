@@ -177,6 +177,17 @@ no fail-before behaviour to test. But the venue has renamed itself away from
 "Kino Piast" in bilety24's own slug, which is the shape that bit Helios before.
 If bilety24 ever stops honouring the old slug this goes red, and the fix is to
 update the URL in `CinemaScraperCatalog`.
+**→ DONE 2026-08-04.** Both renamed organisers are now addressed by the slug
+bilety24 publishes today — Piast and, found the same way, **Kino Wisła
+Brzeszcze** (`kino-wisla-w-brzeszczach-1539` →
+`osrodek-kultury-w-brzeszczach-1539`). "No fail-before behaviour to test" was
+true of the *scrape* (the redirect is followed, so both sides parse identically)
+but not of the *wiring*: the catalog assertion in `CinemaScraperCatalogSpec`
+fails on the old slug and passes on the new one. The recorded corpus fixtures
+were renamed with it — they are keyed by request path, so changing the URL
+without moving them would have silently dropped both venues from
+`expected-schedules.txt`, which is the real risk in this change and the reason
+the e2e spec is the guard that matters.
 
 ### Kino Ślęża (Sobótka) — `intentionally-dormant`
 

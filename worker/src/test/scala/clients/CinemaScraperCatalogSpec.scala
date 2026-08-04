@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPort, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -173,6 +173,24 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val scraper = catalog(biletyna = "kino-kameralne").all.find(_.cinema == KinoPort).value
     scraper.scrapeHosts should contain ("gcsw.pl")
     scraper.scrapeHosts should not contain "www.filmweb.pl"
+  }
+
+  // Both venues renamed themselves away from "Kino …" in bilety24's own slug
+  // (`kino-piast-w-ostrzeszowie-601` → `ostrzeszowskie-centrum-kultury-601`,
+  // `kino-wisla-w-brzeszczach-1539` → `osrodek-kultury-w-brzeszczach-1539`),
+  // keeping the numeric id. bilety24 currently 301s the old slug to the new one,
+  // so nothing was broken — but an aggregator that stops honouring a retired
+  // slug is exactly how the Helios rename turned into 0 films, and depending on
+  // someone else's redirect is a dependency we don't need. Address them by the
+  // slug they publish today.
+  it should "address the renamed bilety24 organisers by their canonical slug, not the redirecting one" in {
+    val scrapers = catalog(biletyna = "kino-kameralne").all
+    def sourceUrlOf(cinema: Cinema): String = scrapers.find(_.cinema == cinema).value.sourceUrl.value
+
+    sourceUrlOf(KinoPiastOstrzeszow) shouldBe
+      "https://www.bilety24.pl/kino/organizator/ostrzeszowskie-centrum-kultury-601"
+    sourceUrlOf(KinoWislaBrzeszcze) shouldBe
+      "https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-brzeszczach-1539"
   }
 
   // A `Cinema` that's modelled (so it shows on the web/in a city) but has no
