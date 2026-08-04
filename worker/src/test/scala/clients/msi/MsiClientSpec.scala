@@ -149,7 +149,9 @@ class MsiClientSpec
   // tag-agnostic title selector + `titleSuffix` strip, every poll returned an
   // empty list (white on /uptime) even though the portal carries a full month.
   it should "scrape RCK Kołobrzeg (h3 titles + a trailing venue-label suffix)" in {
-    val movies = new MsiClient(new FakeHttpFetch("kino-wybrzeze"), "https://bilety.rck.kolobrzeg.pl",
+    // Fetched over plain HTTP: RCK's TLS certificate expired 2026-07-18 (see the
+    // `baseUrl` note on MsiClient), so the catalog wires the http:// scheme.
+    val movies = new MsiClient(new FakeHttpFetch("kino-wybrzeze"), "http://bilety.rck.kolobrzeg.pl",
       KinoWybrzeze, today = LocalDate.of(2026, 6, 12), titleSuffix = Some("KINO WYBRZEŻE")).fetch()
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(KinoWybrzeze)
@@ -159,6 +161,9 @@ class MsiClientSpec
     val toyStory = movies.find(_.movie.title.toLowerCase.contains("toy story 5")).value
     toyStory.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 20, 15, 0))
     toyStory.showtimes.map(_.format).head shouldBe List("DUB")
+    // The portal's booking hrefs are root-relative, so `abs:href` resolves them
+    // against `baseUrl` — the scheme we fetch on is the scheme users are sent to.
+    toyStory.showtimes.flatMap(_.bookingUrl).head should startWith("http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?")
     // A subtitled screening keeps its NAP token.
     val zawodowcy = movies.find(_.movie.title.toLowerCase == "zawodowcy").value
     zawodowcy.showtimes.map(_.format).head shouldBe List("NAP")

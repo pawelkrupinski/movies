@@ -102,6 +102,17 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     sourceUrls("Kino Luna") shouldBe "https://kinoluna.bilety24.pl"
   }
 
+  it should "reach RCK Kołobrzeg over plain HTTP, whose TLS certificate expired 2026-07-18" in {
+    // Kino Wybrzeże's `*.rck.kolobrzeg.pl` leaf expired on 2026-07-18 and RCK has
+    // not renewed it, so every HTTPS handshake fails validation and the venue went
+    // dark. The portal serves the identical page over plain HTTP (no redirect), so
+    // the catalog fetches it there — same as the other own-site venues that never
+    // offered working TLS (Kino Moskwa, Kino Sokół, Kino Bułgarska). Pinned here
+    // because the scheme is the whole fix: flip it back to https and the scrape
+    // silently returns to red on /uptime.
+    sourceUrls("Wybrzeże") shouldBe "http://bilety.rck.kolobrzeg.pl"
+  }
+
   it should "omit a venue whose scraper has no stable public page (Multikino is slug-only)" in {
     // MultikinoClient stores only the 4-digit id, which maps to no public URL.
     sourceUrls.get("Multikino Stary Browar") shouldBe None

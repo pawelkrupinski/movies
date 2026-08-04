@@ -24494,31 +24494,31 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-19T13:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7883&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7883&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-20T13:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7887&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7887&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-21T13:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7894&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7894&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-22T13:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7898&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7898&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-23T13:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7902&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7902&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-24T13:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7906&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7906&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-25T13:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7910&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7910&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     } ]
   }, {
@@ -37111,19 +37111,19 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-27T18:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7918&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7918&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-28T18:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7924&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7924&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-29T18:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7927&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7927&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-07-01T18:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7934&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7934&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
       "format" : [ ]
     } ]
   }, {
@@ -48300,59 +48300,59 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-12T17:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7856&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7856&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-13T17:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7873&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7873&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-14T17:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7879&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7879&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-15T17:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7861&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7861&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-16T17:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7865&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7865&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-17T17:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7869&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7869&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-18T18:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7881&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7881&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-19T19:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7886&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7886&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-20T19:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7890&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7890&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-21T19:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7891&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7891&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-22T19:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7895&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7895&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-23T19:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7899&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7899&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-24T19:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7903&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7903&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-25T19:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7907&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7907&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -56919,27 +56919,27 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-26T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7914&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7914&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-27T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7919&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7919&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-28T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7923&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7923&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-29T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7928&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7928&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-30T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7931&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7931&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-07-01T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7935&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7935&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
       "format" : [ ]
     } ]
   }, {
@@ -71886,11 +71886,11 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-10T18:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7843&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7843&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-11T18:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7848&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7848&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     } ]
   }, {
@@ -91036,15 +91036,15 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-26T12:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7911&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7911&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-27T11:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7915&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7915&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-28T12:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7920&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7920&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     } ]
   }, {
@@ -106918,63 +106918,63 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-12T14:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7854&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7854&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-12T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7855&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7855&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-13T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7870&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7870&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-13T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7871&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7871&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-13T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7872&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7872&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-14T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7876&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7876&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-14T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7877&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7877&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-14T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7878&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7878&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-15T14:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7859&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7859&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-15T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7860&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7860&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-16T14:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7863&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7863&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-16T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7864&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7864&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-17T14:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7867&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7867&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-17T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7868&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7868&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-18T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7880&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7880&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     } ]
   }, {
@@ -157252,11 +157252,11 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-10T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7840&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7840&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-11T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7845&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7845&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     } ]
   }, {
@@ -161789,27 +161789,27 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-10T12:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7841&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7841&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-10T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7842&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7842&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-11T12:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7846&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7846&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-11T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7847&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7847&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-19T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7884&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7884&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-19T17:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7885&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7885&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     } ]
   }, {
@@ -171606,99 +171606,99 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-20T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7888&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7888&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-20T17:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7889&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7889&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-21T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7893&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7893&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-21T17:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7892&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7892&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-22T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7897&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7897&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-22T17:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7896&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7896&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-23T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7901&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7901&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-23T17:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7900&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7900&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-24T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7905&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7905&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-24T17:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7904&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7904&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-25T15:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7909&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7909&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-25T17:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7908&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7908&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-26T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7912&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7912&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-26T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7913&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7913&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-27T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7916&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7916&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-27T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7917&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7917&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-28T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7921&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7921&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-28T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7922&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7922&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-29T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7925&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7925&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-29T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7926&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7926&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-30T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7929&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7929&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-06-30T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7930&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7930&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-07-01T14:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7932&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7932&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
       "format" : [ "DUB" ]
     }, {
       "dateTime" : "2026-07-01T16:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7933&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7933&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-07",
       "format" : [ "DUB" ]
     } ]
   }, {
@@ -196381,39 +196381,39 @@
     "cinema" : "Wybrzeże",
     "showtimes" : [ {
       "dateTime" : "2026-06-10T20:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7844&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7844&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-11T20:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7849&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7849&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-12T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7857&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7857&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-13T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7874&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7874&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-14T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7875&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7875&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-15T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7858&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7858&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-16T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7862&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7862&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-17T20:00:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7866&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7866&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-18T20:30:00",
-      "bookingUrl" : "https://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7882&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "bookingUrl" : "http://bilety.rck.kolobrzeg.pl/MSI/Default.aspx?event_id=7882&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ "NAP" ]
     } ]
   }, {

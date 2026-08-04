@@ -39,7 +39,13 @@ import scala.util.Try
  *
  * @parameter http    HTTP client (swap for `FakeHttpFetch` in tests).
  * @parameter baseUrl Scheme + host of the venue's MSI portal, no trailing slash
- *                (e.g. `https://bilety.goktychowo.pl`).
+ *                (e.g. `https://bilety.goktychowo.pl`). The scheme is load-bearing
+ *                twice over: it is what we fetch, and `MsiScraper` resolves every
+ *                showtime's `abs:href` booking link against it. RCK Kołobrzeg
+ *                (Kino Wybrzeże) is wired `http://` rather than `https://` because
+ *                its `*.rck.kolobrzeg.pl` leaf expired on 2026-07-18 and was never
+ *                renewed — the handshake fails validation, while plain HTTP serves
+ *                the identical page and does not redirect.
  * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  * @parameter today   Calendar anchor for computing the two months to fetch;
  *                defaults to the current Warsaw clock date.
