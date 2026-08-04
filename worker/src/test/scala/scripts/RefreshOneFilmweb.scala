@@ -4,6 +4,7 @@ import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.movies.{CaffeineMovieCache, MongoMovieRepository}
 import tools.RealHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Force a one-row Filmweb refresh for `(title, year)`. Used after wiring
  *  `onImdbIdMissing` on Filmweb so existing rows that were missed at first
@@ -12,7 +13,7 @@ import tools.RealHttpFetch
 object RefreshOneFilmweb {
   def main(args: Array[String]): Unit = {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
-    val repository  = new MongoMovieRepository()
+    val repository  = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new CaffeineMovieCache(repository)
     val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch), new FilmwebClient(new RealHttpFetch))

@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoConnection
 import services.movies.InMemoryMovieRepository
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * That a fold which COULD NOT ACT says so, instead of returning the same empty answer as
@@ -26,7 +27,7 @@ class StagingFolderSilenceSpec extends AnyFlatSpec with Matchers {
   "a staging folder that cannot reach Mongo" should "fail loudly rather than report an empty fold" in {
     val disabled = new MongoConnection(uri = None, dbName = "kinowo", required = false)
 
-    val failure = the [IllegalStateException] thrownBy new MongoStagingFolder(disabled).foldGroup("Ghost In The Shell")
+    val failure = the [IllegalStateException] thrownBy new MongoStagingFolder(disabled, normalizer = titleNormalizer).foldGroup("Ghost In The Shell")
 
     withClue("the message must name the cause, since the caller sees only an exception: ") {
       failure.getMessage.toLowerCase should include ("fold")

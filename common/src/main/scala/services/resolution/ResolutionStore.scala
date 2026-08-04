@@ -110,9 +110,9 @@ class MongoResolutionStore(
   clock:          Clock = Clock.systemUTC(),
   // See `ResolutionStore.normalizer` — the rules that built the hint keys this
   // collection holds. The worker passes its country's; defaults to the
-  // deployment's so scripts and single-country callers are unchanged.
-  override val normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.deployment
+  // REQUIRED here: a hint key written under one country's rules and read under
+  // another's addresses a row that isn't there.
+  override val normalizer: services.movies.TitleNormalizer
 ) extends ResolutionStore with Logging {
 
 

@@ -51,7 +51,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     val db         = client.getDatabase(dbName)
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
-    val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots))
+    val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
     val yearlessId = StoredMovieRecord.idFor(title, None, titleNormalizer)
     val yearedId   = StoredMovieRecord.idFor(title, Some(2026), titleNormalizer)
     try {
@@ -114,7 +114,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
         val cache = new CaffeineMovieCache(new MongoMovieRepository(
           Some(ownClient.getDatabase(dbName)),
           screenings = Some(new MongoScreeningsRepository(Some(ownClient.getDatabase(dbName)))),
-          slots      = Some(new MongoSlotsRepository(Some(ownClient.getDatabase(dbName))))))
+          slots      = Some(new MongoSlotsRepository(Some(ownClient.getDatabase(dbName)))), normalizer = titleNormalizer))
         cache.backfillEmbeddedYears()
       } finally ownClient.close()
 

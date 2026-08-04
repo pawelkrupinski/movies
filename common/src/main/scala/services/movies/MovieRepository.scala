@@ -349,10 +349,9 @@ class MongoMovieRepository(
   persistResumeToken: Boolean = false,
   // The country whose rules derive a row's `_id` (`sanitize(title)|year`). The
   // document id IS the row's identity, so a repository writing under another
-  // country's rules would split or collide rows. Last in the list and defaulted
-  // to Poland so the positional script/test constructions are unchanged; the
-  // worker and web wire their own country's instance.
-  override val normalizer: TitleNormalizer = TitleNormalizer.deployment
+  // country's rules would split or collide rows. REQUIRED, not defaulted: this is
+  // a production persistence path, and a silent fallback here is the 2026 incident.
+  override val normalizer: TitleNormalizer
 ) extends MovieRepository with Logging {
 
 

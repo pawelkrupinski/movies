@@ -5,6 +5,7 @@ import services.MongoConnection
 import services.freshness.FreshnessKind
 import services.movies.MongoMovieRepository
 import services.tasks.{EnqueueResult, MongoTaskQueue, RatingTasks, TaskType}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot operational tool: enqueue a targeted RottenTomatoes rating refresh for
@@ -24,7 +25,7 @@ object CountryRatingRefresh {
     val db = conn.database.getOrElse {
       println(s"Could not open ${country.mongoDb} — is the tunnel up + MONGODB_URI set?"); sys.exit(1)
     }
-    val repo  = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false)
+    val repo  = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)
     val queue = new MongoTaskQueue(Some(db))
 
     val affected = repo.findAll().filter(r =>

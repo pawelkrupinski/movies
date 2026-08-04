@@ -5,6 +5,7 @@ import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.Env
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * `moveFilm` carries a film's side rows to a new id and then deletes the old ones. If the
@@ -31,7 +32,7 @@ class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers {
       screenings.seed("moveprobe|", Map(Multikino.displayName -> Seq(Showtime(when, None))))
       screenings.findForFilm("moveprobe|") should not be empty
 
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings))
+      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), normalizer = titleNormalizer)
       repository.moveFilm("moveprobe|", "moveprobe|2026")
 
       withClue("the copy never landed, so the old rows must still be there: ")(

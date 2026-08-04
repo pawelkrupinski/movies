@@ -4,6 +4,7 @@ import models.Country
 import services.MongoConnection
 import services.movies.MongoMovieRepository
 import services.tasks.{EnqueueResult, EnrichTaskKeys, MongoTaskQueue, TaskType}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot operational tool: force a re-resolve of every row in a given
@@ -35,7 +36,7 @@ object CountryForceResolve {
       println(s"Could not open $dbName — is the Mongo tunnel up (flyctl proxy 27017 -a kinowo-mongo) and MONGODB_URI set?")
       sys.exit(1)
     }
-    val repo  = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false)
+    val repo  = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)
     val queue = new MongoTaskQueue(Some(db))
 
     val rows = repo.findAll()

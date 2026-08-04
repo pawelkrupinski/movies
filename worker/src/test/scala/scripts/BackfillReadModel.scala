@@ -55,7 +55,7 @@ object BackfillReadModel {
     val client = MongoClient(uri)
     try {
       val db            = client.getDatabase(dbName)
-      val movieRepository     = new MongoMovieRepository(Some(db), fallbackToOwnInit = false)
+      val movieRepository     = new MongoMovieRepository(Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)
       val readModelRepository = new MongoReadModelRepository(Some(db))
       require(movieRepository.enabled,     s"movies repository not enabled for $dbName")
       require(readModelRepository.enabled, s"read-model repository not enabled for $dbName")

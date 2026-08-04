@@ -43,7 +43,7 @@ object GenreLanguageAudit {
       println(s"Could not open $dbName — is the tunnel up (flyctl proxy 27017 -a kinowo-mongo)?")
       sys.exit(1)
     }
-    val repo = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false)
+    val repo = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)
     val all  = repo.findAll()
     val rows = all.filter(s => filter.forall(f => s.title.toLowerCase.contains(f.toLowerCase)))
 

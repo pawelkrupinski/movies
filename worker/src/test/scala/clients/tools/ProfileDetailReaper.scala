@@ -70,7 +70,7 @@ object ProfileDetailReaper {
       // The cache holds STITCHED rows — slots unioned from the `movie_slots` side
       // collection — so the raw decode above is NOT the shape DetailReaper walks.
       // Go through the repository, which is what MovieCache hydrates from.
-      val repository = new services.movies.MongoMovieRepository()
+      val repository = new services.movies.MongoMovieRepository(normalizer = titleNormalizer)
       val rows: Seq[StoredMovieRecord] = repository.findAll()
       val records: Seq[MovieRecord] = rows.map(_.record)
       println(s"  STITCHED repository.findAll(): ${records.size} records\n")

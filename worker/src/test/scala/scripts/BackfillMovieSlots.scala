@@ -68,7 +68,7 @@ object BackfillMovieSlots {
       val db = client.getDatabase(dbName)
       // Screenings wired so each row reads complete; slots deliberately NOT (see above).
       val screenings      = new MongoScreeningsRepository(Some(db))
-      val movieRepository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false, screenings = Some(screenings))
+      val movieRepository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false, screenings = Some(screenings), normalizer = titleNormalizer)
       val slots           = new MongoSlotsRepository(Some(db))
       require(movieRepository.enabled, s"movies repository not enabled for $dbName")
 

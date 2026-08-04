@@ -12,6 +12,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.util.Try
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * For every row where `metacriticUrl` is None, probe several slug variants of
@@ -56,7 +57,7 @@ object MetacriticDiagnostics {
   }
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository()
+    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to diagnose.")
       sys.exit(1)

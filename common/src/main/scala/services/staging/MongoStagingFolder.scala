@@ -30,9 +30,9 @@ import scala.util.Try
  */
 class MongoStagingFolder(
   connection: MongoConnection,
-  // See `InMemoryStagingFolder` — the country whose rules select and key the group.
-  normalizer: services.movies.TitleNormalizer =
-    services.movies.TitleNormalizer.deployment
+  // See `InMemoryStagingFolder` — the country whose rules select and key the
+  // group. REQUIRED here: this folder writes the real corpus.
+  normalizer: services.movies.TitleNormalizer
 ) extends StagingFolder with Logging {
 
 

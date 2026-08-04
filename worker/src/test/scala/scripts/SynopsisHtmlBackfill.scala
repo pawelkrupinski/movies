@@ -2,6 +2,7 @@ package scripts
 
 import services.movies.MongoMovieRepository
 import tools.TextNormalization
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot: strip HTML tags from every `synopsis` field in Mongo.
@@ -20,7 +21,7 @@ object SynopsisHtmlBackfill {
   private val HtmlTagRe = "<[^>]+>".r
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository()
+    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)

@@ -83,7 +83,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
 
-      new MongoStagingFolder(connection).foldGroup(title)
+      new MongoStagingFolder(connection, normalizer = titleNormalizer).foldGroup(title)
 
       val survivors = Await.result(movies.find(Filters.regex("_id",
         s"^${titleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
@@ -183,7 +183,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
 
-      new MongoStagingFolder(connection).foldGroup(blindTitle)
+      new MongoStagingFolder(connection, normalizer = titleNormalizer).foldGroup(blindTitle)
 
       val survivors = Await.result(movies.find(Filters.regex("_id", s"^$blindSanitize\\|")).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
@@ -213,8 +213,8 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     val client     = MongoClient(uri)
     val db         = client.getDatabase(dbName)
     val connection = new MongoConnection(Some(uri), dbName, required = false)
-    val repository = new services.staging.MongoStagingRepository(Some(db))
-    val folder     = new MongoStagingFolder(connection)
+    val repository = new services.staging.MongoStagingRepository(Some(db), titleNormalizer)
+    val folder     = new MongoStagingFolder(connection, normalizer = titleNormalizer)
     val hintTitle  = "Fold Hint Sentinel"
     val anchor     = titleNormalizer.sanitize(hintTitle)
 

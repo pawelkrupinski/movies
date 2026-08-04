@@ -76,7 +76,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   }
 
   "the staging sibling lookup" should "not pull the siblings' payloads over the wire" in {
-    val repository = new MongoStagingRepository(Some(db))
+    val repository = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
     purge()
     try {
       seedHeavySiblings()
@@ -119,7 +119,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   // normalised, so the staging state machine stopped advancing. Comparing the two
   // implementations directly is what pins that.
   "findByAnchor" should "return exactly what filtering findAll returns, for every anchor" in {
-    val repository = new MongoStagingRepository(Some(db))
+    val repository = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
     purge()
     try {
       val showtimes = (1 to 200).map(n =>
@@ -152,7 +152,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
   it should "fall back to a full scan when the id fetch fails, rather than losing the film" in {
     purge()
     try {
-      val seeder = new MongoStagingRepository(Some(db))
+      val seeder = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
       seeder.upsert(Multikino, title, Some(1995), MovieRecord())
       seeder.upsert(Multikino, title, Some(2017), MovieRecord())
       val anchor = titleNormalizer.sanitize(seeder.findAll().head.title)
@@ -160,7 +160,7 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       // `findByAnchor` answers for one.
       val ours   = seeder.findAll().filter(row => titleNormalizer.sanitize(row.title) == anchor)
 
-      val broken = new MongoStagingRepository(Some(db)) {
+      val broken = new MongoStagingRepository(Some(db), normalizer = titleNormalizer) {
         override protected def fetchByIds(
           c:   org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto],
           ids: Seq[String]

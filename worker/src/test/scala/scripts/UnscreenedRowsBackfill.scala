@@ -3,6 +3,7 @@ package scripts
 import org.mongodb.scala.MongoClient
 import services.movies.{CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, UnscreenedCleanup}
 import tools.Env
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot backfill: the new `UnscreenedCleanup` ticks every 24h, but the
@@ -30,7 +31,7 @@ object UnscreenedRowsBackfill {
     // cinema-less — i.e. the script would reproduce the very bug the guard exists to stop.
     val repository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false,
       screenings = Some(new MongoScreeningsRepository(Some(db))),
-      slots      = Some(new MongoSlotsRepository(Some(db))))
+      slots      = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
     require(repository.enabled, s"movies repository not enabled for $dbName")
 
     val before    = repository.findAll()

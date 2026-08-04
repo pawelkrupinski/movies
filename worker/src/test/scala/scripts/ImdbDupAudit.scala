@@ -1,13 +1,14 @@
 package scripts
 
 import services.movies.{MongoMovieRepository, StoredMovieRecord}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** Quick report: rows that share an imdbId — i.e. TMDB+IMDb resolved
  *  them as the same film but they live under different (title, year)
  *  cache keys. Pure read; no mutation. */
 object ImdbDupAudit {
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository()
+    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
 
     val rows: Seq[StoredMovieRecord] = repository.findAll()

@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.MongoMovieRepository
 import services.readmodel.MongoReadModelRepository
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * The `movies` collection and the derived read-model collections are written with
@@ -27,7 +28,7 @@ class RelaxedWriteConcernSpec extends AnyFlatSpec with Matchers {
     MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")
 
   "MongoMovieRepository" should "write the `movies` collection with w:1 j:false" in {
-    new MongoMovieRepository(sharedDb = Some(neverConnects)).collectionWriteConcern shouldBe Some(relaxed)
+    new MongoMovieRepository(sharedDb = Some(neverConnects), normalizer = titleNormalizer).collectionWriteConcern shouldBe Some(relaxed)
   }
 
   "MongoReadModelRepository" should "write the derived collections with w:1 j:false" in {

@@ -222,7 +222,8 @@ object StagingRepository {
 class MongoStagingRepository(
   sharedDb: Option[MongoDatabase] = None,
   // See `StagingRepository.normalizer` — the rules that anchor a row's `_id`.
-  override val normalizer: TitleNormalizer = TitleNormalizer.deployment
+  // REQUIRED here: production persistence must never fall back.
+  override val normalizer: TitleNormalizer
 ) extends StagingRepository with Logging {
 
 

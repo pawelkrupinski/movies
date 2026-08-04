@@ -8,6 +8,7 @@ import tools.{DaemonExecutors, RealHttpFetch}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Audit + backfill: walk every row in Mongo that has a `filmwebUrl` and
@@ -35,7 +36,7 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 object FilmwebUrlAudit {
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository()
+    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)

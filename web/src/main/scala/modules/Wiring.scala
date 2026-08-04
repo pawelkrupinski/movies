@@ -179,7 +179,7 @@ trait Wiring {
     Env.get("ADMIN_ALLOWLIST").map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet).getOrElse(Set.empty)
   lazy val adminAction = new AdminAction(controllerComponents.parsers.anyContent, userRepository, adminAllowlist)(using controllerComponents.executionContext)
   // The /debug "pending enrichment (staging)" table reads + live-watches this.
-  lazy val stagingRepository: services.staging.StagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database)
+  lazy val stagingRepository: services.staging.StagingRepository = new services.staging.MongoStagingRepository(mongoConnection.database, titleNormalizer)
   // Read-only view of the worker-written `rating_cadence` collection for the
   // dev-only /debug/cadence page. Read from the MIRROR alongside `movies`: both
   // this and the attempt log below are read per /debug row-expand, so leaving

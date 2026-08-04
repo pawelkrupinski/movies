@@ -4,6 +4,7 @@ import clients.TmdbClient
 import services.events.InProcessEventBus
 import services.movies.{CaffeineMovieCache, EmbeddedYear, MongoMovieRepository, MovieService, StoredMovieRecord}
 import tools.RealHttpFetch
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot: bring EXISTING yearless rows up to what the scrape-boundary
@@ -23,7 +24,7 @@ import tools.RealHttpFetch
 object EmbeddedYearBackfill {
   def main(args: Array[String]): Unit = {
     val apply      = args.contains("--apply")
-    val repository = new MongoMovieRepository()
+    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)

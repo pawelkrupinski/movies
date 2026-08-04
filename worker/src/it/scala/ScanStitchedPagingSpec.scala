@@ -11,6 +11,7 @@ import tools.Env
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * `foreachRecord` promises its callers it never holds more than one page of the corpus.
@@ -54,7 +55,7 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
       val slots      = new CountingSlots(realSlots, allReads, batchedReads)
       // batchSize 2 so a handful of sentinels spans several pages
       val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings),
-        slots = Some(slots), findAllBatchSize = 2)
+        slots = Some(slots), findAllBatchSize = 2, normalizer = titleNormalizer)
 
       (1 to 5).foreach { n =>
         repository.upsert(s"${prefix}-$n", Some(1900 + n), MovieRecord(tmdbId = Some(6000 + n),

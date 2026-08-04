@@ -5,6 +5,7 @@ import services.movies.MongoMovieRepository
 
 import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * Dumps the distinct cinema + display titles from the prod `movies` collection
@@ -24,7 +25,7 @@ object SnapshotProdTitlesToFixture {
 
   def main(args: Array[String]): Unit = {
     val connection = MongoConnection.fromEnv(required = true)
-    val repository = new MongoMovieRepository(connection.database, fallbackToOwnInit = false)
+    val repository = new MongoMovieRepository(connection.database, fallbackToOwnInit = false, normalizer = titleNormalizer)
     try {
       val records = repository.findAll()
       val titles = records

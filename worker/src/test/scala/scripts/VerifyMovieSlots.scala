@@ -74,7 +74,7 @@ object VerifyMovieSlots {
     try {
       val db     = client.getDatabase(dbName)
       val scr    = new MongoScreeningsRepository(Some(db))
-      val embedded = new MongoMovieRepository(Some(db), fallbackToOwnInit = false, screenings = Some(scr))
+      val embedded = new MongoMovieRepository(Some(db), fallbackToOwnInit = false, screenings = Some(scr), normalizer = titleNormalizer)
       val slots  = new MongoSlotsRepository(Some(db))
       require(embedded.enabled, s"movies repository not enabled for $dbName")
 

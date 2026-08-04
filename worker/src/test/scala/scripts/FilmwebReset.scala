@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.util.Try
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot: wipe `filmwebUrl` + `filmwebRating` from every row in Mongo, then
@@ -35,7 +36,7 @@ object FilmwebReset {
   private case class  ReplacedDifferent(beforeUrl: String, afterUrl: String, rating: Option[Double]) extends Outcome
 
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository()
+    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to reset.")
       sys.exit(1)

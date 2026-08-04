@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.staging.MongoStagingRepository
 import tools.{ConvergenceStorage, Env}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * That every part of a Mongo-backed convergence run looks at the SAME database.
@@ -36,7 +37,7 @@ class ConvergenceStorageIntegrationSpec extends AnyFlatSpec with Matchers {
     try {
       storage.staging.upsert(Multikino, "Ghost In The Shell", Some(2017), MovieRecord())
 
-      val throughConnection = new MongoStagingRepository(storage.connection.database).findAll()
+      val throughConnection = new MongoStagingRepository(storage.connection.database, normalizer = titleNormalizer).findAll()
 
       withClue("a row written through the storage's repository must be visible through its " +
                "connection — the folder reaches staging that way: ") {

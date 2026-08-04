@@ -6,6 +6,7 @@ import tools.Env
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot: drop every row from the `movies` collection so the next app
@@ -32,7 +33,7 @@ object DropAllMovies {
     }
     val dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
 
-    val repository   = new MongoMovieRepository()
+    val repository   = new MongoMovieRepository(normalizer = titleNormalizer)
     val before = repository.findAll()
     println(s"$dbName.movies: ${before.size} row(s) currently stored.\n")
 

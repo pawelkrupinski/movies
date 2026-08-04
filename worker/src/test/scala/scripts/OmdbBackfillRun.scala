@@ -7,6 +7,7 @@ import tools.{DaemonExecutors, RealHttpFetch}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
  * One-shot OMDb IDENTIFIER backfill: for every Mongo row missing `imdbId` or
@@ -24,7 +25,7 @@ import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
  */
 object OmdbBackfillRun {
   def main(args: Array[String]): Unit = {
-    val repository = new MongoMovieRepository()
+    val repository = new MongoMovieRepository(normalizer = titleNormalizer)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to backfill.")
       sys.exit(1)
