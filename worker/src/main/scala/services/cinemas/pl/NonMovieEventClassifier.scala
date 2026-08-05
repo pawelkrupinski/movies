@@ -74,7 +74,18 @@ object NonMovieEventClassifier {
     // Mystery / blind screenings ("Seans w ciemno", "Seans niespodzianka",
     // collapsed "seanswciemno") — sold as an event, never resolve to a title.
     """seans\s?w\s?ciemno""".r,
-    """seans\s?niespodziank""".r
+    """seans\s?niespodziank""".r,
+    // Activity classes sold through the same ticketing surface — a yoga session
+    // ("Joga w chmurach – Studio Jogi…") is never a screening. `\bjog` also
+    // covers "jogi"/"jogą" without touching any film title.
+    """\bjog[aiąę]\b""".r,
+    // Silent-disco nights ("Zamkowe Silent Disco"). Deliberately NOT a bare
+    // `disco`, which would drop the film "Disco Polo".
+    """silent\s?disco""".r,
+    // Summer open-air programmes carrying live music, not cinema: Zamek
+    // Szczecin's terrace season ("Swing Lovers - Lato na tarasach 2026"). A
+    // series name, like the broadcast series below — no film is called this.
+    """lato\s+na\s+tarasach""".r
   )
 
   /** Festival panels / author meetings ("…– spotkanie z podróżnikiem…", "panel

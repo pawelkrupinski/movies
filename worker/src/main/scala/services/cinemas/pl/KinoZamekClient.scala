@@ -25,6 +25,12 @@ import scala.util.{Failure, Success, Try}
  * 3. For each MSI film-block, derive a slug from the title and check if it
  *    (or any prefix of it) appears in the allow-list.  Blocks that don't match
  *    — concerts, workshops, other non-film events — are silently dropped.
+ *    The allow-list FAILS OPEN when the listing page yields nothing, and that
+ *    is not hypothetical: on 2026-08-05 the castle's kino page carried two
+ *    events and neither was a film, while prod was publishing the castle's yoga
+ *    classes and terrace concerts as cinema. So [[OnlyMovieEventsFilter]] runs
+ *    over the result as well — the allow-list for precision when it works, the
+ *    shared classifier as the floor when it doesn't.
  * 4. Merge matching blocks across months, decode HTML entities, and apply
  *    sentence-case to the Polish title part.
  *
@@ -45,7 +51,7 @@ class KinoZamekClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
-) extends CinemaScraper {
+) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoZamekClient._
 
@@ -53,7 +59,7 @@ class KinoZamekClient(
   // The castle's own kino listing page — films only, unlike the MSI portal.
   override def sourceUrl: Option[String] = Some(ListingUrl)
 
-  def fetch(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val filmSlugs = fetchFilmSlugs()
 
     // Walk the months instead of assuming two of them. The portal held nothing

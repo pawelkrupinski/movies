@@ -146,4 +146,29 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     a[RuntimeException] should be thrownBy
       new KinoZamekClient(partlyDown, KinoZamekSzczecin, today = LocalDate.of(2026, 6, 7)).fetch()
   }
+
+  // ── When the allow-list gives us nothing ─────────────────────────────────
+  //
+  // `isFilm` passes everything when the castle listing yields no slugs, so that a
+  // broken listing page can't empty the cinema. On 2026-08-05 that page carried
+  // two events, neither a film — and prod was publishing the castle's yoga
+  // classes and terrace concerts as cinema. The shared classifier is the floor
+  // under that fail-open.
+  it should "still keep non-films out when the castle listing yields no slugs" in {
+    val noListing = new FakeHttpFetch("kino-zamek") {
+      override def get(url: String): String =
+        if (url.startsWith(KinoZamekClient.ListingUrl)) ""    // the listing, not the MSI host
+        else super.get(url)
+    }
+    val titles = new KinoZamekClient(noListing, KinoZamekSzczecin, today = LocalDate.of(2026, 6, 7))
+      .fetch().map(_.movie.title.toLowerCase)
+
+    titles should not be empty                       // the fail-open still lets films through
+    titles.filter(_.contains("joga"))         shouldBe empty
+    titles.filter(_.contains("silent disco")) shouldBe empty
+    titles.filter(_.contains("koncert"))      shouldBe empty
+    titles.filter(_.contains("lato na tarasach")) shouldBe empty
+    // …and the films on the same page are untouched.
+    titles.exists(_.startsWith("viridiana")) shouldBe true
+  }
 }

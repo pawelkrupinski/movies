@@ -156,4 +156,27 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "Żółtodzioby Galaktyki"             // "Galaktyki" ≠ \bgala\b
     ).foreach(t => withClue(s"[$t] ") { NonMovieEventClassifier.isLiveEvent(t) shouldBe false })
   }
+
+  // Zamek Szczecin sells its castle programme through the same MSI surface as
+  // its cinema, so a yoga class and a silent disco arrive looking exactly like a
+  // film. Real titles, read off the portal on 2026-08-05 and out of the recorded
+  // June page.
+  it should "drop the castle's activity classes and terrace-season live music" in {
+    val notFilms = Seq(
+      "JOGA W CHMURACH – STUDIO JOGI BARDZO BOSKIE - LATO NA TARASACH 2026",
+      "ZAMKOWE SILENT DISCO - LATO NA TARASACH 2026",
+      "SWING LOVERS- LATO NA TARASACH 2026",
+      "BUENA VISŁA – LATO NA TARASACH 2026",
+      "BLOCO POMERANIA BRAZIL SHOW- LATO NA TARASACH 2026")
+    notFilms.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe true))
+  }
+
+  it should "keep the films those events sit beside on the same page" in {
+    val films = Seq(
+      "CZERWONY KAPTUREK", "KRONIKA WYPADKÓW MIŁOSNYCH", "OPOWIEŚĆ O ZŁOTEJ RYBCE",
+      "CZŁOWIEK Z MARMURU – WAJDA: re- wizje", "VIRIDIANA – BUÑUEL. NIECH ŻYJĄ KAJDANY",
+      // `disco` alone would have taken this one down with the silent-disco night.
+      "Disco Polo")
+    films.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
+  }
 }
