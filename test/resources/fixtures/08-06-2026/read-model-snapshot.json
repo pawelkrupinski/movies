@@ -12775,8 +12775,8 @@
     "synopsisByCity" : { },
     "ageRating" : "12"
   }, {
-    "_id" : "pieknobezrozmiarupokazstyluurodyidobrychmanieriprojekcjafilmuquotcruellaquot|",
-    "title" : "Piękno Bez Rozmiaru [Pokaz stylu, urody i dobrych manier] i projekcja filmu &quot; Cruella&quot;",
+    "_id" : "pieknobezrozmiarupokazstyluurodyidobrychmanieriprojekcjafilmucruella|",
+    "title" : "Piękno Bez Rozmiaru [Pokaz stylu, urody i dobrych manier] i projekcja filmu \" Cruella\"",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -12784,9 +12784,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Pi%C4%99kno+Bez+Rozmiaru+%5BPokaz+stylu%2C+urody+i+dobrych+manier%5D+i+projekcja+filmu+%26quot%3B+Cruella%26quot%3B/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pi%C4%99kno+Bez+Rozmiaru+%5BPokaz+stylu%2C+urody+i+dobrych+manier%5D+i+projekcja+filmu+%26quot%3B+Cruella%26quot%3B",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pi%C4%99kno+Bez+Rozmiaru+%5BPokaz+stylu%2C+urody+i+dobrych+manier%5D+i+projekcja+filmu+%26quot%3B+Cruella%26quot%3B"
+      "metacriticUrl" : "https://www.metacritic.com/search/Pi%C4%99kno+Bez+Rozmiaru+%5BPokaz+stylu%2C+urody+i+dobrych+manier%5D+i+projekcja+filmu+%22+Cruella%22/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pi%C4%99kno+Bez+Rozmiaru+%5BPokaz+stylu%2C+urody+i+dobrych+manier%5D+i+projekcja+filmu+%22+Cruella%22",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pi%C4%99kno+Bez+Rozmiaru+%5BPokaz+stylu%2C+urody+i+dobrych+manier%5D+i+projekcja+filmu+%22+Cruella%22"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -122751,8 +122751,8 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
-    "_id" : "pieknobezrozmiarupokazstyluurodyidobrychmanieriprojekcjafilmuquotcruellaquot||bielsko-biala|Janosik",
-    "filmId" : "pieknobezrozmiarupokazstyluurodyidobrychmanieriprojekcjafilmuquotcruellaquot|",
+    "_id" : "pieknobezrozmiarupokazstyluurodyidobrychmanieriprojekcjafilmucruella||bielsko-biala|Janosik",
+    "filmId" : "pieknobezrozmiarupokazstyluurodyidobrychmanieriprojekcjafilmucruella|",
     "city" : "bielsko-biala",
     "cinema" : "Janosik",
     "filmUrl" : "https://www.bilety24.pl/kino/1500-piekno-bez-rozmiaru-pokaz-stylu-urody-i-dobrych-manier-i-projekcja-filmu-cruella--156054?id=928510",

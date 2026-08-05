@@ -31,8 +31,10 @@ import java.util.regex.Pattern
  */
 class TitleNormalizer(val rules: TitleRuleSet) {
 
-  /** Apply a cinema's per-cinema cleanup rules to a raw scraped title. */
-  def cinemaClean(cinemaId: String, raw: String): String = rules.perCinema(cinemaId, raw)
+  /** Apply a cinema's per-cinema cleanup rules to a raw scraped title, after the
+   *  shared tidy-up every scraped title needs (see [[TitleNormalizer.tidy]]). */
+  def cinemaClean(cinemaId: String, raw: String): String =
+    rules.perCinema(cinemaId, TitleNormalizer.tidy(raw))
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
@@ -144,8 +146,13 @@ class TitleNormalizer(val rules: TitleRuleSet) {
   // cinemas reported, and still deburrs/lower-cases/strips, so the case and punctuation
   // variants that should be one film remain one film.
   private val computeSanitize: java.util.function.Function[String, String] = title => {
-    val canonicalised = TitleNormalizer.strippedKey(canonical(title))
-    if (canonicalised.nonEmpty) canonicalised else TitleNormalizer.strippedKey(title)
+    // Tidy FIRST: `strippedKey` drops punctuation, so an undecoded `&quot;` would
+    // otherwise leave the bare letters "quot" welded into the key — which is how
+    // one André Rieu broadcast ended up keyed `andrerieuquotniechzyjemaastrichtquot`
+    // beside the four other rows for the same film.
+    val tidied        = TitleNormalizer.tidy(title)
+    val canonicalised = TitleNormalizer.strippedKey(canonical(tidied))
+    if (canonicalised.nonEmpty) canonicalised else TitleNormalizer.strippedKey(tidied)
   }
 
   /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
@@ -382,6 +389,45 @@ object TitleNormalizer {
   // decoration, so normalising first stranded it as Roman while the stripped
   // display form ("Mortal Kombat II") deromanised it — the two then sanitized to
   // different keys and the film never settled (the staging re-divert loop).
+  /** The clean-up every scraped title needs before anything reads it — decoding
+   *  first, then spacing, because a decoded `&quot;` can itself end up flush
+   *  against the next word.
+   *
+   *  Rule-independent by construction: no country's rule set disagrees that
+   *  `&quot;` is a quote mark or that a sentence mark is followed by a space. */
+  def tidy(title: String): String = spaceAfterSentenceMark(decodeEntities(title))
+
+  // Numeric (`&#233;` / `&#xE9;`) and the named entities that actually turn up in
+  // cinema listings. `&amp;` is decoded LAST so a double-encoded `&amp;quot;`
+  // resolves to `&quot;` rather than being collapsed straight to a quote mark.
+  private val NumericEntity = """&#(x?)([0-9a-fA-F]+);""".r
+  private val NamedEntities = Seq(
+    "&quot;" -> "\"", "&apos;" -> "'", "&nbsp;" -> " ", "&lt;" -> "<", "&gt;" -> ">",
+    "&laquo;" -> "«", "&raquo;" -> "»", "&ldquo;" -> "\u201c", "&rdquo;" -> "\u201d",
+    "&bdquo;" -> "\u201e", "&hellip;" -> "…", "&ndash;" -> "–", "&mdash;" -> "—")
+
+  def decodeEntities(s: String): String = {
+    if (!s.contains('&')) return s
+    val numeric = NumericEntity.replaceAllIn(s, m =>
+      scala.util.Try {
+        val code = Integer.parseInt(m.group(2), if (m.group(1).isEmpty) 10 else 16)
+        java.util.regex.Matcher.quoteReplacement(new String(Character.toChars(code)))
+      }.getOrElse(java.util.regex.Matcher.quoteReplacement(m.matched)))
+    NamedEntities.foldLeft(numeric) { case (acc, (e, c)) => acc.replace(e, c) }.replace("&amp;", "&")
+  }
+
+  /** Put back the space a listing dropped after a sentence mark: Kino Apollo
+   *  publishes `…Maastricht!”Retransmisja letniego koncertu`, and the display
+   *  title read `Andre rieu.niech żyje maastricht`.
+   *
+   *  Deliberately narrow — it fires only when at least two lower-case letters
+   *  precede the mark and a letter follows, so initialisms ("S.W.A.T."), decimals
+   *  ("Vol.2") and single-letter abbreviations keep their spacing. */
+  private val MissingSentenceSpace = """(?<=\p{Ll}{2})([.!?][\u201d\u00bb"']?)(?=\p{L})""".r
+
+  def spaceAfterSentenceMark(s: String): String =
+    MissingSentenceSpace.replaceAllIn(s, m => java.util.regex.Matcher.quoteReplacement(m.group(1) + " "))
+
   def normalize(title: String): String =
     title.split(" ").map(word => RomanToArabic.getOrElse(word.toUpperCase(Locale.ROOT), word)).mkString(" ")
 
