@@ -113,4 +113,72 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
     cache.entries should have size 1
   }
+
+  // ── A same-titled DIFFERENT film must not join the row ────────────────────
+  //
+  // A `movies` row is keyed by its TITLE alone, so a cinema listing an unrelated
+  // film of the same name is merged straight in and the row then holds two films
+  // with one tmdbId between them — production's "Joanna d'Arc" carried both
+  // Besson's 1999 picture and Pálmason's 2025 one and resolved to neither.
+  // Diverting sends it down the newcomer path instead, where it resolves on its
+  // own hints and folds into a row of its own.
+  //
+  // The settle-time `MixedFilmSplitter` repairs a row that already merged; this is
+  // the half that stops one forming. Its evidence has to survive raw listing data,
+  // which is why it needs corroborating — see `MixedFilmDetector`.
+
+  private def listing(title: String, original: Option[String], runtime: Option[Int], year: Option[Int]) =
+    CinemaMovie(
+      movie     = Movie(title = title, releaseYear = year, originalTitle = original, runtimeMinutes = runtime),
+      cinema    = Multikino,
+      posterUrl = None, filmUrl = None, synopsis = None,
+      cast = Nil, director = Nil, showtimes = Seq(Showtime(When, bookingUrl = None)))
+
+  private def rowFor(cache: CaffeineMovieCache, title: String, year: Option[Int], slot: SourceData): Unit =
+    cache.put(cache.keyOf(title, year), MovieRecord(tmdbId = Some(1429348),
+      data = Map[Source, SourceData](Helios -> slot)))
+
+  "a cinema listing a DIFFERENT film of the same title" should "divert instead of joining the row" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
+    // The row is Ozon's "L'étranger", 120 minutes.
+    rowFor(cache, "Obcy", Some(2025),
+      SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"), runtimeMinutes = Some(120)))
+
+    // Brandt Andersen's film, also released here as "Obcy": another original title
+    // AND another runtime.
+    cache.recordCinemaScrape(Multikino, Seq(listing("Obcy", Some("I Was A Stranger"), Some(103), Some(2024))))
+
+    cache.get(cache.keyOf("Obcy", Some(2025))).map(_.cinemaSlots.size) shouldBe Some(1)  // row untouched
+    staging.findAll().map(_.cinema) shouldBe Seq(Multikino: Source)                      // it went to staging
+  }
+
+  /** The listing field the smaller cinemas fill with the POLISH title. It differs
+   *  from the row's real original title, but agrees on runtime — so it merges, as
+   *  it must. An earlier gate without that corroboration re-diverted nine known
+   *  films on EVERY tick (`ReScrapeIdempotencySpec`). */
+  "a cinema whose originalTitle is really the Polish title" should "still join the row" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
+    rowFor(cache, "Obcy", Some(2025),
+      SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"), runtimeMinutes = Some(120)))
+
+    cache.recordCinemaScrape(Multikino, Seq(listing("Obcy", Some("Obcy"), Some(120), None)))
+
+    cache.get(cache.keyOf("Obcy", Some(2025))).map(_.cinemaSlots.size) shouldBe Some(2)
+    staging.findAll() shouldBe empty
+  }
+
+  "a cinema publishing nothing to corroborate a title difference" should "still join the row" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
+    rowFor(cache, "Obcy", Some(2025),
+      SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"), runtimeMinutes = Some(120)))
+
+    // Different original title, but no runtime and no year to back it up.
+    cache.recordCinemaScrape(Multikino, Seq(listing("Obcy", Some("I Was A Stranger"), None, None)))
+
+    cache.get(cache.keyOf("Obcy", Some(2025))).map(_.cinemaSlots.size) shouldBe Some(2)
+    staging.findAll() shouldBe empty
+  }
 }

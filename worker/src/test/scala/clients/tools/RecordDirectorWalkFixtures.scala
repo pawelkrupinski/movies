@@ -22,8 +22,16 @@ import tools.{FixtureTestWiring, HttpFetch, RealHttpFetch}
  * the two person endpoints to a recording pass-through. The result is the same
  * corpus plus the person responses it was always missing.
  *
+ * NOT needed when the corpus is re-rolled. `RecordAllDataToFixture` wraps ONE
+ * `RecordingHttpFetch` around everything it drives, the `TmdbClient` included, so
+ * a fresh capture records whatever endpoints the resolver of the day calls —
+ * person lookups among them — with no separate step. This exists for the other
+ * case: an EXISTING corpus that predates a new call, which is exactly how the
+ * 08-06-2026 tree ended up without them.
+ *
  * Run (needs TMDB_API_KEY from `.env.local`, and the network):
  *   sbt "worker/Test/runMain clients.tools.RecordDirectorWalkFixtures"
+ *   sbt "worker/Test/runMain clients.tools.RecordDirectorWalkFixtures 350,42238"   // named films
  * then regenerate the snapshots per the `regenerate-snapshots` skill.
  */
 object RecordDirectorWalkFixtures {
