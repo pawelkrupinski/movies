@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import scala.util.matching.Regex
+
 import models.CinemaMovie
 import services.cinemas.common.CinemaScraper
 
@@ -29,6 +31,12 @@ trait OnlyMovieEventsFilter extends CinemaScraper {
   /** The client's raw scrape. Implement this instead of `fetch()`. */
   protected def fetchUnfiltered(): Seq[CinemaMovie]
 
+  /** Names from THIS venue's own programme that are never films — a castle's
+   *  terrace season, a club night. They belong to the client that knows the
+   *  venue, not to the national classifier, which would otherwise accumulate a
+   *  marker per venue. Default none. */
+  protected def venueEventMarkers: Seq[Regex] = Nil
+
   final def fetch(): Seq[CinemaMovie] =
-    fetchUnfiltered().filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title))
+    fetchUnfiltered().filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title, venueEventMarkers))
 }

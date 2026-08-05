@@ -1,6 +1,8 @@
 package services.cinemas.pl
 
 import tools.{HttpFetch, TextNormalization}
+
+import scala.util.matching.Regex
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
@@ -54,6 +56,12 @@ class KinoZamekClient(
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   import KinoZamekClient._
+
+  /** "Lato na tarasach" is the castle's summer terrace season — live music, a
+   *  dance show, a yoga cycle — sold through the same MSI surface as the cinema.
+   *  It is this venue's programme name, so it lives here rather than in the
+   *  national classifier, where a marker per venue would pile up. */
+  override protected val venueEventMarkers: Seq[Regex] = Seq("""lato\s+na\s+tarasach""".r)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ListingBaseUrl, MsiBaseUrl)
   // The castle's own kino listing page — films only, unlike the MSI portal.

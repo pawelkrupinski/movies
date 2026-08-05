@@ -1,4 +1,6 @@
 package services.cinemas.pl
+
+import scala.util.matching.Regex
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a
  *  film. Small municipal & arthouse venues sell tickets to their own concerts,
  *  stand-up nights, kabaret shows, recitals and theatre plays through the same
@@ -81,11 +83,7 @@ object NonMovieEventClassifier {
     """\bjog[aiąę]\b""".r,
     // Silent-disco nights ("Zamkowe Silent Disco"). Deliberately NOT a bare
     // `disco`, which would drop the film "Disco Polo".
-    """silent\s?disco""".r,
-    // Summer open-air programmes carrying live music, not cinema: Zamek
-    // Szczecin's terrace season ("Swing Lovers - Lato na tarasach 2026"). A
-    // series name, like the broadcast series below — no film is called this.
-    """lato\s+na\s+tarasach""".r
+    """silent\s?disco""".r
   )
 
   /** Festival panels / author meetings ("…– spotkanie z podróżnikiem…", "panel
@@ -148,12 +146,20 @@ object NonMovieEventClassifier {
   def isScreenedBroadcast(title: String): Boolean =
     BroadcastMarkers.exists(title.toLowerCase.contains)
 
-  /** True when `title` names a live stage/music event rather than a film. */
-  def isLiveEvent(title: String): Boolean = {
+  /** True when `title` names a live stage/music event rather than a film.
+   *
+   *  `venueMarkers` lets ONE venue add its own programme's names — a castle's
+   *  terrace season, a club night — without those names becoming national rules.
+   *  They join the shared markers here rather than being applied by the caller so
+   *  that the surrounding rule holds for them too: the broadcast veto still wins,
+   *  and matching is still done on the lowercased title. See
+   *  `OnlyMovieEventsFilter.venueEventMarkers` for how a client supplies them. */
+  def isLiveEvent(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
     val t = title.toLowerCase
     if (isScreenedBroadcast(t)) false
     else
       EventMarkers.exists(_.findFirstIn(t).isDefined) ||
+      venueMarkers.exists(_.findFirstIn(t).isDefined) ||
       isStandaloneGala(t) ||
       isStandaloneDiscussion(t)
   }

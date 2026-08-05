@@ -157,18 +157,25 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     ).foreach(t => withClue(s"[$t] ") { NonMovieEventClassifier.isLiveEvent(t) shouldBe false })
   }
 
-  // Zamek Szczecin sells its castle programme through the same MSI surface as
-  // its cinema, so a yoga class and a silent disco arrive looking exactly like a
-  // film. Real titles, read off the portal on 2026-08-05 and out of the recorded
-  // June page.
-  it should "drop the castle's activity classes and terrace-season live music" in {
+  // A yoga class and a silent disco arrive through the same ticketing surface as
+  // the films, and neither is a film ANYWHERE — so these two stay national.
+  // Real titles, read off the Zamek Szczecin portal on 2026-08-05.
+  it should "drop activity classes and silent-disco nights" in {
     val notFilms = Seq(
       "JOGA W CHMURACH – STUDIO JOGI BARDZO BOSKIE - LATO NA TARASACH 2026",
-      "ZAMKOWE SILENT DISCO - LATO NA TARASACH 2026",
-      "SWING LOVERS- LATO NA TARASACH 2026",
-      "BUENA VISŁA – LATO NA TARASACH 2026",
-      "BLOCO POMERANIA BRAZIL SHOW- LATO NA TARASACH 2026")
+      "ZAMKOWE SILENT DISCO - LATO NA TARASACH 2026")
     notFilms.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe true))
+  }
+
+  // A venue's own programme name is NOT a national rule: on its own the shared
+  // classifier must not know what "Lato na tarasach" is. The client that owns the
+  // venue supplies it (see KinoZamekClientSpec).
+  it should "leave one venue's series name to that venue's client" in {
+    val terraceSeason = Seq("SWING LOVERS- LATO NA TARASACH 2026", "BUENA VISŁA – LATO NA TARASACH 2026")
+    terraceSeason.foreach(t => NonMovieEventClassifier.isLiveEvent(t) shouldBe false)
+
+    val marker = Seq("""lato\s+na\s+tarasach""".r)
+    terraceSeason.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t, marker) shouldBe true))
   }
 
   it should "keep the films those events sit beside on the same page" in {
