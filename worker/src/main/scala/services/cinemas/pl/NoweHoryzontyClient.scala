@@ -72,18 +72,10 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  Days are grouped [[DaysPerChunk]] to a chunk so widening the window costs
    *  chunk TASKS in weeks rather than days — the fan-out that
    *  `project_scrape_caps_count_venues_not_tasks` is about. */
-  def planChunks(): Seq[String] = {
-    val lastDay = today.plusDays(ScrapeHorizon.MaxDays)
-    var day      = today
-    var emptyRun = 0
-    val live     = Seq.newBuilder[LocalDate]
-    while (!day.isAfter(lastDay) && emptyRun < NoweHoryzontyClient.MaxEmptyDays) {
-      val hasFilms = Try(http.get(dayUrl(day))).toOption.flatMap(listaHtml).exists(FilmIdPat.findFirstIn(_).isDefined)
-      if (hasFilms) { live += day; emptyRun = 0 } else emptyRun += 1
-      day = day.plusDays(1)
-    }
-    live.result().map(_.toString).grouped(NoweHoryzontyClient.DaysPerChunk).map(_.mkString(",")).toSeq
-  }
+  def planChunks(): Seq[String] =
+    ScrapeHorizon.liveDays(today, NoweHoryzontyClient.MaxEmptyDays) { day =>
+      listaHtml(http.get(dayUrl(day))).exists(FilmIdPat.findFirstIn(_).isDefined)
+    }.map(_.toString).grouped(NoweHoryzontyClient.DaysPerChunk).map(_.mkString(",")).toSeq
 
   /** One chunk's days → their films (slots grouped by film id). A throw
    *  reschedules just this chunk's task. */

@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import java.time.LocalDate
+
 /**
  * How far ahead a venue's programme is scraped — ONE convention, shared by every client
  * that discovers its own day list.
@@ -30,4 +32,34 @@ package services.cinemas.common
  */
 object ScrapeHorizon {
   val MaxDays: Int = 730
+
+  /** The days a venue actually has a programme on, for a source that will answer
+   *  for ANY date but never says which ones it holds.
+   *
+   *  Walk forward from `from`, keep the days that yield something, and stop after
+   *  `maxEmptyDays` consecutive blanks — bounded by [[MaxDays]], so a venue that
+   *  keeps publishing keeps being read while a dormant one costs `maxEmptyDays`
+   *  requests and no more. This is the alternative to guessing a window: a fixed
+   *  one silently hides everything past it, which is what this object exists to
+   *  forbid, and what hid Nowe Horyzonty's whole retrospective programme.
+   *
+   *  A day whose probe THROWS counts as blank, exactly as `MsiClient` treats a
+   *  failed month: a missing day cannot be told from a quiet one, and treating it
+   *  as "keep going" would walk two years on every upstream blip.
+   *
+   *  Callers group the result into chunks — widening a per-day scrape must not
+   *  multiply chunk TASKS day for day (see
+   *  `project_scrape_caps_count_venues_not_tasks`). */
+  def liveDays(from: LocalDate, maxEmptyDays: Int)(hasProgramme: LocalDate => Boolean): Seq[LocalDate] = {
+    val lastDay = from.plusDays(MaxDays.toLong)
+    var day      = from
+    var emptyRun = 0
+    val live     = Seq.newBuilder[LocalDate]
+    while (!day.isAfter(lastDay) && emptyRun < maxEmptyDays) {
+      if (scala.util.Try(hasProgramme(day)).getOrElse(false)) { live += day; emptyRun = 0 }
+      else emptyRun += 1
+      day = day.plusDays(1)
+    }
+    live.result()
+  }
 }

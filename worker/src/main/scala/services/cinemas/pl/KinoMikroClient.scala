@@ -4,7 +4,7 @@ import tools.HttpFetch
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -20,7 +20,8 @@ import scala.util.Try
  * runtime / genres — TMDB supplies those downstream — but the
  * `event_description` HTML blob does name the director, which we extract.
  *
- * The feed is fetched one request per day across the [today, today+6] window.
+ * The feed is fetched one request per day, walking forward for as long as the
+ * programme lasts (see `planChunks`).
  * A broad/un-dated request silently caps the response at ~25 records — today's
  * schedule in full plus a single teaser screening per upcoming day — and the
  * `limit` parameter is ignored, so every advance-date repeat is dropped (Filmweb
@@ -35,19 +36,34 @@ class KinoMikroClient(
 ) extends ChunkedCinemaScraper {
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMikroClient.BaseApiUrl, "https://bilety.kinomikro.pl")
 
-  /** A fixed one-week window — no nav fetch; one chunk per day. */
-  def planChunks(): Seq[String] = (0 until KinoMikroClient.WindowDays).map(today.plusDays(_).toString)
+  /** Follow the programme rather than assume a week of it.
+   *
+   *  The feed answers for any date — 2026-08-25 returned screenings while the
+   *  scrape was still asking only for the next seven days, so everything past
+   *  that was invisible. Same walk and same reasoning as `NoweHoryzontyClient`;
+   *  see [[ScrapeHorizon.liveDays]]. Per-day is forced here: a broad `from`/`to`
+   *  range is capped at ~25 records by the feed (see [[KinoMikroClient.dayUrl]]),
+   *  so a week cannot be asked for in one request. */
+  def planChunks(): Seq[String] =
+    ScrapeHorizon.liveDays(today, KinoMikroClient.MaxEmptyDays) { day =>
+      KinoMikroParser.parse(Seq(http.get(KinoMikroClient.dayUrl(day))), venueName, cinema).nonEmpty
+    }.map(_.toString).grouped(KinoMikroClient.DaysPerChunk).map(_.mkString(",")).toSeq
 
-  /** One day's repertoire JSON → that day's films. A throw reschedules just this
-   *  day's chunk task. */
-  def fetchChunk(date: String): Seq[CinemaMovie] =
-    KinoMikroParser.parse(Seq(http.get(KinoMikroClient.dayUrl(LocalDate.parse(date)))), venueName, cinema)
+  /** One chunk's days → their films. A throw reschedules just this chunk's task. */
+  def fetchChunk(key: String): Seq[CinemaMovie] =
+    KinoMikroParser.parse(
+      key.split(",").toSeq.map(d => http.get(KinoMikroClient.dayUrl(LocalDate.parse(d)))), venueName, cinema)
 }
 
 object KinoMikroClient {
-  // Scrape today and the next 6 days — the standard one-week window the other
-  // per-day clients (NoweHoryzonty, McswElektrownia) use.
-  private val WindowDays = 7
+
+  /** How many consecutive blank days end the walk. A fortnight covers the gaps a
+   *  single-screen venue leaves between runs; a dormant one costs fourteen small
+   *  requests. A stop rule, not a horizon — `ScrapeHorizon.MaxDays` is the bound. */
+  val MaxEmptyDays = 14
+
+  /** Days per chunk task, so a wider window costs chunk tasks in weeks not days. */
+  val DaysPerChunk = 7
 
   val BaseApiUrl = "https://kinomikro.pl/api.php/v1/repertoires"
 

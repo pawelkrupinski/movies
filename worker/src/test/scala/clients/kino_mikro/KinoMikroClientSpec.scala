@@ -94,4 +94,49 @@ class KinoMikroClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       Seq("Joel Coen", "Ethan Coen")
     directorOf("<div>Gatunek: dramat</div>") shouldBe empty
   }
+
+  // ── The programme past the first week ────────────────────────────────────
+  //
+  // The feed answers for ANY date — asked directly, 2026-08-25 returned
+  // screenings while the scrape was still requesting only the next seven days,
+  // so everything past that was invisible. Same defect Nowe Horyzonty had, and
+  // the same shared walk fixes it (`ScrapeHorizon.liveDays`).
+  //
+  // A stub rather than the recorded corpus: what is under test is which DAYS get
+  // asked for, not how a day's JSON parses (the fixtures above cover that).
+
+  /** One screening, in the shape the feed actually returns (see the recorded
+   *  payloads above): the venue is matched on `location_institution_name` and the
+   *  slot time comes from `event_date`. */
+  private def dayJson(title: String, date: String): String =
+    s"""{"status":200,"data":[{"id":"1","event_id":"1","event_title":"$title",
+       |"location_institution_name":"Kino Mikro","event_date":"$date 20:00"}]}""".stripMargin
+
+  "planChunks" should "keep walking past the old one-week window" in {
+    val start = LocalDate.of(2026, 8, 5)
+    // A running programme out to 25 August — 20 days, well past the old window.
+    val stub = new tools.GetOnlyHttpFetch {
+      def get(url: String): String = {
+        val day = """from=(\d{4}-\d{2}-\d{2})""".r.findFirstMatchIn(url).map(_.group(1)).getOrElse("")
+        if (day > "2026-08-25") """{"status":200,"data":[]}"""
+        else dayJson("Coś w repertuarze", day.split("-").reverse.mkString("."))
+      }
+    }
+    val client = new KinoMikroClient(stub, "Kino Mikro", KinoMikro, start)
+
+    val days = client.planChunks().flatMap(_.split(","))
+    days should contain ("2026-08-25")
+    days.size should be > 7
+  }
+
+  it should "stop once the programme runs out, so a dormant venue stays cheap" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    val stub = new tools.GetOnlyHttpFetch {
+      def get(url: String): String = { asked += url; """{"status":200,"data":[]}""" }
+    }
+    val client = new KinoMikroClient(stub, "Kino Mikro", KinoMikro, LocalDate.of(2026, 8, 5))
+
+    client.planChunks() shouldBe empty
+    asked.size shouldBe KinoMikroClient.MaxEmptyDays
+  }
 }
