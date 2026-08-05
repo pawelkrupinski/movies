@@ -407,8 +407,8 @@ addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Tes
 // ReScrapeIdempotencySpec had a third by-name shard, on the grounds that it was
 // the single heaviest spec. It is back in `e2eRest`: that shard ran ~2 min under
 // the build's long pole (a WebKit page-test row) with a whole runner to itself,
-// and ci.yml is at its 20-runner cap, so the slot buys more as an eighth WebKit
-// shard than as a fourth e2e one.
+// and ci.yml is at its 20-runner cap, so the slot buys more as another WebKit
+// page-test shard than as a fourth e2e one.
 addCommandAlias("e2eScrape",   "e2e/Test/testOnly services.movies.ScrapeOrderDeterminismSpec")
 addCommandAlias("e2eStaging",  "e2e/Test/testOnly services.movies.StagingOrderDeterminismSpec")
 addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay -l services.movies.CountryScoped")

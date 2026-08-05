@@ -68,6 +68,28 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
+   * The deploy wants all 20 of the account's concurrent jobs, and a convergence
+   * run in flight holds 3 of them for 25-90 minutes — so a push landing in that
+   * window doesn't get 3 of its jobs until a convergence leg finishes. Measured:
+   * 17 jobs started at once, 3 waited ~200s, and one of the three was the
+   * longest job in the build; the run took 10m28s against a 7m critical path.
+   *
+   * Cancelling costs that suite almost nothing — its own workflow keeps one lane
+   * with `cancel-in-progress`, so the next push was going to discard the run
+   * anyway (6 of 10 consecutive runs ended `cancelled`), and `kick-convergence`
+   * re-dispatches it later in this same run against the newer commit. What
+   * matters is WHERE it happens: in `build-image`, which has no `needs` and so
+   * starts with ci's jobs, the runners come free while they are still queueing.
+   * Moved into a job that waits for ci, it would free nothing.
+   */
+  it should "take the runners back from an in-flight convergence run, before ci needs them" in {
+    buildImage should include("""gh run list --workflow "Country convergence"""")
+    buildImage should include("gh run cancel")
+    buildImage should include("actions: write")
+    buildImage should not include "needs:"
+  }
+
+  /**
    * The roll-back guard walks history with `git merge-base` against whatever
    * commit is live, so it needs full history — but only commits and trees, never
    * a file's contents. Fetching every blob in this repo's history (the fixture

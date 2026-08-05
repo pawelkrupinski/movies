@@ -70,9 +70,44 @@ jobs:
     # unreleased image in the registry costs nothing but builder time.
     build-image:
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            actions: write
         outputs:
             worker_hash: ${{ steps.stage.outputs.worker_hash }}
         steps:
+            # FIRST, before this job does any work of its own: take the runners
+            # back off the convergence suite.
+            #
+            # 20 concurrent jobs is the whole account's allowance, and this run
+            # wants all 20. A convergence run in flight holds 3 of them for
+            # anywhere from 25 to 90 minutes, so a push landing in that window
+            # doesn't get 3 of its jobs until a convergence leg finishes. Measured:
+            # 17 jobs started at once and 3 waited, one of them the longest job in
+            # the build — the run took 10m28s against a 7m critical path.
+            #
+            # Cancelling costs that suite very little, because it is already the
+            # thing that yields: its own workflow keeps one lane with
+            # `cancel-in-progress`, so the next push was going to throw the run away
+            # regardless — 6 of 10 consecutive runs ended `cancelled` — and
+            # `kick-convergence` re-dispatches it from this same run a few minutes
+            # later, against the newer commit. This just makes the preemption
+            # happen at the START of the deploy, where it frees runners, instead of
+            # at the end, where it frees nothing. The nightly 04:20 schedule remains
+            # the guaranteed-to-finish signal either way.
+            - name: Take the runners back from any in-flight convergence run
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  set -uo pipefail
+                  for id in $(gh run list --workflow "Country convergence" \
+                                  --status in_progress --json databaseId \
+                                  --jq '.[].databaseId'); do
+                      echo "cancelling convergence run $id to free its runners"
+                      gh run cancel "$id" || true
+                  done
+
             - uses: actions/checkout@v5
 
             - uses: actions/setup-java@v5
@@ -86,9 +121,9 @@ jobs:
             - uses: actions/cache@v5
               with:
                   path: |
-                      target
                       project/target
                       project/project/target
+                      */target/scala-*
                   # Read-only rider on the `test` job's key — same scope, same
                   # sources. Whichever of the two finishes first writes it.
                   key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}

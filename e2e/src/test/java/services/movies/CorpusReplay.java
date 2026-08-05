@@ -22,7 +22,7 @@ import org.scalatest.TagAnnotation;
  * corpus once and runs identical re-scrape ticks against it — was tagged too,
  * and is not any more. Its shard finished ~2 min inside the build's long pole
  * with a whole runner to itself, and ci.yml is at GitHub's 20-runner cap, so the
- * slot went to an eighth WebKit page-test shard instead. Untagging is the whole
+ * slot went to another WebKit page-test shard instead. Untagging is the whole
  * move: it rejoins the {@code e2eRest} run automatically.
  *
  * Class-level tag → every test in the annotated spec carries it. See the
