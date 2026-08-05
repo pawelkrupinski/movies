@@ -186,4 +186,16 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "Disco Polo")
     films.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
   }
+
+  // Event-cinema BROADCASTS are films for our purposes — the opera/ballet season
+  // is exactly the high-value stock the scrape horizon exists to reach. Real
+  // Kino Kijów titles from its 2026-10 and 2026-08 pages.
+  it should "keep opera-season broadcasts, which are screenings not stage shows" in {
+    val broadcasts = Seq(
+      "OPERA 2026/2027 - COSI FAN TUTTE",
+      "OPERA 2026/2027 - MAKBET",
+      "OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA",
+      "OPERA - Wesoła wdówka - RETRANSMISJA")
+    broadcasts.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
+  }
 }
