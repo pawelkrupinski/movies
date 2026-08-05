@@ -89,28 +89,19 @@ class MsiClient(
     // usually publish only 1–2 months ahead, but nothing in the portal promises
     // that, and a hard two-month window silently hides every screening past it —
     // the exact horizon cap `ScrapeHorizon` exists to forbid ("we want ALL future
-    // screenings"). The walk is bounded by `ScrapeHorizon.MaxDays` and stops after
-    // `MaxEmptyMonths` consecutive months that yielded nothing, so the typical
-    // venue still costs three or four requests rather than twenty-four.
-    //
-    // A month that FAILS to fetch counts as empty for the stop rule: we cannot
-    // tell a missing month from a quiet one, and treating failures as "keep
-    // going" would walk the full two years every time a portal blipped.
-    val lastMonth = YearMonth.from(today.plusDays(ScrapeHorizon.MaxDays))
+    // screenings"). The typical venue still costs three or four requests rather
+    // than twenty-four. See [[ScrapeHorizon.liveMonths]] for the stop rule, and
+    // why a month that FAILS to fetch counts as blank.
+    val attempts = Seq.newBuilder[Try[String]]
+    val slots    = Seq.newBuilder[MsiScraper.RawSlot]
 
-    var month     = YearMonth.from(today)
-    var emptyRun  = 0
-    val attempts  = Seq.newBuilder[Try[String]]
-    val slots     = Seq.newBuilder[MsiScraper.RawSlot]
-
-    while (!month.isAfter(lastMonth) && emptyRun < MaxEmptyMonths) {
+    ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
       val body = Try(http.get(monthUrl(baseUrl, mvcPath, month)))
       attempts += body
       val monthSlots = body.toOption.filter(_.nonEmpty).toSeq
         .flatMap(MsiScraper.parseMonthWithYear(_, month, baseUrl, titleCleaner))
       slots ++= monthSlots
-      emptyRun = if (monthSlots.isEmpty) emptyRun + 1 else 0
-      month = month.plusMonths(1)
+      monthSlots.nonEmpty
     }
 
     // Tolerate a per-month failure so one reachable month still contributes its
@@ -127,17 +118,6 @@ class MsiClient(
 }
 
 object MsiClient {
-
-  /** How many consecutive month pages may yield nothing before the walk gives up.
-   *
-   *  Three, not two. MSI venues were measured publishing one to two months ahead,
-   *  so a threshold of two cannot see a programme that resumes after a two-month
-   *  summer gap — exactly the situation half these venues are in right now. Three
-   *  clears that with headroom while a dormant venue still costs three requests.
-   *
-   *  This is a stop rule, not a horizon: the walk is bounded by
-   *  `ScrapeHorizon.MaxDays`, and a venue that keeps publishing keeps being read. */
-  val MaxEmptyMonths = 3
 
   def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth): String =
     s"$baseUrl$mvcPath?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"

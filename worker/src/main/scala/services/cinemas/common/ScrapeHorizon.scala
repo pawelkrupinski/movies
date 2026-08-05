@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import java.time.LocalDate
+import java.time.{LocalDate, YearMonth}
 
 /**
  * How far ahead a venue's programme is scraped — ONE convention, shared by every client
@@ -52,9 +52,9 @@ object ScrapeHorizon {
    *  one silently hides everything past it, which is what this object exists to
    *  forbid, and what hid Nowe Horyzonty's whole retrospective programme.
    *
-   *  A day whose probe THROWS counts as blank, exactly as `MsiClient` treats a
-   *  failed month: a missing day cannot be told from a quiet one, and treating it
-   *  as "keep going" would walk two years on every upstream blip.
+   *  A day whose probe THROWS counts as blank, as [[liveMonths]] treats a failed
+   *  month: a missing day cannot be told from a quiet one, and treating it as
+   *  "keep going" would walk two years on every upstream blip.
    *
    *  Callers group the result into chunks — widening a per-day scrape must not
    *  multiply chunk TASKS day for day (see
@@ -68,6 +68,36 @@ object ScrapeHorizon {
       if (scala.util.Try(hasProgramme(day)).getOrElse(false)) { live += day; emptyRun = 0 }
       else emptyRun += 1
       day = day.plusDays(1)
+    }
+    live.result()
+  }
+
+  /** How many consecutive blank months end a [[liveMonths]] walk.
+   *
+   *  Three, not two. MSI venues were measured publishing one to two months ahead, so
+   *  a threshold of two cannot see a programme that resumes after a two-month summer
+   *  gap — the situation half those venues were in. A month is a far coarser probe
+   *  than a day, so three of them is already a quarter of silence, and a dormant
+   *  venue still costs only three requests. */
+  val MaxEmptyMonths: Int = 3
+
+  /** The months a venue has a programme in — [[liveDays]] for portals that publish
+   *  a page per calendar month rather than per day.
+   *
+   *  Same contract: walk forward from `from`, keep what yields something, stop after
+   *  `maxEmptyMonths` consecutive blanks, bound the whole thing by [[MaxDays]], and
+   *  count a month whose probe THROWS as blank. Callers that need to tell "every
+   *  month failed" from "the venue is quiet" — a portal that is down must not read as
+   *  a dormant venue — keep their own record of the attempts inside `hasProgramme`. */
+  def liveMonths(from: YearMonth, maxEmptyMonths: Int = MaxEmptyMonths)(hasProgramme: YearMonth => Boolean): Seq[YearMonth] = {
+    val lastMonth = YearMonth.from(from.atDay(1).plusDays(MaxDays.toLong))
+    var month     = from
+    var emptyRun  = 0
+    val live      = Seq.newBuilder[YearMonth]
+    while (!month.isAfter(lastMonth) && emptyRun < maxEmptyMonths) {
+      if (scala.util.Try(hasProgramme(month)).getOrElse(false)) { live += month; emptyRun = 0 }
+      else emptyRun += 1
+      month = month.plusMonths(1)
     }
     live.result()
   }

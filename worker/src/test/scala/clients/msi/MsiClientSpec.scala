@@ -8,6 +8,7 @@ import tools.HttpStatusException
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.MsiClient
+import services.cinemas.common.ScrapeHorizon
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -118,7 +119,7 @@ class MsiClientSpec
     val counting = new CountingHttpFetch
     new MsiClient(counting, "https://bilety.cinemaone.pl", Cinema1Gdansk,
       today = LocalDate.of(2026, 6, 7)).fetch()
-    counting.requests shouldBe MsiClient.MaxEmptyMonths
+    counting.requests shouldBe ScrapeHorizon.MaxEmptyMonths
   }
 
   it should "strip MSI format suffixes and sentence-case titles" in {
@@ -246,5 +247,26 @@ class MsiClientSpec
   private class CountingHttpFetch extends tools.GetOnlyHttpFetch {
     var requests = 0
     override def get(url: String): String = { requests += 1; "" }
+  }
+
+  // Java's `\w` is ASCII-only, and "paź" is the one Polish month abbreviation
+  // with a diacritic — so October rows never matched the date pattern and every
+  // October screening was dropped, at every MSI venue. Nothing pointed at it
+  // because the other eleven months parse fine, and until the month walk landed
+  // October was rarely even requested.
+  it should "read an October date, whose Polish abbreviation carries a diacritic" in {
+    val page =
+      """<div class="movies-movie__single">
+        |<div class="movies-movie__single__title" title="Jakiś film"></div>
+        |<div class="movies-movie__single__options d-none"><ul class="movies-movie__single__options__hours">
+        |<a href="/MSI/Default.aspx?event_id=1">14 paź 18:30</a></ul></div></div>""".stripMargin
+    val onlyOctober = new tools.GetOnlyHttpFetch {
+      def get(url: String): String = if (url.contains("date=2026-10")) page else ""
+    }
+
+    val showtimes = new MsiClient(onlyOctober, "https://bilety.cinemaone.pl", Cinema1Gdansk,
+      today = LocalDate.of(2026, 10, 1)).fetch().flatMap(_.showtimes)
+
+    showtimes.map(_.dateTime.toLocalDate) shouldBe Seq(LocalDate.of(2026, 10, 14))
   }
 }

@@ -1,14 +1,13 @@
 package services.cinemas.pl
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 import services.movies.TitleNormalizer
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, YearMonth, ZoneId}
 import java.time.format.DateTimeFormatter
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -29,10 +28,12 @@ import scala.util.Try
  *       - `a.btn-badge2[href^="/MSI/Default.aspx?event_id="]` — the booking
  *         link.
  *
- * The scraper fetches the current month and, when today is in the last two
- * weeks of the month, also the following month — so the fixture for a mid-month
- * capture only needs the one month page. The year is read from the `date=`
- * query parameter rather than inferred from `today`, so month-turns are
+ * The scraper walks forward a month at a time for as long as the portal has a
+ * programme. Kijów publishes further ahead than most: measured 2026-08-05 it
+ * carried screenings in every month through March 2027, and fetching only the
+ * current month — as this did outside a month's last fortnight — hid about
+ * fifty-five of them. See [[ScrapeHorizon.liveMonths]]. The year is read from the
+ * `date=` query parameter rather than inferred from `today`, so month-turns are
  * handled without guesswork.
  */
 class KinoKijowClient(
@@ -48,11 +49,15 @@ class KinoKijowClient(
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val months = monthsToFetch(today)
-    val pages  = ParallelDetailFetch.keyed("kino-kijow-months", months, 1.minute)(m => monthUrl(m)) { url =>
-      Try(http.get(url)).toOption
+    // Each month is read once: the walk parses a month to learn whether the
+    // programme goes on, so its slots are kept rather than fetched again.
+    val byMonth = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Seq[RawSlot]]
+    ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
+      byMonth.getOrElseUpdate(month,
+        Try(http.get(monthUrl(month))).toOption.toSeq
+          .flatMap(html => parseDocument(html, month, titles))).nonEmpty
     }
-    val slots = months.flatMap(m => pages.getOrElse(m, None).toSeq.flatMap(html => parseDocument(html, m, titles)))
+    val slots = byMonth.values.toSeq.flatten
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl), format = s.format)) { (title, _, showtimes) =>
       CinemaMovie(
@@ -66,14 +71,6 @@ class KinoKijowClient(
         showtimes = showtimes
       )
     }
-  }
-
-  /** Current month, plus next month when today is in the final 14 days so
-    * near-boundary screenings aren't missed. */
-  private def monthsToFetch(today: LocalDate): Seq[YearMonth] = {
-    val cur  = YearMonth.from(today)
-    val daysLeft = today.lengthOfMonth - today.getDayOfMonth
-    if (daysLeft <= 14) Seq(cur, cur.plusMonths(1)) else Seq(cur)
   }
 
   private def monthUrl(ym: YearMonth): String =
@@ -93,7 +90,10 @@ object KinoKijowClient {
   )
 
   // "07 cze 10:30" — day, Polish month abbr, time
-  private val DateTimePat = """(\d{1,2})\s+(\w+)\s+(\d{2}:\d{2})""".r
+  // `\p{L}`, not `\w`: Java's `\w` is ASCII-only by default, so "10 paź 18:00"
+  // never matched and every OCTOBER screening was silently dropped. The other
+  // eleven abbreviations happen to be ASCII, which is why it went unnoticed.
+  private val DateTimePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{2}:\d{2})""".r
 
   private[cinemas] case class RawSlot(title: String, format: List[String], dateTime: LocalDateTime, bookingUrl: String)
 
