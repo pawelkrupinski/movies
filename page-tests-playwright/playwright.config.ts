@@ -105,7 +105,14 @@ const projects: Project[] = [
 
 export default defineConfig({
   testDir: './tests',
-  workers: '100%',
+  // CI runs 5 workers on a 4-vCPU runner. These specs spend most of their time
+  // waiting — navigation, `expect` polling, transitions — not burning CPU, so a
+  // mild oversubscription converts that idle into throughput on the WebKit rows,
+  // which are the build's long pole. Deliberately mild: the fixture server's JVM
+  // shares those 4 cores, `retries` is 0 against it (below), and `expect` gives
+  // an assertion only 5s, so contention buys flakes rather than speed past this
+  // point. Local runs stay at one worker per core.
+  workers: process.env.CI ? '125%' : '100%',
   retries: IS_LOCAL_FIXTURE ? 0 : 1,
   timeout: 30_000,
   expect: { timeout: 5_000 },
@@ -118,8 +125,20 @@ export default defineConfig({
   // On CI emit a JUnit report (for the inline check-run) and an HTML
   // report (uploaded as a failure artifact) alongside the console list;
   // local runs stay as plain `list`.
+  //
+  // Both land under `reports/`, NOT under `test-results/`: Playwright wipes
+  // `outputDir` at the start of every run, and a CI row may invoke the runner
+  // more than once (see the `runs` input of .github/actions/run-page-test), so
+  // a report written into `test-results/` would be deleted by the next
+  // invocation before the check-run publisher ever globbed it.
+  // PLAYWRIGHT_JUNIT_OUTPUT_NAME / PLAYWRIGHT_HTML_OUTPUT_DIR are how those
+  // rows give each invocation its own file.
   reporter: process.env.CI
-    ? [['list'], ['junit', { outputFile: 'test-results/junit.xml' }], ['html', { open: 'never' }]]
+    ? [
+        ['list'],
+        ['junit', { outputFile: process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? 'reports/junit.xml' }],
+        ['html', { open: 'never', outputFolder: process.env.PLAYWRIGHT_HTML_OUTPUT_DIR ?? 'reports/html' }],
+      ]
     : 'list',
   use: {
     baseURL: BASE_URL,

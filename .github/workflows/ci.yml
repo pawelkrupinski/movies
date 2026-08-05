@@ -17,26 +17,38 @@ on:
 #
 #   test (unit + eslint + stage) ─┐
 #   integration-test ─────────────┤
-#   e2e × 4 shards ───────────────┤  (all independent; deploy.yml's deploy job
+#   e2e × 3 shards ───────────────┤  (all independent; deploy.yml's deploy job
 #   mobile-local-server (iOS+And) ┤   `needs` this whole workflow)
 #   page-tests × 13 ──────────────┘
 #
-# Jobs are split to stay under the 20-runner cap WITHOUT any job queueing
-# (currently 20: 1 test + 1 integration + 4 e2e + 1 mobile + 13 page-tests).
+# RUNNER BUDGET — 19 here, and it must stay there. GitHub Free allows 20
+# concurrent jobs ACROSS THE ACCOUNT, and on a push to main deploy.yml adds a
+# 20th (`build-image`, which runs alongside these rather than after them). Every
+# job over that budget queues, and a queued job is pure added wall-clock: it
+# starts when something else finishes. So a new job here has to take its slot
+# from an existing one — that is why ReScrapeIdempotencySpec gave up its e2e
+# shard to an eighth WebKit page-test row, and why two cheap page-test slices
+# share a runner rather than each having one. (CiRunnerBudgetSpec)
+#
+# Current split: 1 test + 1 integration + 3 e2e + 1 mobile + 13 page-tests.
 # eslint rides `test` (was its own job), and iOS + Android LocalServer share
 # one `mobile-local-server` job (one FixtureServerMain boot for both). The
 # original ~13-min long pole was the single `e2e` job (two serial whole-corpus
-# determinism specs); it's now (a) fanned out across 4 parallel shards and
+# determinism specs); it's now (a) fanned out across parallel shards and
 # (b) each heavy spec runs its replays CONCURRENTLY (see ParallelReplays), so
-# e2e drops well under the page-tests tier. The WebKit phone page-tests are
-# 2-way sharded (slow engine — the test run, not the boot, is the bulk); the
-# Chromium phones stay un-sharded (fast engine, boot-dominated). See below.
+# e2e drops well under the page-tests tier.
+#
+# The page-test rows all carry the same ~100s of fixed cost (checkout, JDK, the
+# zinc cache, and the FixtureServerMain boot — which is ~98s of sbt and 2.4s of
+# application, since FixtureTestWiring loads read-model-snapshot.json rather
+# than recomputing the pipeline). That fixed cost is why the shape below is what
+# it is: phones run as one sharded project SET so the rows finish together
+# instead of ranging 109-207s, and slices too small to justify a boot are paired
+# onto one runner. See .github/actions/run-page-test.
 #
 # All gating legs run independently. The sbt-driven ones share the
 # `actions/cache` keyed on hashed sources so later jobs find zinc state warm
-# (the mobile job keeps a separate JDK-21 cache key). The test job also produces
-# the Play universal-stage dist for deploy, uploaded as the `stage` artifact —
-# deploy.yml's deploy job downloads it from this run.
+# (the mobile job keeps a separate JDK-21 cache key).
 #
 # `page-tests` is the only job that needs a browser: PageJsBehaviourSpec
 # drives a real headless Chrome over CDP to exercise the JS on the
@@ -100,12 +112,17 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-            # Produce BOTH apps' universal-stage distributions here so the
-            # deploy job can ship them straight to Fly's builder without
-            # recompiling. Reuses the warm zinc state from `sbt testUnit` —
-            # only linking + writing the dists costs anything. On a PR run
-            # (branch-ci.yml) nothing downloads these; they just prove the
-            # staged dist links, then expire after a day.
+            # Prove BOTH apps' universal-stage distributions still link, and
+            # publish them. Reuses the warm zinc state from `sbt testUnit` — only
+            # linking + writing the dists costs anything.
+            #
+            # Nothing DOWNLOADS these any more: deploy.yml stages its own copy in
+            # `build-image`, which runs alongside this job rather than after it,
+            # so that the container build is off the post-CI critical path. What
+            # they still buy is the check below on a PR run (branch-ci.yml never
+            # reaches deploy.yml), where this is the only place a broken dist or
+            # a reappearing Scaladoc tree would be caught. They expire after a
+            # day.
             - run: sbt "web/stage" "worker/stage"
 
             # Guards build.sbt's `noApiDocs`. Play's dist and native-packager
@@ -198,6 +215,17 @@ jobs:
                   restore-keys: |
                       sbt-target-android-ls-${{ runner.os }}-
 
+            # Kick the fixture-server compile off HERE, in the background, and
+            # collect it below — the Swift toolchain, the Android SDK and Gradle
+            # setups that follow are ~50s of download that has no reason to wait
+            # behind ~100s of sbt. The exit status is parked in a file so the
+            # collect step can still fail the job on a compile error, and the
+            # log is replayed there rather than interleaved with three actions'
+            # output.
+            - name: Start compiling the fixture server
+              run: |
+                  nohup bash -c 'sbt web/PageTest/compile > /tmp/compile.log 2>&1; echo $? > /tmp/compile.status' &
+
             - uses: swift-actions/setup-swift@v2
               with:
                   swift-version: '5.10'
@@ -223,11 +251,8 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
 
-            # Boot the fixture server in the background ONCE for both mobile
-            # suites. Binds a kernel-assigned free port, writes it to a file we
-            # busy-wait for, then exports the URL both test steps read.
-            # Build BEFORE booting, as its own step, so the boot's ceiling only has to
-            # cover booting.
+            # Collect the background compile started above. Build BEFORE booting,
+            # as its own step, so the boot's ceiling only has to cover booting.
             #
             # The two were one step, and the 300s below had to stretch over both. That
             # holds until the caches go cold together — a Renovate dependency bump
@@ -237,9 +262,25 @@ jobs:
             # killed. It reports as `FixtureServerMain never wrote a port file`, which
             # points at the server rather than at the build that never finished making
             # it. Split, a slow build is just a slow build, a compile error says so, and
-            # the ceiling below measures the one thing it names.
-            - name: Compile the fixture server
-              run: sbt web/PageTest/compile
+            # the ceiling below measures the one thing it names. Backgrounding the
+            # compile keeps that split — this step still names, times and fails on
+            # exactly the compile — while letting the toolchain downloads overlap it.
+            - name: Wait for the fixture-server compile
+              run: |
+                  set -uo pipefail
+                  # 900s: the compile is normally ~100s warm, but a cold coursier +
+                  # cold zinc cache together is minutes. Same generosity the boot
+                  # ceiling below has, and for the same reason.
+                  for _ in $(seq 1 450); do
+                      [ -f /tmp/compile.status ] && break
+                      sleep 2
+                  done
+                  cat /tmp/compile.log 2>/dev/null || true
+                  if [ ! -f /tmp/compile.status ]; then
+                      echo "::error::web/PageTest/compile did not finish within 900s"
+                      exit 1
+                  fi
+                  exit "$(cat /tmp/compile.status)"
 
             - name: Boot FixtureServerMain
               run: |
@@ -387,29 +428,31 @@ jobs:
                   include_passed: false
 
 
-    # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across four
+    # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across three
     # parallel shards. On one runner the module was the ~13-min pipeline long
     # pole: each heavy spec boots the always-on staging pipeline (~110s) one or
     # more times, and they ran serially. The shards (see the
-    # e2eScrape/e2eStaging/e2eReScrape/e2eRest aliases in build.sbt):
+    # e2eScrape/e2eStaging/e2eRest aliases in build.sbt):
     #
     #   scrape   — ScrapeOrderDeterminismSpec  (run by name)
     #   staging  — StagingOrderDeterminismSpec (run by name)
-    #   rescrape — ReScrapeIdempotencySpec     (run by name) — the heaviest
-    #              single spec; pooled into `rest` it was the pipeline long pole
-    #              (it boots the settled corpus, then runs identical re-scrape
-    #              ticks against it). Its own shard now.
     #   rest     — every OTHER e2e spec, via `e2e/Test/test -- -l …CorpusReplay`
-    #              (tag-EXCLUSION of the three @CorpusReplay specs), so a
+    #              (tag-EXCLUSION of the two @CorpusReplay specs), so a
     #              newly-added spec auto-rides this shard and can't be silently
     #              dropped. See the `@CorpusReplay` tag annotation in
     #              CorpusReplay.java.
     #
+    # ReScrapeIdempotencySpec HAD a fourth shard of its own. It gave that slot up
+    # to an eighth WebKit page-test shard, which was the build's long pole while
+    # this shard sat ~2 min under it. Folding it back into `rest` costs `rest`
+    # only the spec's own runtime — it joins the same ScalaTest run and the same
+    # already-paid sbt load — and ScalaTest keeps going across suites, so a
+    # failure in one still reports the other. Untagging it is what moves it (the
+    # tag means "has its own shard").
+    #
     # Same coverage as the old single job, a fraction of the wall-clock. Each
-    # shard pays its own compile, but they run in parallel; the 4th shard's
-    # runner slot comes from the page-tests tier staying at 13 (the freed slots
-    # earlier came from un-sharding the boot-bound playwright phone jobs below).
-    # Uses FixtureTestWiring (no Mongo); reports go to the root unit/ dir
+    # shard pays its own compile, but they run in parallel. Uses
+    # FixtureTestWiring (no Mongo); reports go to the root unit/ dir
     # (unitReportSettings) → a per-shard `e2e tests (<shard>)` check.
     e2e:
         name: e2e (${{ matrix.shard }})
@@ -419,7 +462,6 @@ jobs:
                 include:
                     - { shard: scrape,   cmd: e2eScrape }
                     - { shard: staging,  cmd: e2eStaging }
-                    - { shard: rescrape, cmd: e2eReScrape }
                     - { shard: rest,     cmd: e2eRest }
         runs-on: ubuntu-latest
         permissions:
@@ -512,20 +554,57 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    # Playwright phone rows run UN-sharded (one runner per phone):
-                    # each row is dominated by the ~3-min FixtureServerMain sbt
-                    # boot, not the <2-min playwright run, so a 2-way shard paid
-                    # the boot twice to save ~1 min — a poor trade. Un-sharded,
-                    # the freed runner slots go to the parallel `e2e` shards above.
-                    - { variant: stable,         kind: chrome,     version: stable }
-                    - { variant: pw galaxy-s10,  kind: playwright, project: 'chromium-galaxy-s10*',  browser: chromium }
-                    - { variant: pw galaxy-s25,  kind: playwright, project: 'chromium-galaxy-s25*',  browser: chromium }
-                    # chromium pixel-9 (360 px) intentionally dropped — same width
-                    # as galaxy-s10; redundant for catching layout breaks. The
+                    - { variant: stable, kind: chrome, version: stable }
+
+                    # The three Chromium phones run as ONE project set, sharded
+                    # two ways, rather than one runner per phone. Three reasons.
+                    #
+                    # Balance: per-phone rows drifted badly apart (109s vs 207s
+                    # for the identical test count on the same run), and the
+                    # build waits on the slowest. Playwright shards the combined
+                    # list — measured 552/552 at two ways, dead even — so the
+                    # rows finish together.
+                    #
+                    # Two shards rather than three because Chromium is ~3× faster
+                    # per test than WebKit, so a Chromium row has slack a WebKit
+                    # row does not; the third runner is worth more as an eighth
+                    # WebKit shard.
+                    #
+                    # And they no longer re-run the `@agnostic` set. Those ~13
+                    # viewport-INDEPENDENT spec files were being executed at all
+                    # four viewport variants of all three phones — 12× what the
+                    # tag says is needed, and 208 of each row's 576 tests. They
+                    # ride the single `behaviour` row below now, exactly as the
+                    # WebKit phones have always done.
+                    #
+                    # chromium pixel-9 (360 px) stays out — same width as
+                    # galaxy-s10, redundant for catching layout breaks. The
                     # project stays in playwright.config.ts so a local
                     # `npx playwright test --project chromium-pixel-9` still runs.
-                    - { variant: pw pixel-9-pro, kind: playwright, project: 'chromium-pixel-9-pro*', browser: chromium }
-                    - { variant: pw desktop,     kind: playwright, project: chrome-desktop,          browser: chrome }
+                    - variant: pw phones 1/2
+                      kind: playwright
+                      browsers: chromium
+                      label: chromium-phones-1-2
+                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 1/2'
+                    - variant: pw phones 2/2
+                      kind: playwright
+                      browsers: chromium
+                      label: chromium-phones-2-2
+                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 2/2'
+
+                    # Two cheap slices sharing one runner: the viewport-independent
+                    # specs once on mobile Chromium (touch emulation — `card-tap`
+                    # is @agnostic and needs a touch context, so this can't be the
+                    # desktop project), and the desktop-Chrome viewport-sensitive
+                    # set. Each is ~35s of testing behind a ~100s boot; separately
+                    # they burned two runners to save nothing.
+                    - variant: pw behaviour + desktop
+                      kind: playwright
+                      browsers: chromium chrome
+                      label: chromium-behaviour-desktop
+                      runs: |
+                          chromium-galaxy-s10 ; @agnostic ; axe-core ;
+                          chrome-desktop ; ; axe-core|@agnostic ;
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -536,11 +615,12 @@ jobs:
               with:
                   kind:          ${{ matrix.kind }}
                   version:       ${{ matrix.version }}
-                  project:       ${{ matrix.project }}
-                  browser:       ${{ matrix.browser }}
+                  browsers:      ${{ matrix.browsers }}
+                  label:         ${{ matrix.label }}
+                  runs:          ${{ matrix.runs }}
 
     page-tests-safari:
-        name: page tests (safari / ${{ matrix.variant }}${{ matrix.shard && format(' {0}', matrix.shard) || '' }})
+        name: page tests (safari / ${{ matrix.variant }})
         strategy:
             fail-fast: false
             matrix:
@@ -550,28 +630,46 @@ jobs:
                     # tagged `@agnostic`) assert byte-identically on all three
                     # portrait iPhone widths (375/390/440 all sit in one CSS
                     # bucket), so running them per-phone was a 3× re-run. They
-                    # ride ONE `behaviour` job on iphone-13; each phone family runs
-                    # only its viewport-SENSITIVE specs (navbar geometry, landscape,
-                    # zoomed-gaps), 2-WAY SHARDED. Unlike the chromium phones below
-                    # (un-sharded — Chromium is fast enough that the ~3-min boot
-                    # dominates), WebKit is slow enough that the test run itself is
-                    # the bulk: un-sharded these phones were ~600s and the build's
-                    # long pole, so each is split across two runners (~400s). The
-                    # slots come from the e2e shards now finishing fast (their
-                    # replays run concurrently — see ParallelReplays). Coverage of
-                    # every width is unchanged. Firefox stays dropped from CI (the
-                    # firefox-desktop project remains in playwright.config.ts for
-                    # local runs).
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
-                    - { variant: pw iphone-se,         kind: playwright, project: 'webkit-iphone-se*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
-                    - { variant: pw iphone-13,         kind: playwright, project: 'webkit-iphone-13*',         browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '1/2' }
-                    - { variant: pw iphone-17-pro-max, kind: playwright, project: 'webkit-iphone-17-pro-max*', browser: webkit, grepInvert: 'axe-core|@agnostic', shard: '2/2' }
-                    # Viewport-independent specs once, on the representative 390px
-                    # portrait (matches the `iPhone 13` base in webkitUse).
-                    - { variant: pw behaviour,         kind: playwright, project: webkit-iphone-13,            browser: webkit, grep: '@agnostic', grepInvert: 'axe-core' }
-                    - { variant: pw desktop,           kind: playwright, project: webkit-desktop,              browser: webkit, grepInvert: 'axe-core|@agnostic' }
+                    # ride the single `behaviour` slice below; the phone shards
+                    # run only the viewport-SENSITIVE specs (navbar geometry,
+                    # landscape, zoomed-gaps).
+                    #
+                    # WebKit is ~3× slower per test than Chromium, so here the
+                    # test run — not the ~100s boot — is the bulk, and this tier
+                    # is the build's long pole, so it gets every runner the budget
+                    # can spare. All three phones run as ONE project set sharded
+                    # EIGHT ways rather than per-phone: the per-phone 2-way shards
+                    # ranged 306-363s on a single run, and sharding the combined
+                    # list evens that out.
+                    #
+                    # Shard COUNT is not free to pick — Playwright splits by spec
+                    # file, so some counts divide the 1104 tests far better than
+                    # others. Measured: 7 → 135-184 per shard, 8 → an alternating
+                    # 106/170, 9 → 106-132. Eight is what the budget allows; nine
+                    # would be the better split if a runner ever frees up. Re-measure
+                    # with `--list` before changing it rather than assuming more
+                    # shards is faster. Coverage of every width is unchanged.
+                    # Firefox stays dropped from CI (the firefox-desktop project
+                    # remains in playwright.config.ts for local runs).
+                    - { variant: pw phones 1/8, kind: playwright, browsers: webkit, label: webkit-phones-1-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 1/8' }
+                    - { variant: pw phones 2/8, kind: playwright, browsers: webkit, label: webkit-phones-2-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 2/8' }
+                    - { variant: pw phones 3/8, kind: playwright, browsers: webkit, label: webkit-phones-3-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 3/8' }
+                    - { variant: pw phones 4/8, kind: playwright, browsers: webkit, label: webkit-phones-4-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 4/8' }
+                    - { variant: pw phones 5/8, kind: playwright, browsers: webkit, label: webkit-phones-5-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 5/8' }
+                    - { variant: pw phones 6/8, kind: playwright, browsers: webkit, label: webkit-phones-6-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 6/8' }
+                    - { variant: pw phones 7/8, kind: playwright, browsers: webkit, label: webkit-phones-7-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 7/8' }
+                    - { variant: pw phones 8/8, kind: playwright, browsers: webkit, label: webkit-phones-8-8, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 8/8' }
+                    # The viewport-independent specs once, on the representative
+                    # 390px portrait (matches the `iPhone 13` base in webkitUse),
+                    # sharing a runner with the desktop-Safari viewport-sensitive
+                    # set — same pairing rationale as the Chromium row above.
+                    - variant: pw behaviour + desktop
+                      kind: playwright
+                      browsers: webkit
+                      label: webkit-behaviour-desktop
+                      runs: |
+                          webkit-iphone-13 ; @agnostic ; axe-core ;
+                          webkit-desktop ; ; axe-core|@agnostic ;
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -581,8 +679,6 @@ jobs:
             - uses: ./.github/actions/run-page-test
               with:
                   kind:          ${{ matrix.kind }}
-                  project:       ${{ matrix.project }}
-                  browser:       ${{ matrix.browser }}
-                  shard:         ${{ matrix.shard }}
-                  grep:          ${{ matrix.grep }}
-                  grepInvert:    ${{ matrix.grepInvert }}
+                  browsers:      ${{ matrix.browsers }}
+                  label:         ${{ matrix.label }}
+                  runs:          ${{ matrix.runs }}

@@ -26,33 +26,130 @@ concurrency:
 
 # Pipeline shape:
 #
-#   ci (reusable workflow — lint, test, integration, ios/android    ┌─► deploy (6 apps) ─► annotate
+#   ci (reusable workflow — lint, test, integration, ios/android    ┌─► deploy (6 apps)
 #       local-server, page-tests) ───────────────────────────────── ┤
+#   build-image (stage + push both images) ──────────────────────── ┤
 #                                                                   └─► kick-convergence
 #
 # The whole build+test pipeline lives in ci.yml as a `workflow_call`
 # reusable workflow so it has exactly one definition; branch-ci.yml
 # runs the same thing on every PR. Here on push-to-main we run it and,
 # once green, deploy. `secrets: inherit` hands the called workflow the
-# ZYTE / TMDB / MONGODB secrets its test jobs need. The `test` job in
-# ci.yml uploads the `stage-web` / `stage-worker` dists; because the
-# called workflow's jobs run in THIS run, the deploy job below downloads
-# them straight from it.
+# ZYTE / TMDB / MONGODB secrets its test jobs need.
+#
+# `build-image` runs ALONGSIDE ci, not after it, and that is the point: the
+# container build is a pure function of the sources, so it does not need the
+# tests to have passed — only the RELEASE does. Building it concurrently takes
+# ~85s of image build off the post-CI tail, leaving the deploy legs to do the
+# one thing that genuinely has to wait for a green build: point the machines at
+# an image that already exists. Nothing ships if ci fails, because the legs
+# still `needs: ci`; a pushed-but-never-released image is inert.
+#
+# It costs a runner slot, and the account has 20. ci.yml is deliberately built
+# to 19 so this job is the 20th — see the RUNNER BUDGET note there before adding
+# a job to either file.
 jobs:
     ci:
         uses: ./.github/workflows/ci.yml
         secrets: inherit
 
+    # Stage both apps and push both container images to Fly's registry, tagged
+    # with this commit's SHA. No `needs:` — it starts with ci's jobs and is
+    # normally done well before them.
+    #
+    # It stages independently rather than downloading ci's `stage-web` /
+    # `stage-worker` artifacts: those only exist once the `test` job finishes,
+    # which is late enough that waiting for them would put this job back on the
+    # critical path. `test` keeps producing them regardless — they are how a PR
+    # run (branch-ci.yml, which never reaches this file) proves the dist links
+    # and ships no Scaladoc.
+    #
+    # Both images are built unconditionally, including the worker's on a push
+    # that will skip the worker deploy. Building is not restarting: the skip
+    # guard exists to protect the worker from a cold-boot scrape storm, and an
+    # unreleased image in the registry costs nothing but builder time.
+    build-image:
+        runs-on: ubuntu-latest
+        outputs:
+            worker_hash: ${{ steps.stage.outputs.worker_hash }}
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: actions/cache@v5
+              with:
+                  path: |
+                      target
+                      project/target
+                      project/project/target
+                  # Read-only rider on the `test` job's key — same scope, same
+                  # sources. Whichever of the two finishes first writes it.
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            - name: Stage both apps
+              id: stage
+              run: |
+                  set -euo pipefail
+                  sbt "web/stage" "worker/stage"
+                  # The worker no-op guard's hash, computed HERE because it has to
+                  # be baked into the image at build time. Same inputs, same order
+                  # as the guard in the deploy leg below — the two must agree or
+                  # the guard never matches. `fly.worker.toml` is hardcoded rather
+                  # than looped over every worker toml because one image carries
+                  # one hash; see the caveat on the guard below.
+                  hash=""
+                  for p in worker common build.sbt project Dockerfile fly.worker.toml; do
+                      hash="$hash$(git rev-parse "HEAD:$p")"
+                  done
+                  echo "worker_hash=$(printf '%s' "$hash" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+            - uses: superfly/flyctl-actions/setup-flyctl@master
+
+            # `--build-only --push --remote-only` builds on Fly's builder and
+            # pushes to `registry.fly.io/<app>:<sha>` without touching a single
+            # machine. `--image-label` is what makes the tag the SHA, so the
+            # deploy legs can name the image without plumbing an output through.
+            - name: Build and push the web image
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  rm -rf stage && cp -r web/target/universal/stage stage
+                  flyctl deploy --build-only --push --remote-only -c fly.toml -a kinowo \
+                      --image-label ${{ github.sha }} \
+                      --build-arg BIN=web \
+                      --build-arg COMMIT_SHA=${{ github.sha }}
+
+            - name: Build and push the worker image
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  rm -rf stage && cp -r worker/target/universal/stage stage
+                  flyctl deploy --build-only --push --remote-only -c fly.worker.toml -a kinowo-worker \
+                      --image-label ${{ github.sha }} \
+                      --build-arg BIN=worker \
+                      --build-arg COMMIT_SHA=${{ github.sha }} \
+                      --build-arg WORKER_INPUT_HASH=${{ steps.stage.outputs.worker_hash }}
+
     # Two apps from one Dockerfile, deployed as PARALLEL matrix legs — web
     # (kinowo) and worker (kinowo-worker) ship on their own runners at the same
     # time. `fail-fast: false` so a worker-deploy failure doesn't cancel web's
-    # (and vice versa). Each leg downloads ITS app's staged dist into the fixed
-    # `./stage/` path the Dockerfile COPYs, then `flyctl deploy --build-arg
-    # BIN=<app>` selects the launcher. The cutover (web stops scraping) happens
-    # when this branch merges to main; a brief simultaneous switchover is fine
-    # per the project's "short prod downtime is fine" convention.
+    # (and vice versa). Each leg RELEASES the image `build-image` already pushed
+    # for its `bin`; `matrix.builder` names the app whose registry holds it.
+    # There is no build here any more — this is the part that had to wait for a
+    # green ci, and it is now the only part that does.
     deploy:
-        needs: ci
+        needs: [ci, build-image]
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
@@ -77,25 +174,25 @@ jobs:
                     - app: kinowo
                       toml: fly.toml
                       bin: web
-                      artifact: stage-web
+                      builder: kinowo
                       enabled: true
                     # UK frontend — same `web` binary + build artifact as kinowo,
                     # its own fly config (KINOWO_COUNTRY=uk → the kinowo_uk db).
                     - app: showtimes-uk
                       toml: fly.uk.toml
                       bin: web
-                      artifact: stage-web
+                      builder: kinowo
                       enabled: false
                     # DE frontend — KINOWO_COUNTRY=de → the kinowo_de db, in fra.
                     - app: showtimes-de
                       toml: fly.de.toml
                       bin: web
-                      artifact: stage-web
+                      builder: kinowo
                       enabled: false
                     - app: kinowo-worker
                       toml: fly.worker.toml
                       bin: worker
-                      artifact: stage-worker
+                      builder: kinowo-worker
                       enabled: true
                     # UK worker — same `worker` binary + artifact, split off
                     # kinowo-worker so the full-UK scrape load gets its own 2x
@@ -103,14 +200,14 @@ jobs:
                     - app: kinowo-worker-uk
                       toml: fly.worker.uk.toml
                       bin: worker
-                      artifact: stage-worker
+                      builder: kinowo-worker
                       enabled: false
                     # DE worker — split off kinowo-worker (KINOWO_COUNTRIES=de →
                     # the kinowo_de db); the German roster gets its own 2x machine.
                     - app: kinowo-worker-de
                       toml: fly.worker.de.toml
                       bin: worker
-                      artifact: stage-worker
+                      builder: kinowo-worker
                       enabled: false
         # Every leg deploys in PARALLEL — no per-tier concurrency group. A group
         # keyed on the tier (fly-deploy-web / fly-deploy-worker) looks like it
@@ -127,9 +224,17 @@ jobs:
         # `strategy.max-parallel` on a per-tier job — never a shared concurrency
         # group, which caps at one pending and drops the rest. (DeployParallelismConfigSpec)
         steps:
+            # Full history, because the roll-back guard below needs
+            # `git merge-base` against whatever commit is live and that can be
+            # arbitrarily old — but BLOBLESS. The guard reads commit topology and
+            # tree object ids, never file contents, so fetching every blob in the
+            # history (fixture corpus included) was ~15s of pure waste on the
+            # deploy's critical path. `filter: blob:none` lazily fetches a blob
+            # only if something asks for one; nothing here does.
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
+                  filter: blob:none
 
             - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -186,6 +291,14 @@ jobs:
                   # on `bin=worker` + `matrix.app`/`matrix.toml` so each worker app tracks
                   # its own config independently (a fly.worker.uk.toml edit redeploys only
                   # the UK worker; a shared worker/ or Dockerfile edit redeploys both).
+                  #
+                  # CAVEAT since the image moved to `build-image`: one worker image is
+                  # built, and it bakes the hash of `fly.worker.toml`. So the skip only
+                  # ever MATCHES for kinowo-worker. Re-enabling kinowo-worker-uk/-de
+                  # would give them a hash they can never match, i.e. they would deploy
+                  # on every push — the fail-open direction, correct but not thrifty.
+                  # Give each re-enabled worker app its own build step there when that
+                  # day comes. (DeployImageReuseSpec)
                   if [ "${{ matrix.bin }}" = "worker" ]; then
                       hash=""
                       for p in worker common build.sbt project Dockerfile ${{ matrix.toml }}; do
@@ -204,19 +317,47 @@ jobs:
                       fi
                   fi
 
-            - uses: actions/download-artifact@v7
-              if: steps.guard.outputs.skip != 'true'
-              with:
-                  name: ${{ matrix.artifact }}
-                  path: stage
-
-            # WORKER_INPUT_HASH is set only for the worker leg (empty → Dockerfile
-            # default `unknown` for web); it bakes the no-op guard's hash into the
-            # image so the next push can read it back and skip a redundant restart.
-            - run: flyctl deploy --remote-only -c ${{ matrix.toml }} -a ${{ matrix.app }} --build-arg BIN=${{ matrix.bin }} --build-arg COMMIT_SHA=${{ github.sha }} --build-arg WORKER_INPUT_HASH=${{ steps.guard.outputs.worker_hash }}
+            # Release only — no `--build-arg`, because COMMIT_SHA and
+            # WORKER_INPUT_HASH were baked in when `build-image` built this tag.
+            - name: Release the pre-built image
               if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+              run: flyctl deploy -c ${{ matrix.toml }} -a ${{ matrix.app }} -i registry.fly.io/${{ matrix.builder }}:${{ github.sha }}
+
+            # Drop a vertical marker on the self-hosted Grafana carrying this
+            # commit's SHA + subject, so a metric regression on the dashboard
+            # lines up visually with the release that caused it — the "I deploy X
+            # and a service degrades" loop, made legible.
+            #
+            # Rides the web leg rather than a job of its own: a job costs ~10s of
+            # spin-up on the critical path to run a 200ms curl, and the marker is
+            # more accurate here anyway — it lands when the user-visible tier
+            # actually shipped, not when the last of six legs stopped. No-ops
+            # (doesn't fail the deploy) until the Grafana secrets are set.
+            - name: Mark deploy in Grafana
+              if: ${{ matrix.app == 'kinowo' && steps.guard.outputs.skip != 'true' }}
+              env:
+                  GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+                  SHA: ${{ github.sha }}
+                  MSG: ${{ github.event.head_commit.message }}
+              run: |
+                  if [ -z "${GRAFANA_URL:-}" ] || [ -z "${GRAFANA_ANNOTATION_TOKEN:-}" ]; then
+                      echo "Grafana annotation secrets unset — skipping deploy marker."
+                      exit 0
+                  fi
+                  short="${SHA:0:7}"
+                  subject="$(printf '%s' "$MSG" | head -1)"
+                  now="$(( $(date +%s) * 1000 ))"
+                  body="$(jq -n --argjson time "$now" \
+                      --arg text "deploy ${short} — ${subject} (${SHA})" \
+                      '{time: $time, tags: ["deploy", "main"], text: $text}')"
+                  curl -fsS -X POST "${GRAFANA_URL%/}/api/annotations" \
+                      -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
+                      -H "Content-Type: application/json" \
+                      -d "$body"
+                  echo "Posted deploy marker for ${short}."
 
     # Kick the country convergence suite off ALONGSIDE the deploy matrix — same
     # `needs: ci` the legs have, so the dispatch goes out the moment the build is
@@ -260,37 +401,3 @@ jobs:
                   set -euo pipefail
                   echo "ci green for ${GITHUB_SHA:0:9} — dispatching Country convergence"
                   gh workflow run "Country convergence" --ref "${GITHUB_REF_NAME}"
-
-    # Drop a vertical marker on the self-hosted Grafana carrying this commit's
-    # SHA + subject, so a metric regression on the dashboard lines up visually
-    # with the release that caused it — the "I deploy X and a service degrades"
-    # loop, made legible. Runs once after BOTH app legs finish. No-ops (doesn't
-    # fail the deploy) until the Grafana secrets are set, so it's safe to land
-    # before kinowo-grafana exists.
-    annotate:
-        needs: deploy
-        if: ${{ !cancelled() && needs.deploy.result == 'success' }}
-        runs-on: ubuntu-latest
-        steps:
-            - name: Mark deploy in Grafana
-              env:
-                  GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
-                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
-                  SHA: ${{ github.sha }}
-                  MSG: ${{ github.event.head_commit.message }}
-              run: |
-                  if [ -z "${GRAFANA_URL:-}" ] || [ -z "${GRAFANA_ANNOTATION_TOKEN:-}" ]; then
-                      echo "Grafana annotation secrets unset — skipping deploy marker."
-                      exit 0
-                  fi
-                  short="${SHA:0:7}"
-                  subject="$(printf '%s' "$MSG" | head -1)"
-                  now="$(( $(date +%s) * 1000 ))"
-                  body="$(jq -n --argjson time "$now" \
-                      --arg text "deploy ${short} — ${subject} (${SHA})" \
-                      '{time: $time, tags: ["deploy", "main"], text: $text}')"
-                  curl -fsS -X POST "${GRAFANA_URL%/}/api/annotations" \
-                      -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
-                      -H "Content-Type: application/json" \
-                      -d "$body"
-                  echo "Posted deploy marker for ${short}."

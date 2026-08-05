@@ -45,7 +45,10 @@ import scala.util.{Random, Try}
  * re-cased by the scrape path) is reported informationally — no merge/freshness
  * cost — and tracked as a separate, smaller follow-up.
  */
-@CorpusReplay // CI runs this heavy spec on its own parallel e2e shard — see CorpusReplay.java
+// Deliberately UNTAGGED: this spec rides the `e2eRest` shard with everything
+// else. It had a by-name shard of its own as the module's heaviest spec, and
+// gave that runner up to an eighth WebKit page-test shard — the build's actual
+// long pole. See CorpusReplay.java and the `e2e` matrix in ci.yml.
 class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
 
   private val Fixture = "08-06-2026"

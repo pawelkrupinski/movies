@@ -7,10 +7,16 @@ description: |
   - `chrome`: install Chrome via `browser-actions/setup-chrome`,
     then `sbt web/PageTest/test` with `CDP_BROWSER_BIN` pointing at it.
 
-  - `playwright`: install Node + the one engine binary specified
-    by `browser`, boot `FixtureServerMain` over a kernel-assigned
-    port, then `npx playwright test --project <project>`. axe-core
-    runs only on `project: chrome-desktop` (informational).
+  - `playwright`: install Node + the engine binaries named by
+    `browsers`, boot `FixtureServerMain` over a kernel-assigned port,
+    then run every record in `runs` as its own `npx playwright test`
+    invocation. axe-core runs only when a record targets
+    `chrome-desktop` (informational).
+
+  A row runs MORE THAN ONE invocation when two cheap slices share a
+  runner — the boot below costs ~100s whichever way, so pairing two
+  ~35s slices onto one row is far cheaper than giving each its own
+  runner. See the `runs` input.
 
 inputs:
   kind:
@@ -19,31 +25,32 @@ inputs:
   version:
     description: Browser version when kind=chrome (e.g. `stable`).
     required: false
-  project:
-    description: Playwright project name when kind=playwright.
-    required: false
-  browser:
-    description: Engine binary to install when kind=playwright (chromium|chrome|firefox|webkit).
-    required: false
-  shard:
-    description: Playwright shard when kind=playwright (e.g. `1/2`).
-    required: false
-  grep:
+  browsers:
     description: >-
-      Playwright `--grep` tag/pattern when kind=playwright — runs ONLY matching
-      tests. Used to run the `@agnostic` (viewport-independent) specs once on a
-      single representative webkit width instead of re-running them on every
-      phone. Empty = no `--grep` filter.
+      Space-separated engine binaries to install when kind=playwright
+      (chromium|chrome|firefox|webkit). More than one when the row's `runs`
+      records span engines — e.g. `chromium chrome` for a row that pairs a
+      mobile-Chromium slice with the desktop-Chrome one.
     required: false
-    default: ''
-  grepInvert:
+  label:
     description: >-
-      Playwright `--grep-invert` pattern when kind=playwright — EXCLUDES matching
-      tests. Defaults to `axe-core` (the informational a11y suite has its own
-      step). The per-phone jobs pass `axe-core|@agnostic` so each phone runs only
-      its viewport-SENSITIVE specs; the agnostic ones ride the single behaviour job.
+      Short slug identifying the row. Names the check-run and the
+      on-failure trace artifact, so it must be unique across the matrix
+      and free of `/`, spaces, commas and `*`.
     required: false
-    default: 'axe-core'
+  runs:
+    description: >-
+      Newline-separated playwright invocations, one per line, each
+      `project ; grep ; grepInvert ; shard`. Fields are optional and
+      `;`-separated (never `|` — the grep patterns are regexes and use
+      `|` for alternation). `project` may be a glob (`webkit-iphone-se*`)
+      or a comma-separated list. A blank `grepInvert` field means "no
+      exclusion"; the common case is `axe-core|@agnostic`.
+
+      Every record runs even if an earlier one fails, and the step exits
+      non-zero if any did — so one broken slice can't hide the other's
+      result.
+    required: false
 
 runs:
   using: composite
@@ -61,8 +68,6 @@ runs:
       id: setup-chrome
       with:
         chrome-version: ${{ inputs.version }}
-
-
 
     - uses: actions/cache@v4
       with:
@@ -92,6 +97,30 @@ runs:
           sbt-target-page-${{ runner.os }}-
           sbt-target-${{ runner.os }}-
 
+    # LAUNCH the fixture server here — the FIRST step that can, i.e. as soon as
+    # the JDK, sbt and the zinc cache are in place — and only WAIT for its port
+    # further below, after the Node/Playwright installs.
+    #
+    # Measured: the ~100s this costs is ~98s of sbt (JVM start, build load,
+    # runMain classpath assembly) and ~2.4s of application — FixtureTestWiring
+    # loads the checked-in `read-model-snapshot.json` rather than recomputing
+    # the ~110s pipeline. So there is nothing left to shave INSIDE the boot; the
+    # only win available is overlapping it, and the Node + Playwright-browser
+    # installs below are ~25s of mostly-network work that no longer has to
+    # follow it. Splitting launch from wait is what buys that: while sbt loads,
+    # apt and npm run.
+    - name: Launch FixtureServerMain
+      if: inputs.kind == 'playwright'
+      shell: bash
+      run: |
+        rm -f /tmp/kinowo-port.txt
+        # `nohup` + a detached stdin because the launch and the wait are now
+        # SEPARATE steps: a bare `&` job was fine while the wait sat in the same
+        # step, but this shell exits as soon as the step does, and the runner
+        # would take an attached child with it.
+        nohup sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 < /dev/null &
+        echo "FIXTURE_PID=$!" >> $GITHUB_ENV
+
     - uses: actions/setup-node@v4
       if: inputs.kind == 'playwright'
       with:
@@ -99,18 +128,26 @@ runs:
         cache: npm
         cache-dependency-path: page-tests-playwright/package-lock.json
 
-    # Cache the Playwright browser binary for this row. Keyed on
-    # package-lock + the row's browser so a Playwright bump pulls
+    # `browsers` may name more than one engine; cache keys read better without
+    # the separating space, so slugify it once here and reuse for both caches.
+    - name: Slugify the browser list
+      if: inputs.kind == 'playwright'
+      id: browser-slug
+      shell: bash
+      run: echo "name=$(echo '${{ inputs.browsers }}' | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+    # Cache the Playwright browser binaries for this row. Keyed on
+    # package-lock + the row's engine list so a Playwright bump pulls
     # fresh and rows don't share each other's tarball.
     - uses: actions/cache@v4
       if: inputs.kind == 'playwright'
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
-        # Fall back to any prior cache for this engine so a package-lock bump
-        # restores the old binary instead of a cold re-download.
+        key: playwright-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+        # Fall back to any prior cache for this engine list so a package-lock
+        # bump restores the old binary instead of a cold re-download.
         restore-keys: |
-          playwright-${{ runner.os }}-${{ inputs.browser }}-
+          playwright-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-
 
     - name: Install npm deps
       if: inputs.kind == 'playwright'
@@ -125,51 +162,44 @@ runs:
     # apt's archive dir from a per-engine cache lets apt reuse the debs instead of
     # re-downloading, so a slow mirror can't dominate the row. Keyed on the
     # package-lock (deps only change with the Playwright version); restore-keys
-    # falls back to the newest cache for this engine, and unused/stale debs are
-    # harmless — apt just installs the versions it needs and re-fetches any that
-    # drifted. Every step is best-effort (`|| true`): on a cold cache or any copy
-    # error the install runs exactly as before, just without the speed-up.
+    # falls back to the newest cache for this engine list, and unused/stale debs
+    # are harmless — apt just installs the versions it needs and re-fetches any
+    # that drifted. Every step is best-effort (`|| true`): on a cold cache or any
+    # copy error the install runs exactly as before, just without the speed-up.
     - uses: actions/cache@v4
       if: inputs.kind == 'playwright'
       with:
-        path: ~/apt-deb-cache/${{ inputs.browser }}
-        key: playwright-aptdebs-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+        path: ~/apt-deb-cache/${{ steps.browser-slug.outputs.name }}
+        key: playwright-aptdebs-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
         restore-keys: |
-          playwright-aptdebs-${{ runner.os }}-${{ inputs.browser }}-
+          playwright-aptdebs-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-
 
-    - name: Install Playwright browser + system deps
+    - name: Install Playwright browsers + system deps
       if: inputs.kind == 'playwright'
       shell: bash
       run: |
-        APT_CACHE="$HOME/apt-deb-cache/${{ inputs.browser }}"
+        APT_CACHE="$HOME/apt-deb-cache/${{ steps.browser-slug.outputs.name }}"
         mkdir -p "$APT_CACHE"
         # Seed apt's archive dir from the restored cache so already-fetched debs
         # aren't re-downloaded (root-owned dir → needs sudo; -n keeps any newer
         # copy apt already has).
         sudo cp -n "$APT_CACHE"/*.deb /var/cache/apt/archives/ 2>/dev/null || true
-        cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browser }}
+        cd page-tests-playwright && npx playwright install --with-deps ${{ inputs.browsers }}
         # Persist whatever apt now holds (seeded + freshly fetched) back to the
         # cache dir for next time.
         cp -n /var/cache/apt/archives/*.deb "$APT_CACHE"/ 2>/dev/null || true
 
-    # Start the fixture server in the background. Writes the chosen
-    # free port to a file so we can read it from the next step without
-    # parsing sbt's chatty stdout. The PID is captured for the
-    # always-run kill step further below.
-    - name: Start FixtureServerMain
+    # Now collect on the launch above. The port file is how the server reports
+    # readiness without parsing sbt's chatty stdout.
+    - name: Wait for FixtureServerMain
       if: inputs.kind == 'playwright'
       shell: bash
       run: |
-        rm -f /tmp/kinowo-port.txt
-        sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 &
-        echo "FIXTURE_PID=$!" >> $GITHUB_ENV
-        # 600s ceiling. Measured boot anatomy: ~110s is `bootStartup` itself —
-        # a CPU-bound run of the whole ~1000-film fixture corpus through
-        # scrape→enrich→stage→fold (in-memory FakeHttpFetch, so it's processing
-        # cost, not network/retries — there's at most one missing-fixture retry)
-        # — plus the sbt compile, which on a cold `sbt-target-page` cache
-        # recompiles every module before bootStartup begins. A healthy boot writes
-        # the port and breaks early, so this costs nothing on a warm row.
+        # 600s ceiling, measured from the LAUNCH step (the installs above have
+        # already eaten ~25s of it). On a cold `sbt-target-page` cache the boot
+        # recompiles every module first, which is what the generous ceiling is
+        # for. A healthy boot writes the port and breaks early, so this costs
+        # nothing on a warm row.
         #
         # It was 300s, and that did NOT cover a cold row: on 2026-07-28 two of the
         # eight WebKit shards failed here having got no further than sbt's "set
@@ -208,53 +238,74 @@ runs:
         detailed_summary: true
         include_passed: false
 
+    # One `npx playwright test` per `runs` record. Each invocation writes its
+    # OWN junit + html report (PLAYWRIGHT_JUNIT_OUTPUT_NAME / _HTML_OUTPUT_DIR,
+    # read by playwright.config.ts) so a second record can't overwrite the
+    # first's results before the publish step globs them.
     - name: Run Playwright behaviour specs (blocking)
       if: inputs.kind == 'playwright'
       shell: bash
       env:
-        PW_PROJECT: ${{ inputs.project }}
-        PW_SHARD: ${{ inputs.shard }}
-        PW_GREP: ${{ inputs.grep }}
-        PW_GREP_INVERT: ${{ inputs.grepInvert }}
+        PW_RUNS: ${{ inputs.runs }}
       run: |
         cd page-tests-playwright
+        # `set -f` so the shell never glob-expands a project pattern
+        # (`webkit-iphone-se*`) against the working directory — Playwright is
+        # what resolves those.
         set -f
-        PROJECT_FLAGS=""
-        IFS=',' read -ra PROJS <<< "$PW_PROJECT"
-        for p in "${PROJS[@]}"; do PROJECT_FLAGS+=" --project \"$p\""; done
-        SHARD_FLAG=""
-        [ -n "$PW_SHARD" ] && SHARD_FLAG="--shard $PW_SHARD"
-        GREP_FLAG=""
-        [ -n "$PW_GREP" ] && GREP_FLAG="--grep \"$PW_GREP\""
-        # Guard: an EMPTY --grep-invert is an empty regex that matches every test,
-        # so it would exclude the whole suite. Only add the flag when non-empty.
-        GREP_INVERT_FLAG=""
-        [ -n "$PW_GREP_INVERT" ] && GREP_INVERT_FLAG="--grep-invert \"$PW_GREP_INVERT\""
-        eval npx playwright test $PROJECT_FLAGS $GREP_INVERT_FLAG $GREP_FLAG $SHARD_FLAG
+        trim() {
+            local s="$1"
+            s="${s#"${s%%[![:space:]]*}"}"
+            printf '%s' "${s%"${s##*[![:space:]]}"}"
+        }
+        status=0
+        i=0
+        while IFS=';' read -r project grep_pattern grep_invert shard; do
+            project=$(trim "$project")
+            grep_pattern=$(trim "$grep_pattern")
+            grep_invert=$(trim "$grep_invert")
+            shard=$(trim "$shard")
+            [ -z "$project" ] && continue
+            i=$((i + 1))
+
+            PROJECT_FLAGS=""
+            IFS=',' read -ra PROJS <<< "$project"
+            for p in "${PROJS[@]}"; do PROJECT_FLAGS+=" --project \"$p\""; done
+            SHARD_FLAG=""
+            [ -n "$shard" ] && SHARD_FLAG="--shard $shard"
+            GREP_FLAG=""
+            [ -n "$grep_pattern" ] && GREP_FLAG="--grep \"$grep_pattern\""
+            # Guard: an EMPTY --grep-invert is an empty regex that matches every
+            # test, so it would exclude the whole suite. Only add it when set.
+            GREP_INVERT_FLAG=""
+            [ -n "$grep_invert" ] && GREP_INVERT_FLAG="--grep-invert \"$grep_invert\""
+
+            export PLAYWRIGHT_JUNIT_OUTPUT_NAME="reports/junit-$i.xml"
+            export PLAYWRIGHT_HTML_OUTPUT_DIR="reports/html-$i"
+            echo "::group::playwright run $i — project=$project grep=$grep_pattern grep-invert=$grep_invert shard=$shard"
+            eval npx playwright test $PROJECT_FLAGS $GREP_INVERT_FLAG $GREP_FLAG $SHARD_FLAG || status=1
+            echo "::endgroup::"
+        done <<< "$PW_RUNS"
+        exit $status
 
     - name: Run Playwright axe-core a11y audit (informational)
-      if: inputs.kind == 'playwright' && inputs.project == 'chrome-desktop'
+      if: inputs.kind == 'playwright' && contains(inputs.runs, 'chrome-desktop')
       continue-on-error: true
       shell: bash
-      run: cd page-tests-playwright && npx playwright test --project "${{ inputs.project }}" --grep "axe-core"
-
-    # Sanitise project+shard into an artifact-safe suffix. v4 artifact names
-    # reject `/`, spaces, commas AND `*` — and the per-phone rows pass a project
-    # GLOB (`chromium-galaxy-s10*`), so the asterisk must be stripped too or the
-    # on-failure trace upload itself errors ("artifact name not valid"). `1/2` →
-    # `1-2`, `chromium-galaxy-s10*` → `chromium-galaxy-s10-`.
-    - name: Compute artifact suffix
-      if: always() && inputs.kind == 'playwright'
-      id: suffix
-      shell: bash
-      run: echo "name=$(echo '${{ inputs.project }}-${{ inputs.shard }}' | tr '/ ,*' '----')" >> "$GITHUB_OUTPUT"
+      env:
+        PLAYWRIGHT_JUNIT_OUTPUT_NAME: reports/axe-junit.xml
+        PLAYWRIGHT_HTML_OUTPUT_DIR: reports/html-axe
+      run: cd page-tests-playwright && npx playwright test --project chrome-desktop --grep "axe-core"
 
     - name: Publish Playwright report
       if: always() && inputs.kind == 'playwright'
       uses: mikepenz/action-junit-report@v5
       with:
-        report_paths: 'page-tests-playwright/test-results/junit.xml'
-        check_name: page tests (${{ inputs.project }})
+        # Glob, not a fixed name: a row may have run several invocations, and
+        # the axe-core audit writes its own file that must stay out of the
+        # blocking check.
+        report_paths: 'page-tests-playwright/reports/junit-*.xml'
+        check_name: page tests (${{ inputs.label }})
         detailed_summary: true
         include_passed: false
 
@@ -262,9 +313,9 @@ runs:
       if: failure() && inputs.kind == 'playwright'
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-${{ steps.suffix.outputs.name }}
+        name: playwright-${{ inputs.label }}
         path: |
-          page-tests-playwright/playwright-report
+          page-tests-playwright/reports
           page-tests-playwright/test-results
         if-no-files-found: ignore
         retention-days: 7
@@ -276,4 +327,3 @@ runs:
         if [ -n "$FIXTURE_PID" ]; then
             kill $FIXTURE_PID 2>/dev/null || true
         fi
-

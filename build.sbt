@@ -399,16 +399,18 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // runner the module was the long pole). See .github/workflows/ci.yml.
 addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test")
 
-// e2e CI shards. The three heavy whole-corpus specs (tagged @CorpusReplay) run
-// by name, one per runner; `e2eRest` runs EVERYTHING ELSE in the module via
-// tag-exclusion (-l) so a newly-added e2e spec can never be silently dropped
-// from CI — see CorpusReplay.java. ReScrapeIdempotencySpec got its own shard
-// because it was the single heaviest spec (it boots the settled corpus then
-// runs identical re-scrape ticks against it); pooled into `e2eRest` it made
-// that shard the pipeline long pole.
+// e2e CI shards. The two heavy whole-corpus determinism specs (tagged
+// @CorpusReplay) run by name, one per runner; `e2eRest` runs EVERYTHING ELSE in
+// the module via tag-exclusion (-l) so a newly-added e2e spec can never be
+// silently dropped from CI — see CorpusReplay.java.
+//
+// ReScrapeIdempotencySpec had a third by-name shard, on the grounds that it was
+// the single heaviest spec. It is back in `e2eRest`: that shard ran ~2 min under
+// the build's long pole (a WebKit page-test row) with a whole runner to itself,
+// and ci.yml is at its 20-runner cap, so the slot buys more as an eighth WebKit
+// shard than as a fourth e2e one.
 addCommandAlias("e2eScrape",   "e2e/Test/testOnly services.movies.ScrapeOrderDeterminismSpec")
 addCommandAlias("e2eStaging",  "e2e/Test/testOnly services.movies.StagingOrderDeterminismSpec")
-addCommandAlias("e2eReScrape", "e2e/Test/testOnly services.movies.ReScrapeIdempotencySpec")
 addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay -l services.movies.CountryScoped")
 
 // Per-country convergence legs, one per country, run by `.github/workflows/
