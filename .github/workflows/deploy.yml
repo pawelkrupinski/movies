@@ -101,6 +101,15 @@ jobs:
             # happen at the START of the deploy, where it frees runners, instead of
             # at the end, where it frees nothing. The nightly 04:20 schedule remains
             # the guaranteed-to-finish signal either way.
+            #
+            # The runners do not come back instantly: GitHub takes ~80s to tear a
+            # cancelled job down, so a deploy that lands mid-convergence still has
+            # a job or two start late — measured at +76s, against +3s for the rest.
+            # Better than waiting out a convergence leg, but not free, and worth
+            # knowing before someone re-measures and thinks this step did nothing.
+            #
+            # It cancels a HAND-STARTED convergence run too. If you dispatched one
+            # deliberately and want its answer, don't push while it runs.
             - name: Take the runners back from any in-flight convergence run
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
