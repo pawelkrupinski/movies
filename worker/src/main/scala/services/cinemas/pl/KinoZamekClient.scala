@@ -3,11 +3,11 @@ package services.cinemas.pl
 import tools.{HttpFetch, TextNormalization}
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
 
 import java.time.{LocalDate, YearMonth, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Kino Zamek — the cinema screen of the Zamek Książąt Pomorskich (Castle of
@@ -20,7 +20,8 @@ import scala.util.Try
  * === Strategy ===
  * 1. Fetch the kino listing page to extract the set of film slugs
  *    (`/wydarzenie/kino/<slug>/`).  This is the film allow-list.
- * 2. Fetch the MSI month page(s) for showtime data.
+ * 2. Walk the MSI month pages for showtime data, for as long as the portal
+ *    still has a programme.
  * 3. For each MSI film-block, derive a slug from the title and check if it
  *    (or any prefix of it) appears in the allow-list.  Blocks that don't match
  *    — concerts, workshops, other non-film events — are silently dropped.
@@ -37,8 +38,8 @@ import scala.util.Try
  * @parameter http   HTTP client (swap for `FakeHttpFetch` in tests).
  * @parameter cinema The [[Cinema]] source tag attached to every [[CinemaMovie]]
  *               produced by this client.
- * @parameter today  Calendar anchor for computing the months to fetch; defaults to
- *               the current Warsaw clock date.
+ * @parameter today  Calendar anchor the month walk starts from; defaults to the
+ *               current Warsaw clock date.
  */
 class KinoZamekClient(
   http:             HttpFetch,
@@ -55,23 +56,40 @@ class KinoZamekClient(
   def fetch(): Seq[CinemaMovie] = {
     val filmSlugs = fetchFilmSlugs()
 
-    val thisMonth = YearMonth.from(today)
-    val nextMonth = thisMonth.plusMonths(1)
+    // Walk the months instead of assuming two of them. The portal held nothing
+    // past September when measured on 2026-08-05, so this loses nothing today —
+    // but two months is still a horizon cap, and the day the castle programmes a
+    // retrospective into the autumn we would silently not see it.
+    val byMonth  = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Seq[MsiScraper.RawSlot]]
+    val failures = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Throwable]
 
-    val slots = Seq(thisMonth, nextMonth).flatMap { ym =>
-      // Don't swallow a fetch failure here. A timeout / 5xx from the MSI host
-      // must propagate so `RetryingCinemaScraper` retries and a persistent
-      // failure surfaces as a red uptime error — not a silent, swallowed zero
-      // recorded as a successful "0 showtimes" scrape (white on the uptime bar).
-      val html = http.get(monthUrl(ym))
-      if (html.isEmpty) Seq.empty
-      else {
-        val allSlots = MsiScraper.parseMonthWithYear(html, ym, MsiBaseUrl, cleanTitle)
-        allSlots.filter(s => isFilm(s.title, filmSlugs))
+    val live = ScrapeHorizon.liveMonths(YearMonth.from(today)) { ym =>
+      Try(http.get(monthUrl(ym))) match {
+        case Failure(why)  => failures(ym) = why; false
+        case Success(html) =>
+          byMonth(ym) =
+            if (html.isEmpty) Seq.empty
+            else MsiScraper.parseMonthWithYear(html, ym, MsiBaseUrl, cleanTitle)
+                   .filter(s => isFilm(s.title, filmSlugs))
+          byMonth(ym).nonEmpty
       }
     }
 
-    MsiScraper.toMovies(slots, cinema)
+    // Don't swallow a fetch failure INSIDE the programme's span. A timeout / 5xx
+    // from the MSI host must propagate so `RetryingCinemaScraper` retries and a
+    // persistent failure surfaces as a red uptime error — not a silent, swallowed
+    // zero recorded as a successful "0 showtimes" scrape (white on the uptime
+    // bar), which scrape-prune would then read as the films having stopped.
+    //
+    // A failure PAST the last month that carried a programme is different: those
+    // are the probes that end the walk, and a blip on one of them must not fail an
+    // otherwise complete scrape. When no month yielded anything at all, every
+    // failure counts — a portal that is down must never read as a quiet venue.
+    val lastLive = live.lastOption
+    failures.collectFirst { case (ym, why) if lastLive.forall(!ym.isAfter(_)) => why }
+      .foreach(throw _)
+
+    MsiScraper.toMovies(byMonth.values.toSeq.flatten, cinema)
   }
 
   /** Fetch the kino listing page and return the set of film slugs. */

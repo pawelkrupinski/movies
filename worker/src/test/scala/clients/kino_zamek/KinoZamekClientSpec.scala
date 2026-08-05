@@ -79,4 +79,71 @@ class KinoZamekClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val failing = new KinoZamekClient(msiDown, KinoZamekSzczecin, today = LocalDate.of(2026, 6, 7))
     a[RuntimeException] should be thrownBy failing.fetch()
   }
+
+  // ── The programme past the second month ──────────────────────────────────
+  //
+  // The client fetched this month and the next, full stop. That covered
+  // everything the portal held when measured on 2026-08-05 (nothing past
+  // September), but two months is still a horizon cap: the castle programmes
+  // retrospectives, and one reaching into the autumn would simply not be seen.
+  // It walks the months now, like every other MSI portal.
+  //
+  // The month pages here are synthetic so the walk's shape is what's under test;
+  // the recorded fixtures above cover how a real month page parses. "Viridiana"
+  // is a film on the recorded allow-list, so these slots survive the film filter.
+
+  private def msiMonth(dateText: String): String =
+    s"""<div class="movies-movie__single">
+       |<div class="movies-movie__single__title" title="Viridiana"></div>
+       |<div class="movies-movie__single__options d-none"><ul class="movies-movie__single__options__hours">
+       |<a href="/MSI/Default.aspx?event_id=1">$dateText</a></ul></div></div>""".stripMargin
+
+  /** Serves the recorded allow-list page, and the given month pages for MSI.
+   *  A month named in `throwing` fails the way a 5xx does. */
+  private def portal(months: Map[String, String], throwing: Set[String] = Set.empty) =
+    new FakeHttpFetch("kino-zamek") {
+      override def get(url: String): String =
+        if (!url.contains("bilety.zamek.szczecin.pl")) super.get(url)
+        else {
+          val month = """date=(\d{4}-\d{2})""".r.findFirstMatchIn(url).map(_.group(1)).getOrElse("")
+          if (throwing.contains(month)) throw new RuntimeException(s"HTTP 503 for GET $url")
+          else months.getOrElse(month, "")
+        }
+    }
+
+  it should "keep walking the months while the portal still has a programme" in {
+    val running = Map(
+      "2026-06" -> msiMonth("07 cze 19:00"), "2026-07" -> msiMonth("07 lip 19:00"),
+      "2026-08" -> msiMonth("07 sie 19:00"), "2026-09" -> msiMonth("07 wrz 19:00"))
+    val movies = new KinoZamekClient(portal(running), KinoZamekSzczecin,
+      today = LocalDate.of(2026, 6, 7)).fetch()
+
+    val dates = movies.flatMap(_.showtimes).map(_.dateTime.toLocalDate)
+    // September is the third month out — two beyond the window this used to ask for.
+    dates should contain (LocalDate.of(2026, 9, 7))
+    dates.size shouldBe 4
+  }
+
+  it should "not fail the scrape when a month PAST the programme is the one that blips" in {
+    // Those months are only the probes that end the walk. Failing the whole
+    // scrape over one would throw away a perfectly good June — and a scrape that
+    // errors is a scrape not recorded.
+    val movies = new KinoZamekClient(
+      portal(Map("2026-06" -> msiMonth("07 cze 19:00")), throwing = Set("2026-08")),
+      KinoZamekSzczecin, today = LocalDate.of(2026, 6, 7)).fetch()
+
+    movies.flatMap(_.showtimes).map(_.dateTime.toLocalDate) shouldBe Seq(LocalDate.of(2026, 6, 7))
+  }
+
+  it should "still propagate a failure on a month INSIDE the programme" in {
+    // June carries the programme and July fails: that is a failed read, not an
+    // empty month, and recording it as a smaller listing would let scrape-prune
+    // read the missing films as no longer screening.
+    val partlyDown = portal(
+      Map("2026-06" -> msiMonth("07 cze 19:00"), "2026-09" -> msiMonth("07 wrz 19:00")),
+      throwing = Set("2026-07"))
+
+    a[RuntimeException] should be thrownBy
+      new KinoZamekClient(partlyDown, KinoZamekSzczecin, today = LocalDate.of(2026, 6, 7)).fetch()
+  }
 }
