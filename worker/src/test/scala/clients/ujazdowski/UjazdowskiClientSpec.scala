@@ -5,13 +5,14 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{Showtime, Ujazdowski}
 import services.cinemas.pl.UjazdowskiClient
+import services.cinemas.common.ScrapeHorizon
 
 import java.time.{LocalDate, LocalDateTime}
 
 class UjazdowskiClientSpec extends AnyFlatSpec with Matchers {
 
-  // Pinned to the fixture capture date so the computed today..today+6 window
-  // resolves to the recorded `week.ajax?ut=N` files.
+  // Pinned to the fixture capture date so the walked days resolve to the
+  // recorded `week.ajax?ut=N` files.
   private val today   = LocalDate.of(2026, 6, 13)
   private val client  = new UjazdowskiClient(new FakeHttpFetch("ujazdowski"), today)
   private val results = client.fetch()
@@ -71,5 +72,54 @@ class UjazdowskiClientSpec extends AnyFlatSpec with Matchers {
     s should include ("Nowy film dokumentalny o mieście")
     s should not include "http"
     s should not include "osw.org.pl"
+  }
+
+  // ── The programme past the first week ────────────────────────────────────
+  //
+  // `week.ajax` answers for any day, and on 2026-08-05 it was still returning
+  // screenings 25 days out while the scrape asked for a computed week — so
+  // three weeks of the programme were invisible. The window now follows the
+  // programme (`ScrapeHorizon.liveDays`), as it does for Nowe Horyzonty and
+  // Kino Mikro.
+  //
+  // A stub rather than the recorded corpus: what is under test is which DAYS
+  // get asked for, not how a day's HTML parses (the fixtures above cover that).
+
+  private val start = LocalDate.of(2026, 8, 5)
+
+  private def dayHtml(hour: Int): String =
+    s"""<a class="event-list-day-box" href="/kino/repertuar/jakis-film">
+       |<span class="title"><em>Jakiś film</em></span><span class="hours">$hour:00</span></a>""".stripMargin
+
+  /** Serves a programme running `days` days out from `start`, and nothing after. */
+  private def stubRunning(days: Int, asked: scala.collection.mutable.ArrayBuffer[String]) =
+    new tools.GetOnlyHttpFetch {
+      def get(url: String): String = {
+        asked += url
+        // The nav lists only today, which is the shortfall the walk exists to cover.
+        if (!url.contains("week.ajax")) s"""<a href="?ut=${start.atStartOfDay(java.time.ZoneId.of("Europe/Warsaw")).toEpochSecond}">dziś</a>"""
+        else {
+          val ut  = """ut=(\d+)""".r.findFirstMatchIn(url).map(_.group(1).toLong).getOrElse(0L)
+          val day = java.time.Instant.ofEpochSecond(ut).atZone(java.time.ZoneId.of("Europe/Warsaw")).toLocalDate
+          if (day.isAfter(start.plusDays(days.toLong))) "<html></html>" else dayHtml(18)
+        }
+      }
+    }
+
+  it should "keep walking past the old one-week window" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    val showtimes = new UjazdowskiClient(stubRunning(days = 25, asked), start).fetch().flatMap(_.showtimes)
+
+    showtimes.map(_.dateTime.toLocalDate) should contain (start.plusDays(25))
+    showtimes.size shouldBe 26
+  }
+
+  it should "stop once the programme runs out, so a dormant venue stays cheap" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    new UjazdowskiClient(stubRunning(days = -1, asked), start).fetch() shouldBe empty
+
+    // The listing, then exactly the blank-day probes that end the walk — the
+    // nav's one day is shared with the walk's first, so it is fetched once.
+    asked.count(_.contains("week.ajax")) shouldBe ScrapeHorizon.MaxEmptyDays
   }
 }

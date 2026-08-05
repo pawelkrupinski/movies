@@ -6,6 +6,7 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.FilmDetail
 import services.cinemas.pl.NoweHoryzontyClient
+import services.cinemas.common.ScrapeHorizon
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -170,6 +171,6 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
 
     dormant.fetch() shouldBe empty
     // Exactly the stop rule's worth of probes — not two years of them.
-    asked.size shouldBe NoweHoryzontyClient.MaxEmptyDays
+    asked.size shouldBe ScrapeHorizon.MaxEmptyDays
   }
 }

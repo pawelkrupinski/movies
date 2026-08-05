@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import models.{KinoMikro, MikroBronowice}
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.{KinoMikroClient, KinoMikroParser}
+import services.cinemas.common.ScrapeHorizon
 
 import java.time.LocalDate
 
@@ -137,6 +138,6 @@ class KinoMikroClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val client = new KinoMikroClient(stub, "Kino Mikro", KinoMikro, LocalDate.of(2026, 8, 5))
 
     client.planChunks() shouldBe empty
-    asked.size shouldBe KinoMikroClient.MaxEmptyDays
+    asked.size shouldBe ScrapeHorizon.MaxEmptyDays
   }
 }

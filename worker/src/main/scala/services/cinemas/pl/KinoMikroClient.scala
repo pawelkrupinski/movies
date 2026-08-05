@@ -45,7 +45,7 @@ class KinoMikroClient(
    *  range is capped at ~25 records by the feed (see [[KinoMikroClient.dayUrl]]),
    *  so a week cannot be asked for in one request. */
   def planChunks(): Seq[String] =
-    ScrapeHorizon.liveDays(today, KinoMikroClient.MaxEmptyDays) { day =>
+    ScrapeHorizon.liveDays(today) { day =>
       KinoMikroParser.parse(Seq(http.get(KinoMikroClient.dayUrl(day))), venueName, cinema).nonEmpty
     }.map(_.toString).grouped(KinoMikroClient.DaysPerChunk).map(_.mkString(",")).toSeq
 
@@ -56,11 +56,6 @@ class KinoMikroClient(
 }
 
 object KinoMikroClient {
-
-  /** How many consecutive blank days end the walk. A fortnight covers the gaps a
-   *  single-screen venue leaves between runs; a dormant one costs fourteen small
-   *  requests. A stop rule, not a horizon — `ScrapeHorizon.MaxDays` is the bound. */
-  val MaxEmptyDays = 14
 
   /** Days per chunk task, so a wider window costs chunk tasks in weeks not days. */
   val DaysPerChunk = 7

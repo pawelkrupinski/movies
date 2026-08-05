@@ -1,12 +1,11 @@
 package services.cinemas.pl
 
 import models._
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{CachingDetailFetch, HttpFetch}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
 import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -19,9 +18,11 @@ import scala.util.Try
  * replay is deterministic. Booking is the film page (no stable deep-link).
  *
  * The nav only enumerates a short rolling window (it stopped one day after
- * "today" while `week.ajax` already served a full week ahead), so advance days
- * were silently dropped. We union the nav `ut`s with a computed
- * today..today+6 window so the forward week is always fetched.
+ * "today" while `week.ajax` served far more), so advance days were silently
+ * dropped. We union the nav `ut`s with a walk forward from today that follows
+ * the programme for as long as it lasts — measured 2026-08-05, `week.ajax` was
+ * still returning screenings 25 days out, four times the week we used to ask
+ * for. See [[ScrapeHorizon.liveDays]].
  */
 class UjazdowskiClient(
   http:  HttpFetch,
@@ -48,21 +49,27 @@ class UjazdowskiClient(
   def fetch(): Seq[CinemaMovie] = fetchBare()
 
   private def fetchBare(): Seq[CinemaMovie] = {
-    val main    = http.get(ListingUrl)
-    val navUts  = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq
-    // `ut` is the day's midnight-Warsaw epoch (DST-aware). Add the forward
-    // window the nav omits; missing days just 404 → no slots.
-    val windowUts = (0 until UjazdowskiClient.WindowDays)
-      .map(i => today.plusDays(i.toLong).atStartOfDay(WarsawZone).toEpochSecond.toString)
-    val uts = (navUts ++ windowUts).distinct
+    val main   = http.get(ListingUrl)
+    val navUts = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq
 
-    val dayPages = ParallelDetailFetch.keyed("ujazdowski-days", uts, 1.minute, maxConcurrent = 1)(ut => s"$ListingUrl/week.ajax?ut=$ut") { url =>
-      Try(http.get(url)).toOption
+    // Each day is read once, whether it arrived from the nav or from the walk
+    // below — the walk has to parse a day to know whether the programme goes on,
+    // so caching here is what keeps that from costing a second fetch.
+    val byUt = scala.collection.mutable.LinkedHashMap.empty[String, Seq[RawSlot]]
+    def slotsFor(ut: String): Seq[RawSlot] = byUt.getOrElseUpdate(ut,
+      (for {
+        date <- Try(Instant.ofEpochSecond(ut.toLong).atZone(WarsawZone).toLocalDate).toOption
+        html <- Try(http.get(s"$ListingUrl/week.ajax?ut=$ut")).toOption
+      } yield parseDay(html, date)).getOrElse(Seq.empty))
+
+    navUts.foreach(slotsFor)
+    // `ut` is the day's midnight-Warsaw epoch (DST-aware). Walk forward from
+    // today for as long as the programme runs; a missing day 404s → no slots,
+    // and enough of those in a row ends the walk.
+    ScrapeHorizon.liveDays(today) { day =>
+      slotsFor(day.atStartOfDay(WarsawZone).toEpochSecond.toString).nonEmpty
     }
-    val slots = uts.flatMap { ut =>
-      val date = Try(Instant.ofEpochSecond(ut.toLong).atZone(WarsawZone).toLocalDate).toOption
-      date.toSeq.flatMap(d => dayPages.getOrElse(ut, None).toSeq.flatMap(html => parseDay(html, d)))
-    }
+    val slots = byUt.values.toSeq.flatten
 
     slots.groupBy(_.slug).toSeq.flatMap { case (slug, group) =>
       val primary    = group.head
@@ -121,10 +128,6 @@ class UjazdowskiClient(
 }
 
 object UjazdowskiClient {
-
-  // Today + the next 6 days — the standard one-week window other per-day clients
-  // use; `week.ajax` serves data this far out even when the nav doesn't list it.
-  private val WindowDays = 7
 
   // "[Original Title], reż. Director, Country1/ Country2 YEAR, RUNTIME'"
   private val MetaPat = """reż\.\s*(.+?),\s*(.+?)\s+((?:19|20)\d{2}),\s*(\d+)['’]""".r

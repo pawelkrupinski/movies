@@ -6,6 +6,7 @@ import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.McswElektrowniaCinemaClient
+import services.cinemas.common.ScrapeHorizon
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -62,5 +63,42 @@ class McswElektrowniaCinemaClientSpec extends AnyFlatSpec with Matchers with Opt
       t should not include "dubbing"
       t should not include "dramat"
     }
+  }
+
+  // ── The programme past the first week ────────────────────────────────────
+  //
+  // The day route answers for any date, and on 2026-08-05 it had four films on
+  // both the 13th and the 16th day ahead — past the today+6 window this client
+  // used to ask for, so a fortnight of the schedule was invisible. The month
+  // route [[services.cinemas.pl.MsiClient]] would use is no help here: it listed
+  // only the 5th–11th. So the per-day walk stays, and now follows the programme
+  // (`ScrapeHorizon.liveDays`).
+  //
+  // A stub rather than the recorded corpus: what is under test is which DAYS get
+  // asked for, not how a day's HTML parses (the fixtures above cover that).
+
+  private val start = LocalDate.of(2026, 8, 5)
+
+  private def dayHtml(day: LocalDate): String =
+    if (day.isAfter(start.plusDays(16))) "<html><body>Brak seansów</body></html>"
+    else s"""<div class="js-event-details-filter movies-movie__single">
+       |<h3 class="movies-movie__single__title">Jakiś film, Polska, dramat</h3>
+       |<li event-filter="1"><a href="/MSI/Default.aspx?event_id=1">18:00</a></li></div>""".stripMargin
+
+  it should "keep walking past the old one-week window" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    val stub = new tools.GetOnlyHttpFetch {
+      def get(url: String): String = {
+        asked += url
+        dayHtml(LocalDate.parse("""date=(\d{4}-\d{2}-\d{2})""".r.findFirstMatchIn(url).map(_.group(1)).get))
+      }
+    }
+    val days = new McswElektrowniaCinemaClient(stub, McswElektrowniaCinema, start)
+      .fetch().flatMap(_.showtimes).map(_.dateTime.toLocalDate).distinct
+
+    days should contain (start.plusDays(16))
+    days.size shouldBe 17
+    // The walk ends on the stop rule, not on a guess at the programme's length.
+    asked.size shouldBe 17 + ScrapeHorizon.MaxEmptyDays
   }
 }

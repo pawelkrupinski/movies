@@ -62,7 +62,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  and Mistrzowie Kina cycles. The site's own day-picker advertises only five
    *  days, so there is no nav to read — the days have to be probed.
    *
-   *  Bounded by `ScrapeHorizon.MaxDays` and stopped by [[MaxEmptyDays]] consecutive
+   *  Bounded by `ScrapeHorizon.MaxDays` and stopped by `ScrapeHorizon.MaxEmptyDays` consecutive
    *  blank days, so a venue that keeps publishing keeps being read while a dormant
    *  one costs a fortnight of small requests and no more. A day that FAILS to fetch
    *  counts as blank for the stop rule, exactly as `MsiClient` treats a failed
@@ -73,7 +73,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  chunk TASKS in weeks rather than days — the fan-out that
    *  `project_scrape_caps_count_venues_not_tasks` is about. */
   def planChunks(): Seq[String] =
-    ScrapeHorizon.liveDays(today, NoweHoryzontyClient.MaxEmptyDays) { day =>
+    ScrapeHorizon.liveDays(today) { day =>
       listaHtml(http.get(dayUrl(day))).exists(FilmIdPat.findFirstIn(_).isDefined)
     }.map(_.toString).grouped(NoweHoryzontyClient.DaysPerChunk).map(_.mkString(",")).toSeq
 
@@ -156,16 +156,9 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 
 object NoweHoryzontyClient {
 
-  /** How many consecutive blank days end the walk. A fortnight clears the gap a
-   *  cycle-driven arthouse leaves between series — its programme is not a
-   *  continuous run — while a dormant venue still costs fourteen small requests.
-   *  A stop rule, not a horizon: `ScrapeHorizon.MaxDays` is the bound. */
-  val MaxEmptyDays = 14
-
   /** Days per chunk task. Widening the window from one week to the whole
    *  programme must not multiply the chunk-task fan-out day for day. */
   val DaysPerChunk = 7
-
 
   private val EventIdPat = """eventId=(\d+)""".r
 

@@ -1,12 +1,11 @@
 package services.cinemas.pl
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 import models._
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
 import services.movies.TitleNormalizer
 
 import java.time.{LocalDate, ZoneId}
-import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -21,8 +20,12 @@ import scala.util.Try
  * CURRENT main-domain `www.bilety24.pl/kino/organizator/<slug>-<id>` pages that
  * render a venue's whole programme in one shot. The subdomain pages can't be
  * read that way (the base `/repertuar/` only shows the nearest day), so here we
- * walk `today … today+daysAhead`, fetch each `?b24_day=` page, and union the
- * results. The per-day HTML carries the SAME
+ * walk forward from today for as long as the programme lasts, fetch each
+ * `?b24_day=` page, and union the results. These venues screen on scattered days
+ * — Kino Astra ran four dates across a month when measured on 2026-08-05, the
+ * last of them 25 days out and three weeks past the fixed window this used to
+ * ask for — so the walk has to follow the programme, not a guess at its length.
+ * See [[ScrapeHorizon.liveDays]]. The per-day HTML carries the SAME
  * `title="Film: <Title> - <YYYY-MM-DD HH:MM> - <city>"` anchor encoding, so we
  * reuse [[Bilety24OrganizerClient.parse]] and merge showtimes by title.
  *
@@ -33,7 +36,6 @@ class Bilety24SubdomainClient(
   http:         HttpFetch,
   repertuarUrl: String,
   override val cinema: Cinema,
-  daysAhead:    Int       = 9,
   today:        LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   titles:       TitleNormalizer
 ) extends CinemaScraper {
@@ -42,20 +44,22 @@ class Bilety24SubdomainClient(
   override def sourceUrl: Option[String] = Some(repertuarUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val dates = (0 to daysAhead).map(today.plusDays(_))
-    val sep   = if (repertuarUrl.contains("?")) "&" else "?"
+    val sep = if (repertuarUrl.contains("?")) "&" else "?"
 
-    // One `?b24_day=` page per date, fetched tolerantly in parallel: a failed or
-    // unparseable day yields no films rather than killing the batch.
-    val byDate = ParallelDetailFetch.keyed(
-      "bilety24-subdomain-day", dates, 1.minute, maxConcurrent = 2
-    )(d => s"$repertuarUrl${sep}b24_day=$d") { url =>
-      Try(http.get(url)).toOption.toSeq.flatMap(html => Bilety24OrganizerClient.parse(html, cinema, titles))
+    // One `?b24_day=` page per date, read tolerantly: a failed or unparseable day
+    // yields no films rather than killing the walk. Each day is fetched once —
+    // the walk parses a day to learn whether the programme goes on, so the
+    // results are kept rather than asked for twice.
+    val byDate = scala.collection.mutable.LinkedHashMap.empty[LocalDate, Seq[CinemaMovie]]
+    ScrapeHorizon.liveDays(today) { d =>
+      byDate.getOrElseUpdate(d,
+        Try(http.get(s"$repertuarUrl${sep}b24_day=$d")).toOption.toSeq
+          .flatMap(html => Bilety24OrganizerClient.parse(html, cinema, titles))).nonEmpty
     }
 
     // Merge across days: the same film recurs on several dates, so union each
     // title's showtimes (deduped, sorted) into a single row.
-    dates.flatMap(d => byDate.getOrElse(d, Seq.empty))
+    byDate.values.toSeq.flatten
       .groupBy(_.movie.title).toSeq
       .flatMap { case (_, group) =>
         val showtimes = group.flatMap(_.showtimes)

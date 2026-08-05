@@ -33,6 +33,15 @@ import java.time.LocalDate
 object ScrapeHorizon {
   val MaxDays: Int = 730
 
+  /** How many consecutive blank days end a [[liveDays]] walk.
+   *
+   *  A stop rule, not a horizon — [[MaxDays]] is the bound. A fortnight clears the
+   *  gaps these venues actually leave between runs (measured 2026-08-05, the
+   *  sparsest of them — Kino Astra, screening four scattered days over a month —
+   *  never went more than seven blank days), and a dormant venue costs fourteen
+   *  small requests per pass and no more. */
+  val MaxEmptyDays: Int = 14
+
   /** The days a venue actually has a programme on, for a source that will answer
    *  for ANY date but never says which ones it holds.
    *
@@ -50,7 +59,7 @@ object ScrapeHorizon {
    *  Callers group the result into chunks — widening a per-day scrape must not
    *  multiply chunk TASKS day for day (see
    *  `project_scrape_caps_count_venues_not_tasks`). */
-  def liveDays(from: LocalDate, maxEmptyDays: Int)(hasProgramme: LocalDate => Boolean): Seq[LocalDate] = {
+  def liveDays(from: LocalDate, maxEmptyDays: Int = MaxEmptyDays)(hasProgramme: LocalDate => Boolean): Seq[LocalDate] = {
     val lastDay = from.plusDays(MaxDays.toLong)
     var day      = from
     var emptyRun = 0

@@ -1,13 +1,12 @@
 package services.cinemas.pl
 
-import tools.{HttpFetch, ParallelDetailFetch}
+import tools.HttpFetch
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.time.format.DateTimeFormatter
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -18,9 +17,9 @@ import scala.util.Try
  *
  *   https://kino.mcswelektrownia.pl/MSI/mvc/pl?sort=Date&date=YYYY-MM-DD&datestart=0
  *
- * Seven days (today + 6) are scraped in parallel and merged.  Each day page
- * lists all currently-running films as `div.js-event-details-filter.movies-movie__single`
- * blocks.  Within each block:
+ * The day pages are walked forward for as long as the programme lasts and
+ * merged (see `fetch`).  Each day page lists all currently-running films as
+ * `div.js-event-details-filter.movies-movie__single` blocks.  Within each block:
  *
  *   - `.movies-movie__single__title` (an `h2` or, since 2026-06-16, an `h3`) —
  *     a composite string:
@@ -38,6 +37,11 @@ import scala.util.Try
  * (trimmed, lowercased, before the first comma) so that the same film shown
  * on Tuesday and Thursday appears as one `CinemaMovie` with multiple
  * showtimes.
+ *
+ * This is an MSI portal, so [[MsiClient]]'s month route serves it too — but not
+ * as well: measured 2026-08-05, `?sort=Name&date=2026-08` listed only 05–11
+ * while the day route had four films on both the 13th and the 16th.  The
+ * per-day walk stays.
  */
 class McswElektrowniaCinemaClient(
   http:              HttpFetch,
@@ -51,21 +55,16 @@ class McswElektrowniaCinemaClient(
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    // Scrape today and the next 6 days in parallel.
-    val dates = (0 until DaysAhead).map(today.plusDays(_))
-
-    val pageHtml = ParallelDetailFetch.keyed("mcsw-days", dates.map(_.toString), 1.minute) { dateStr =>
-      dayUrl(LocalDate.parse(dateStr))
-    } { url =>
-      Try(http.get(url)).toOption
+    // Follow the programme rather than assume a week of it: on 2026-08-05 the
+    // day route had films on the 13th and the 16th, both past the today+6 window
+    // this used to ask for, so a fortnight of the schedule was invisible.
+    // See [[ScrapeHorizon.liveDays]] — same walk as the other per-day clients.
+    val byDate = scala.collection.mutable.LinkedHashMap.empty[LocalDate, Seq[RawSlot]]
+    ScrapeHorizon.liveDays(today) { date =>
+      byDate.getOrElseUpdate(date,
+        Try(http.get(dayUrl(date))).toOption.toSeq.flatMap(parseDayPage(_, date))).nonEmpty
     }
-
-    val slots: Seq[RawSlot] = dates.flatMap { date =>
-      pageHtml.getOrElse(date.toString, None) match {
-        case None       => Seq.empty
-        case Some(html) => parseDayPage(html, date)
-      }
-    }
+    val slots: Seq[RawSlot] = byDate.values.toSeq.flatten
 
     // Group by normalised title and merge showtimes across days.
     SlotsToMovies.fold(slots, _.normTitle, s => Showtime(s.dateTime, Some(BookingBase + s.eventPath))) {
@@ -89,8 +88,6 @@ object McswElektrowniaCinemaClient {
 
   val BaseUrl    = "https://kino.mcswelektrownia.pl"
   val BookingBase = BaseUrl
-
-  private val DaysAhead = 7
 
   private val DateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import tools.{HeliosFetch, HttpFetch, ParallelDetailFetch}
 import models._
 import play.api.libs.json._
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
 import services.cinemas.pl.HeliosNuxt.{BookingBase, cleanTitle}
 
 import java.time.format.DateTimeFormatter
@@ -75,17 +75,28 @@ class HeliosClient(
   )
 
   private def fetchRestData(): RestData = {
-    val in6 = today.plusDays(6)
-    val window = s"dateTimeFrom=${today}T00:00:00&dateTimeTo=${in6}T23:59:59"
-    val screeningsUrl = s"$ApiBase/cinema/$sourceId/screening?$window"
-    // `/event` honours the SAME date window as `/screening`. Without it the
+    // Two windows, not one. The near week is dense (Poznań, measured 2026-08-05:
+    // 247 screenings) and the tail is sparse but real (another 81, which a
+    // today+6 window never saw at all) — so the first request stays exactly as
+    // it was and a second sweeps everything after it, out to the horizon.
+    // Splitting keeps the near-term response small, and leaves the recorded
+    // fixtures for the near window matching byte-for-byte.
+    val nearEnd = today.plusDays(6)
+    val farEnd  = today.plusDays(ScrapeHorizon.MaxDays.toLong)
+    val windows = Seq(
+      s"dateTimeFrom=${today}T00:00:00&dateTimeTo=${nearEnd}T23:59:59",
+      s"dateTimeFrom=${nearEnd.plusDays(1)}T00:00:00&dateTimeTo=${farEnd}T23:59:59"
+    )
+    val screeningsUrls = windows.map(w => s"$ApiBase/cinema/$sourceId/screening?$w")
+    // `/event` honours the SAME date windows as `/screening`. Without a window the
     // endpoint returns the cinema's ENTIRE event history — ~4400 events, 9 MB,
     // ~99% of them in the past — and the 18-20s spent hauling-then-discarding
     // that payload was the single dominant cost of a Helios scrape (the whole
-    // fetch dropped from ~20s to ~1s once windowed). We only ever use events
-    // whose screenings fall in the window `/screening` already covers, so the
-    // filter loses nothing.
-    val eventsUrl = s"$ApiBase/cinema/$sourceId/event?$window"
+    // fetch dropped from ~20s to ~1s once windowed). What made it expensive was
+    // the PAST, which `dateTimeFrom` excludes, so reaching forward is cheap. We
+    // only ever use events whose screenings fall in the windows `/screening`
+    // already covers, so the filter loses nothing.
+    val eventsUrls = windows.map(w => s"$ApiBase/cinema/$sourceId/event?$w")
 
     // `/screening` lists regular film screenings; event screenings (anime, concerts,
     // sports broadcasts) are excluded from it but carry the same id→screenId mapping
@@ -97,8 +108,11 @@ class HeliosClient(
     // venues pegged the pool and floored the worker's CPU credit (2026-07-05). Plain
     // `get` keeps the blocking on the bounded scrape worker (isolated), and the
     // per-host 4s timeout + circuit breaker bound how long each one holds it.
-    val regular         = parseApiScreenings(Try(http.get(screeningsUrl)).getOrElse("[]"))
-    val eventScreenings = parseEventScreenings(Try(http.get(eventsUrl)).getOrElse("[]"))
+    // A window that fails yields nothing rather than killing the scrape — the near
+    // window is what most of the programme lives in, and losing the tail to a blip
+    // must not cost us that.
+    val regular         = screeningsUrls.map(u => parseApiScreenings(Try(http.get(u)).getOrElse("[]"))).reduce(_ ++ _)
+    val eventScreenings = eventsUrls.map(u => parseEventScreenings(Try(http.get(u)).getOrElse("[]"))).reduce(_ ++ _)
     val screeningsById  = eventScreenings ++ regular
 
     val movieBodies    = fetchBodies("helios-movies", screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")
