@@ -117,4 +117,59 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
     detailFor("Kumotry").posterUrl shouldBe
       Some("https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/POKAZY_SPECJALNE/KUMOTRY__SPOTKANIE_Z_REZYSERKA/plak1at_8241740.8.jpg_x_standa.jpg")
   }
+
+  // ── The programme past the first week ────────────────────────────────────
+  //
+  // `rep.json` answers for ANY date, and the scrape only ever asked for seven
+  // days — so Besson's "Joanna d'Arc" on 2026-08-27, a Mistrzowie Kina screening
+  // at the country's largest arthouse, was never fetched and never reached the
+  // database. Retrospectives and cycles are exactly what lives past a week here,
+  // so the window has to follow the programme rather than assume its length.
+  //
+  // A stub rather than a recorded corpus: what is under test is which DAYS get
+  // asked for, not how a day parses (the fixtures above cover that).
+
+  /** One film with one slot, in the shape `rep.json` returns. */
+  private def dayWithAFilm(id: String, title: String): String =
+    play.api.libs.json.Json.obj("lista" ->
+      s"""<div class="boks"><a class="tyt" href="op.s?id=$id">$title</a>
+         |<div class="seanserep"><a class="xseans" href="bilet.s?eventId=$id-1">20:00</a></div></div>""".stripMargin
+    ).toString
+
+  private val emptyDay = play.api.libs.json.Json.obj("lista" -> "").toString
+
+  private def stubServing(liveDates: Map[String, String]) = new tools.GetOnlyHttpFetch {
+    def get(url: String): String = {
+      val day = """dzien=(\d{2}-\d{2}-\d{4})""".r.findFirstMatchIn(url).map(_.group(1)).getOrElse("")
+      liveDates.getOrElse(day, emptyDay)
+    }
+  }
+
+  it should "reach a screening weeks out, past the old one-week window" in {
+    val start = LocalDate.of(2026, 8, 5)
+    // A running programme, as this venue actually has one — measured live on
+    // 5 August, 15 August and 27 August — with Besson's screening on the 27th,
+    // 22 days out and four times beyond the window the scrape used to ask for.
+    val fmt   = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy")
+    val daily = (0 to 22).map(d => start.plusDays(d).format(fmt) -> dayWithAFilm("100", "Coś w repertuarze")).toMap
+    val far   = new NoweHoryzontyClient(
+      stubServing(daily + ("27-08-2026" -> dayWithAFilm("22672", "Joanna d'Arc"))), start)
+
+    val found = far.fetch()
+    found.map(_.movie.title).toSet should contain ("Joanna d'Arc")
+    found.find(_.movie.title == "Joanna d'Arc").flatMap(_.filmUrl) shouldBe
+      Some("https://www.kinonh.pl/op.s?id=22672")
+  }
+
+  it should "stop walking once the programme runs out, so a dormant venue stays cheap" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    val counting = new tools.GetOnlyHttpFetch {
+      def get(url: String): String = { asked += url; emptyDay }
+    }
+    val dormant = new NoweHoryzontyClient(counting, LocalDate.of(2026, 8, 5))
+
+    dormant.fetch() shouldBe empty
+    // Exactly the stop rule's worth of probes — not two years of them.
+    asked.size shouldBe NoweHoryzontyClient.MaxEmptyDays
+  }
 }

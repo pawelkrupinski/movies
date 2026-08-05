@@ -4,7 +4,7 @@ import play.api.libs.json.Json
 import models._
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -41,7 +41,6 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   // recording and replay (FakeHttpFetch keys fixtures by the query string).
   private val Forwardback = s"$BaseUrl/program.s"
   private val DayFmt      = DateTimeFormatter.ofPattern("dd-MM-yyyy")
-  private val WindowDays  = 7
   private val FilmIdPat   = """op\.s\?id=(\d+)""".r
 
   private case class RawSlot(filmId: String, title: String, eventId: String,
@@ -53,15 +52,45 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  /** A fixed one-week window — no nav fetch needed; one chunk per day. */
-  def planChunks(): Seq[String] = (0 until WindowDays).map(today.plusDays(_).toString)
-
-  /** One day's `rep.json` blob → that day's films (slots grouped by film id). A
-   *  throw reschedules just this day's chunk task. */
-  def fetchChunk(date: String): Seq[CinemaMovie] = {
-    val d = LocalDate.parse(date)
-    moviesFrom(listaHtml(http.get(dayUrl(d))).toSeq.flatMap(parseDay(_, d)))
+  /** Walk forward until the programme runs out, instead of fetching a fixed week.
+   *
+   *  `rep.json` answers for ANY date — it served Besson's "Joanna d'Arc" on
+   *  2026-08-27 while the scrape only ever asked for seven days — so a fixed window
+   *  silently hid every screening past it. That is the horizon cap `ScrapeHorizon`
+   *  exists to forbid, and it is not a small tail here: this is the country's
+   *  largest arthouse, and what lives past a week is precisely its retrospectives
+   *  and Mistrzowie Kina cycles. The site's own day-picker advertises only five
+   *  days, so there is no nav to read — the days have to be probed.
+   *
+   *  Bounded by `ScrapeHorizon.MaxDays` and stopped by [[MaxEmptyDays]] consecutive
+   *  blank days, so a venue that keeps publishing keeps being read while a dormant
+   *  one costs a fortnight of small requests and no more. A day that FAILS to fetch
+   *  counts as blank for the stop rule, exactly as `MsiClient` treats a failed
+   *  month: a missing day is indistinguishable from a quiet one, and treating it as
+   *  "keep going" would walk two years on every blip.
+   *
+   *  Days are grouped [[DaysPerChunk]] to a chunk so widening the window costs
+   *  chunk TASKS in weeks rather than days — the fan-out that
+   *  `project_scrape_caps_count_venues_not_tasks` is about. */
+  def planChunks(): Seq[String] = {
+    val lastDay = today.plusDays(ScrapeHorizon.MaxDays)
+    var day      = today
+    var emptyRun = 0
+    val live     = Seq.newBuilder[LocalDate]
+    while (!day.isAfter(lastDay) && emptyRun < NoweHoryzontyClient.MaxEmptyDays) {
+      val hasFilms = Try(http.get(dayUrl(day))).toOption.flatMap(listaHtml).exists(FilmIdPat.findFirstIn(_).isDefined)
+      if (hasFilms) { live += day; emptyRun = 0 } else emptyRun += 1
+      day = day.plusDays(1)
+    }
+    live.result().map(_.toString).grouped(NoweHoryzontyClient.DaysPerChunk).map(_.mkString(",")).toSeq
   }
+
+  /** One chunk's days → their films (slots grouped by film id). A throw
+   *  reschedules just this chunk's task. */
+  def fetchChunk(key: String): Seq[CinemaMovie] =
+    moviesFrom(key.split(",").toSeq.map(LocalDate.parse).flatMap { d =>
+      listaHtml(http.get(dayUrl(d))).toSeq.flatMap(parseDay(_, d))
+    })
 
   private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
     slots.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
@@ -134,6 +163,17 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
 }
 
 object NoweHoryzontyClient {
+
+  /** How many consecutive blank days end the walk. A fortnight clears the gap a
+   *  cycle-driven arthouse leaves between series — its programme is not a
+   *  continuous run — while a dormant venue still costs fourteen small requests.
+   *  A stop rule, not a horizon: `ScrapeHorizon.MaxDays` is the bound. */
+  val MaxEmptyDays = 14
+
+  /** Days per chunk task. Widening the window from one week to the whole
+   *  programme must not multiply the chunk-task fan-out day for day. */
+  val DaysPerChunk = 7
+
 
   private val EventIdPat = """eventId=(\d+)""".r
 
