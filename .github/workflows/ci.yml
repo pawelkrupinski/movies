@@ -675,24 +675,27 @@ jobs:
                     # assuming more shards is faster. Coverage of every width is
                     # unchanged. Firefox stays dropped from CI (the firefox-desktop
                     # project remains in playwright.config.ts for local runs).
-                    - { variant: pw phones 1/7, kind: playwright, browsers: webkit, label: webkit-phones-1-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 1/7' }
-                    - { variant: pw phones 2/7, kind: playwright, browsers: webkit, label: webkit-phones-2-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 2/7' }
-                    - { variant: pw phones 3/7, kind: playwright, browsers: webkit, label: webkit-phones-3-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 3/7' }
-                    - { variant: pw phones 4/7, kind: playwright, browsers: webkit, label: webkit-phones-4-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 4/7' }
-                    - { variant: pw phones 5/7, kind: playwright, browsers: webkit, label: webkit-phones-5-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 5/7' }
-                    - { variant: pw phones 6/7, kind: playwright, browsers: webkit, label: webkit-phones-6-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 6/7' }
-                    - { variant: pw phones 7/7, kind: playwright, browsers: webkit, label: webkit-phones-7-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; 7/7' }
+                    - { variant: pw phones 1/7, kind: playwright, browsers: webkit, label: webkit-phones-1-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 1/7' }
+                    - { variant: pw phones 2/7, kind: playwright, browsers: webkit, label: webkit-phones-2-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 2/7' }
+                    - { variant: pw phones 3/7, kind: playwright, browsers: webkit, label: webkit-phones-3-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 3/7' }
+                    - { variant: pw phones 4/7, kind: playwright, browsers: webkit, label: webkit-phones-4-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 4/7' }
+                    - { variant: pw phones 5/7, kind: playwright, browsers: webkit, label: webkit-phones-5-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 5/7' }
+                    - { variant: pw phones 6/7, kind: playwright, browsers: webkit, label: webkit-phones-6-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 6/7' }
+                    - { variant: pw phones 7/7, kind: playwright, browsers: webkit, label: webkit-phones-7-7, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 7/7' }
                     # The viewport-independent specs once, on the representative
-                    # 390px portrait (matches the `iPhone 13` base in webkitUse),
-                    # sharing a runner with the desktop-Safari viewport-sensitive
-                    # set — same pairing rationale as the Chromium row above.
-                    - variant: pw behaviour + desktop
+                    # 390px portrait (matches the `iPhone 13` base in webkitUse).
+                    #
+                    # It ran the desktop-Safari set too, and that made it the long
+                    # pole at 296s — 144 WebKit tests on one runner while the shards
+                    # carried ~158 each. desktop-Safari is the same ENGINE as the
+                    # phones, so it just joins their project set and gets sharded
+                    # with them; the largest shard is 184 either way, so those rows
+                    # absorb it for free and this one keeps only its 52.
+                    - variant: pw behaviour
                       kind: playwright
                       browsers: webkit
-                      label: webkit-behaviour-desktop
-                      runs: |
-                          webkit-iphone-13 ; @agnostic ; axe-core ;
-                          webkit-desktop ; ; axe-core|@agnostic ;
+                      label: webkit-behaviour
+                      runs: 'webkit-iphone-13 ; @agnostic ; axe-core ;'
         runs-on: ubuntu-latest
         permissions:
             contents: read
