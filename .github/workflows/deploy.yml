@@ -14,12 +14,16 @@ on:
                 default: false
 
 # Workflow-level concurrency: a newer push cancels the older workflow
-# mid-flight, freeing its ~28 worker slots so the latest commit's jobs
-# don't queue behind stale work. (GitHub Actions exposes ~20 concurrent
-# Linux slots per account; two overlapping pushes would otherwise fight
-# for them.) The deploy JOB has its own `concurrency: fly-deploy` group
-# below — that's the flyctl race guard, a separate concern, and it
-# stays as-is.
+# mid-flight, freeing its runners so the latest commit's jobs don't queue
+# behind stale work. GitHub Free allows 20 concurrent jobs across the
+# account and a push wants all 20 (see the RUNNER BUDGET note in ci.yml),
+# so two overlapping pushes would otherwise halve each other.
+#
+# The deploy JOB has NO concurrency group of its own, deliberately: GitHub
+# keeps one running plus one pending per group, so a group covering a tier
+# CANCELS the third app rather than queueing it, and apps silently stopped
+# deploying for days. DeployParallelismConfigSpec is there to stop one
+# coming back — do not add one here either.
 concurrency:
     group: deploy-${{ github.ref }}
     cancel-in-progress: true
@@ -57,12 +61,14 @@ jobs:
     # with this commit's SHA. No `needs:` — it starts with ci's jobs and is
     # normally done well before them.
     #
-    # It stages independently rather than downloading ci's `stage-web` /
-    # `stage-worker` artifacts: those only exist once the `test` job finishes,
-    # which is late enough that waiting for them would put this job back on the
-    # critical path. `test` keeps producing them regardless — they are how a PR
-    # run (branch-ci.yml, which never reaches this file) proves the dist links
-    # and ships no Scaladoc.
+    # It stages independently rather than taking a build artifact from ci. It
+    # used to: `test` uploaded `stage-web` / `stage-worker` and the deploy leg
+    # downloaded them. But those only exist once `test` finishes, and waiting for
+    # that is exactly what put the container build on the critical path — so the
+    # artifacts were dropped rather than kept for a consumer that no longer
+    # exists. `test` still STAGES both apps, because that is what proves the dist
+    # links and ships no Scaladoc on a PR run (branch-ci.yml never reaches this
+    # file); it just doesn't publish the result any more.
     #
     # Both images are built unconditionally, including the worker's on a push
     # that will skip the worker deploy. Building is not restarting: the skip
@@ -101,9 +107,12 @@ jobs:
                   GH_REPO: ${{ github.repository }}
               run: |
                   set -uo pipefail
-                  for id in $(gh run list --workflow "Country convergence" \
-                                  --status in_progress --json databaseId \
-                                  --jq '.[].databaseId'); do
+                  # Anything not already finished — a QUEUED run counts: it holds no
+                  # runner yet, but it takes the first ones to free up, which is
+                  # precisely the ones this deploy is waiting for.
+                  for id in $(gh run list --workflow "Country convergence" --limit 20 \
+                                  --json databaseId,status \
+                                  --jq '.[] | select(.status != "completed") | .databaseId'); do
                       echo "cancelling convergence run $id to free its runners"
                       gh run cancel "$id" || true
                   done

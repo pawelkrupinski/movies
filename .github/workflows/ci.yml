@@ -127,17 +127,18 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
-            # Prove BOTH apps' universal-stage distributions still link, and
-            # publish them. Reuses the warm zinc state from `sbt testUnit` — only
-            # linking + writing the dists costs anything.
+            # Prove BOTH apps' universal-stage distributions still link. Reuses
+            # the warm zinc state from `sbt testUnit` — only linking + writing the
+            # dists costs anything.
             #
-            # Nothing DOWNLOADS these any more: deploy.yml stages its own copy in
+            # The dists used to be UPLOADED here for the deploy job to download.
+            # Nothing downloads them now: deploy.yml stages its own copy in
             # `build-image`, which runs alongside this job rather than after it,
-            # so that the container build is off the post-CI critical path. What
-            # they still buy is the check below on a PR run (branch-ci.yml never
-            # reaches deploy.yml), where this is the only place a broken dist or
-            # a reappearing Scaladoc tree would be caught. They expire after a
-            # day.
+            # so the container build is off the post-CI critical path. What
+            # staging still buys is the guard below, and on a PR run
+            # (branch-ci.yml never reaches deploy.yml) this is the only place a
+            # dist that stopped linking, or a reappearing Scaladoc tree, is
+            # caught at all.
             - run: sbt "web/stage" "worker/stage"
 
             # Guards build.sbt's `noApiDocs`. Play's dist and native-packager
@@ -154,20 +155,6 @@ jobs:
                       echo "::error::staged dist ships generated Scaladoc at $found — see noApiDocs in build.sbt"
                       exit 1
                   fi
-
-            - uses: actions/upload-artifact@v6
-              with:
-                  name: stage-web
-                  path: web/target/universal/stage
-                  retention-days: 1
-                  if-no-files-found: error
-
-            - uses: actions/upload-artifact@v6
-              with:
-                  name: stage-worker
-                  path: worker/target/universal/stage
-                  retention-days: 1
-                  if-no-files-found: error
 
             # ESLint over the production JS in `public/js/`. Folded into this job
             # (was a standalone `lint` job) to free a runner slot for the dedicated

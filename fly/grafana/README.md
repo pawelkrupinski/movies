@@ -125,7 +125,8 @@ SHA + subject after every app deploy. Give it a path:
    - `GRAFANA_ANNOTATION_TOKEN` = the service-account token
 The markers render as vertical purple lines on the **kinowo — Fly health**
 dashboard (the `Deploys` annotation query). Until the secrets exist, the
-`annotate` job no-ops — deploys are never blocked.
+`Mark deploy in Grafana` step on the web deploy leg no-ops — deploys are
+never blocked.
 
 ## Local validation
 

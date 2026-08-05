@@ -90,6 +90,33 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
+   * Including one that has not STARTED yet. A queued convergence run holds no
+   * runner, so it reads as harmless — but it takes the first runners to free up,
+   * which are precisely the ones this deploy is queueing for. Selecting on
+   * `in_progress` alone left the hole half-plugged.
+   */
+  it should "cancel a convergence run that is merely queued, not only one already running" in {
+    buildImage should include("""select(.status != "completed")""")
+    buildImage should not include "--status in_progress"
+  }
+
+  /**
+   * `test` used to upload the staged dists for the deploy leg to download. The
+   * leg builds from its own checkout now, so an upload here would be an artifact
+   * with no consumer — 16s and a GB of storage per run, and the kind of thing
+   * that survives for years because nothing complains. The two must move
+   * together: no `download-artifact` in the leg means no `stage-*` upload in ci.
+   */
+  it should "not publish a build artifact nothing downloads" in {
+    val ciYml = RepoFile.read(".github/workflows/ci.yml")
+    ciYml should not include "name: stage-web"
+    ciYml should not include "name: stage-worker"
+    // …but the staging itself stays: it is what proves the dist still links.
+    ciYml should include("""sbt "web/stage" "worker/stage"""")
+    ciYml should include("Deploy artefacts carry no generated Scaladoc")
+  }
+
+  /**
    * The roll-back guard walks history with `git merge-base` against whatever
    * commit is live, so it needs full history — but only commits and trees, never
    * a file's contents. Fetching every blob in this repo's history (the fixture

@@ -26,8 +26,6 @@ const FIREFOX_PHONES: Phone[] = [
   ANDROID_PHONES[0],  // galaxy-s10  360 px
 ];
 
-const ALL_PHONES = [...ANDROID_PHONES, ...IPHONES];
-
 // 150% display zoom → viewport shrinks to 2/3 of normal.
 function zoomed(p: Phone): Phone {
   return { slug: `${p.slug}-zoomed`, width: Math.round(p.width * 2 / 3), height: Math.round(p.height * 2 / 3) };
