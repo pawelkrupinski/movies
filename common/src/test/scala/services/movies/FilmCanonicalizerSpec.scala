@@ -297,6 +297,53 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 3
   }
 
+  it should "REFUSE a token-run fold when the edition's cinemas publish a CONTRADICTING film" in {
+    // The production row this exists for: Kino Pionier lists "Ktoś całkiem obcy"
+    // (Brandt Andersen's "I Was A Stranger", 103 min, 2024), whose tokens END with
+    // the whole of the resolved one-token base "Obcy" (Ozon's "L'étranger", 122
+    // min) — so the token-run edge adopted it, `clusterByFilm` attached it (2024 is
+    // within ±2 of 2025), and the collapse put a second film on the row.
+    //
+    // That is the exact row `MixedFilmSplitter` then splits back out, which is why
+    // the fold has to refuse: the split re-diverts the slot to staging, the fold
+    // gives it a row of its own, this edge adopts it again, and the settle splits
+    // again — forever. The Poland convergence leg failed on precisely that loop,
+    // on the "a further settle splits nothing" assertion.
+    val rows = Seq(
+      key("Obcy", Some(2025)) -> MovieRecord(
+        tmdbId = Some(1429348),
+        data = Map[Source, SourceData](
+          Tmdb      -> SourceData(releaseYear = Some(2025)),
+          Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"),
+                                  runtimeMinutes = Some(122), releaseYear = Some(2025)))),
+      key("Ktoś całkiem obcy", Some(2024)) -> MovieRecord(
+        data = Map[Source, SourceData](
+          KinoPionier -> SourceData(title = Some("KTOŚ CAŁKIEM OBCY"), originalTitle = Some("I Was A Stranger"),
+                                    runtimeMinutes = Some(103), releaseYear = Some(2024))))
+    )
+    FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 2
+  }
+
+  it should "still fold a token-run edition whose cinema AGREES with the base film" in {
+    // The counterpart, and the reason the refusal is keyed on a positive
+    // contradiction rather than on the base being one token: a genuine decorated
+    // edition publishes the same original title and runtime as its base, so it
+    // still folds — the edge keeps doing its job.
+    val rows = Seq(
+      key("Obcy", Some(2025)) -> MovieRecord(
+        tmdbId = Some(1429348),
+        data = Map[Source, SourceData](
+          Tmdb      -> SourceData(releaseYear = Some(2025)),
+          Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"),
+                                  runtimeMinutes = Some(122), releaseYear = Some(2025)))),
+      key("Nocny pokaz Obcy", None) -> MovieRecord(
+        data = Map[Source, SourceData](
+          KinoPionier -> SourceData(title = Some("Nocny pokaz Obcy"), originalTitle = Some("L'étranger"),
+                                    runtimeMinutes = Some(122))))
+    )
+    FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 1
+  }
+
   it should "fold a programme/decorated edition sharing the base tmdbId into one record" in {
     // "Zaproszenie | Kinoteka dla rodziców" resolves to the base film's tmdbId, so
     // it is the SAME film and folds onto one storage record — even though its key

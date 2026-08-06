@@ -288,9 +288,10 @@ object FilmCanonicalizer {
     // we're killing. Fold an UNRESOLVED edition onto a RESOLVED base whose title (or
     // alias) appears as a contiguous TOKEN-RUN inside the edition's — a PURE function
     // of titles + which rows resolved (and a bare base resolves deterministically on
-    // its own title). Safeguards: base ≥2 tokens (so a 1-token "Ojczyzna" can't
-    // swallow "Moja Ojczyzna"), edition strictly longer, and REFUSE ON AMBIGUITY
-    // (runs of two different resolved films → attach to neither).
+    // its own title). Safeguards: the edition is strictly longer (a real decoration),
+    // REFUSE ON AMBIGUITY (runs of two different resolved films → attach to neither),
+    // and REFUSE ON CONTRADICTION (the edition's cinemas published a different film —
+    // see below).
     def titleTokens(s: String): Seq[String] =
       tools.TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT)
         .split("[^\\p{L}\\p{N}]+").iterator.filter(_.nonEmpty).toSeq
@@ -321,7 +322,21 @@ object FilmCanonicalizer {
         val whole = titleTokens(rows(j)._1.cleanTitle)
         if (whole.nonEmpty) {
           val cands   = (basesByFirstToken.getOrElse(whole.head, Nil) ++ basesByLastToken.getOrElse(whole.last, Nil)).distinct
-          val matched = cands.collect { case (base, i) if isTokenRun(base, whole) => i }
+          // A token-run is a claim about the SPELLING of two titles, and spelling is
+          // the one thing a same-named different film also satisfies: Kino Pionier's
+          // "Ktoś całkiem obcy" (Brandt Andersen's "I Was A Stranger", 103 min) ends
+          // with the whole of the resolved one-token base "Obcy" (Ozon's "L'étranger",
+          // 122 min), so this edge adopted it and the collapse put two films on one
+          // row. `MixedFilmSplitter` then split that row back out on the cinemas' own
+          // published evidence, the fold gave the stray a row of its own, and this
+          // edge adopted it again — a settle that never reaches a fixpoint, which is
+          // how the Poland convergence leg found it. Refusing on the SAME evidence the
+          // splitter uses is what makes the two agree: an edge may only fold what the
+          // splitter would not split back out.
+          val matched = cands.collect {
+            case (base, i) if isTokenRun(base, whole) &&
+              !MixedFilmDetector.describeDifferentFilms(rows(i)._2, rows(j)._2, normalizer) => i
+          }
           if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))
         }
       }

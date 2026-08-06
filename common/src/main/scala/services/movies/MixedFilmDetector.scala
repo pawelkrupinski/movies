@@ -88,6 +88,22 @@ object MixedFilmDetector {
     }
   }
 
+  /** Do these two ROWS describe DIFFERENT films, on what their cinemas published?
+   *
+   *  Same rule as [[conflicting]], asked ACROSS two rows rather than within one —
+   *  what a canonicalisation edge needs before it adopts one row onto another. An
+   *  edge that folds on the shape of the titles alone ("Ktoś całkiem obcy" ends
+   *  with the whole of "Obcy") otherwise re-creates the very row
+   *  `MixedFilmSplitter` splits, and the two chase each other forever.
+   *
+   *  A row whose cinemas published nothing comparable cannot contradict anything,
+   *  so the answer is `false` and the caller's own evidence stands. */
+  def describeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer): Boolean =
+    (identityGroups(a, normalizer).headOption, identityGroups(b, normalizer).headOption) match {
+      case (Some(mainA), Some(mainB)) => conflicting(mainA, mainB)
+      case _                          => false
+    }
+
   /** Do these two identities describe DIFFERENT films? */
   def conflicting(a: Group, b: Group): Boolean =
     titlesDiffer(a.originalTitle, b.originalTitle) &&
