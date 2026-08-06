@@ -155,7 +155,7 @@ object ConvergenceStorage {
     override lazy val omdbAttempt: OmdbAttemptStore = new MongoOmdbAttemptStore(shared)
 
     override def stagingFolder(movieRepository: MovieRepository): StagingFolder =
-      new MongoStagingFolder(connection, normalizer = normalizer)
+      new MongoStagingFolder(connection, normalizer = normalizer, movieRepository = movieRepository)
 
     // Only OURS. `closeAll` drops every isolated database in the process, which is fine
     // when a leg is the only holder and destructive the moment anything else is.

@@ -27,7 +27,9 @@ class StagingFolderSilenceSpec extends AnyFlatSpec with Matchers {
   "a staging folder that cannot reach Mongo" should "fail loudly rather than report an empty fold" in {
     val disabled = new MongoConnection(uri = None, dbName = "kinowo", required = false)
 
-    val failure = the [IllegalStateException] thrownBy new MongoStagingFolder(disabled, normalizer = titleNormalizer).foldGroup("Ghost In The Shell")
+    val failure = the [IllegalStateException] thrownBy new MongoStagingFolder(disabled, normalizer = titleNormalizer,
+      movieRepository = new services.movies.InMemoryMovieRepository(normalizer = titleNormalizer))
+      .foldGroup("Ghost In The Shell")
 
     withClue("the message must name the cause, since the caller sees only an exception: ") {
       failure.getMessage.toLowerCase should include ("fold")

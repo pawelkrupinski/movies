@@ -52,6 +52,15 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
   private def sd(t: String) = SourceData(title = Some(t))
 
+  /** The folder as production wires it: split-aware, so the films it commits are finished
+   *  through `MovieRepository.upsert` (slots + screenings) rather than left embedded. */
+  private def folderFor(connection: MongoConnection, db: org.mongodb.scala.MongoDatabase) =
+    new MongoStagingFolder(connection, normalizer = titleNormalizer,
+      movieRepository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+        normalizer = titleNormalizer,
+        screenings = Some(new MongoScreeningsRepository(Some(db))),
+        slots      = Some(new MongoSlotsRepository(Some(db)))))
+
   it should "keep a retired key's screenings — the winner has not inherited them yet" in {
     val client     = MongoClient(uri)
     val db         = client.getDatabase(dbName)
@@ -83,7 +92,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
 
-      new MongoStagingFolder(connection, normalizer = titleNormalizer).foldGroup(title)
+      folderFor(connection, db).foldGroup(title)
 
       val survivors = Await.result(movies.find(Filters.regex("_id",
         s"^${titleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
@@ -111,6 +120,77 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       client.close()
     }
   }
+
+  /** The other half of the same seam. Above: the fold must not DELETE side rows it is not
+   *  replacing. Here: it must WRITE them for the film it graduates.
+   *
+   *  The transaction writes `movies` directly, embedding the film's `sourceData` and
+   *  touching neither side collection. `SlotsRepository.merge` tolerates that (it unions
+   *  stored with embedded), but `ScreeningsRepository.stitch` treats `screenings` as
+   *  authoritative and EMPTIES the showtimes of any slot it has no row for — so a folded
+   *  film read back through the repository had its cinemas and none of its showtimes, and
+   *  rendered as a title with nothing under it until that cinema's next scrape. Measured
+   *  on prod 2026-08-06 (`ktoscalkiemobcy|2024`: 0 slots, 0 screenings) and reproduced by
+   *  every convergence order-independence pass once the harness was wired for the split.
+   *
+   *  Read back through `findByIdChecked`, deliberately: reading the raw document would
+   *  show the embedded showtimes the transaction wrote and pass while every real reader
+   *  saw none. */
+  it should "give a graduated film its showtimes in `screenings`, not just embedded" in {
+    val client     = MongoClient(uri)
+    val db         = client.getDatabase(dbName)
+    val connection = new MongoConnection(Some(uri), dbName, required = false)
+    val screenings = new MongoScreeningsRepository(Some(db))
+    val staging    = db.getCollection(StagingRepository.Collection)
+    val movies     = db.getCollection(services.movies.MovieRepository.Collection)
+    val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+      normalizer = titleNormalizer,
+      screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
+    val when       = models.Showtime(java.time.LocalDateTime.of(2026, 8, 1, 20, 0), None)
+    try {
+      // A newcomer incubating in staging, concluded, with a real board — and NO `movies`
+      // row yet, so the fold is what creates it.
+      val stagingId = s"${Multikino.displayName}|${titleNormalizer.sanitize(newcomerTitle)}|2026"
+      Await.result(staging.replaceOne(Filters.eq("_id", stagingId),
+        org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> 5252, "title" -> newcomerTitle,
+          "year" -> 2026,
+          "sourceData" -> org.mongodb.scala.Document(Multikino.displayName ->
+            org.mongodb.scala.Document("title" -> newcomerTitle,
+              // A real BSON date — the showtime codec reads DATE_TIME, and a string here
+              // aborts the fold's transaction rather than failing the assertion.
+              "showtimes" -> org.mongodb.scala.bson.BsonArray.fromIterable(Seq(
+                org.mongodb.scala.Document("dateTime" -> java.util.Date.from(
+                  when.dateTime.toInstant(java.time.ZoneOffset.UTC))).toBsonDocument)))),
+          "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
+        new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+
+      folderFor(connection, db).foldGroup(newcomerTitle)
+
+      val folded = Await.result(movies.find(Filters.regex("_id",
+        s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+      folded should not be empty   // premise: the fold really did graduate it
+
+      folded.foreach { id =>
+        withClue(s"$id graduated out of staging, but a reader sees a film with no showtimes: ") {
+          val (row, readOk) = repository.findByIdChecked(id)
+          readOk shouldBe true
+          row.map(_.record.cinemaData.values.map(_.showtimes.size).sum).getOrElse(0) should be > 0
+        }
+      }
+    } finally {
+      Await.result(movies.find(Filters.regex("_id", s"^${titleNormalizer.sanitize(newcomerTitle)}\\|"))
+        .toFuture(), 10.seconds).flatMap(_.get("_id").map(_.asString().getValue))
+        .foreach(id => repository.deleteById(id))
+      Await.ready(movies.deleteMany(Filters.regex("_id",
+        s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds)
+      Await.ready(staging.deleteMany(Filters.regex("_id", s".*${titleNormalizer.sanitize(newcomerTitle)}.*"))
+        .toFuture(), 10.seconds)
+      client.close()
+    }
+  }
+
+  private val newcomerTitle = "__foldnewcomer-it-sentinel__"
 
   // A second sentinel, with its own cleanup — see the naming note above.
   private val blindTitle = "__foldblind-it-sentinel__"
@@ -183,7 +263,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
 
-      new MongoStagingFolder(connection, normalizer = titleNormalizer).foldGroup(blindTitle)
+      folderFor(connection, db).foldGroup(blindTitle)
 
       val survivors = Await.result(movies.find(Filters.regex("_id", s"^$blindSanitize\\|")).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
@@ -214,7 +294,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     val db         = client.getDatabase(dbName)
     val connection = new MongoConnection(Some(uri), dbName, required = false)
     val repository = new services.staging.MongoStagingRepository(Some(db), titleNormalizer)
-    val folder     = new MongoStagingFolder(connection, normalizer = titleNormalizer)
+    val folder     = folderFor(connection, db)
     val hintTitle  = "Fold Hint Sentinel"
     val anchor     = titleNormalizer.sanitize(hintTitle)
 

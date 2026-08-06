@@ -32,7 +32,13 @@ class MongoStagingFolder(
   connection: MongoConnection,
   // See `InMemoryStagingFolder` — the country whose rules select and key the
   // group. REQUIRED here: this folder writes the real corpus.
-  normalizer: services.movies.TitleNormalizer
+  normalizer: services.movies.TitleNormalizer,
+  // Where a folded film is written AGAIN once the transaction has committed, this
+  // time through the repository's own write protocol — see `completeSideCollections`.
+  // REQUIRED, not an Option: a folder that silently skips the completion writes
+  // produces films with no showtimes, which is the defect this parameter exists to
+  // close, and a default would let a new call site re-open it by omission.
+  movieRepository: services.movies.MovieRepository
 ) extends StagingFolder with Logging {
 
 
@@ -77,13 +83,18 @@ class MongoStagingFolder(
   ): Seq[(CacheKey, MovieRecord)] = {
     var attempt = 0
     var result  = Option.empty[Seq[(CacheKey, MovieRecord)]]
+    // What the committed attempt actually wrote to `movies`, captured per attempt so a
+    // retry's plan replaces the abandoned one rather than adding to it.
+    var written = Seq.empty[(CacheKey, MovieRecord)]
     while (result.isEmpty) {
       attempt += 1
       session.startTransaction()
-      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds))
+      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds, written = _))
       StagingFold.nextAfterAttempt(outcome, attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>
-          await(publisherToFuture(session.commitTransaction())); result = Some(newPromotions)
+          await(publisherToFuture(session.commitTransaction()))
+          completeSideCollections(written)
+          result = Some(newPromotions)
         case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
           logger.warn(s"Staging fold '$cleanTitle' hit a transient txn error (attempt $attempt): ${e.getMessage} — retrying.")
@@ -97,6 +108,40 @@ class MongoStagingFolder(
     result.getOrElse(Seq.empty)
   }
 
+  /** Write each folded film AGAIN, through the repository's own protocol, so it ends up
+   *  in the shape every reader expects.
+   *
+   *  The transaction above writes `movies` directly — it has to, because the upserts and
+   *  the staging deletes must commit together and the repository's write path is not
+   *  session-aware. That write embeds the film's `sourceData`, showtimes and all, and
+   *  touches neither `movie_slots` nor `screenings`. Under the production read-split
+   *  those are not equivalent shapes: `SlotsRepository.merge` tolerates an embedded slot
+   *  map (it UNIONS stored with embedded), but `ScreeningsRepository.stitch` treats
+   *  `screenings` as AUTHORITATIVE and empties the showtimes of any slot it has no row
+   *  for. So a folded film read back through `findAll` / `foreachRecord` had cinemas and
+   *  no showtimes at all — it rendered as a title with nothing under it until that
+   *  cinema's next scrape upserted it properly. Measured on prod 2026-08-06
+   *  (`ktoscalkiemobcy|2024`: 0 slots, 0 screenings), and reproduced by every
+   *  order-independence pass once the convergence harness was wired for the split.
+   *
+   *  `upsert` is the right writer rather than a second copy of the rule: it re-stitches
+   *  (leaving a slot that already carries showtimes alone — `reStitchChecked` refills
+   *  only STRIPPED slots), writes `movie_slots`, clears the embedded map once they land,
+   *  and writes `screenings` last. Without the split it degrades to one more `movies`
+   *  write of identical content.
+   *
+   *  Per film, and failures are logged rather than thrown: the fold itself has COMMITTED
+   *  by now, so raising here would reschedule a fold that already happened. A film left
+   *  incomplete is the pre-existing behaviour and the next scrape's upsert repairs it. */
+  private def completeSideCollections(folded: Seq[(CacheKey, MovieRecord)]): Unit =
+    folded.foreach { case (key, record) =>
+      Try(movieRepository.upsert(key.cleanTitle, key.year, record)).failed.foreach { e =>
+        logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
+          s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
+          "no showtimes until its next scrape rewrites it.")
+      }
+    }
+
   /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +
    *  movies rows (every year-variant), compute the settled plan, and apply the
    *  upserts/deletes — all on `session`. Group-scoped so `planGroup` can collapse
@@ -107,7 +152,12 @@ class MongoStagingFolder(
     movies:     MongoCollection[StoredMovieDto],
     staging:    MongoCollection[StoredMovieDto],
     cleanTitle: String,
-    candidateIds: Option[Set[String]]
+    candidateIds: Option[Set[String]],
+    // Reports the films this attempt wrote to `movies`, so the caller can finish them
+    // through the repository once the transaction commits (`completeSideCollections`).
+    // A callback rather than a return value because the outcome type is `StagingFold`'s,
+    // shared with the in-memory folder, and only this one needs a post-commit step.
+    wrote: Seq[(CacheKey, MovieRecord)] => Unit
   ): Seq[(CacheKey, MovieRecord)] = {
     val sanitize = normalizer.sanitize(cleanTitle)
     // Load every staging row and pick this fold's group by `sanitize(r.title)` —
@@ -146,6 +196,7 @@ class MongoStagingFolder(
           Filters.in("tmdbId", ids.toSeq*),
           Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
       val plan = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer)
+      wrote(plan.moviesUpserts.toSeq)
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k)
         await(movies.replaceOne(session, Filters.eq("_id", id),

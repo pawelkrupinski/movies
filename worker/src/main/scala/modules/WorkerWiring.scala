@@ -1001,7 +1001,7 @@ class WorkerWiring(
   // steps (off `TaskFinished`) and is the periodic backstop. On the fold step a
   // `StagingFilmEnriched` event drives the transactional folder, which merges the
   // concluded film into `movies` and deletes its staging rows.
-  lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer)
+  lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer, movieRepository)
   lazy val stagingSteps = new StagingSteps(
     stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor, freshnessStore)
   lazy val stagingHandlers: Seq[services.tasks.TaskHandler] = Seq(
