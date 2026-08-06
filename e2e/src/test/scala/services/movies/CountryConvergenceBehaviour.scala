@@ -238,6 +238,33 @@ abstract class CountryConvergenceBehaviour(
     w.movieRepository.findAll().map(r =>
       StoredMovieRecord.idOf(r, w.movieRepository.normalizer) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
 
+  /** How many showtimes each film is holding, per film id.
+   *
+   *  Counted off the RECORDS, and via `slotShowtimeCount` rather than
+   *  `showtimes.size`, so the number is right in both storage shapes: with showtimes
+   *  embedded (what this harness builds today) it counts the list, and under the
+   *  production read-split — where a resident slot has been through
+   *  `ShowtimesDigest.stripForCache` and holds `Nil` — it counts the digest instead of
+   *  reading 0 for every cinema. The same trap made the scrape depth guard dead code in
+   *  production while its specs passed; a count that only works in the test's shape
+   *  would be the identical mistake one layer up.
+   *
+   *  Deliberately NOT read from `w.screeningsRepository`: this harness never writes it
+   *  (see the note on the order-independence axis below), so a check sourced there would
+   *  compare two empty maps and pass on any corpus at all. */
+  private def showtimesByFilm(w: ArchiveReplayWiring): Map[String, Int] =
+    w.movieRepository.findAll().map(r =>
+      StoredMovieRecord.idOf(r, w.movieRepository.normalizer) ->
+        r.record.cinemaData.values.map(ShowtimesDigest.slotShowtimeCount).sum).toMap
+
+  /** Films that held showtimes in `before` and hold NONE in `after` — the shape a
+   *  consolidation leaves behind when it moves a film's cinemas somewhere its showtimes
+   *  don't follow. A row emptied this way still counts as a film, keeps its key and its
+   *  cinema set, and renders as a title with nothing under it. */
+  private def emptiedFilms(before: Map[String, Int], after: Map[String, Int]): Seq[String] =
+    before.toSeq.filter { case (id, had) => had > 0 && after.getOrElse(id, 0) == 0 }
+      .sortBy(_._1).map { case (id, had) => s"$id lost all $had showtime(s)" }
+
   /** ONE seeded archive + booted corpus, shared by the convergence test and the
    *  no-loss test.
    *
@@ -693,7 +720,18 @@ abstract class CountryConvergenceBehaviour(
       val cinemasBefore = cinemasByFilm(w)
       val recordsBefore = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
       val screeningsBefore = w.screeningsRepository.findAll()
+      val showtimesBefore  = showtimesByFilm(w)
       val mergesBefore  = merges.total
+      info(s"${country.displayName}: ${showtimesBefore.count(_._2 > 0)} of ${showtimesBefore.size} films hold " +
+           s"${showtimesBefore.values.sum} showtime(s)")
+      // The axis this suite already carries for `screenings` compares two empty maps and
+      // has passed on every corpus since it was written. An empty-board check sourced from
+      // a corpus that holds no boards would be the same nothing, so say out loud that this
+      // one has something to measure — and fail if that ever stops being true.
+      withClue(s"the ${country.displayName} showtime axis has gone VACUOUS — not one film in the " +
+               "settled corpus holds a showtime, so nothing below can detect an emptied board: ") {
+        showtimesBefore.values.sum should be > 0
+      }
       info(s"${country.displayName}: settled corpus of ${before.size} films")
       before should not be empty
 
@@ -747,9 +785,24 @@ abstract class CountryConvergenceBehaviour(
                s"${CorpusDiff.records(recordsBefore, recordsAfter, "before", "after")}\n") {
         recordsAfter shouldBe recordsBefore
       }
+      // VACUOUS while this harness builds `movies` without the read-split — both maps are
+      // empty, exactly as on the order-independence axis below. Kept so the axis is already
+      // wired the day the split's write protocol is traced in; the showtime check that
+      // follows is the one that actually holds today, because it counts off the records.
       withClue(s"a settle on a settled ${country.displayName} corpus CHANGED the screenings:\n" +
                s"${CorpusDiff.slots(screeningsBefore, screeningsAfter, "before", "after")}\n") {
         screeningsAfter shouldBe screeningsBefore
+      }
+      // A settle consolidates by MOVING a film's cinemas — folding a duplicate onto a
+      // winner, re-keying a yearless row, sending a mixed row's stray back to staging.
+      // Each of those is a rename, and a rename that doesn't carry the showtimes leaves
+      // the film holding none: still a row, still keyed, still listing its cinemas, with
+      // an empty board. Records-equality above would catch it here, but it says nothing
+      // about the ticks below, and this is the axis that names WHICH film emptied.
+      val emptiedBySettle = emptiedFilms(showtimesBefore, showtimesByFilm(w))
+      withClue(s"a settle on a settled ${country.displayName} corpus emptied film(s) of every " +
+               s"showtime:\n${emptiedBySettle.take(8).mkString("\n")}\n") {
+        emptiedBySettle shouldBe empty
       }
       withClue(s"a settle on a ${country.displayName} corpus that has cleared staging wrote " +
                s"${emissions.get} time(s) — it should have had nothing to do\n") {
@@ -775,6 +828,7 @@ abstract class CountryConvergenceBehaviour(
         // alone gives you nothing to check a hypothesis against — it cost two rounds of
         // work on causes that turned out to leave the count at exactly 31.
         val recordsBeforeTick   = recordSnapshot(w)
+        val showtimesBeforeTick = showtimesByFilm(w)
         val diversions   = settleTick(w, rnd)
         val mergesDelta  = MergeReason.all.map(r => r -> (merges.byReason(r) - mergesBeforeTick(r))).filter(_._2 > 0)
         val emissionsDelta = emissions.get - emissionsBeforeTick
@@ -796,6 +850,16 @@ abstract class CountryConvergenceBehaviour(
         }
         if (appeared.nonEmpty) keyDrift += s"tick $t: keys APPEARED: ${appeared.take(8).mkString(", ")}"
         if (vanished.nonEmpty) keyDrift += s"tick $t: keys VANISHED: ${vanished.take(8).mkString(", ")}"
+        // A tick is a full re-scrape THEN a settle, which is exactly the sequence a
+        // consolidation loop needs to close: the settle moves a film's cinemas off its
+        // row, the re-scrape puts the listing back, and the next settle moves it again.
+        // The merge/diversion counters above see the movement, but a film left with an
+        // empty board is invisible to them — it keeps its key, its cinemas and its
+        // record — so count the boards themselves.
+        val emptied = emptiedFilms(showtimesBeforeTick, showtimesByFilm(w))
+        if (emptied.nonEmpty)
+          churn += s"tick $t: ${emptied.size} film(s) came out of the tick with no showtimes at all — " +
+                   s"a re-scrape and settle must not empty a film's board:\n  ${emptied.take(6).mkString("\n  ")}"
       }
       info(s"${country.displayName}: per-tick change-stream emissions: ${perTick.mkString(", ")}")
       if (keyDrift.nonEmpty)

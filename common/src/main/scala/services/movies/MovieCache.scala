@@ -155,6 +155,21 @@ trait MovieCache extends MovieCacheReader {
    *  the current scrape saw. See [[MovieRepository.findByIdChecked]]. */
   private[services] def storedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
 
+  /** The film as STORED — its slots carrying the showtime LISTS, re-stitched from
+   *  `screenings`. `(row, readOk)` like [[storedChecked]].
+   *
+   *  Not the same read: [[storedChecked]] answers from the cache when the row is
+   *  resident, and a resident row has been through `ShowtimesDigest.stripForCache`,
+   *  so every slot on it holds `showtimes = Nil` (the lists live in `screenings`,
+   *  keyed by film id). That is the right shape for the cache and the wrong shape
+   *  for anyone MOVING a slot somewhere the screenings don't follow it — which is
+   *  what `MixedFilmSplitter` does when it sends a stray cinema back to staging.
+   *  Skipping the cache is therefore the point, not an oversight.
+   *
+   *  A caller that hands the result somewhere else must honour `readOk`: staging a
+   *  slot on the strength of a FAILED read writes an empty board over a real one. */
+  private[services] def restitchedChecked(key: CacheKey): (Option[MovieRecord], Boolean)
+
   private[services] def invalidate(key: CacheKey): Unit
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
@@ -630,6 +645,13 @@ class CaffeineMovieCache(
         val (row, readOk) = repository.findByIdChecked(StoredMovieRecord.idFor(key))
         (row.map(_.record), readOk)
     }
+
+  // Straight to the repository, never `get`: the resident copy is the stripped one,
+  // and stripped is exactly what this read exists to avoid (see the trait's note).
+  private[services] def restitchedChecked(key: CacheKey): (Option[MovieRecord], Boolean) = {
+    val (row, readOk) = repository.findByIdChecked(StoredMovieRecord.idFor(key))
+    (row.map(_.record), readOk)
+  }
 
   def settleResolved(oldKey: CacheKey, resolved: MovieRecord): CacheKey =
     withTitleLock(oldKey.cleanTitle) {

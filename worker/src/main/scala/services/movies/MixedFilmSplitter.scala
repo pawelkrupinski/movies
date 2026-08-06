@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{MovieRecord, Source}
+import models.{MovieRecord, Source, SourceData}
 import play.api.Logging
 import services.staging.StagingRepository
 
@@ -50,26 +50,56 @@ class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository) extends L
       if (strays.isEmpty) None else Some((entry, strays))
     }
 
-    work.foldLeft(0) { case (moved, (entry, strays)) =>
-      val key = cache.keyOf(entry.title, entry.year)
-      strays.foreach { case (source, slot) =>
-        Source.cinemaOf(source).foreach { cinema =>
-          val title = slot.title.filter(_.trim.nonEmpty).getOrElse(entry.title)
-          staging.upsert(cinema, title, slot.releaseYear, MovieRecord(
-            searchTitle = Some(cache.normalizer.apiQuery(cache.normalizer.recase(title))),
-            data        = Map(source -> slot)))
-          logger.info(s"Mixed-film split: '${entry.title}' (${entry.year.getOrElse("?")}) — " +
-            s"${cinema.displayName} screens a different film " +
-            s"[director: ${slot.director.mkString(", ")}; original: ${slot.originalTitle.getOrElse("—")}] " +
-            s"→ re-diverted to staging as '$title' (${slot.releaseYear.getOrElse("?")}).")
-        }
-      }
-      // Drop them from the row in ONE update so the row is never observed holding
-      // a slot staging has already taken over.
-      val strayKeys = strays.map(_._1).toSet
-      cache.putIfPresent(key, r => r.copy(data = r.data -- strayKeys))
-      moved + strays.size
+    work.foldLeft(0) { case (moved, (entry, strays)) => moved + split(entry, strays) }
+  }
+
+  /** Send one row's stray slots back to staging. Returns how many moved — 0 when the
+   *  row's stored copy could not be read, which defers the split rather than staging
+   *  a cinema whose showtimes we could not see. */
+  private def split(entry: StoredMovieRecord, strays: Seq[(Source, SourceData)]): Int = {
+    val key = cache.keyOf(entry.title, entry.year)
+    // Re-read the row from storage before moving anything off it. `snapshot()` is the
+    // CACHE-RESIDENT view, and under the read-split that view has been through
+    // `ShowtimesDigest.stripForCache` — every slot on it holds `showtimes = Nil`, because
+    // the lists live in `screenings` under the film's id. Detection is happy with that
+    // (original title, runtime and year all survive the strip), but STAGING a slot from it
+    // sends the cinema to `pending_movies` with an empty board: the fold then gives it a
+    // row with no showtimes, the film drops off the site until that cinema is scraped
+    // again, and the re-scrape re-attaches the listing to the row it just left — mixed
+    // again for the next settle to split. Measured on prod 2026-08-06 as
+    // `ktoscalkiemobcy|2024`, 0 slots and 0 screenings, on a 30-minute cycle.
+    //
+    // A FAILED read is not an empty film. Staging on the strength of one writes that empty
+    // board over a real one, so leave the row mixed and split it on a pass that can read.
+    val (restitched, readOk) = cache.restitchedChecked(key)
+    if (!readOk) {
+      logger.warn(s"Mixed-film split deferred for '${entry.title}' (${entry.year.getOrElse("?")}): " +
+        "its stored row could not be read, so the stray cinema's showtimes are unknown — " +
+        "the next settle splits it once the read succeeds.")
+      return 0
     }
+    val storedSlots = restitched.map(_.data).getOrElse(Map.empty)
+
+    strays.foreach { case (source, slot) =>
+      Source.cinemaOf(source).foreach { cinema =>
+        val title = slot.title.filter(_.trim.nonEmpty).getOrElse(entry.title)
+        // The STORED slot carries this cinema's showtimes; the resident one carries none.
+        val staged = storedSlots.getOrElse(source, slot)
+        staging.upsert(cinema, title, slot.releaseYear, MovieRecord(
+          searchTitle = Some(cache.normalizer.apiQuery(cache.normalizer.recase(title))),
+          data        = Map(source -> staged)))
+        logger.info(s"Mixed-film split: '${entry.title}' (${entry.year.getOrElse("?")}) — " +
+          s"${cinema.displayName} screens a different film " +
+          s"[director: ${slot.director.mkString(", ")}; original: ${slot.originalTitle.getOrElse("—")}] " +
+          s"→ re-diverted to staging as '$title' (${slot.releaseYear.getOrElse("?")}) " +
+          s"with ${ShowtimesDigest.slotShowtimeCount(staged)} showtime(s).")
+      }
+    }
+    // Drop them from the row in ONE update so the row is never observed holding
+    // a slot staging has already taken over.
+    val strayKeys = strays.map(_._1).toSet
+    cache.putIfPresent(key, r => r.copy(data = r.data -- strayKeys))
+    strays.size
   }
 
 }

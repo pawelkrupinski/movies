@@ -1,12 +1,14 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{Helios, KinoMuranow, Multikino, MovieRecord, Source, SourceData}
+import models.{Helios, KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.staging.InMemoryStagingRepository
 import services.movies.SingleCountryNormalizer.titleNormalizer
+
+import java.time.LocalDateTime
 
 /**
  * Two unrelated films under one Polish title share a `movies` row, and no tmdbId
@@ -122,6 +124,60 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Joanna d'Arc", Some(2025))).map(_.cinemaSlots.size) shouldBe afterFirst
     staging.findAll().size shouldBe stagedFirst
     service.stop()
+  }
+
+  /** The split must not cost the stray cinema its SHOWTIMES.
+   *
+   *  Every fixture above wires a bare `InMemoryMovieRepository`, so its records keep
+   *  their showtimes inline and a slot carried to staging carries them for free. That
+   *  is not production's shape: with `screenings` wired the cache is read-split, so
+   *  `MovieCache.persist` puts each record through `ShowtimesDigest.stripForCache`
+   *  and every CACHE-RESIDENT slot holds `showtimes = Nil` — the lists live in
+   *  `screenings`, keyed by film id.
+   *
+   *  `splitMixedRows` walks `cache.snapshot()`, which is exactly that stripped view,
+   *  and re-stages the slot verbatim. So in production the stray reaches
+   *  `pending_movies` with no showtimes at all, folds into a row that has none, and
+   *  the film is off the site until that cinema is scraped again — at which point the
+   *  listing re-attaches to the original row, making it mixed for the next settle to
+   *  split. Measured on prod 2026-08-06: `ktoscalkiemobcy|2024` folded out of `Obcy`
+   *  with 0 slots and 0 screenings, on a 30-minute cycle.
+   *
+   *  The read-split is what makes this reachable, so the fixture has to model it —
+   *  see `InMemoryMovieRepository`'s own note on the bug class an inline-showtimes
+   *  fake cannot express. */
+  "the split" should "carry the stray cinema's showtimes to staging, not just its slot" in {
+    val screenings = new InMemoryScreeningsRepository
+    val repository = new InMemoryMovieRepository(
+      screenings = Some(screenings), slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
+
+    def showtime(day: Int, hour: Int) =
+      Showtime(LocalDateTime.of(2026, 8, day, hour, 0), bookingUrl = None)
+    def screened(base: SourceData, times: Seq[Showtime]) = base.copy(showtimes = times.toList)
+
+    val strayTimes = Seq(showtime(8, 20), showtime(9, 17))
+    cache.put(cache.keyOf("Obcy", Some(2025)), MovieRecord(data = Map[Source, SourceData](
+      Multikino   -> screened(slot("Obcy", Seq("François Ozon"), Some("L'étranger"), Some(2025), Some(120)),
+                              Seq(showtime(8, 18))),
+      Helios      -> screened(slot("Obcy", Seq("François Ozon"), Some("L’Étranger"), Some(2025), Some(122)),
+                              Seq(showtime(8, 21))),
+      KinoMuranow -> screened(slot("Obcy", Seq("Brandt Andersen"), Some("I Was A Stranger"), Some(2024), Some(103)),
+                              strayTimes))))
+
+    // The row really is read-split: its cache-resident slots hold no showtime lists.
+    cache.get(cache.keyOf("Obcy", Some(2025))).toSeq
+      .flatMap(_.cinemaSlots).flatMap(_._2.showtimes) shouldBe empty
+
+    new MixedFilmSplitter(cache, staging).splitMixedRows() shouldBe 1
+
+    val strayed = staging.findAll().head.record.cinemaSlots.head._2
+    strayed.director shouldBe Seq("Brandt Andersen")
+    withClue("the stray reached staging with no showtimes, so the film has none until " +
+             "its cinema is scraped again — and that re-scrape re-mixes the row it just left: ") {
+      strayed.showtimes should contain theSameElementsAs strayTimes
+    }
   }
 
   "a second pass" should "find nothing left to split" in {
