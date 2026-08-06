@@ -308,6 +308,8 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
     val connection = new MongoConnection(Some(uri), dbName, required = false)
     val repository = new services.staging.MongoStagingRepository(Some(db), titleNormalizer)
     val folder     = folderFor(connection, db)
+    val slots      = new MongoSlotsRepository(Some(db))
+    val screenings = new MongoScreeningsRepository(Some(db))
     val hintTitle  = "Fold Hint Sentinel"
     val anchor     = titleNormalizer.sanitize(hintTitle)
 
@@ -348,6 +350,14 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       withClue("a hinted fold must land exactly what an unhinted one lands: ") { hinted shouldBe unhinted }
       withClue("an over-broad hint must not widen the group: ") { tooWide shouldBe unhinted }
     } finally {
+      // Side rows too. The fold COMMITS these films, so `completeSideCollections` writes them
+      // into `movie_slots`/`screenings`, and deleting only the `movies` documents left a slot
+      // row behind every run. It is not inert: this database is shared by the it suites, and
+      // the fold pulls cross-title siblings by tmdbId from the WHOLE collection, so a
+      // leftover row is a stray cinema waiting to join someone else's group.
+      Await.result(movies.find(Filters.regex("_id", s"^$anchor\\|")).toFuture(), 10.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+        .foreach { id => slots.deleteFilm(id); screenings.deleteFilm(id) }
       Await.result(staged.deleteMany(Filters.regex("_id", s".*\\|$anchor\\|.*")).toFuture(), 10.seconds)
       Await.result(movies.deleteMany(Filters.regex("_id", s"^$anchor\\|")).toFuture(), 10.seconds)
       client.close()
