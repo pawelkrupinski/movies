@@ -214,12 +214,18 @@ case class MovieRecord(
    *  the row by) because the record itself doesn't carry it; it's the fallback
    *  when no cinema is scraping yet (TMDB-only row).
    *
+   *  `extraCinemaTitles` are cinema-reported titles this record does not itself carry —
+   *  the slots a MIGRATED film keeps in `movie_slots` while its `movies` document reports
+   *  none. They join the VOTE and nothing else, so a caller can make the ladder see the
+   *  whole film without putting foreign slots into a record something is about to persist.
+   *
    *  `normalizer` is an ordinary parameter, not a context one: the display
    *  ladder is country-specific, and the Twirl templates that render a row have
    *  no given in scope — making it implicit silently broke `web`. */
-  def displayTitle(cleanTitle: String, normalizer: services.movies.TitleNormalizer): String =
+  def displayTitle(cleanTitle: String, normalizer: services.movies.TitleNormalizer,
+                   extraCinemaTitles: Seq[String] = Nil): String =
     normalizer.chooseDisplay(
-      perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq,
+      perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq ++ extraCinemaTitles,
       fallback        = cleanTitle,
       tmdbTitle       = data.get(Tmdb).flatMap(_.title))
 

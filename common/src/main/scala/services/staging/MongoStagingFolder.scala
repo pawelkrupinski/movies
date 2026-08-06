@@ -8,7 +8,7 @@ import org.reactivestreams.{Publisher, Subscriber, Subscription}
 import models.MovieRecord
 import play.api.Logging
 import services.MongoConnection
-import services.movies.{CacheKey, MovieCodecs, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, MovieCodecs, MovieRecordMerge, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -83,17 +83,21 @@ class MongoStagingFolder(
   ): Seq[(CacheKey, MovieRecord)] = {
     var attempt = 0
     var result  = Option.empty[Seq[(CacheKey, MovieRecord)]]
-    // What the committed attempt actually wrote to `movies`, captured per attempt so a
+    // What the committed attempt actually planned for `movies`, captured per attempt so a
     // retry's plan replaces the abandoned one rather than adding to it.
-    var written = Seq.empty[(CacheKey, MovieRecord)]
+    var planned = Option.empty[StagingFold.Plan]
     while (result.isEmpty) {
       attempt += 1
       session.startTransaction()
-      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds, written = _))
+      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds, planned = p => planned = Some(p)))
       StagingFold.nextAfterAttempt(outcome, attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>
           await(publisherToFuture(session.commitTransaction()))
-          completeSideCollections(written)
+          // Migrate BEFORE completing: `upsert` re-stitches a stripped slot from the
+          // `screenings` rows filed under the id it is writing, so the winner has to own
+          // the retired rows by the time it runs, or it writes the film with an empty board.
+          planned.foreach(p => migrateRetiredSideRows(p.retirements))
+          completeSideCollections(planned.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
           result = Some(newPromotions)
         case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
@@ -135,18 +139,81 @@ class MongoStagingFolder(
    *  incomplete is the pre-existing behaviour and the next scrape's upsert repairs it. */
   private def completeSideCollections(folded: Seq[(CacheKey, MovieRecord)]): Unit =
     folded.foreach { case (key, record) =>
-      Try(movieRepository.upsert(key.cleanTitle, key.year, record)).failed.foreach { e =>
-        logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
-          s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
-          "no showtimes until its next scrape rewrites it.")
+      val id = StoredMovieRecord.idFor(key)
+      // `upsert` REPLACES a film's side rows with what the record names: `replaceFilm`
+      // upserts the payload and deletes every slot outside it. The folded record is the
+      // group's plan — the staging rows plus whatever the RAW `movies` documents carried —
+      // and under the storage split a migrated film's document carries no cinemas at all.
+      // Writing it as-is therefore deletes the slots and screenings of every cinema that
+      // was not part of this fold: the bare row losing Charlie Monroe and Kino Muza while a
+      // decorated edition folded in, which the convergence order-independence leg sees as
+      // the same film's screenings landing under different ids on different passes.
+      //
+      // So complete against the film as it currently STANDS, folded slots winning: the
+      // write becomes a superset and a fold can only add cinemas to a film, never silently
+      // drop the ones it never looked at.
+      val (existing, readOk) = movieRepository.findByIdChecked(id)
+      // …and a failed read is not "this film has no cinemas". Completing on that would
+      // delete the whole board, which is the outage this method exists to prevent
+      // (@8033e39c6). The fold has COMMITTED; skipping the completion leaves the film in
+      // the pre-existing incomplete shape, which the next scrape's upsert repairs.
+      if (!readOk)
+        logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but the " +
+          "film could not be read back — skipping the slots/screenings completion rather than " +
+          "writing a record that would delete the cinemas this fold never saw.")
+      else {
+        // `MovieRecordMerge.union`, not a map `++`: a colliding slot has to keep BOTH
+        // sides' showtimes. The folded slot often carries none — a staging row that has
+        // only just been scraped, or a cinema whose board lives in `screenings` — and
+        // letting it win the key outright blanks the very showtimes this completion is
+        // supposed to preserve. `union` takes the canonical's metadata and the union of
+        // the boards, which is the rule the rest of the pipeline already merges by.
+        val complete = existing.map(e => MovieRecordMerge.union(record, e.record)).getOrElse(record)
+        Try(movieRepository.upsert(key.cleanTitle, key.year, complete)).failed.foreach { e =>
+          logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
+            s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
+            "no showtimes until its next scrape rewrites it.")
+        }
       }
     }
 
-  /** The group's `movies` rows as a READER sees them: their cinemas stitched back in from
-   *  `movie_slots`, showtimes dropped.
+  /** Hand each retired key's `movie_slots` / `screenings` rows to the row it folded into.
+   *
+   *  A fold retirement is almost never a film leaving — it is a film being RE-KEYED, and a
+   *  re-key is a rename: the showtimes are still filed under the OLD id while the winner's
+   *  side rows do not exist yet. Deleting them was tried (@8033e39c6) and took prod PL from
+   *  39,413 upcoming showtimes to 18,161 in twenty minutes. Simply leaving them was the safe
+   *  half of that lesson and is what shipped, but it leaves the winner with no board at all:
+   *  whether a film keeps its showtimes then depends on whether the fold happened to retire
+   *  it, which is a race against enrichment, and the convergence order-independence leg sees
+   *  it as the same film's screenings landing under different ids on different passes.
+   *
+   *  `moveFilm` is the operation the revert commit asked for: it MERGES into the destination
+   *  (destination rows are read first and survive) and only deletes the source once the
+   *  write has been verified, so a failed move strands a duplicate rather than destroying
+   *  the only copy — the same rule `MovieCache.rekey` already follows for this exact reason.
+   *  Failures are logged, not thrown: the fold has COMMITTED by the time this runs. */
+  private def migrateRetiredSideRows(retirements: Seq[(CacheKey, CacheKey)]): Unit =
+    retirements.foreach { case (retired, winner) =>
+      val from = StoredMovieRecord.idFor(retired)
+      val to   = StoredMovieRecord.idFor(winner)
+      if (from != to) Try(movieRepository.moveFilm(from, to)) match {
+        case scala.util.Success(true)  =>
+          logger.info(s"Staging fold: carried '$from' cinemas onto '$to' — a retirement is a re-key.")
+        case scala.util.Success(false) =>
+          logger.warn(s"Staging fold: could not carry '$from' cinemas onto '$to' (a read or write " +
+            "did not happen) — the rows stay under the old id, where they remain the only copy.")
+        case scala.util.Failure(e)     =>
+          logger.warn(s"Staging fold: carrying '$from' cinemas onto '$to' failed " +
+            s"(${e.getClass.getSimpleName}: ${e.getMessage}) — the rows stay under the old id.")
+      }
+    }
+
+  /** The cinema-reported titles the group's films keep in `movie_slots` — the ones their
+   *  `movies` documents do not carry.
    *
    *  The transactional reads above see RAW documents, and a MIGRATED film's `sourceData` is
-   *  empty — its cinemas are side rows. `StagingFold.planGroup` picks the surviving key
+   *  empty: its cinemas are side rows. `StagingFold.planGroup` picks the surviving key
    *  through `FilmCanonicalizer.canonical`, which votes on exactly those cinema-reported
    *  titles, so on the raw view the only cinemas in the vote were the ones on the STAGING
    *  rows: whichever venues happen to have diverted. One venue publishing a decorated
@@ -157,30 +224,27 @@ class MongoStagingFolder(
    *  `merges_total{reason="canonicalize"}` a day, each flip re-requesting the film's
    *  Filmweb/Metacritic/RT ratings. Both components now vote on the same pool.
    *
-   *  ADDED to the raw record rather than substituted for it, and the raw slot wins any
-   *  collision. The raw document is the authority on what this transaction is about to
-   *  write back into `movies`, and WITHOUT the split it is also the only home the film's
-   *  showtimes have — planning on a stitched-and-stripped copy there would commit a record
-   *  whose cinemas had lost their boards. Adding only what the raw view is missing keeps
-   *  both configurations right: split, the stitched slots are all there is; unsplit,
-   *  everything is already embedded and nothing is added. Showtimes are dropped from the
-   *  side-collection copy because only the TITLES decide the vote, and `screenings` — not
-   *  this transaction — is where a split film's board lives.
+   *  TITLES ONLY, deliberately, and never merged into the records `planGroup` plans over.
+   *  Those records are written straight back into `movies` and then through
+   *  `MovieRepository.upsert`, and a slot recovered from `movie_slots` carries no
+   *  `showtimesDigest` — that field is cache-only and never persisted (`SourceData`). So a
+   *  stitched slot is indistinguishable from "this cinema screens nothing"
+   *  (`ScreeningsRepository.reStitchChecked` refills only slots that have a digest), and
+   *  putting one into the written record makes `upsert` delete that cinema's screenings.
+   *  Feeding the vote alone cannot lose data, whatever the fold then decides.
    *
    *  `findByIdChecked`, not `findById`: a failed side-collection read must not read as "this
    *  film has no cinemas", because voting on that empty pool is the very re-key this method
    *  exists to prevent. The fold fails loudly instead and its caller reschedules it — the
    *  same choice `foldGroup` makes for a missing session. */
-  private def withStitchedCinemas(rows: Seq[StoredMovieRecord]): Seq[StoredMovieRecord] =
-    rows.map { row =>
+  private def stitchedCinemaTitles(rows: Seq[StoredMovieRecord]): Seq[String] =
+    rows.flatMap { row =>
       val id                 = StoredMovieRecord.idOf(row, normalizer)
       val (stitched, readOk) = movieRepository.findByIdChecked(id)
       if (!readOk) throw new IllegalStateException(
         s"Staging fold could not read '$id' back through the storage split. Refusing to " +
         "re-key the film on a view that reports none of its cinemas.")
-      val fromSideRows = stitched.map(services.movies.MovieRepository.withoutShowtimes)
-        .map(_.record.data).getOrElse(Map.empty)
-      row.copy(record = row.record.copy(data = fromSideRows ++ row.record.data))
+      stitched.toSeq.flatMap(_.record.cinemaData.values.flatMap(_.title))
     }
 
   /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +
@@ -194,11 +258,11 @@ class MongoStagingFolder(
     staging:    MongoCollection[StoredMovieDto],
     cleanTitle: String,
     candidateIds: Option[Set[String]],
-    // Reports the films this attempt wrote to `movies`, so the caller can finish them
-    // through the repository once the transaction commits (`completeSideCollections`).
+    // Reports what this attempt planned, so the caller can finish the written films
+    // through the repository and migrate the retired rows once the transaction commits.
     // A callback rather than a return value because the outcome type is `StagingFold`'s,
     // shared with the in-memory folder, and only this one needs a post-commit step.
-    wrote: Seq[(CacheKey, MovieRecord)] => Unit
+    planned: StagingFold.Plan => Unit
   ): Seq[(CacheKey, MovieRecord)] = {
     val sanitize = normalizer.sanitize(cleanTitle)
     // Load every staging row and pick this fold's group by `sanitize(r.title)` —
@@ -236,8 +300,9 @@ class MongoStagingFolder(
         else await(movies.find(session, Filters.and(
           Filters.in("tmdbId", ids.toSeq*),
           Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
-      val plan = StagingFold.planGroup(stagingRows, withStitchedCinemas(groupRows ++ siblings), normalizer)
-      wrote(plan.moviesUpserts.toSeq)
+      val group = groupRows ++ siblings
+      val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group))
+      planned(plan)
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k)
         await(movies.replaceOne(session, Filters.eq("_id", id),

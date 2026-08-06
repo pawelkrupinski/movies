@@ -131,19 +131,26 @@ object ConvergenceStorage {
     // mean the caller's connection failed, and re-running the repository's own init
     // would just hit the same timeout twice.
     //
-    // NOT wired with `screenings`/`slots`, unlike `WorkerWiring` — so showtimes stay
-    // embedded in the film document here and the side collections, though present below,
-    // are never written by the pipeline. That is a real remaining difference from prod,
-    // and it is what makes the order-independence spec's screenings axis vacuous (see the
-    // note there). Passing the two arguments is NOT the fix: tried 2026-07-31, it took
-    // the read model to 0 cinemas / 0 screenings / 0 films and made an identical
-    // re-scrape churn 3,079 writes, with `movies` still holding all 773 films.
+    // Wired with `screenings`/`slots` exactly as `WorkerWiring` does, so a leg exercises
+    // production's STORAGE SHAPE and not merely its logic: showtimes in `screenings`, the
+    // per-cinema `SourceData` in `movie_slots`, and `movies` carrying neither. Without it
+    // the whole class of bug that only exists under the split is unreachable here — a
+    // cache-resident slot has been through `stripForCache` and holds no showtimes, so any
+    // rule that MOVES a slot silently moves an empty board while every leg stays green.
+    //
+    // The 2026-07-31 note this replaces said passing the two arguments took the read model
+    // to 0 films with 3,079 churn writes. Re-tested 2026-08-06: it does not. The main path
+    // gives 151 cinemas / 858 screenings / 100 films and the fixpoint leg is churn-free.
+    // What that attempt actually hit was the staging fold writing `movies` with its slots
+    // embedded and no side rows — every graduated film read back with no showtimes — which
+    // is fixed in `MongoStagingFolder.completeSideCollections`.
     // `TitleNormalizer.deployment`, NOT the shared single-country instance: this
     // storage is built once per COUNTRY leg, and the leg installs its own rules
     // (`installRules(forCountry(country))`) before touching these lazy vals. A
     // Poland-default here keyed the German and UK corpora through Polish rules —
     // `minionsimonster` all over again, and the convergence legs caught it.
-    override lazy val movies     = new MongoMovieRepository(shared, fallbackToOwnInit = false, normalizer = normalizer)
+    override lazy val movies     = new MongoMovieRepository(shared, fallbackToOwnInit = false, normalizer = normalizer,
+      screenings = Some(screenings), slots = Some(slots))
     override lazy val screenings = new MongoScreeningsRepository(shared)
     override lazy val slots      = new MongoSlotsRepository(shared)
     override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared)

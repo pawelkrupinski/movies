@@ -104,15 +104,24 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       survivors      should not be empty   // premise: the fold did run
       survivors.size shouldBe 1            // …and did collapse the two into one
 
-      // The retired key's cinemas must SURVIVE the fold. The winner's side rows are not
-      // written by this transaction, so until `MovieRepository.upsert` next writes that
-      // film these rows are the only copy of its showtimes — deleting them here is what
-      // emptied prod. They become inert once the winner is written; `ReapOrphanedFilmRows`
-      // clears them then, out of band, without racing the re-key.
+      // The retired key's cinemas must reach the WINNER. Deleting them outright is what
+      // emptied prod (@8033e39c6: PL 39,413 → 18,161 showtimes) because most retirements
+      // are re-keys and the winner's side rows are not written by this transaction —
+      // so for a while the loser's rows are the only copy. Leaving them where they are
+      // was the safe half of that lesson, but it is not the whole answer: the winner then
+      // never inherits the board, and whether a film keeps its showtimes comes down to
+      // whether the fold happened to retire it, which is a race against enrichment. The
+      // migration is the fix the revert commit itself called for — "MIGRATING the loser's
+      // rows onto the winner, not deleting them".
+      val survivor = survivors.head
+      withClue(s"the fold retired a key into $survivor but the winner did not inherit its board: ") {
+        screenings.findForFilm(survivor) should not be empty
+        slots.findForFilm(survivor)      should not be empty
+      }
       Seq(winner, loser).filterNot(survivors.contains).foreach { retired =>
-        withClue(s"$retired was retired by the fold, but its showtimes are still the only copy: ") {
-          screenings.findForFilm(retired) should not be empty
-          slots.findForFilm(retired)      should not be empty
+        withClue(s"$retired was retired and its rows migrated, so nothing may be left behind: ") {
+          screenings.findForFilm(retired) shouldBe empty
+          slots.findForFilm(retired)      shouldBe empty
         }
       }
     } finally {

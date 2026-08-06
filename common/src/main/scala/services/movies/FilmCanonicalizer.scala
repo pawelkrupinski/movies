@@ -360,7 +360,8 @@ object FilmCanonicalizer {
    *  the production-year 2025 row attached to a TMDB-2026 resolved cluster)
    *  can't clobber the resolved row's tmdbId/imdbId/ratings. Order independent
    *  for the per-source `data` (it's a keyed merge). */
-  def canonical(cluster: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer): (CacheKey, MovieRecord) = {
+  def canonical(cluster: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer,
+                extraCinemaTitles: Seq[String] = Nil): (CacheKey, MovieRecord) = {
     // Every reported variant: each CINEMA slot's derived title plus the rows'
     // current keys. Enrichment-source slots (Tmdb/Imdb/Filmweb) are excluded on
     // purpose: a row's identity spelling must come from what CINEMAS call it, not
@@ -393,7 +394,7 @@ object FilmCanonicalizer {
     // break. The rating SEARCH query is now case/diacritic-folded (FilmwebClient;
     // RT/MC already slug-fold), so this re-spelling no longer shifts which fixture
     // a rating lookup hits.
-    val canonicalTitle = merged.displayTitle(minSpelling, normalizer)
+    val canonicalTitle = merged.displayTitle(minSpelling, normalizer, extraCinemaTitles)
     val canonicalKey   = CacheKey(canonicalTitle, canonicalYear, normalizer)
     (canonicalKey, merged)
   }
