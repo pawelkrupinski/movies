@@ -58,15 +58,33 @@ tick 2: 25 known film(s) RE-DIVERTED to staging   (12 of them the BARE spelling)
 — the 7-then-25 asymmetry the original diagnosis predicted, exactly. With the fix, the
 fixpoint leg and the read-model leg both go green and the run drops 3m06s → 33s.
 
-**The harness still cannot land.** Under the split, the order-independence leg fails with 4
-divergences that are NOT loop A and are not fixed by it: which decorated-edition row a
-venue's screenings attach to depends on arrival order — `Kino plenerowe: Wartość
-sentymentalna …` vs `Kino bez barier: Wartość sentymentalna (AD + CC + PJM)`, and
-`Left-Handed Girl …` vs `Plenerowe Pałacowe: Left-Handed Girl …`. Note "FILMS differ" is
-gone (the key sets agree now); what remains is screening ROUTING among sibling decorated
-rows. Unsplit, all four legs are green. So the earlier note that the harness was "unmerged
-only because loop A fails it" was incomplete — there is a second, independent defect behind
-it.
+Landing the harness then exposed a SECOND defect behind loop A, which is why the earlier
+note that it was "unmerged only because loop A fails it" was incomplete. Under the split the
+order-independence leg failed with 4 divergences that loop A's fix does not touch: which
+decorated-edition row a venue's screenings attach to depended on arrival order — `Kino
+plenerowe: Wartość sentymentalna …` vs `Kino bez barier: Wartość sentymentalna (AD + CC +
+PJM)`, and `Left-Handed Girl …` vs `Plenerowe Pałacowe: Left-Handed Girl …`. "FILMS differ"
+was already gone by then (the key sets agreed); what remained was screening ROUTING. Two
+causes, both fixed in the follow-up commit: a fold retirement orphaned its side rows instead
+of migrating them, and the completion `upsert` REPLACED a film's side rows with a record
+that, under the split, named none of the cinemas the fold had not looked at.
+
+All four legs are now green in BOTH storage shapes, and CI is green on the PL, DE and UK
+sample and full legs.
+
+### What the convergence suite does and does not cover
+
+Wiring the split is what makes this whole family visible — every country leg shares
+`ConvergenceStorage`, so PL/DE/UK all get it. Each defect above was confirmed to FAIL the
+suite before its fix and pass after. Note also that `keyDrift` is `info` rather than an
+assertion ON PURPOSE and should stay that way: a key cannot move without a write, and
+"an identical re-scrape must write nothing" is already asserted, so the emission count is
+the strictly stronger check and `keyDrift` is the diagnostic that names which film moved.
+
+The residual gap is CORPUS DEPENDENCE, not missing assertions. The legs only catch shapes
+the recorded corpora contain; loop A surfaced because Poland's corpus happens to carry
+decorated editions (`Przedpremiera:`, `Kino bez barier:`). A country whose corpus lacks that
+shape would not have surfaced it.
 
 Everything below is the ORIGINAL handover, kept because its call chain, its rejected
 candidates and its design rules are all still accurate and still load-bearing.
