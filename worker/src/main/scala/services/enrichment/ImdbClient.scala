@@ -228,13 +228,30 @@ class ImdbClient(http: HttpFetch) {
             qid <- (entry \ "qid").asOpt[String] if qid == "movie"
           } yield Suggestion(id, (entry \ "l").asOpt[String].map(s => MetacriticClient.foldDashes(TextNormalization.deburr(s).toLowerCase.trim)), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
         }
-      val exact = movies
-        .filter(_.title.contains(normalizedTitle))
-        .sortBy { s =>
-          val yearDistance = year.flatMap(request => s.year.map(yi => math.abs(yi - request))).getOrElse(Int.MaxValue)
-          (yearDistance, s.rank)
-        }
-        .headOption.map(_.id)
+      // A leading article is not a difference. IMDb lists a film under its PRIMARY title,
+      // so the Polish release title "Bodyguard" belongs to "The Bodyguard" (1992) — an AKA
+      // this payload never shows — while an unrelated film carries "Bodyguard" as its own
+      // primary title. Bare equality therefore finds exactly one confident hit and it is
+      // the wrong film. Counting the article-stripped forms as matches too makes the
+      // ambiguity VISIBLE rather than letting it resolve silently.
+      def withoutArticle(t: String) = ImdbClient.LeadingArticle.replaceFirstIn(t, "")
+      val titleMatches = movies.filter(_.title.exists { candidate =>
+        candidate == normalizedTitle || withoutArticle(candidate) == withoutArticle(normalizedTitle)
+      })
+      val ranked = titleMatches.sortBy { s =>
+        val yearDistance = year.flatMap(request => s.year.map(yi => math.abs(yi - request))).getOrElse(Int.MaxValue)
+        (yearDistance, s.rank)
+      }
+      // With a YEAR the ranking above is evidence and the closest year wins. WITHOUT one,
+      // several title matches are indistinguishable — refuse rather than let `rank` (IMDb's
+      // own popularity ordering) decide, the same discipline `TmdbClient.searchUnique`
+      // applies to a multi-hit yearless search on the TMDB side. A wrong id here is not a
+      // wrong rating, it is the wrong FILM: it drives the year, director, cast and every
+      // rating lookup downstream.
+      val exact =
+        if (year.isDefined) ranked.headOption.map(_.id)
+        else if (titleMatches.sizeIs == 1) titleMatches.headOption.map(_.id)
+        else None
       // Foreign-title fallback: when nothing matches the local title, accept
       // IMDb's #1 movie suggestion only if its year corroborates the one TMDB
       // gave us. That pair of signals (query relevance + exact year) is enough
@@ -249,6 +266,10 @@ class ImdbClient(http: HttpFetch) {
 object ImdbClient {
   private val Endpoint        = "https://caching.graphql.imdb.com/"
   private val SuggestionBase  = "https://v3.sg.media-imdb.com/suggestion"
+  /** Leading English article, for treating "The Bodyguard" and "Bodyguard" as the same
+   *  claim on a title. English only: IMDb's primary titles are English, and Polish has no
+   *  articles to strip. */
+  private val LeadingArticle  = """^(?:the|a|an)\s+""".r
   // Mirror the threshold TMDB suppression used: rating with <5 votes is noise.
   val MinVotes: Int    = 5
   // Top-N cap for IMDb's principal cast — matches TMDB's shape.

@@ -64,12 +64,49 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   // it as the #1 movie hit (an AKA match), followed by popularity padding
   // (The Godfather films) that does NOT match the query year.
   private val KumotryFixture = "/fixtures/imdb/suggestion_kumotry.json"
+  // Captured live from https://v3.sg.media-imdb.com/suggestion/b/Bodyguard.json.
+  // A Polish cinema listing "Bodyguard" means the 1992 Whitney Houston film, which IMDb
+  // lists under its PRIMARY title "The Bodyguard" — the Polish release title is only an
+  // AKA and never appears in this payload. Meanwhile an unrelated 2011 film IS titled
+  // exactly "Bodyguard". Exact-title matching therefore finds one confident match and it
+  // is the wrong film.
+  private val BodyguardFixture = "/fixtures/imdb/suggestion_bodyguard.json"
 
   "parseSuggestions" should "return the tt-id of the movie that exact-title matches the query" in {
     val body = loadFixture(MortalKombatFixture)
     // Mortal Kombat II (2026, movie) is the obvious hit; two video-game
     // entries share the title but must be filtered by qid.
     client.parseSuggestions(body, "Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
+  }
+
+  /** This reached production. `Bodyguard` — screening across ~20 Helios venues in August
+   *  2026 — resolved to `Bodyguard Ugal-Ugalan`, a 2018 Indonesian comedy that happens to
+   *  carry the exact primary title, and the wrong id then drove the row's year, director,
+   *  cast and every rating lookup: users were shown 5.5 / MC 41 / RT 64 for a film nobody
+   *  was screening. Nothing on the row corroborates a year, and the article-stripped
+   *  "The Bodyguard" is exactly as good a match as the bare one, so the honest answer is
+   *  that the query is ambiguous. Refuse rather than guess — the same discipline
+   *  `TmdbClient.searchUnique` applies on the TMDB side. */
+  it should "refuse a yearless query when a leading-article variant matches just as well" in {
+    val body = loadFixture(BodyguardFixture)
+    client.parseSuggestions(body, "Bodyguard", None) shouldBe None
+  }
+
+  it should "pick the article-variant when the year says which film it is" in {
+    val body = loadFixture(BodyguardFixture)
+    // "The Bodyguard" (1992) is the Polish "Bodyguard"; the bare-title movie here is 2011.
+    client.parseSuggestions(body, "Bodyguard", Some(1992)) shouldBe Some("tt0103855")
+  }
+
+  /** The guard on the refusal: widening what counts as a match must not make the client
+   *  give up on queries it used to answer. One title match and no year is not ambiguous. */
+  it should "still resolve a yearless query whose title matches exactly one film" in {
+    val body =
+      """{"d":[
+         {"id":"tt14883538","l":"Arco","q":"feature","qid":"movie","rank":1,"y":2025},
+         {"id":"nm0215336","l":"Jonathan Del Arco","q":"actor","qid":"name"}
+       ]}"""
+    client.parseSuggestions(body, "Arco", None) shouldBe Some("tt14883538")
   }
 
   it should "filter out non-movie entries (video games, TV series) even when the title matches" in {
