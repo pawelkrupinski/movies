@@ -76,7 +76,11 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
           org.mongodb.scala.Document("_id" -> id, "tmdbId" -> 4242, "sourceData" -> org.mongodb.scala.Document(),
             "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
           new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
-        slots.replaceFilm(id, Map(Multikino.displayName -> sd("cinema")))
+        // The slot's title is the cinema's reported title FOR THIS FILM, so it has to
+        // sanitize into the film's group — the fold now plans against the stitched view
+        // (`MongoStagingFolder.withStitchedCinemas`), so a placeholder here is a cinema
+        // claiming to show a different film and the two year-variants stop clustering.
+        slots.replaceFilm(id, Map(Multikino.displayName -> sd(title)))
         screenings.replaceFilm(id, Map(Multikino.displayName -> Seq(
           models.Showtime(java.time.LocalDateTime.of(2026, 8, 1, 20, 0), None))))
       }

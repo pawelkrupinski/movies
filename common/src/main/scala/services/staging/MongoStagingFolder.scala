@@ -142,6 +142,47 @@ class MongoStagingFolder(
       }
     }
 
+  /** The group's `movies` rows as a READER sees them: their cinemas stitched back in from
+   *  `movie_slots`, showtimes dropped.
+   *
+   *  The transactional reads above see RAW documents, and a MIGRATED film's `sourceData` is
+   *  empty — its cinemas are side rows. `StagingFold.planGroup` picks the surviving key
+   *  through `FilmCanonicalizer.canonical`, which votes on exactly those cinema-reported
+   *  titles, so on the raw view the only cinemas in the vote were the ones on the STAGING
+   *  rows: whichever venues happen to have diverted. One venue publishing a decorated
+   *  spelling was an unopposed plurality of one and re-keyed the whole film onto it, while
+   *  the settle (`MovieCache.canonicalizeBySanitize`, which reads the stitched record) saw
+   *  every plain cinema and re-keyed it straight back. Neither is wrong on its own inputs
+   *  and neither converges: that disagreement IS the 30-minute settle beat — ~83
+   *  `merges_total{reason="canonicalize"}` a day, each flip re-requesting the film's
+   *  Filmweb/Metacritic/RT ratings. Both components now vote on the same pool.
+   *
+   *  ADDED to the raw record rather than substituted for it, and the raw slot wins any
+   *  collision. The raw document is the authority on what this transaction is about to
+   *  write back into `movies`, and WITHOUT the split it is also the only home the film's
+   *  showtimes have — planning on a stitched-and-stripped copy there would commit a record
+   *  whose cinemas had lost their boards. Adding only what the raw view is missing keeps
+   *  both configurations right: split, the stitched slots are all there is; unsplit,
+   *  everything is already embedded and nothing is added. Showtimes are dropped from the
+   *  side-collection copy because only the TITLES decide the vote, and `screenings` — not
+   *  this transaction — is where a split film's board lives.
+   *
+   *  `findByIdChecked`, not `findById`: a failed side-collection read must not read as "this
+   *  film has no cinemas", because voting on that empty pool is the very re-key this method
+   *  exists to prevent. The fold fails loudly instead and its caller reschedules it — the
+   *  same choice `foldGroup` makes for a missing session. */
+  private def withStitchedCinemas(rows: Seq[StoredMovieRecord]): Seq[StoredMovieRecord] =
+    rows.map { row =>
+      val id                 = StoredMovieRecord.idOf(row, normalizer)
+      val (stitched, readOk) = movieRepository.findByIdChecked(id)
+      if (!readOk) throw new IllegalStateException(
+        s"Staging fold could not read '$id' back through the storage split. Refusing to " +
+        "re-key the film on a view that reports none of its cinemas.")
+      val fromSideRows = stitched.map(services.movies.MovieRepository.withoutShowtimes)
+        .map(_.record.data).getOrElse(Map.empty)
+      row.copy(record = row.record.copy(data = fromSideRows ++ row.record.data))
+    }
+
   /** One transaction body: read the WHOLE `sanitize(title)` GROUP's staging +
    *  movies rows (every year-variant), compute the settled plan, and apply the
    *  upserts/deletes — all on `session`. Group-scoped so `planGroup` can collapse
@@ -195,7 +236,7 @@ class MongoStagingFolder(
         else await(movies.find(session, Filters.and(
           Filters.in("tmdbId", ids.toSeq*),
           Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
-      val plan = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer)
+      val plan = StagingFold.planGroup(stagingRows, withStitchedCinemas(groupRows ++ siblings), normalizer)
       wrote(plan.moviesUpserts.toSeq)
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k)
