@@ -862,13 +862,31 @@ abstract class CountryConvergenceBehaviour(
                    s"a re-scrape and settle must not empty a film's board:\n  ${emptied.take(6).mkString("\n  ")}"
       }
       info(s"${country.displayName}: per-tick change-stream emissions: ${perTick.mkString(", ")}")
-      if (keyDrift.nonEmpty)
-        info(s"${country.displayName}: key-spelling drift (informational):\n${keyDrift.mkString("\n")}")
 
-      withClue(
-        s"A settled ${country.displayName} corpus must not re-fold or re-divert under identical " +
-          s"re-scrape, but:\n${churn.mkString("\n")}\n") {
-        churn.toList shouldBe empty
+      // Key drift is asserted, not merely logged, and it is asserted in the SAME breath as
+      // the churn so one run reports both. It used to be `info` on the reasoning that a key
+      // cannot move without a write, so the emission count above already covered it. That
+      // reasoning is wrong: the two read DIFFERENT STORES. `keySet` is the CACHE
+      // (`movieCache.snapshot()`); `emissions` counts `movieRepository` change-stream
+      // events. A re-key that lands in Caffeine and is never persisted — the settle and a
+      // hydrate disagreeing about a row's DERIVED title, which is precisely what
+      // `MovieCache.rehydrate` re-derives and then migrates — moves the key set with zero
+      // emissions. Neither check subsumes the other, and drift is the more user-visible of
+      // the two, because the cache is what the site renders from.
+      //
+      // One assertion rather than two consecutive ones, because ScalaTest stops at the
+      // first failure: asserting them separately meant a corpus that both churned AND
+      // drifted reported only the churn, and the drift — which names the films whose
+      // IDENTITY moved — never even evaluated.
+      val unsettled =
+        (if (churn.isEmpty) Nil else s"CHURN — a settled corpus must not re-fold or re-divert " +
+          s"under identical re-scrape:\n${churn.mkString("\n")}" :: Nil) ++
+        (if (keyDrift.isEmpty) Nil else s"KEY DRIFT — a settled corpus must come out under the " +
+          s"SAME row keys; an appearing or vanishing key is a film changing identity:\n" +
+          s"${keyDrift.mkString("\n")}" :: Nil)
+
+      withClue(s"${country.displayName} did not settle:\n${unsettled.mkString("\n\n")}\n") {
+        unsettled shouldBe empty
       }
     }
   }
