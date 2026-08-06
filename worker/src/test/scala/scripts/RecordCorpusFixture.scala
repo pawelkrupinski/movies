@@ -79,7 +79,7 @@ object RecordCorpusFixture {
       val sample = CorpusSample.trim(rows, keys, titles)
       val sampleKey  = s"${country.code}-sample"
       val samplePath = CorpusFixture.write(sampleKey, sample)
-      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotTitles = Some(CorpusSample.titlesOf(rows, keys, titles))))
+      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotKeys = Some(CorpusSample.slotKeysOf(rows, keys, titles))))
       println(s"[corpus] sample seed $seed — ${keys.size} films drawn from ${CorpusSample.filmKeys(rows, titles).size}")
       println(s"[corpus] wrote $samplePath — ${sample.size} venues, ${sample.map(_.films.size).sum} listings")
       println(s"[corpus] wrote $sampleBaseline — prod's coverage of just those films")

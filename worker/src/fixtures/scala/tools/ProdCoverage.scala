@@ -26,13 +26,15 @@ object ProdCoverage {
    *  streaming full-collection scan reliably wedges. */
   def of(database: MongoDatabase,
          now: java.time.Instant = java.time.Instant.now(),
-         /** Restrict to the films listed under these CINEMA-REPORTED titles — how the
-          *  SAMPLE baseline is taken, so it counts prod's coverage of exactly the films
-          *  the sample corpus replays. Matched as exact strings against `movie_slots`,
-          *  because prod stores each cinema's own spelling there and that is the one
-          *  identity both sides share (see `CorpusSample.titlesOf`). `None` counts
-          *  every film. */
-         onlySlotTitles: Option[Set[String]] = None): ProdCoverageBaseline = {
+         /** Restrict to the films carrying these CINEMA SLOT KEYS — how the SAMPLE
+          *  baseline is taken, so it counts prod's coverage of exactly the films the
+          *  sample corpus replays. `None` counts every film.
+          *
+          *  The key (`"<cinema>␟<titleKey>"`, `CinemaShowing.keyFor`) is what both
+          *  sides derive from the same (cinema, title), which the stored slot TITLE is
+          *  not: prod strips a listing's decoration before storing it, so a corpus
+          *  "The Room [dubbing]" never equalled the "The Room" on prod's slot. */
+         onlySlotKeys: Option[Set[String]] = None): ProdCoverageBaseline = {
     val screeningNow = Await.result(
       database.getCollection("screenings")
         .aggregate(Seq(
@@ -42,16 +44,46 @@ object ProdCoverage {
         .toFuture(), 10.minutes)
       .flatMap(_.get("_id").map(_.asString().getValue))
 
-    // Exact-match the sampled titles against the slots — an `$in` on the values prod
-    // already stores, so no scan crosses the tunnel and no normalisation has to agree.
-    val sampled: Option[Set[String]] = onlySlotTitles.map { titles =>
-      Await.result(
+    // Exact-match the sampled slot keys — an `$in` on the keys prod already stores, so
+    // no scan crosses the tunnel and no normalisation has to agree.
+    //
+    // Read from BOTH homes a cinema slot can live in, and union them. `movies.sourceData`
+    // is being migrated into the `movie_slots` side collection and the migration is only
+    // partway done — 259 of production's 940 rows still carried their slots embedded when
+    // this was written. Reading the side collection alone therefore SHADOWS the embedded
+    // rows rather than unioning them, and every film that has not migrated yet is counted
+    // as one production does not have: Poland's sample leg read `films run=94 prod=73`,
+    // and unioning the embedded slots back in makes it prod=90 on the same repertoire.
+    // How wrong the number is depends only on which films the sample happens to draw,
+    // which is why it moved from 4.4% (passing) to 28.8% (failing) overnight without
+    // anything in the pipeline changing.
+    val sampled: Option[Set[String]] = onlySlotKeys.map { keys =>
+      val migrated = Await.result(
         database.getCollection("movie_slots")
-          .find(Filters.in("slot.title", titles.toSeq*))
+          .find(Filters.in("slotKey", keys.toSeq*))
           .projection(org.mongodb.scala.model.Projections.include("filmId"))
           .toFuture(), 10.minutes)
         .flatMap(_.get("filmId").map(_.asString().getValue))
-        .toSet
+
+      // `sourceData` is a MAP keyed by the slot key, so it takes `$objectToArray` to
+      // match a key server-side. Still server-side, still ids-only over the wire.
+      val embedded = Await.result(
+        database.getCollection("movies")
+          .aggregate(Seq(
+            Aggregates.project(org.mongodb.scala.bson.collection.immutable.Document(
+              "slots" -> org.mongodb.scala.bson.collection.immutable.Document(
+                "$objectToArray" -> org.mongodb.scala.bson.collection.immutable.Document(
+                  "$ifNull" -> org.mongodb.scala.bson.BsonArray(
+                    org.mongodb.scala.bson.BsonString("$sourceData"),
+                    org.mongodb.scala.bson.BsonDocument()))))),
+            Aggregates.unwind("$slots"),
+            Aggregates.filter(Filters.in("slots.k", keys.toSeq*)),
+            Aggregates.group("$_id")))
+          .allowDiskUse(true)
+          .toFuture(), 10.minutes)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+
+      (migrated ++ embedded).toSet
     }
     val screening = sampled.fold(screeningNow)(keep => screeningNow.filter(keep.contains))
 

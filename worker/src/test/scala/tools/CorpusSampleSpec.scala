@@ -79,15 +79,24 @@ class CorpusSampleSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The join to production. Prod keys a film by its FOLDED display title, which no
-   *  cinema necessarily wrote; it stores each cinema's own spelling on the slots. So
-   *  the baseline is taken by matching those raw titles — every spelling of a sampled
-   *  film, so a prod row is found whichever venue's wording it folded under. */
-  "titlesOf" should "return every venue's spelling of the sampled films" in {
-    CorpusSample.titlesOf(corpus, Set("diuna"), titleNormalizer) should contain theSameElementsAs Seq("Diuna", "DIUNA")
+   *  cinema necessarily wrote; what both sides can derive from the same (cinema, title)
+   *  is the SLOT KEY, so the baseline is taken by matching those — one key per venue
+   *  spelling, so a prod row is found whichever venue's wording it folded under. */
+  "slotKeysOf" should "return one slot key per venue spelling of the sampled films" in {
+    CorpusSample.slotKeysOf(corpus, Set("diuna"), titleNormalizer) should
+      contain theSameElementsAs Seq("Helios Posnania␟diuna", "Multikino Stary Browar␟diuna")
+  }
+
+  /** Two venues shouting a title differently still key alike, but a DECORATED listing
+   *  keys on its own decoration — which is why the key has to come from
+   *  `CinemaShowing.keyFor` rather than from anything this object spells out. */
+  it should "key a decorated listing under its own spelling" in {
+    CorpusSample.slotKeysOf(Seq(venue(models.Helios, "Diuna (dubbing)")), Set("diunadubbing"), titleNormalizer) shouldBe
+      Set("Helios Posnania␟diunadubbing")
   }
 
   it should "return nothing for a film that was not sampled" in {
-    CorpusSample.titlesOf(corpus, Set("arco"), titleNormalizer) shouldBe Set("Arco")
-    CorpusSample.titlesOf(corpus, Set.empty, titleNormalizer) shouldBe empty
+    CorpusSample.slotKeysOf(corpus, Set("arco"), titleNormalizer) shouldBe Set("Helios Posnania␟arco")
+    CorpusSample.slotKeysOf(corpus, Set.empty, titleNormalizer) shouldBe empty
   }
 }

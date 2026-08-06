@@ -36,18 +36,26 @@ object CorpusSample {
   private def keyOf(film: models.CinemaMovie, normalizer: TitleNormalizer): String =
     normalizer.sanitize(film.movie.title)
 
-  /** Every RAW title the sampled films are listed under, across every venue.
+  /** The CINEMA SLOT KEY of every listing of the sampled films, across every venue.
    *
    *  This is the join to production. A sampled film cannot be matched to a prod row by
    *  `_id`: that is the sanitize of the FOLDED display title, while the corpus carries
    *  what each cinema actually wrote. Matching the two collapsed 100 sampled films to
    *  58 prod rows — and biased the survivors towards the ones that folded cleanly,
    *  which are disproportionately the well-known resolvable ones, so the baseline came
-   *  out reading 79% resolved against the replay's 70%. Prod stores the cinema's own
-   *  spelling on its slots, so the raw titles match exactly, with no normalisation
-   *  guesswork on either side. */
-  def titlesOf(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Set[String] =
-    rows.flatMap(_.films).filter(film => keys.contains(keyOf(film, normalizer))).map(_.movie.title).toSet
+   *  out reading 79% resolved against the replay's 70%.
+   *
+   *  The slot KEY is what both sides derive from the same (cinema, title) pair, through
+   *  the same `CinemaShowing.keyFor` — so there is one rule, not two that have to agree.
+   *  The slot's stored TITLE is not that: prod strips a listing's decoration before
+   *  storing it, so a corpus "The Room [dubbing]" never equalled the "The Room" prod had
+   *  put on the slot, and every decorated listing silently fell out of the baseline —
+   *  precisely the shapes this sample is drawn to over-represent. */
+  def slotKeysOf(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Set[String] =
+    rows.flatMap(row => row.films
+        .filter(film => keys.contains(keyOf(film, normalizer)))
+        .map(film => models.CinemaShowing.keyFor(row.cinema, film.movie.title, normalizer).displayName))
+      .toSet
 
   /** Every distinct film key in the corpus, sorted — a stable universe to sample
    *  from, so the only randomness is the draw itself. */
