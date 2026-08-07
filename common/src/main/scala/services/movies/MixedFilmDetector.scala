@@ -98,6 +98,14 @@ object MixedFilmDetector {
    *
    *  A row whose cinemas published nothing comparable cannot contradict anything,
    *  so the answer is `false` and the caller's own evidence stands. */
+  /** CALL WITH RECORDS THAT CARRY THEIR CINEMAS. The answer comes from `cinemaSlots`, so a
+   *  record holding none cannot contradict anything and this returns `false` — the right
+   *  default (no evidence is not evidence of difference, and refusing on it would block every
+   *  adoption of an enrichment-only row), but one that makes the answer depend on how the
+   *  record was READ. Under the storage split a migrated film's `movies` document carries no
+   *  `sourceData` at all, so a caller planning on RAW documents — `MongoStagingFolder` does —
+   *  gets `false` where the stitched view gives `true`. Pinned in `MixedFilmDetectorSpec`,
+   *  along with why it currently costs nothing. */
   def describeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer): Boolean =
     (identityGroups(a, normalizer).headOption, identityGroups(b, normalizer).headOption) match {
       case (Some(mainA), Some(mainB)) => conflicting(mainA, mainB)

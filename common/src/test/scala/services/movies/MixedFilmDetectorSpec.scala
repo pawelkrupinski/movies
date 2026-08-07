@@ -197,4 +197,38 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     MixedFilmDetector.strays(a, titleNormalizer).map(_._1) shouldBe
       MixedFilmDetector.strays(b, titleNormalizer).map(_._1)
   }
+
+  /** The detector answers from the record's CINEMA SLOTS, so a record that carries none
+   *  cannot contradict anything and `describeDifferentFilms` says "not different films".
+   *
+   *  That default is right — no evidence is not evidence of difference, and refusing on it
+   *  would block every adoption of an enrichment-only row — but it makes the answer depend
+   *  on how the record was READ. Under the storage split a migrated film's `movies` document
+   *  carries no `sourceData` at all (its cinemas are rows in `movie_slots`), so a caller
+   *  planning on RAW documents gets `false` for a pair the same caller would get `true` for
+   *  on the stitched view. `MongoStagingFolder` reads raw and is the caller to watch.
+   *
+   *  Pinned rather than fixed, deliberately. The one caller — `FilmCanonicalizer`'s
+   *  token-run edge — was probed with a resolved base and an unresolved token-run extension,
+   *  slot-less and stitched, at matching and differing years: `StagingFold.planGroup` returns
+   *  the SAME rows either way, because `clusterByFilm` separates them regardless. And the
+   *  only way a resolved base joins a fold group at all is `reconcileTmdbIds`, i.e. by
+   *  SHARING a tmdbId, which the unguarded tmdbId edge unions on before this guard is
+   *  consulted. So the blindness is real and currently costs nothing. This test exists so
+   *  that stops being true LOUDLY: anything that starts routing a raw-read record here has
+   *  to stitch it first. */
+  "a record with no cinema slots" should "be unable to contradict, whatever the other side says" in {
+    val cinemas = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> slot(Seq("François Ozon"), Some("L'étranger"), Some(122))))
+    val other   = MovieRecord(data = Map[Source, SourceData](
+      KinoMuranow -> slot(Seq("Brandt Andersen"), Some("I Was A Stranger"), Some(103))))
+    // The same film pair, read the two ways the split makes possible.
+    val migrated = MovieRecord(data = Map.empty)
+
+    withClue("premise: with its cinemas present the pair IS a contradiction: ")(
+      MixedFilmDetector.describeDifferentFilms(cinemas, other, titleNormalizer) shouldBe true)
+    withClue("a slot-less record reporting a contradiction would block legitimate adoptions " +
+             "of enrichment-only rows: ")(
+      MixedFilmDetector.describeDifferentFilms(migrated, other, titleNormalizer) shouldBe false)
+  }
 }
