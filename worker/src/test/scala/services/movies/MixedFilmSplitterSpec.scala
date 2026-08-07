@@ -180,6 +180,37 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** ABSENT is not EMPTY, and the difference is a film's board.
+   *
+   *  `restitchedChecked` reports `readOk = true` whenever the read COMPLETED — including
+   *  when it completed and found nothing. That happens because the id is re-derived from the
+   *  resident row's DISPLAY title, which can drift from the persisted `_id` (see
+   *  `StoredMovieRecord.idOf`, and `MovieCache.rehydrate`, which migrates rows it catches).
+   *  Treating that as "this film has no stored cinemas" makes the split fall back to the
+   *  CACHE-RESIDENT slot, and under the read-split that slot holds no showtimes — so the
+   *  stray is staged with an empty board, which is the `ktoscalkiemobcy|2024` defect reached
+   *  through the absent branch rather than the failed one. */
+  it should "defer the split when the stored row cannot be found, rather than stage an empty board" in {
+    val repository = new InMemoryMovieRepository(
+      screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository),
+      normalizer = titleNormalizer) {
+      // The read COMPLETES and finds nothing — not a failure, so `readOk` stays true.
+      override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = (None, true)
+    }
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)
+
+    cache.put(cache.keyOf("Obcy", Some(2025)), MovieRecord(data = Map[Source, SourceData](
+      Multikino   -> slot("Obcy", Seq("François Ozon"), Some("L'étranger"), Some(2025), Some(120)),
+      KinoMuranow -> slot("Obcy", Seq("Brandt Andersen"), Some("I Was A Stranger"), Some(2024), Some(103)))))
+
+    withClue("the row is mixed and the splitter staged the stray anyway, off a resident slot " +
+             "that carries no showtimes: ")(
+      new MixedFilmSplitter(cache, staging).splitMixedRows() shouldBe 0)
+    withClue("nothing may reach staging until the row can be read back: ")(
+      staging.findAll() shouldBe empty)
+  }
+
   "a second pass" should "find nothing left to split" in {
     val record = MovieRecord(data = Map[Source, SourceData](
       KinoMuranow -> slot("Joanna d'Arc", Seq("Luc Besson"), Some("Joan of Arc"), Some(1999), Some(160)),

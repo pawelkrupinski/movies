@@ -72,10 +72,18 @@ class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository) extends L
     // A FAILED read is not an empty film. Staging on the strength of one writes that empty
     // board over a real one, so leave the row mixed and split it on a pass that can read.
     val (restitched, readOk) = cache.restitchedChecked(key)
-    if (!readOk) {
+    // ABSENT counts as unreadable here, not as "this film has no cinemas". `readOk` only
+    // says the read completed; it can complete and find nothing, because the id is
+    // re-derived from the resident row's DISPLAY title and that can drift from the
+    // persisted `_id` (`StoredMovieRecord.idOf` documents the drift, and
+    // `MovieCache.rehydrate` migrates rows it catches). On that path `storedSlots` is empty,
+    // the `getOrElse` below falls back to the resident slot, and we stage the cinema with
+    // the empty board this guard exists to prevent — the same `ktoscalkiemobcy|2024` shape,
+    // reached through the absent branch instead of the failed one.
+    if (!readOk || restitched.isEmpty) {
       logger.warn(s"Mixed-film split deferred for '${entry.title}' (${entry.year.getOrElse("?")}): " +
-        "its stored row could not be read, so the stray cinema's showtimes are unknown — " +
-        "the next settle splits it once the read succeeds.")
+        s"its stored row could not be ${if (readOk) "found" else "read"}, so the stray cinema's " +
+        "showtimes are unknown — the next settle splits it once the row resolves.")
       return 0
     }
     val storedSlots = restitched.map(_.data).getOrElse(Map.empty)
