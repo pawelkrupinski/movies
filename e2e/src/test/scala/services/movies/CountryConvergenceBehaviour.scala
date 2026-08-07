@@ -1094,6 +1094,72 @@ abstract class CountryConvergenceBehaviour(
    *  Subset, not equality, in both directions that matter: the read model may
    *  legitimately hold MORE (a folded film carries several venues' spellings into
    *  one row) but never less. */
+  /** What the corpus LEFT BEHIND. The other legs all ask what the pipeline emits; this one
+   *  asks what it stranded, which is invisible to every one of them because a stranded row is
+   *  by definition attached to nothing.
+   *
+   *  Both checks are here because both were real, and neither had a test:
+   *
+   *  - ORPHANED SIDE ROWS. `movie_slots` and `screenings` are keyed by film id and are meant
+   *    to be emptied by `MovieRepository.delete`/`deleteById` when their film leaves. The
+   *    staging fold bypassed that with a direct in-transaction `deleteOne`, so a retired
+   *    key's cinemas stayed behind; prod carried 767 such rows across 90 films until they
+   *    were reaped on 2026-08-06. The fold now MIGRATES them onto the winner, and this is
+   *    what keeps that true. Deleting them instead is not the fix and must not become one —
+   *    @8033e39c6 tried it and took prod PL from 39,413 upcoming showtimes to 18,161, because
+   *    most retirements are re-keys and the loser's rows are the film's only copy until the
+   *    winner is written.
+   *
+   *  - KEY DRIFT against the persisted `_id`. A row's `_id` is `sanitize(title)|year`, and
+   *    every reader re-derives the title from the record (`StoredMovieRecord.fromStorage`).
+   *    When the derived title re-sanitizes to a different prefix the two disagree, and that
+   *    gap is load-bearing twice over: `MovieCache.rehydrate` files the row under the derived
+   *    key and migrates it, deleting the old `_id`, while `MixedFilmSplitter` looks the row up
+   *    by the derived id and gets a clean "not found" for a film that is right there. Both
+   *    are how a film silently loses its board. */
+  s"the ${country.displayName} corpus" should "strand no side rows and no drifted keys" in {
+    TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
+    {
+      val (w, _, _) = shared
+      val normalizer = w.movieCache.normalizer
+      val rows       = w.movieRepository.findAll()
+      val live       = rows.map(r => StoredMovieRecord.idOf(r, normalizer)).toSet
+      val slotRows   = w.slotsRepository.findAll()
+      val screenRows = w.screeningsRepository.findAll()
+
+      // Anti-vacuity: a corpus with no side rows would pass both checks by holding nothing.
+      withClue("the leg produced no films, so this asserts nothing: ")(live should not be empty)
+      withClue("nothing reached `movie_slots`, so the orphan check below is vacuous — the " +
+               "storage split is what puts cinemas there, and without it this leg is not " +
+               "exercising production's shape at all: ")(slotRows should not be empty)
+
+      val slotOrphans   = (slotRows.keySet -- live).toList.sorted
+      val screenOrphans = (screenRows.keySet -- live).toList.sorted
+      info(s"${country.displayName}: ${live.size} film(s), ${slotRows.size} slot row(s), " +
+           s"${screenRows.size} screening row(s)")
+
+      withClue(s"${slotOrphans.size} film(s) hold `movie_slots` rows with no `movies` row: " +
+               s"${slotOrphans.take(8).mkString(", ")}\n") {
+        slotOrphans shouldBe empty
+      }
+      withClue(s"${screenOrphans.size} film(s) hold `screenings` rows with no `movies` row — " +
+               s"those showtimes are attached to nothing and no reader can reach them: " +
+               s"${screenOrphans.take(8).mkString(", ")}\n") {
+        screenOrphans shouldBe empty
+      }
+
+      val drifted = rows.flatMap { r =>
+        r.persistedId.filter(_ != StoredMovieRecord.idFor(r.title, r.year, normalizer))
+          .map(id => s"$id -> ${StoredMovieRecord.idFor(r.title, r.year, normalizer)}")
+      }.sorted
+      withClue(s"${drifted.size} row(s) re-derive to an id other than the one they are stored " +
+               s"under, so a hydrate migrates them and a by-id lookup misses them: " +
+               s"${drifted.take(8).mkString(", ")}\n") {
+        drifted shouldBe empty
+      }
+    }
+  }
+
   s"the ${country.displayName} read model" should
     "emit every cinema, showtime and film the archive holds" in {
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
