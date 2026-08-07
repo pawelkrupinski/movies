@@ -83,21 +83,29 @@ class MongoStagingFolder(
   ): Seq[(CacheKey, MovieRecord)] = {
     var attempt = 0
     var result  = Option.empty[Seq[(CacheKey, MovieRecord)]]
-    // What the committed attempt actually planned for `movies`, captured per attempt so a
-    // retry's plan replaces the abandoned one rather than adding to it.
-    var planned = Option.empty[StagingFold.Plan]
     while (result.isEmpty) {
       attempt += 1
       session.startTransaction()
-      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds, planned = p => planned = Some(p)))
-      StagingFold.nextAfterAttempt(outcome, attempt, maxRetries) match {
+      // The plan comes back WITH the outcome rather than through a callback into a `var`
+      // hoisted out of this loop, and that is correctness rather than taste. `foldOnce`
+      // returns early without planning anything when the group's staging rows are gone, and
+      // `nextAfterAttempt` maps that `Success` to `Commit` like any other — so a retry that
+      // found the group already drained (a competing worker folded it while this attempt was
+      // aborting on a write conflict) used to commit an empty transaction and then apply the
+      // ABANDONED attempt's plan: `moveFilm` relocating side rows onto a key this transaction
+      // never wrote, and `upsert` resurrecting a `movies` document from pre-conflict content.
+      // Carrying the plan alongside the result makes the applied plan definitionally the one
+      // the committed attempt produced.
+      val outcome = Try(foldOnce(session, movies, staging, cleanTitle, candidateIds))
+      StagingFold.nextAfterAttempt(outcome.map(_.newPromotions), attempt, maxRetries) match {
         case StagingFold.Next.Commit(newPromotions) =>
           await(publisherToFuture(session.commitTransaction()))
+          val plan = outcome.toOption
           // Migrate BEFORE completing: `upsert` re-stitches a stripped slot from the
           // `screenings` rows filed under the id it is writing, so the winner has to own
           // the retired rows by the time it runs, or it writes the film with an empty board.
-          planned.foreach(p => migrateRetiredSideRows(p.retirements))
-          completeSideCollections(planned.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
+          plan.foreach(p => migrateRetiredSideRows(p.retirements))
+          completeSideCollections(plan.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
           result = Some(newPromotions)
         case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
@@ -257,13 +265,12 @@ class MongoStagingFolder(
     movies:     MongoCollection[StoredMovieDto],
     staging:    MongoCollection[StoredMovieDto],
     cleanTitle: String,
-    candidateIds: Option[Set[String]],
-    // Reports what this attempt planned, so the caller can finish the written films
-    // through the repository and migrate the retired rows once the transaction commits.
-    // A callback rather than a return value because the outcome type is `StagingFold`'s,
-    // shared with the in-memory folder, and only this one needs a post-commit step.
-    planned: StagingFold.Plan => Unit
-  ): Seq[(CacheKey, MovieRecord)] = {
+    candidateIds: Option[Set[String]]
+    // Returns the whole PLAN, not just the promotions: the caller finishes the written films
+    // through the repository and migrates the retired rows once the transaction commits, and
+    // tying those to the attempt's own return value is what stops an abandoned attempt's plan
+    // being applied after a retry (see `foldWithRetry`).
+  ): StagingFold.Plan = {
     val sanitize = normalizer.sanitize(cleanTitle)
     // Load every staging row and pick this fold's group by `sanitize(r.title)` —
     // NOT a `_id`-middle regex. A row's `_id` middle is the sanitize baked at
@@ -287,7 +294,7 @@ class MongoStagingFolder(
     val stagingRows = StagingFold.selectStagingGroup(
       candidates.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer)),
       cleanTitle, normalizer)
-    if (stagingRows.isEmpty) Seq.empty
+    if (stagingRows.isEmpty) StagingFold.Plan(Nil, Nil, Nil, Nil)
     else {
       // Movies `_id` = sanitize|year — match the sanitize group, any year.
       val groupRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
@@ -302,7 +309,6 @@ class MongoStagingFolder(
           Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
       val group = groupRows ++ siblings
       val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group))
-      planned(plan)
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k)
         await(movies.replaceOne(session, Filters.eq("_id", id),
@@ -337,7 +343,7 @@ class MongoStagingFolder(
         services.movies.RemovalAudit.filmsRemoved("staging-fold",
           plan.moviesDeletes.map(k => s"${k.cleanTitle} (${k.year.getOrElse("—")})"), reason = s"folded-into='$sanitize'")
       logger.info(s"Folded staging group '$sanitize': ${stagingRows.size} row(s) → ${plan.moviesUpserts.size} movies row(s).")
-      plan.newPromotions
+      plan
     }
   }
 
