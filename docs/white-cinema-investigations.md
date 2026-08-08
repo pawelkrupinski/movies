@@ -271,6 +271,21 @@ strand-stripper deliberately splits on the en-dash only — splitting on the col
 too would truncate it to the cycle's name, which is worse. It is one unresolved
 film in a June capture; the live page uses a different shape.
 
+**CONFIRMED GREEN IN PROD, with its films.** Red for every retained bucket
+through 08:30 CEST, then **green at the 09:30 CEST (07:30 UTC) bucket** — the
+first scrape after the deploy — `successes=1, failures=0, zeroes=0`. And the
+programme actually landed in the read model, which is the part a green bar alone
+would not prove: `web_screenings` now holds the four remaining open-air nights,
+each TMDB-resolved — `ostatniwikingdensidsteviking|2025` (11 Aug),
+`fathermothersisterbrother|2025` (18 Aug),
+`wartoscsentymentalnaaffeksjonsverdi|2025` (25 Aug) and
+`paulrobienapostolprzyrody` (1 Sep), all at 21:30.
+
+*(Note for anyone spot-checking these in mongosh: the stored instants read
+`21:30Z` and render as 23:30 in a CEST shell. That is not an offset bug — this
+corpus persists a showtime's wall-clock digits as though they were UTC, for every
+client. Multikino Tarnów's 10:10 screening is stored `10:10Z` the same way.)*
+
 **The MSI diagnosis that led here (unchanged):**
 
 The standing "festival filter-gap" `needs-human` on this venue is now a
@@ -364,11 +379,12 @@ client will follow the live page on its own. Nothing owed before then.
 2. **Jaworzyna** — expected to repopulate on its own around **18.08**. If it is
    still white after 20.08, that IS drift and deserves a fresh look.
 3. **Kino MDK** — after 31.08, per the trigger above.
-4. **Kino Zamek** — confirm @09cbc2cdb turned the bar green in prod, and that the
-   four remaining Zamkowe Noce Filmowe nights (11/18/25 Aug, 1 Sep) show up. Then
-   re-check in **September**, when the category switches back to one page per
-   film: that is the shape the `kino-zamek-season` fixture covers, but it will be
-   the first time it runs against a LIVE in-season listing.
+4. ~~**Kino Zamek**~~ — **done in-run: green in prod at the 07:30 UTC bucket, with
+   all four open-air nights projected.** What is still owed is a **September**
+   re-check, when the category switches back to one page per film. That shape is
+   covered by the `kino-zamek-season` fixture, but September will be the first
+   time it runs against a LIVE in-season listing — so confirm the film count
+   jumps from ~4 to ~30 rather than staying flat.
 5. **Studio (Opole)** and **DKF Politechnika** — after 3 September / the start of
    the academic year respectively.
 
