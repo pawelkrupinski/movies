@@ -49,6 +49,236 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-08-08
+
+**PL: 19 white, 2 red**, out of 327 non-enrichment services, newest bucket
+2026-08-08 03:15 UTC. `kinowo_de` and `kinowo_uk` still hold **zero**
+`uptimeBuckets` — their workers have been stopped since 2026-08-02 and retention
+is ~24 h, so there remains no DE/UK signal to read. Poland only again.
+
+**No white venue is white because of a parser bug.** All 19 were re-probed live
+this run and every one is genuinely film-empty at the source we scrape. The
+one code change that came out of the sweep is a **RED**, not a white:
+**Kozienicki Dom Kultury, `fixed` @ca41320db** — the second venue in five weeks
+to be knocked offline by nothing but an expired certificate.
+
+**Set changes vs 2026-08-04's 07:45 re-sweep (20 white / 0 red then):**
+- **FELL OFF (2):** **Kino Tur** — genuinely **recovered**, and confirmed at
+  source rather than inferred from the bar going green (below). **Kino Zamek** —
+  did not recover; it moved **white → RED** because its ticketing host went
+  TCP-dark (below).
+- **NEW (1):** **Jaworzyna** (Krynica-Zdrój) — `intentionally-dormant`, a
+  scheduled mid-August gap (below).
+- **Carried over (17):** ADA Kino Studyjne, DKF Politechnika, Kino Chatka Żaka,
+  Kino CK Lublin, Kino Kuźnica, Kino MDK, Kino nad Wartą, Kino PDK, Kino Sfinks,
+  Kino Ślęża, Kino Świt, Kino Warszawa (Przeworsk), Kino Wisła Brzeszcze, Kino
+  Zachęta, Miejskie Centrum Kultury, Patria, Piast, Studio (Opole). Evidence for
+  each in the table below.
+
+**Every one of the 19 has `allZeroHistory = true`** — white across its entire
+retained bucket window, with not one green→white transition anywhere in the
+set. That distribution is itself the evidence that no parser broke in the last
+24 h: markup drift lands as a green→white flip, and there are none. (Jaworzyna
+is new to the *set* but not to the window — it flipped between the 08-04 sweep
+and the start of the current window, i.e. more than 24 h ago.)
+
+### Kozienicki Dom Kultury — `fixed` @ca41320db — the Kołobrzeg shape, one year later
+
+RED, not white, so strictly out of a white run's scope — but it is the *exact*
+pattern the 2026-08-04 entry told the next run to look for ("probe `http://`
+before writing a host off, because a cert that expires is a **scheme** problem,
+not a reachability one"), and it cost one probe to confirm.
+
+- Error: `CircuitOpenException: circuit open for bilety.dkkozienice.pl`, behind
+  `SSLHandshakeException (certificate_expired)`.
+- The leaf is `CN=*.dkkozienice.pl`, issuer `nazwa.pl / nazwaSSL DV TLS G2 E29
+  CA`, `notAfter = Aug 7 00:00:00 2026 GMT` — **it expired the day before this
+  run**, which is why the venue was green on 08-04 and red now.
+- **The portal answers the identical page over plain HTTP, with no redirect to
+  HTTPS.** `http://bilety.dkkozienice.pl/MSI/mvc/pl?sort=Name&date=2026-08` →
+  200, 97,069 bytes; `2026-09` → 200, 32,678 bytes; and the plain-HTTP body is
+  **byte-identical** to the `https -k` fetch of the same path (65,826 == 65,826
+  on the portal root).
+- **The venue is very much screening** — 4 events for 2026-08-08 alone (`Psi
+  Patrol i dinozaury` ×2, `Spider-Man. Całkiem nowy dzień 2D DUB`, `O czym sobie
+  nie mówimy`), with forward dates through 10–12.08. The parent site
+  `dkkozienice.pl` lists the same day and points bookings at
+  `bilety.dkkozienice.pl/Msi/mvc/pl`. So this was a live cinema going dark
+  purely on a scheme.
+
+**Fix:** one character-class change in `CinemaScraperCatalog` — the `MsiClient`
+`baseUrl` for this venue is now `http://bilety.dkkozienice.pl`, exactly as Kino
+Wybrzeże has been since @b51d129a9. `MsiClient`'s `baseUrl` scaladoc, which
+named Kołobrzeg as *the* plain-HTTP case, now names both and states the general
+rule.
+
+**Test (fail-before / pass-after):** `CinemaClientMarkersSpec` grows the
+assertion that mirrors the Wybrzeże one —
+`sourceUrls("Kozienicki Dom Kultury") shouldBe "http://bilety.dkkozienice.pl"`.
+Confirmed failing before the catalog edit (`"http[s]://bilety.dkkozienic..." was
+not equal to "http[]://..."`) and passing after. The scheme is the whole fix, so
+pinning it is what stops a future edit silently flipping the venue back to red.
+
+**Snapshot: `read-model-snapshot.json` shifted, and ONLY it.** Worth recording
+*why*, because it is not obvious in either direction:
+
+- The raw-HTML corpus did **not** move. `FakeHttpFetch` keys a fixture on
+  `host / path / query-fingerprint` — **the scheme is not part of the key** — so
+  the recorded `08-06-2026/bilety.dkkozienice.pl/MSI/mvc/pl.*` fixtures keep
+  resolving untouched and the venue's films are still parsed in e2e. (Same
+  reason the Kołobrzeg flip needed no fixture rename.)
+- But `MsiScraper` resolves every showtime's booking `abs:href` **against
+  `baseUrl`**, so all 19 of the venue's `bookingUrl`s in the projected read model
+  flip `https://` → `http://`. Diff verified to be exactly those 19 lines and
+  nothing else.
+- `expected-schedules.txt` does **not** carry booking URLs, and Kozienice is in
+  `radom` — not one of the three snapshot cities — so neither that file nor any
+  `expected-*.html` moved. Confirmed by running the e2e spec *before*
+  regenerating: only the read-model test failed, and only on the scheme.
+
+### Jaworzyna (Krynica-Zdrój) — `intentionally-dormant`, and NOT a broken date strip
+
+`EkobiletClient` on `ekobilet.pl/kino-jaworzyna`. The only venue that entered
+the white set this run, so it got the hardest look — a green→white flip on an
+own-platform scraper is the classic drift signature.
+
+It is not drift. The page is 200 and renders "Brak wydarzeń na dzisiaj"; its
+date strip has 9 `div.card-date` for 06.08–14.08, **all** carrying
+`pointer-events-none` and **none** carrying `available-color`, which is exactly
+the "no screening days" state `EkobiletClient.availableDates` is written to
+read. **The class scheme has not been renamed** — checked against live control
+venues on the same platform: `opolskielamy` has 7 `available-color` days and 9
+event cards, `kinorejs` has 5 and 4. (Two other ekobilet venues,
+`kino-centrum-jastrzebiezdrj` and `mokis-bielawa`, render no date strip at all
+but do render event cards, so the landing parse alone carries them — also fine.)
+
+The venue's own site says the same thing in its own way, and explains the shape:
+`ckkrynica.pl/repertuar.html` publishes the repertoire as a **single JPEG**
+(`Repertuar-31.07-20.08abc-2.jpg`, `Last-Modified` 2026-07-31), and that poster
+covers **31.07–06.08 and then 18–20.08**. **07–17 August is absent from the
+venue's own programme entirely** — today falls in that gap. Filmweb agrees
+independently: id 561 still resolves to `{"name":"Jaworzyna","city":"Krynica
+Zdrój"}` and returns `[]` for 08-08 through 08-20, with the cinema page reading
+"Niestety to kino nie oferuje seansów w najbliższym czasie".
+
+Note the shape for a future run: `ekobilet.pl/kino-jaworzyna?date=2026-08-18`
+shifts the strip to 16.08–24.08 but **still** shows zero available days, because
+tickets for the 18–20 block are not on sale yet. Ekobilet is not lying and our
+parser is not blind — **expect this venue to repopulate on its own around
+18.08**. There is no machine-readable second source to move to (the only other
+listing, `kino.coigdzie.pl`, carries one stale entry with an ad-injected ticket
+link pointing at a *different* venue's ekobilet slug — do not scrape it).
+
+### Kino Tur (Turek) — `recovered`, and the standing migration trigger is now void
+
+Carried as dormant since 2026-07-28 with an armed trigger: *migrate to the
+venue's own `mdk.turek.pl` if biletyna is still empty while mdk has a current
+monthly article.* **The trigger is now void** — biletyna itself came back.
+`biletyna.pl/Turek/Kino-Tur` carries 2 `ScreeningEvent`s ("Super futrzak i
+złośliwa wiewiórka", 2026-08-12 10:00; "Kręciołek", 2026-08-26 10:00) alongside
+1 `ComedyEvent`, and our bar is green again. Confirmed at source, not inferred
+from the bar. **Disarm the trigger; do not migrate this venue.**
+
+### Kino Zamek (Szczecin) — white → RED. `needs-human`: the ticket host is gone
+
+The standing "festival filter-gap" `needs-human` on this venue is now a
+different, harder problem, and the change is worth recording precisely because
+the bar colour moved for a reason unrelated to the old diagnosis.
+
+`KinoZamekClient` reads showtimes from an MSI portal at
+`bilety.zamek.szczecin.pl` and uses `zamek.szczecin.pl/wydarzenia/kino/` only to
+supply the film-slug filter. **The MSI host no longer accepts TCP connections.**
+DNS still resolves (`213.155.191.11`), but three `curl` runs each sat at
+`connect=0.000000` and hit the 60 s cap with `http=000`, and `nc` to :443 and
+:80 both time out. That is what the `TimeoutException: exceeded 8000ms adaptive
+budget` is — a dead host, not a slow one. The listing host by contrast is
+healthy and fast (200, ~190 KB, ttfb 0.17–0.27 s across three runs).
+
+Why this is not fixable in a white run: rebuilding the venue on
+`zamek.szczecin.pl/wydarzenia/kino/` means a **new showtimes parser** for a page
+shape we have never parsed, and that page currently carries only two entries —
+`Zamkowe Noce Filmowe 2026` (open-air, 4/11/18/25 August 21:30) and
+`44-45 Pomorskie Spotkania z Diaporamą`. There is no regular repertoire to write
+a fail-before/pass-after test against, and shipping a parser validated against
+two festival rows would be exactly the speculative fix this log exists to
+prevent. **needs-human: decide whether to rebuild Kino Zamek on its own listing
+page (and accept an open-air-only feed for now), or retire the MSI host and let
+the venue stay dark until it programmes a normal season.**
+
+### Kino MDK (Radomsko) — still `intentionally-dormant`, but the picture moved
+
+The venue flagged last run as "most likely to come back". It has **not** come
+back on the surface we scrape, but the reason it was dormant has changed, so the
+trigger is re-armed rather than merely repeated:
+
+- The bilety24 organiser page (`…-1546`) still lists **0** films (3 Spektakl),
+  and the venue's own storefront `mdkradomsko.bilety24.pl` likewise.
+- **What changed is the venue site.** Last run every film card on
+  `mdkradomsko.pl/kino-radomsko/` led to a `pec-events` page reading "TO
+  WYDARZENIE JUŻ SIĘ ODBYŁO" — stale posters for a finished run. **That is no
+  longer true**: all three detail pages now open cleanly with no such banner, and
+  two carry **future** dates — "WAJDA: re-wizje" from **31 August 2026 17:00**
+  and "FEDERICO FELLINI: ciao a tutti!" **7–21 September 2026**. (A third,
+  "KONWICKI", carries a junk date of 25 June 1996 while its prose says
+  czerwiec–grudzień 2026.)
+- These are **cycle** pages, not individual showtimes, so there is nothing to
+  scrape yet even if we repointed today.
+
+**Trigger for the next run after 31 August:** if the WAJDA cycle starts and the
+films appear on `mdkradomsko.bilety24.pl` but **not** on the central organiser
+page, that is the signal to repoint the client at the storefront. If they appear
+on neither while the venue site says the cycle is running, the venue publishes
+only prose and there is nothing to move to.
+
+### The other carried-over dormant venues — all re-probed live, all correctly empty
+
+Five state it in their own words on the page we scrape; the rest agree by
+structure. Counts are from this run.
+
+| Venue | What the source actually shows |
+|---|---|
+| Kino Świt (Warszawa) | `div.cks-movie-card` = **0**; "Brak nadchodzących seansów filmowych… Dodaj wydarzenia z kategorią „Film"" |
+| Patria (Ruda Śląska) | container renders, items = **0**; day tab says "Brak filmu" |
+| Kino Ślęża (Sobótka) | 1 `div.movie`, 0 `<li>` showtimes — still the notice "Wakacyjna przerwa 🌞" |
+| Studio (Opole) | break still announced verbatim: "…nieczynne… Startujemy już 3 września" |
+| Kino Kuźnica | `/repertoire.html` still 302s to `/messages/noRepertoire` |
+| Kino Chatka Żaka | `h3.header-light` = 0, `div.box-row` = 0, "Brak wydarzeń" |
+| Kino Warszawa (Przeworsk) | MSI shell renders; **0** events for both 2026-08 and 2026-09 |
+| Kino Sfinks (Kraków) | `table.widok_listy` = 0, `div.empty-results` = 1, "Brak wydarzeń" |
+| ADA Kino Studyjne | biletyna `Place.events` = **0** total |
+| Kino PDK (Pyrzyce) | 0 `ScreeningEvent` of 2 (1 Comedy, 1 Theater) |
+| Miejskie Centrum Kultury | 0 `ScreeningEvent` of 4 (3 Music, 1 Comedy) |
+| Kino nad Wartą (Koło) | bilety24 `Film:` = 0 (3 Koncert, 1 Spektakl) |
+| Kino Wisła Brzeszcze | bilety24 "Brak wydarzeń" |
+| Piast (Ostrzeszów) | bilety24 `Film:` = 0 of 9 (5 Koncert, 2 Spektakl, 1 Kabaret, 1 Warsztat) |
+| Kino CK Lublin | 1 item tagged Film — improv theatre over a projection, not a screening |
+| DKF Politechnika | Filmweb 1645 `[]` on 08-08 / 08-10 / 08-14 — academic break |
+| Kino Zachęta (Kleczew) | Filmweb 2405 `[]` on the same three dates |
+
+**Two `unfixable` verdicts stand unchanged and should not be re-opened:** Kino
+Zachęta (the venue publishes only a JPEG poster; there is nowhere to repoint —
+see 2026-07-31) and Kino Sfinks's dormant half (no film-row markup renders
+anywhere, so the parser cannot be rebuilt or test-backed — though the *blind
+spot* was closed at @73f19c8a5, and that guard is still correctly silent).
+
+**Studio (Opole)** remains the cleanest scheduled recovery: the soft-404 trap was
+already defused at @57429179a, so when the break ends on **3 September** the
+client will follow the live page on its own. Nothing owed before then.
+
+### Next run's re-check list
+
+1. **Kozienicki Dom Kultury** — confirm the plain-HTTP flip actually turned the
+   bar green in prod (this run merged it but the bar had not yet been observed).
+2. **Jaworzyna** — expected to repopulate on its own around **18.08**. If it is
+   still white after 20.08, that IS drift and deserves a fresh look.
+3. **Kino MDK** — after 31.08, per the trigger above.
+4. **Kino Zamek** — the `needs-human` decision above; nothing will improve on its
+   own while the MSI host is dark.
+5. **Studio (Opole)** and **DKF Politechnika** — after 3 September / the start of
+   the academic year respectively.
+
+---
+
 ## 2026-08-04
 
 **Poland only, and that is not a shortcut** — `kinowo_de` and `kinowo_uk` both
