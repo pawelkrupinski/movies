@@ -88,5 +88,8 @@ object RecordSwitchedToCorpus {
     rep("KinoPatria")(new KinoPatriaClient(record, KinoPatria, today).fetch().size)
     rep("KinoStudio")(new KinoStudioClient(record, KinoStudio, today).fetch().size)
     rep("KinoAwangarda2")(new KinoAwangarda2Client(record, today).fetch().size)
+    // 2026-08-08: off the MSI portal that stopped accepting TCP, onto the castle's
+    // own kino category — one event page per film, plus a festival umbrella page.
+    rep("KinoZamek")(new KinoZamekClient(record, KinoZamekSzczecin, today).fetch().size)
   }
 }

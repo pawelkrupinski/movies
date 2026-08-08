@@ -325,22 +325,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "90urodzinypavarottiegolucianopavarottithemanwhomovedtheworld|",
-    "title" : "90. Urodziny pavarottiego (luciano pavarotti – the man who moved the world)",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ "Luigi Antonini" ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/90.+Urodziny+pavarottiego+%28luciano+pavarotti+%E2%80%93+the+man+who+moved+the+world%29/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+Urodziny+pavarottiego+%28luciano+pavarotti+%E2%80%93+the+man+who+moved+the+world%29",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+Urodziny+pavarottiego+%28luciano+pavarotti+%E2%80%93+the+man+who+moved+the+world%29"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "90urodzinypavarottiego|2026",
     "title" : "90. Urodziny pavarottiego",
     "originalTitle" : "Luciano Pavarotti – The man who moved the world",
@@ -1612,7 +1596,7 @@
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
-    "directors" : [ "Marco Pianigiani" ],
+    "directors" : [ ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
@@ -1950,9 +1934,8 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "casablancaamerykanskaklasyka|1943",
-    "title" : "Casablanca – amerykańska klasyka",
-    "originalTitle" : "Casablanca",
+    "_id" : "casablanca|1943",
+    "title" : "Casablanca",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/j2cdc6lJo2cqpJEfP1cxsAwgZYC.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 102,
@@ -2525,12 +2508,12 @@
     "synopsisByCity" : { },
     "ageRating" : "18"
   }, {
-    "_id" : "cosiezdarzylobabyjaneamerykanskaklasyka|1962",
-    "title" : "Co się zdarzyło baby jane? – amerykańska klasyka",
+    "_id" : "cosiezdarzylobabyjane|1962",
+    "title" : "Co się zdarzyło baby jane?",
     "originalTitle" : "What Ever Happened to Baby Jane?",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/jFok8JCTHWi25ISl80VmFGIZglN.jpg",
     "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 134,
+    "runtimeMinutes" : 135,
     "releaseYear" : 1962,
     "genres" : [ "Dramat", "Horror", "Thriller" ],
     "countries" : [ "USA" ],
@@ -2836,29 +2819,20 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "czlowiekzmarmuruwajdarewizje|1977",
+    "_id" : "czlowiekzmarmuruwajdarewizje|",
     "title" : "Człowiek Z Marmuru\\ Wajda: re-wizje",
-    "originalTitle" : "Człowiek z marmuru",
-    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 153,
-    "releaseYear" : 1977,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Polska" ],
-    "directors" : [ "Andrzej Wajda" ],
-    "cast" : [ "Krystyna Janda", "Jerzy Radziwiłowicz", "Tadeusz Łomnicki", "Jacek Łomnicki", "Michał Tarkowski", "Krystyna Zachwatowicz" ],
-    "synopsis" : "Rok 1976. Agnieszka, dyplomantka szkoły filmowej, realizuje film o przodowniku pracy z lat 50-tych. Rozpoczyna prywatne śledztwo, mające ustalić przyczyny sukcesu i nagłego upadku.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
     "ratings" : {
-      "imdb" : 7.6,
-      "imdbUrl" : "https://www.imdb.com/title/tt0075902/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Cz%C5%82owiek+z+marmuru/?category=2",
-      "rottenTomatoes" : 75,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/czlowiek_z_marmuru",
-      "filmweb" : 7.7,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123"
+      "metacriticUrl" : "https://www.metacritic.com/search/Cz%C5%82owiek+Z+Marmuru%5C+Wajda%3A+re-wizje/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cz%C5%82owiek+Z+Marmuru%5C+Wajda%3A+re-wizje",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cz%C5%82owiek+Z+Marmuru%5C+Wajda%3A+re-wizje"
     },
-    "weightedRating" : 7.6000000000000005,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "czlowiekzmarmuru|1977",
@@ -2915,30 +2889,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Czytaj%C4%85c+lolit%C4%99+w+teheranie+%E2%80%93+kino+dla+seniora"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "czytajaclolitewteheraniereadinglolitaintehran|2024",
-    "title" : "Czytając lolitę w teheranie (reading lolita in tehran)",
-    "originalTitle" : "Reading Lolita in Tehran",
-    "posterUrl" : "https://bilety.kinospektrum.pl/uploads/event/554/1780766506.jpg",
-    "fallbackPosterUrls" : [ "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4993__zak_event_tile_thumbnail/czytaj%C4%85c%20lolit%C4%99%20w%20teheranie%202.webp", "https://ck-lublin.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1320&mode=thumb", "https://iframe639.biletyna.pl/file/get/w/260/id/364790/filename/0a5078d865cb6f282aa301ad8fafbe42.jpg", "https://biletyna.pl/file/get/id/364790", "https://mdk.opole.pl/file.php?i=przegladarka-plikow/Czytajac-Lolite-w-Teheranie.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.tmdb.org/t/p/w500/vAGuXvPHfiLvIcQqqmPx3QZ3CKT.jpg", "https://m.media-amazon.com/images/M/MV5BMjg4MzU2OTAtYjBmMy00OTQ0LWJhZGEtN2IzZjc3OTRiYmM1XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 108,
-    "releaseYear" : 2024,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Włochy", "Izrael", "Wielka Brytania" ],
-    "directors" : [ "Eran Riklis" ],
-    "cast" : [ "گلشیفته فراهانی", "زر امیرابراهیمی", "Mina Kavani", "Bahar Beihaghi", "Isabella Nefar" ],
-    "synopsis" : "Po rewolucji islamskiej w Iranie, która miała miejsce w 1979 roku, ulice Teheranu patrolowane są przez obrońców moralności, a fundamentaliści przejmują kontrolę nad uniwersytetami. Kobiety muszą nosić hidżab, ich swobody są ograniczane, a lektura zachodniej literatury staje się aktem buntu. Taki stan rzeczy sprawia, że Azar Nafisi, ambitna wykładowczyni literatury, rezygnuje z pracy na Uniwersytecie Teherańskim. Kobieta potajemnie zaczyna zapraszać do swojego domu grupę najbardziej zaangażowanych studentek. Razem czytają zakazane klasyki literatury zachodniej – „Lolitę” Vladimira Nabokova, „Wielkiego Gatsby’ego” F. Scotta Fitzgeralda, powieści Henry’ego Jamesa czy Jane Austen. Początkowo nieśmiałe młode kobiety stopniowo otwierają się – dzielą marzeniami, lękami, historiami miłosnymi oraz upokorzeniami związanymi z życiem w totalitarnym reżimie.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.2,
-      "imdbUrl" : "https://www.imdb.com/title/tt27679443/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Reading+Lolita+in+Tehran/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/reading_lolita_in_tehran",
-      "filmweb" : 6.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Czytaj%C4%85c+Lolit%C4%99+w+Teheranie-2024-10062776"
-    },
-    "weightedRating" : 6.2,
     "synopsisByCity" : { }
   }, {
     "_id" : "czytajaclolitewteheranie|2024",
@@ -3612,9 +3562,8 @@
     "weightedRating" : 6.5,
     "synopsisByCity" : { }
   }, {
-    "_id" : "donniedarkoamerykanskaklasyka|2001",
-    "title" : "Donnie darko – amerykańska klasyka",
-    "originalTitle" : "Donnie Darko",
+    "_id" : "donniedarko|2001",
+    "title" : "Donnie Darko",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/WEB_Plakat_kwadrat_wXtTJ1e.jpg",
     "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/jOvaAnoOdv7ib7AkaZ6eRPhin4h.jpg", "https://m.media-amazon.com/images/M/MV5BMWE3NTYzZmEtM2U5MS00MDZhLTk2ZTQtZTgzNjg0ZGQ5ZjM0XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 117,
@@ -3653,29 +3602,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
-  }, {
-    "_id" : "doutratytchujeanlucgodard|1960",
-    "title" : "Do utraty tchu – jean-luc godard",
-    "originalTitle" : "À bout de souffle",
-    "posterUrl" : "https://image.tmdb.org/t/p/w500/h9TfhwNJuqyci2AXxr4O8dizsDt.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 90,
-    "releaseYear" : 1960,
-    "genres" : [ "Dramat", "Kryminał", "Romans" ],
-    "countries" : [ "Francja" ],
-    "directors" : [ "Jean-Luc Godard" ],
-    "cast" : [ "Jean-Paul Belmondo", "Jean Seberg", "Daniel Boulanger", "Henri-Jacques Huet", "Roger Hanin" ],
-    "synopsis" : "Michel, zbuntowany młody mężczyzna uciekając skradzionym samochodem zabija policjanta. Zdaje sobie sprawę, że za kilka godzin będzie ścigany przez policję całego kraju. Przybywa więc do Paryża, by odebrać od dłużnika pieniądze, które pomogłyby mu w ucieczce za granicę. Do wyjazdu namawia także piękną Amerykankę, z którą łączy go niesprecyzowane uczucie. Sprawy zaczynają się komplikować, gdy okazuje się, że dłużnik zniknął. Michel pozbawiony możliwości ucieczki, czuje się coraz bardziej osaczony.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0053472/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%C3%80+bout+de+souffle/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%C3%80+bout+de+souffle",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=%C3%80+bout+de+souffle"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "ageRating" : "12"
   }, {
     "_id" : "doutratytchu|1960",
     "title" : "Do utraty tchu",
@@ -3786,23 +3712,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Droga+do+Vermiglio-2024-10057430"
     },
     "weightedRating" : 7.825,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "drugiezyciecallemalaga|",
-    "title" : "Drugie życie (calle málaga)",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 116,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ "Maryam Touzani. OBSADA: Carmen Maura", "Marta Etura", "Ahmed Boulane", "María Alfonsa Rosso" ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Drugie+%C5%BCycie+%28calle+m%C3%A1laga%29/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Drugie+%C5%BCycie+%28calle+m%C3%A1laga%29",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Drugie+%C5%BCycie+%28calle+m%C3%A1laga%29"
-    },
-    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "drugiezyciekinodlaseniorow|2025",
@@ -4574,20 +4483,18 @@
     "weightedRating" : 7.1,
     "synopsisByCity" : { }
   }, {
-    "_id" : "faraonjerzykawalerowicz60rocznicapremiery|1965",
-    "title" : "Faraon– jerzy kawalerowicz – 60. Rocznica premiery",
+    "_id" : "faraon|",
+    "title" : "Faraon",
     "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 151,
-    "releaseYear" : 1965,
     "genres" : [ ],
     "countries" : [ ],
     "directors" : [ "Jerzy Kawalerowicz" ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Faraon%E2%80%93+jerzy+kawalerowicz+%E2%80%93+60.+Rocznica+premiery/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Faraon%E2%80%93+jerzy+kawalerowicz+%E2%80%93+60.+Rocznica+premiery",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Faraon%E2%80%93+jerzy+kawalerowicz+%E2%80%93+60.+Rocznica+premiery"
+      "metacriticUrl" : "https://www.metacritic.com/search/Faraon/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Faraon",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Faraon"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -7178,8 +7085,8 @@
     "weightedRating" : 4.6,
     "synopsisByCity" : { }
   }, {
-    "_id" : "klimtischieleerosipsycheklimtischieleerosandpsyche|",
-    "title" : "Klimt i schiele. Eros i psyche (klimt i schiele - eros and psyche)",
+    "_id" : "klimtischieleerosipsyche|",
+    "title" : "Klimt i schiele. Eros i psyche",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -7187,9 +7094,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Klimt+i+schiele.+Eros+i+psyche+%28klimt+i+schiele+-+eros+and+psyche%29/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Klimt+i+schiele.+Eros+i+psyche+%28klimt+i+schiele+-+eros+and+psyche%29",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Klimt+i+schiele.+Eros+i+psyche+%28klimt+i+schiele+-+eros+and+psyche%29"
+      "metacriticUrl" : "https://www.metacritic.com/search/Klimt+i+schiele.+Eros+i+psyche/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Klimt+i+schiele.+Eros+i+psyche",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Klimt+i+schiele.+Eros+i+psyche"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -7472,32 +7379,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Kobieta+Pe%C5%82na+%C5%BBycia%3A+Ksi%C4%85%C5%BCe"
     },
     "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "kobietynaskrajuzalamanianerwowegofiestakinahiszpanskiegoalmodovarbanderas|1988",
-    "title" : "Kobiety na skraju załamania nerwowego – fiesta kina hiszpańskiego: almodóvar/ banderas",
-    "originalTitle" : "Mujeres al borde de un ataque de nervios",
-    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/kobiety_na_skraju_zalamania_nerwowego_1.jpg?itok=sKbLwQp7",
-    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684906.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.tmdb.org/t/p/w500/zrVO3z5BfS3zRcra7JonUrgvPGV.jpg", "https://m.media-amazon.com/images/M/MV5BNjBjZTg0ODktZDE1OC00Njg3LWJkZGQtYTAwOGQ1OTQ0NDg3XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 89,
-    "releaseYear" : 1988,
-    "genres" : [ "Komedia", "Dramat" ],
-    "countries" : [ "Hiszpania" ],
-    "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Carmen Maura", "Antonio Banderas", "Julieta Serrano", "María Barranco", "Rossy de Palma", "Chus Lampreave", "Kiti Mánver" ],
-    "synopsis" : "Wieloletni związek Ivana (Fernando Guillen) i Pepy (Carmen Maura) nagle się kończy. Porzucona i samotna kobieta postanawia więc zmienić swoje życie, by oddalić od siebie złe wspomnienia. Kiedy nic z tego nie wychodzi, wpada na dość przerażający pomysł i przygotowuje sobie koktajl z soku pomidorowego oraz... tabletek nasennych. Oto Almodovar w szczytowej formie, opowiadający o problemach kobiet w konwencji opery mydlanej. Wzruszające i zabawne kino, które zdobyło nominacje do Oscara, nagrody BAFTA i Złotego Globu za najlepszy film nieanglojęzyczny. Na dokładkę młodziutki Antonio Banderas.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
-    "ratings" : {
-      "imdb" : 7.5,
-      "imdbUrl" : "https://www.imdb.com/title/tt0095675/",
-      "metascore" : 85,
-      "metacriticUrl" : "https://www.metacritic.com/movie/women-on-the-verge-of-a-nervous-breakdown",
-      "rottenTomatoes" : 94,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/women_on_the_verge_of_a_nervous_breakdown",
-      "filmweb" : 7.5,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Kobiety+na+skraju+za%C5%82amania+nerwowego-1988-6796"
-    },
-    "weightedRating" : 8.225,
     "synopsisByCity" : { }
   }, {
     "_id" : "kobietynaskrajuzalamanianerwowegofiestakinahiszpanskiego|1988",
@@ -9192,31 +9073,6 @@
     "synopsisByCity" : { },
     "ageRating" : "13"
   }, {
-    "_id" : "matadorfiestakinahiszpanskiegoalmodovarbanderas|1986",
-    "title" : "Matador – fiesta kina hiszpańskiego: almodóvar/ banderas",
-    "originalTitle" : "Matador",
-    "posterUrl" : "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/ci7qjZbTwfyvTxFdpSkakzGbhnk.jpg", "https://m.media-amazon.com/images/M/MV5BMmMxNzUyZmUtMDUwZC00MzBhLThjNDktZDNlMThiMDcyNGY4XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 110,
-    "releaseYear" : 1986,
-    "genres" : [ "Dramat", "Thriller" ],
-    "countries" : [ "Hiszpania" ],
-    "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Assumpta Serna", "Antonio Banderas", "Nacho Martínez", "Eva Cobo", "Julieta Serrano" ],
-    "synopsis" : "\"Matador\", film prowokujący swą mieszanką emocji, wyrazistością i przesadą. \"Matador\" to ironiczna, czarna komedia kryminalna o surrealistycznym zabarwieniu. Według samego Almodóvara jest to najdziwniejszy z jego filmów. Los młodego mężczyzny, Ángela (Antonio Bandera) przeplata się z losami matadora, Diego (Nacho Martinez) i jego kochanki Marii (Assumpta Serna). Opowieść o ludziach udręczonych patologicznymi skłonnościami, którzy szukają spełnienia w perwersji, seksie, morderstwach i autodestrukcji.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt0091495/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Matador/?category=2",
-      "rottenTomatoes" : 93,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/matador",
-      "filmweb" : 7.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Matador-1986-7596"
-    },
-    "weightedRating" : 7.766666666666667,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "matadorfiestakinahiszpanskiego|",
     "title" : "Matador | Fiesta Kina Hiszpańskiego",
     "posterUrl" : "https://bilety.kinospektrum.pl/uploads/event//1778684620.jpg",
@@ -9694,33 +9550,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
-  }, {
-    "_id" : "milczenieowiecjonathandemme|1991",
-    "title" : "Milczenie owiec – jonathan demme",
-    "originalTitle" : "The Silence of the Lambs",
-    "posterUrl" : "https://img.helios.pl/pliki/film/milczenie-owiec/milczenie-owiec-plakat-760.jpg",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Milczenie_owiec_plakat_B1_hg3G1PJ.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8207S2R.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/MILCZENIE_OWIEC/plak1at_8022081_1.8.jpg_x_standa.jpg", "https://www.iluzjon.fn.org.pl/public/covers/movie-1645.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec/plakat.jpg", "https://www.novekino.pl/multimedia/milczenie_owiec_spec/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/22951.6.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1009.jpg.png", "https://okf.czest.pl/wp-content/uploads/2026/05/Milczenie-owiec_plakat-B1-441x635.jpg", "https://image.tmdb.org/t/p/w500/z0QRoCKYmGcBv3lMxrUkM0MHcOd.jpg", "https://m.media-amazon.com/images/M/MV5BNDdhOGJhYzctYzYwZC00YmI2LWI0MjctYjg4ODdlMDExYjBlXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 118,
-    "releaseYear" : 1991,
-    "genres" : [ "Kryminał", "Thriller", "Dramat" ],
-    "countries" : [ "USA" ],
-    "directors" : [ "Jonathan Demme" ],
-    "cast" : [ "Anthony Hopkins", "Jodie Foster", "Ted Levine", "Kasi Lemmons", "Scott Glenn", "Anthony Heald" ],
-    "synopsis" : "Psychopata porywa i morduje młode kobiety na środkowym zachodzie. Wierząc, że w ujęciu tego mordercy dopomoże tylko inny przestępca, F.B.I. wysyła agentkę Clarice Starling (Jodie Foster) na wywiad z obłąkanym więźniem, który może dostarczyć psychologicznych przesłanek i tropów do kolejnych działań zabójcy. Więzień, psychiatra, dr. Hannibal Lecter (Anthony Hopkins) jest genialnym mordercą-kanibalem, który pomoże Agentce Starling, jeżeli ona będzie karmić jego chorą ciekawość detalami ze swojego skomplikowanego życia. Ta pokręcona relacja zmusza Starling nie tylko do konfrontacji z jej psychicznymi demonami, ale doprowadza ją również do spotkania twarzą w twarz z szalonym, ohydnym mordercą, wcieleniem zła tak potężnym, że nie będzie miała odwagi - ani siły - by go zatrzymać!",
-    "trailerUrls" : [ "https://www.youtube.com/embed/_v9xtAN_Dco", "https://www.youtube.com/embed/VqOG5uEXY7Q" ],
-    "ratings" : {
-      "imdb" : 8.6,
-      "imdbUrl" : "https://www.imdb.com/title/tt0102926/",
-      "metascore" : 86,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-silence-of-the-lambs",
-      "rottenTomatoes" : 95,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_silence_of_the_lambs",
-      "filmweb" : 8.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Milczenie+owiec-1991-1047"
-    },
-    "weightedRating" : 8.75,
-    "synopsisByCity" : { },
-    "ageRating" : "18"
   }, {
     "_id" : "milczenieowiecpokazyspecjalne|1991",
     "title" : "Milczenie owiec - pokazy specjalne",
@@ -10659,37 +10488,12 @@
     "weightedRating" : 6.15,
     "synopsisByCity" : { }
   }, {
-    "_id" : "najwazniejszetokochaczulawskikinoekstazy|1975",
-    "title" : "Najważniejsze to kochać – żuławski. Kino ekstazy",
-    "originalTitle" : "L'Important c'est d'aimer",
-    "posterUrl" : "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__5000__zak_event_tile_thumbnail/najwa%C5%BCniejsze%20to%20kocha%C4%87.webp",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/vYqTNt1M73svh2pXrTOPuIiKeaP.jpg", "https://m.media-amazon.com/images/M/MV5BZGRmMTdjMjEtZjM0ZC00ZjNhLTgwMjctNjAzZGQxZDdhYTQxXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 109,
-    "releaseYear" : 1975,
-    "genres" : [ "Dramat", "Romans" ],
-    "countries" : [ "Francja", "Niemcy", "Włochy" ],
-    "directors" : [ "Andrzej Żuławski" ],
-    "cast" : [ "Romy Schneider", "Fabio Testi", "Jacques Dutronc", "Claude Dauphin", "Roger Blin" ],
-    "synopsis" : "Nadine staje przed trudnym wyborem, pozostać w związku z poczciwym acz niezaradnym życiowo mężem czy wdać się w romans z młodym fotografem.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 7,
-      "imdbUrl" : "https://www.imdb.com/title/tt0073155/",
-      "metacriticUrl" : "https://www.metacritic.com/search/L%27Important+c%27est+d%27aimer/?category=2",
-      "rottenTomatoes" : 93,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_main_thing_is_to_love",
-      "filmweb" : 7,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Najwa%C5%BCniejsze+to+kocha%C4%87-1975-6964"
-    },
-    "weightedRating" : 7.766666666666667,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "najwazniejszetokochac|1975",
     "title" : "Najważniejsze to kochać",
     "originalTitle" : "L'Important c'est d'aimer",
     "posterUrl" : "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__5000__zak_event_tile_thumbnail/najwa%C5%BCniejsze%20to%20kocha%C4%87.webp",
     "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/vYqTNt1M73svh2pXrTOPuIiKeaP.jpg", "https://m.media-amazon.com/images/M/MV5BZGRmMTdjMjEtZjM0ZC00ZjNhLTgwMjctNjAzZGQxZDdhYTQxXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 109,
+    "runtimeMinutes" : 113,
     "releaseYear" : 1975,
     "genres" : [ "Dramat", "Romans" ],
     "countries" : [ "Francja", "Niemcy", "Włochy" ],
@@ -10707,31 +10511,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Najwa%C5%BCniejsze+to+kocha%C4%87-1975-6964"
     },
     "weightedRating" : 7.766666666666667,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "narwanamilosczulawskikinoekstazy|1985",
-    "title" : "Narwana miłość – żuławski. Kino ekstazy",
-    "originalTitle" : "L'Amour braque",
-    "posterUrl" : "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__5002__zak_event_tile_thumbnail/narwana%20mi%C5%82o%C5%9B%C4%87.webp",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/ijXqFpUKpO9MWHpKacshV2MT1ww.jpg", "https://m.media-amazon.com/images/M/MV5BNmZiOTA5NDktN2MwMS00YTlkLTlmYzEtMzA4MmJlMmQ2MDM0XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 101,
-    "releaseYear" : 1985,
-    "genres" : [ "Dramat", "Kryminał", "Romans", "Komedia" ],
-    "countries" : [ "Francja" ],
-    "directors" : [ "Andrzej Żuławski" ],
-    "cast" : [ "Sophie Marceau", "Tchéky Karyo", "Francis Huster", "Christiane Jean", "Jean-Marc Bory" ],
-    "synopsis" : "Micky pragnie odzyskać dawną ukochaną, Mary. Kobietą zauroczony jest też jego nowy przyjaciel Leon, podający się za węgierskiego księcia.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 5.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt0088714/",
-      "metacriticUrl" : "https://www.metacritic.com/search/L%27Amour+braque/?category=2",
-      "rottenTomatoes" : 45,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/lamour_braque",
-      "filmweb" : 6.4,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Narwana+mi%C5%82o%C5%9B%C4%87-1985-6946"
-    },
-    "weightedRating" : 5.6000000000000005,
     "synopsisByCity" : { }
   }, {
     "_id" : "narwanamilosc|1985",
@@ -12096,30 +11875,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "opetaniepokazspecjalnyna60urodzinykinazamek|1981",
-    "title" : "Opętanie – pokaz specjalny na 60. Urodziny kina zamek",
-    "originalTitle" : "Possession",
-    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/opetanie5.png?itok=noh-NwOA",
-    "fallbackPosterUrls" : [ "https://kinotatrylodz.pl/wp-content/uploads/2025/07/OPETANIE.jpg", "https://image.tmdb.org/t/p/w500/rUSe3Y2hyQIPxihdjCDgJg3BLNf.jpg", "https://m.media-amazon.com/images/M/MV5BMTAzNjczNmItMGJkMS00YzVhLTg4NzEtOGQyYWUzNDA0ZmNlXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 124,
-    "releaseYear" : 1981,
-    "genres" : [ "Horror" ],
-    "countries" : [ "Francja", "Niemcy" ],
-    "directors" : [ "Andrzej Żuławski" ],
-    "cast" : [ "Isabelle Adjani", "Sam Neill", "Margit Carstensen", "Heinz Bennent", "Johanna Hofer" ],
-    "synopsis" : "Po dłuższej nieobecności Marc powraca do Berlina Zachodniego, gdzie ze zgrozą dowiaduje się od żony, Anny , że ta ma kochanka. Dodatkowo zaniepokojony jej dziwnym zachowaniem wynajmuje detektywa, który ma wyjaśnić sprawę. Okazuje się, że kochankiem Anny jest potwór, bardziej zwierzę niż człowiek. Anna zabija detektywa, to samo czyni z kolejnym, który poszukuje zaginionego kolegi. Marc sam idzie pod wskazany adres. Na miejscu postanawia ukryć ślady zbrodni.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 7.2,
-      "imdbUrl" : "https://www.imdb.com/title/tt0082933/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Possession/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Possession",
-      "filmweb" : 7.4,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Op%C4%99tanie-1981-8801"
-    },
-    "weightedRating" : 7.300000000000001,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "opetaniezulawskikinoekstazy|2026",
     "title" : "Opętanie | Żuławski. Kino Ekstazy",
     "originalTitle" : "Possession",
@@ -12163,32 +11918,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Op%C4%99tanie-1981-8801"
     },
     "weightedRating" : 7.300000000000001,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "orlyrepublikieaglesoftherepublic|2025",
-    "title" : "Orły republiki (eagles of the republic)",
-    "originalTitle" : "نسور الجمهورية",
-    "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/06/plakat_orly-republiki.jpg",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/05/plakat_orly-republiki-200x288.jpg", "https://img.helios.pl/pliki/film/orly-republiki/orly-republiki-plakat-334.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/plakat_orly-republiki-700x1050-1-533x800.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/plak1at_ORLY_REPUBLIKI_6.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/orly-republiki.png", "https://kinoluna.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://www.iluzjon.fn.org.pl/public/covers/movie-7772.jpg", "https://www.kinokultura.pl/foto,20600,810b7149443646df14d7bbdf31d6c1a3,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a102d595c5cd759370799.jpg", "https://stacjafalenica.pl/wp-content/uploads/2026/06/plakat_orly-republiki-700x1050-1-e1780387742444-500x430.jpg", "https://www.novekino.pl/multimedia/orly_republiki/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412407.jpg", "https://ec1lodz.pl/fileadmin/user_upload/u99ouiytrew.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1005.jpeg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/orly-republiki-700x1050.jpg", "https://ck-lublin.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://okf.czest.pl/wp-content/uploads/2026/05/Orly-Temidy-plakat-441x635.png", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1313&mode=thumb", "https://iframe639.biletyna.pl/file/get/w/260/id/365110/filename/e530faf6be61824836153ed0bb61a9e2.jpg", "https://www.teatrziemirybnickiej.pl/files/events/plakat_orly-republiki-700x1050.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/plakat-orly-republiki-700x1050.jpg", "https://image.tmdb.org/t/p/w500/9byIPtcHUF046RIemxzEpcMKUcX.jpg", "https://m.media-amazon.com/images/M/MV5BMjk3ZTJhNjgtODhhOC00Y2YyLThiNWItMzJiNDI5YTEwODBiXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 127,
-    "releaseYear" : 2025,
-    "genres" : [ "Thriller", "Dramat" ],
-    "countries" : [ "Dania", "Francja", "Szwecja", "Finlandia", "Niemcy", "Turcja" ],
-    "directors" : [ "Tarik Saleh" ],
-    "cast" : [ "Fares Fares", "Lyna Khoudri", "Cherien Dabis", "Amr Waked", "Zineb Triki", "Donia Massoud" ],
-    "synopsis" : "Najbardziej ceniony egipski aktor, George Fahmy, z dnia na dzień stracił łaskę władz. Gdy George'owi groziła utrata wszystkiego, zmuszony był przyjąć rolę prezydenta Al-Sisiego w filmie biograficznym o nim samym. Następnie zostaje wciągnięty w najbardziej ekskluzywny krąg władzy i szybko zdaje sobie sprawę, że nie tylko ryzykuje utratę duszy, ale że dosłownie rzuca się w niebezpieczny taniec śmierci.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/ERysio3sHjw", "https://www.youtube.com/embed/HHU_Cy-cwkg" ],
-    "ratings" : {
-      "imdb" : 6.6,
-      "imdbUrl" : "https://www.imdb.com/title/tt30781967/",
-      "metascore" : 67,
-      "metacriticUrl" : "https://www.metacritic.com/movie/eagles-of-the-republic",
-      "rottenTomatoes" : 75,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/eagles_of_the_republic",
-      "filmweb" : 6.6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Or%C5%82y+Republiki-2025-10078590"
-    },
-    "weightedRating" : 6.85,
     "synopsisByCity" : { }
   }, {
     "_id" : "orlyrepubliki|2025",
@@ -12306,9 +12035,8 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "ostatnidzienlatatadeuszkonwicki100rocznicaurodzin|1958",
-    "title" : "Ostatni dzień lata – tadeusz konwicki / 100. Rocznica urodzin",
-    "originalTitle" : "Ostatni dzień lata",
+    "_id" : "ostatnidzienlata|1958",
+    "title" : "Ostatni dzień lata",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/b82jQ7uXjRyjkdLVYXcJfOciHhS.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 59,
@@ -13545,9 +13273,8 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "pociagidyskusyjnyklubfilmowy|2025",
-    "title" : "Pociągi - dyskusyjny klub filmowy",
-    "originalTitle" : "Pociągi",
+    "_id" : "pociagi|2025",
+    "title" : "Pociągi",
     "posterUrl" : "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/pociagi.2e16d0ba.fill-1600x900.format-webp-1024x576.webp",
     "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/2xOmcUDOJk60dPrNnmTKKG3mK0N.jpg" ],
     "runtimeMinutes" : 80,
@@ -14441,31 +14168,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "prawopozadaniafiestakinahiszpanskiegoalmodovarbanderas|1987",
-    "title" : "Prawo pożądania – fiesta kina hiszpańskiego: almodóvar/ banderas",
-    "originalTitle" : "La ley del deseo",
-    "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 102,
-    "releaseYear" : 1987,
-    "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
-    "countries" : [ "Hiszpania" ],
-    "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
-    "synopsis" : "Znany reżyser Pablo oraz jego siostra Tina są dość nietypowym rodzeństwem: on jest homoseksualistą, a Tina transseksualistą. Przypadek sprawi, że obydwoje zwiążą się z tym samym młodym, nieprzewidywalnym człowiekiem - pociągającym, ale niebezpiecznym Antonio (Antonio Banderas).",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 7.1,
-      "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
-      "metacriticUrl" : "https://www.metacritic.com/search/La+ley+del+deseo/?category=2",
-      "rottenTomatoes" : 100,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/law_of_desire",
-      "filmweb" : 7.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Prawo+po%C5%BC%C4%85dania-1987-7061"
-    },
-    "weightedRating" : 8.066666666666666,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "prawopozadaniafiestakinahiszpanskiego|1987",
     "title" : "Prawo pożądania | Fiesta Kina Hiszpańskiego",
     "originalTitle" : "La ley del deseo",
@@ -14694,33 +14396,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
-  }, {
-    "_id" : "przeklenstwaniewinnosciamerykanskaklasyka|2000",
-    "title" : "Przekleństwa niewinności – amerykańska klasyka",
-    "originalTitle" : "The Virgin Suicides",
-    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/grafika_Przeklenstwa_niewinnosci.png",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/003-virginsrosthe-virgin-suicides-posters2.jpg", "https://gcf.org.pl/wp-content/uploads/2026/05/grafika_Przekleństwa-niewinności4.png", "https://image.tmdb.org/t/p/w500/v6Jb3641C5FGhcLzBOhEKQ3d29P.jpg", "https://m.media-amazon.com/images/M/MV5BMmNhYTE5MjQtMzI2Ny00MDRhLWE4ZjAtYTg0YjNhNjZmMTVlXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 97,
-    "releaseYear" : 2000,
-    "genres" : [ "Dramat", "Romans" ],
-    "countries" : [ "USA" ],
-    "directors" : [ "Sofia Coppola" ],
-    "cast" : [ "Kirsten Dunst", "Josh Hartnett", "James Woods", "Kathleen Turner", "Michael Paré" ],
-    "synopsis" : "Państwo Lisbon są rodzicami pięciu atrakcyjnych nastoletnich córek. Dziewczęta, w wieku od trzynastu do siedemnastu lat, zaczynają odkrywać przyjemności dojrzewania, a ich rodzice - gorliwi katolicy - w patologiczny sposób kontrolują ich życie. Izolują dziewczęta od każdego chłopca, który okaże najmniejszy ślad zainteresowania którąkolwiek z córek. Pozornie doskonałe życie dysfunkcyjnej rodziny zostaje zaburzone, gdy najmłodsza z dziewcząt usiłuje popełnić samobójstwo.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 7.2,
-      "imdbUrl" : "https://www.imdb.com/title/tt0159097/",
-      "metascore" : 77,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-virgin-suicides",
-      "rottenTomatoes" : 80,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/virgin_suicides",
-      "filmweb" : 7.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Przekle%C5%84stwa+niewinno%C5%9Bci-1999-10981"
-    },
-    "weightedRating" : 7.55,
-    "synopsisByCity" : { },
-    "ageRating" : "18"
   }, {
     "_id" : "przeklenstwaniewinnoscipokazprzedpremierowy|2000",
     "title" : "Przekleństwa niewinności | Pokaz Przedpremierowy",
@@ -15787,12 +15462,12 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "sluzacyjospehlosey|1963",
-    "title" : "Służący – jospeh losey",
+    "_id" : "sluzacy|1963",
+    "title" : "Służący",
     "originalTitle" : "The Servant",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/mnmuFpgLmeJ0vMDm3N3lHDkUtN0.jpg",
     "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 115,
+    "runtimeMinutes" : 116,
     "releaseYear" : 1963,
     "genres" : [ "Dramat" ],
     "countries" : [ "Wielka Brytania" ],
@@ -18071,8 +17746,8 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "vangoghpolazbozizachmurzoneniebiosavangoghtrailgranoeilcielo|",
-    "title" : "Van gogh. Pola zbóż i zachmurzone niebiosa (van gogh: tra il grano e il cielo)",
+    "_id" : "vangoghpolazbozizachmurzoneniebiosa|",
+    "title" : "Van gogh. Pola zbóż i zachmurzone niebiosa",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
@@ -18080,9 +17755,9 @@
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Van+gogh.+Pola+zb%C3%B3%C5%BC+i+zachmurzone+niebiosa+%28van+gogh%3A+tra+il+grano+e+il+cielo%29/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Van+gogh.+Pola+zb%C3%B3%C5%BC+i+zachmurzone+niebiosa+%28van+gogh%3A+tra+il+grano+e+il+cielo%29",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Van+gogh.+Pola+zb%C3%B3%C5%BC+i+zachmurzone+niebiosa+%28van+gogh%3A+tra+il+grano+e+il+cielo%29"
+      "metacriticUrl" : "https://www.metacritic.com/search/Van+gogh.+Pola+zb%C3%B3%C5%BC+i+zachmurzone+niebiosa/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Van+gogh.+Pola+zb%C3%B3%C5%BC+i+zachmurzone+niebiosa",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Van+gogh.+Pola+zb%C3%B3%C5%BC+i+zachmurzone+niebiosa"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -19129,8 +18804,8 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wszyscyludzieprezydentaamerykanskaklasyka50rocznicapremiery|1976",
-    "title" : "Wszyscy ludzie prezydenta – amerykańska klasyka / 50. Rocznica premiery",
+    "_id" : "wszyscyludzieprezydenta|1976",
+    "title" : "Wszyscy ludzie prezydenta",
     "originalTitle" : "All the President's Men",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/AvFeMgHphisca4tnwZip7hhzNN2.jpg",
     "fallbackPosterUrls" : [ ],
@@ -19858,6 +19533,22 @@
     "weightedRating" : 5.25,
     "synopsisByCity" : { },
     "ageRating" : "10"
+  }, {
+    "_id" : "zamkowenocefilmoweszkodazenareszcie|",
+    "title" : "Zamkowe noce filmowe: szkoda, że nareszcie",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Zamkowe+noce+filmowe%3A+szkoda%2C+%C5%BCe+nareszcie/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zamkowe+noce+filmowe%3A+szkoda%2C+%C5%BCe+nareszcie",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zamkowe+noce+filmowe%3A+szkoda%2C+%C5%BCe+nareszcie"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
   }, {
     "_id" : "zapiskismiertelnika|",
     "title" : "Zapiski śmiertelnika",
@@ -21143,20 +20834,6 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
-    "_id" : "90urodzinypavarottiegolucianopavarottithemanwhomovedtheworld||szczecin|Kino Zamek",
-    "filmId" : "90urodzinypavarottiegolucianopavarottithemanwhomovedtheworld|",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T14:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35091&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T13:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35092&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "90urodzinypavarottiego|2026|gliwice|Kino Amok",
     "filmId" : "90urodzinypavarottiego|2026",
     "city" : "gliwice",
@@ -21311,6 +20988,19 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-17T19:15:00",
       "bookingUrl" : "https://kgl.systembiletowy.pl/index.php/kup-bilet/90-urodziny-pavarottiego-2026-06-17-19-15",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "90urodzinypavarottiego|2026|szczecin|Kino Zamek",
+    "filmId" : "90urodzinypavarottiego|2026",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/90-urodziny-pavarottiego/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T14:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-28T13:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -22272,17 +21962,15 @@
     "filmId" : "aniolmorski|2026",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/aniol-morski/",
     "showtimes" : [ {
       "dateTime" : "2026-06-10T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35093&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-18T16:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35094&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-23T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35095&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -28601,9 +28289,9 @@
     "filmId" : "botticelliflorencjaimedyceusze|",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/botticelli-florencja-i-medyceusze/",
     "showtimes" : [ {
       "dateTime" : "2026-06-27T14:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35111&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -29466,9 +29154,9 @@
     "filmId" : "caravaggioarcydzielaniepokornegogeniusza|2025",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/caravaggio-arcydziela-niepokornego-geniusza/",
     "showtimes" : [ {
       "dateTime" : "2026-06-16T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35082&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -29546,13 +29234,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "casablancaamerykanskaklasyka|1943|szczecin|Kino Zamek",
-    "filmId" : "casablancaamerykanskaklasyka|1943",
+    "_id" : "casablanca|1943|szczecin|Kino Zamek",
+    "filmId" : "casablanca|1943",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/casablanca/",
     "showtimes" : [ {
       "dateTime" : "2026-06-21T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35059&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -30301,13 +29989,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "cosiezdarzylobabyjaneamerykanskaklasyka|1962|szczecin|Kino Zamek",
-    "filmId" : "cosiezdarzylobabyjaneamerykanskaklasyka|1962",
+    "_id" : "cosiezdarzylobabyjane|1962|szczecin|Kino Zamek",
+    "filmId" : "cosiezdarzylobabyjane|1962",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/",
     "showtimes" : [ {
       "dateTime" : "2026-06-20T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35058&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -30474,8 +30162,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "czlowiekzmarmuruwajdarewizje|1977|kalisz|Centrum 3D",
-    "filmId" : "czlowiekzmarmuruwajdarewizje|1977",
+    "_id" : "czlowiekzmarmuruwajdarewizje||kalisz|Centrum 3D",
+    "filmId" : "czlowiekzmarmuruwajdarewizje|",
     "city" : "kalisz",
     "cinema" : "Centrum 3D",
     "showtimes" : [ {
@@ -30484,8 +30172,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "czlowiekzmarmuruwajdarewizje|1977|nowy-sacz|Kino Sokół",
-    "filmId" : "czlowiekzmarmuruwajdarewizje|1977",
+    "_id" : "czlowiekzmarmuruwajdarewizje||nowy-sacz|Kino Sokół",
+    "filmId" : "czlowiekzmarmuruwajdarewizje|",
     "city" : "nowy-sacz",
     "cinema" : "Kino Sokół",
     "filmUrl" : "https://www.bilety24.pl/kino/1225-czlowiek-z-marmuru-157735?id=939328",
@@ -30496,16 +30184,6 @@
     }, {
       "dateTime" : "2026-06-14T12:00:00",
       "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1225-czlowiek-z-marmuru-157735?id=939328",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "czlowiekzmarmuruwajdarewizje|1977|szczecin|Kino Zamek",
-    "filmId" : "czlowiekzmarmuruwajdarewizje|1977",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-11T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35050&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -30652,6 +30330,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "czlowiekzmarmuru|1977|szczecin|Kino Zamek",
+    "filmId" : "czlowiekzmarmuru|1977",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/czlowiek-z-marmuru/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-11T19:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "czlowiekzmarmuru|1977|warszawa|Kino Kultura",
     "filmId" : "czlowiekzmarmuru|1977",
     "city" : "warszawa",
@@ -30696,24 +30384,6 @@
     "showtimes" : [ {
       "dateTime" : "2026-07-02T13:00:00",
       "bookingUrl" : "https://bilety.pckul.pl/index.php/repertoire.html?id=4983",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "czytajaclolitewteheraniereadinglolitaintehran|2024|szczecin|Kino Zamek",
-    "filmId" : "czytajaclolitewteheraniereadinglolitaintehran|2024",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-25T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35108&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-27T16:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35109&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T15:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35110&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -31068,6 +30738,22 @@
       "dateTime" : "2026-06-24T19:00:00",
       "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/346190?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
       "room" : "Kiniarnia",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "czytajaclolitewteheranie|2024|szczecin|Kino Zamek",
+    "filmId" : "czytajaclolitewteheranie|2024",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/czytajac-lolite-w-teheranie/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-25T17:00:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-27T16:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-28T15:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -35342,13 +35028,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "donniedarkoamerykanskaklasyka|2001|szczecin|Kino Zamek",
-    "filmId" : "donniedarkoamerykanskaklasyka|2001",
+    "_id" : "donniedarko|2001|szczecin|Kino Zamek",
+    "filmId" : "donniedarko|2001",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/donnie-darko/",
     "showtimes" : [ {
       "dateTime" : "2026-06-17T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35055&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -35365,13 +35051,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "doutratytchujeanlucgodard|1960|szczecin|Kino Zamek",
-    "filmId" : "doutratytchujeanlucgodard|1960",
+    "_id" : "doutratytchu|1960|szczecin|Kino Zamek",
+    "filmId" : "doutratytchu|1960",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/do-utraty-tchu/",
     "showtimes" : [ {
       "dateTime" : "2026-06-09T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35048&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -35867,28 +35553,6 @@
       "dateTime" : "2026-01-24T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Droga-do-Vermiglio-2/Warszawa",
       "room" : "sala widowiskowa",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "drugiezyciecallemalaga||szczecin|Kino Zamek",
-    "filmId" : "drugiezyciecallemalaga|",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T16:45:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35101&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T16:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35102&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T16:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35103&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T16:45:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35104&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -37936,6 +37600,25 @@
       "dateTime" : "2026-06-18T16:30:00",
       "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/345570?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
       "room" : "Kiniarnia",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "drugiezycie|2025|szczecin|Kino Zamek",
+    "filmId" : "drugiezycie|2025",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/drugie-zycie/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-19T16:45:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-20T16:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-21T16:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-24T16:45:00",
       "format" : [ ]
     } ]
   }, {
@@ -56956,13 +56639,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "faraonjerzykawalerowicz60rocznicapremiery|1965|szczecin|Kino Zamek",
-    "filmId" : "faraonjerzykawalerowicz60rocznicapremiery|1965",
+    "_id" : "faraon||szczecin|Kino Zamek",
+    "filmId" : "faraon|",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/faraon/",
     "showtimes" : [ {
       "dateTime" : "2026-06-28T17:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35066&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -60429,13 +60112,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "klimtischieleerosipsycheklimtischieleerosandpsyche||szczecin|Kino Zamek",
-    "filmId" : "klimtischieleerosipsycheklimtischieleerosandpsyche|",
+    "_id" : "klimtischieleerosipsyche||szczecin|Kino Zamek",
+    "filmId" : "klimtischieleerosipsyche|",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/klimt-i-schiele-eros-i-psyche/",
     "showtimes" : [ {
       "dateTime" : "2026-06-20T14:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35105&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -60647,16 +60330,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "kobietynaskrajuzalamanianerwowegofiestakinahiszpanskiegoalmodovarbanderas|1988|szczecin|Kino Zamek",
-    "filmId" : "kobietynaskrajuzalamanianerwowegofiestakinahiszpanskiegoalmodovarbanderas|1988",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35053&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "kobietynaskrajuzalamanianerwowegofiestakinahiszpanskiego|1988|trojmiasto|Kino Spektrum",
     "filmId" : "kobietynaskrajuzalamanianerwowegofiestakinahiszpanskiego|1988",
     "city" : "trojmiasto",
@@ -60677,6 +60350,16 @@
       "dateTime" : "2026-06-25T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670555",
       "format" : [ "2D", "napisy" ]
+    } ]
+  }, {
+    "_id" : "kobietynaskrajuzalamanianerwowego|1988|szczecin|Kino Zamek",
+    "filmId" : "kobietynaskrajuzalamanianerwowego|1988",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/kobiety-na-skraju-zalamania-nerwowego/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T19:00:00",
+      "format" : [ ]
     } ]
   }, {
     "_id" : "kobietynaskrajuzalamanianerwowego|1988|warszawa|Kino Muranów",
@@ -79579,16 +79262,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "matadorfiestakinahiszpanskiegoalmodovarbanderas|1986|szczecin|Kino Zamek",
-    "filmId" : "matadorfiestakinahiszpanskiegoalmodovarbanderas|1986",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-12T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35051&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "matadorfiestakinahiszpanskiego||trojmiasto|Kino Spektrum",
     "filmId" : "matadorfiestakinahiszpanskiego|",
     "city" : "trojmiasto",
@@ -79620,6 +79293,16 @@
       "dateTime" : "2026-06-26T17:00:00",
       "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/347088?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
       "room" : "Kiniarnia",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "matador|1986|szczecin|Kino Zamek",
+    "filmId" : "matador|1986",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/matador/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-12T19:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -83937,16 +83620,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "milczenieowiecjonathandemme|1991|szczecin|Kino Zamek",
-    "filmId" : "milczenieowiecjonathandemme|1991",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35049&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "milczenieowiecpokazyspecjalne|1991|warszawa|Kino Wisła",
     "filmId" : "milczenieowiecpokazyspecjalne|1991",
     "city" : "warszawa",
@@ -84825,6 +84498,16 @@
       "dateTime" : "2026-06-21T18:00:00",
       "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/346179?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
       "room" : "Sala Czerwona",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "milczenieowiec|1991|szczecin|Kino Zamek",
+    "filmId" : "milczenieowiec|1991",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/milczenie-owiec/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-10T19:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -103414,13 +103097,12 @@
     "filmId" : "mlodematki|2025",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/mlode-matki/",
     "showtimes" : [ {
       "dateTime" : "2026-06-09T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35085&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-11T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35086&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -104739,13 +104421,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "najwazniejszetokochaczulawskikinoekstazy|1975|szczecin|Kino Zamek",
-    "filmId" : "najwazniejszetokochaczulawskikinoekstazy|1975",
+    "_id" : "najwazniejszetokochac|1975|szczecin|Kino Zamek",
+    "filmId" : "najwazniejszetokochac|1975",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/najwazniejsze-to-kochac/",
     "showtimes" : [ {
       "dateTime" : "2026-06-23T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35061&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -104760,13 +104442,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "narwanamilosczulawskikinoekstazy|1985|szczecin|Kino Zamek",
-    "filmId" : "narwanamilosczulawskikinoekstazy|1985",
+    "_id" : "narwanamilosc|1985|szczecin|Kino Zamek",
+    "filmId" : "narwanamilosc|1985",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/narwana-milosc/",
     "showtimes" : [ {
       "dateTime" : "2026-06-24T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35062&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -118951,16 +118633,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "opetaniepokazspecjalnyna60urodzinykinazamek|1981|szczecin|Kino Zamek",
-    "filmId" : "opetaniepokazspecjalnyna60urodzinykinazamek|1981",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-25T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35063&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "opetaniezulawskikinoekstazy|2026|warszawa|Kinoteka",
     "filmId" : "opetaniezulawskikinoekstazy|2026",
     "city" : "warszawa",
@@ -118982,6 +118654,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "opetanie|1981|szczecin|Kino Zamek",
+    "filmId" : "opetanie|1981",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/opetanie/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-25T19:00:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "opetanie|1981|warszawa|Kino Muranów",
     "filmId" : "opetanie|1981",
     "city" : "warszawa",
@@ -118990,28 +118672,6 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T22:45:00",
       "bookingUrl" : "https://kinomuranow.pl/tickets/26964/buy",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "orlyrepublikieaglesoftherepublic|2025|szczecin|Kino Zamek",
-    "filmId" : "orlyrepublikieaglesoftherepublic|2025",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-12T16:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35096&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-13T16:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35097&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-14T16:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35098&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-17T16:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35099&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -119821,6 +119481,25 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "orlyrepubliki|2025|szczecin|Kino Zamek",
+    "filmId" : "orlyrepubliki|2025",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/orly-republiki/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-12T16:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-13T16:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-14T16:30:00",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-17T16:30:00",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "orlyrepubliki|2025|trojmiasto|Gdyńskie Centrum Filmowe",
     "filmId" : "orlyrepubliki|2025",
     "city" : "trojmiasto",
@@ -120376,13 +120055,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "ostatnidzienlatatadeuszkonwicki100rocznicaurodzin|1958|szczecin|Kino Zamek",
-    "filmId" : "ostatnidzienlatatadeuszkonwicki100rocznicaurodzin|1958",
+    "_id" : "ostatnidzienlata|1958|szczecin|Kino Zamek",
+    "filmId" : "ostatnidzienlata|1958",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/ostatni-dzien-lata/",
     "showtimes" : [ {
       "dateTime" : "2026-06-22T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35060&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -123508,13 +123187,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "pociagidyskusyjnyklubfilmowy|2025|szczecin|Kino Zamek",
-    "filmId" : "pociagidyskusyjnyklubfilmowy|2025",
+    "_id" : "pociagi|2025|szczecin|Kino Zamek",
+    "filmId" : "pociagi|2025",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/pociagi-dyskusyjny-klub-filmowy-zamek/",
     "showtimes" : [ {
       "dateTime" : "2026-06-18T18:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35056&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -128090,16 +127769,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "prawopozadaniafiestakinahiszpanskiegoalmodovarbanderas|1987|szczecin|Kino Zamek",
-    "filmId" : "prawopozadaniafiestakinahiszpanskiegoalmodovarbanderas|1987",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35052&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "prawopozadaniafiestakinahiszpanskiego|1987|trojmiasto|Kino Spektrum",
     "filmId" : "prawopozadaniafiestakinahiszpanskiego|1987",
     "city" : "trojmiasto",
@@ -128141,6 +127810,16 @@
       "dateTime" : "2026-06-11T18:45:00",
       "bookingUrl" : "https://bilety.kinomalta.pl/system_portal.php/repertoire.html?id=42318",
       "room" : "Sala Charlie",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "prawopozadania|1987|szczecin|Kino Zamek",
+    "filmId" : "prawopozadania|1987",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/prawo-pozadania/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-13T19:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -128838,16 +128517,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "przeklenstwaniewinnosciamerykanskaklasyka|2000|szczecin|Kino Zamek",
-    "filmId" : "przeklenstwaniewinnosciamerykanskaklasyka|2000",
-    "city" : "szczecin",
-    "cinema" : "Kino Zamek",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35057&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "przeklenstwaniewinnoscipokazprzedpremierowy|2000|trojmiasto|Gdyńskie Centrum Filmowe",
     "filmId" : "przeklenstwaniewinnoscipokazprzedpremierowy|2000",
     "city" : "trojmiasto",
@@ -128879,6 +128548,16 @@
       "dateTime" : "2026-06-21T18:00:00",
       "bookingUrl" : "https://ckzamek.bilety24.pl/kup-bilety/?id=932736",
       "room" : "Sala 1 - Kinowa",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "przeklenstwaniewinnosci|2000|szczecin|Kino Zamek",
+    "filmId" : "przeklenstwaniewinnosci|2000",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/przeklenstwa-niewinnosci/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-19T19:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -132529,13 +132208,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "sluzacyjospehlosey|1963|szczecin|Kino Zamek",
-    "filmId" : "sluzacyjospehlosey|1963",
+    "_id" : "sluzacy|1963|szczecin|Kino Zamek",
+    "filmId" : "sluzacy|1963",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/sluzacy/",
     "showtimes" : [ {
       "dateTime" : "2026-06-26T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35064&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -133014,9 +132693,9 @@
     "filmId" : "spragnienimilosci|2000",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/spragnieni-milosci-3/",
     "showtimes" : [ {
       "dateTime" : "2026-06-16T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35054&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -157377,9 +157056,9 @@
     "filmId" : "swietypiotriinnepapieskiebazylikirzymu|",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/swiety-piotr-i-inne-papieskie-bazyliki-rzymu/",
     "showtimes" : [ {
       "dateTime" : "2026-06-22T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35107&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -183404,9 +183083,9 @@
     "filmId" : "turnericonstableprzelomowawystawa|2026",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/turner-constable-przelomowa-wystawa/",
     "showtimes" : [ {
       "dateTime" : "2026-06-26T17:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35088&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -183981,13 +183660,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "vangoghpolazbozizachmurzoneniebiosavangoghtrailgranoeilcielo||szczecin|Kino Zamek",
-    "filmId" : "vangoghpolazbozizachmurzoneniebiosavangoghtrailgranoeilcielo|",
+    "_id" : "vangoghpolazbozizachmurzoneniebiosa||szczecin|Kino Zamek",
+    "filmId" : "vangoghpolazbozizachmurzoneniebiosa|",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/van-gogh-pola-zboz-i-zachmurzone-niebiosa/",
     "showtimes" : [ {
       "dateTime" : "2026-06-21T14:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35106&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -184628,9 +184307,9 @@
     "filmId" : "wenecjaawangardabezgranic|",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/wenecja-awangarda-bez-granic/",
     "showtimes" : [ {
       "dateTime" : "2026-06-13T14:30:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35100&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -193624,13 +193303,13 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wszyscyludzieprezydentaamerykanskaklasyka50rocznicapremiery|1976|szczecin|Kino Zamek",
-    "filmId" : "wszyscyludzieprezydentaamerykanskaklasyka50rocznicapremiery|1976",
+    "_id" : "wszyscyludzieprezydenta|1976|szczecin|Kino Zamek",
+    "filmId" : "wszyscyludzieprezydenta|1976",
     "city" : "szczecin",
     "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/wszyscy-ludzie-prezydenta/",
     "showtimes" : [ {
       "dateTime" : "2026-06-27T19:00:00",
-      "bookingUrl" : "https://bilety.zamek.szczecin.pl/MSI/Default.aspx?event_id=35065&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -194463,6 +194142,16 @@
       "bookingUrl" : "https://tickets.cinema-city.pl/api/order/1496982?lang=pl",
       "room" : "Sala 8 T-mobile",
       "format" : [ "2D" ]
+    } ]
+  }, {
+    "_id" : "zamkowenocefilmoweszkodazenareszcie||szczecin|Kino Zamek",
+    "filmId" : "zamkowenocefilmoweszkodazenareszcie|",
+    "city" : "szczecin",
+    "cinema" : "Kino Zamek",
+    "filmUrl" : "https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-szkoda-ze-nareszcie/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-30T21:30:00",
+      "format" : [ ]
     } ]
   }, {
     "_id" : "zapiskismiertelnika||elblag|Baszta",

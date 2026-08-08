@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -9,7 +8,7 @@
 
     <meta charset="utf-8"/>
     <title>
-        Zamek Książąt Pomorskich - Kino | Zamek Książąt Pomorskich
+        Zamek Książąt Pomorskich - Co się zdarzyło Baby Jane? | Zamek Książąt Pomorskich
     </title>
     <link rel="shortcut icon" href="https://zamek.szczecin.pl/wp-content/themes/zamek/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,19 +22,20 @@
         var homeUrl = 'https://zamek.szczecin.pl';
         var lang = 'pl';
     </script>
-    <title>Kino | Zamek Książąt Pomorskich</title>
+    <title>Co się zdarzyło Baby Jane? | Zamek Książąt Pomorskich</title>
 
 <!-- The SEO Framework: stworzone przez Sybre Waaijer -->
 <meta name="robots" content="max-snippet:-1,max-image-preview:standard,max-video-preview:-1" />
-<link rel="canonical" href="https://zamek.szczecin.pl/wydarzenia/kino/" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zamek.szczecin.pl/#/schema/WebSite","url":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich","description":"Zamek Książąt Pomorskich – renesansowy zamek usytuowany na Wzgórzu Zamkowym w Szczecinie, w sąsiedztwie Odry, historyczna siedziba rodu Gryfitów","inLanguage":"pl-PL","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://zamek.szczecin.pl/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://zamek.szczecin.pl/#/schema/Organization","name":"Zamek Książąt Pomorskich","url":"https://zamek.szczecin.pl/"}},{"@type":"WebPage","@id":"https://zamek.szczecin.pl/wydarzenia/kino/","url":"https://zamek.szczecin.pl/wydarzenia/kino/","name":"Kino | Zamek Książąt Pomorskich","inLanguage":"pl-PL","isPartOf":{"@id":"https://zamek.szczecin.pl/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://zamek.szczecin.pl/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich"},{"@type":"ListItem","position":2,"item":"https://zamek.szczecin.pl/wydarzenia/","name":"Archiwa: Kategorie"},{"@type":"ListItem","position":3,"name":"Kino"}]},"potentialAction":{"@type":"ReadAction","target":"https://zamek.szczecin.pl/wydarzenia/kino/"},"datePublished":"2018-11-06T08:59:02+00:00","dateModified":"2024-12-31T08:59:12+00:00","author":{"@type":"Person","@id":"https://zamek.szczecin.pl/#/schema/Person/52691ba0724d75f402fd92d9558362a6","name":"admin"}}]}</script>
-<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 6.14ms meta | 0.67ms boot -->
+<link rel="canonical" href="https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/" />
+<meta name="description" content="Dwie legendarne gwiazdy złotej ery Hollywood, Bette Davis i Joan Crawford, przenoszą autentyczny, prywatny i zawodowy konflikt na ekran w słynnym, kontrowersyjnym thrillerze psychologicznym Roberta Aldricha." />
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zamek.szczecin.pl/#/schema/WebSite","url":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich","description":"Zamek Książąt Pomorskich – renesansowy zamek usytuowany na Wzgórzu Zamkowym w Szczecinie, w sąsiedztwie Odry, historyczna siedziba rodu Gryfitów","inLanguage":"pl-PL","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://zamek.szczecin.pl/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://zamek.szczecin.pl/#/schema/Organization","name":"Zamek Książąt Pomorskich","url":"https://zamek.szczecin.pl/"}},{"@type":"WebPage","@id":"https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/","url":"https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/","name":"Co się zdarzyło Baby Jane? | Zamek Książąt Pomorskich","description":"Dwie legendarne gwiazdy złotej ery Hollywood, Bette Davis i Joan Crawford, przenoszą autentyczny, prywatny i zawodowy konflikt na ekran w słynnym, kontrowersyjnym thrillerze psychologicznym Roberta Aldricha.","inLanguage":"pl-PL","isPartOf":{"@id":"https://zamek.szczecin.pl/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://zamek.szczecin.pl/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich"},{"@type":"ListItem","position":2,"item":"https://zamek.szczecin.pl/wydarzenie/","name":"Archiwa: Wydarzenia"},{"@type":"ListItem","position":3,"item":"https://zamek.szczecin.pl/category/kino/","name":"Kategoria: Kino"},{"@type":"ListItem","position":4,"name":"Co się zdarzyło Baby Jane?"}]},"potentialAction":{"@type":"ReadAction","target":"https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/"},"datePublished":"2026-06-02T11:08:36+00:00","dateModified":"2026-06-02T11:12:59+00:00"}]}</script>
+<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 4.44ms meta | 0.73ms boot -->
 
 <link rel='dns-prefetch' href='//unpkg.com' />
 <link rel="alternate" type="application/rss+xml" title="Zamek Książąt Pomorskich &raquo; Kanał z wpisami" href="https://zamek.szczecin.pl/feed/" />
 <link rel="alternate" type="application/rss+xml" title="Zamek Książąt Pomorskich &raquo; Kanał z komentarzami" href="https://zamek.szczecin.pl/comments/feed/" />
-<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenia%2Fkino%2F&#038;lang=pl" />
-<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenia%2Fkino%2F&#038;format=xml&#038;lang=pl" />
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenie%2Fkino%2Fco-sie-zdarzylo-baby-jane%2F&#038;lang=pl" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenie%2Fkino%2Fco-sie-zdarzylo-baby-jane%2F&#038;format=xml&#038;lang=pl" />
 <style id='wp-img-auto-sizes-contain-inline-css' type='text/css'>
 img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 /*# sourceURL=wp-img-auto-sizes-contain-inline-css */
@@ -127,7 +127,7 @@ window.RLG = window.RLG || {}; window.RLG.sanitizeAllowedHosts = ["youtube.com",
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/assets/infinitescroll/infinite-scroll.pkgd.min.js?ver=4.0.1" id="responsive-lightbox-infinite-scroll-js"></script>
 <script type="text/javascript" id="responsive-lightbox-js-before">
 /* <![CDATA[ */
-var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"c842ecc774","preview":false,"postId":260,"scriptExtension":false};
+var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"c842ecc774","preview":false,"postId":23768,"scriptExtension":false};
 
 //# sourceURL=responsive-lightbox-js-before
 /* ]]> */
@@ -279,12 +279,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
         }
                 </style>
 
-        <meta name="description" content="Małe, kameralne kino Zamek działające od latw Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świet..." />
+        <meta name="description" content="SZCZECIŃSKIE ŚWIĘTO KLASYKI FILMOWEJ W KINIE ZAMEK CO SIĘ ZDARZYŁO BABY JANE? – AMERYKAŃSKA KLASYKA 20 czerwca (sobota), godz. 19:00 USA 1962 (134 ..." />
 <meta property="og:typ" content="article" />
-<meta property="og:image" content="" />
-<meta property="og:title" content="Zamek Książąt Pomorskich - Kino" />
-<meta property="og:url" content="https://zamek.szczecin.pl/wydarzenia/kino/" />
-<meta property="og:description" content="Małe, kameralne kino Zamek działające od latw Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świet..." />
+<meta property="og:image" content="https://zamek.szczecin.pl/wp-content/uploads/2026/06/Co-sie-zdarzylo-Baby-Jane-kadr-1024x575.jpg" />
+<meta property="og:title" content="Zamek Książąt Pomorskich - Co się zdarzyło Baby Jane?" />
+<meta property="og:url" content="https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/" />
+<meta property="og:description" content="SZCZECIŃSKIE ŚWIĘTO KLASYKI FILMOWEJ W KINIE ZAMEK CO SIĘ ZDARZYŁO BABY JANE? – AMERYKAŃSKA KLASYKA 20 czerwca (sobota), godz. 19:00 USA 1962 (134 ..." />
             <style>
                 #wp-admin-bar-ctn_adminbar_menu .ab-item {
                     background: ;
@@ -301,7 +301,7 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
 </head>
 
-<body data-rsssl=1 class="wp-singular category_custom-template-default single single-category_custom postid-260 wp-theme-zamek lang-pl">
+<body data-rsssl=1 class="wp-singular events-template-default single single-events postid-23768 wp-theme-zamek lang-pl">
 <noscript><img height="1" width="1" style="display:none"src="https://www.facebook.com/tr?id=1026840438499501&ev=PageView&noscript=1"/></noscript>
 
 <div id="header" class="container">
@@ -387,12 +387,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
         </a>
         <nav class=" animated nav-collapse" id="panel">
             <div class="box-menu">
-                <div class="menu-menu-glowne-pl-container"><ul id="primary-menu" class="navbar-list"><li id="menu-item-95" class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+                <div class="menu-menu-glowne-pl-container"><ul id="primary-menu" class="navbar-list"><li id="menu-item-95" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li id="menu-item-11076" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11076"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 	<li id="menu-item-8092" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-8092"><a href="https://zamek.szczecin.pl/kalendarium-wydarzen/">Kalendarium wydarzeń</a></li>
 	<li id="menu-item-259" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-259"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-	<li id="menu-item-270" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li id="menu-item-270" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li id="menu-item-279" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-279"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 	<li id="menu-item-806" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-806"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 	<li id="menu-item-525" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-525"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -462,12 +462,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 	<li id="menu-item-18788" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-18788"><a href="https://zamek.szczecin.pl/standardy-ochrony-maloletnich/">Standardy ochrony małoletnich</a></li>
 </ul>
 </li>
-</ul></div>                <div class="menu-menu-glowne-pl-container"><ul id="tablet-menu" class="navbar-list"><li class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+</ul></div>                <div class="menu-menu-glowne-pl-container"><ul id="tablet-menu" class="navbar-list"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11076"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-8092"><a href="https://zamek.szczecin.pl/kalendarium-wydarzen/">Kalendarium wydarzeń</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-259"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-279"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-806"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-525"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -587,14 +587,16 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
     </div>
             <div class="menu-widget"><ul>
-	<li class="lang-item lang-item-27 lang-item-pl current-lang lang-item-first"><a lang="pl-PL" hreflang="pl-PL" href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="true">PL</a></li>
+	<li class="lang-item lang-item-27 lang-item-pl current-lang lang-item-first"><a lang="pl-PL" hreflang="pl-PL" href="https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/" aria-current="true">PL</a></li>
 	<li class="lang-item lang-item-39 lang-item-de no-translation"><a lang="de-DE" hreflang="de-DE" href="https://zamek.szczecin.pl/de/">DE</a></li>
 	<li class="lang-item lang-item-43 lang-item-en no-translation"><a lang="en-GB" hreflang="en-GB" href="https://zamek.szczecin.pl/en/">EN</a></li>
 </ul>
 </div>    </div>
 <div class="wrapper">
-    <section id="header-basic"
-             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2018/11/kinozamek_foto2_poprawione.jpg')">
+    
+    <div id="header-basic" data-aos="fade-up"
+         data-aos-duration="2000" class="change-color change-color-background opacity50"
+         style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Co-sie-zdarzylo-Baby-Jane-kadr.jpg') !important">
         <div class="indicator indicator-header">
             <div class="positioner-left"></div>
             <div class="pointer"></div>
@@ -603,363 +605,121 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
         <div class="flex">
             <div class="flex-item">
-                <img src="https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino_zamek.png" alt="">                <h1></h1>
-                <p></p>
+                <p class="event-details">
+                                            20-06-2026                                                                                            
+                </p>
+                <h1>Co się zdarzyło Baby Jane?</h1>
             </div>
         </div>
-    </section>
-    <div class="events-with-calendar ">
-
-                <section id="category-page" class="content kalendarium"
-                 data-id_cat="6">
-
-            <div id="kalendarz-w-kategorii" class="calendar-box">
-                <div class="container">
-                    <div class="calendar-box">
-                        <div class="calendar">
-
-
-
-
-                            
-
-
-
-                            <div class="controls">
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-07-08" aria-label="poprzedni miesiąc" >
-                                    <img class="prevButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_prev.png" alt="">
-                                    <img class="prevButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_prev.png" alt="">
-                                </a>
-
-                                <h4 class="dark">sierpień 2026</h4>
-
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-09-08" aria-label="następny miesiąc">
-                                    <img class="nextButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_next.png" alt="">
-                                    <img class="nextButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_next.png" alt="">
-                                </a>
-                            </div>
-
-                            <div class="sticky">
-                                <ul>
-                                    <li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li>                                    <li class="name_week_mobile" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_mobile" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_mobile" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_mobile" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_mobile" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_mobile" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_mobile" data-day="N">
-                                            <span>N</span>
-                                            </li>                                </ul>
-                                <ul>
-                                    <li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li>                                    <li class="calendarEventClick is_event" data-item="1082026">
-                                            <span class="">01</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="2082026">
-                                            <span class="">02</span>
-                                            </li><li class="calendarEventClick is_event" data-item="3082026">
-                                            <span class="">03</span>
-                                            </li><li class="calendarEventClick is_event" data-item="4082026">
-                                            <span class="">04</span>
-                                            </li><li class="calendarEventClick is_event" data-item="5082026">
-                                            <span class="">05</span>
-                                            </li><li class="calendarEventClick is_event" data-item="6082026">
-                                            <span class="">06</span>
-                                            </li><li class="calendarEventClick is_event" data-item="7082026">
-                                            <span class="">07</span>
-                                            </li><li class="calendarEventClick is_event" data-item="8082026">
-                                            <span class="">08</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="9082026">
-                                            <span class="">09</span>
-                                            </li><li class="calendarEventClick is_event" data-item="10082026">
-                                            <span class="">10</span>
-                                            </li><li class="calendarEventClick is_event" data-item="11082026">
-                                            <span class="">11</span>
-                                            </li><li class="calendarEventClick is_event" data-item="12082026">
-                                            <span class="">12</span>
-                                            </li><li class="calendarEventClick is_event" data-item="13082026">
-                                            <span class="">13</span>
-                                            </li><li class="calendarEventClick is_event" data-item="14082026">
-                                            <span class="">14</span>
-                                            </li><li class="calendarEventClick is_event" data-item="15082026">
-                                            <span class="">15</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="16082026">
-                                            <span class="">16</span>
-                                            </li><li class="calendarEventClick is_event" data-item="17082026">
-                                            <span class="">17</span>
-                                            </li><li class="calendarEventClick is_event" data-item="18082026">
-                                            <span class="">18</span>
-                                            </li><li class="calendarEventClick is_event" data-item="19082026">
-                                            <span class="">19</span>
-                                            </li><li class="calendarEventClick is_event" data-item="20082026">
-                                            <span class="">20</span>
-                                            </li><li class="calendarEventClick is_event" data-item="21082026">
-                                            <span class="">21</span>
-                                            </li><li class="calendarEventClick is_event" data-item="22082026">
-                                            <span class="">22</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="23082026">
-                                            <span class="">23</span>
-                                            </li><li class="calendarEventClick is_event" data-item="24082026">
-                                            <span class="">24</span>
-                                            </li><li class="calendarEventClick is_event" data-item="25082026">
-                                            <span class="">25</span>
-                                            </li><li class="calendarEventClick is_event" data-item="26082026">
-                                            <span class="">26</span>
-                                            </li><li class="calendarEventClick is_event" data-item="27082026">
-                                            <span class="">27</span>
-                                            </li><li class="calendarEventClick is_event" data-item="28082026">
-                                            <span class="">28</span>
-                                            </li><li class="calendarEventClick is_event" data-item="29082026">
-                                            <span class="">29</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="30082026">
-                                            <span class="">30</span>
-                                            </li><li class="calendarEventClick is_event" data-item="31082026">
-                                            <span class="">31</span>
-                                            </li>
-                                </ul>
-                            </div>
-
-                            <div id="events-list">
-                                <div class="events-list">
-                                    <div class="listCategory">
-                                        <div class="box">
-                                            <div class="mobile-box-roll">
-                                                <div class="flex">
-
-
-                                                                                                                <div class="flex-item">
-                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/"
-                                                                   class="event-image-box">
-                                                                    <div class="background-hover-events">
-                                                                        <div role="img"
-                                                                             aria-label="Zamkowe Noce Filmowe 2026"
-                                                                             class="image"
-                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2024/05/zamkowenocefilmowe2024_wwwzamek.jpg');"></div>
-                                                                    </div>
-                                                                </a>
-                                                                <div class="event-details">
-                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/">
-                                                                        <p class="date">11-08-2026, 18-08-2026, 25-08-2026</p>
-                                                                        <p class="title">Zamkowe Noce Filmowe 2026</p>
-                                                                    </a>
-                                                                    <p class="describe">Zamkowe Noce Filmowe to doroczne plenerowe prezentacje filmów wartościowych i ważnych, które odbywają się w plenerowej przestrzeni Zamku . Ich charakter jest kontynuacją programu prezentowanego przez cały filmowy rok w cenionym przez miłośników dobrego filmu Kinie Zamek.</p>
-                                                                    <p class="tags change-color change-color-font">
-                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=Zamkowe Noce Filmowe" class="change-color change-color-font">Zamkowe Noce Filmowe,&nbsp;</a><a href="/?s=kino plenerowe" class="change-color change-color-font">kino plenerowe,&nbsp;</a>                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex-item"></div><div class="flex-item"></div>                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
-    <section id="block_tickets" class="content">
+
+    <div class="content">
         <div class="container">
-            <span class="rectangle change-color change-color-background opacity50"></span>
+            <div class="flex flex-main two-col">
+                <div class="flex-item event" data-aos="fade-up"
+                     data-aos-duration="2000">
+                    <div class="container-mobi">
+                        <section class="content_event" data-aos="fade-up"
+                                 data-aos-duration="2000">
+                            <p><a href="https://zamek.szczecin.pl/wydarzenie/kino/szczecinskie-swieto-klasyki-filmowej-w-kinie-zamek/"><span style="font-size: 14pt;"><strong>SZCZECIŃSKIE ŚWIĘTO KLASYKI FILMOWEJ W KINIE ZAMEK</strong></span></a></p>
+<h3><strong>CO SIĘ ZDARZYŁO BABY JANE? – AMERYKAŃSKA KLASYKA</strong></h3>
+<p><span style="color: #ff0000;"><strong>20 czerwca (sobota), godz. 19:00</strong></span></p>
+<p>USA 1962 (134 min.)</p>
+<p>Reżyseria: Robert Aldrich</p>
+<p>Obsada: Bette Davis, Joan Crawford, Victor Buono</p>
+<p>Dwie legendarne gwiazdy złotej ery Hollywood, Bette Davis i Joan Crawford, przenoszą autentyczny, prywatny i zawodowy konflikt na ekran w słynnym, kontrowersyjnym thrillerze psychologicznym Roberta Aldricha.</p>
+<p>Film opowiada o dwóch siostrach, podstarzałych aktorkach, które żyją pod jednym dachem w atmosferze nienawiści i strachu. Nominowana do Oscara Davis wciela się w postać byłej dziecięcej gwiazdy kina Baby Jane Hudson, zaś Crawford w rolę niepełnosprawnej Blanche. „Co się zdarzyło Baby Jane?” to niezapomniane studium popadania w obłęd z szokującym zakończeniem. Według American Film Institute jeden z 400 najważniejszych filmów amerykańskich wszech czasów.</p>
+<p><strong>Cena biletu 25 zł</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2026/06/Cosiezdarzylo.jpg" data-rel="lightbox-image-0" data-rl_title="" data-rl_caption="" title=""><img decoding="async" class="alignnone size-medium wp-image-23769" src="https://zamek.szczecin.pl/wp-content/uploads/2026/06/Cosiezdarzylo-209x300.jpg" alt="" width="209" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2026/06/Cosiezdarzylo-209x300.jpg 209w, https://zamek.szczecin.pl/wp-content/uploads/2026/06/Cosiezdarzylo.jpg 500w" sizes="(max-width: 209px) 100vw, 209px" /></a></p>
+                        </section>
 
-            <div class="flex change-color change-color-background cols_3">
-                <div class="ticket_desc">
-                    <h3>Bilety na wszystkie seanse w cenie:</h3>
+                                                                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="place">
+                            <h2>Miejsce</h2>
+                            <p>
+                                Kino Zamek                            </p>
+                        </section>
+
+                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="extra_block">
+                            <h2></h2>
+                            <p>
+                                                            </p>
+                        </section>
+                    </div>
+
                 </div>
-                                    <div class="price">
-                        <h3>22zł</h3>
-                        <span>(normalny)</span>
-                    </div>
-                                                    <div class="price">
-                        <h3>20zł</h3>
-                        <span>(ulgowy)</span>
-                    </div>
-                                                    <div class="price">
-                        <h3>16zł</h3>
-                        <span>(grupowy)</span>
-                    </div>
+                <div class="flex-item tickets" data-aos="fade-up"
+                     data-aos-duration="2000">
+                    <div class="box">
+                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="title change-color change-color-background">
+                            <div class="container-mobi">
+                                <h2>Bilety</h2>
                             </div>
+                        </section>
+                                                                                    <section data-aos="fade-up"
+                                         data-aos-duration="2000" class="tickets-box">
+                                    <div class="container-mobi">
+                                        <table>
+                                                                                            <thead>
+                                                <tr>
+                                                    <th>Dorośli  </th>
+                                                    <th></th>
+                                                </tr>
+                                                </thead>
+                                                <tr>
+                                                    <td>miejsca standardowe</td>
+                                                    <td>25 zł</td>
+                                                </tr>
+                                                                                            
+
+                                            
+
+                                            
+
+
+
+
+
+
+
+                                                                                            <thead>
+                                                <tr>
+                                                    <th>Młodzież licealna i studenci</th>
+                                                    <th></th>
+                                                </tr>
+                                                </thead>
+                                                <tr>
+                                                    <td>miejsca standardowe</td>
+                                                    <td>25 zł</td>
+                                                </tr>
+
+                                                                                                                                            <thead>
+                                                <tr>
+                                                    <th>Emeryci i renciści</th>
+                                                    <th></th>
+                                                </tr>
+                                                </thead>
+                                                <tr>
+                                                    <td>miejsca standardowe</td>
+                                                    <td>25 zł</td>
+                                                </tr>
+
+                                                                                                                                    </table>
+
+                                                                                        <a class="button change-color change-color-border"
+                                                href="https://bilety.zamek.szczecin.pl/MSI/mvc/pl/details/2166">Kup online</a>
+
+
+                                                                                                                                                                        </div>
+                                </section>
+
+                                                                                                    </div>
+                </div>
+            </div>
         </div>
-    </section>
-
-<div class="photo-sections">
-            <section class="section_photo section_photo_right">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Trochę historii</h3>
-                        </div>
-
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/kino-zamek/">
-                                    <p class="smaller">
-                                        Małe, kameralne kino Zamek działające od lat<br>w Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świetne położenie w centrum miasta,<br>w pięknym zabytkowym obiekcie, ale także jego unikalna atmosfera, na którą wpływ ma także niewielka, kameralna widownia oraz starannie dobrany repertuar. Z tego właśnie powodu Zamek zyskał niezwykle ważny w swojej działalności szacunek widzów i wypracowaną przez lata markę ambitnego, mądrego kina.                                        <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                            
-
-                                                        
-
-                        </div>
-                    </div>
-
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/11/kinozamek_nowelogo.jpg)">
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-        </section>
-                <section class="section_photo section_photo_left">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Zamkowe Noce Filmowe</h3>
-                        </div>
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/zamkowe-noce-filmowe/">
-                                    <p class="smaller">
-                                        Zamkowe Noce Filmowe to kino plenerowe, organizowane na Zamku Książąt Pomorskich<br>w Szczecinie cyklicznie od 2008 roku w okresie wakacji. 
-Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z innym tematem przewodnim. To interesujące, ambitne kino. Repertuar obejmuje wszystkie gatunki filmowe od najnowszych produkcji fabularnych po filmy dokumentalne<br>i animację.                                         <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                                                                                        <img src="https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino-zamek-mini.jpg" alt="">
-                                                    </div>
-                    </div>
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino-zamek-ekran.jpg)">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-                <section class="section_photo section_photo_right">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Pomerania Film</h3>
-                        </div>
-
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/pomerania-film">
-                                    <p class="smaller">
-                                        Powołanie do życia Zachodniopomorskiego Funduszu Filmowego Pomerania Film stało się poważnym impulsem do rozwoju produkcji filmowej w regionie i jego dwóch głównych miastach: Szczecinie i Koszalinie. Ten region nazywano do niedawna filmową pustynią, ponieważ od czasów drugiej wojny światowej artyści związani z tą niezwykle nośną dziedziną kultury bywali tu sporadycznie.                                        <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                            
-
-                                                        
-
-                        </div>
-                    </div>
-
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/12/pomeraniafilm_zdjecie2.jpg)">
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-        </section>
-                                <div class="end-bar change-color change-color-background opacity50"></div>
     </div>
-
-
 
 
     <div class="container">
@@ -1014,7 +774,7 @@ Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z 
         <div class="menu-menu-footer-pl-container"><ul id="footer-menu" class="animated flex flex-menu"><li id="menu-item-108" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-108"><a href="https://zamek.szczecin.pl/">Start</a></li>
 <li id="menu-item-11075" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11075"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 <li id="menu-item-1459" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1459"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-<li id="menu-item-1457" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-1457"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+<li id="menu-item-1457" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1457"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 <li id="menu-item-1460" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1460"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 <li id="menu-item-1458" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1458"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 <li id="menu-item-2797" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-2797"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -1023,11 +783,11 @@ Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z 
 <li id="menu-item-4585" class="menu-item menu-item-type-post_type menu-item-object-template menu-item-4585"><a href="https://zamek.szczecin.pl/polityka-prywatnosci-duplicate">Polityka prywatności</a></li>
 <li id="menu-item-14803" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-14803"><a href="/deklaracja-dostepnosci/">Deklaracja dostępności</a></li>
 <li id="menu-item-845" class="newsletter_popup menu-item menu-item-type-post_type menu-item-object-page menu-item-845"><a href="https://zamek.szczecin.pl/newsletter/">Newsletter</a></li>
-</ul></div><div class="menu-phone-footer-container"><ul id="phone-footer-menu" class="menu"><li id="menu-item-2800" class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-2800"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+</ul></div><div class="menu-phone-footer-container"><ul id="phone-footer-menu" class="menu"><li id="menu-item-2800" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2800"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li id="menu-item-4043" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4043"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
 	<li id="menu-item-4044" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4044"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
-	<li id="menu-item-4045" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-4045"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li id="menu-item-4045" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4045"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li id="menu-item-4047" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4047"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
 </ul>
 </li>
@@ -1187,7 +947,7 @@ var newsletter_data = {"action_url":"https://zamek.szczecin.pl/wp-admin/admin-aj
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/uploads/wpmss/wpmss.min.js?ver=1540891784" id="wpmss-js"></script>
 <script type="text/javascript" id="moove_gdpr_frontend-js-extra">
 /* <![CDATA[ */
-var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"260","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"53683cad74"};
+var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"23768","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"53683cad74"};
 //# sourceURL=moove_gdpr_frontend-js-extra
 /* ]]> */
 </script>
@@ -1367,14 +1127,14 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
                 document.addEventListener("DOMContentLoaded", function() {
                     var el = document.querySelector(".ctn_load_time_in_sec");
                     if (el) {
-                        el.textContent = "0.650 seconds";
+                        el.textContent = "0.420 seconds";
                     }
                 });
             </script>
             </body>
 </html>
 
-<!-- Dynamic page generated in 0.907 seconds. -->
-<!-- Cached page generated by WP-Super-Cache on 2026-08-08 08:22:17 -->
+<!-- Dynamic page generated in 0.682 seconds. -->
+<!-- Cached page generated by WP-Super-Cache on 2026-08-08 08:35:21 -->
 
 <!-- Compression = gzip -->

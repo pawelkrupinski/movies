@@ -9,15 +9,21 @@ import scala.io.{Codec, Source}
 
 /** Fixture-replay coverage proving the release year + original title mined from
  *  the `RepertoireEvents` Description survive end-to-end through
- *  `MsiScraper.parseMonthWithYear` for a real recorded Zamek Szczecin month
- *  page. The director-only parse left these `None`, so same-title films fell to
- *  titleOnly TMDB resolution; the production-line parse fixes that. Lives in
- *  `services.cinemas` to reach the package-private `MsiScraper`. */
+ *  `MsiScraper.parseMonthWithYear` for a real recorded MSI month page. The
+ *  director-only parse left these `None`, so same-title films fell to titleOnly
+ *  TMDB resolution; the production-line parse fixes that. Lives in
+ *  `services.cinemas` to reach the package-private `MsiScraper`.
+ *
+ *  The capture happens to come from Zamek Szczecin, but this spec is about the
+ *  shared [[MsiScraper]] that ~14 venues still run on — so the fixture lives in
+ *  a venue-neutral `msi-production` directory rather than under a client's own.
+ *  Kino Zamek itself was moved off MSI when that portal stopped accepting TCP;
+ *  keeping its last good page here preserves the parser coverage. */
 class MsiScraperProductionFixtureSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   // Recorded `GET https://bilety.zamek.szczecin.pl/MSI/mvc/pl?sort=Name&date=2026-06`.
   private val fixture =
-    "test/resources/fixtures/kino-zamek/bilety.zamek.szczecin.pl/MSI/mvc/pl.8781cb26"
+    "test/resources/fixtures/msi-production/bilety.zamek.szczecin.pl/MSI/mvc/pl.8781cb26"
 
   private val html = {
     val src = Source.fromFile(fixture)(using Codec.UTF8)

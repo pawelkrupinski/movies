@@ -29,7 +29,7 @@
 <meta name="robots" content="max-snippet:-1,max-image-preview:standard,max-video-preview:-1" />
 <link rel="canonical" href="https://zamek.szczecin.pl/wydarzenia/kino/" />
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zamek.szczecin.pl/#/schema/WebSite","url":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich","description":"Zamek Książąt Pomorskich – renesansowy zamek usytuowany na Wzgórzu Zamkowym w Szczecinie, w sąsiedztwie Odry, historyczna siedziba rodu Gryfitów","inLanguage":"pl-PL","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://zamek.szczecin.pl/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://zamek.szczecin.pl/#/schema/Organization","name":"Zamek Książąt Pomorskich","url":"https://zamek.szczecin.pl/"}},{"@type":"WebPage","@id":"https://zamek.szczecin.pl/wydarzenia/kino/","url":"https://zamek.szczecin.pl/wydarzenia/kino/","name":"Kino | Zamek Książąt Pomorskich","inLanguage":"pl-PL","isPartOf":{"@id":"https://zamek.szczecin.pl/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://zamek.szczecin.pl/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich"},{"@type":"ListItem","position":2,"item":"https://zamek.szczecin.pl/wydarzenia/","name":"Archiwa: Kategorie"},{"@type":"ListItem","position":3,"name":"Kino"}]},"potentialAction":{"@type":"ReadAction","target":"https://zamek.szczecin.pl/wydarzenia/kino/"},"datePublished":"2018-11-06T08:59:02+00:00","dateModified":"2024-12-31T08:59:12+00:00","author":{"@type":"Person","@id":"https://zamek.szczecin.pl/#/schema/Person/52691ba0724d75f402fd92d9558362a6","name":"admin"}}]}</script>
-<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 6.14ms meta | 0.67ms boot -->
+<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 8.39ms meta | 4.03ms boot -->
 
 <link rel='dns-prefetch' href='//unpkg.com' />
 <link rel="alternate" type="application/rss+xml" title="Zamek Książąt Pomorskich &raquo; Kanał z wpisami" href="https://zamek.szczecin.pl/feed/" />
@@ -71,13 +71,13 @@ img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 </style>
 
 <link rel='stylesheet' id='responsive-lightbox-swipebox-css' href='https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/assets/swipebox/swipebox.min.css?ver=1.5.2' type='text/css' media='all' />
-<link rel='stylesheet' id='fonts-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/fonts.css?hash=1741246365&#038;ver=6.9.6' type='text/css' media='all' />
-<link rel='stylesheet' id='style-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/default.css?hash=1749114041&#038;ver=6.9.6' type='text/css' media='all' />
-<link rel='stylesheet' id='style-desktop-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/desktop.css?hash=1741246366&#038;ver=6.9.6' type='text/css' media='all' />
-<link rel='stylesheet' id='style-tablet-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/tablet.css?hash=1741246365&#038;ver=6.9.6' type='text/css' media='all' />
-<link rel='stylesheet' id='style-phone-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/phone.css?hash=1741246365&#038;ver=6.9.6' type='text/css' media='all' />
-<link rel='stylesheet' id='style-aose-css' href='https://unpkg.com/aos@2.3.1/dist/aos.css?ver=6.9.6' type='text/css' media='all' />
-<link rel='stylesheet' id='style-wcag-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/wcag.css?hash=1741246363&#038;ver=6.9.6' type='text/css' media='all' />
+<link rel='stylesheet' id='fonts-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/fonts.css?hash=1741246365&#038;ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='style-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/default.css?hash=1749114041&#038;ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='style-desktop-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/desktop.css?hash=1741246366&#038;ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='style-tablet-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/tablet.css?hash=1741246365&#038;ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='style-phone-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/phone.css?hash=1741246365&#038;ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='style-aose-css' href='https://unpkg.com/aos@2.3.1/dist/aos.css?ver=6.9.4' type='text/css' media='all' />
+<link rel='stylesheet' id='style-wcag-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/wcag.css?hash=1741246363&#038;ver=6.9.4' type='text/css' media='all' />
 <link rel='stylesheet' id='newsletter-css' href='https://zamek.szczecin.pl/wp-content/plugins/newsletter/style.css?ver=9.2.4' type='text/css' media='all' />
 <link rel='stylesheet' id='moove_gdpr_frontend-css' href='https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance/dist/styles/gdpr-main.css?ver=5.0.11' type='text/css' media='all' />
 <style id='moove_gdpr_frontend-inline-css' type='text/css'>
@@ -110,7 +110,7 @@ img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 			#moove_gdpr_cookie_modal,#moove_gdpr_cookie_info_bar,.gdpr_cookie_settings_shortcode_content{font-family:&#039;Nunito&#039;,sans-serif}#moove_gdpr_save_popup_settings_button{background-color:#373737;color:#fff}#moove_gdpr_save_popup_settings_button:hover{background-color:#000}#moove_gdpr_cookie_info_bar .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content a.mgbutton,#moove_gdpr_cookie_info_bar .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button.mgbutton{background-color:#a3976a}#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-footer-content .moove-gdpr-button-holder a.mgbutton,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-footer-content .moove-gdpr-button-holder button.mgbutton,.gdpr_cookie_settings_shortcode_content .gdpr-shr-button.button-green{background-color:#a3976a;border-color:#a3976a}#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-footer-content .moove-gdpr-button-holder a.mgbutton:hover,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-footer-content .moove-gdpr-button-holder button.mgbutton:hover,.gdpr_cookie_settings_shortcode_content .gdpr-shr-button.button-green:hover{background-color:#fff;color:#a3976a}#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-close i,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-close span.gdpr-icon{background-color:#a3976a;border:1px solid #a3976a}#moove_gdpr_cookie_info_bar span.moove-gdpr-infobar-allow-all.focus-g,#moove_gdpr_cookie_info_bar span.moove-gdpr-infobar-allow-all:focus,#moove_gdpr_cookie_info_bar button.moove-gdpr-infobar-allow-all.focus-g,#moove_gdpr_cookie_info_bar button.moove-gdpr-infobar-allow-all:focus,#moove_gdpr_cookie_info_bar span.moove-gdpr-infobar-reject-btn.focus-g,#moove_gdpr_cookie_info_bar span.moove-gdpr-infobar-reject-btn:focus,#moove_gdpr_cookie_info_bar button.moove-gdpr-infobar-reject-btn.focus-g,#moove_gdpr_cookie_info_bar button.moove-gdpr-infobar-reject-btn:focus,#moove_gdpr_cookie_info_bar span.change-settings-button.focus-g,#moove_gdpr_cookie_info_bar span.change-settings-button:focus,#moove_gdpr_cookie_info_bar button.change-settings-button.focus-g,#moove_gdpr_cookie_info_bar button.change-settings-button:focus{-webkit-box-shadow:0 0 1px 3px #a3976a;-moz-box-shadow:0 0 1px 3px #a3976a;box-shadow:0 0 1px 3px #a3976a}#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-close i:hover,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-close span.gdpr-icon:hover,#moove_gdpr_cookie_info_bar span[data-href]>u.change-settings-button{color:#a3976a}#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li.menu-item-selected a span.gdpr-icon,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li.menu-item-selected button span.gdpr-icon{color:inherit}#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li a span.gdpr-icon,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li button span.gdpr-icon{color:inherit}#moove_gdpr_cookie_modal .gdpr-acc-link{line-height:0;font-size:0;color:transparent;position:absolute}#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-close:hover i,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li a,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li button,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li button i,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-modal-left-content #moove-gdpr-menu li a i,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-tab-main .moove-gdpr-tab-main-content a:hover,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content a.mgbutton:hover,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button.mgbutton:hover,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content a:hover,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button:hover,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content span.change-settings-button:hover,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button.change-settings-button:hover,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content u.change-settings-button:hover,#moove_gdpr_cookie_info_bar span[data-href]>u.change-settings-button,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content a.mgbutton.focus-g,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button.mgbutton.focus-g,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content a.focus-g,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button.focus-g,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content a.mgbutton:focus,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button.mgbutton:focus,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content a:focus,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content button:focus,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content span.change-settings-button.focus-g,span.change-settings-button:focus,button.change-settings-button.focus-g,button.change-settings-button:focus,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content u.change-settings-button.focus-g,#moove_gdpr_cookie_info_bar.moove-gdpr-dark-scheme .moove-gdpr-info-bar-container .moove-gdpr-info-bar-content u.change-settings-button:focus{color:#a3976a}#moove_gdpr_cookie_modal .moove-gdpr-branding.focus-g span,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-tab-main a.focus-g,#moove_gdpr_cookie_modal .moove-gdpr-modal-content .moove-gdpr-tab-main .gdpr-cd-details-toggle.focus-g{color:#a3976a}#moove_gdpr_cookie_modal.gdpr_lightbox-hide{display:none}
 /*# sourceURL=moove_gdpr_frontend-inline-css */
 </style>
-<link rel='stylesheet' id='recommendStyle-css' href='https://zamek.szczecin.pl/wp-content/plugins/recommend/includes/css/style.css?ver=6.9.6' type='text/css' media='all' />
+<link rel='stylesheet' id='recommendStyle-css' href='https://zamek.szczecin.pl/wp-content/plugins/recommend/includes/css/style.css?ver=6.9.4' type='text/css' media='all' />
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-includes/js/jquery/jquery.min.js?ver=3.7.1" id="jquery-core-js"></script>
 <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.js?ver=3.7.1" id="jquery-root-js"></script>
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1" id="jquery-migrate-js"></script>
@@ -127,7 +127,7 @@ window.RLG = window.RLG || {}; window.RLG.sanitizeAllowedHosts = ["youtube.com",
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/assets/infinitescroll/infinite-scroll.pkgd.min.js?ver=4.0.1" id="responsive-lightbox-infinite-scroll-js"></script>
 <script type="text/javascript" id="responsive-lightbox-js-before">
 /* <![CDATA[ */
-var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"c842ecc774","preview":false,"postId":260,"scriptExtension":false};
+var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"9139542486","preview":false,"postId":260,"scriptExtension":false};
 
 //# sourceURL=responsive-lightbox-js-before
 /* ]]> */
@@ -136,11 +136,11 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/aos.js?ver=4.17.11" id="aos-js"></script>
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/vue.js?ver=2.5.17" id="vue-js"></script>
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/lodash.min.js?ver=4.17.11" id="lodash-js-js"></script>
-<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/global.js?hash=1741246359&amp;ver=6.9.6" id="global-js"></script>
-<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/js.cookie.min.js?hash=1741246363&amp;ver=6.9.6" id="cookie-jq-js"></script>
-<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/sticky.min.js?hash=1741246362&amp;ver=6.9.6" id="sticky-js"></script>
-<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/calendar.js?hash=1741246360&amp;ver=6.9.6" id="calendar-js"></script>
-<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/plugins/recommend/includes/js/global.js?hash=0ads%40&amp;ver=6.9.6#SD" id="recommendGlobal-js"></script>
+<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/global.js?hash=1741246359&amp;ver=6.9.4" id="global-js"></script>
+<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/js.cookie.min.js?hash=1741246363&amp;ver=6.9.4" id="cookie-jq-js"></script>
+<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/sticky.min.js?hash=1741246362&amp;ver=6.9.4" id="sticky-js"></script>
+<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/themes/zamek/js/calendar.js?hash=1741246360&amp;ver=6.9.4" id="calendar-js"></script>
+<script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/plugins/recommend/includes/js/global.js?hash=0ads%40&amp;ver=6.9.4#SD" id="recommendGlobal-js"></script>
 <link rel="https://api.w.org/" href="https://zamek.szczecin.pl/wp-json/" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="https://zamek.szczecin.pl/xmlrpc.php?rsd" />
 <script type="text/javascript">
 	window._se_plugin_version = '8.1.9';
@@ -451,7 +451,6 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 <ul class="sub-menu">
 	<li id="menu-item-21958" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-21958"><a href="https://zamek.szczecin.pl/o-zamku/">O Zamku</a></li>
 	<li id="menu-item-1486" class="menu-item menu-item-type-post_type menu-item-object-template menu-item-1486"><a href="https://zamek.szczecin.pl/dane-kontaktowe">Dane kontaktowe</a></li>
-	<li id="menu-item-23926" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-23926"><a href="https://zamek.szczecin.pl/rada-programowa/">Rada Programowa</a></li>
 	<li id="menu-item-1409" class="menu-item menu-item-type-post_type menu-item-object-template menu-item-1409"><a href="https://zamek.szczecin.pl/plan-sytuacyjny">Plan sytuacyjny</a></li>
 	<li id="menu-item-22394" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-22394"><a href="https://zamek.szczecin.pl/oferta-wynajmu/">Oferta wynajmu</a></li>
 	<li id="menu-item-1442" class="menu-item menu-item-type-post_type menu-item-object-template menu-item-1442"><a href="https://zamek.szczecin.pl/oferty">Oferty</a></li>
@@ -526,7 +525,6 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 <ul class="sub-menu">
 	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-21958"><a href="https://zamek.szczecin.pl/o-zamku/">O Zamku</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-template menu-item-1486"><a href="https://zamek.szczecin.pl/dane-kontaktowe">Dane kontaktowe</a></li>
-	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-23926"><a href="https://zamek.szczecin.pl/rada-programowa/">Rada Programowa</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-template menu-item-1409"><a href="https://zamek.szczecin.pl/plan-sytuacyjny">Plan sytuacyjny</a></li>
 	<li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-22394"><a href="https://zamek.szczecin.pl/oferta-wynajmu/">Oferta wynajmu</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-template menu-item-1442"><a href="https://zamek.szczecin.pl/oferty">Oferty</a></li>
@@ -626,14 +624,14 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
 
                             <div class="controls">
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-07-08" aria-label="poprzedni miesiąc" >
+                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-05-08" aria-label="poprzedni miesiąc" >
                                     <img class="prevButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_prev.png" alt="">
                                     <img class="prevButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_prev.png" alt="">
                                 </a>
 
-                                <h4 class="dark">sierpień 2026</h4>
+                                <h4 class="dark">czerwiec 2026</h4>
 
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-09-08" aria-label="następny miesiąc">
+                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-07-08" aria-label="następny miesiąc">
                                     <img class="nextButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_next.png" alt="">
                                     <img class="nextButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_next.png" alt="">
                                 </a>
@@ -641,11 +639,7 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
                             <div class="sticky">
                                 <ul>
-                                    <li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
+                                    <li class="name_week_desktop" data-day="Pn">
                                             <span>Pn</span>
                                             </li><li class="name_week_desktop" data-day="Wt">
                                             <span>Wt</span>
@@ -703,6 +697,8 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
                                             <span>N</span>
                                             </li><li class="name_week_desktop" data-day="Pn">
                                             <span>Pn</span>
+                                            </li><li class="name_week_desktop" data-day="Wt">
+                                            <span>Wt</span>
                                             </li>                                    <li class="name_week_mobile" data-day="Pn">
                                             <span>Pn</span>
                                             </li><li class="name_week_mobile" data-day="Wt">
@@ -719,78 +715,66 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
                                             <span>N</span>
                                             </li>                                </ul>
                                 <ul>
-                                    <li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li>                                    <li class="calendarEventClick is_event" data-item="1082026">
+                                                                        <li class="calendarEventClick is_event" data-item="1062026">
                                             <span class="">01</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="2082026">
+                                            </li><li class="calendarEventClick is_event" data-item="2062026">
                                             <span class="">02</span>
-                                            </li><li class="calendarEventClick is_event" data-item="3082026">
+                                            </li><li class="calendarEventClick is_event" data-item="3062026">
                                             <span class="">03</span>
-                                            </li><li class="calendarEventClick is_event" data-item="4082026">
+                                            </li><li class="calendarEventClick is_event" data-item="4062026">
                                             <span class="">04</span>
-                                            </li><li class="calendarEventClick is_event" data-item="5082026">
+                                            </li><li class="calendarEventClick is_event" data-item="5062026">
                                             <span class="">05</span>
-                                            </li><li class="calendarEventClick is_event" data-item="6082026">
+                                            </li><li class="calendarEventClick is_event" data-item="6062026">
                                             <span class="">06</span>
-                                            </li><li class="calendarEventClick is_event" data-item="7082026">
+                                            </li><li class="calendarEventClick isWeekend is_event" data-item="7062026">
                                             <span class="">07</span>
-                                            </li><li class="calendarEventClick is_event" data-item="8082026">
+                                            </li><li class="calendarEventClick is_event" data-item="8062026">
                                             <span class="">08</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="9082026">
+                                            </li><li class="calendarEventClick is_event" data-item="9062026">
                                             <span class="">09</span>
-                                            </li><li class="calendarEventClick is_event" data-item="10082026">
+                                            </li><li class="calendarEventClick is_event" data-item="10062026">
                                             <span class="">10</span>
-                                            </li><li class="calendarEventClick is_event" data-item="11082026">
+                                            </li><li class="calendarEventClick is_event" data-item="11062026">
                                             <span class="">11</span>
-                                            </li><li class="calendarEventClick is_event" data-item="12082026">
+                                            </li><li class="calendarEventClick is_event" data-item="12062026">
                                             <span class="">12</span>
-                                            </li><li class="calendarEventClick is_event" data-item="13082026">
+                                            </li><li class="calendarEventClick is_event" data-item="13062026">
                                             <span class="">13</span>
-                                            </li><li class="calendarEventClick is_event" data-item="14082026">
+                                            </li><li class="calendarEventClick isWeekend is_event" data-item="14062026">
                                             <span class="">14</span>
-                                            </li><li class="calendarEventClick is_event" data-item="15082026">
+                                            </li><li class="calendarEventClick is_event" data-item="15062026">
                                             <span class="">15</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="16082026">
+                                            </li><li class="calendarEventClick is_event" data-item="16062026">
                                             <span class="">16</span>
-                                            </li><li class="calendarEventClick is_event" data-item="17082026">
+                                            </li><li class="calendarEventClick is_event" data-item="17062026">
                                             <span class="">17</span>
-                                            </li><li class="calendarEventClick is_event" data-item="18082026">
+                                            </li><li class="calendarEventClick is_event" data-item="18062026">
                                             <span class="">18</span>
-                                            </li><li class="calendarEventClick is_event" data-item="19082026">
+                                            </li><li class="calendarEventClick is_event" data-item="19062026">
                                             <span class="">19</span>
-                                            </li><li class="calendarEventClick is_event" data-item="20082026">
+                                            </li><li class="calendarEventClick is_event" data-item="20062026">
                                             <span class="">20</span>
-                                            </li><li class="calendarEventClick is_event" data-item="21082026">
+                                            </li><li class="calendarEventClick isWeekend is_event" data-item="21062026">
                                             <span class="">21</span>
-                                            </li><li class="calendarEventClick is_event" data-item="22082026">
+                                            </li><li class="calendarEventClick is_event" data-item="22062026">
                                             <span class="">22</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="23082026">
+                                            </li><li class="calendarEventClick is_event" data-item="23062026">
                                             <span class="">23</span>
-                                            </li><li class="calendarEventClick is_event" data-item="24082026">
+                                            </li><li class="calendarEventClick is_event" data-item="24062026">
                                             <span class="">24</span>
-                                            </li><li class="calendarEventClick is_event" data-item="25082026">
+                                            </li><li class="calendarEventClick is_event" data-item="25062026">
                                             <span class="">25</span>
-                                            </li><li class="calendarEventClick is_event" data-item="26082026">
+                                            </li><li class="calendarEventClick is_event" data-item="26062026">
                                             <span class="">26</span>
-                                            </li><li class="calendarEventClick is_event" data-item="27082026">
+                                            </li><li class="calendarEventClick is_event" data-item="27062026">
                                             <span class="">27</span>
-                                            </li><li class="calendarEventClick is_event" data-item="28082026">
+                                            </li><li class="calendarEventClick isWeekend is_event" data-item="28062026">
                                             <span class="">28</span>
-                                            </li><li class="calendarEventClick is_event" data-item="29082026">
+                                            </li><li class="calendarEventClick is_event" data-item="29062026">
                                             <span class="">29</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="30082026">
+                                            </li><li class="calendarEventClick is_event" data-item="30062026">
                                             <span class="">30</span>
-                                            </li><li class="calendarEventClick is_event" data-item="31082026">
-                                            <span class="">31</span>
                                             </li>
                                 </ul>
                             </div>
@@ -804,23 +788,683 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
 
                                                                                                                 <div class="flex-item">
-                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/"
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/szczecinskie-swieto-klasyki-filmowej-w-kinie-zamek/"
                                                                    class="event-image-box">
                                                                     <div class="background-hover-events">
                                                                         <div role="img"
-                                                                             aria-label="Zamkowe Noce Filmowe 2026"
+                                                                             aria-label="Szczecińskie Święto Klasyki Filmowej"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/klasykafilmowa_wwwzamek.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/szczecinskie-swieto-klasyki-filmowej-w-kinie-zamek/">
+                                                                        <p class="date">09-06-2026 &#8211; 14-06-2026, 16-06-2026 &#8211; 21-06-2026, 23-06-2026 &#8211; 28-06-2026</p>
+                                                                        <p class="title">Szczecińskie Święto Klasyki Filmowej</p>
+                                                                    </a>
+                                                                    <p class="describe">W czerwcu Kino Zamek zaprasza na święto klasyki filmowej. Przez niemal cały miesiąc prezentować będziemy na naszym ekranie niezapomniane dzieła filmowe, stworzone przez najwybitniejszych twórców, będące dziś określane jako KLASYKA KINA.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=Pedro Almodovar" class="change-color change-color-font">Pedro Almodovar,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a><a href="/?s=Andrzej Wajda" class="change-color change-color-font">Andrzej Wajda,&nbsp;</a><a href="/?s=Krzysztof Kieślowski" class="change-color change-color-font">Krzysztof Kieślowski,&nbsp;</a><a href="/?s=Luis Bunuel" class="change-color change-color-font">Luis Bunuel,&nbsp;</a><a href="/?s=Andrzej Żuławski" class="change-color change-color-font">Andrzej Żuławski,&nbsp;</a><a href="/?s=Tadeusz Konwicki" class="change-color change-color-font">Tadeusz Konwicki,&nbsp;</a><a href="/?s=Jerzy Kawalerowicz" class="change-color change-color-font">Jerzy Kawalerowicz,&nbsp;</a><a href="/?s=Alan J. Pakula" class="change-color change-color-font">Alan J. Pakula,&nbsp;</a><a href="/?s=Sofia Coppola" class="change-color change-color-font">Sofia Coppola,&nbsp;</a><a href="/?s=Jean-Luc Godard" class="change-color change-color-font">Jean-Luc Godard,&nbsp;</a><a href="/?s=Francis Ford Coppola" class="change-color change-color-font">Francis Ford Coppola,&nbsp;</a><a href="/?s=Wong Kar-wai" class="change-color change-color-font">Wong Kar-wai,&nbsp;</a><a href="/?s=Joseph Losey" class="change-color change-color-font">Joseph Losey,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/mlode-matki/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Młode matki"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/MLODE-MATKI-1.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/mlode-matki/">
+                                                                        <p class="date">09-06-2026, 11-06-2026</p>
+                                                                        <p class="title">Młode matki</p>
+                                                                    </a>
+                                                                    <p class="describe">Akcja nowego filmu braci Dardenne rozgrywa się w domu opieki dla młodych matek w belgijskim Liège. Poznajemy pięć nastolatek – Julie, Jessicę, Perlę, Naïmę i Ariane – zmuszonych do tego, by zmierzyć się z trudami wczesnego macierzyństwa.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/do-utraty-tchu/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Do utraty tchu"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/Do-utraty-tchu-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/do-utraty-tchu/">
+                                                                        <p class="date">09-06-2026</p>
+                                                                        <p class="title">Do utraty tchu</p>
+                                                                    </a>
+                                                                    <p class="describe">Historia gangstera (Jean-Paul Belmondo) i jego amerykańskiej dziewczyny (Jean Seberg) to ekscytująca zabawa gatunkami oraz buńczuczna deklaracja twórcy, który zdaje się mówić: „Nazywam się Godard i na waszych oczach zmieniam to, co wszyscy kochamy najbardziej: KINO”.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/aniol-morski/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Anioł morski"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/Aniol-morski-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/aniol-morski/">
+                                                                        <p class="date">10-06-2026, 18-06-2026, 23-06-2026</p>
+                                                                        <p class="title">Anioł morski</p>
+                                                                    </a>
+                                                                    <p class="describe">Mateusz (Sebastian Pawlak) i Agata (Sylwia Gola) są w pozornie udanym związku. Jednak wszystko zmienia się, kiedy mężczyzna odkrywa, że jego partnerka z kimś się spotyka. "Anioł morski" to "Sceny z życia małżeńskiego" przeniesione do epoki New Age i poliamorii.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/milczenie-owiec/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Milczenie owiec"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/MILCZENIE-OWIEC-4.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/milczenie-owiec/">
+                                                                        <p class="date">10-06-2026</p>
+                                                                        <p class="title">Milczenie owiec</p>
+                                                                    </a>
+                                                                    <p class="describe">35 lat od premiery. Owce wciąż krzyczą… Młoda kadetka FBI, Clarice Starling (w tej roli rewelacyjna Jodie Foster) otrzymuje zadanie schwytania seryjnego mordercy zwanego Buffalo Billem. W tym celu zostaje wysłana do doktora Hannibala Lectera (ikoniczna rola Anthony’ego Hopkinsa) – uwięzionego w celi psychopaty i kanibala, który może pomóc w ustaleniu tożsamości zabójcy.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/czlowiek-z-marmuru/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Człowiek z marmuru"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/czlowiek_z_marmuru_03_gallery.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/czlowiek-z-marmuru/">
+                                                                        <p class="date">11-06-2026</p>
+                                                                        <p class="title">Człowiek z marmuru</p>
+                                                                    </a>
+                                                                    <p class="describe">Agnieszka (brawurowy debiut Krystyny Jandy), młoda i zadziorna reżyserka filmowa, decyduje się zrealizować film o stalinowskim przodowniku pracy Mateuszu Birkucie (Jerzy Radziwiłowicz).</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a><a href="/?s=WAJDA: re- wizje" class="change-color change-color-font">WAJDA: re- wizje,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/matador/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Matador"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Matador-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/matador/">
+                                                                        <p class="date">12-06-2026</p>
+                                                                        <p class="title">Matador</p>
+                                                                    </a>
+                                                                    <p class="describe">Thriller psychologiczny o zabarwieniu melodramatycznym. Były torreador, Diego Montes zmuszony do zejścia z areny z powodu ciężkiej rany zadanej przez byka i prawniczka, María Cardenal dzielą chorobliwą obsesję na punkcie śmierci i niczym dwa magnesy przyciągają się do siebie.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/orly-republiki/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Orły republiki"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/ORLY-REPUBLIKI-1.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/orly-republiki/">
+                                                                        <p class="date">12-06-2026 &#8211; 14-06-2026, 17-06-2026</p>
+                                                                        <p class="title">Orły republiki</p>
+                                                                    </a>
+                                                                    <p class="describe">George Fahmy to największa gwiazda egipskiego kina. Zwany jest “faraonem ekranu”. Zwraca na niego uwagę sam prezydent Egiptu, który życzy sobie, aby gwiazdor zagrał główną rolę w filmie biograficznym, gloryfikującym prezydenta. Okazuje się, że jest to propozycja nie do odrzucenia – władza szantażem wymusza na aktorze jej przyjęcie.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/prawo-pozadania/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Prawo pożądania"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Prawo-pozadania-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/prawo-pozadania/">
+                                                                        <p class="date">13-06-2026</p>
+                                                                        <p class="title">Prawo pożądania</p>
+                                                                    </a>
+                                                                    <p class="describe">Klasyczny film Pedra Almodovara, który kładzie podwaliny pod jego styl filmowy, uniemożliwiając, bez obejrzenia go, pełne zrozumienie świata, który reżyser stworzył przez kolejne lata.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/wenecja-awangarda-bez-granic/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Wenecja. Awangarda bez granic"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2022/11/Wenecja.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/wenecja-awangarda-bez-granic/">
+                                                                        <p class="date">13-06-2026</p>
+                                                                        <p class="title">Wenecja. Awangarda bez granic</p>
+                                                                    </a>
+                                                                    <p class="describe">Carlo Cecchi, mistrz włoskiego teatru, który pracował z wielkimi intelektualistami i twórcami kultury XX wieku, przybliża nam pamięć tego miasta. Wenecję chłonie również Hania Rani. Ceniona polska pianistka i kompozytorka w muzeach i wąskich uliczkach szuka inspiracji, by skomponować ścieżkę dźwiękową do tegoż filmu.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=film dokumentalny" class="change-color change-color-font">film dokumentalny,&nbsp;</a><a href="/?s=Wenecja" class="change-color change-color-font">Wenecja,&nbsp;</a><a href="/?s=Włochy" class="change-color change-color-font">Włochy,&nbsp;</a><a href="/?s=Hania Rani" class="change-color change-color-font">Hania Rani,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/90-urodziny-pavarottiego/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="90. urodziny Pavarottiego"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/90.-urodziny-Pavarottiego-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/90-urodziny-pavarottiego/">
+                                                                        <p class="date">14-06-2026, 28-06-2026</p>
+                                                                        <p class="title">90. urodziny Pavarottiego</p>
+                                                                    </a>
+                                                                    <p class="describe">Koncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=koncert w kinie" class="change-color change-color-font">koncert w kinie,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/kobiety-na-skraju-zalamania-nerwowego/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Kobiety na skraju załamania nerwowego"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Kobiety-na-skraju-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/kobiety-na-skraju-zalamania-nerwowego/">
+                                                                        <p class="date">14-06-2026</p>
+                                                                        <p class="title">Kobiety na skraju załamania nerwowego</p>
+                                                                    </a>
+                                                                    <p class="describe">Wyjątkowe i niezapomniane dzieło, które zajmuje uprzywilejowane miejsce w filmografii Pedra Almodovara, a także w historii kina hiszpańskiego. Film wyznaczył punkt zwrotny w karierze reżysera, przynosząc mu międzynarodową sławę i pierwszą nominację do Oscara.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/spragnieni-milosci-3/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Spragnieni miłości"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2022/03/Spragnieni-milosci_rez.-Wong-Kar-Wai_Hongkong_2000_01.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/spragnieni-milosci-3/">
+                                                                        <p class="date">16-06-2026</p>
+                                                                        <p class="title">Spragnieni miłości</p>
+                                                                    </a>
+                                                                    <p class="describe">Ekstrawagancko zmysłowe arcydzieło to poemat o niespełnionych pragnieniach i dotkliwej samotności. Jeden z najpiękniejszych obrazów w historii kina, mistrzowsko skrojony z cieni, lustrzanych odbić, ukradkiem chwytanych gestów i spojrzeń.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/caravaggio-arcydziela-niepokornego-geniusza/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Caravaggio. Arcydzieła niepokornego geniusza"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/Caravaggio-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/caravaggio-arcydziela-niepokornego-geniusza/">
+                                                                        <p class="date">16-06-2026</p>
+                                                                        <p class="title">Caravaggio. Arcydzieła niepokornego geniusza</p>
+                                                                    </a>
+                                                                    <p class="describe">Arcydzieła Caravaggia należą do najbardziej rozpoznawalnych na świecie dzięki mistrzowskiemu operowaniu światłem i niezwykłemu realizmowi. Ten film to jednak nie tylko opowieść o sztuce, ale też śledztwo w sprawie awanturniczego życia i tajemniczej śmierci artysty.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=film o sztuce" class="change-color change-color-font">film o sztuce,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/donnie-darko/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Donnie Darko"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Donnie-Darko-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/donnie-darko/">
+                                                                        <p class="date">17-06-2026</p>
+                                                                        <p class="title">Donnie Darko</p>
+                                                                    </a>
+                                                                    <p class="describe">“Donnie Darko” jest jak skok w głąb króliczej nory. To filmowa układanka, w której mieszczą się podróże w czasie, lynchowskie spojrzenie na amerykańskie przedmieścia, high-school drama, parodia coachingu, fizyka, filozofia, społeczne niepokoje z przełomu tysiącleci i “Alicja w Krainie Czarów”.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/pociagi-dyskusyjny-klub-filmowy-zamek/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Pociągi &#8211; Dyskusyjny Klub Filmowy &#8220;Zamek&#8221;"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Pociagi.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/pociagi-dyskusyjny-klub-filmowy-zamek/">
+                                                                        <p class="date">18-06-2026</p>
+                                                                        <p class="title">Pociągi &#8211; Dyskusyjny Klub Filmowy &#8220;Zamek&#8221;</p>
+                                                                    </a>
+                                                                    <p class="describe">Artystyczna, refleksyjna podróż przez XX wiek, stworzona wyłącznie z archiwalnych materiałów filmowych. Bez słów, pełen piękna i goryczy obraz, w którym zachwyt nad przemieszczaniem staje się przekleństwem, a łzy radości mieszają się z bólem rozpaczy.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a><a href="/?s=DKF Zamek" class="change-color change-color-font">DKF Zamek,&nbsp;</a><a href="/?s=Dyskusyjny Klub Filmowy Zamek" class="change-color change-color-font">Dyskusyjny Klub Filmowy Zamek,&nbsp;</a><a href="/?s=Maciej Drygas" class="change-color change-color-font">Maciej Drygas,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/przeklenstwa-niewinnosci/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Przekleństwa niewinności"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Przeklenstwa-niewinnosci-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/przeklenstwa-niewinnosci/">
+                                                                        <p class="date">19-06-2026</p>
+                                                                        <p class="title">Przekleństwa niewinności</p>
+                                                                    </a>
+                                                                    <p class="describe">Państwo Lisbon są rodzicami pięciu atrakcyjnych nastoletnich córek. Dziewczęta, w wieku od trzynastu do siedemnastu lat, zaczynają odkrywać przyjemności dojrzewania, a ich matka i ojciec interesują się w zdrowy sposób ich życiem, choć mają nieco purytańskie poglądy.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/drugie-zycie/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Drugie życie"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/DRUGIE-ZYCIE-3.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/drugie-zycie/">
+                                                                        <p class="date">19-06-2026 &#8211; 21-06-2026, 24-06-2026</p>
+                                                                        <p class="title">Drugie życie</p>
+                                                                    </a>
+                                                                    <p class="describe">Zdobywca nagrody publiczności na festiwalu filmowym w Wenecji – to emanujący optymizmem i pogodą ducha portret dojrzałej kobiety, w którą wciela się Carmen Maura („Kobiety na skraju załamania nerwowego”, „Volver”).</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Co się zdarzyło Baby Jane?"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Co-sie-zdarzylo-Baby-Jane-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/co-sie-zdarzylo-baby-jane/">
+                                                                        <p class="date">20-06-2026</p>
+                                                                        <p class="title">Co się zdarzyło Baby Jane?</p>
+                                                                    </a>
+                                                                    <p class="describe">Dwie legendarne gwiazdy złotej ery Hollywood, Bette Davis i Joan Crawford, przenoszą autentyczny, prywatny i zawodowy konflikt na ekran w słynnym, kontrowersyjnym thrillerze psychologicznym Roberta Aldricha.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/klimt-i-schiele-eros-i-psyche/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Klimt i Schiele. Eros i Psyche"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2023/01/Klimt-Schiele.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/klimt-i-schiele-eros-i-psyche/">
+                                                                        <p class="date">20-06-2026</p>
+                                                                        <p class="title">Klimt i Schiele. Eros i Psyche</p>
+                                                                    </a>
+                                                                    <p class="describe">Film opowiada o tym niezwykłym momencie dla sztuki, literatury i muzyki, w którym wśród artystów krążą nowe idee, Freud odkrywa popędy psychiki, a kobiety zaczynają walkę o uzyskanie niezależności.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=dokument" class="change-color change-color-font">dokument,&nbsp;</a><a href="/?s=Włochy" class="change-color change-color-font">Włochy,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/van-gogh-pola-zboz-i-zachmurzone-niebiosa/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Van Gogh. Pola zbóż i zachmurzone niebiosa"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2023/05/Van-gogh.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/van-gogh-pola-zboz-i-zachmurzone-niebiosa/">
+                                                                        <p class="date">21-06-2026</p>
+                                                                        <p class="title">Van Gogh. Pola zbóż i zachmurzone niebiosa</p>
+                                                                    </a>
+                                                                    <p class="describe">Nowe spojrzenie na Van Gogha dzięki spuściźnie największej prywatnej kolekcjonerki prac malarza - Helene Kröller-Müller (1869-1939), która na początku XX wieku kupiła prawie 300 jego dzieł - obrazów i rysunków.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=film dokumentalny" class="change-color change-color-font">film dokumentalny,&nbsp;</a><a href="/?s=Włochy" class="change-color change-color-font">Włochy,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/casablanca/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Casablanca"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Casablanca-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/casablanca/">
+                                                                        <p class="date">21-06-2026</p>
+                                                                        <p class="title">Casablanca</p>
+                                                                    </a>
+                                                                    <p class="describe">„Zawsze będziemy mieli Paryż…” – powiada Rick do Ilsy – a my zawsze już będziemy mieli Casablancę. Humphrey Bogart w swojej najbardziej ikonicznej roli przewodzi genialnej obsadzie w filmie, który mógłby konkurować o tytuł „melodramatu wszech czasów”, ale który zarazem jest dziełem na wskroś politycznym, pomyślanym jako hollywoodzki okrzyk bitewny II wojny światowej.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/ostatni-dzien-lata/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Ostatni dzień lata"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Ostatni-dzien-lata-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/ostatni-dzien-lata/">
+                                                                        <p class="date">22-06-2026</p>
+                                                                        <p class="title">Ostatni dzień lata</p>
+                                                                    </a>
+                                                                    <p class="describe">Na opustoszałej, nadmorskiej plaży spotyka się dwoje ludzi - kobieta i mężczyzna, którzy próbują przełamać samotność, choć każde z nich nosi w sobie trudną do wypowiedzenia przeszłość.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/swiety-piotr-i-inne-papieskie-bazyliki-rzymu/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Święty Piotr i inne papieskie bazyliki Rzymu"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2024/11/swiety-piotr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/swiety-piotr-i-inne-papieskie-bazyliki-rzymu/">
+                                                                        <p class="date">22-06-2026</p>
+                                                                        <p class="title">Święty Piotr i inne papieskie bazyliki Rzymu</p>
+                                                                    </a>
+                                                                    <p class="describe">Ten film to fascynujący spacer po czterech bazylikach papieskich Rzymu: św. Piotra, św. Jana na Lateranie, Santa Maria Maggiore (św. Marii Większej) i Św. Pawła za Murami.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=Włochy" class="change-color change-color-font">Włochy,&nbsp;</a><a href="/?s=film o sztuce" class="change-color change-color-font">film o sztuce,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/najwazniejsze-to-kochac/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Najważniejsze to kochać"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Najwazniejsze-to-kochac-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/najwazniejsze-to-kochac/">
+                                                                        <p class="date">23-06-2026</p>
+                                                                        <p class="title">Najważniejsze to kochać</p>
+                                                                    </a>
+                                                                    <p class="describe">Kipiący emocjami dramat, historia burzliwych relacji między zmęczoną życiem podrzędną aktorką Nadine, zakochanym w niej fotografem Servaisem i jej wzgardzonym mężem Jacquesem.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/narwana-milosc/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Narwana miłość"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Narwana-milosc-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/narwana-milosc/">
+                                                                        <p class="date">24-06-2026</p>
+                                                                        <p class="title">Narwana miłość</p>
+                                                                    </a>
+                                                                    <p class="describe">Czerpiąc inspirację z „Idioty” Dostojewskiego Żuławski po raz kolejny wraca do jednego z najważniejszych tematów swojej twórczości, przygląda się dynamice emocjonalnego trójkąta, tu rozpisanego między młodą Mary (Sophie Marceu) i jej kochanków – gangstera Micky’ego (Tchéky Karyo) oraz naiwnego marzyciela Leona (Francis Huster).</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/opetanie/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Opętanie"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2023/12/Opetanie-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/opetanie/">
+                                                                        <p class="date">25-06-2026</p>
+                                                                        <p class="title">Opętanie</p>
+                                                                    </a>
+                                                                    <p class="describe">“Opętanie” Andrzeja Żuławskiego powstało po przerwanej przez komunistyczne władze realizacji “Na srebrnym globie”. Nagrodzony na Międzynarodowym Festiwalu Filmowym w Cannes, drugi francuski film artysty, mimo światowego rozgłosu nigdy nie miał oficjalnej szerokiej dystrybucji w Polsce.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/czytajac-lolite-w-teheranie/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Czytając Lolitę w Teheranie"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/CZYTAJAC-LOLITE-W-TEHERANIE-5.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/czytajac-lolite-w-teheranie/">
+                                                                        <p class="date">25-06-2026, 27-06-2026 &#8211; 28-06-2026</p>
+                                                                        <p class="title">Czytając Lolitę w Teheranie</p>
+                                                                    </a>
+                                                                    <p class="describe">Oparty na bestsellerowej autobiografii Azar Nafisi film to przejmująca i wciąż aktualna opowieść o kobiecej solidarności, odwadze i sile literatury.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/turner-constable-przelomowa-wystawa/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Turner &#038; Constable. Przełomowa wystawa"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/05/Turner-Constable-kadr.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/turner-constable-przelomowa-wystawa/">
+                                                                        <p class="date">26-06-2026</p>
+                                                                        <p class="title">Turner &#038; Constable. Przełomowa wystawa</p>
+                                                                    </a>
+                                                                    <p class="describe">Zapraszamy w filmową podróż do londyńskiego muzeum Tate Britain na najnowszą wystawę z okazji 250. rocznicy urodzin dwóch gigantów brytyjskiego malarstwa. Dokument z cenionej serii „Wystawa w Kinie” prezentuje splecione losy pejzażystów Turnera i Constable’a oraz ich arcydzieła w zbliżeniach niedostępnych dla zwykłego turysty.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/sluzacy/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Służący"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Sluzacy-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/sluzacy/">
+                                                                        <p class="date">26-06-2026</p>
+                                                                        <p class="title">Służący</p>
+                                                                    </a>
+                                                                    <p class="describe">Precyzyjnie skonstruowany thriller psychologiczny. Zaczyna się jak kameralny portret luksusowego londyńskiego życia: młody, bogaty mężczyzna zatrudnia osobistego kamerdynera, by uporządkować swoją codzienność. Z każdą kolejną sceną film odsłania coraz więcej dwuznaczności, a relacja między bohaterami stopniowo traci swoje oczywiste ramy.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/botticelli-florencja-i-medyceusze/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Botticelli, Florencja i Medyceusze"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2024/04/botticelli_venus.jpg');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/botticelli-florencja-i-medyceusze/">
+                                                                        <p class="date">27-06-2026</p>
+                                                                        <p class="title">Botticelli, Florencja i Medyceusze</p>
+                                                                    </a>
+                                                                    <p class="describe">Salvador Dali i Andy Warhol, Terry Gilliam i David LaChapelle, Jeff Koons i Lady Gaga. Co łączy tych artystów? Fascynacja Botticellim.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/wszyscy-ludzie-prezydenta/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Wszyscy ludzie prezydenta"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Wszyscy-ludzie-prezydenta-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/wszyscy-ludzie-prezydenta/">
+                                                                        <p class="date">27-06-2026</p>
+                                                                        <p class="title">Wszyscy ludzie prezydenta</p>
+                                                                    </a>
+                                                                    <p class="describe">Kino śledcze w swojej najczystszej formie – Alan J. Pakula rekonstruuje wydarzenia, które doprowadziły do upadku prezydenta Nixona, ale zamiast sensacyjnej narracji wybiera drobiazgowy, reporterski zapis dochodzenia. Robert Redford i Dustin Hoffman wcielają się w reporterów, którzy podążają tropem anonimowego informatora.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/faraon/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="Faraon"
+                                                                             class="image"
+                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2026/06/Faraon-kadr.png');"></div>
+                                                                    </div>
+                                                                </a>
+                                                                <div class="event-details">
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/faraon/">
+                                                                        <p class="date">28-06-2026</p>
+                                                                        <p class="title">Faraon</p>
+                                                                    </a>
+                                                                    <p class="describe">Młody faraon obejmuje władzę w Egipcie po zmarłym ojcu. Nie zdaje sobie jeszcze sprawy, jak potężna jest władza kapłanów. Podejmie próbę reform zmierzających do wzmocnienia państwa, władzy faraona i wojska.</p>
+                                                                    <p class="tags change-color change-color-font">
+                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=klasyka kina" class="change-color change-color-font">klasyka kina,&nbsp;</a>                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                                                                                        <div class="flex-item">
+                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-szkoda-ze-nareszcie/"
+                                                                   class="event-image-box">
+                                                                    <div class="background-hover-events">
+                                                                        <div role="img"
+                                                                             aria-label="ZAMKOWE NOCE FILMOWE: Szkoda, że nareszcie"
                                                                              class="image"
                                                                              style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2024/05/zamkowenocefilmowe2024_wwwzamek.jpg');"></div>
                                                                     </div>
                                                                 </a>
                                                                 <div class="event-details">
-                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/">
-                                                                        <p class="date">11-08-2026, 18-08-2026, 25-08-2026</p>
-                                                                        <p class="title">Zamkowe Noce Filmowe 2026</p>
+                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-szkoda-ze-nareszcie/">
+                                                                        <p class="date">30-06-2026</p>
+                                                                        <p class="title">ZAMKOWE NOCE FILMOWE: Szkoda, że nareszcie</p>
                                                                     </a>
-                                                                    <p class="describe">Zamkowe Noce Filmowe to doroczne plenerowe prezentacje filmów wartościowych i ważnych, które odbywają się w plenerowej przestrzeni Zamku . Ich charakter jest kontynuacją programu prezentowanego przez cały filmowy rok w cenionym przez miłośników dobrego filmu Kinie Zamek.</p>
+                                                                    <p class="describe">Film przedstawia postać Jacka „Budynia” Szymkiewicza – nietuzinkowego, utalentowanego artysty i osobowości scenicznej, znanego z wyjątkowych, poetyckich tekstów i pasji do muzyki.</p>
                                                                     <p class="tags change-color change-color-font">
-                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=Zamkowe Noce Filmowe" class="change-color change-color-font">Zamkowe Noce Filmowe,&nbsp;</a><a href="/?s=kino plenerowe" class="change-color change-color-font">kino plenerowe,&nbsp;</a>                                                                    </p>
+                                                                        #&nbsp;<a href="/?s=Zamkowe Noce Filmowe" class="change-color change-color-font">Zamkowe Noce Filmowe,&nbsp;</a>                                                                    </p>
                                                                 </div>
                                                             </div>
                                                             <div class="flex-item"></div><div class="flex-item"></div>                                                </div>
@@ -1187,7 +1831,7 @@ var newsletter_data = {"action_url":"https://zamek.szczecin.pl/wp-admin/admin-aj
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/uploads/wpmss/wpmss.min.js?ver=1540891784" id="wpmss-js"></script>
 <script type="text/javascript" id="moove_gdpr_frontend-js-extra">
 /* <![CDATA[ */
-var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"260","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"53683cad74"};
+var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"260","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"bed3c9beba"};
 //# sourceURL=moove_gdpr_frontend-js-extra
 /* ]]> */
 </script>
@@ -1204,12 +1848,12 @@ var gdpr_consent__cookies = "strict|thirdparty"
 /* ]]> */
 </script>
 <script id="wp-emoji-settings" type="application/json">
-{"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://zamek.szczecin.pl/wp-includes/js/wp-emoji-release.min.js?ver=6.9.6"}}
+{"baseUrl":"https://s.w.org/images/core/emoji/17.0.2/72x72/","ext":".png","svgUrl":"https://s.w.org/images/core/emoji/17.0.2/svg/","svgExt":".svg","source":{"concatemoji":"https://zamek.szczecin.pl/wp-includes/js/wp-emoji-release.min.js?ver=6.9.4"}}
 </script>
 <script type="module">
 /* <![CDATA[ */
 /*! This file is auto-generated */
-var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof HTMLScriptElement))throw new Error("Element missing: "+e);const r=JSON.parse(t.text),s=(window._wpemojiSettings=r,"wpEmojiSettingsSupports"),o=["flag","emoji"];function i(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(s,JSON.stringify(t))}catch(e){}}function c(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0);const r=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);return t.every((e,t)=>e===r[t])}function p(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var n=e.getImageData(16,16,1,1);for(let e=0;e<n.data.length;e++)if(0!==n.data[e])return!1;return!0}function u(e,t,n,r){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!r(e,"\ud83e\u1fac8")}return!1}function f(e,t,n,r){let a;const s=(a="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):document.createElement("canvas")).getContext("2d",{willReadFrequently:!0}),o=(s.textBaseline="top",s.font="600 32px Arial",{});return e.forEach(e=>{o[e]=t(s,e,n,r)}),o}function a(e){var t=document.createElement("script");t.src=e,t.defer=!0,document.head.appendChild(t)}r.supports={everything:!0,everythingExceptFlag:!0},new Promise(t=>{let n=function(){try{var e=JSON.parse(sessionStorage.getItem(s));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(o),u.toString(),c.toString(),p.toString()].join(",")+"));",r=new Blob([e],{type:"text/javascript"});const a=new Worker(URL.createObjectURL(r),{name:"wpTestEmojiSupports"});return void(a.onmessage=e=>{i(n=e.data),a.terminate(),t(n)})}catch(e){}i(n=f(o,u,c,p))}t(n)}).then(e=>{for(const n in e)r.supports[n]=e[n],r.supports.everything=r.supports.everything&&r.supports[n],"flag"!==n&&(r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&r.supports[n]);var t;r.supports.everythingExceptFlag=r.supports.everythingExceptFlag&&!r.supports.flag,r.supports.everything||((t=r.source||{}).concatemoji?a(t.concatemoji):t.wpemoji&&t.twemoji&&(a(t.twemoji),a(t.wpemoji)))});
+const a=JSON.parse(document.getElementById("wp-emoji-settings").textContent),o=(window._wpemojiSettings=a,"wpEmojiSettingsSupports"),s=["flag","emoji"];function i(e){try{var t={supportTests:e,timestamp:(new Date).valueOf()};sessionStorage.setItem(o,JSON.stringify(t))}catch(e){}}function c(e,t,n){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);t=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(n,0,0);const a=new Uint32Array(e.getImageData(0,0,e.canvas.width,e.canvas.height).data);return t.every((e,t)=>e===a[t])}function p(e,t){e.clearRect(0,0,e.canvas.width,e.canvas.height),e.fillText(t,0,0);var n=e.getImageData(16,16,1,1);for(let e=0;e<n.data.length;e++)if(0!==n.data[e])return!1;return!0}function u(e,t,n,a){switch(t){case"flag":return n(e,"\ud83c\udff3\ufe0f\u200d\u26a7\ufe0f","\ud83c\udff3\ufe0f\u200b\u26a7\ufe0f")?!1:!n(e,"\ud83c\udde8\ud83c\uddf6","\ud83c\udde8\u200b\ud83c\uddf6")&&!n(e,"\ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc65\udb40\udc6e\udb40\udc67\udb40\udc7f","\ud83c\udff4\u200b\udb40\udc67\u200b\udb40\udc62\u200b\udb40\udc65\u200b\udb40\udc6e\u200b\udb40\udc67\u200b\udb40\udc7f");case"emoji":return!a(e,"\ud83e\u1fac8")}return!1}function f(e,t,n,a){let r;const o=(r="undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?new OffscreenCanvas(300,150):document.createElement("canvas")).getContext("2d",{willReadFrequently:!0}),s=(o.textBaseline="top",o.font="600 32px Arial",{});return e.forEach(e=>{s[e]=t(o,e,n,a)}),s}function r(e){var t=document.createElement("script");t.src=e,t.defer=!0,document.head.appendChild(t)}a.supports={everything:!0,everythingExceptFlag:!0},new Promise(t=>{let n=function(){try{var e=JSON.parse(sessionStorage.getItem(o));if("object"==typeof e&&"number"==typeof e.timestamp&&(new Date).valueOf()<e.timestamp+604800&&"object"==typeof e.supportTests)return e.supportTests}catch(e){}return null}();if(!n){if("undefined"!=typeof Worker&&"undefined"!=typeof OffscreenCanvas&&"undefined"!=typeof URL&&URL.createObjectURL&&"undefined"!=typeof Blob)try{var e="postMessage("+f.toString()+"("+[JSON.stringify(s),u.toString(),c.toString(),p.toString()].join(",")+"));",a=new Blob([e],{type:"text/javascript"});const r=new Worker(URL.createObjectURL(a),{name:"wpTestEmojiSupports"});return void(r.onmessage=e=>{i(n=e.data),r.terminate(),t(n)})}catch(e){}i(n=f(s,u,c,p))}t(n)}).then(e=>{for(const n in e)a.supports[n]=e[n],a.supports.everything=a.supports.everything&&a.supports[n],"flag"!==n&&(a.supports.everythingExceptFlag=a.supports.everythingExceptFlag&&a.supports[n]);var t;a.supports.everythingExceptFlag=a.supports.everythingExceptFlag&&!a.supports.flag,a.supports.everything||((t=a.source||{}).concatemoji?r(t.concatemoji):t.wpemoji&&t.twemoji&&(r(t.twemoji),r(t.wpemoji)))});
 //# sourceURL=https://zamek.szczecin.pl/wp-includes/js/wp-emoji-loader.min.js
 /* ]]> */
 </script>
@@ -1367,14 +2011,14 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
                 document.addEventListener("DOMContentLoaded", function() {
                     var el = document.querySelector(".ctn_load_time_in_sec");
                     if (el) {
-                        el.textContent = "0.650 seconds";
+                        el.textContent = "0.599 seconds";
                     }
                 });
             </script>
             </body>
 </html>
 
-<!-- Dynamic page generated in 0.907 seconds. -->
-<!-- Cached page generated by WP-Super-Cache on 2026-08-08 08:22:17 -->
+<!-- Dynamic page generated in 1.233 seconds. -->
+<!-- Cached page generated by WP-Super-Cache on 2026-06-08 08:38:08 -->
 
 <!-- Compression = gzip -->

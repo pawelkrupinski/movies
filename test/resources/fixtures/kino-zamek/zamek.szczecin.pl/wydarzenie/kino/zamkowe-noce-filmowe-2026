@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -9,7 +8,7 @@
 
     <meta charset="utf-8"/>
     <title>
-        Zamek Książąt Pomorskich - Kino | Zamek Książąt Pomorskich
+        Zamek Książąt Pomorskich - Zamkowe Noce Filmowe 2026 | Zamek Książąt Pomorskich
     </title>
     <link rel="shortcut icon" href="https://zamek.szczecin.pl/wp-content/themes/zamek/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,19 +22,20 @@
         var homeUrl = 'https://zamek.szczecin.pl';
         var lang = 'pl';
     </script>
-    <title>Kino | Zamek Książąt Pomorskich</title>
+    <title>Zamkowe Noce Filmowe 2026 | Zamek Książąt Pomorskich</title>
 
 <!-- The SEO Framework: stworzone przez Sybre Waaijer -->
 <meta name="robots" content="max-snippet:-1,max-image-preview:standard,max-video-preview:-1" />
-<link rel="canonical" href="https://zamek.szczecin.pl/wydarzenia/kino/" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zamek.szczecin.pl/#/schema/WebSite","url":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich","description":"Zamek Książąt Pomorskich – renesansowy zamek usytuowany na Wzgórzu Zamkowym w Szczecinie, w sąsiedztwie Odry, historyczna siedziba rodu Gryfitów","inLanguage":"pl-PL","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://zamek.szczecin.pl/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://zamek.szczecin.pl/#/schema/Organization","name":"Zamek Książąt Pomorskich","url":"https://zamek.szczecin.pl/"}},{"@type":"WebPage","@id":"https://zamek.szczecin.pl/wydarzenia/kino/","url":"https://zamek.szczecin.pl/wydarzenia/kino/","name":"Kino | Zamek Książąt Pomorskich","inLanguage":"pl-PL","isPartOf":{"@id":"https://zamek.szczecin.pl/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://zamek.szczecin.pl/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich"},{"@type":"ListItem","position":2,"item":"https://zamek.szczecin.pl/wydarzenia/","name":"Archiwa: Kategorie"},{"@type":"ListItem","position":3,"name":"Kino"}]},"potentialAction":{"@type":"ReadAction","target":"https://zamek.szczecin.pl/wydarzenia/kino/"},"datePublished":"2018-11-06T08:59:02+00:00","dateModified":"2024-12-31T08:59:12+00:00","author":{"@type":"Person","@id":"https://zamek.szczecin.pl/#/schema/Person/52691ba0724d75f402fd92d9558362a6","name":"admin"}}]}</script>
-<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 6.14ms meta | 0.67ms boot -->
+<link rel="canonical" href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/" />
+<meta name="description" content="Zamkowe Noce Filmowe to doroczne plenerowe prezentacje filmów wartościowych i ważnych, które odbywają się w plenerowej przestrzeni Zamku . Ich charakter jest kontynuacją programu prezentowanego przez cały filmowy rok w cenionym przez miłośników dobrego filmu Kinie Zamek." />
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zamek.szczecin.pl/#/schema/WebSite","url":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich","description":"Zamek Książąt Pomorskich – renesansowy zamek usytuowany na Wzgórzu Zamkowym w Szczecinie, w sąsiedztwie Odry, historyczna siedziba rodu Gryfitów","inLanguage":"pl-PL","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://zamek.szczecin.pl/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://zamek.szczecin.pl/#/schema/Organization","name":"Zamek Książąt Pomorskich","url":"https://zamek.szczecin.pl/"}},{"@type":"WebPage","@id":"https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/","url":"https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/","name":"Zamkowe Noce Filmowe 2026 | Zamek Książąt Pomorskich","description":"Zamkowe Noce Filmowe to doroczne plenerowe prezentacje filmów wartościowych i ważnych, które odbywają się w plenerowej przestrzeni Zamku . Ich charakter jest kontynuacją programu prezentowanego przez cały filmowy rok w cenionym przez miłośników dobrego filmu Kinie Zamek.","inLanguage":"pl-PL","isPartOf":{"@id":"https://zamek.szczecin.pl/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://zamek.szczecin.pl/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich"},{"@type":"ListItem","position":2,"item":"https://zamek.szczecin.pl/wydarzenie/","name":"Archiwa: Wydarzenia"},{"@type":"ListItem","position":3,"item":"https://zamek.szczecin.pl/category/kino/","name":"Kategoria: Kino"},{"@type":"ListItem","position":4,"name":"Zamkowe Noce Filmowe 2026"}]},"potentialAction":{"@type":"ReadAction","target":"https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/"},"datePublished":"2026-06-24T09:42:26+00:00","dateModified":"2026-07-15T07:04:37+00:00"}]}</script>
+<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 6.41ms meta | 0.80ms boot -->
 
 <link rel='dns-prefetch' href='//unpkg.com' />
 <link rel="alternate" type="application/rss+xml" title="Zamek Książąt Pomorskich &raquo; Kanał z wpisami" href="https://zamek.szczecin.pl/feed/" />
 <link rel="alternate" type="application/rss+xml" title="Zamek Książąt Pomorskich &raquo; Kanał z komentarzami" href="https://zamek.szczecin.pl/comments/feed/" />
-<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenia%2Fkino%2F&#038;lang=pl" />
-<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenia%2Fkino%2F&#038;format=xml&#038;lang=pl" />
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenie%2Fkino%2Fzamkowe-noce-filmowe-2026%2F&#038;lang=pl" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenie%2Fkino%2Fzamkowe-noce-filmowe-2026%2F&#038;format=xml&#038;lang=pl" />
 <style id='wp-img-auto-sizes-contain-inline-css' type='text/css'>
 img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 /*# sourceURL=wp-img-auto-sizes-contain-inline-css */
@@ -127,7 +127,7 @@ window.RLG = window.RLG || {}; window.RLG.sanitizeAllowedHosts = ["youtube.com",
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/assets/infinitescroll/infinite-scroll.pkgd.min.js?ver=4.0.1" id="responsive-lightbox-infinite-scroll-js"></script>
 <script type="text/javascript" id="responsive-lightbox-js-before">
 /* <![CDATA[ */
-var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"c842ecc774","preview":false,"postId":260,"scriptExtension":false};
+var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"c842ecc774","preview":false,"postId":23966,"scriptExtension":false};
 
 //# sourceURL=responsive-lightbox-js-before
 /* ]]> */
@@ -279,12 +279,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
         }
                 </style>
 
-        <meta name="description" content="Małe, kameralne kino Zamek działające od latw Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świet..." />
+        <meta name="description" content="ZAMKOWE NOCE FILMOWE &nbsp; Wtorki, 30 czerwca – 1 września 2026 (*) Tarasy Zamku Książąt Pomorskich w Szczecinie WSTĘP WOLNY   Zamkowe Noce Filmow..." />
 <meta property="og:typ" content="article" />
-<meta property="og:image" content="" />
-<meta property="og:title" content="Zamek Książąt Pomorskich - Kino" />
-<meta property="og:url" content="https://zamek.szczecin.pl/wydarzenia/kino/" />
-<meta property="og:description" content="Małe, kameralne kino Zamek działające od latw Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świet..." />
+<meta property="og:image" content="https://zamek.szczecin.pl/wp-content/uploads/2024/05/zamkowenocefilmowe2024_wwwzamek-1024x391.jpg" />
+<meta property="og:title" content="Zamek Książąt Pomorskich - Zamkowe Noce Filmowe 2026" />
+<meta property="og:url" content="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/" />
+<meta property="og:description" content="ZAMKOWE NOCE FILMOWE &nbsp; Wtorki, 30 czerwca – 1 września 2026 (*) Tarasy Zamku Książąt Pomorskich w Szczecinie WSTĘP WOLNY   Zamkowe Noce Filmow..." />
             <style>
                 #wp-admin-bar-ctn_adminbar_menu .ab-item {
                     background: ;
@@ -301,7 +301,7 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
 </head>
 
-<body data-rsssl=1 class="wp-singular category_custom-template-default single single-category_custom postid-260 wp-theme-zamek lang-pl">
+<body data-rsssl=1 class="wp-singular events-template-default single single-events postid-23966 wp-theme-zamek lang-pl">
 <noscript><img height="1" width="1" style="display:none"src="https://www.facebook.com/tr?id=1026840438499501&ev=PageView&noscript=1"/></noscript>
 
 <div id="header" class="container">
@@ -387,12 +387,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
         </a>
         <nav class=" animated nav-collapse" id="panel">
             <div class="box-menu">
-                <div class="menu-menu-glowne-pl-container"><ul id="primary-menu" class="navbar-list"><li id="menu-item-95" class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+                <div class="menu-menu-glowne-pl-container"><ul id="primary-menu" class="navbar-list"><li id="menu-item-95" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li id="menu-item-11076" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11076"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 	<li id="menu-item-8092" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-8092"><a href="https://zamek.szczecin.pl/kalendarium-wydarzen/">Kalendarium wydarzeń</a></li>
 	<li id="menu-item-259" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-259"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-	<li id="menu-item-270" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li id="menu-item-270" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li id="menu-item-279" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-279"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 	<li id="menu-item-806" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-806"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 	<li id="menu-item-525" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-525"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -462,12 +462,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 	<li id="menu-item-18788" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-18788"><a href="https://zamek.szczecin.pl/standardy-ochrony-maloletnich/">Standardy ochrony małoletnich</a></li>
 </ul>
 </li>
-</ul></div>                <div class="menu-menu-glowne-pl-container"><ul id="tablet-menu" class="navbar-list"><li class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+</ul></div>                <div class="menu-menu-glowne-pl-container"><ul id="tablet-menu" class="navbar-list"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11076"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-8092"><a href="https://zamek.szczecin.pl/kalendarium-wydarzen/">Kalendarium wydarzeń</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-259"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-279"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-806"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-525"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -587,14 +587,16 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
     </div>
             <div class="menu-widget"><ul>
-	<li class="lang-item lang-item-27 lang-item-pl current-lang lang-item-first"><a lang="pl-PL" hreflang="pl-PL" href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="true">PL</a></li>
+	<li class="lang-item lang-item-27 lang-item-pl current-lang lang-item-first"><a lang="pl-PL" hreflang="pl-PL" href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/" aria-current="true">PL</a></li>
 	<li class="lang-item lang-item-39 lang-item-de no-translation"><a lang="de-DE" hreflang="de-DE" href="https://zamek.szczecin.pl/de/">DE</a></li>
 	<li class="lang-item lang-item-43 lang-item-en no-translation"><a lang="en-GB" hreflang="en-GB" href="https://zamek.szczecin.pl/en/">EN</a></li>
 </ul>
 </div>    </div>
 <div class="wrapper">
-    <section id="header-basic"
-             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2018/11/kinozamek_foto2_poprawione.jpg')">
+    
+    <div id="header-basic" data-aos="fade-up"
+         data-aos-duration="2000" class="change-color change-color-background opacity50"
+         style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2024/05/zamkowenocefilmowe2024_wwwzamek.jpg') !important">
         <div class="indicator indicator-header">
             <div class="positioner-left"></div>
             <div class="pointer"></div>
@@ -603,363 +605,174 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
         <div class="flex">
             <div class="flex-item">
-                <img src="https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino_zamek.png" alt="">                <h1></h1>
-                <p></p>
+                <p class="event-details">
+                                            14-07-2026, 21-07-2026, 28-07-2026, 04-08-2026, 11-08-2026, 18-08-2026, 25-08-2026, 01-09-2026                                                                                            
+                </p>
+                <h1>Zamkowe Noce Filmowe 2026</h1>
             </div>
         </div>
-    </section>
-    <div class="events-with-calendar ">
-
-                <section id="category-page" class="content kalendarium"
-                 data-id_cat="6">
-
-            <div id="kalendarz-w-kategorii" class="calendar-box">
-                <div class="container">
-                    <div class="calendar-box">
-                        <div class="calendar">
-
-
-
-
-                            
-
-
-
-                            <div class="controls">
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-07-08" aria-label="poprzedni miesiąc" >
-                                    <img class="prevButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_prev.png" alt="">
-                                    <img class="prevButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_prev.png" alt="">
-                                </a>
-
-                                <h4 class="dark">sierpień 2026</h4>
-
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-09-08" aria-label="następny miesiąc">
-                                    <img class="nextButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_next.png" alt="">
-                                    <img class="nextButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_next.png" alt="">
-                                </a>
-                            </div>
-
-                            <div class="sticky">
-                                <ul>
-                                    <li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li>                                    <li class="name_week_mobile" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_mobile" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_mobile" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_mobile" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_mobile" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_mobile" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_mobile" data-day="N">
-                                            <span>N</span>
-                                            </li>                                </ul>
-                                <ul>
-                                    <li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li>                                    <li class="calendarEventClick is_event" data-item="1082026">
-                                            <span class="">01</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="2082026">
-                                            <span class="">02</span>
-                                            </li><li class="calendarEventClick is_event" data-item="3082026">
-                                            <span class="">03</span>
-                                            </li><li class="calendarEventClick is_event" data-item="4082026">
-                                            <span class="">04</span>
-                                            </li><li class="calendarEventClick is_event" data-item="5082026">
-                                            <span class="">05</span>
-                                            </li><li class="calendarEventClick is_event" data-item="6082026">
-                                            <span class="">06</span>
-                                            </li><li class="calendarEventClick is_event" data-item="7082026">
-                                            <span class="">07</span>
-                                            </li><li class="calendarEventClick is_event" data-item="8082026">
-                                            <span class="">08</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="9082026">
-                                            <span class="">09</span>
-                                            </li><li class="calendarEventClick is_event" data-item="10082026">
-                                            <span class="">10</span>
-                                            </li><li class="calendarEventClick is_event" data-item="11082026">
-                                            <span class="">11</span>
-                                            </li><li class="calendarEventClick is_event" data-item="12082026">
-                                            <span class="">12</span>
-                                            </li><li class="calendarEventClick is_event" data-item="13082026">
-                                            <span class="">13</span>
-                                            </li><li class="calendarEventClick is_event" data-item="14082026">
-                                            <span class="">14</span>
-                                            </li><li class="calendarEventClick is_event" data-item="15082026">
-                                            <span class="">15</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="16082026">
-                                            <span class="">16</span>
-                                            </li><li class="calendarEventClick is_event" data-item="17082026">
-                                            <span class="">17</span>
-                                            </li><li class="calendarEventClick is_event" data-item="18082026">
-                                            <span class="">18</span>
-                                            </li><li class="calendarEventClick is_event" data-item="19082026">
-                                            <span class="">19</span>
-                                            </li><li class="calendarEventClick is_event" data-item="20082026">
-                                            <span class="">20</span>
-                                            </li><li class="calendarEventClick is_event" data-item="21082026">
-                                            <span class="">21</span>
-                                            </li><li class="calendarEventClick is_event" data-item="22082026">
-                                            <span class="">22</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="23082026">
-                                            <span class="">23</span>
-                                            </li><li class="calendarEventClick is_event" data-item="24082026">
-                                            <span class="">24</span>
-                                            </li><li class="calendarEventClick is_event" data-item="25082026">
-                                            <span class="">25</span>
-                                            </li><li class="calendarEventClick is_event" data-item="26082026">
-                                            <span class="">26</span>
-                                            </li><li class="calendarEventClick is_event" data-item="27082026">
-                                            <span class="">27</span>
-                                            </li><li class="calendarEventClick is_event" data-item="28082026">
-                                            <span class="">28</span>
-                                            </li><li class="calendarEventClick is_event" data-item="29082026">
-                                            <span class="">29</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="30082026">
-                                            <span class="">30</span>
-                                            </li><li class="calendarEventClick is_event" data-item="31082026">
-                                            <span class="">31</span>
-                                            </li>
-                                </ul>
-                            </div>
-
-                            <div id="events-list">
-                                <div class="events-list">
-                                    <div class="listCategory">
-                                        <div class="box">
-                                            <div class="mobile-box-roll">
-                                                <div class="flex">
-
-
-                                                                                                                <div class="flex-item">
-                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/"
-                                                                   class="event-image-box">
-                                                                    <div class="background-hover-events">
-                                                                        <div role="img"
-                                                                             aria-label="Zamkowe Noce Filmowe 2026"
-                                                                             class="image"
-                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2024/05/zamkowenocefilmowe2024_wwwzamek.jpg');"></div>
-                                                                    </div>
-                                                                </a>
-                                                                <div class="event-details">
-                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/">
-                                                                        <p class="date">11-08-2026, 18-08-2026, 25-08-2026</p>
-                                                                        <p class="title">Zamkowe Noce Filmowe 2026</p>
-                                                                    </a>
-                                                                    <p class="describe">Zamkowe Noce Filmowe to doroczne plenerowe prezentacje filmów wartościowych i ważnych, które odbywają się w plenerowej przestrzeni Zamku . Ich charakter jest kontynuacją programu prezentowanego przez cały filmowy rok w cenionym przez miłośników dobrego filmu Kinie Zamek.</p>
-                                                                    <p class="tags change-color change-color-font">
-                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=Zamkowe Noce Filmowe" class="change-color change-color-font">Zamkowe Noce Filmowe,&nbsp;</a><a href="/?s=kino plenerowe" class="change-color change-color-font">kino plenerowe,&nbsp;</a>                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex-item"></div><div class="flex-item"></div>                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
-    <section id="block_tickets" class="content">
+
+    <div class="content">
         <div class="container">
-            <span class="rectangle change-color change-color-background opacity50"></span>
+            <div class="flex flex-main one-col">
+                <div class="flex-item event" data-aos="fade-up"
+                     data-aos-duration="2000">
+                    <div class="container-mobi">
+                        <section class="content_event" data-aos="fade-up"
+                                 data-aos-duration="2000">
+                            <h3><strong>ZAMKOWE NOCE FILMOWE</strong></h3>
+<p>&nbsp;</p>
+<p><span style="color: #ff0000;"><strong>Wtorki, 30 czerwca – 1 września 2026 (*)</strong></span></p>
+<p><strong>Tarasy Zamku Książąt Pomorskich w Szczecinie</strong></p>
+<p><strong>WSTĘP WOLNY</strong></p>
+<p><strong> </strong></p>
+<p>Zamkowe Noce Filmowe to doroczne plenerowe prezentacje filmów wartościowych i ważnych, które odbywają się w plenerowej przestrzeni Zamku Książąt Pomorskich w Szczecinie. Ich charakter jest kontynuacją programu prezentowanego przez cały filmowy rok w cenionym przez miłośników dobrego filmu Kinie Zamek w Zamku Książąt Pomorskich w Szczecinie.</p>
+<p>W ramach Zamkowych Nocy Filmowych 2026 zaprezentowane zostaną starannie wyselekcjonowane tytuły – cenione i nagradzane filmy fabularne oraz dokumentalne z szeroko rozumianego nurtu kina autorskiego. Ważną częścią programu będzie klasyka filmowa. Tegoroczny program to propozycje, które poruszają, inspirują, ale też bawią, bo nie zabraknie w tej odsłonie Zamkowych Nocy Filmowych propozycji komediowych.</p>
+<p>Wybrane filmy prezentowane będą z polskim lektorem lub w wersjach oryginalnych z polskimi napisami. Pokazy odbywać będą się we wtorki po zmroku – w wyjątkowej atmosferze tarasów Zamku Książąt Pomorskich w Szczecinie.</p>
+<p>&nbsp;</p>
+<p><span style="font-size: 14pt;"><strong>HARMONOGRAM POKAZÓW:</strong></span></p>
+<p><strong> </strong></p>
+<p><strong>KONCERT I FILM NA OTWARCIE ZAMKOWYCH NOCY FILMOWYCH 2026</strong></p>
+<p>Tegoroczne Zamkowe Noce Filmowe zainauguruje koncert duetu Joanna Ewa z Drzewa &amp; Bojkot oraz prezentacja filmu „Szkoda, że nareszcie”, wspartego przez Zachodniopomorski Fundusz Filmowy Pomerania Film. Wydarzenie odbędzie się na tarasach Zamku Książąt Pomorskich w Szczecinie i podobnie, jak wszystkie prezentacje ZNF będzie bezpłatne.</p>
+<p><strong> </strong></p>
+<p><strong>Pokaz filmu ZFF Pomerania Film</strong> na rozpoczęcie Zamkowych Nocy Filmowych 2026</p>
+<p><span style="font-size: 14pt;"><strong>SZKODA, ŻE NARESZCIE</strong></span></p>
+<p><span style="color: #ff0000;"><strong>30 czerwca (wtorek), godzina 21:30</strong></span></p>
+<p><strong>POLSKA WERSJA FILMU</strong></p>
+<p>Film wsparty został przez Zachodniopomorskich Fundusz Filmowy Pomerania Film.</p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2018/12/ZFF-logo.png" data-rel="lightbox-image-0" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone wp-image-15152" src="https://zamek.szczecin.pl/wp-content/uploads/2018/12/ZFF-logo-279x300.png" alt="Logo Zachodniopomorskiego Funduszu Filmowego Pomerania Film. Logo w kolorze czarnym, przedstawia kawałek kliszy filmowej w kształcie trójkąta, pod nim napis z nazwą Funduszu." width="108" height="116" srcset="https://zamek.szczecin.pl/wp-content/uploads/2018/12/ZFF-logo-279x300.png 279w, https://zamek.szczecin.pl/wp-content/uploads/2018/12/ZFF-logo.png 650w" sizes="auto, (max-width: 108px) 100vw, 108px" /></a></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-scaled.jpg" data-rel="lightbox-image-1" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-21274" src="https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-208x300.jpg" alt="" width="208" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-208x300.jpg 208w, https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-711x1024.jpg 711w, https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-768x1107.jpg 768w, https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-1066x1536.jpg 1066w, https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-1421x2048.jpg 1421w, https://zamek.szczecin.pl/wp-content/uploads/2025/09/Szkoda-ze-nareszcie_plakat_NET_OK-min-scaled.jpg 1777w" sizes="auto, (max-width: 208px) 100vw, 208px" /></a></p>
+<p>&nbsp;</p>
+<p><span style="font-size: 14pt;"><strong>ŚCIEŻKI ŻYCIA</strong> (The Salt Path)</span></p>
+<p><span style="color: #ff0000;"><strong>7 lipca (wtorek), godzina 22:00</strong></span></p>
+<p>Dramat obyczajowy, Wielka Brytania 2024, 115’</p>
+<p>Reżyseria: Marianne Elliott</p>
+<p>Obsada: Gillian Anderson, Jason Isaacs</p>
+<p>„Ścieżki życia” to inspirowana prawdziwymi wydarzeniami poruszająca i pełna nadziei opowieść o dojrzałej miłości, która okazuje się silniejsza niż życiowe kryzysy. Film, który zdobył serca widzów w całej Europie, zachwyca szczerością oraz prostotą, z jaką mówi o sprawach najważniejszych. To historia, która podnosi na duchu i przypomina, że nawet po największej burzy można odnaleźć spokój – jeśli idzie się razem.</p>
+<p>Raynor (Gillian Anderson) i Moth (Jason Isaacs) &#8211; małżeństwo z wieloletnim stażem &#8211; w jednej chwili traci niemal wszystko – dom, bezpieczeństwo, dotychczasowe życie. Zamiast się poddać, robią coś, co dla wielu byłoby szaleństwem: wyruszają w pieszą wędrówkę – ponad tysiąc kilometrów wzdłuż dzikiego, angielskiego wybrzeża. Z pustym kontem bankowym, namiotem i garścią najpotrzebniejszych rzeczy idą przed siebie, krok za krokiem, szukając ukojenia w wietrze, ciszy i otaczającej ich przyrodzie. Wkrótce odkryją, że mimo przeszkód, które los rzucił im pod nogi, wciąż mają najważniejsze – siebie nawzajem. Ta niezwykła podróż stanie się dla nich drogą ku wolności, miłości i nowemu początkowi.</p>
+<p>Gillian Anderson („Z archiwum X”, „Sex Education”, „The Crown”) i Jason Isaacs („Biały Lotos”, „Harry Potter”) z ogromną wrażliwością wcielają się w ludzi na życiowym zakręcie. Film w reżyserii Marianne Elliott – jednej z najwybitniejszych brytyjskich twórczyń teatralnych – to adaptacja bestsellerowej książki „Słone ścieżki” Raynor Winn. Za filmowy scenariusz odpowiada Rebecca Lenkiewicz, współscenarzystka „Idy” Pawła Pawlikowskiego. Ale „Ścieżki życia” to nie tylko emocjonalna historia, która inspiruje i zostaje w pamięci na długo. To również prawdziwa uczta dla oka, pełna zapierających dech w piersi widoków dzikich klifów, plaż i zielonych wzgórz. Po seansie sami zapragniecie ruszyć w drogę, by choć na chwilę zostawić za sobą codzienność i poczuć na twarzy morską bryzę.</p>
+<p><strong>ANGIELSKA WERSJA FILMU, Z POLSKIM LEKTOREM</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2025/11/sciezki-zycia-plakat-pl-hq.jpg" data-rel="lightbox-image-2" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-22110" src="https://zamek.szczecin.pl/wp-content/uploads/2025/11/sciezki-zycia-plakat-pl-hq-208x300.jpg" alt="" width="208" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2025/11/sciezki-zycia-plakat-pl-hq-208x300.jpg 208w, https://zamek.szczecin.pl/wp-content/uploads/2025/11/sciezki-zycia-plakat-pl-hq.jpg 520w" sizes="auto, (max-width: 208px) 100vw, 208px" /></a></p>
+<p>&nbsp;</p>
+<p><span style="font-size: 14pt;"><strong>AMELIA </strong>(Le Fabuleux destin d&#8217;Amelie Poulain)</span></p>
+<p><span style="color: #ff0000;"><strong>14 lipca (wtorek), godzina 22:00</strong></span></p>
+<p>Komedia obyczajowa, Francja/Niemcy 2001, 120’</p>
+<p>Reżyseria: Jean-Pierre Jeunet</p>
+<p>Obsada: Audrey Tautou, Mathieu Kassovitz, Rufus, Yolande Moreau</p>
+<p>Jedną z najbardziej popularnych postaci we Francji na początku XX wieku była drobna, szczupła dziewczyna z krótko podciętymi włosami. Nazywa się Amelia Poulain. W komedii Jean-Pierra Jeuneta &#8220;Amelia&#8221; gra ją czarująca Audrey Tautou, o której po roli w tym właśnie filmie mówiono, że stanie się nowym symbolem Francji.</p>
+<p>Amelia jest nieśmiała. Pracuje w kawiarni, wynajmuje mieszkanie w dzielnicy Montmartre. Chcąc sprawić, by inni poczuli się bardziej szczęśliwi, wymyśla wiele misternych intryg, np. próbuje odnaleźć dorosłego właściciela pudełka z dziecięcymi zabawkami, które znajduje w swoim mieszkaniu. Obmyśla genialny plan, by rozbawić ojca, kradnąc jego ulubionego krasnala ogrodowego… Przyjdzie jednak moment, kiedy Amelia będzie musiała zająć się własnym losem i własnym szczęściem. Znajdzie miłość w równie nieśmiałym jak ona młodym Nino (w tej roli Mathieu Kassovitz, reżyser &#8220;Nienawiści&#8221;).</p>
+<p>&#8220;Amelia&#8221; to niezwykła i przewrotna komedia romantyczna Jean-Pierre’a Jeuneta, twórcy &#8220;Delicatessen&#8221; i &#8220;Miasta zaginionych dzieci&#8221;. W tym wyjątkowym filmie groteska, surrealizm, ironia przeplata się z magią i bajkowością. To hymn na cześć życia. Akcja filmu rozgrywa się na poprawionym cyfrowo Montmartre. Na ścieżce dźwiękowej rozbrzmiewa zaś muzyka w stylu retro.</p>
+<p><strong>FRANCUSKA WERSJA FILMU, Z POLSKIMI NAPISAMI</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-scaled.jpg" data-rel="lightbox-image-3" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-20656" src="https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-208x300.jpg" alt="" width="208" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-208x300.jpg 208w, https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-711x1024.jpg 711w, https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-768x1107.jpg 768w, https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-1066x1536.jpg 1066w, https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-1421x2048.jpg 1421w, https://zamek.szczecin.pl/wp-content/uploads/2025/02/amelia-plakat-18-08-PREV_01_680-x-980-scaled.jpg 1777w" sizes="auto, (max-width: 208px) 100vw, 208px" /></a></p>
+<p><strong> </strong></p>
+<p><span style="font-size: 14pt;"><strong>KOPNIĘCI W CZASIE </strong>(C&#8217;etait mieux demain)</span></p>
+<p><span style="color: #ff0000;"><strong>21 lipca (wtorek), godzina 22:00</strong></span></p>
+<p>komedia, Francja 2025, 95’</p>
+<p>Reżyseria: Vinciane Millereau</p>
+<p>Obsada: Elsa Zylberstein, Didier Bourdon</p>
+<p>Helene i Michel żyją szczęśliwie z dwójką dzieci w małym francuskim miasteczku w beztroskich latach 50. On pracuje w banku, ona zajmuje się domem&#8230; aż do momentu, gdy przypadkowo zostają kopnięci prądem i przeniesieni do roku 2025, gdzie odkrywają, jak wiele się zmieniło. Dla Helene, która zawsze żyła w cieniu męża, to rewolucja. Dla Michela, który widzi, jak przywileje jego jako mężczyzny legły w gruzach, to katastrofa. Wrócą czy będą chcieli zostać?</p>
+<p>Po ‘’Hibernatusie’’ i ‘’Goście, goście’’ kolejna zabawna francuska komedia o podróży w czasie.</p>
+<p><strong>FRANCUSKA WERSJA FILMU, Z POLSKIM LEKTOREM</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2025/11/Kopnieci_w_czasie_plakat-1.png" data-rel="lightbox-image-4" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-22098" src="https://zamek.szczecin.pl/wp-content/uploads/2025/11/Kopnieci_w_czasie_plakat-1-210x300.png" alt="" width="210" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2025/11/Kopnieci_w_czasie_plakat-1-210x300.png 210w, https://zamek.szczecin.pl/wp-content/uploads/2025/11/Kopnieci_w_czasie_plakat-1.png 577w" sizes="auto, (max-width: 210px) 100vw, 210px" /></a></p>
+<p><strong> </strong></p>
+<p><span style="font-size: 14pt;"><strong>OSTATNIA SESJA W PARYŻU </strong>(Vie privee)</span></p>
+<p><span style="color: #ff0000;"><strong>28 lipca (wtorek), godzina 22:00</strong></span></p>
+<p>dramat/kryminalny, Francja 2025, 107’</p>
+<p>Reżyseria: Rebecca Zlotowski</p>
+<p>Obsada: Jodie Foster, Daniel Auteuil, Virginie Efira</p>
+<p>Lilian (laureatka Oscara Jodie Foster) jest cenioną psychiatrą prowadzącą własną praktykę w Paryżu. Jej uporządkowany świat zaczyna się rozpadać po nagłej śmierci wieloletniej pacjentki. Czy było to samobójstwo, morderstwo, a może tragiczna pomyłka lekarska? Dręczona wątpliwościami i poczuciem winy Lilian rozpoczyna prywatne śledztwo, wciągając w nie byłego męża (Daniel Auteuil).</p>
+<p>„Ostatnia sesja w Paryżu” to błyskotliwy kryminał psychologiczny, w którym napięcie miesza się z groteską, a rozwiązanie tajemnicy staje się intrygującą grą i konfrontacją bohaterki z samą sobą…</p>
+<p><strong>FRANCUSKA WERSJA FILMU, Z POLSKIM LEKTOREM</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2026/01/OstatniaSesja.jpg" data-rel="lightbox-image-5" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-22517" src="https://zamek.szczecin.pl/wp-content/uploads/2026/01/OstatniaSesja-221x300.jpg" alt="" width="221" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2026/01/OstatniaSesja-221x300.jpg 221w, https://zamek.szczecin.pl/wp-content/uploads/2026/01/OstatniaSesja.jpg 271w" sizes="auto, (max-width: 221px) 100vw, 221px" /></a></p>
+<p><strong> </strong></p>
+<p><span style="font-size: 14pt;"><strong>AMADEUSZ  </strong>(Amadeus)</span></p>
+<p><span style="color: #ff0000;"><strong>4 sierpnia (wtorek), godzina 21:30</strong></span></p>
+<p>dramat, USA/Francja 1984, 160’</p>
+<p>Reżyseria: Milos Forman</p>
+<p>Obsada: F. Murray Abraham, Tom Hulce, Elizabeth Berridge</p>
+<p>„Amadeusz&#8221; to dramat biograficzny w reżyserii Miloša Formana, oparty na sztuce Petera Shaffera, który również napisał scenariusz filmu. Produkcja przedstawia fikcyjną, choć inspirowaną faktami, historię skomplikowanej relacji między dwoma znanymi kompozytorami XVIII wieku – Wolfgangiem Amadeuszem Mozartem i Antonio Salierim. Film zdobył osiem Oscarów, w tym za najlepszy film, reżyserię oraz scenariusz adaptowany.</p>
+<p>Narratorem opowieści jest Antonio Salieri (w tej roli F. Murray Abraham), który jako starszy człowiek, przebywający w szpitalu psychiatrycznym, opowiada księdzu historię swojej fascynacji i zazdrości wobec Mozarta (Tom Hulce). Z początku pełen podziwu dla młodego geniusza, Salieri szybko zaczyna postrzegać Mozarta jako niegodnego tak wielkiego talentu. Jego niezrównany dar muzyczny zestawiony zostaje z infantylnym zachowaniem i brakiem ogłady, co tylko pogłębia wewnętrzny konflikt Salieriego. Z czasem jego zazdrość przeradza się w obsesję, prowadząc do dramatycznych konsekwencji.</p>
+<p><strong>ANGIELSKA WERSJA FILMU, Z POLSKIMI NAPISAMI</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2025/08/Amadeusz.jpg" data-rel="lightbox-image-6" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-21113" src="https://zamek.szczecin.pl/wp-content/uploads/2025/08/Amadeusz-240x300.jpg" alt="" width="240" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2025/08/Amadeusz-240x300.jpg 240w, https://zamek.szczecin.pl/wp-content/uploads/2025/08/Amadeusz.jpg 512w" sizes="auto, (max-width: 240px) 100vw, 240px" /></a></p>
+<p>&nbsp;</p>
+<p><span style="font-size: 14pt;"><strong>OSTATNI WIKING </strong>(Den sidste viking)</span></p>
+<p><span style="color: #ff0000;"><strong>11 sierpnia (wtorek), godzina 21:30</strong></span></p>
+<p>dramat/komedia, Dania/Szwecja 2025, 116’</p>
+<p>Reżyseria: Anders Thomas Jensen</p>
+<p>Obsada: Mads Mikkelsen, Nikolaj Lie Kaas, Sofie Gråbøl, Kardo Razzazi, Nicolas Bro, Lars Brygmann</p>
+<p>Po czternastu latach odsiadki Anker wychodzi z więzienia z jednym celem: odzyskać zrabowaną fortunę. Problem w tym, że łup ukrył jego brat – Manfred, który dziś przedstawia się jako John Lennon i dryfuje we własnym świecie zaburzonej tożsamości. Dla brutalnego, impulsywnego Ankera krucha psychika Manfreda to pole minowe – a zarazem jedyna droga do celu. Na tropie zaginionych pieniędzy bracia trafiają na ekipę osobliwych wyrzutków, którzy zamiast pomóc, tylko komplikują sprawy. Aby odzyskać fortunę, Anker musi reaktywować legendarny zespół The Beatles – bo tylko John Lennon zna miejsce ukrycia łupu.</p>
+<p>„Ostatni wiking” to szalona, pełna absurdu jazda bez trzymanki przez przeszłość, popękaną psychikę, braterską lojalność i świat, w którym logika przestała obowiązywać. Nagrodzony Oscarem reżyser Anders Thomas Jensen po raz kolejny udowadnia, że w duecie z Madsem Mikkelsenem tworzy filmy kultowe.</p>
+<p><strong>DUŃSKA/SZWEDZKA WERSJA FILMU, Z POLSKIM LEKTOREM</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2025/09/OstatniWiking.jpg" data-rel="lightbox-image-7" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-21266" src="https://zamek.szczecin.pl/wp-content/uploads/2025/09/OstatniWiking-210x300.jpg" alt="" width="210" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2025/09/OstatniWiking-210x300.jpg 210w, https://zamek.szczecin.pl/wp-content/uploads/2025/09/OstatniWiking.jpg 420w" sizes="auto, (max-width: 210px) 100vw, 210px" /></a></p>
+<p>&nbsp;</p>
+<p><span style="font-size: 14pt;"><strong>FATHER MOTHER SISTER BROTHER</strong></span></p>
+<p><span style="color: #ff0000;"><strong>18 sierpnia (wtorek), godzina 21:30</strong></span></p>
+<p>dramat, Polska 2023, 111’</p>
+<p>Reżyseria: Jim Jarmusch</p>
+<p>Obsada: Tom Waits, Adam Driver, Mayim Bialik, Charlotte Rampling, Cate Blanchett, Vicky Krieps</p>
+<p>„Father Mother Sister Brother&#8221; to zwycięzca ostatniego festiwalu w Wenecji i najlepszy od lat film Jima Jarmuscha, twórcy „Patersona&#8221; i „Broken Flowers&#8221;. Pełen błyskotliwych obserwacji precyzyjnie skomponowany tryptyk filmowy o relacjach rodzinnych i o tym, co sprawia, że się od siebie oddalamy. Każdy z trzech rozdziałów rozgrywa się współcześnie, w innym kraju: FATHER – w północno-wschodnich Stanach Zjednoczonych, MOTHER – w Dublinie, a SISTER BROTHER – w Paryżu. Film Jarmuscha stanowi zbiór subtelnych, pełnych humoru, ale i nut melancholii portretów ludzkich charakterów.</p>
+<p>Sam reżyser tak mówi o swoim najnowszym filmie: „FATHER MOTHER SISTER BROTHER&#8221; to w pewnym sensie zaprzeczenie kina akcji. Jego wyciszony styl został świadomie ukształtowany po to, by pozwolić widzowi dostrzec drobne szczegóły – niczym starannie ułożone trzy kompozycje kwiatowe. Współpraca z wybitnymi operatorami Frederickiem Elmesem i Yorickiem Le Saux, znakomitym montażystą Affonso Gonçalvesem oraz innymi stałymi współpracownikami pozwoliła nam wynieść to, co początkowo istniało jedynie jako słowa na kartce papieru do rangi czystego kina.</p>
+<p><strong>ANGIELSKA/FRANCUSKA WERSJA FILMU, Z POLSKIMI NAPISAMI</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2025/12/FatherMotherSisterBrother.jpg" data-rel="lightbox-image-8" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-22299" src="https://zamek.szczecin.pl/wp-content/uploads/2025/12/FatherMotherSisterBrother-208x300.jpg" alt="" width="208" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2025/12/FatherMotherSisterBrother-208x300.jpg 208w, https://zamek.szczecin.pl/wp-content/uploads/2025/12/FatherMotherSisterBrother.jpg 520w" sizes="auto, (max-width: 208px) 100vw, 208px" /></a></p>
+<p>&nbsp;</p>
+<p><span style="font-size: 14pt;"><strong>WARTOŚĆ SENTYMENTALNA</strong> (Affeksjonsverdi)</span></p>
+<p><span style="color: #ff0000;"><strong>25 sierpnia (wtorek), godzina 21:30</strong></span></p>
+<p>dramat, Norwegia/Niemcy/Dania/Francja/Szwecja/Wielka Brytania/Turcja 2025, 133’</p>
+<p>Reżyseria: Joachim Trier</p>
+<p>Obsada: Renate Reinsve, Stellan Skarsgard, Inga Ibsdotter Lilleaas</p>
+<p>Nominowany do dziewięciu Oscarów, laureat nagrody Akademii za najlepszy film międzynarodowy, najnowszy film Joachima Triera, z nominowanymi do Oscara w kategoriach aktorskich Renate Reinsve, Stellanem Skarsgårdem, Ingą Ibsdotter Lilleaas i Elle Fanning w rolach głównych. Jeden z najczęściej nagradzanych i najważniejszych filmów tego roku, z muzyką skomponowaną przez polską artystkę Hanię Rani.</p>
+<p>Siostry Nora (Renate Reinsve) i Agnes (Inga Ibsdotter Lilleaas) spotykają się ze swoim dawno niewidzianym ojcem, charyzmatycznym, niegdyś wielkim reżyserem filmowym Gustavem (Stellan Skarsgård). Proponuje on Norze, aktorce teatralnej, rolę w swoim najnowszym filmie, który ma być jego powrotem do świata filmu. Gdy dziewczyna odrzuca propozycję, ten zatrudnia młodą gwiazdę Hollywood (Elle Fanning). Teraz siostry muszą poradzić sobie nie tylko ze swoją skomplikowaną sytuacją z ojcem, ale też z amerykańską gwiazdą, która zmienia ich rodzinną dynamikę.</p>
+<p><strong>NORWESKA/ANGIELSKA WERSJA FILMU, Z POLSKIM LEKTOREM</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2026/01/Sentimental_Value_PL_Poster_B1_net.jpg" data-rel="lightbox-image-9" data-rl_title="" data-rl_caption="" title=""><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-22480" src="https://zamek.szczecin.pl/wp-content/uploads/2026/01/Sentimental_Value_PL_Poster_B1_net-208x300.jpg" alt="" width="208" height="300" srcset="https://zamek.szczecin.pl/wp-content/uploads/2026/01/Sentimental_Value_PL_Poster_B1_net-208x300.jpg 208w, https://zamek.szczecin.pl/wp-content/uploads/2026/01/Sentimental_Value_PL_Poster_B1_net-710x1024.jpg 710w, https://zamek.szczecin.pl/wp-content/uploads/2026/01/Sentimental_Value_PL_Poster_B1_net-768x1107.jpg 768w, https://zamek.szczecin.pl/wp-content/uploads/2026/01/Sentimental_Value_PL_Poster_B1_net-1065x1536.jpg 1065w, https://zamek.szczecin.pl/wp-content/uploads/2026/01/Sentimental_Value_PL_Poster_B1_net.jpg 1200w" sizes="auto, (max-width: 208px) 100vw, 208px" /></a></p>
+<p><strong> </strong></p>
+<p><span style="font-size: 14pt;"><strong>PAUL ROBIEN. APOSTOŁ PRZYRODY</strong></span></p>
+<p><span style="color: #ff0000;"><strong>1 września (wtorek), godzina 21:30</strong></span></p>
+<p>dokumentalny, Polska 2025, 93’</p>
+<p>Reżyseria: Marek Osajda</p>
+<p>Ta historia chwyciła widzów za serca. Szczecińscy filmowcy z nowym filmem o pięknym, choć tragicznym, życiu pewnego ornitologa. Produkcja trwała ponad rok. Była wymagająca i czasochłonna, bowiem opowieść toczyła się w zachodniopomorskich plenerach przez cztery pory roku. Tym razem filmowcy wzięli na warsztat postać niemieckiego ornitologa Paula Robiena, który całe swoje życie poświęcił „zielonej rewolucji”. Film w reżyserii Marka Osajdy to nie tylko opowieść o człowieku, a przede wszystkim nadal aktualnej idei. W dokumencie występuje całe grono osób zafascynowanych postacią ornitologa. Wśród nich jest m.in. pisarz Artur Daniel Liskowacki, autor opowiadania o Robienie. Dziennikarz zaprosił do współpracy m.in. inicjatorów powołania do życia Parku Narodowego Doliny Dolnej Odry – ornitologa Łukasza Ławickiego, hydrobiolożkę Agnieszkę Szlauer-Łukaszewską, muzyka i łowcę dźwięków natury Michała Zygmunta. O życiu przyrodnika opowiadają kustosz Muzeum Narodowego w Szczecinie Marta Kurzyńska i znawca Szczecina Przemek Głowa. W postać prekursora ekologii wcielił się Wiesław Łągiewka. W dokumencie wykorzystano spektakularne zdjęcia Międzyodrza autorstwa Piotra Piznala, Nie brakuje także archiwaliów, dzięki którym możemy poznać „odkrywcę” i popularyzatora działań Robiena – Jerzego Giergielewicza.</p>
+<p><strong>POLSKA WERSJA FILMU</strong></p>
+<p><strong> </strong></p>
+<p><span style="color: #ff0000;"><strong>(*) </strong>W przypadku niesprzyjających warunków atmosferycznych, organizator pokazów zastrzega sobie prawo do odwołania wydarzenia.</span></p>
+                        </section>
 
-            <div class="flex change-color change-color-background cols_3">
-                <div class="ticket_desc">
-                    <h3>Bilety na wszystkie seanse w cenie:</h3>
+                                                                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="place">
+                            <h2>Miejsce</h2>
+                            <p>
+                                Zamkowe Tarasy                            </p>
+                        </section>
+
+                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="extra_block">
+                            <h2></h2>
+                            <p>
+                                                            </p>
+                        </section>
+                    </div>
+
                 </div>
-                                    <div class="price">
-                        <h3>22zł</h3>
-                        <span>(normalny)</span>
-                    </div>
-                                                    <div class="price">
-                        <h3>20zł</h3>
-                        <span>(ulgowy)</span>
-                    </div>
-                                                    <div class="price">
-                        <h3>16zł</h3>
-                        <span>(grupowy)</span>
-                    </div>
+                <div class="flex-item tickets" data-aos="fade-up"
+                     data-aos-duration="2000">
+                    <div class="box">
+                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="title change-color change-color-background">
+                            <div class="container-mobi">
+                                <h2>Bilety</h2>
                             </div>
+                        </section>
+                                                    <section data-aos="fade-up"
+                                     data-aos-duration="2000" class="details details-with-info">
+                                <div class="container-mobi">
+                                    <h2>                                    </h2>
+                                    <p></p>
+                                </div>
+                            </section>
+                                            </div>
+                </div>
+            </div>
         </div>
-    </section>
-
-<div class="photo-sections">
-            <section class="section_photo section_photo_right">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Trochę historii</h3>
-                        </div>
-
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/kino-zamek/">
-                                    <p class="smaller">
-                                        Małe, kameralne kino Zamek działające od lat<br>w Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świetne położenie w centrum miasta,<br>w pięknym zabytkowym obiekcie, ale także jego unikalna atmosfera, na którą wpływ ma także niewielka, kameralna widownia oraz starannie dobrany repertuar. Z tego właśnie powodu Zamek zyskał niezwykle ważny w swojej działalności szacunek widzów i wypracowaną przez lata markę ambitnego, mądrego kina.                                        <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                            
-
-                                                        
-
-                        </div>
-                    </div>
-
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/11/kinozamek_nowelogo.jpg)">
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-        </section>
-                <section class="section_photo section_photo_left">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Zamkowe Noce Filmowe</h3>
-                        </div>
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/zamkowe-noce-filmowe/">
-                                    <p class="smaller">
-                                        Zamkowe Noce Filmowe to kino plenerowe, organizowane na Zamku Książąt Pomorskich<br>w Szczecinie cyklicznie od 2008 roku w okresie wakacji. 
-Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z innym tematem przewodnim. To interesujące, ambitne kino. Repertuar obejmuje wszystkie gatunki filmowe od najnowszych produkcji fabularnych po filmy dokumentalne<br>i animację.                                         <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                                                                                        <img src="https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino-zamek-mini.jpg" alt="">
-                                                    </div>
-                    </div>
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino-zamek-ekran.jpg)">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-                <section class="section_photo section_photo_right">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Pomerania Film</h3>
-                        </div>
-
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/pomerania-film">
-                                    <p class="smaller">
-                                        Powołanie do życia Zachodniopomorskiego Funduszu Filmowego Pomerania Film stało się poważnym impulsem do rozwoju produkcji filmowej w regionie i jego dwóch głównych miastach: Szczecinie i Koszalinie. Ten region nazywano do niedawna filmową pustynią, ponieważ od czasów drugiej wojny światowej artyści związani z tą niezwykle nośną dziedziną kultury bywali tu sporadycznie.                                        <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                            
-
-                                                        
-
-                        </div>
-                    </div>
-
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/12/pomeraniafilm_zdjecie2.jpg)">
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-        </section>
-                                <div class="end-bar change-color change-color-background opacity50"></div>
     </div>
-
-
 
 
     <div class="container">
@@ -1014,7 +827,7 @@ Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z 
         <div class="menu-menu-footer-pl-container"><ul id="footer-menu" class="animated flex flex-menu"><li id="menu-item-108" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-108"><a href="https://zamek.szczecin.pl/">Start</a></li>
 <li id="menu-item-11075" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11075"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 <li id="menu-item-1459" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1459"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-<li id="menu-item-1457" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-1457"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+<li id="menu-item-1457" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1457"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 <li id="menu-item-1460" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1460"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 <li id="menu-item-1458" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1458"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 <li id="menu-item-2797" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-2797"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -1023,11 +836,11 @@ Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z 
 <li id="menu-item-4585" class="menu-item menu-item-type-post_type menu-item-object-template menu-item-4585"><a href="https://zamek.szczecin.pl/polityka-prywatnosci-duplicate">Polityka prywatności</a></li>
 <li id="menu-item-14803" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-14803"><a href="/deklaracja-dostepnosci/">Deklaracja dostępności</a></li>
 <li id="menu-item-845" class="newsletter_popup menu-item menu-item-type-post_type menu-item-object-page menu-item-845"><a href="https://zamek.szczecin.pl/newsletter/">Newsletter</a></li>
-</ul></div><div class="menu-phone-footer-container"><ul id="phone-footer-menu" class="menu"><li id="menu-item-2800" class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-2800"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+</ul></div><div class="menu-phone-footer-container"><ul id="phone-footer-menu" class="menu"><li id="menu-item-2800" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2800"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li id="menu-item-4043" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4043"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
 	<li id="menu-item-4044" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4044"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
-	<li id="menu-item-4045" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-4045"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li id="menu-item-4045" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4045"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li id="menu-item-4047" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4047"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
 </ul>
 </li>
@@ -1187,7 +1000,7 @@ var newsletter_data = {"action_url":"https://zamek.szczecin.pl/wp-admin/admin-aj
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/uploads/wpmss/wpmss.min.js?ver=1540891784" id="wpmss-js"></script>
 <script type="text/javascript" id="moove_gdpr_frontend-js-extra">
 /* <![CDATA[ */
-var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"260","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"53683cad74"};
+var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"23966","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"53683cad74"};
 //# sourceURL=moove_gdpr_frontend-js-extra
 /* ]]> */
 </script>
@@ -1367,14 +1180,14 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
                 document.addEventListener("DOMContentLoaded", function() {
                     var el = document.querySelector(".ctn_load_time_in_sec");
                     if (el) {
-                        el.textContent = "0.650 seconds";
+                        el.textContent = "0.532 seconds";
                     }
                 });
             </script>
             </body>
 </html>
 
-<!-- Dynamic page generated in 0.907 seconds. -->
-<!-- Cached page generated by WP-Super-Cache on 2026-08-08 08:22:17 -->
+<!-- Dynamic page generated in 0.859 seconds. -->
+<!-- Cached page generated by WP-Super-Cache on 2026-08-08 08:24:19 -->
 
 <!-- Compression = gzip -->

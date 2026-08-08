@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -9,7 +8,7 @@
 
     <meta charset="utf-8"/>
     <title>
-        Zamek Książąt Pomorskich - Kino | Zamek Książąt Pomorskich
+        Zamek Książąt Pomorskich - 44. Pomorskie Spotkania z Diaporamą | Zamek Książąt Pomorskich
     </title>
     <link rel="shortcut icon" href="https://zamek.szczecin.pl/wp-content/themes/zamek/favicon.ico" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,19 +22,20 @@
         var homeUrl = 'https://zamek.szczecin.pl';
         var lang = 'pl';
     </script>
-    <title>Kino | Zamek Książąt Pomorskich</title>
+    <title>44. Pomorskie Spotkania z Diaporamą | Zamek Książąt Pomorskich</title>
 
 <!-- The SEO Framework: stworzone przez Sybre Waaijer -->
 <meta name="robots" content="max-snippet:-1,max-image-preview:standard,max-video-preview:-1" />
-<link rel="canonical" href="https://zamek.szczecin.pl/wydarzenia/kino/" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zamek.szczecin.pl/#/schema/WebSite","url":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich","description":"Zamek Książąt Pomorskich – renesansowy zamek usytuowany na Wzgórzu Zamkowym w Szczecinie, w sąsiedztwie Odry, historyczna siedziba rodu Gryfitów","inLanguage":"pl-PL","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://zamek.szczecin.pl/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://zamek.szczecin.pl/#/schema/Organization","name":"Zamek Książąt Pomorskich","url":"https://zamek.szczecin.pl/"}},{"@type":"WebPage","@id":"https://zamek.szczecin.pl/wydarzenia/kino/","url":"https://zamek.szczecin.pl/wydarzenia/kino/","name":"Kino | Zamek Książąt Pomorskich","inLanguage":"pl-PL","isPartOf":{"@id":"https://zamek.szczecin.pl/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://zamek.szczecin.pl/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich"},{"@type":"ListItem","position":2,"item":"https://zamek.szczecin.pl/wydarzenia/","name":"Archiwa: Kategorie"},{"@type":"ListItem","position":3,"name":"Kino"}]},"potentialAction":{"@type":"ReadAction","target":"https://zamek.szczecin.pl/wydarzenia/kino/"},"datePublished":"2018-11-06T08:59:02+00:00","dateModified":"2024-12-31T08:59:12+00:00","author":{"@type":"Person","@id":"https://zamek.szczecin.pl/#/schema/Person/52691ba0724d75f402fd92d9558362a6","name":"admin"}}]}</script>
-<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 6.14ms meta | 0.67ms boot -->
+<link rel="canonical" href="https://zamek.szczecin.pl/wydarzenie/diaporama/44-pomorskie-spotkania-z-diaporama-3/" />
+<meta name="description" content="Pomorskie Spotkania z Diaporamą to organizowany przez Zamek Książąt Pomorskich w Szczecinie już po raz 44. konkurs, na który rokrocznie napływają prace z całego świata." />
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","@id":"https://zamek.szczecin.pl/#/schema/WebSite","url":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich","description":"Zamek Książąt Pomorskich – renesansowy zamek usytuowany na Wzgórzu Zamkowym w Szczecinie, w sąsiedztwie Odry, historyczna siedziba rodu Gryfitów","inLanguage":"pl-PL","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://zamek.szczecin.pl/search/{search_term_string}/"},"query-input":"required name=search_term_string"},"publisher":{"@type":"Organization","@id":"https://zamek.szczecin.pl/#/schema/Organization","name":"Zamek Książąt Pomorskich","url":"https://zamek.szczecin.pl/"}},{"@type":"WebPage","@id":"https://zamek.szczecin.pl/wydarzenie/diaporama/44-pomorskie-spotkania-z-diaporama-3/","url":"https://zamek.szczecin.pl/wydarzenie/diaporama/44-pomorskie-spotkania-z-diaporama-3/","name":"44. Pomorskie Spotkania z Diaporamą | Zamek Książąt Pomorskich","description":"Pomorskie Spotkania z Diaporamą to organizowany przez Zamek Książąt Pomorskich w Szczecinie już po raz 44. konkurs, na który rokrocznie napływają prace z całego świata.","inLanguage":"pl-PL","isPartOf":{"@id":"https://zamek.szczecin.pl/#/schema/WebSite"},"breadcrumb":{"@type":"BreadcrumbList","@id":"https://zamek.szczecin.pl/#/schema/BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":"https://zamek.szczecin.pl/","name":"Zamek Książąt Pomorskich"},{"@type":"ListItem","position":2,"item":"https://zamek.szczecin.pl/wydarzenie/","name":"Archiwa: Wydarzenia"},{"@type":"ListItem","position":3,"item":"https://zamek.szczecin.pl/category/diaporama/","name":"Kategoria: Pomorskie Spotkania z Diaporamą"},{"@type":"ListItem","position":4,"name":"44. Pomorskie Spotkania z Diaporamą"}]},"potentialAction":{"@type":"ReadAction","target":"https://zamek.szczecin.pl/wydarzenie/diaporama/44-pomorskie-spotkania-z-diaporama-3/"},"datePublished":"2024-01-08T08:26:02+00:00","dateModified":"2024-07-16T09:44:51+00:00"}]}</script>
+<!-- / The SEO Framework: stworzone przez Sybre Waaijer | 5.39ms meta | 0.71ms boot -->
 
 <link rel='dns-prefetch' href='//unpkg.com' />
 <link rel="alternate" type="application/rss+xml" title="Zamek Książąt Pomorskich &raquo; Kanał z wpisami" href="https://zamek.szczecin.pl/feed/" />
 <link rel="alternate" type="application/rss+xml" title="Zamek Książąt Pomorskich &raquo; Kanał z komentarzami" href="https://zamek.szczecin.pl/comments/feed/" />
-<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenia%2Fkino%2F&#038;lang=pl" />
-<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenia%2Fkino%2F&#038;format=xml&#038;lang=pl" />
+<link rel="alternate" title="oEmbed (JSON)" type="application/json+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenie%2Fdiaporama%2F44-pomorskie-spotkania-z-diaporama-3%2F&#038;lang=pl" />
+<link rel="alternate" title="oEmbed (XML)" type="text/xml+oembed" href="https://zamek.szczecin.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fzamek.szczecin.pl%2Fwydarzenie%2Fdiaporama%2F44-pomorskie-spotkania-z-diaporama-3%2F&#038;format=xml&#038;lang=pl" />
 <style id='wp-img-auto-sizes-contain-inline-css' type='text/css'>
 img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 /*# sourceURL=wp-img-auto-sizes-contain-inline-css */
@@ -71,6 +71,10 @@ img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
 </style>
 
 <link rel='stylesheet' id='responsive-lightbox-swipebox-css' href='https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/assets/swipebox/swipebox.min.css?ver=1.5.2' type='text/css' media='all' />
+<link rel='stylesheet' id='responsive-lightbox-gallery-css' href='https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/css/gallery.css?ver=2.7.6' type='text/css' media='all' />
+<link rel='stylesheet' id='responsive-lightbox-basicgrid-gallery-css' href='https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/css/gallery-basicgrid.css?ver=2.7.6' type='text/css' media='all' />
+<link rel='stylesheet' id='responsive-lightbox-basicslider-gallery-css' href='https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/assets/splide/splide.min.css?ver=4.1.4' type='text/css' media='all' />
+<link rel='stylesheet' id='responsive-lightbox-basicmasonry-gallery-css' href='https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/css/gallery-basicmasonry.css?ver=2.7.6' type='text/css' media='all' />
 <link rel='stylesheet' id='fonts-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/fonts.css?hash=1741246365&#038;ver=6.9.6' type='text/css' media='all' />
 <link rel='stylesheet' id='style-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/default.css?hash=1749114041&#038;ver=6.9.6' type='text/css' media='all' />
 <link rel='stylesheet' id='style-desktop-css' href='https://zamek.szczecin.pl/wp-content/themes/zamek/css/desktop.css?hash=1741246366&#038;ver=6.9.6' type='text/css' media='all' />
@@ -127,7 +131,7 @@ window.RLG = window.RLG || {}; window.RLG.sanitizeAllowedHosts = ["youtube.com",
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/plugins/responsive-lightbox/assets/infinitescroll/infinite-scroll.pkgd.min.js?ver=4.0.1" id="responsive-lightbox-infinite-scroll-js"></script>
 <script type="text/javascript" id="responsive-lightbox-js-before">
 /* <![CDATA[ */
-var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"c842ecc774","preview":false,"postId":260,"scriptExtension":false};
+var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activeGalleries":true,"animation":true,"hideCloseButtonOnMobile":false,"removeBarsOnMobile":false,"hideBars":true,"hideBarsDelay":5000,"videoMaxWidth":1080,"useSVG":true,"loopAtEnd":false,"woocommerce_gallery":false,"ajaxurl":"https:\/\/zamek.szczecin.pl\/wp-admin\/admin-ajax.php","nonce":"c842ecc774","preview":false,"postId":16800,"scriptExtension":false};
 
 //# sourceURL=responsive-lightbox-js-before
 /* ]]> */
@@ -279,12 +283,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
         }
                 </style>
 
-        <meta name="description" content="Małe, kameralne kino Zamek działające od latw Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świet..." />
+        <meta name="description" content="44. POMORSKIE SPOTKANIA Z DIAPORAMĄ 45. Pomorskie Spotkania z Diaporamą &#8211; 2024   Projekt dofinansowano ze środków Ministra Kultury i Dziedzictwa..." />
 <meta property="og:typ" content="article" />
-<meta property="og:image" content="" />
-<meta property="og:title" content="Zamek Książąt Pomorskich - Kino" />
-<meta property="og:url" content="https://zamek.szczecin.pl/wydarzenia/kino/" />
-<meta property="og:description" content="Małe, kameralne kino Zamek działające od latw Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świet..." />
+<meta property="og:image" content="https://zamek.szczecin.pl/wp-content/uploads/2023/10/Diaporama-baner-tlo-1024x391.png" />
+<meta property="og:title" content="Zamek Książąt Pomorskich - 44. Pomorskie Spotkania z Diaporamą" />
+<meta property="og:url" content="https://zamek.szczecin.pl/wydarzenie/diaporama/44-pomorskie-spotkania-z-diaporama-3/" />
+<meta property="og:description" content="44. POMORSKIE SPOTKANIA Z DIAPORAMĄ 45. Pomorskie Spotkania z Diaporamą &#8211; 2024   Projekt dofinansowano ze środków Ministra Kultury i Dziedzictwa..." />
             <style>
                 #wp-admin-bar-ctn_adminbar_menu .ab-item {
                     background: ;
@@ -299,9 +303,187 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
             </style>
             
 
+<style id='responsive-lightbox-gallery-inline-inline-css' type='text/css'>
+
+				#rl-gallery-container-1 .rl-gallery .rl-gallery-link {
+					border: 0px solid #000000;
+				}
+				#rl-gallery-container-1 .rl-gallery .rl-gallery-link .rl-gallery-item-title {
+					color: #ffffff;
+				}
+				#rl-gallery-container-1 .rl-gallery .rl-gallery-link .rl-gallery-item-caption {
+					color: #cccccc;
+				}
+				#rl-gallery-container-1 .rl-gallery .rl-gallery-link .rl-gallery-caption {
+					font-size: 13px;
+					padding: 20px;
+				}
+				#rl-gallery-container-1 .rl-gallery .rl-gallery-link .rl-gallery-caption,
+				#rl-gallery-container-1 .rl-gallery .rl-gallery-link:after {
+					background-color: rgba( 0,0,0, 0.8 );
+				}
+				#rl-gallery-container-1 [class^="rl-hover-icon-"] .rl-gallery-link:before,
+				#rl-gallery-container-1 [class*=" rl-hover-icon-"] .rl-gallery-link:before {
+					color: #ffffff;
+					background-color: rgba( 0,0,0, 0.8 );
+				}
+
+				#rl-gallery-container-2 .rl-gallery .rl-gallery-link {
+					border: 0px solid #000000;
+				}
+				#rl-gallery-container-2 .rl-gallery .rl-gallery-link .rl-gallery-item-title {
+					color: #ffffff;
+				}
+				#rl-gallery-container-2 .rl-gallery .rl-gallery-link .rl-gallery-item-caption {
+					color: #cccccc;
+				}
+				#rl-gallery-container-2 .rl-gallery .rl-gallery-link .rl-gallery-caption {
+					font-size: 13px;
+					padding: 20px;
+				}
+				#rl-gallery-container-2 .rl-gallery .rl-gallery-link .rl-gallery-caption,
+				#rl-gallery-container-2 .rl-gallery .rl-gallery-link:after {
+					background-color: rgba( 0,0,0, 0.8 );
+				}
+				#rl-gallery-container-2 [class^="rl-hover-icon-"] .rl-gallery-link:before,
+				#rl-gallery-container-2 [class*=" rl-hover-icon-"] .rl-gallery-link:before {
+					color: #ffffff;
+					background-color: rgba( 0,0,0, 0.8 );
+				}
+
+				#rl-gallery-container-3 .rl-gallery .rl-gallery-link {
+					border: 0px solid #000000;
+				}
+				#rl-gallery-container-3 .rl-gallery .rl-gallery-link .rl-gallery-item-title {
+					color: #ffffff;
+				}
+				#rl-gallery-container-3 .rl-gallery .rl-gallery-link .rl-gallery-item-caption {
+					color: #cccccc;
+				}
+				#rl-gallery-container-3 .rl-gallery .rl-gallery-link .rl-gallery-caption {
+					font-size: 13px;
+					padding: 20px;
+				}
+				#rl-gallery-container-3 .rl-gallery .rl-gallery-link .rl-gallery-caption,
+				#rl-gallery-container-3 .rl-gallery .rl-gallery-link:after {
+					background-color: rgba( 0,0,0, 0.8 );
+				}
+				#rl-gallery-container-3 [class^="rl-hover-icon-"] .rl-gallery-link:before,
+				#rl-gallery-container-3 [class*=" rl-hover-icon-"] .rl-gallery-link:before {
+					color: #ffffff;
+					background-color: rgba( 0,0,0, 0.8 );
+				}
+/*# sourceURL=responsive-lightbox-gallery-inline-inline-css */
+</style>
+<style id='responsive-lightbox-basicgrid-gallery-inline-inline-css' type='text/css'>
+
+		#rl-gallery-container-1 .rl-basicgrid-gallery .rl-gallery-item {
+			width: calc(25% - 2px);
+			margin: 1px;
+		}
+		@media all and (min-width: 1200px) {
+			#rl-gallery-container-1 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(25% - 2px);
+			}
+		}
+		@media all and (min-width: 992px) and (max-width: 1200px) {
+			#rl-gallery-container-1 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(33.33% - 2px);
+			}
+		}
+		@media all and (min-width: 768px) and (max-width: 992px) {
+			#rl-gallery-container-1 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(50% - 2px);
+			}
+		}
+		@media all and (max-width: 768px) {
+			#rl-gallery-container-1 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(100% - 2px);
+			}
+		}
+			#rl-gallery-container-1 .rl-basicgrid-gallery .rl-gallery-item {
+				height: 180px;
+			}
+			#rl-gallery-container-1 .rl-basicgrid-gallery .rl-gallery-item img {
+				height: 180px;
+				object-fit: cover;
+				max-width: 100%;
+				min-width: 100%;
+			}
+
+		#rl-gallery-container-2 .rl-basicgrid-gallery .rl-gallery-item {
+			width: calc(25% - 2px);
+			margin: 1px;
+		}
+		@media all and (min-width: 1200px) {
+			#rl-gallery-container-2 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(25% - 2px);
+			}
+		}
+		@media all and (min-width: 992px) and (max-width: 1200px) {
+			#rl-gallery-container-2 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(33.33% - 2px);
+			}
+		}
+		@media all and (min-width: 768px) and (max-width: 992px) {
+			#rl-gallery-container-2 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(50% - 2px);
+			}
+		}
+		@media all and (max-width: 768px) {
+			#rl-gallery-container-2 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(100% - 2px);
+			}
+		}
+			#rl-gallery-container-2 .rl-basicgrid-gallery .rl-gallery-item {
+				height: 180px;
+			}
+			#rl-gallery-container-2 .rl-basicgrid-gallery .rl-gallery-item img {
+				height: 180px;
+				object-fit: cover;
+				max-width: 100%;
+				min-width: 100%;
+			}
+
+		#rl-gallery-container-3 .rl-basicgrid-gallery .rl-gallery-item {
+			width: calc(25% - 2px);
+			margin: 1px;
+		}
+		@media all and (min-width: 1200px) {
+			#rl-gallery-container-3 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(25% - 2px);
+			}
+		}
+		@media all and (min-width: 992px) and (max-width: 1200px) {
+			#rl-gallery-container-3 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(33.33% - 2px);
+			}
+		}
+		@media all and (min-width: 768px) and (max-width: 992px) {
+			#rl-gallery-container-3 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(50% - 2px);
+			}
+		}
+		@media all and (max-width: 768px) {
+			#rl-gallery-container-3 .rl-basicgrid-gallery .rl-gallery-item {
+				width: calc(100% - 2px);
+			}
+		}
+			#rl-gallery-container-3 .rl-basicgrid-gallery .rl-gallery-item {
+				height: 180px;
+			}
+			#rl-gallery-container-3 .rl-basicgrid-gallery .rl-gallery-item img {
+				height: 180px;
+				object-fit: cover;
+				max-width: 100%;
+				min-width: 100%;
+			}
+/*# sourceURL=responsive-lightbox-basicgrid-gallery-inline-inline-css */
+</style>
+
 </head>
 
-<body data-rsssl=1 class="wp-singular category_custom-template-default single single-category_custom postid-260 wp-theme-zamek lang-pl">
+<body data-rsssl=1 class="wp-singular events-template-default single single-events postid-16800 wp-theme-zamek lang-pl">
 <noscript><img height="1" width="1" style="display:none"src="https://www.facebook.com/tr?id=1026840438499501&ev=PageView&noscript=1"/></noscript>
 
 <div id="header" class="container">
@@ -387,12 +569,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
         </a>
         <nav class=" animated nav-collapse" id="panel">
             <div class="box-menu">
-                <div class="menu-menu-glowne-pl-container"><ul id="primary-menu" class="navbar-list"><li id="menu-item-95" class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+                <div class="menu-menu-glowne-pl-container"><ul id="primary-menu" class="navbar-list"><li id="menu-item-95" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li id="menu-item-11076" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11076"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 	<li id="menu-item-8092" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-8092"><a href="https://zamek.szczecin.pl/kalendarium-wydarzen/">Kalendarium wydarzeń</a></li>
 	<li id="menu-item-259" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-259"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-	<li id="menu-item-270" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li id="menu-item-270" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li id="menu-item-279" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-279"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 	<li id="menu-item-806" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-806"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 	<li id="menu-item-525" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-525"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -462,12 +644,12 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 	<li id="menu-item-18788" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-18788"><a href="https://zamek.szczecin.pl/standardy-ochrony-maloletnich/">Standardy ochrony małoletnich</a></li>
 </ul>
 </li>
-</ul></div>                <div class="menu-menu-glowne-pl-container"><ul id="tablet-menu" class="navbar-list"><li class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+</ul></div>                <div class="menu-menu-glowne-pl-container"><ul id="tablet-menu" class="navbar-list"><li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-95"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11076"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-8092"><a href="https://zamek.szczecin.pl/kalendarium-wydarzen/">Kalendarium wydarzeń</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-259"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-270"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-279"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-806"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 	<li class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-525"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -587,14 +769,16 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
     </div>
             <div class="menu-widget"><ul>
-	<li class="lang-item lang-item-27 lang-item-pl current-lang lang-item-first"><a lang="pl-PL" hreflang="pl-PL" href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="true">PL</a></li>
+	<li class="lang-item lang-item-27 lang-item-pl current-lang lang-item-first"><a lang="pl-PL" hreflang="pl-PL" href="https://zamek.szczecin.pl/wydarzenie/diaporama/44-pomorskie-spotkania-z-diaporama-3/" aria-current="true">PL</a></li>
 	<li class="lang-item lang-item-39 lang-item-de no-translation"><a lang="de-DE" hreflang="de-DE" href="https://zamek.szczecin.pl/de/">DE</a></li>
 	<li class="lang-item lang-item-43 lang-item-en no-translation"><a lang="en-GB" hreflang="en-GB" href="https://zamek.szczecin.pl/en/">EN</a></li>
 </ul>
 </div>    </div>
 <div class="wrapper">
-    <section id="header-basic"
-             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2018/11/kinozamek_foto2_poprawione.jpg')">
+    
+    <div id="header-basic" data-aos="fade-up"
+         data-aos-duration="2000" class="change-color change-color-background opacity50"
+         style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2023/10/Diaporama-baner-tlo.png') !important">
         <div class="indicator indicator-header">
             <div class="positioner-left"></div>
             <div class="pointer"></div>
@@ -603,363 +787,176 @@ var rlArgs = {"script":"swipebox","selector":"lightbox","customEvents":"","activ
 
         <div class="flex">
             <div class="flex-item">
-                <img src="https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino_zamek.png" alt="">                <h1></h1>
-                <p></p>
+                <p class="event-details">
+                                                                
+                </p>
+                <h1>44. Pomorskie Spotkania z Diaporamą</h1>
             </div>
         </div>
-    </section>
-    <div class="events-with-calendar ">
-
-                <section id="category-page" class="content kalendarium"
-                 data-id_cat="6">
-
-            <div id="kalendarz-w-kategorii" class="calendar-box">
-                <div class="container">
-                    <div class="calendar-box">
-                        <div class="calendar">
-
-
-
-
-                            
-
-
-
-                            <div class="controls">
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-07-08" aria-label="poprzedni miesiąc" >
-                                    <img class="prevButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_prev.png" alt="">
-                                    <img class="prevButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_prev.png" alt="">
-                                </a>
-
-                                <h4 class="dark">sierpień 2026</h4>
-
-                                <a href="https://zamek.szczecin.pl/wydarzenia/kino/?id=2026-09-08" aria-label="następny miesiąc">
-                                    <img class="nextButton kontrast_normal" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/icon_next.png" alt="">
-                                    <img class="nextButton kontrast_yellow" src="https://zamek.szczecin.pl/wp-content/themes/zamek/img/yellow/icon_next.png" alt="">
-                                </a>
-                            </div>
-
-                            <div class="sticky">
-                                <ul>
-                                    <li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_desktop" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_desktop" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_desktop" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_desktop" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_desktop" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_desktop" data-day="N">
-                                            <span>N</span>
-                                            </li><li class="name_week_desktop" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li>                                    <li class="name_week_mobile" data-day="Pn">
-                                            <span>Pn</span>
-                                            </li><li class="name_week_mobile" data-day="Wt">
-                                            <span>Wt</span>
-                                            </li><li class="name_week_mobile" data-day="Śr">
-                                            <span>Śr</span>
-                                            </li><li class="name_week_mobile" data-day="Cz">
-                                            <span>Cz</span>
-                                            </li><li class="name_week_mobile" data-day="Pt">
-                                            <span>Pt</span>
-                                            </li><li class="name_week_mobile" data-day="So">
-                                            <span>So</span>
-                                            </li><li class="name_week_mobile" data-day="N">
-                                            <span>N</span>
-                                            </li>                                </ul>
-                                <ul>
-                                    <li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li><li class="name_week_mobile_space" data-day="N">
-                                            <span>&nbsp;</span>
-                                            </li>                                    <li class="calendarEventClick is_event" data-item="1082026">
-                                            <span class="">01</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="2082026">
-                                            <span class="">02</span>
-                                            </li><li class="calendarEventClick is_event" data-item="3082026">
-                                            <span class="">03</span>
-                                            </li><li class="calendarEventClick is_event" data-item="4082026">
-                                            <span class="">04</span>
-                                            </li><li class="calendarEventClick is_event" data-item="5082026">
-                                            <span class="">05</span>
-                                            </li><li class="calendarEventClick is_event" data-item="6082026">
-                                            <span class="">06</span>
-                                            </li><li class="calendarEventClick is_event" data-item="7082026">
-                                            <span class="">07</span>
-                                            </li><li class="calendarEventClick is_event" data-item="8082026">
-                                            <span class="">08</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="9082026">
-                                            <span class="">09</span>
-                                            </li><li class="calendarEventClick is_event" data-item="10082026">
-                                            <span class="">10</span>
-                                            </li><li class="calendarEventClick is_event" data-item="11082026">
-                                            <span class="">11</span>
-                                            </li><li class="calendarEventClick is_event" data-item="12082026">
-                                            <span class="">12</span>
-                                            </li><li class="calendarEventClick is_event" data-item="13082026">
-                                            <span class="">13</span>
-                                            </li><li class="calendarEventClick is_event" data-item="14082026">
-                                            <span class="">14</span>
-                                            </li><li class="calendarEventClick is_event" data-item="15082026">
-                                            <span class="">15</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="16082026">
-                                            <span class="">16</span>
-                                            </li><li class="calendarEventClick is_event" data-item="17082026">
-                                            <span class="">17</span>
-                                            </li><li class="calendarEventClick is_event" data-item="18082026">
-                                            <span class="">18</span>
-                                            </li><li class="calendarEventClick is_event" data-item="19082026">
-                                            <span class="">19</span>
-                                            </li><li class="calendarEventClick is_event" data-item="20082026">
-                                            <span class="">20</span>
-                                            </li><li class="calendarEventClick is_event" data-item="21082026">
-                                            <span class="">21</span>
-                                            </li><li class="calendarEventClick is_event" data-item="22082026">
-                                            <span class="">22</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="23082026">
-                                            <span class="">23</span>
-                                            </li><li class="calendarEventClick is_event" data-item="24082026">
-                                            <span class="">24</span>
-                                            </li><li class="calendarEventClick is_event" data-item="25082026">
-                                            <span class="">25</span>
-                                            </li><li class="calendarEventClick is_event" data-item="26082026">
-                                            <span class="">26</span>
-                                            </li><li class="calendarEventClick is_event" data-item="27082026">
-                                            <span class="">27</span>
-                                            </li><li class="calendarEventClick is_event" data-item="28082026">
-                                            <span class="">28</span>
-                                            </li><li class="calendarEventClick is_event" data-item="29082026">
-                                            <span class="">29</span>
-                                            </li><li class="calendarEventClick isWeekend is_event" data-item="30082026">
-                                            <span class="">30</span>
-                                            </li><li class="calendarEventClick is_event" data-item="31082026">
-                                            <span class="">31</span>
-                                            </li>
-                                </ul>
-                            </div>
-
-                            <div id="events-list">
-                                <div class="events-list">
-                                    <div class="listCategory">
-                                        <div class="box">
-                                            <div class="mobile-box-roll">
-                                                <div class="flex">
-
-
-                                                                                                                <div class="flex-item">
-                                                                <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/"
-                                                                   class="event-image-box">
-                                                                    <div class="background-hover-events">
-                                                                        <div role="img"
-                                                                             aria-label="Zamkowe Noce Filmowe 2026"
-                                                                             class="image"
-                                                                             style="background-image: url('https://zamek.szczecin.pl/wp-content/uploads/2024/05/zamkowenocefilmowe2024_wwwzamek.jpg');"></div>
-                                                                    </div>
-                                                                </a>
-                                                                <div class="event-details">
-                                                                    <a href="https://zamek.szczecin.pl/wydarzenie/kino/zamkowe-noce-filmowe-2026/">
-                                                                        <p class="date">11-08-2026, 18-08-2026, 25-08-2026</p>
-                                                                        <p class="title">Zamkowe Noce Filmowe 2026</p>
-                                                                    </a>
-                                                                    <p class="describe">Zamkowe Noce Filmowe to doroczne plenerowe prezentacje filmów wartościowych i ważnych, które odbywają się w plenerowej przestrzeni Zamku . Ich charakter jest kontynuacją programu prezentowanego przez cały filmowy rok w cenionym przez miłośników dobrego filmu Kinie Zamek.</p>
-                                                                    <p class="tags change-color change-color-font">
-                                                                        #&nbsp;<a href="/?s=Kino Zamek" class="change-color change-color-font">Kino Zamek,&nbsp;</a><a href="/?s=Zamkowe Noce Filmowe" class="change-color change-color-font">Zamkowe Noce Filmowe,&nbsp;</a><a href="/?s=kino plenerowe" class="change-color change-color-font">kino plenerowe,&nbsp;</a>                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div class="flex-item"></div><div class="flex-item"></div>                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
-    <section id="block_tickets" class="content">
+
+    <div class="content">
         <div class="container">
-            <span class="rectangle change-color change-color-background opacity50"></span>
+            <div class="flex flex-main one-col">
+                <div class="flex-item event" data-aos="fade-up"
+                     data-aos-duration="2000">
+                    <div class="container-mobi">
+                        <section class="content_event" data-aos="fade-up"
+                                 data-aos-duration="2000">
+                            <h3>44. POMORSKIE SPOTKANIA Z DIAPORAMĄ</h3>
+<h6><a href="https://zamek.szczecin.pl/wydarzenie/kino/45-pomorskie-spotkania-z-diaporama/">45. Pomorskie Spotkania z Diaporamą &#8211; 2024 </a></h6>
+<p><img loading="lazy" decoding="async" class="alignnone wp-image-16810" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/MKiDN_znak_skrot_kolor_biale_tlo_RGB-01-300x191.png" alt="" width="123" height="78" srcset="https://zamek.szczecin.pl/wp-content/uploads/2024/01/MKiDN_znak_skrot_kolor_biale_tlo_RGB-01-300x191.png 300w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/MKiDN_znak_skrot_kolor_biale_tlo_RGB-01.png 447w" sizes="auto, (max-width: 123px) 100vw, 123px" /></p>
+<p>Projekt dofinansowano ze środków Ministra Kultury i Dziedzictwa Narodowego pochodzących z Funduszu Promocji Kultury – państwowego funduszu celowego.</p>
+<p>Co-funded by the Ministry of Culture and National Heritage with resources coming from Culture Promotion Fund – State Special Fund.</p>
+<p>&nbsp;</p>
+<p><img loading="lazy" decoding="async" class="alignnone wp-image-318" src="https://zamek.szczecin.pl/wp-content/uploads/2018/11/pomorzezachodnie_ok-300x175.jpg" alt="" width="155" height="90" srcset="https://zamek.szczecin.pl/wp-content/uploads/2018/11/pomorzezachodnie_ok-300x175.jpg 300w, https://zamek.szczecin.pl/wp-content/uploads/2018/11/pomorzezachodnie_ok-768x448.jpg 768w, https://zamek.szczecin.pl/wp-content/uploads/2018/11/pomorzezachodnie_ok-1024x597.jpg 1024w, https://zamek.szczecin.pl/wp-content/uploads/2018/11/pomorzezachodnie_ok-2x1.jpg 2w, https://zamek.szczecin.pl/wp-content/uploads/2018/11/pomorzezachodnie_ok.jpg 1068w" sizes="auto, (max-width: 155px) 100vw, 155px" /></p>
+<p>Projekt jest współfinansowany z budżetu Województwa Zachodniopomorskiego w ramach dotacji celowej na realizację zadania pn. „44. Pomorskie Spotkania z Diaporamą”.</p>
+<p>The project is co-financed from the budget of the West Pomeranian Region as part of a targeted subsidy for the implementation of the task entitled: “44. Pomeranian Meetings with Diaporama.</p>
+<p>&nbsp;</p>
+<p><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-16811" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/FIAP-300x212.jpg" alt="" width="300" height="212" srcset="https://zamek.szczecin.pl/wp-content/uploads/2024/01/FIAP-300x212.jpg 300w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/FIAP-1024x724.jpg 1024w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/FIAP-768x543.jpg 768w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/FIAP.jpg 1169w" sizes="auto, (max-width: 300px) 100vw, 300px" /></p>
+<p>Patronat FIAP (International Federation of Photographic Art) nr. 2022/594</p>
+<p>FIAP Patronage (International Federation of Photographic Art) no. 2022/594</p>
+<p>&nbsp;</p>
+<p><img loading="lazy" decoding="async" class="alignnone size-medium wp-image-16812" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/FOTOKLUB-RP-300x212.jpg" alt="" width="300" height="212" srcset="https://zamek.szczecin.pl/wp-content/uploads/2024/01/FOTOKLUB-RP-300x212.jpg 300w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/FOTOKLUB-RP-1024x724.jpg 1024w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/FOTOKLUB-RP-768x543.jpg 768w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/FOTOKLUB-RP-1536x1086.jpg 1536w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/FOTOKLUB-RP-2048x1448.jpg 2048w" sizes="auto, (max-width: 300px) 100vw, 300px" /></p>
+<p>Patronat Fotoklubu RP nr. 441/2023.</p>
+<p>Polish Republic’s Photoclub Association of Authors Patronage no. 441/2023.</p>
+<p>&nbsp;</p>
+<p><img loading="lazy" decoding="async" class="alignnone wp-image-16801" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/logo-Zamku-ZLOTE-278x300.png" alt="" width="94" height="101" srcset="https://zamek.szczecin.pl/wp-content/uploads/2024/01/logo-Zamku-ZLOTE-278x300.png 278w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/logo-Zamku-ZLOTE-948x1024.png 948w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/logo-Zamku-ZLOTE-768x830.png 768w, https://zamek.szczecin.pl/wp-content/uploads/2024/01/logo-Zamku-ZLOTE.png 1032w" sizes="auto, (max-width: 94px) 100vw, 94px" /></p>
+<p>Organizator: Zamek Książąt Pomorskich w Szczecinie</p>
+<p>Organizer: The Castle of Pomeranian Dukes in Szczecin</p>
+<p>&nbsp;</p>
+<h5>44. POMORSKIE SPOTKANIA Z DIAPORAMĄ</h5>
+<p><span style="color: #ff0000;"><strong>17-19 listopada 2023 r.</strong></span><br />
+<strong>Sala Kina Zamek</strong></p>
+<p><strong>Pomorskie Spotkania z Diaporamą to organizowany przez Zamek Książąt Pomorskich w Szczecinie już po raz 44. konkurs, na który rokrocznie napływają prace z całego świata. Jedyna międzynarodowa impreza tego typu w Polsce, od kilkudziesięciu lat objęta patronatami Międzynarodowej Federacji Sztuki Fotograficznej (FIAP) oraz Fotoklubu RP.</strong></p>
+<p>Przez te lata Szczecin stawał się polską stolicą diaporamy, a publiczność mogła doświadczać niezwykłej sztuki umiejscowionej pomiędzy fotografią a filmem. Ogromny wkład w rozwój tego przedsięwzięcia wnieśli ceniona artystka fotografik Krystyna Łyczywek oraz Leszek Kurpiewski, wieloletni komisarz Spotkań.</p>
+<p>Diaporama to utwór cyfrowy, którego granice znajdują się pomiędzy udźwiękowionym pokazem zdjęć a filmem. Nośnikiem obrazu są pojedyncze zdjęcia, które przenikają się z kolejnymi tworząc w ten sposób trzeci – nieistniejący obraz. Dopuszczalne jest wykorzystywanie elementów filmu przy zachowaniu odpowiednich proporcji (casty). Kompozycja poszczególnych zdjęć konstruowana jest w oparciu o scenariusz. Dynamika projekcji – sposób przenikania się obrazów – tworzy integralną całość ze ścieżką dźwiękową. W diaporamie analogowej nośnikiem obrazu były przenikające się na jednym polu obrazowym slajdy. Jednak diaporama przeszła proces zmian technologicznych od udźwiękowionych przezroczy do prac cyfrowych. Współczesna sztuka diaporamy odpowiada wyzwaniom skomputeryzowanego świata.</p>
+<p>Diaporamy podejmują wiele zróżnicowanych tematów, np.: przyroda, ekologia, aktualne problemy społeczne związane z klimatem, izolacją z powodu pandemii czy życiem kobiet we współczesnym świecie. Prace najczęściej inspirowane są sztuką i historią cywilizacji.</p>
+<p><strong>Organizowany przez Zamek konkurs odbywa się w dwóch kategoriach:</strong><br />
+• diaporama klasyczna (przenikania nie zawierają elementów ruchu)<br />
+• fotokast (dopuszczalny ruch w przenikaniach, dopuszczalne sekwencje filmowe).</p>
+<h5>44. POMERANIAN MEETINGS WITH “DIAPORAMA”</h5>
+<p><strong><span style="color: #ff0000;">17-19 November 2023</span></strong></p>
+<p><strong>Pomeranian meetings with “diaporama” – a competition already organized for the 44th time by the Castle of Pomeranian Dukes – each successive year attracting works from all over the world. This is the only international event of this type in Poland which, for tens of years, has been held under the patronage of the International Federation of Photographic Art and Photoclub RP.</strong></p>
+<p>Through all these years Szczecin has been becoming The Polish Capital of “diaporama”, therefore the public were able to experience remarkable art set between photography and film. The development of this enterprise was greatly supported and helped by an esteemed photo artist Krystyna Łyczywek and a long-standing commissioner of the meetings – Leszek Kurpiewski.</p>
+<p>“Diaporama” is a digital track whose borders are placed between sound photo show and film. The picture carrier are single photos which overlap with the next ones thus creating the third, only momentary picture. It is allowed to use film elements as long as the right proportions are preserved (casts). The composition of single photos is constructed on the basis of the script. The project dynamics – the way pictures overlap – creates an integral whole with the soundtrack. In analogue “diaporama” the carrier of the picture were the slides overlapping on a single picture field. However “diaporama” has gone through a number of technological changes – from sound slides to digital works. Contemporary “diaporama” art successfully meets the challenges of computerized world.</p>
+<p>Our events take on various subjects and issues such as: environment, ecology, current social problems connected with climate, isolation as a result of the pandemic or women’s lives in contemporary world. The works are most often inspired by art and the history of civilization.</p>
+<p><strong>The competition organized by the Castle of Pomeranian Dukes is held in two categories:</strong><br />
+• Classic “diaporama” – overlapping does not contain motion elements<br />
+• Photocast – overlapping with motion elements as well as film sequences are allowed.<br />
+Co-funded by the Ministry of Culture and National Heritage with resources coming from Culture Promotion Fund – State Special Fund.<br />
+FIAP Patronage (International Federation of Photographic Art) no. 2022/594 and the Polish Republic’s Photoclub Association of Authors no. 441/2023.</p>
+<p>Organizer: The Castle of Pomeranian Dukes in Szczecin.</p>
+<p>&nbsp;</p>
+<p>Prace na konkurs można zgłaszać pod adresem:<br />
+<strong>dia@zamek.szczecin.pl</strong> w terminie <strong>do 31 października 2023 r.</strong></p>
+<p><strong>Uczestnictwo w konkursie jest bezpłatne.</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2023/09/reg_pl-_44_Pomeranian_Meetings_with_Diaporama_2023.pdf"><strong>REGULAMIN</strong></a><br />
+<a href="https://zamek.szczecin.pl/wp-content/uploads/2023/09/registration_FIAP.xls"><strong>KARTA ZGŁOSZENIA</strong></a></p>
+<p>&nbsp;</p>
+<p>The entries for the competition can be submitted to the following email address: <strong>dia@zamek.szczecin.pl  by the 31st of October 2023.</strong></p>
+<p><strong>Participation in the contest is free of charge.</strong></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2023/09/reg_eng_44-Pomeranian_Meetings_with_Diaporama_2023.doc.pdf"><strong>TERMS AND CONDITIONS</strong></a></p>
+<p><a href="https://zamek.szczecin.pl/wp-content/uploads/2023/09/registration_FIAP.xls"><strong>ENTRY FORM</strong></a></p>
+<p>&nbsp;</p>
+<h5>PROGRAM</h5>
+<p><span style="color: #ff0000;"><strong>17-19 listopada 2023 r.</strong></span><br />
+<strong>Sala Kina Zamek</strong><br />
+<strong>Bezpłatne wejściówki do pobrania w kasie Zamku</strong></p>
+<p>Pomorskie Spotkania z Diaporamą to organizowany przez Zamek Książąt Pomorskich w Szczecinie już po raz 44. konkurs, na który rokrocznie napływają prace z całego świata. Jedyna międzynarodowa impreza tego typu w Polsce, od kilkudziesięciu lat objęta patronatami Międzynarodowej Federacji Sztuki Fotograficznej (FIAP) oraz Fotoklubu RP.</p>
+<p>Przez te lata Szczecin stawał się polską stolicą diaporamy, a publiczność mogła doświadczać niezwykłej sztuki, umiejscowionej pomiędzy fotografią a filmem. Ogromny wkład w rozwój tego przedsięwzięcia wnieśli ceniona artystka fotografik Krystyna Łyczywek oraz Leszek Kurpiewski, wieloletni komisarz Spotkań.</p>
+<p>Diaporama to utwór cyfrowy, którego granice znajdują się pomiędzy udźwiękowionym pokazem zdjęć a filmem. Nośnikiem obrazu są pojedyncze zdjęcia, które przenikają się z kolejnymi tworząc w ten sposób trzeci – nieistniejący obraz. Dopuszczalne jest wykorzystywanie elementów filmu przy zachowaniu odpowiednich proporcji (casty). Kompozycja poszczególnych zdjęć konstruowana jest w oparciu o scenariusz. Dynamika projekcji – sposób przenikania się obrazów – tworzy integralną całość ze ścieżką dźwiękową. W diaporamie analogowej nośnikiem obrazu były przenikające się na jednym polu obrazowym slajdy. Jednak diaporama przeszła proces zmian technologicznych od udźwiękowionych przezroczy do prac cyfrowych. Współczesna sztuka diaporamy odpowiada wyzwaniom skomputeryzowanego świata.</p>
+<p>Diaporamy podejmują wiele zróżnicowanych tematów, np.: przyroda, ekologia, aktualne problemy społeczne związane z klimatem, izolacją z powodu pandemii czy życiem kobiet we współczesnym świecie. Prace najczęściej inspirowane są sztuką i historią cywilizacji.</p>
+<p>Organizowany przez Zamek konkurs odbywa się w dwóch kategoriach:<br />
+&#8211; diaporama klasyczna (przenikania nie zawierają elementów ruchu)<br />
+&#8211; fotokast (dopuszczalny ruch w przenikaniach, dopuszczalne sekwencje filmowe).</p>
+<h5>Program wydarzenia:</h5>
+<p><span style="color: #ff0000;"><strong>17 listopada</strong></span><br />
+<span style="color: #ff0000;"><strong>godz. 13:00</strong></span> &#8211; Pokazy preselekcyjne z udziałem jury, cz. 1 i cz. 2.<br />
+<span style="color: #ff0000;"><strong>godz. 18:00</strong></span> &#8211; inauguracja 44. Pomorskich Spotkań z Diaporamą i otwarcie wystawy fotograficznej Fotoklubu Zamek „Wieloświaty”<br />
+<strong><span style="color: #ff0000;">godz. 19:00</span> </strong>– pokaz laureatów poprzednich edycji Pomorskich Spotkań z Diaporamą – spotkanie autorskie z Wiesławem Jaskulskim – diaporamistą, wielkokrotnym laureatem Pomorskich Spotkań z Diaporamą.</p>
+<p><span style="color: #ff0000;"><strong>18 listopada</strong></span><br />
+<strong><span style="color: #ff0000;">godz. 10.00</span> </strong>&#8211; plener fotograficzny, dziedziniec Zamku Książąt Pomorskich w Szczecinie<br />
+<span style="color: #ff0000;"><strong>godz. 15:00</strong> </span>&#8211; pokaz diaporam konkursowych, cz. 1 i cz. 2.<br />
+<span style="color: #ff0000;"><strong>godz. 20:00</strong> </span>– Czy to jeszcze diaporama?<br />
+Elżbieta Stütz &#8211; (AFIAP) – artysta fotograf, autorka książek i albumów, publicystka<br />
+Timm Stütz &#8211; (AFIAP, EFIAP) – artysta fotograf, autor książek i albumów, publicysta<br />
+Paweł Kula &#8211; wykładowca Akademii Sztuki w Szczecinie, Pracownia Fotografii Kreacyjnej i Fotomediów, Katedra Fotografii</p>
+<p><span style="color: #ff0000;"><strong>19 listopada</strong></span><br />
+<span style="color: #ff0000;"><strong>godz. 16:00</strong></span> &#8211; uroczysta gala, ogłoszenie wyników, wręczenie nagród, pokaz nagrodzonych prac</p>
+<p>&nbsp;</p>
+<p>***</p>
+<h3>44th Pomeranian Meetings with “Diaporama” &#8211; 17-19 November 2023.</h3>
+<p><strong>Place: The Castle Cinema</strong></p>
+<p><strong>Free entry tickets available at the castle ticket office</strong></p>
+<p><strong>Schedule:</strong></p>
+<p><span style="color: #ff0000;"><strong>17.11.2023</strong></span><br />
+<strong><span style="color: #ff0000;">&#8211; 1 p.m.</span> </strong>– pre-selection show with jury participation part 1 and 2.<br />
+<span style="color: #ff0000;"><strong>&#8211; 6 p.m.</strong> </span>– Inauguration of the 44th Pomeranian Meetings with “Diaporama” along with opening of the photo exhibition “ Wieloświaty – Multi-worlds” by the Castle Photo-club.<br />
+<strong><span style="color: #ff0000;">&#8211; 7 p.m.</span> </strong>– The show of prizewinners from previous editions of Pomeranian Meetings with “Diaporama” &#8211; the author session with Wiesław Jaskulski &#8211; diaporamist, multiple winner of Pomeranian Meetings with “Diaporama”.</p>
+<p><span style="color: #ff0000;"><strong>18.11.2023</strong></span><br />
+Outdoor photography<br />
+Start: <span style="color: #ff0000;"><strong>10.00 a.m.</strong> </span>– the courtyard of the Castle of Pomeranian Dukes in Szczecin<br />
+<strong><span style="color: #ff0000;">&#8211; 3 p.m.</span></strong> – the competition “Diaporama” show part 1 and 2.<br />
+<span style="color: #ff0000;"><strong>&#8211; 8 p.m.</strong></span> – “Is it still “Diaporama?”<br />
+Elżbieta Stutz – (AFIAP) – photo artist, the author of books and albums, publicist<br />
+Timm Stütz – (AFIAP) &#8211; photo artist, the author of books and albums, publicist<br />
+Paweł Kula – a lecturer at The Art Academy in Szczecin, a Creative Photography and Photomedia Studio, Photography Department</p>
+<p><span style="color: #ff0000;"><strong>19.11.2023</strong></span><br />
+<span style="color: #ff0000;"><strong>&#8211; 4 p.m.</strong></span> – the gala ceremony, announcement of the results of the competition, handing over awards, awarded works show.</p>
+<p>&nbsp;</p>
+<h5>LAUREACI / WINNERS</h5>
+<h6><a href="https://zamek.szczecin.pl/wp-content/uploads/2023/11/Protkol-Jury-44.-Pomorskie-Spotkania-z-Diaporama.pdf">PROTOKÓŁ 44. POMORSKICH SPOTKAŃ Z DIAPORAMĄ</a> &#8211; lista laureatów</h6>
+<h6><a href="https://zamek.szczecin.pl/wp-content/uploads/2023/11/Jury-Protocol-44th-Pomeranian-Meetings-with-Diaporama.pdf">JURY PROTOCOL 44th Pomeranian Meetings with Diaporama</a></h6>
+<p>&nbsp;</p>
+<h5><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/Diaporama_2023.pdf">KATALOG / CATALOG</a></h5>
+<p>&nbsp;</p>
+<h5>PLAKAT I PROGRAM / POSTER AND PROGRAM</h5>
+<p><img loading="lazy" decoding="async" class="alignnone wp-image-16196 " src="https://zamek.szczecin.pl/wp-content/uploads/2023/10/44_DIAPORAMA_B1-724x1024.jpg" alt="" width="461" height="652" srcset="https://zamek.szczecin.pl/wp-content/uploads/2023/10/44_DIAPORAMA_B1-724x1024.jpg 724w, https://zamek.szczecin.pl/wp-content/uploads/2023/10/44_DIAPORAMA_B1-212x300.jpg 212w, https://zamek.szczecin.pl/wp-content/uploads/2023/10/44_DIAPORAMA_B1-768x1086.jpg 768w, https://zamek.szczecin.pl/wp-content/uploads/2023/10/44_DIAPORAMA_B1-1086x1536.jpg 1086w, https://zamek.szczecin.pl/wp-content/uploads/2023/10/44_DIAPORAMA_B1.jpg 1131w" sizes="auto, (max-width: 461px) 100vw, 461px" /></p>
+<h5><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/DIAPOrama-program-2023-druk-1.pdf">PROGRAM</a></h5>
+<h5></h5>
+<h5>FOTORELACJA / PHOTO REPORT</h5>
+<div class="rl-gallery-container rl-loading" id="rl-gallery-container-3" data-gallery_id="16815"> <div class="rl-gallery rl-basicgrid-gallery " id="rl-gallery-3" data-gallery_no="3"> <div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/1-300x277.jpg" width="300" height="277" alt="Zdjęcie dwóch stojaków z plakatami. Jeden w kolorze czerwonym promuje 44. Pomorskie Spotkania z Diaporamą. Drugi w ciemnym kolorze reklamuje wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-1-300x171.jpg" width="300" height="171" alt="44. Pomorskie Spotkania z Diaporamą. Trzy kobiety i mężczyzna bijący brawo. Jedna z kobiet trzyma białą i czerwoną różę." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-2-300x214.jpg" width="300" height="214" alt="44. Pomorskie Spotkania z Diaporamą. Na zdjęciu przemawia Beata Bogusławska. Obok niej stoi mężczyzna oraz kobieta." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-3.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-3-300x210.jpg" width="300" height="210" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-4.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-4-300x139.jpg" width="300" height="139" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w sali Kina Zamek." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-5.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-5-300x213.jpg" width="300" height="213" alt="44. Pomorskie Spotkania z Diaporamą. Koncert w Holu Wschodnim. Młoda kobieta gra na flecie, słuchacze stoją dookoła niej." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-6.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-6-300x139.jpg" width="300" height="139" alt="44. Pomorskie Spotkania z Diaporamą. Grono ludzi rozmawiających ze sobą w Holu Wschodnim Zamku." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-7.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-7-300x139.jpg" width="300" height="139" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-8.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-8-300x140.jpg" width="300" height="140" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-9.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-9-300x139.jpg" width="300" height="139" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w sali Kina Zamek." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-10.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-10-300x139.jpg" width="300" height="139" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-11.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-11-300x139.jpg" width="300" height="139" alt="44. Pomorskie Spotkania z Diaporamą. Na zdjęciu trzy kobiety, w środku Beata Bogusławska. Zdjęcie zrobione w Holu Wschodnim." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-12.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-12-300x219.jpg" width="300" height="219" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-13.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-13-300x139.jpg" width="300" height="139" alt="44. Pomorskie Spotkania z Diaporamą. Na zdjęciu mężczyzna oraz dwie kobiety. W tle plakat wydarzenia." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-14.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-14-300x169.jpg" width="300" height="169" alt="44. Pomorskie Spotkania z Diaporamą. Grono ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-15.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-15-300x146.jpg" width="300" height="146" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-16.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-16-300x198.jpg" width="300" height="198" alt="44. Pomorskie Spotkania z Diaporamą. Dwie kobiety w Holu Wschodnim Zamku oglądają wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-17.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-17-300x214.jpg" width="300" height="214" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-18.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-18-300x214.jpg" width="300" height="214" alt="44. Pomorskie Spotkania z Diaporamą. Na zdjęciu dwie kobiety, jedna z nich trzyma mikrofon. Druga się uśmiecha." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-19.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/2-19-300x214.jpg" width="300" height="214" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/220.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/220-300x203.jpg" width="300" height="203" alt="44. Pomorskie Spotkania z Diaporamą. Tłum ludzi w Holu Wschodnim Zamku ogląda wystawę WieloŚwiaty." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/221.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/221-300x200.jpg" width="300" height="200" alt="44. Pomorskie Spotkania z Diaporamą. Dwóch objętych mężczyzn." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-1-scaled.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-1-300x169.jpg" width="300" height="169" alt="44. Pomorskie Spotkania z Diaporamą. Kobieta z aparatem i statywem, robi zdjęcie stojącym na przeciwko motorom." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-2-300x169.jpg" width="300" height="169" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-3.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-3-300x169.jpg" width="300" height="169" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-4.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/4-4-169x300.jpg" width="169" height="300" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-1-139x300.jpg" width="139" height="300" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-2-300x139.jpg" width="300" height="139" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-3.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-3-300x225.jpg" width="300" height="225" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-4.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-4-300x139.jpg" width="300" height="139" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-5.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/5-5-300x199.jpg" width="300" height="199" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-1-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-2-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-3.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-3-300x139.jpg" width="300" height="139" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-4.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-4-236x300.jpg" width="236" height="300" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-5.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-5-300x182.jpg" width="300" height="182" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-6.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-6-300x159.jpg" width="300" height="159" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-7.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/6-7-300x198.jpg" width="300" height="198" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/65A.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/65A-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-1-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-2-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-3.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-3-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-4.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/7-4-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/75.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/75-139x300.jpg" width="139" height="300" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-1-140x300.jpg" width="140" height="300" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-2-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-3.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-3-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/410725380_1033676594587168_1144379771858785688_n.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/410725380_1033676594587168_1144379771858785688_n-300x139.jpg" width="300" height="139" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-4.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-4-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-5.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8-5-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8A-1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8A-1-300x190.jpg" width="300" height="190" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8A-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8A-2-300x200.jpg" width="300" height="200" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8A-3.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/8A-3-300x203.jpg" width="300" height="203" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/9-1.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/9-1-300x140.jpg" width="300" height="140" alt="" /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/9-2.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/9-2-140x300.jpg" width="140" height="300" alt="Słup reklamowy na Alei Kwiatowej w Szczecinie. Na słupie m.in. plakat Kina Zamek, zamkowej aplikacji moblinej, 44. Pomorskich Spotkań z Diaporamą oraz spektaklu Burmistrz." /></a></div><div class="rl-gallery-item"><a href="https://zamek.szczecin.pl/wp-content/uploads/2024/01/20231117_083912-scaled.jpg" title="" data-rl_title="" class="rl-gallery-link" data-rl_caption="" data-rel="lightbox-gallery-3"><img loading="lazy" decoding="async" src="https://zamek.szczecin.pl/wp-content/uploads/2024/01/20231117_083912-300x169.jpg" width="300" height="169" alt="Wejście A do Zamku Książąt Pomorskich. Przed wejściem flagi reklamowe Pomorskich Spotkań z Diaporamą." /></a></div> </div> </div>
+<p>&nbsp;</p>
+                        </section>
 
-            <div class="flex change-color change-color-background cols_3">
-                <div class="ticket_desc">
-                    <h3>Bilety na wszystkie seanse w cenie:</h3>
+                                                                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="place">
+                            <h2>Miejsce</h2>
+                            <p>
+                                Zamek Książąt Pomorskich w Szczecinie                            </p>
+                        </section>
+
+                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="extra_block">
+                            <h2></h2>
+                            <p>
+                                                            </p>
+                        </section>
+                    </div>
+
                 </div>
-                                    <div class="price">
-                        <h3>22zł</h3>
-                        <span>(normalny)</span>
-                    </div>
-                                                    <div class="price">
-                        <h3>20zł</h3>
-                        <span>(ulgowy)</span>
-                    </div>
-                                                    <div class="price">
-                        <h3>16zł</h3>
-                        <span>(grupowy)</span>
-                    </div>
+                <div class="flex-item tickets" data-aos="fade-up"
+                     data-aos-duration="2000">
+                    <div class="box">
+                        <section data-aos="fade-up"
+                                 data-aos-duration="2000" class="title change-color change-color-background">
+                            <div class="container-mobi">
+                                <h2>Bilety</h2>
                             </div>
+                        </section>
+                                                    <section data-aos="fade-up"
+                                     data-aos-duration="2000" class="details details-with-info">
+                                <div class="container-mobi">
+                                    <h2>                                    </h2>
+                                    <p></p>
+                                </div>
+                            </section>
+                                            </div>
+                </div>
+            </div>
         </div>
-    </section>
-
-<div class="photo-sections">
-            <section class="section_photo section_photo_right">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Trochę historii</h3>
-                        </div>
-
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/kino-zamek/">
-                                    <p class="smaller">
-                                        Małe, kameralne kino Zamek działające od lat<br>w Zamku Książąt Pomorskich w Szczecinie ma swoich wiernych kinomanów. Powodem jest nie tylko jego świetne położenie w centrum miasta,<br>w pięknym zabytkowym obiekcie, ale także jego unikalna atmosfera, na którą wpływ ma także niewielka, kameralna widownia oraz starannie dobrany repertuar. Z tego właśnie powodu Zamek zyskał niezwykle ważny w swojej działalności szacunek widzów i wypracowaną przez lata markę ambitnego, mądrego kina.                                        <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                            
-
-                                                        
-
-                        </div>
-                    </div>
-
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/11/kinozamek_nowelogo.jpg)">
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-        </section>
-                <section class="section_photo section_photo_left">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Zamkowe Noce Filmowe</h3>
-                        </div>
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/zamkowe-noce-filmowe/">
-                                    <p class="smaller">
-                                        Zamkowe Noce Filmowe to kino plenerowe, organizowane na Zamku Książąt Pomorskich<br>w Szczecinie cyklicznie od 2008 roku w okresie wakacji. 
-Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z innym tematem przewodnim. To interesujące, ambitne kino. Repertuar obejmuje wszystkie gatunki filmowe od najnowszych produkcji fabularnych po filmy dokumentalne<br>i animację.                                         <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                                                                                        <img src="https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino-zamek-mini.jpg" alt="">
-                                                    </div>
-                    </div>
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/11/kino-zamek-ekran.jpg)">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-                <section class="section_photo section_photo_right">
-            <div class="container">
-                <div class="flex">
-                    <div class="flex-item">
-                        <div class="block-header">
-                            <span class="icon icon_kino"></span>
-                            <h3>Pomerania Film</h3>
-                        </div>
-
-                        <div class="block-content">
-                                                            <a href="https://zamek.szczecin.pl/pomerania-film">
-                                    <p class="smaller">
-                                        Powołanie do życia Zachodniopomorskiego Funduszu Filmowego Pomerania Film stało się poważnym impulsem do rozwoju produkcji filmowej w regionie i jego dwóch głównych miastach: Szczecinie i Koszalinie. Ten region nazywano do niedawna filmową pustynią, ponieważ od czasów drugiej wojny światowej artyści związani z tą niezwykle nośną dziedziną kultury bywali tu sporadycznie.                                        <span class="change-color change-color-font"> <br/>  <br/> zobacz więcej »
-
-                                    </span>
-                                    </p>
-                                </a>
-                            
-
-                                                        
-
-                        </div>
-                    </div>
-
-                    <div class="flex-item">
-                        <span class="rectangle change-color change-color-background opacity50"></span>
-                        <div class="image" style="background-image: url(https://zamek.szczecin.pl/wp-content/uploads/2018/12/pomeraniafilm_zdjecie2.jpg)">
-                        </div>
-                    </div>
-                </div>
-
-
-            </div>
-        </section>
-                                <div class="end-bar change-color change-color-background opacity50"></div>
     </div>
-
-
 
 
     <div class="container">
@@ -1014,7 +1011,7 @@ Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z 
         <div class="menu-menu-footer-pl-container"><ul id="footer-menu" class="animated flex flex-menu"><li id="menu-item-108" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-home menu-item-108"><a href="https://zamek.szczecin.pl/">Start</a></li>
 <li id="menu-item-11075" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-11075"><a href="https://zamek.szczecin.pl/aktualnosci/">Aktualności</a></li>
 <li id="menu-item-1459" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1459"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
-<li id="menu-item-1457" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-1457"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+<li id="menu-item-1457" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1457"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 <li id="menu-item-1460" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1460"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
 <li id="menu-item-1458" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-1458"><a href="https://zamek.szczecin.pl/wydarzenia/koncerty/">Koncerty</a></li>
 <li id="menu-item-2797" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-2797"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
@@ -1023,11 +1020,11 @@ Letnie projekcje filmowe na Dziedzińcu Menniczym każdego roku związane są z 
 <li id="menu-item-4585" class="menu-item menu-item-type-post_type menu-item-object-template menu-item-4585"><a href="https://zamek.szczecin.pl/polityka-prywatnosci-duplicate">Polityka prywatności</a></li>
 <li id="menu-item-14803" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-14803"><a href="/deklaracja-dostepnosci/">Deklaracja dostępności</a></li>
 <li id="menu-item-845" class="newsletter_popup menu-item menu-item-type-post_type menu-item-object-page menu-item-845"><a href="https://zamek.szczecin.pl/newsletter/">Newsletter</a></li>
-</ul></div><div class="menu-phone-footer-container"><ul id="phone-footer-menu" class="menu"><li id="menu-item-2800" class="menu-item menu-item-type-post_type menu-item-object-page current-menu-ancestor current-menu-parent current_page_parent current_page_ancestor menu-item-has-children menu-item-2800"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
+</ul></div><div class="menu-phone-footer-container"><ul id="phone-footer-menu" class="menu"><li id="menu-item-2800" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2800"><a href="https://zamek.szczecin.pl/wydarzenia/">Wydarzenia</a>
 <ul class="sub-menu">
 	<li id="menu-item-4043" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4043"><a href="https://zamek.szczecin.pl/wydarzenia/wystawy/">Wystawy</a></li>
 	<li id="menu-item-4044" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4044"><a href="https://zamek.szczecin.pl/wydarzenia/teatr/">Teatr</a></li>
-	<li id="menu-item-4045" class="menu-item menu-item-type-post_type menu-item-object-category_custom current-menu-item menu-item-4045"><a href="https://zamek.szczecin.pl/wydarzenia/kino/" aria-current="page">Kino</a></li>
+	<li id="menu-item-4045" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4045"><a href="https://zamek.szczecin.pl/wydarzenia/kino/">Kino</a></li>
 	<li id="menu-item-4047" class="menu-item menu-item-type-post_type menu-item-object-category_custom menu-item-4047"><a href="https://zamek.szczecin.pl/wydarzenia/edukacja/">Edukacja</a></li>
 </ul>
 </li>
@@ -1187,7 +1184,7 @@ var newsletter_data = {"action_url":"https://zamek.szczecin.pl/wp-admin/admin-aj
 <script type="text/javascript" src="https://zamek.szczecin.pl/wp-content/uploads/wpmss/wpmss.min.js?ver=1540891784" id="wpmss-js"></script>
 <script type="text/javascript" id="moove_gdpr_frontend-js-extra">
 /* <![CDATA[ */
-var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"260","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"53683cad74"};
+var moove_frontend_gdpr_scripts = {"ajaxurl":"https://zamek.szczecin.pl/wp-admin/admin-ajax.php","post_id":"16800","plugin_dir":"https://zamek.szczecin.pl/wp-content/plugins/gdpr-cookie-compliance","show_icons":"all","is_page":"","ajax_cookie_removal":"false","strict_init":"2","enabled_default":{"strict":2,"third_party":1,"advanced":0,"performance":0,"preference":0},"geo_location":"false","force_reload":"false","is_single":"1","hide_save_btn":"false","current_user":"0","cookie_expiration":"365","script_delay":"2000","close_btn_action":"1","close_btn_rdr":"","scripts_defined":"{\"cache\":true,\"header\":\"\",\"body\":\"\",\"footer\":\"\",\"thirdparty\":{\"header\":\"\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Google tag (gtag.js) - Google Analytics 4 --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr src=\\\"https:\\/\\/www.googletagmanager.com\\/gtag\\/js?id=G-X97BM5LFJX\\\" data-type=\\\"gdpr-integration\\\"\u003E\u003C\\/script\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\twindow.dataLayer = window.dataLayer || [];\\n\\t\\t\\t\\t\\tfunction gtag(){dataLayer.push(arguments);}\\n\\t\\t\\t\\t\\tgtag('js', new Date());\\n\\n\\t\\t\\t\\t\\tgtag('config', 'G-X97BM5LFJX');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\\t\u003C!-- Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\u003Cscript data-gdpr data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t!function(f,b,e,v,n,t,s)\\n\\t\\t\\t\\t\\t{if(f.fbq)return;n=f.fbq=function(){n.callMethod?\\n\\t\\t\\t\\t\\tn.callMethod.apply(n,arguments):n.queue.push(arguments)};\\n\\t\\t\\t\\t\\tif(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\\n\\t\\t\\t\\t\\tn.queue=[];t=b.createElement(e);t.async=!0;\\n\\t\\t\\t\\t\\tt.src=v;s=b.getElementsByTagName(e)[0];\\n\\t\\t\\t\\t\\ts.parentNode.insertBefore(t,s)}(window, document,'script',\\n\\t\\t\\t\\t\\t'https:\\/\\/connect.facebook.net\\/en_US\\/fbevents.js');\\n\\t\\t\\t\\t\\tfbq('init', '1026840438499501');\\n\\t\\t\\t\\t\\tfbq('track', 'PageView');\\n\\t\\t\\t\\t\u003C\\/script\u003E\\n\\t\\t\\t\\t\",\"body\":\"\\t\\t\\t\\t\u003Cnoscript data-type=\\\"gdpr-integration\\\"\u003E\\n\\t\\t\\t\\t\\t\u003Cimg height=\\\"1\\\" width=\\\"1\\\" style=\\\"display:none\\\" src=\\\"https:\\/\\/www.facebook.com\\/tr?id=1026840438499501&ev=PageView&noscript=1\\\"\\/\u003E\\n\\t\\t\\t\\t\u003C\\/noscript\u003E\\n\\t\\t\\t\\t\u003C!-- End Facebook Pixel Code --\u003E\\n\\t\\t\\t\\t\\t\\t\\t\\t\",\"footer\":\"\"},\"strict\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"},\"advanced\":{\"header\":\"\",\"body\":\"\",\"footer\":\"\"}}","gdpr_scor":"true","wp_lang":"_pl","wp_consent_api":"false","gdpr_nonce":"53683cad74"};
 //# sourceURL=moove_gdpr_frontend-js-extra
 /* ]]> */
 </script>
@@ -1367,14 +1364,14 @@ var e="script#wp-emoji-settings",t=document.querySelector(e);if(!(t instanceof H
                 document.addEventListener("DOMContentLoaded", function() {
                     var el = document.querySelector(".ctn_load_time_in_sec");
                     if (el) {
-                        el.textContent = "0.650 seconds";
+                        el.textContent = "1.227 seconds";
                     }
                 });
             </script>
             </body>
 </html>
 
-<!-- Dynamic page generated in 0.907 seconds. -->
-<!-- Cached page generated by WP-Super-Cache on 2026-08-08 08:22:17 -->
+<!-- Dynamic page generated in 1.477 seconds. -->
+<!-- Cached page generated by WP-Super-Cache on 2026-08-08 08:25:15 -->
 
 <!-- Compression = gzip -->

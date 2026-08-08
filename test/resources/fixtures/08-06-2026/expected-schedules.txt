@@ -1301,7 +1301,7 @@ showings:
 
 === Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
 displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU\ Wajda: re-wizje | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Człowiek z marmuru – wajda: re- wizje | Człowiek z marmuru. Wajda re-wizje | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1323,7 +1323,6 @@ cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-wajda-re-wizje-czlowiek-z-marmuru-man-of-marble1977/
 cinemaScrapes:
   Bałtyk / Wajda: Re-wizje. Człowiek z marmuru / —
-  Centrum 3D / Człowiek z marmuru. Wajda re-wizje / —
   Forum / CZŁOWIEK Z MARMURU / —
   Kino Agrafka / CZŁOWIEK Z MARMURU / 1977
   Kino Amok / Człowiek z marmuru / —
@@ -1345,9 +1344,8 @@ cinemaScrapes:
   Kino Pionier 1907 / Człowiek z marmuru / 1976
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
-  Kino Sokół / CZŁOWIEK Z MARMURU\ Wajda: re-wizje / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
-  Kino Zamek / Człowiek z marmuru – wajda: re- wizje / 1976
+  Kino Zamek / Człowiek z marmuru / —
   Kino nad Wartą / CZŁOWIEK Z MARMURU / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
   Kino ŚDK / Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru / —
@@ -1357,7 +1355,7 @@ showings:
 
 === Człowiek z marmuru ===
 displayTitle:      Człowiek z marmuru
-cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU\ Wajda: re-wizje | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Człowiek z marmuru – wajda: re- wizje | Człowiek z marmuru. Wajda re-wizje | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
+cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: Człowiek z marmuru (+ eng sub) | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
 countries:         Polska
@@ -1379,7 +1377,6 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/czlowiek-z-marmuru
 cinemaScrapes:
   Bałtyk / Wajda: Re-wizje. Człowiek z marmuru / —
-  Centrum 3D / Człowiek z marmuru. Wajda re-wizje / —
   Forum / CZŁOWIEK Z MARMURU / —
   Kino Agrafka / CZŁOWIEK Z MARMURU / 1977
   Kino Amok / Człowiek z marmuru / —
@@ -1401,9 +1398,8 @@ cinemaScrapes:
   Kino Pionier 1907 / Człowiek z marmuru / 1976
   Kino Pod Baranami / Człowiek z marmuru (Man of Marble) / —
   Kino Sfinks / WAJDA: re-wizje: "Człowiek z marmuru" / —
-  Kino Sokół / CZŁOWIEK Z MARMURU\ Wajda: re-wizje / —
   Kino Wisła / WAJDA: re-wizje: Człowiek z marmuru / 1977
-  Kino Zamek / Człowiek z marmuru – wajda: re- wizje / 1976
+  Kino Zamek / Człowiek z marmuru / —
   Kino nad Wartą / CZŁOWIEK Z MARMURU / —
   Kino za Rogiem Cafe / Człowiek z marmuru / —
   Kino ŚDK / Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru / —
@@ -1840,6 +1836,7 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
+  Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -1981,6 +1978,7 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
+  Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -2918,6 +2916,7 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
+  Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -3829,6 +3828,7 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
+  Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -3962,6 +3962,7 @@ cinemaScrapes:
   Kino Sokół / DRUGIE ŻYCIE / —
   Kino Spektrum / Drugie życie - pokaz przedpremierowy / —
   Kino U-jazdowski / Drugie życie / 2025
+  Kino Zamek / Drugie życie / —
   Kino na Boku / Drugie życie / —
   Kino nad Wartą / DRUGIE ŻYCIE / —
   Kino Śnieżka / Drugie życie / —
@@ -4865,7 +4866,7 @@ showings:
 
 === Milczenie owiec ===
 displayTitle:      Milczenie owiec
-cinemaTitles:      Klasyk w kinie: Milczenie owiec | Klasyka w kinie Atlantic: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec - pokazy specjalne | Milczenie owiec – jonathan demme
+cinemaTitles:      Klasyk w kinie: Milczenie owiec | Klasyka w kinie Atlantic: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec - pokazy specjalne
 runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
@@ -4964,7 +4965,7 @@ cinemaScrapes:
   Kino Sfinks / MILCZENIE OWIEC / —
   Kino Studyjne Kadr / Milczenie owiec / —
   Kino Wisła / Milczenie owiec - pokazy specjalne / 1991
-  Kino Zamek / Milczenie owiec – jonathan demme / 1991
+  Kino Zamek / Milczenie owiec / —
   KinoPort / Milczenie owiec / 1991
   OKF Iluzja / Milczenie owiec / —
   Planet Cinema / Milczenie owiec / —
@@ -6312,7 +6313,7 @@ showings:
 
 === Orły republiki ===
 displayTitle:      Orły republiki
-cinemaTitles:      ORŁY REPUBLIKI | Orły Republiki | Orły republiki | Orły republiki (eagles of the republic) | Tani wtorek: ORŁY REPUBLIKI
+cinemaTitles:      ORŁY REPUBLIKI | Orły Republiki | Orły republiki | Tani wtorek: ORŁY REPUBLIKI
 runtimeMinutes:    127
 releaseYear:       2025
 countries:         Dania, Francja, Szwecja, Finlandia, Niemcy, Turcja
@@ -6398,7 +6399,7 @@ cinemaScrapes:
   Kino Pod Baranami / Orły republiki / —
   Kino Praha / Orły republiki / —
   Kino Sfinks / Tani wtorek: ORŁY REPUBLIKI / —
-  Kino Zamek / Orły republiki (eagles of the republic) / —
+  Kino Zamek / Orły republiki / —
   OKF Iluzja / Orły Republiki / —
   Teatr Ziemi Rybnickiej / Orły Republiki / 2025
 showings:
@@ -6952,7 +6953,7 @@ showings:
 
 === Plenerowe Pałacowe: Donnie Darko ===
 displayTitle:      Plenerowe Pałacowe: Donnie Darko
-cinemaTitles:      Donnie darko – amerykańska klasyka | Plenerowe Pałacowe: Donnie Darko
+cinemaTitles:      Donnie darko | Plenerowe Pałacowe: Donnie Darko
 runtimeMinutes:    117
 releaseYear:       2001
 countries:         Kanada, USA, Wielka Brytania
@@ -6974,7 +6975,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14612-plenerowe-paacowe-donnie-darko/
 cinemaScrapes:
   Kino Pałacowe / Plenerowe Pałacowe: Donnie Darko / 2001
-  Kino Zamek / Donnie darko – amerykańska klasyka / 2001
+  Kino Zamek / Donnie darko / —
 showings:
   2026-07-22  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 
@@ -8115,7 +8116,7 @@ showings:
 
 === Prawo pożądania ===
 displayTitle:      Prawo pożądania
-cinemaTitles:      FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania | Prawo pożądania | Prawo pożądania | Fiesta Kina Hiszpańskiego | Prawo pożądania – fiesta kina hiszpańskiego: almodóvar/ banderas
+cinemaTitles:      FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania | Prawo pożądania | Prawo pożądania | Fiesta Kina Hiszpańskiego
 runtimeMinutes:    102
 releaseYear:       1987
 countries:         Hiszpania
@@ -8140,7 +8141,7 @@ cinemaScrapes:
   Kino Malta Charlie Monroe / Prawo pożądania / —
   Kino Oskard / FIESTA KINA HISZPAŃSKIEGO: Prawo pożądania / —
   Kino Spektrum / Prawo pożądania | Fiesta Kina Hiszpańskiego / —
-  Kino Zamek / Prawo pożądania – fiesta kina hiszpańskiego: almodóvar/ banderas / 1987
+  Kino Zamek / Prawo pożądania / —
 showings:
   2026-06-08  Kino Malta Charlie Monroe     20:30 Sala Charlie
   2026-06-09  Kino Malta Charlie Monroe     18:45 Sala Charlie
@@ -8224,7 +8225,7 @@ showings:
 
 === Przekleństwa Niewinności ===
 displayTitle:      Przekleństwa Niewinności
-cinemaTitles:      Przekleństwa niewinności | Przekleństwa niewinności | POKAZ PRZEDPREMIEROWY | Przekleństwa niewinności – amerykańska klasyka
+cinemaTitles:      Przekleństwa niewinności | Przekleństwa niewinności | POKAZ PRZEDPREMIEROWY
 runtimeMinutes:    97
 releaseYear:       2000
 countries:         USA
@@ -8249,7 +8250,7 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Przekleństwa niewinności | POKAZ PRZEDPREMIEROWY / —
   Kino Pałacowe / Przekleństwa niewinności / 1999
   Kino Pod Baranami / Przekleństwa niewinności / —
-  Kino Zamek / Przekleństwa niewinności – amerykańska klasyka / 1999
+  Kino Zamek / Przekleństwa niewinności / —
 showings:
   2026-06-21  Kino Pałacowe                 18:00 Sala 1 - Kinowa
 
