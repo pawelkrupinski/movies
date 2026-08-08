@@ -136,6 +136,13 @@ pinning it is what stops a future edit silently flipping the venue back to red.
   `expected-*.html` moved. Confirmed by running the e2e spec *before*
   regenerating: only the read-model test failed, and only on the scheme.
 
+**CONFIRMED GREEN IN PROD — no verification is owed to the next run.** Red for
+every retained bucket through **04:30 CEST**, then **green at the 06:30 CEST
+(04:30 UTC) bucket** — the first scrape after @ca41320db deployed — with
+`successes=1, failures=0, zeroes=0`. Note the circuit breaker was no obstacle
+even though it keys on the *host* (unchanged by the scheme flip): the worker
+restarts on deploy, so its in-memory breaker state starts fresh.
+
 ### Jaworzyna (Krynica-Zdrój) — `intentionally-dormant`, and NOT a broken date strip
 
 `EkobiletClient` on `ekobilet.pl/kino-jaworzyna`. The only venue that entered
@@ -267,8 +274,10 @@ client will follow the live page on its own. Nothing owed before then.
 
 ### Next run's re-check list
 
-1. **Kozienicki Dom Kultury** — confirm the plain-HTTP flip actually turned the
-   bar green in prod (this run merged it but the bar had not yet been observed).
+1. ~~**Kozienicki Dom Kultury**~~ — **done in-run: green in prod at the 04:30 UTC
+   bucket.** Nothing owed. (Worth a glance only if it ever goes red again — that
+   would mean the venue finally renewed its certificate *and* started redirecting
+   HTTP to HTTPS, at which point flip the scheme back.)
 2. **Jaworzyna** — expected to repopulate on its own around **18.08**. If it is
    still white after 20.08, that IS drift and deserves a fresh look.
 3. **Kino MDK** — after 31.08, per the trigger above.
