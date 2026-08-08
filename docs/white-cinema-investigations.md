@@ -57,16 +57,20 @@ and so you can re-check whether a previously-broken venue has recovered.
 is ~24 h, so there remains no DE/UK signal to read. Poland only again.
 
 **No white venue is white because of a parser bug.** All 19 were re-probed live
-this run and every one is genuinely film-empty at the source we scrape. The
-one code change that came out of the sweep is a **RED**, not a white:
+this run and every one is genuinely film-empty at the source we scrape. Both code
+changes that came out of the sweep are **REDS**, not whites:
 **Kozienicki Dom Kultury, `fixed` @ca41320db** — the second venue in five weeks
-to be knocked offline by nothing but an expired certificate.
+to be knocked offline by nothing but an expired certificate — and **Kino Zamek,
+`fixed` @09cbc2cdb**, moved off a ticketing portal that stopped accepting TCP
+onto the castle's own site, which turns out to carry five times the programme
+the portal ever did.
 
 **Set changes vs 2026-08-04's 07:45 re-sweep (20 white / 0 red then):**
 - **FELL OFF (2):** **Kino Tur** — genuinely **recovered**, and confirmed at
   source rather than inferred from the bar going green (below). **Kino Zamek** —
   did not recover; it moved **white → RED** because its ticketing host went
-  TCP-dark (below).
+  TCP-dark, and was then **`fixed` @09cbc2cdb** by moving it onto the castle's own
+  site (below).
 - **NEW (1):** **Jaworzyna** (Krynica-Zdrój) — `intentionally-dormant`, a
   scheduled mid-August gap (below).
 - **Carried over (17):** ADA Kino Studyjne, DKF Politechnika, Kino Chatka Żaka,
@@ -186,7 +190,88 @@ złośliwa wiewiórka", 2026-08-12 10:00; "Kręciołek", 2026-08-26 10:00) along
 1 `ComedyEvent`, and our bar is green again. Confirmed at source, not inferred
 from the bar. **Disarm the trigger; do not migrate this venue.**
 
-### Kino Zamek (Szczecin) — white → RED. `needs-human`: the ticket host is gone
+### Kino Zamek (Szczecin) — white → RED, then `fixed` @09cbc2cdb
+
+**→ FIXED later the same run.** The `needs-human` below was written on the
+assumption that the castle's own listing page carried only two open-air festival
+rows, so there was nothing to write a parser against. **That was wrong, and the
+way it was wrong is worth remembering: the summer listing is not the venue.**
+The `08-06-2026` corpus's own capture of the same page — taken in JUNE, when the
+castle was in season — carries **35** kino events, one page per film. The
+category collapses to two entries in August because the season is over, not
+because the site stopped publishing films. Judging a source's shape from an
+off-season snapshot nearly retired a venue that publishes a full monthly
+programme.
+
+The MSI diagnosis below stands and the host is genuinely dead. What changed is
+the conclusion: the castle's own site is a *better* source than the portal ever
+was, so the client now reads `/wydarzenia/kino/` and the event pages it links,
+and the dead host is gone from the catalog entirely. Two facts settle that it is
+an upgrade rather than a fallback:
+
+- **The portal was already failing this venue while it was still UP.** On
+  2026-08-04 it answered fine and advertised **zero** films — that is why Kino
+  Zamek was WHITE in the last run — at a time when the castle's own site was
+  carrying a nine-film open-air season. We were reporting a programmed cinema as
+  empty for reasons that had nothing to do with the outage.
+- **The venue's coverage roughly quintuples.** In the recorded corpus Kino Zamek
+  goes from **7 films** to **33 films / 45 showtimes**, each with its director,
+  and the film set of the whole corpus is unchanged — no junk entered.
+
+**The parser's real difficulty is that one page is not one film**, in three
+distinct shapes that all had to read correctly:
+
+| Shape | Example | Where the title lives |
+|---|---|---|
+| Single film, in season | `casablanca` | `<h1>` — the only bold line near the date is the strand, "SZCZECIŃSKIE ŚWIĘTO KLASYKI FILMOWEJ W KINIE ZAMEK" |
+| Cycle, one page many films | `zamkowe-noce-filmowe-2026` | each film's own bold heading; the `<h1>` is the cycle's name |
+| Festival umbrella | `szczecinskie-swieto-klasyki-…` | each film's bold heading — but the **14pt** bold marks the WEEK |
+
+So the title comes from the nearest bold heading above a screening only when
+those headings actually DIFFER between screenings; otherwise the page is about
+one film and the `<h1>` names it. Two traps found by testing rather than by
+reading:
+
+- **Keying the heading on the 14pt span** (which is what marks a film on the
+  cycle page) produced three "films" called *"II TYDZIEŃ POKAZÓW – GODARD,
+  WAJDA…"* — the festival's weeks. Bold alone is the marker; 14pt is the week.
+- **The same film appears on two pages** — its own and the umbrella — and only
+  its own page carries `Reżyseria:`. Merging by title but keeping the first
+  entry seen silently dropped **every** director, because the umbrella page
+  happened to be scraped first. The merge has to union the fields.
+
+Dates carry no year in the prose, so each is resolved against the page's own
+`<p class="event-details">` list (`21-06-2026`), which does. Past screenings are
+DROPPED rather than rolled forward: a cycle page still lists its opening night,
+and a next-occurrence rule would have published "30 czerwca", read in August, as
+a screening in June 2027.
+
+**Tests:** 15-case `KinoZamekClientSpec` over TWO recorded captures — `kino-zamek`
+(2026-08-08, the summer cycle) and `kino-zamek-season` (the June listing from the
+corpus, its event pages captured today) — so both shapes are held. Covers the
+week-heading trap, the cross-page merge keeping its director, year-from-the-page,
+past-night dropping, the listing shape guard (throws) versus a genuinely empty
+category (returns empty), and total-outage propagation versus a single page
+blipping. `testUnit` 4,530 green, `web/PageTest` 179 green, `FilmScheduleEndToEndSpec`
+green and stable.
+
+**Snapshots:** `expected-schedules.txt` and `read-model-snapshot.json`
+regenerated; **no `expected-*.html` moved** (Szczecin is not a snapshot city).
+The corpus diff is worth reading as the evidence this is an improvement — Zamek's
+`cinemaTitles` lose their strand suffixes ("Człowiek z marmuru – wajda: re- wizje"
+→ "Człowiek z marmuru", "Milczenie owiec – jonathan demme" → "Milczenie owiec")
+and therefore MERGE into the canonical film instead of sitting beside it as a
+near-duplicate spelling. **The corpus's film set is byte-for-byte the same set** —
+33 Zamek films resolved cleanly against fixtures that already existed
+(`casablanca|1943`, `opetanie|1981`), so nothing metadata-less was added.
+
+Not perfect, and worth knowing: one June page whose `<h1>` reads *"Zamkowe Noce
+Filmowe: Szkoda, że nareszcie"* keeps the cycle name in its title, because the
+strand-stripper deliberately splits on the en-dash only — splitting on the colon
+too would truncate it to the cycle's name, which is worse. It is one unresolved
+film in a June capture; the live page uses a different shape.
+
+**The MSI diagnosis that led here (unchanged):**
 
 The standing "festival filter-gap" `needs-human` on this venue is now a
 different, harder problem, and the change is worth recording precisely because
@@ -201,16 +286,14 @@ DNS still resolves (`213.155.191.11`), but three `curl` runs each sat at
 budget` is — a dead host, not a slow one. The listing host by contrast is
 healthy and fast (200, ~190 KB, ttfb 0.17–0.27 s across three runs).
 
-Why this is not fixable in a white run: rebuilding the venue on
-`zamek.szczecin.pl/wydarzenia/kino/` means a **new showtimes parser** for a page
-shape we have never parsed, and that page currently carries only two entries —
-`Zamkowe Noce Filmowe 2026` (open-air, 4/11/18/25 August 21:30) and
-`44-45 Pomorskie Spotkania z Diaporamą`. There is no regular repertoire to write
-a fail-before/pass-after test against, and shipping a parser validated against
-two festival rows would be exactly the speculative fix this log exists to
-prevent. **needs-human: decide whether to rebuild Kino Zamek on its own listing
-page (and accept an open-air-only feed for now), or retire the MSI host and let
-the venue stay dark until it programmes a normal season.**
+~~Why this is not fixable in a white run:~~ *(superseded — see above.)* The
+reasoning was that rebuilding on `zamek.szczecin.pl/wydarzenia/kino/` meant a new
+parser for a page carrying only two entries — `Zamkowe Noce Filmowe 2026`
+(open-air, 4/11/18/25 August 21:30) and `44-45 Pomorskie Spotkania z Diaporamą` —
+with no regular repertoire to write a fail-before/pass-after test against. The
+missing step was checking what that same page looks like IN SEASON, which the
+corpus already had on disk: 35 film pages. Both shapes are now covered by
+recorded fixtures.
 
 ### Kino MDK (Radomsko) — still `intentionally-dormant`, but the picture moved
 
@@ -281,8 +364,11 @@ client will follow the live page on its own. Nothing owed before then.
 2. **Jaworzyna** — expected to repopulate on its own around **18.08**. If it is
    still white after 20.08, that IS drift and deserves a fresh look.
 3. **Kino MDK** — after 31.08, per the trigger above.
-4. **Kino Zamek** — the `needs-human` decision above; nothing will improve on its
-   own while the MSI host is dark.
+4. **Kino Zamek** — confirm @09cbc2cdb turned the bar green in prod, and that the
+   four remaining Zamkowe Noce Filmowe nights (11/18/25 Aug, 1 Sep) show up. Then
+   re-check in **September**, when the category switches back to one page per
+   film: that is the shape the `kino-zamek-season` fixture covers, but it will be
+   the first time it runs against a LIVE in-season listing.
 5. **Studio (Opole)** and **DKF Politechnika** — after 3 September / the start of
    the academic year respectively.
 
