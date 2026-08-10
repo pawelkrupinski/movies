@@ -90,6 +90,48 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     readModel.findAllScreenings() should have size 1   // the live screening survives
   }
 
+  // The wipe's nastier shape: the read fails for SOME films only (one keyset page's
+  // side-collection read, a subset of slots), so the global "projected nothing" check
+  // passes and the prune still deletes the affected films' live screenings.
+  it should "not prune a film's screenings when only THAT film came back showtime-less" in {
+    val showtimeless = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Bar"), releaseYear = Some(2024), showtimes = Seq.empty)
+    ))
+    val movieRepository = new InMemoryMovieRepository(Seq(
+      ("Foo", Some(2024), record("Foo", 2024)),   // stitched fine
+      ("Bar", Some(2024), showtimeless)           // its showtimes went missing
+    ))
+    val readModel = new InMemoryReadModelRepository()
+    // Both films' screenings are live in the read model, as the projector left them.
+    Seq("Foo", "Bar").foreach { t =>
+      val live = StoredMovieRecord(t, Some(2024), record(t, 2024))
+      ReadModelProjection.screenings(live, titleNormalizer).foreach(readModel.upsertScreening)
+    }
+    readModel.findAllScreenings() should have size 2
+
+    val (_, _, _, prunedS) = BackfillReadModel.run(movieRepository, readModel)
+
+    prunedS shouldBe 0
+    readModel.findAllScreenings().map(_.filmId) should contain allOf (filmId("Foo", 2024), filmId("Bar", 2024))
+  }
+
+  // The flip side: a film that DID project screenings is authoritative for itself, so a
+  // cinema that genuinely stopped screening it is still reaped.
+  it should "still prune a screening a projecting film no longer produces" in {
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record("Foo", 2024))))
+    val readModel = new InMemoryReadModelRepository()
+    BackfillReadModel.run(movieRepository, readModel)
+    // A second cinema's screening for the SAME film, no longer in the corpus.
+    val extra = readModel.findAllScreenings().head
+    readModel.upsertScreening(extra.copy(_id = extra._id + "|Gone", cinema = "Kino Gone"))
+    readModel.findAllScreenings() should have size 2
+
+    val (_, _, _, prunedS) = BackfillReadModel.run(movieRepository, readModel)
+
+    prunedS shouldBe 1
+    readModel.findAllScreenings() should have size 1
+  }
+
   it should "never prune films when it projected none (an empty corpus read)" in {
     val readModel = new InMemoryReadModelRepository()
     seedStale(readModel)

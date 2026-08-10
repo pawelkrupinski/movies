@@ -42,9 +42,18 @@ object BackfillReadModel {
    *
    *  Projecting NOTHING is never a reason to delete EVERYTHING: an empty projection
    *  means the read failed or the corpus reader was mis-wired, not that the corpus
-   *  emptied (`MovieRepository.findAll`'s own contract says the same about its empty
-   *  result). Each half guards independently — films and screenings come from different
-   *  collections, so one can legitimately be empty while the other isn't. */
+   *  emptied (`MovieRepository.findAll`'s own contract says the same about its own empty
+   *  result).
+   *
+   *  Screenings are additionally gated PER FILM, because the read that caused the
+   *  2026-08-10 wipe can also fail for SOME films only (one keyset page's side-collection
+   *  read, a subset of slots) and a global emptiness check passes straight through that.
+   *  The abstention is narrow, so it costs no reaping: a film STILL IN the corpus that
+   *  projected no screenings is evidence about the READ, so its existing screenings are
+   *  left alone; a film that projected some is authoritative for itself, so a cinema that
+   *  stopped screening it is pruned; and a film that left the corpus entirely is a genuine
+   *  orphan and still reaped. Only the read-failure signature — present but silent — is
+   *  spared. No threshold to tune. */
   def run(movieRepository: MovieRepository, readModel: ReadModelReader & ReadModelWriter): (Int, Int, Int, Int) = {
     val projected = movieRepository.findAll().flatMap(ReadModelProjection.projectAll(_, titleNormalizer))
     projected.foreach { case (movie, screenings) =>
@@ -53,18 +62,39 @@ object BackfillReadModel {
     }
     val expectedMovieIds     = projected.map(_._1._id).toSet
     val expectedScreeningIds = projected.flatMap(_._2.map(_._id)).toSet
+    val filmsWithProjectedScreenings = projected.collect { case (movie, s) if s.nonEmpty => movie._id }.toSet
+    // A film present in the corpus but projecting NO screenings is the read-failure
+    // signature — the one case a prune must not act on.
+    def readLooksTruncatedFor(filmId: String): Boolean =
+      expectedMovieIds.contains(filmId) && !filmsWithProjectedScreenings.contains(filmId)
 
     val staleMovies =
       if (expectedMovieIds.isEmpty) Seq.empty
       else readModel.findAllMovies().filterNot(m => expectedMovieIds.contains(m._id))
     staleMovies.foreach(m => readModel.deleteMovie(m._id))
     val staleScreenings =
-      if (expectedScreeningIds.isEmpty) Seq.empty
-      else readModel.findAllScreenings().filterNot(s => expectedScreeningIds.contains(s._id))
+      if (expectedMovieIds.isEmpty) Seq.empty
+      else readModel.findAllScreenings().filter { s =>
+        !expectedScreeningIds.contains(s._id) && !readLooksTruncatedFor(s.filmId)
+      }
     staleScreenings.foreach(s => readModel.deleteScreening(s._id))
 
     (projected.size, expectedScreeningIds.size, staleMovies.size, staleScreenings.size)
   }
+
+  /** The corpus reader this script prunes against — THE one construction, so a spec can
+   *  assert the wiring that actually runs rather than restate it (a restatement passes
+   *  just as happily while `main` reads unstitched, which is how the 2026-08-10 wipe got
+   *  through a green suite). Both side collections are wired: showtimes live in
+   *  `screenings` and slots in `movie_slots`, and `MongoMovieRepository` stitches them
+   *  back only when handed the repositories that own them.
+   *  `BackfillReadModelStitchIntegrationSpec` drives this against a real Mongo. */
+  def corpusReader(db: org.mongodb.scala.MongoDatabase): MovieRepository =
+    new MongoMovieRepository(
+      Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer,
+      screenings = Some(new MongoScreeningsRepository(Some(db))),
+      slots      = Some(new MongoSlotsRepository(Some(db)))
+    )
 
   def main(args: Array[String]): Unit = {
     val uri = Env.get("MONGODB_URI").getOrElse {
@@ -74,14 +104,7 @@ object BackfillReadModel {
     val client = MongoClient(uri)
     try {
       val db            = client.getDatabase(dbName)
-      // Both side collections MUST be wired: this script prunes, so it has to read the
-      // stitched corpus the serving path reads. Unwired, every row comes back with no
-      // showtimes and the prune deletes live `web_screenings` (see the class doc).
-      val movieRepository     = new MongoMovieRepository(
-        Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer,
-        screenings = Some(new MongoScreeningsRepository(Some(db))),
-        slots      = Some(new MongoSlotsRepository(Some(db)))
-      )
+      val movieRepository     = corpusReader(db)
       val readModelRepository = new MongoReadModelRepository(Some(db))
       require(movieRepository.enabled,     s"movies repository not enabled for $dbName")
       require(readModelRepository.enabled, s"read-model repository not enabled for $dbName")
