@@ -77,6 +77,29 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     m.synopsisFor(Wroclaw).get should (include ("Wrocławski") and not include ("Poznański"))
   }
 
+  it should "scope synopsis per city when the slots are keyed PER TITLE, as prod writes them" in {
+    // The prod shape of the Poznań "Frances Ha" leak: every slot is a
+    // `CinemaShowing(cinema, titleKey)`, and Kino Kosmos lists the film under its
+    // own Katowice cycle title. Kosmos's long event blurb must NOT reach Poznań,
+    // whose Kino Pałacowe wrote a much shorter one — and it must not become the
+    // city-independent fallback either.
+    val kosmos    = "Przedpremierowy seans w Kinie Kosmos odbędzie się w ramach cyklu.\n\nAkapit drugi."
+    val palacowe  = "Słodko-gorzki portret młodej kobiety.\n\nAkapit."
+    val rec = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      CinemaShowing(KinoPalacowe, "francesha") -> SourceData(title = Some("Frances Ha"),
+        synopsis = Some(palacowe), showtimes = Seq(at("2026-06-12T18:00"))),
+      CinemaShowing(KinoKosmos, "franceshateleskop") -> SourceData(title = Some("Frances Ha"),
+        synopsis = Some(kosmos), showtimes = Seq(at("2026-06-12T19:00"))),
+      Tmdb -> SourceData(title = Some("Frances Ha"), synopsis = Some("Opis z TMDB."))
+    ))
+    val (m, _) = ReadModelProjection.project(StoredMovieRecord.fromStorage("francesha|", rec, titleNormalizer), titleNormalizer)
+    m.synopsis shouldBe Some("Opis z TMDB.")                       // fallback carries no cinema text
+    m.synopsisByCity.keySet shouldBe Set("poznan", "katowice")
+    m.synopsisFor(Poznan).get   should (include ("Słodko-gorzki") and not include ("Kosmos"))
+    m.synopsisFor(Katowice).get should include ("Kosmos")
+    m.synopsisFor(Wroclaw)      shouldBe Some("Opis z TMDB.")      // screens nowhere there → fallback
+  }
+
   it should "omit a city from synopsisByCity when its pick ties the fallback" in {
     // Only Wrocław has a cinema blurb; Poznań's best ties the TMDB fallback, so
     // it isn't stored — `synopsisFor(Poznań)` resolves via the fallback instead.

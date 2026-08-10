@@ -206,4 +206,70 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsisForCity(Poznan)  shouldBe Some("Opis z sieci Cinema City.") // CC venue here → chain applies
     record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")              // no CC venue here → chain excluded
   }
+
+  // ── The same scoping, over PER-TITLE slot keys ──────────────────────────────
+  // Every slot prod writes today is a `CinemaShowing(cinema, titleKey)`, not a
+  // bare `Cinema` (see `Source.dropSupersededCinemaSlots` — the bare key is the
+  // legacy shape). A city scope that recognises only the bare key therefore
+  // scopes NOTHING in prod: Kino Kosmos's 1589-char Katowice event blurb for
+  // "Frances Ha" ("Przedpremierowy seans … w Kinie Kosmos") won the Poznań page
+  // over Kino Pałacowe's own 118-char one, and `synopsisByCity` came out empty
+  // for every film in the read model.
+
+  it should "prefer an in-city per-title slot over a longer one from another city" in {
+    val poznan  = "Poznański krótki opis."
+    val katowice = "Katowicki znacznie dłuższy opis wydarzenia, który globalnie by wygrał."
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaShowing(KinoPalacowe, "francesha")      -> SourceData(synopsis = Some(poznan)),
+        CinemaShowing(KinoKosmos, "franceshateleskop") -> SourceData(synopsis = Some(katowice))
+      )
+    )
+    record.synopsis                  shouldBe Some(katowice) // global still picks the longest
+    record.synopsisForCity(Poznan)   shouldBe Some(poznan)   // …but Poznań sees its own
+    record.synopsisForCity(Katowice) shouldBe Some(katowice)
+  }
+
+  it should "fall back to TMDB in a city whose per-title slots carry no blurb" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaShowing(KinoKosmos, "franceshateleskop") -> SourceData(synopsis = Some("Katowicki opis kina.")),
+        CinemaShowing(KinoPalacowe, "francesha")       -> SourceData(),
+        Tmdb                                          -> SourceData(synopsis = Some("Opis z TMDB."))
+      )
+    )
+    record.synopsisForCity(Poznan) shouldBe Some("Opis z TMDB.")
+  }
+
+  it should "exclude a per-title cinema slot from synopsisNonCinema" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaShowing(KinoKosmos, "franceshateleskop") -> SourceData(synopsis = Some("Dłuższy opis kina, dłuższy niż TMDB.")),
+        Tmdb                                          -> SourceData(synopsis = Some("Opis z TMDB."))
+      )
+    )
+    record.synopsisNonCinema shouldBe Some("Opis z TMDB.")
+  }
+
+  it should "count a per-title cinema slot as the cinema reference in synopsisCinema" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaShowing(KinoKosmos, "franceshateleskop") -> SourceData(synopsis = Some("Opis kina.")),
+        Tmdb                                          -> SourceData(synopsis = Some("Opis z TMDB."))
+      )
+    )
+    record.synopsisCinema shouldBe Some("Opis kina.")
+  }
+
+  it should "admit a per-title Cinema City chain blurb only in cities its venues screen in" in {
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaShowing(CinemaCityChain, "film")       -> SourceData(synopsis = Some("Opis z sieci Cinema City.")),
+        CinemaShowing(CinemaCityPoznanPlaza, "film") -> SourceData(),
+        Tmdb                                        -> SourceData(synopsis = Some("Krótki TMDB."))
+      )
+    )
+    record.synopsisForCity(Poznan)  shouldBe Some("Opis z sieci Cinema City.")
+    record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")
+  }
 }

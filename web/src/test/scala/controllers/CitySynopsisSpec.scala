@@ -1,6 +1,6 @@
 package controllers
 
-import models.{Helios, HeliosMagnolia, MovieRecord, Poznan, Showtime, Source, SourceData, Tmdb, Wroclaw}
+import models.{CinemaShowing, Helios, HeliosMagnolia, MovieRecord, Poznan, Showtime, Source, SourceData, Tmdb, Wroclaw}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.TestReadModel
@@ -52,5 +52,22 @@ class CitySynopsisSpec extends AnyFlatSpec with Matchers {
 
     service.toSchedules(Wroclaw, now).head.synopsis shouldBe Some("Opis z TMDB.")
     service.toSchedules(Poznan, now).head.synopsis.get should include ("Poznański")
+  }
+
+  // The shape prod actually stores: per-title `CinemaShowing` slots, one venue
+  // listing the film under its own cycle title. Before the scoping read the
+  // cinema through `Source.cinemaOf`, this leaked Kino Kosmos's Katowice event
+  // blurb onto /poznan/film/frances-ha.
+  it should "scope per-title slots too, not just legacy bare-cinema ones" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      CinemaShowing(Helios, "dwamiasta")                -> slot("Poznański opis z kina, akapit.\n\nAkapit drugi."),
+      CinemaShowing(HeliosMagnolia, "dwamiastateleskop") -> slot("Wrocławski opis z kina, akapit.\n\nAkapit drugi."),
+      Tmdb -> SourceData(title = Some("Dwa Miasta"), synopsis = Some("Krótki opis z TMDB."))
+    ))
+    val service = new MovieControllerService(
+      TestReadModel.fromRecords(Seq(("Dwa Miasta", Some(2026), record))))
+
+    service.toSchedules(Poznan, now).head.synopsis.get  should (include ("Poznański")  and not include ("Wrocławski"))
+    service.toSchedules(Wroclaw, now).head.synopsis.get should (include ("Wrocławski") and not include ("Poznański"))
   }
 }

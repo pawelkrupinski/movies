@@ -323,28 +323,43 @@ case class MovieRecord(
    *  applies, so a city with no cinema blurb of its own shows TMDB's rather than
    *  leaking another city's cinema text. */
   def synopsisNonCinema: Option[String] =
-    bestSynopsis(synopsisCandidatesFor { case _: Cinema => false; case _ => true })
+    bestSynopsis(synopsisCandidatesFor(Source.cinemaOf(_).isEmpty))
 
-  /** Best synopsis from CINEMA sources ONLY (no TMDB / IMDb / Filmweb). This is
-   *  the same-language Polish reference the TMDB/Filmweb resolvers feed to the
-   *  synopsis tie-break — comparing a candidate against the row's OWN TMDB blurb
-   *  would be circular, so the enrichment sources are excluded. None when no
-   *  cinema published a blurb (then the tie-break is simply not applied). */
+  /** Best synopsis from CINEMA sources ONLY (no TMDB / IMDb / Filmweb) — the
+   *  same-language Polish reference for a synopsis tie-break, with the row's own
+   *  TMDB blurb excluded so a comparison against it can't be circular. None when
+   *  no cinema published a blurb.
+   *
+   *  No production caller today: the TMDB/Filmweb resolvers take
+   *  `referenceSynopsis` from TMDB (`FilmwebRatings`) or leave it None, so this
+   *  serves only `scripts.GateReport`'s resolution-gap gates. Keep it fed by the
+   *  same candidate pool as the display accessors regardless — a gate that reads
+   *  it must see what a resolver would. */
   def synopsisCinema: Option[String] =
-    bestSynopsis(synopsisCandidatesFor { case _: Cinema => true; case _ => false })
+    bestSynopsis(synopsisCandidatesFor(Source.cinemaOf(_).isDefined))
 
   /** Does `source`'s synopsis count for `city`? A venue does iff it's one of
    *  the city's cinemas; a chain-detail source (Cinema City) iff one of its
    *  member venues in this city is screening the film; every non-cinema source
-   *  (TMDB / IMDb / Filmweb) always does — its blurb is city-independent. */
-  private def synopsisAppliesToCity(city: City)(source: Source): Boolean = source match {
-    case cinema: Cinema =>
+   *  (TMDB / IMDb / Filmweb) always does — its blurb is city-independent.
+   *
+   *  The cinema behind a slot comes from [[Source.cinemaOf]], never a `case _:
+   *  Cinema` type test: prod keys every slot it writes as a per-title
+   *  `CinemaShowing(cinema, titleKey)`, which is a `Source` but NOT a `Cinema`.
+   *  A type test therefore admitted every cinema's blurb into every city (and,
+   *  in [[synopsisNonCinema]], into the city-independent fallback the read model
+   *  stores) — Kino Kosmos's Katowice event blurb for "Frances Ha" won the
+   *  Poznań page over Kino Pałacowe's own, and `synopsisByCity` projected empty
+   *  for every film. The bare-`Cinema` slot shape this scoping was written
+   *  against survives only on legacy rows (see `Source.dropSupersededCinemaSlots`),
+   *  which is why every spec covering it stayed green. */
+  private def synopsisAppliesToCity(city: City)(source: Source): Boolean =
+    Source.cinemaOf(source).forall { cinema =>
       city.cinemaSet.contains(cinema) ||
         Cinema.chainDetailVenues.get(cinema).exists { venues =>
           cinemaData.keySet.exists(v => venues.contains(v) && city.cinemaSet.contains(v))
         }
-    case _ => true
-  }
+    }
 
   /** Best synopsis over `candidates` — the paragraphed-then-longest selection
    *  shared by [[synopsis]], [[synopsisForCity]] and [[synopsisNonCinema]].
