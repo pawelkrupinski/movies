@@ -63,4 +63,42 @@ class BackfillReadModelSpec extends AnyFlatSpec with Matchers {
     readModel.findAllMovies()     should have size 1
     readModel.findAllScreenings() should have size 1
   }
+
+  // 2026-08-10: run against prod with `MongoMovieRepository`'s `screenings`/`slots`
+  // side repositories UNWIRED. Showtimes live in the `screenings` collection and are
+  // stitched back only when that repository is passed, so every row came back with no
+  // showtimes, the projection produced no screenings, and the prune deleted the live
+  // `web_screenings` — Poznań fell from 209 films to 28. Projecting nothing is evidence
+  // the reader is wrong, never that the corpus emptied.
+  it should "never prune screenings when it projected none (a showtime-less read)" in {
+    // A record whose slot carries metadata but NO showtimes — exactly the shape an
+    // unstitched read returns.
+    val showtimeless = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Foo"), releaseYear = Some(2024), showtimes = Seq.empty)
+    ))
+    val movieRepository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), showtimeless)))
+    val readModel = new InMemoryReadModelRepository()
+    // The live read model already holds this film's screenings, written by the projector.
+    val live = StoredMovieRecord("Foo", Some(2024), record("Foo", 2024))
+    ReadModelProjection.screenings(live, titleNormalizer).foreach(readModel.upsertScreening)
+    readModel.findAllScreenings() should have size 1
+
+    val (_, screenings, _, prunedS) = BackfillReadModel.run(movieRepository, readModel)
+
+    screenings shouldBe 0
+    prunedS    shouldBe 0
+    readModel.findAllScreenings() should have size 1   // the live screening survives
+  }
+
+  it should "never prune films when it projected none (an empty corpus read)" in {
+    val readModel = new InMemoryReadModelRepository()
+    seedStale(readModel)
+    readModel.findAllMovies() should have size 1
+
+    val (movies, _, prunedM, _) = BackfillReadModel.run(new InMemoryMovieRepository(Seq.empty), readModel)
+
+    movies  shouldBe 0
+    prunedM shouldBe 0
+    readModel.findAllMovies() should have size 1
+  }
 }
