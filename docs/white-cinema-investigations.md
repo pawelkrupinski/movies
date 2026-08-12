@@ -49,6 +49,315 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-08-12
+
+**PL: 19 white, 3 red**, out of 310 non-enrichment services, newest bucket
+2026-08-12 05:00 UTC. `kinowo_de` and `kinowo_uk` hold **zero** `uptimeBuckets`
+for the fourth run running — their workers have been stopped since 2026-08-02
+and retention is ~24 h, so there is still no DE/UK signal to read. Poland only.
+
+**One code change, and it is a white-bar fix: Kino Kinematograf (Łódź),
+`fixed` @83cee0128** — though not in the way the bar suggested. The venue is
+genuinely dormant, so white is the *right* colour today; what was wrong is that
+we could not have told the difference if it weren't.
+
+**Set changes vs 2026-08-08 (19 white / 2 red then):**
+- **FELL OFF (1):** **Kino Sfinks** — genuinely **recovered**, confirmed at
+  source (below). Its five-run-old `needs-human` is now closed.
+- **NEW (1):** **Kino Kinematograf** — `fixed` @83cee0128 (below). New to this
+  log entirely; it had never appeared in a white set before.
+- **Carried over (18):** ADA Kino Studyjne, DKF Politechnika, Jaworzyna, Kino
+  Chatka Żaka, Kino CK Lublin, Kino Kuźnica, Kino MDK, Kino nad Wartą, Kino PDK,
+  Kino Ślęża, Kino Świt, Kino Warszawa (Przeworsk), Kino Wisła Brzeszcze, Kino
+  Zachęta, Miejskie Centrum Kultury, Patria, Piast, Studio (Opole).
+
+**All 19 have `allZeroHistory = true`** — white across the entire retained
+bucket window, with not one green→white transition anywhere in the set. As in
+the last three runs, that distribution is itself the evidence that no parser
+broke in the last 24 h: markup drift lands as a green→white flip and there are
+none. Kinematograf is new to the *set* but not to the window — it flipped
+between the 08-08 sweep and the start of the current one, i.e. more than 24 h
+ago.
+
+### Kino Kinematograf (Łódź) — `fixed` @83cee0128 — dormant, but we couldn't have known
+
+`KinematografLodzClient`, own-site scraper on the Muzeum Kinematografii's
+WordPress repertoire page. The only venue new to the white set, so it got the
+hardest look, and the first read of it was wrong in a way worth recording.
+
+**The alarming part first: the URL we scraped no longer exists.**
+`muzeumkinematografii.pl/repertuar/` now **301s** to
+`/kino/repertuar-kina/` (LiteSpeed, single hop). That is the Helios shape
+exactly, and the followed page carries **zero** `article.cwb-movie-item` — the
+one structure the parser reads. So the initial diagnosis was "site restructured,
+parser blind".
+
+**It is not markup drift, and the old fixtures prove it.** Both recorded
+captures of the OLD page already contain the day carousel *and* the cards
+together, so the widget is not new and the cards were not moved out of it:
+
+| Capture | `cwb-movie-item` | day strip says | `items-counte` |
+|---|---|---|---|
+| `kinematograf-lodz` (07-06-2026) | 19 | 4 / 2 / 2 / 2 / 3 / 3 seanse | 19 wydarzeń |
+| `08-06-2026` corpus (June) | 18 | 2 / 2 / 2 / 3 / 3 seanse | 18 wydarzeń |
+| **live 2026-08-12** | **0** | **"brak seansów" ×8** | **0 wydarzeń** |
+
+The structure is unchanged in kind; the programme is empty. Three independent
+sources agree the venue is not screening:
+
+- the repertoire widget's own counter reads **`0 wydarzeń`** and all eight day
+  tabs 12–19.08 read **"brak seansów"**;
+- the museum's ticket shop `sklep.kinomuzeum.pl/MSI/mvc/pl/` offers **9 events
+  for 13–16 and 20–22 August, every one of them a museum tour** ("Zwiedzanie
+  muzeum") — **zero film seats on sale**, which a screening cinema would have;
+- `?days=<date>` is ignored server-side and flatpickr pins `minDate:"today"`, so
+  there is no other date to query, and the homepage carousel renders its own
+  `div.cwb-movie-empty-state` → "Brak seansu".
+
+**There is no closure notice anywhere** — `/`, `/kino/` and the repertoire page
+carry no "przerwa" / "nieczynne" / "remont" wording; `/kino/` says only "Kino
+Kinematograf działa od 2006 r.". The newest `cinema` post is dated **2026-06-24**
+and none of the 123 of them carries a date or time, so the repertoire module has
+simply had nothing added since roughly the era of our June fixtures.
+
+**Two film events DO exist, but as `wydarzenia` posts, in September** —
+"Monterey Pop Tour z Piotrem Metzem" (03.09.2026 17:00) and "Kino według Kuby
+Mikurdy: Opętanie" (10.09.2026 17:00), the first of which is the single entry
+under `?wydarzenia_kategoria=kino`. Curated one-off screenings of the kind that
+get event pages rather than repertoire rows. **Not scraped, deliberately** — two
+event posts are not a repertoire, and the module we read still exists and is
+still wired.
+
+**So the fix is not a new parser — it is closing the blind spot.** The venue was
+white for a reason we could not distinguish from the reason we most feared, and
+the site had just restructured its URLs, which is the shape that renames a card
+class next. Kino Sfinks taught this lesson at @73f19c8a5; this venue had the
+same hole, plus a better signal to plug it with: **the widget publishes its own
+item count**, so a zero-card parse can be *cross-checked* rather than merely
+tolerated.
+
+The guard is therefore two-pronged, and the second prong is the one that
+matters:
+
+1. **No accounting at all → throw.** A page with neither a card nor the widget's
+   own `span.items-counte` / `a.cinema-day-item` markers is not the repertoire,
+   and its emptiness says nothing about the programme (soft-404, slug rename,
+   redirect landing elsewhere).
+2. **Accounting that contradicts the parse → throw.** If the widget advertises
+   *N > 0* screenings and we parsed none, the card is no longer
+   `article.cwb-movie-item`. This is the case a presence-only guard still paints
+   white — the page looks readable and merely empty — and it is precisely what a
+   restyle would look like.
+
+Today's page hits neither branch (`items-counte` = 0, all tabs "brak seansów"),
+so **Kinematograf stays correctly white** and the day the museum restyles or
+repopulates into markup we cannot read, it goes **red** instead of staying white
+forever.
+
+**One trap found while writing the guard, and it is a false-friend of exactly
+the kind that would have made the guard useless:** the museum's **homepage**
+carries both `div.movies-tickets-inner` and `div.cwb-movie-empty-state`, for its
+own "coming soon" carousel. Either would have looked like a fine "this is the
+repertoire, and it is empty" marker — and both would have accepted the *wrong
+page* as a schedule, silently restoring the blind spot the guard exists to
+close. The guard is keyed on the item counter and the day strip only, and the
+spec pins that with the real homepage capture.
+
+**The URL now points where the site publishes today** (`/kino/repertuar-kina/`)
+rather than leaning on a redirect, and `sourceUrl` — /uptime's link — moves from
+the homepage to the page actually scraped, so the next investigator clicking
+through lands on the evidence.
+
+**Tests (fail-before / pass-after):** `KinematografLodzClientSpec` goes from 11
+inline-HTML cases to 20, and replays **four** captures where it previously
+replayed none:
+
+| Fixture | Asserts |
+|---|---|
+| `kinematograf-lodz` (real, populated) | still parses films — the guard must not break a working page |
+| `kinematograf-lodz-dormant` (live 12-08) | returns empty and does **not** throw — a dormant venue stays white |
+| `kinematograf-lodz-shape-drift` (live site ROOT) | throws — and pins the `movies-tickets-inner` false friend |
+| `kinematograf-lodz-cards-restyled` (derived) | throws with "advertises 19" |
+
+The last is the real 07-06 capture with **only its card class renamed**
+(`cwb-movie-item` → `cwb-screening-card`) and nothing else touched, so the
+counter still says 19 and the day strip still advertises 16. That is what a CMS
+restyle looks like from outside, and it is not reachable from any live capture
+because the venue is empty — the same reason the Sfinks spec used the site root
+as its drift stand-in. Confirmed failing before the change with "Expected
+exception java.lang.RuntimeException to be thrown, but no exception was thrown"
+on exactly those two guard tests, and 20/20 green after.
+
+**Verified prod-safe before pushing, which mattered here:** the guard throws on
+a page it doesn't recognise, so a fixture captured under a browser UA that
+differed from the worker's would have turned a correct white into a false RED.
+Re-fetched under `RealHttpFetch`'s exact `Chrome/124.0.0.0` User-Agent: byte
+count identical, `items-counte` = 0, 8 day tabs, 0 cards → `Some(0)` → empty, no
+throw.
+
+**CONFIRMED IN PROD — and note what "confirmed" means for this fix.** A green bar
+is NOT the success criterion here, because the venue is dormant and the guard's
+whole purpose is that a dormant venue keeps its white. The thing that had to be
+verified is the *absence* of a false red, and it was: the **06:00 UTC bucket —
+the first scrape after @83cee0128 deployed — is `zero` (white) with
+`failures=0`**, unchanged from the 24 buckets before it. All CI shards green
+(`ci / test`, `integration-test`, all three `e2e` shards, every page-test shard,
+`mobile-local-server`) and all six deploys rolled.
+
+**Snapshots: neither layer moved, and the fixture rename is the load-bearing
+part of the diff.** `FakeHttpFetch` keys a fixture on `host / path /
+query-fingerprint`, so changing the scraped URL without moving the recorded file
+would have silently dropped the venue from the corpus. Both captures were
+`git mv`'d to the new request path (`muzeumkinematografii.pl/kino/repertuar-kina`)
+and `expected-schedules.txt` still carries its **21** Kinematograf lines,
+`read-model-snapshot.json` unchanged. **Verified by hiding the corpus fixture and
+re-running:** 2 of the 3 e2e tests fail without it, so the rename really is what
+keeps the venue in the snapshot rather than something that merely appeared to
+work. `testUnit` green, `FilmScheduleEndToEndSpec` 3/3 green.
+
+### Kino Sfinks (Krosno) — `recovered`, and the longest-standing `needs-human` is closed
+
+Carried as `needs-human` since 2026-07-11 — "no film-row markup renders
+anywhere, so the parser cannot be rebuilt or test-backed" — and re-confirmed
+empty on 08-04 and 08-08. **The venue has repopulated and the existing parser
+reads it.** Confirmed at source, not inferred from the bar:
+`kinosfinks.okn.edu.pl/wydarzenia-harmonogram.html` returns 200 / 143 KB with
+`table.widok_listy` present, `div.empty-results` **gone**, and **12
+`tr[onclick]` film rows** — VIVALDI I JA, KANDYDACI ŚMIERCI and HISTORIE
+RÓWNOLEGŁE at 17:00 / 18:00 / 19:00 on 21–22.08 and onward.
+
+The bar agrees and dates the return precisely: zero for the three buckets
+through **2026-08-11 07:15 UTC**, then **green from 08:15 UTC** and green for
+every one of the 21 buckets since.
+
+Worth noting what this vindicates. The guard added at @73f19c8a5 was written for
+exactly this moment — "the day the venue repopulates into markup this parser
+cannot read, it goes red instead of staying white forever". The venue
+repopulated into markup the parser *can* read, so the guard stayed silent and
+the venue simply went green. That is the good outcome, and it means the
+`widok_listy` selector was never the problem: the CMS had not migrated away from
+it after all, the calendar had merely been empty. **Do not re-open this venue.**
+
+### PL out-of-scope REDs (3) — fetch failures, not whites, but probed and characterised
+
+The RED set grew from 2 to 3 and none of them is a white-run target. Logged with
+evidence anyway, because two of the three are cheap and one has a known
+precedent that a future run should not re-derive from scratch.
+
+- **Kino Powiśle** (`MsiClient` on `kinosztumbilety.pl`) — 24/24 buckets red,
+  `CircuitOpenException` behind `HttpConnectTimeoutException`. **The host is
+  genuinely dead, and the plain-HTTP escape hatch does NOT apply here.** Probed
+  both schemes with a 25 s cap: `https://` and `http://` each sat at
+  `connect=0.000000` and timed out with `http=000`. That is no TCP at all, not an
+  expired leaf — so this is the **Kino Zamek MSI shape** (dead ticketing portal),
+  not the Kołobrzeg / Kozienice shape (working host, bad certificate). Zamek was
+  ultimately fixed by moving onto the venue's own site; the same question should
+  be asked here. **needs-human: decide whether Sztum's own site carries a
+  programme worth a bespoke parser, or the venue should be retired.**
+- **Zacisze** (`KinoZaciszeClient`) and **Kino Muzeum** (`KinoMuzeumGdanskClient`)
+  — both `TimeoutException: … exceeded 8000ms adaptive budget`, each with a
+  single green blip among 24–25 reds. **Both hosts answer fine from here**:
+  `www.kinozacisze.pl` 200 / 124 KB / ttfb 1.43 s, `www.muzeum1939.pl` 200 /
+  234 KB / ttfb 0.71 s. So the sites are up and the failure is on our side of the
+  wire — a latency/budget problem from Fly, not a broken parser or a dead host,
+  and the occasional green shows it sometimes squeezes under the budget.
+  **needs-human, and explicitly a RED-run question, not a white one:** whether
+  the 8 s adaptive budget is too tight for these two hosts.
+
+### The 18 carried-over dormant venues — all re-probed live, all correctly empty
+
+Every one returned HTTP 200 and none carries a film programme. Eight say so in
+their own words on the page we scrape; the rest agree by structure. Counts are
+from this run.
+
+| Venue | What the source actually shows |
+|---|---|
+| ADA Kino Studyjne | JSON-LD holds **0** events of ANY `@type`; "Brak wydarzeń… nie mogliśmy odnaleźć wydarzeń" |
+| Kino PDK (Pyrzyce) | 0 `ScreeningEvent` of 2 (1 Comedy, 1 Theater — Kabaret Trzecia Strona Medalu, 20.11) |
+| Miejskie Centrum Kultury | 0 `ScreeningEvent` of 4 (1 Comedy, 3 Music — Papa D, Czerwone Gitary) |
+| Kino MDK (Radomsko) | organiser `Film:` = **0**; its own section is `Spektakl:` only |
+| Kino nad Wartą (Koło) | `Film:` = **0**; own section Koncert/Spektakl only |
+| Kino Wisła Brzeszcze | `Film:` = **0**; the organiser event section is absent — "Brak wydarzeń" |
+| Piast (Ostrzeszów) | `Film:` = **0**; own section Koncert/Spektakl only |
+| Kino CK Lublin | `Film:` = **0** on both the landing page and `/repertuar/` (30 Koncert, 9 Spektakl) |
+| Kino Świt | `div.cks-movie-card` = **0**; "Brak nadchodzących seansów filmowych." |
+| Patria (Ruda Śląska) | 7 day tabs 12–18.08, every one `data-movie=""`, 0 film rows; "Brak filmu" |
+| Studio (Opole) | break page carries it verbatim: "…nasze kino jest nieczynne… Startujemy już 3 września" |
+| Kino Ślęża (Sobótka) | 1 `div.movie`, and it is "Wakacyjna przerwa 🌞" with no showtimes |
+| Kino Chatka Żaka | `h3.header-light` = 0, `div.box-row` = 0, "Brak wydarzeń" |
+| Kino Kuźnica (Suchedniów) | calendar payload: **184 of 184** days `"disabled":true`, each "— brak terminów" |
+| Kino Warszawa (Przeworsk) | **0** events for both 2026-08 and 2026-09 (byte-identical 27,098 B shells) |
+| Jaworzyna (Krynica) | 9 `div.card-date`, **0** `available-color`, 9 `pointer-events-none`, 0 event cards |
+| DKF Politechnika | Filmweb 1645 → literal `[]` (2 bytes) on 08-12 / 08-15 / 08-20 / 08-29 / 09-10 |
+| Kino Zachęta (Kleczew) | Filmweb 2405 → literal `[]` (2 bytes) on the same five dates |
+
+**Two standing `unfixable` verdicts are unchanged and should not be re-opened:**
+Kino Zachęta (the venue publishes only a JPEG poster, and the host 403s
+non-browser agents — there is nowhere to repoint; see 2026-08-04) and Kino
+Ślęża's summer break (`rcks.pl` IS the venue's own site, so there is no second
+source).
+
+#### Studio (Opole) — the in-season slug is now a soft-404, and that is FINE
+
+Worth writing down because the raw observation looks alarming and the standing
+note said the venue "will follow the live page on its own":
+`mdk.opole.pl/kino-studio.html` — the URL named as `RepertoireUrl` — now serves
+the site's **404 body under HTTP 200**, and the nav points "Kino STUDIO" at
+`kino-studio-przerwa.html` instead.
+
+**This is exactly the case @57429179a was built for and it is working.**
+`KinoStudioClient` fetches BOTH slugs and takes the first that renders
+`div.ckeditor`, precisely because the status code cannot pick between them.
+Verified live this run: the in-season slug has **no** `div.ckeditor` (soft-404),
+the break slug **has** one and carries the notice verbatim — "W czasie wakacji
+nasze kino jest nieczynne… **Startujemy już 3 września** :)". So the client reads
+the break page, finds no films, and returns empty — a correct white, not a
+missed page. **Nothing is owed before 3 September**, and the earlier note's
+promise holds: when the season restarts on the in-season slug, the in-season slug
+wins on its own because it is tried first.
+
+#### Jaworzyna — the 18.08 prediction has NOT yet come true, and the trigger stands
+
+The 2026-08-08 entry predicted this venue would repopulate around **18.08** and
+said that if it is still white after **20.08**, that IS drift. It is 12.08, so
+the prediction is not yet due — but the forward probe was run anyway and it
+matches the shape that entry described exactly: `?date=2026-08-18` shifts the
+strip to 16–24.08 and **still** shows 0 `available-color` days, because tickets
+for the 18–20 block are not on sale yet. 9 of 9 day cards remain
+`pointer-events-none` and the page says "Brak wydarzeń na dzisiaj, sprawdź w
+innym dniu". **Keep the trigger armed for the first run after 20.08.**
+
+### Next run's re-check list
+
+1. **Jaworzyna** — the sharpest item. Expected to repopulate around 18.08; if it
+   is still white **after 20.08** that is drift, not a gap, and deserves a fresh
+   look at `EkobiletClient.availableDates`.
+2. **Kino Kinematograf** — the fix cannot be confirmed by a bar going green,
+   because the venue is dormant and the guard's whole point is that it stays
+   white. Two things to check instead: (a) it must still be **white, not red** —
+   a red means the live page stopped rendering `items-counte`/the day strip and
+   the guard is firing for real; (b) around **03.09 / 10.09**, when the two
+   `wydarzenia` film events fall due, check whether the repertoire module
+   repopulates. **If those September screenings happen while the module still
+   reads "0 wydarzeń", the museum has moved its programme into the events post
+   type and the client must be repointed at
+   `/wydarzenia/aktualne-wydarzenia/?wydarzenia_kategoria=kino`** — that listing
+   has a stable shape (`article.cwb-post-item`, title in `h3.cwb-post-title > a`,
+   date in `.post-meta .date-time` as "DD.MM.YYYY, HH:MM").
+3. **Kino MDK** — after 31.08, per the trigger from 2026-08-08 (unchanged): if
+   the WAJDA cycle starts and films appear on `mdkradomsko.bilety24.pl` but not
+   on the central organiser page, repoint the client at the storefront.
+4. **Studio (Opole)** — after 3 September. Nothing owed before then; the two-slug
+   fallback already handles the break.
+5. **DKF Politechnika** — when the academic year starts.
+6. **Kino Sfinks** — nothing owed. Recovered and green; do not re-open.
+7. **The three REDs** are a red-run question, not a white one — but **Kino
+   Powiśle** is the one with a real decision behind it (dead MSI host, own-site
+   parser or retirement), and the Zamek precedent says check the venue's own site
+   before retiring anything.
+
+---
+
 ## 2026-08-08
 
 **PL: 19 white, 2 red**, out of 327 non-enrichment services, newest bucket
