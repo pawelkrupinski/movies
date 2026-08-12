@@ -5,7 +5,7 @@ import services.cinemas.common.CinemaScraper
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
+import org.jsoup.nodes.{Document, Element}
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
@@ -17,8 +17,11 @@ import services.movies.TitleNormalizer
 /**
  * Kino Kinematograf w Łodzi — the cinema inside the Muzeum Kinematografii
  * w Łodzi (Palace of Poznański at pl. Zwycięstwa 1). The repertoire at
- * `/repertuar/` is a server-rendered WordPress page listing the coming
- * weeks' screenings, one `article.cwb-movie-item` per showing.
+ * `/kino/repertuar-kina/` is a server-rendered WordPress page listing the
+ * coming weeks' screenings, one `article.cwb-movie-item` per showing.
+ * (The museum restructured its URLs in mid-2026; the old `/repertuar/`
+ * still 301s here, but we address the page the site publishes today rather
+ * than lean on a redirect that could be dropped.)
  *
  * Each `cwb-movie-item` carries:
  *   - `a.cwb-movie-card-link[title="Przejdź do seansu: <raw>"]` — the raw
@@ -41,6 +44,11 @@ import services.movies.TitleNormalizer
  * The listing page is filtered to screenings on or after `today` so that
  * past events (which the CMS keeps in the listing for archive purposes)
  * are not included.
+ *
+ * A zero-screening parse is only reported as empty when the widget ACCOUNTS
+ * for being empty — see `advertisedScreenings`. Otherwise it throws, so a
+ * markup change surfaces RED on /uptime instead of white, where it would be
+ * indistinguishable from a film-dormant venue.
  */
 class KinematografLodzClient(
   http:             HttpFetch,
@@ -52,7 +60,8 @@ class KinematografLodzClient(
   import KinematografLodzClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  // The scraped page itself, so /uptime's link opens what the parser read.
+  override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
   def fetch(): Seq[CinemaMovie] = parseHtml(http.get(RepertoireUrl), today, cinema, titles)
 }
@@ -60,7 +69,18 @@ class KinematografLodzClient(
 object KinematografLodzClient {
 
   val BaseUrl       = "https://muzeumkinematografii.pl"
-  val RepertoireUrl = s"$BaseUrl/repertuar/"
+  val RepertoireUrl = s"$BaseUrl/kino/repertuar-kina/"
+
+  // One screening's card.
+  private val CardSelector = "article.cwb-movie-item"
+  // The widget's own item counter ("19 wydarzeń" / "0 wydarzeń") and the day
+  // strip above the cards, whose tabs read "3 seanse" or "brak seansów". Either
+  // is enough to account for an empty parse; the day strip is kept as a second
+  // signal so renaming just one of them cannot turn a broken page white again.
+  private val ItemCounterSelector = "span.items-counte"
+  private val DayTabSelector      = "a.cinema-day-item"
+  private val DayCountSelector    = "div.day-count"
+  private val LeadingCountPat     = """^\s*(\d+)""".r
 
   private val DateTimePat = """(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2})""".r
   private val DateFmt     = DateTimeFormatter.ofPattern("dd.MM.yyyy")
@@ -98,9 +118,56 @@ object KinematografLodzClient {
   private[cinemas] def cleanTitle(raw: String, titles: TitleNormalizer): String =
     titles.cinemaClean("kino-kinematograf", raw)
 
+  /** How many screenings the repertoire widget SAYS it is showing, or `None` if
+    * this page is not the repertoire widget at all.
+    *
+    * The widget states its own size twice: `span.items-counte` ("0 wydarzeń")
+    * and the day strip, whose tabs each read "3 seanse" or "brak seansów". The
+    * counter wins when present; the day-tab sum is the fallback. Anything that
+    * is neither — the homepage, a soft-404, a slug rename landing elsewhere —
+    * yields `None`, and its emptiness says nothing about the venue's programme.
+    *
+    * Deliberately keyed on those two markers and NOT on
+    * `div.movies-tickets-inner` or `div.cwb-movie-empty-state`: the museum's
+    * HOMEPAGE carries both of those for its own "coming soon" carousel, so
+    * either one would accept the wrong page as a schedule. */
+  def advertisedScreenings(document: Document): Option[Int] = {
+    def leadingCount(text: String): Int =
+      LeadingCountPat.findFirstMatchIn(text).map(_.group(1).toInt).getOrElse(0)
+
+    val counter = Option(document.selectFirst(ItemCounterSelector)).map(e => leadingCount(e.text.trim))
+    val dayTabs = document.select(DayTabSelector).asScala.toSeq
+    counter.orElse {
+      Option.when(dayTabs.nonEmpty) {
+        dayTabs.flatMap(t => Option(t.selectFirst(DayCountSelector)))
+          .map(e => leadingCount(e.text.trim))
+          .sum
+      }
+    }
+  }
+
   private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema, titles: TitleNormalizer): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html)
-    document.select("article.cwb-movie-item").asScala.toSeq.flatMap(parseItem(_, today, cinema, titles))
+    val cards    = document.select(CardSelector).asScala.toSeq
+
+    // A zero-card page is only believable when the widget accounts for it. Same
+    // guard as KinoSfinksClient / KinoStudioClient / MsiClient, plus the
+    // count cross-check the counter makes possible: a page advertising
+    // screenings it no longer renders as `CardSelector` is a restyle, not an
+    // empty venue, and must go RED rather than silently white.
+    if (cards.isEmpty) advertisedScreenings(document) match {
+      case None =>
+        throw new IllegalStateException(
+          s"No schedule at $RepertoireUrl — the page rendered neither an `$CardSelector` " +
+          s"nor the repertoire widget's own `$ItemCounterSelector` / `$DayTabSelector` " +
+          "markers (CMS migration? soft-404? redirect to another page?)")
+      case Some(advertised) if advertised > 0 =>
+        throw new IllegalStateException(
+          s"No screenings parsed at $RepertoireUrl, but the repertoire widget advertises " +
+          s"$advertised — the screening card is no longer `$CardSelector` (restyle?)")
+      case Some(_) => Seq.empty
+    }
+    else cards.flatMap(parseItem(_, today, cinema, titles))
   }
 
   private def parseItem(item: Element, today: LocalDate, cinema: Cinema, titles: TitleNormalizer): Option[CinemaMovie] = {

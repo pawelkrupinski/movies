@@ -5,25 +5,32 @@ import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
+import clients.tools.FakeHttpFetch
 import services.cinemas.pl.KinematografLodzClient
 
 import java.time.{LocalDate, LocalDateTime}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-/** Drives the parser directly with a self-contained minimal HTML string.
- *  No fixture files are needed because `KinematografLodzClient` exposes
- *  `parseHtml(html, today, cinema)` in the `services.cinemas` package; the
- *  inline HTML below is the canonical structure of one `article.cwb-movie-item`
- *  as fetched from `muzeumkinematografii.pl/repertuar/` on 07-06-2026.
+/** The title/date/director cases drive the parser directly with a minimal HTML
+ *  string — `KinematografLodzClient` exposes `parseHtml(html, today, cinema)` in
+ *  the `services.cinemas` package, and the inline HTML is the canonical
+ *  structure of one `article.cwb-movie-item`.
  *
  *  The cinema parameter is passed explicitly (as `KinoCharlie` standing in for
  *  the real `KinematografLodz` object that will be added to Cinema.scala on
  *  integration). The `cinema` field tests propagation, not the specific object.
  *
- *  Recorder line (for a full fixture-based test later):
- *    curl -sSL -m 25 -A "Mozilla/5.0 (Macintosh; ...) Chrome/120 Safari/537.36"
- *      "https://muzeumkinematografii.pl/repertuar/"
- *      > test/resources/fixtures/kinematograf-lodz/muzeumkinematografii.pl/repertuar.html
+ *  Four recorded captures back the rest, all replayed through `FakeHttpFetch`:
+ *    - `kinematograf-lodz`               populated page, 19 cards (07-06-2026)
+ *    - `kinematograf-lodz-dormant`       live 12-08-2026, "0 wydarzeń"
+ *    - `kinematograf-lodz-shape-drift`   live 12-08-2026 site ROOT
+ *    - `kinematograf-lodz-cards-restyled` the populated capture with only its
+ *      card class renamed, standing in for a CMS restyle
+ *
+ *  Recorder line:
+ *    curl -sSL -m 25 -A "Mozilla/5.0 (Macintosh; ...) Chrome/126 Safari/537.36"
+ *      "https://muzeumkinematografii.pl/kino/repertuar-kina/"
+ *      > test/resources/fixtures/kinematograf-lodz/muzeumkinematografii.pl/kino/repertuar-kina
  */
 class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
@@ -139,5 +146,104 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
     KinematografLodzClient.parseDirectors(
       "Mały Kinematograf: premiera animacji i spotkanie z reżyserką Aleksandrą Chrapowicką"
     ) shouldBe empty
+  }
+
+  // ── The URL the museum publishes today ─────────────────────────────────────
+  //
+  // The site restructured in mid-2026: `/repertuar/` now 301s to
+  // `/kino/repertuar-kina/`. The redirect is followed, so nothing breaks while
+  // it lasts — but Helios showed what happens when a site stops honouring an
+  // old slug, so address the live page and pin it here.
+
+  it should "scrape the repertoire URL the site publishes today" in {
+    KinematografLodzClient.RepertoireUrl shouldBe "https://muzeumkinematografii.pl/kino/repertuar-kina/"
+  }
+
+  it should "link /uptime at the page it actually scraped" in {
+    new KinematografLodzClient(http, testCinema, today, titles = titleNormalizer)
+      .sourceUrl shouldBe Some(KinematografLodzClient.RepertoireUrl)
+  }
+
+  // ── Real recorded captures ─────────────────────────────────────────────────
+  //
+  // Everything above drives `parseHtml` with inline HTML. These replay the real
+  // page, which is what catches the museum restyling around us.
+
+  it should "parse the real recorded repertoire page" in {
+    // Capture of the populated page (19 cards, day strip advertising 16
+    // screenings across 07-14.06.2026).
+    val movies = new KinematografLodzClient(
+      new FakeHttpFetch("kinematograf-lodz"), testCinema, LocalDate.of(2026, 6, 7), titles = titleNormalizer
+    ).fetch()
+
+    movies should not be empty
+    movies.flatMap(_.showtimes) should not be empty
+    movies.map(_.movie.title) should contain("Milcząca przyjaciółka")
+  }
+
+  // ── A zero-screening parse must be ACCOUNTED for ───────────────────────────
+  //
+  // The venue went white on /uptime on 2026-08-11 with no way to tell whether
+  // it was dormant or unreadable — the same blind spot as Kino Sfinks. The
+  // widget states its own size, so use it: zero cards is only "empty" when the
+  // widget agrees it is empty.
+
+  it should "report zero screenings, not a failure, when the widget says it has none" in {
+    // Live capture 2026-08-12: the museum's repertoire module renders
+    // `span.items-counte` → "0 wydarzeń" and all eight day tabs read
+    // "brak seansów". Genuinely dormant, so this must stay white, not go red.
+    new KinematografLodzClient(
+      new FakeHttpFetch("kinematograf-lodz-dormant"), testCinema, today, titles = titleNormalizer
+    ).fetch() shouldBe empty
+  }
+
+  it should "fail loudly when the page carries neither a screening card nor the widget's own counters" in {
+    // Live capture 2026-08-12 of the site ROOT, standing in for the repertoire
+    // URL serving something that isn't the repertoire — the Helios slug-rename
+    // shape. Note the homepage DOES carry `div.movies-tickets-inner` and
+    // `div.cwb-movie-empty-state` for its own carousel, so this also pins that
+    // the guard is not keyed on those false friends.
+    val thrown = the[RuntimeException] thrownBy new KinematografLodzClient(
+      new FakeHttpFetch("kinematograf-lodz-shape-drift"), testCinema, today, titles = titleNormalizer
+    ).fetch()
+    thrown.getMessage should include("muzeumkinematografii.pl")
+  }
+
+  it should "fail loudly when the widget advertises screenings it no longer renders as cards" in {
+    // The real populated capture with its screening-card class renamed
+    // (`article.cwb-movie-item` → `article.cwb-screening-card`) and NOTHING else
+    // touched: the widget still counts "19 wydarzeń" and the day strip still
+    // advertises 4/2/2/2/3/3 seanse. That is what a CMS restyle looks like, and
+    // it is the case a presence-only guard would still paint white — the venue
+    // looks readable and merely empty.
+    val thrown = the[RuntimeException] thrownBy new KinematografLodzClient(
+      new FakeHttpFetch("kinematograf-lodz-cards-restyled"), testCinema, LocalDate.of(2026, 6, 7), titles = titleNormalizer
+    ).fetch()
+    thrown.getMessage should include("advertises 19")
+  }
+
+  // ── The widget's own accounting, read directly ─────────────────────────────
+
+  it should "read the item counter in preference to the day strip" in {
+    val doc = org.jsoup.Jsoup.parse(
+      """<span class="items-counte">7 wydarzeń</span>
+         <a class="cinema-day-item"><div class="day-count">3 seanse</div></a>"""
+    )
+    KinematografLodzClient.advertisedScreenings(doc) shouldBe Some(7)
+  }
+
+  it should "sum the day strip when the item counter is gone" in {
+    val doc = org.jsoup.Jsoup.parse(
+      """<a class="cinema-day-item"><div class="day-count">3 seanse</div></a>
+         <a class="cinema-day-item"><div class="day-count">brak seansów</div></a>
+         <a class="cinema-day-item"><div class="day-count">1 seans</div></a>"""
+    )
+    KinematografLodzClient.advertisedScreenings(doc) shouldBe Some(4)
+  }
+
+  it should "report no accounting at all for a page carrying neither marker" in {
+    KinematografLodzClient.advertisedScreenings(
+      org.jsoup.Jsoup.parse("""<div class="movies-tickets-inner"></div>""")
+    ) shouldBe None
   }
 }
