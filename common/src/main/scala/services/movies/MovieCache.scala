@@ -536,7 +536,7 @@ class CaffeineMovieCache(
 
   private def canonicalizeGroups(pairs: Seq[(CacheKey, MovieRecord)]): Unit =
     FilmCanonicalizer.groupByFilm(pairs, normalizer)
-      .foreach(component => FilmCanonicalizer.clusterByFilm(component).foreach(collapseCluster))
+      .foreach(component => FilmCanonicalizer.clusterByFilm(component, normalizer).foreach(collapseCluster))
 
   /** Collapse ONE cluster (rows that are the same film) to a single canonical
    *  row, unioning their records. The `(canonical, merged)` DECISION — which
@@ -735,8 +735,16 @@ class CaffeineMovieCache(
    *  on any concluded same-title row; a year-bearing scrape prefers the concluded
    *  row at the SAME year, else the nearest within ±1 (a cinema reporting the
    *  production year 2025 lands on the row TMDB resolved to the release year
-   *  2026 — the "two copies of Kumotry" bug). Ties break on `canonicalRank`. */
-  private def concludedKeyFor(primary: CacheKey): Option[CacheKey] = {
+   *  2026 — the "two copies of Kumotry" bug). Ties break on `canonicalRank`.
+   *
+   *  `listingRuntime` is the runtime THIS listing published, and `cinema` the venue
+   *  publishing it. Both are only consulted when the candidates turn out to be more
+   *  than one FILM — see [[chooseConcluded]]. */
+  private def concludedKeyFor(
+    primary:        CacheKey,
+    listingRuntime: Option[Int],
+    cinema:         Cinema
+  ): Option[CacheKey] = {
     import scala.jdk.CollectionConverters._
     val norm = primary.normalized
     // A scrape lands on a concluded row when its title matches that row's key, OR
@@ -773,12 +781,84 @@ class CaffeineMovieCache(
     // re-merge. So resolve key-matches first, alias-only matches only as fallback.
     val (keyMatches, aliasOnly) = concluded.partition(k => k.normalized == norm)
     def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
-      case None    => cands.minByOption(canonicalRank)
+      case None    => chooseConcluded(cands, listingRuntime, cinema, norm)
       case Some(y) =>
-        cands.filter(_.year.contains(y)).minByOption(canonicalRank)
-          .orElse(cands.filter(_.year.exists(ky => math.abs(ky - y) <= 1)).minByOption(canonicalRank))
+        chooseConcluded(cands.filter(_.year.contains(y)), listingRuntime, cinema, norm)
+          .orElse(chooseConcluded(cands.filter(_.year.exists(ky => math.abs(ky - y) <= 1)), listingRuntime, cinema, norm))
     }
     nearest(keyMatches).orElse(nearest(aliasOnly))
+  }
+
+  /** Pick the concluded row a listing belongs to, from candidates the year has
+   *  already narrowed as far as it can.
+   *
+   *  When they are all rows of ONE film — the overwhelming case, several spellings
+   *  or year-variants of the same tmdbId — any of them is the right answer and
+   *  `canonicalRank` picks the canonical one, exactly as before.
+   *
+   *  When they are DIFFERENT FILMS, `canonicalRank` is the wrong instrument. It is a
+   *  canonicalisation order for rows of one film — year-bearing first, then the
+   *  LOWER year — so across two films it means "the older film always wins".
+   *  Production, 2026-08-14: `tylkojednanoc` was held by both Antonioni's "La notte"
+   *  (1961) and the "One Night Only" romcom (2026), and every yearless listing of the
+   *  romcom — 32 of the 33 listings in the archived corpus publish no year — was
+   *  routed to the 1961 film. The venues' screenings ended up split across the two
+   *  rows, the read model projected a card for each, and `/poznan` showed the same
+   *  film twice under one slug with the same booking links on both cards.
+   *
+   *  So ask the listing instead, in order of how much the answer can be trusted:
+   *
+   *   1. THE RUNTIME IT PUBLISHED, against each candidate film's own — see
+   *      [[RuntimeCorroboration]]. The venues that print no year do print minutes.
+   *   2. WHERE THIS VENUE'S LISTING ALREADY SITS. No fresh evidence is no reason to
+   *      move a cinema from one film to another; leaving it put also keeps the answer
+   *      stable across ticks. Skipped when the slot is (wrongly) on more than one row,
+   *      which is the very state this is untangling.
+   *   3. THE FILM MORE VENUES ARE SCREENING. Neither of the above can speak for a
+   *      listing that publishes no runtime and sits on both rows — 34 of this film's
+   *      slots on prod were in exactly that state, enough to keep the duplicate card
+   *      alive on its own. A title shared by a current release and an old picture is
+   *      overwhelmingly the release when a venue says nothing else, and counting the
+   *      venues says which is which. It only decides what step 1 could not, so a
+   *      repertory house that publishes its minutes still reaches the old film.
+   *
+   *  Only then `canonicalRank`, which stays the tie-break within one film. Every step
+   *  is a pure function of the row set plus this listing, so the answer cannot depend
+   *  on arrival order. */
+  private def chooseConcluded(
+    candidates:     Seq[CacheKey],
+    listingRuntime: Option[Int],
+    cinema:         Cinema,
+    norm:           String
+  ): Option[CacheKey] = {
+    def rowAt(key: CacheKey): Option[MovieRecord] = Option(positive.getIfPresent(key))
+    def films(keys: Seq[CacheKey]): Int = keys.flatMap(rowAt(_).flatMap(_.tmdbId)).distinct.size
+    /** This venue's own slot for this title on a candidate row, if it holds one. */
+    def venueSlot(key: CacheKey): Option[SourceData] =
+      rowAt(key).flatMap(_.cinemaShowings.collectFirst {
+        case (cin, slot) if cin == cinema && slot.title.exists(t => normalizer.sanitize(t) == norm) => slot
+      })
+    if (candidates.sizeIs <= 1 || films(candidates) <= 1) candidates.minByOption(canonicalRank)
+    else {
+      // The minutes THIS venue gives the film. A listing tick often carries none —
+      // Multikino sends 0 and its detail page fills the runtime in a beat later — so
+      // fall back to what the venue's own slot already records. `minOption` rather than
+      // "the first one found": the candidates come out of a Caffeine map whose iteration
+      // order is not guaranteed, and this answer must not depend on it.
+      val published = listingRuntime.orElse(candidates.flatMap(venueSlot).flatMap(_.runtimeMinutes).minOption)
+      // Each candidate film's OWN runtime comes off its `Tmdb` slot, not the merged
+      // `runtimeMinutes`: a row that has been absorbing another film's listings reports
+      // THEIR minutes through the merge, and that row is precisely what is in question.
+      val byRuntime = RuntimeCorroboration.strictNearest(
+        published, candidates.map(k => k -> rowAt(k).flatMap(_.data.get(models.Tmdb)).flatMap(_.runtimeMinutes)))
+      val byIncumbency = candidates.filter(venueSlot(_).isDefined)
+      val byVenueCount = candidates.groupBy(k => rowAt(k).map(_.cinemaShowings.size).getOrElse(0))
+        .maxByOption(_._1).map(_._2).getOrElse(Nil)
+      Seq(byRuntime.toSeq, byIncumbency, byVenueCount)
+        .find(narrowed => narrowed.nonEmpty && films(narrowed) == 1)
+        .getOrElse(candidates)
+        .minByOption(canonicalRank)
+    }
   }
 
   /** Collapse two same-tmdbId rows into one. The surviving key is chosen by
@@ -1342,7 +1422,7 @@ class CaffeineMovieCache(
           // year)` a pure function of the reported variants. A scrape of an
           // already-concluded film lands straight on the resolved row; falls back
           // to the unique-match redirect for not-yet-concluded films.
-          val key = concludedKeyFor(primary).getOrElse {
+          val key = concludedKeyFor(primary, cm.movie.runtimeMinutes.filter(_ > 0), cinema).getOrElse {
             redirectToExistingVariant(primary) match {
               case Some(existingKey) =>
                 // A RESOLVED row's key is authoritative — TMDB's title + year,
