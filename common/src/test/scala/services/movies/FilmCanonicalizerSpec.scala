@@ -114,7 +114,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     )
     // Both insertion orders must land on ONE cluster carrying both cinemas.
     Seq(rows, rows.reverse).foreach { ordered =>
-      val clusters = FilmCanonicalizer.clusterByFilm(ordered)
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer)
       withClue(s"clusters for order ${ordered.map(_._1.year)}: ${clusters.map(_.map(_._1))}\n") {
         clusters should have size 1
         clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(KinoMuza, KinoMuzeumGdansk)
@@ -129,7 +129,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val clusters = FilmCanonicalizer.clusterByFilm(Seq(
       resolved("Diuna", tmdbId = 100, tmdbYear = 1984, cinema = KinoMuza),
       resolved("Diuna", tmdbId = 200, tmdbYear = 2021, cinema = KinoMuzeumGdansk)
-    ))
+    ), titleNormalizer)
     clusters should have size 2
   }
 
@@ -156,7 +156,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](KinoMuzeumGdansk -> SourceData(title = Some("Głos Hind Rajab"), releaseYear = Some(2022))))
     )
     Seq(group, group.reverse).foreach { ordered =>
-      val clusters = FilmCanonicalizer.clusterByFilm(ordered)
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer)
       withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
         clusters should have size 1
         clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(KinoMuza, KinoMuzeumGdansk)
@@ -177,7 +177,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
       withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
         components should have size 1
-        val clusters = FilmCanonicalizer.clusterByFilm(components.head)
+        val clusters = FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer)
         clusters should have size 1
         clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(Multikino, Helios)
       }
@@ -204,7 +204,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
       withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
         components should have size 1
-        FilmCanonicalizer.clusterByFilm(components.head) should have size 1
+        FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 1
       }
     }
   }
@@ -228,7 +228,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
       withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
         components should have size 1
-        val clusters = FilmCanonicalizer.clusterByFilm(components.head)
+        val clusters = FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer)
         clusters should have size 1
         clusters.head.flatMap(_._2.cinemaData.keySet).toSet shouldBe Set(Helios, KinoMuza)
       }
@@ -359,7 +359,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
       components should have size 1
     }
-    val clusters = FilmCanonicalizer.clusterByFilm(components.head)
+    val clusters = FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer)
     clusters should have size 1                                       // one tmdbId → one film
     val (_, merged) = FilmCanonicalizer.canonical(clusters.head, titleNormalizer)
     merged.cinemaTitles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
@@ -371,7 +371,46 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       resolved("Diuna", tmdbId = 200, tmdbYear = 2021, cinema = KinoMuzeumGdansk)
     ), titleNormalizer)
     components should have size 1                                  // same sanitized title → one component
-    FilmCanonicalizer.clusterByFilm(components.head) should have size 2  // split back out by tmdbId
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2  // split back out by tmdbId
+  }
+
+  // Prod, 2026-08-14: `ghost2bigtorig|2025` (tmdbId 1568069) and `ghost2bigtorig|2026`
+  // (tmdbId 1693400) are ONE film TMDB holds twice — both carry imdbId tt43683692 — and
+  // 44 cinema slots were filed under each. Splitting on tmdbId alone gave the film two
+  // rows nothing could ever rejoin, so the read model projected a card each and the site
+  // showed it twice under one slug. `scripts.DuplicateAudit` calls a shared imdbId the
+  // gold standard for "same film"; the fold now acts on it.
+  private def withImdb(row: (CacheKey, MovieRecord), imdbId: String): (CacheKey, MovieRecord) =
+    row._1 -> row._2.copy(imdbId = Some(imdbId))
+
+  it should "fold two tmdbIds that TMDB gave the SAME imdbId into one cluster" in {
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      withImdb(resolved("Ghost 2", tmdbId = 1568069, tmdbYear = 2025, cinema = KinoMuza), "tt43683692"),
+      withImdb(resolved("Ghost 2", tmdbId = 1693400, tmdbYear = 2026, cinema = KinoMuzeumGdansk), "tt43683692")
+    ), titleNormalizer)
+    components should have size 1
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 1
+  }
+
+  it should "still keep two imdbId-sharing rows apart when their cinemas published different films" in {
+    // The refuse-on-contradiction guard, the same one the containment edge carries: an
+    // id agreement may never merge what `MixedFilmSplitter` would split straight back
+    // out, or the two chase each other and the settle never reaches a fixpoint.
+    def published(title: String, tmdbId: Int, tmdbYear: Int, cinema: Source,
+                  originalTitle: String, runtime: Int): (CacheKey, MovieRecord) =
+      key(title, Some(tmdbYear)) -> MovieRecord(
+        tmdbId = Some(tmdbId), imdbId = Some("tt43683692"),
+        data = Map[Source, SourceData](
+          Tmdb   -> SourceData(releaseYear = Some(tmdbYear)),
+          cinema -> SourceData(title = Some(title), releaseYear = Some(tmdbYear),
+                               originalTitle = Some(originalTitle), runtimeMinutes = Some(runtime))))
+
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      published("Joanna d'Arc", 1, 1999, KinoMuza,          "Joan of Arc",    160),
+      published("Joanna d'Arc", 2, 2025, KinoMuzeumGdansk,  "Johanna af Ork", 108)
+    ), titleNormalizer)
+    components should have size 1
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
   }
 
   it should "key a cross-language cluster on the dominant cinema title, not the alphabetical min" in {
@@ -436,7 +475,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val allCinemas = Set[Source](Helios, Multikino, KinoMuza, KinoMuzeumGdansk, Kinoteka)
 
     val settled = rows.permutations.toList.map { ordered =>
-      val clusters = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer).flatMap(FilmCanonicalizer.clusterByFilm)
+      val clusters = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, titleNormalizer))
       withClue(s"order ${ordered.map(r => (r._1.cleanTitle, r._1.year))} → " +
                s"${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
         clusters should have size 1
@@ -473,7 +512,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     )
 
     val perOrder = rows.permutations.toList.map { ordered =>
-      val clusters = FilmCanonicalizer.clusterByFilm(ordered)
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer)
       // Each cluster as its set of cinemas, the whole partition as a sorted set —
       // a representation independent of cluster/row emission order.
       clusters.map(_.flatMap(_._2.cinemaData.keySet).toSet).toSet

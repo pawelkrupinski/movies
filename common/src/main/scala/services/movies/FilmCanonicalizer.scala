@@ -1,6 +1,6 @@
 package services.movies
 
-import models.MovieRecord
+import models.{MovieRecord, Tmdb}
 
 /**
  * Pure collapse of a cluster of same-film rows into the single canonical
@@ -55,8 +55,9 @@ object FilmCanonicalizer {
    *  result is independent of cache/scrape/iteration order. Precedence:
    *
    *    1. Resolved rows (carry a `tmdbId`) cluster BY tmdbId — two distinct ids
-   *       are two films, never merged. Each resolved cluster's reference year is
-   *       its `tmdbYear`.
+   *       are two films — EXCEPT when they carry the same `imdbId`, which says
+   *       they are one film TMDB happens to hold twice (see below). Each resolved
+   *       cluster's reference year is its `tmdbYear`.
    *    2. Unresolved rows that HAVE a year attach to the NEAREST resolved cluster
    *       (by `|year − tmdbYear|`) within ±2 of its tmdbYear — wide enough to
    *       absorb a cinema's production-vs-release-year disagreement (a film shot
@@ -72,15 +73,47 @@ object FilmCanonicalizer {
    *    4. Yearless AND idless rows fold into the group's canonical cluster (the
    *       smallest-`canonicalRank` cluster from 1–3) on the title match alone;
    *       a lone such row stays its own singleton. */
-  def clusterByFilm(group: Seq[(CacheKey, MovieRecord)]): Seq[Seq[(CacheKey, MovieRecord)]] = {
+  def clusterByFilm(group: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer): Seq[Seq[(CacheKey, MovieRecord)]] = {
     type Row = (CacheKey, MovieRecord)
     def rank(r: Row): (Boolean, Int, String) = canonicalRank(r._1)
 
     // (1) Resolved rows → one cluster per distinct tmdbId. Sort the ids so the
     // cluster sequence is order-independent.
     val resolved = group.filter(_._2.tmdbId.isDefined)
+    val byTmdbId: Seq[Seq[Row]] = resolved.groupBy(_._2.tmdbId.get).toSeq.sortBy(_._1).map(_._2)
+    // …then fold together the tmdbId groups that share an IMDb id. One film can carry
+    // two tmdbIds: TMDB sometimes holds two records for the same picture (a re-release,
+    // an extended cut catalogued separately), and both resolve to the SAME IMDb id.
+    // Splitting on tmdbId alone then gives the film two `movies` rows FOREVER — nothing
+    // else in the fold can see they are one — and both accumulate the same venues'
+    // listings, so the read model projects a card each and the site shows the film twice
+    // under one slug. Production, 2026-08-14: `ghost2bigtorig|2025` (tmdbId 1568069) and
+    // `ghost2bigtorig|2026` (tmdbId 1693400), both `tt43683692`, 44 cinema slots filed
+    // under each. `scripts.DuplicateAudit` has always named this the gold standard —
+    // "two rows that TMDB resolved to the same IMDb id are definitionally the same film"
+    // — and this is the fold finally acting on it.
+    //
+    // Guarded by the cinemas' OWN published evidence, exactly as the containment edge in
+    // `groupByFilm` is: if two rows' venues describe different films, no id agreement may
+    // merge them, or the fold and `MixedFilmSplitter` would chase each other forever.
+    val sameFilm = Array.tabulate(byTmdbId.length)(identity)
+    def root(x: Int): Int = { var r = x; while (sameFilm(r) != r) r = sameFilm(r); r }
+    def fold(a: Int, b: Int): Unit = {
+      val (ra, rb) = (root(a), root(b))
+      if (ra != rb) sameFilm(math.max(ra, rb)) = math.min(ra, rb)
+    }
+    def imdbIds(rows: Seq[Row]): Set[String] = rows.flatMap(_._2.imdbId).toSet
+    for {
+      i <- byTmdbId.indices
+      j <- byTmdbId.indices
+      if i < j
+      if imdbIds(byTmdbId(i)).intersect(imdbIds(byTmdbId(j))).nonEmpty
+      if !byTmdbId(i).exists(a => byTmdbId(j).exists(b =>
+           MixedFilmDetector.describeDifferentFilms(a._2, b._2, normalizer)))
+    } fold(i, j)
     val resolvedClusters: Seq[Cluster] =
-      resolved.groupBy(_._2.tmdbId.get).toSeq.sortBy(_._1).map { case (_, rows) =>
+      byTmdbId.indices.groupBy(root).toSeq.sortBy(_._1).map { case (_, indices) =>
+        val rows = indices.sorted.flatMap(byTmdbId)
         Cluster(refYear = rows.flatMap(_._2.tmdbYear).minOption, rows = rows)
       }
 
@@ -224,6 +257,15 @@ object FilmCanonicalizer {
       .filter(i => rows(i)._2.tmdbId.isDefined)
       .groupBy(i => rows(i)._2.tmdbId.get)
       .valuesIterator.foreach(unionAllIndices)
+    // imdbId edges — the same statement one level up the identity ladder, for the case
+    // the tmdbId edge cannot see: TMDB holding the SAME film under two ids. Two rows
+    // TMDB resolved to one IMDb id are one film whatever their tmdbIds say, so they
+    // belong in one component; whether they actually collapse is still `clusterByFilm`'s
+    // call, and it refuses when the cinemas published different films.
+    rows.indices
+      .filter(i => rows(i)._2.imdbId.isDefined)
+      .groupBy(i => rows(i)._2.imdbId.get)
+      .valuesIterator.foreach(unionAllIndices)
     // tmdbTitleAlias edges — fold an UNRESOLVED row whose key sanitizes to one of a
     // RESOLVED row's TMDB titles (Polish / original / English) onto that row, even
     // though the straggler has no tmdbId of its own. The tmdbId edge above can only
@@ -345,6 +387,28 @@ object FilmCanonicalizer {
       .sortBy(comp => comp.map(r => canonicalRank(r._1)).min)
   }
 
+  /** The order [[canonical]] hands a cluster to `MovieRecordMerge.unionAll`, which
+   *  takes the FIRST tmdbId-bearing row as the base — so this decides which identity
+   *  (tmdbId, and the TMDB slot behind it) the surviving row keeps.
+   *
+   *  `canonicalRank` alone, for a cluster folded on a shared imdbId, would hand that to
+   *  the lower YEAR — which says nothing about which of the two TMDB records is the
+   *  right one. On prod that picked the wrong one: `ghost2bigtorig|2025`'s tmdbId
+   *  resolves to a Def Leppard concert film, and folding on the shared imdbId would have
+   *  replaced a correct card and a wrong one with a single wrong one. Let the cinemas
+   *  break it instead — their published runtimes are exactly the evidence
+   *  [[RuntimeCorroboration]] exists for — and fall back to `canonicalRank` when they
+   *  are silent or split. A cluster with one tmdbId (every ordinary fold) is untouched. */
+  private def mergeOrder(cluster: Seq[(CacheKey, MovieRecord)]): Seq[(CacheKey, MovieRecord)] = {
+    val ranked   = cluster.sortBy { case (k, _) => canonicalRank(k) }
+    val resolved = ranked.filter(_._2.tmdbId.isDefined)
+    if (resolved.map(_._2.tmdbId).distinct.sizeIs <= 1) ranked
+    else RuntimeCorroboration.strictNearest(
+      cluster.flatMap(_._2.cinemaRuntimesMinutes).distinct,
+      resolved.map(row => row -> row._2.data.get(Tmdb).flatMap(_.runtimeMinutes))
+    ).map(best => best +: ranked.filterNot(_._1 == best._1)).getOrElse(ranked)
+  }
+
   /** The single canonical key + merged record for a cluster of same-film rows.
    *  Spelling is decoupled from year:
    *    - year:    TMDB's resolved year is authoritative (it overrides
@@ -379,7 +443,7 @@ object FilmCanonicalizer {
     // variant set.
     def isAllCaps(t: String): Boolean = t.exists(_.isLetter) && t == t.toUpperCase(java.util.Locale.ROOT)
     val minSpelling = allKeys.map(_.cleanTitle).minBy(t => (isAllCaps(t), t))
-    val merged = MovieRecordMerge.unionAll(cluster.sortBy { case (k, _) => canonicalRank(k) }.map(_._2))
+    val merged = MovieRecordMerge.unionAll(mergeOrder(cluster).map(_._2))
     // Always key on `displayTitle` (the dominant cinema-reported clean form → TMDB
     // PL title → recased `minSpelling` ladder) — the SAME spelling
     // `StoredMovieRecord.fromStorage` rebuilds a hydrated row's key from. Keying the

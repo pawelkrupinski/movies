@@ -136,7 +136,7 @@ object StagingFold {
       val sorted = entries.sortBy { case (k, _) => FilmCanonicalizer.canonicalRank(k) }
       sorted.head._1 -> MovieRecordMerge.unionAll(sorted.map(_._2))
     }
-    val planned = FilmCanonicalizer.groupByFilm(byKey, normalizer).flatMap(FilmCanonicalizer.clusterByFilm).map { cluster =>
+    val planned = FilmCanonicalizer.groupByFilm(byKey, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer)).map { cluster =>
       val (canonKey, merged) = FilmCanonicalizer.canonical(cluster, normalizer, extraCinemaTitles)
       // A cluster is a brand-new promotion iff no existing `movies` row joined it
       // (all members came from staging) — a merge into an existing row, or a
