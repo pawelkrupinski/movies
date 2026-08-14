@@ -810,17 +810,18 @@ class CaffeineMovieCache(
    *
    *   1. THE RUNTIME IT PUBLISHED, against each candidate film's own — see
    *      [[RuntimeCorroboration]]. The venues that print no year do print minutes.
-   *   2. WHERE THIS VENUE'S LISTING ALREADY SITS. No fresh evidence is no reason to
-   *      move a cinema from one film to another; leaving it put also keeps the answer
-   *      stable across ticks. Skipped when the slot is (wrongly) on more than one row,
-   *      which is the very state this is untangling.
-   *   3. THE FILM MORE VENUES ARE SCREENING. Neither of the above can speak for a
-   *      listing that publishes no runtime and sits on both rows — 34 of this film's
-   *      slots on prod were in exactly that state, enough to keep the duplicate card
-   *      alive on its own. A title shared by a current release and an old picture is
-   *      overwhelmingly the release when a venue says nothing else, and counting the
-   *      venues says which is which. It only decides what step 1 could not, so a
-   *      repertory house that publishes its minutes still reaches the old film.
+   *   2. THE FILM MORE VENUES ARE SCREENING. Runtime cannot speak for a venue that
+   *      publishes none — 34 of this film's slots on prod were in exactly that state,
+   *      enough to keep the duplicate card alive on their own. A title shared by a
+   *      current release and an old picture is overwhelmingly the release when a venue
+   *      says nothing else, and counting the venues says which is which. This
+   *      deliberately outranks step 3: a venue with no evidence that stays where it
+   *      happens to sit keeps a split alive forever, because nothing else will ever
+   *      move it. The count is monotone as venues migrate, so the corpus converges
+   *      rather than flapping. It only decides what step 1 could not, so a repertory
+   *      house that publishes its minutes still reaches the old film.
+   *   3. WHERE THIS VENUE'S LISTING ALREADY SITS — the last resort before an arbitrary
+   *      pick, for a group where even the venue counts tie.
    *
    *  Only then `canonicalRank`, which stays the tie-break within one film. Every step
    *  is a pure function of the row set plus this listing, so the answer cannot depend
@@ -854,7 +855,7 @@ class CaffeineMovieCache(
       val byIncumbency = candidates.filter(venueSlot(_).isDefined)
       val byVenueCount = candidates.groupBy(k => rowAt(k).map(_.cinemaShowings.size).getOrElse(0))
         .maxByOption(_._1).map(_._2).getOrElse(Nil)
-      Seq(byRuntime.toSeq, byIncumbency, byVenueCount)
+      Seq(byRuntime.toSeq, byVenueCount, byIncumbency)
         .find(narrowed => narrowed.nonEmpty && films(narrowed) == 1)
         .getOrElse(candidates)
         .minByOption(canonicalRank)

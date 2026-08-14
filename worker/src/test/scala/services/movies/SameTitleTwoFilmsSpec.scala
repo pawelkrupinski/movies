@@ -105,6 +105,27 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
     cinemasOn(c, 1961) should not contain Multikino
   }
 
+  // The tail the runtime rule cannot reach. 22 of this film's prod slots sat ALONE on the
+  // 1961 row with no runtime published anywhere — not on the listing, not on the slot. If
+  // such a venue simply stays where it happens to sit, nothing will ever move it and the
+  // duplicate card outlives every scrape. The venue counts are the remaining evidence: a
+  // title shared by a current release and an old picture is the release when a venue says
+  // nothing else.
+  it should "move a runtime-less venue off a film almost nobody is screening" in {
+    val c = cache()
+    c.put(c.keyOf(Title, Some(2026)), resolved(NewFilm, 2026, 102, Seq(Helios, models.CinemaCityKinepolis)))
+    // Multikino sits alone on the 1961 row and publishes no minutes at all.
+    c.put(c.keyOf(Title, Some(1961)), resolved(OldFilm, 1961, 121, Nil))
+    c.putIfPresent(c.keyOf(Title, Some(1961)), r => r.copy(data = r.data + ((Multikino: Source) ->
+      SourceData(title = Some(Title), showtimes = Seq(Showtime(When, bookingUrl = None))))))
+
+    c.recordCinemaScrape(Multikino, Seq(
+      yearlessScrape(Multikino, 105).copy(movie = Movie(title = Title, releaseYear = None, runtimeMinutes = None))))
+
+    cinemasOn(c, 2026) should contain(Multikino)
+    cinemasOn(c, 1961) should not contain Multikino
+  }
+
   it should "still reach the older film when the runtime is the OLDER one's" in {
     val c = cache()
     c.put(c.keyOf(Title, Some(2026)), resolved(NewFilm, 2026, 102, Seq(Helios)))

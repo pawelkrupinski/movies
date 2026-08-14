@@ -1,7 +1,9 @@
 package scripts
 
 import models.{Cinema, SourceData}
-import services.movies.{MongoMovieRepository, RuntimeCorroboration, SingleCountryNormalizer, StoredMovieRecord, TitleNormalizer}
+import org.mongodb.scala.MongoClient
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, RuntimeCorroboration,
+  SingleCountryNormalizer, StoredMovieRecord, TitleNormalizer}
 import tools.Env
 
 /**
@@ -88,15 +90,32 @@ object ConsolidateSplitFilms {
     val apply      = args.contains("--apply")
     val max        = args.toSeq.sliding(2).collectFirst { case Seq("--max", n) => n.toInt }.getOrElse(20)
     val normalizer = SingleCountryNormalizer.titleNormalizer
-    val repository = new MongoMovieRepository(normalizer = normalizer)
-    if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
-    println(s"ConsolidateSplitFilms — ${if (apply) "APPLY" else "DRY RUN"} (db=${Env.get("MONGODB_DB").getOrElse("kinowo")}, max=$max)")
+    val uri        = Env.get("MONGODB_URI").getOrElse { println("MONGODB_URI not set."); sys.exit(1) }
+    val dbName     = Env.get("MONGODB_DB").getOrElse("kinowo")
+    val client     = MongoClient(uri)
+    val db         = client.getDatabase(dbName)
+    // The cinemas live in the side collections, so the read has to STITCH them: a bare
+    // `MongoMovieRepository` returns every row with an empty `sourceData` and this script
+    // would then see a corpus where no film has a venue — no split to find, and every row
+    // one step from looking deletable. Wire them as the serving path does.
+    val repository = new MongoMovieRepository(Some(db), fallbackToOwnInit = false,
+      screenings = Some(new MongoScreeningsRepository(Some(db))),
+      slots      = Some(new MongoSlotsRepository(Some(db))),
+      normalizer = normalizer)
+    if (!repository.enabled) { println(s"movies repository not enabled for $dbName."); sys.exit(1) }
+    println(s"ConsolidateSplitFilms — ${if (apply) "APPLY" else "DRY RUN"} (db=$dbName, max=$max)")
 
     val rows = repository.findAll()
     // A short read makes a split look like a single row and vice versa; refuse rather
     // than move screenings on a partial view of the corpus.
     if (rows.isEmpty) { println("movies read returned NOTHING — refusing to act on an empty corpus."); sys.exit(1) }
-    println(s"read ${rows.size} movies rows")
+    val withVenues = rows.count(_.record.cinemaShowings.nonEmpty)
+    if (withVenues == 0) {
+      println(s"read ${rows.size} rows and NOT ONE has a cinema — that is a mis-wired or failed " +
+        "side-collection read, not a corpus without venues. Refusing to act on it.")
+      sys.exit(1)
+    }
+    println(s"read ${rows.size} movies rows ($withVenues with cinemas)")
 
     val groups = rows.groupBy(r => normalizer.sanitize(r.title)).toSeq.sortBy(_._1)
     // Decide EVERYTHING first, print it, and only then write: a dry run and an apply run
@@ -137,5 +156,6 @@ object ConsolidateSplitFilms {
     println()
     println(if (apply) s"done — $deleted row(s) deleted." else "dry run — nothing written. Re-run with --apply.")
     repository.close()
+    client.close()
   }
 }
