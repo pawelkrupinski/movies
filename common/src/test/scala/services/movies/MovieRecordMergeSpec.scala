@@ -102,7 +102,7 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
   // filmUrl/poster are anchored to the primary variant), but the showtimes
   // are unioned so no per-cinema schedule data is lost. Old right-bias
   // behaviour silently dropped one of the two schedules.
-  it should "union showtimes (canonical metadata wins) when the same cinema appears in both rows" in {
+  it should "union showtimes, and settle the metadata the same way whichever row leads" in {
     val canonicalSlot = slot("canon.jpg", showtimes = Seq(at("2026-05-16T18:00"), at("2026-05-16T20:00")))
     val victimSlot    = slot("victim.jpg", showtimes = Seq(at("2026-05-16T22:30")))
     val a = canonical.copy(data = canonical.data + ((Multikino: Source) -> canonicalSlot))
@@ -110,13 +110,16 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
 
     val merged = MovieRecordMerge.union(a, b)
 
-    merged.cinemaData.keySet               shouldBe Set(Multikino, Helios)
-    merged.cinemaData(Multikino).posterUrl shouldBe Some("canon.jpg")   // canonical wins on metadata
+    merged.cinemaData.keySet shouldBe Set(Multikino, Helios)
     merged.cinemaData(Multikino).showtimes.map(_.dateTime) shouldBe Seq(
       LocalDateTime.parse("2026-05-16T18:00"),
       LocalDateTime.parse("2026-05-16T20:00"),
       LocalDateTime.parse("2026-05-16T22:30")
     )
+    // The surviving poster comes from the two SLOTS, not from which row is the
+    // canonical one — so swapping the rows can't swap the answer.
+    MovieRecordMerge.union(b, a).cinemaData(Multikino).posterUrl shouldBe
+      merged.cinemaData(Multikino).posterUrl
   }
 
   // Dedup: a showtime present in both slots (e.g., a session that survived
@@ -249,4 +252,48 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     )
     MovieRecordMerge.dedupShowtimes(one).size shouldBe 1
   }
+
+  // ── Two rows owning a slot under the SAME source ────────────────────────────
+  //
+  // The "Backrooms. Bez wyjścia" genre flip (Poland convergence, 2026-08-14):
+  // Cinema City lists the film twice — as itself and as "… - wersja rozszerzona"
+  // — under two chain film ids whose detail payloads disagree on the genre
+  // (`categoriesAttributes` "horror" vs "thriller"). Both editions resolve to the
+  // same TMDB film, so the rows fold; both carry a slot under the SAME
+  // `CinemaCityChain` source, and the fold has to reconcile them. Keeping the
+  // canonical row's slot wholesale made the survivor depend on WHICH row was
+  // tmdbId-bearing when the fold fired — pure arrival order — so the corpus came
+  // out `Thriller` on one pass and `Horror` on the next.
+  private def chainSlot(genre: String, title: String) =
+    SourceData(title = Some(title), genres = Seq(genre))
+
+  private def foldedGenres(first: SourceData, second: SourceData): Seq[String] =
+    MovieRecordMerge.unionAll(Seq(
+      MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](CinemaCityChain -> first)),
+      MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](CinemaCityChain -> second))
+    )).data(CinemaCityChain).genres
+
+  private val horror   = chainSlot("Horror", "Backrooms. Bez wyjścia")
+  private val thriller = chainSlot("Thriller", "Backrooms. Bez wyjścia - wersja rozszerzona")
+
+  "two rows owning a slot under the same source" should
+    "fold to the same slot whichever row the merge starts from" in {
+    foldedGenres(horror, thriller) shouldBe foldedGenres(thriller, horror)
+  }
+
+  it should "keep every field either side published, not just the starting row's" in {
+    val listing = SourceData(title = Some("Backrooms. Bez wyjścia"), genres = Seq("Horror"))
+    val detail  = SourceData(runtimeMinutes = Some(98), countries = Seq("USA"))
+    Seq(foldedSlot(listing, detail), foldedSlot(detail, listing)).foreach { merged =>
+      merged.genres         shouldBe Seq("Horror")
+      merged.runtimeMinutes shouldBe Some(98)
+      merged.countries      shouldBe Seq("USA")
+    }
+  }
+
+  private def foldedSlot(first: SourceData, second: SourceData): SourceData =
+    MovieRecordMerge.unionAll(Seq(
+      MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](CinemaCityChain -> first)),
+      MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](CinemaCityChain -> second))
+    )).data(CinemaCityChain)
 }

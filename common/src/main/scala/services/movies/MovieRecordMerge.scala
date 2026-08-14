@@ -28,8 +28,10 @@ import models.{MovieRecord, Showtime, Source, SourceData}
  *     in the same tick under variant titles that resolve to the same
  *     tmdbId, e.g. "Diabeł ubiera się u Prady 2" + "Diabeł ubiera się u
  *     Prady 2 ukraiński dubbing" from CinemaCity Poznań Plaza), the two
- *     slots' **showtimes are merged** (deduplicated, time-sorted) and the
- *     canonical slot's metadata fields (filmUrl, posterUrl, …) are kept.
+ *     slots' **showtimes are merged** (deduplicated, time-sorted) and their
+ *     metadata fields reconciled by [[MovieRecordMerge.mergeSlot]] — from the
+ *     two SLOTS, not from which row is canonical, so the result cannot depend
+ *     on which of them resolved first.
  *
  *     The previous right-biased `++` lost data: the second-resolved variant
  *     (often the dub, with one-off late screenings) overwrote the first
@@ -99,14 +101,118 @@ object MovieRecordMerge {
   ): Map[Source, SourceData] =
     (canonical.keySet ++ victim.keySet).iterator.map { src =>
       val mergedSlot = (canonical.get(src), victim.get(src)) match {
-        case (Some(a), Some(b)) =>
-          a.copy(showtimes = dedupShowtimes(a.showtimes ++ b.showtimes))
+        case (Some(a), Some(b)) => mergeSlot(a, b)
         case (Some(a), None)    => a
         case (None,    Some(b)) => b
         case (None,    None)    => throw new MatchError(src)   // unreachable: src ∈ keys union
       }
       src -> mergedSlot
     }.toMap
+
+  /** Reconcile two slots filed under the SAME source, as a COMMUTATIVE function of
+   *  the pair: `mergeSlot(a, b) == mergeSlot(b, a)`.
+   *
+   *  One source really can hold two slots at fold time. Cinema City lists a film
+   *  both as itself and as a separate "… - wersja rozszerzona" edition, each with
+   *  its own chain film id and its own detail payload; both editions resolve to the
+   *  same TMDB film, so the rows fold — and both carry a slot under the one
+   *  `CinemaCityChain` source. The two payloads disagree (the base edition's
+   *  `categoriesAttributes` says "horror", the extended one's says "thriller").
+   *
+   *  This used to keep the CANONICAL row's slot wholesale and take only the other's
+   *  showtimes, so whichever row happened to be tmdbId-bearing when the fold fired
+   *  decided every other field. That is arrival order, not data: the Poland
+   *  convergence leg replayed one archived corpus three times and got
+   *  `genres = Thriller` on one pass and `Horror` on the next for
+   *  "Backrooms. Bez wyjścia". Nothing about the row set had changed — only which
+   *  edition resolved first.
+   *
+   *  So decide from the SLOTS themselves. Each field takes the side that published
+   *  one; where both published and they differ, [[richer]] picks the same side every
+   *  time. Fields neither side has stay empty, and a field only one side has now
+   *  SURVIVES the fold instead of being dropped with the losing slot — the merge
+   *  gained data as well as determinism. */
+  private[services] def mergeSlot(a: SourceData, b: SourceData): SourceData = {
+    // The side whose slot is richer overall — the tie-break for a field both
+    // published with different values, and the source of the cache-only digest
+    // fields below, which are not independently mergeable.
+    val (primary, other) = if (richer(a, b)) (a, b) else (b, a)
+    def text(pick: SourceData => Option[String]): Option[String] =
+      pick(primary).filter(_.nonEmpty).orElse(pick(other).filter(_.nonEmpty))
+    def number(pick: SourceData => Option[Int]): Option[Int] =
+      pick(primary).orElse(pick(other))
+    def list(pick: SourceData => Seq[String]): Seq[String] =
+      if (pick(primary).nonEmpty) pick(primary) else pick(other)
+    SourceData(
+      title           = text(_.title),
+      rawTitle        = text(_.rawTitle),
+      originalTitle   = text(_.originalTitle),
+      englishTitle    = text(_.englishTitle),
+      // Longest wins, the same rule `mergeRetainedSynopses` already applies to the
+      // stickied copies of these blurbs — a truncated listing teaser must not beat
+      // the full detail-page text just because its slot is richer elsewhere.
+      synopsis        = (primary.synopsis.iterator ++ other.synopsis.iterator)
+                          .filter(_.nonEmpty).maxByOption(_.length),
+      cast            = list(_.cast),
+      director        = list(_.director),
+      runtimeMinutes  = number(_.runtimeMinutes),
+      releaseYear     = number(_.releaseYear),
+      countries       = list(_.countries),
+      genres          = list(_.genres),
+      posterUrl       = text(_.posterUrl),
+      filmUrl         = text(_.filmUrl),
+      trailerUrl      = text(_.trailerUrl),
+      showtimes       = dedupShowtimes(a.showtimes ++ b.showtimes),
+      language        = text(_.language),
+      // Cache-only, and both describe the showtime list they were stamped from — which
+      // is neither of these two once the lists are unioned. `ShowtimesDigest.stripForCache`
+      // re-stamps them on the way into the cache; carrying the richer side's forward
+      // keeps a merged-but-not-yet-restripped slot self-consistent in the meantime.
+      showtimesDigest = primary.showtimesDigest.orElse(other.showtimesDigest),
+      showtimesCount  = primary.showtimesCount.orElse(other.showtimesCount),
+      ageRating       = text(_.ageRating)
+    )
+  }
+
+  /** Is `a` the side a disagreement should be settled on? A pure function of the two
+   *  slots, so it answers the same whichever way round it is asked (`richer(a, b)`
+   *  and `richer(b, a)` can't both be true unless the slots are identical, in which
+   *  case the choice doesn't matter).
+   *
+   *  More populated fields first — the slot that describes the film more fully is the
+   *  better witness — then a total order on the content so two equally-populated slots
+   *  still resolve the same way every time. */
+  private def richer(a: SourceData, b: SourceData): Boolean =
+    Ordering[(Int, String)].lteq(
+      (-populatedFields(a), contentOrder(a)),
+      (-populatedFields(b), contentOrder(b)))
+
+  // The fields a disagreement between two slots can land on, named ONCE — both the
+  // richness count and the total order below walk exactly these, and a field that
+  // appeared in one but not the other would quietly weaken whichever it was missing from.
+  private def texts(slot: SourceData): Seq[Option[String]] =
+    Seq(slot.title, slot.rawTitle, slot.originalTitle, slot.englishTitle, slot.synopsis,
+        slot.posterUrl, slot.filmUrl, slot.trailerUrl, slot.language, slot.ageRating)
+  private def numbers(slot: SourceData): Seq[Option[Int]] = Seq(slot.runtimeMinutes, slot.releaseYear)
+  private def lists(slot: SourceData): Seq[Seq[String]]   = Seq(slot.cast, slot.director, slot.countries, slot.genres)
+
+  private def populatedFields(slot: SourceData): Int =
+    texts(slot).count(_.exists(_.nonEmpty)) + numbers(slot).count(_.isDefined) + lists(slot).count(_.nonEmpty)
+
+  /** A total order over a slot's identifying content — every field a disagreement
+   *  could land on, so two slots compare equal here only when they would merge to the
+   *  same thing anyway. Showtimes themselves are excluded (they are unioned, never
+   *  chosen), but their cache-only digest/count are not: those are the one pair
+   *  [[mergeSlot]] takes wholesale, so leaving them out would let two otherwise
+   *  identical slots still resolve by argument order.
+   *
+   *  Joined on separators no value can contain, so one field's content cannot run into
+   *  the next and make two different slots compare equal. */
+  private def contentOrder(slot: SourceData): String =
+    (texts(slot).map(_.getOrElse("")) ++
+     (numbers(slot) ++ Seq(slot.showtimesDigest, slot.showtimesCount)).map(_.fold("")(_.toString)) ++
+     lists(slot).map(_.mkString("\u001e"))
+    ).mkString("\u001f")
 
   /** Collapse `showtimes` to one entry per *physical* screening, time-sorted.
    *
