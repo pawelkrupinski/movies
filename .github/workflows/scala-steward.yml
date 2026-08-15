@@ -5,6 +5,9 @@ name: Scala Steward
 # opens one PR per available dependency / sbt-plugin upgrade with a link to
 # the release notes. It only proposes the bump — per CLAUDE.md's test gate,
 # a human still reviews each PR and lands it once the suite is green.
+#
+# What it is NOT allowed to propose lives in .scala-steward.conf at the repo
+# root — currently the sbt 2.x jump, which no plugin set of ours supports yet.
 on:
     # Daily sweep — 06:00 UTC every day. Steward only opens a PR when a new
     # version actually exists and dedups against open ones, so a quiet day
