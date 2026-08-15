@@ -1,6 +1,6 @@
 package scripts
 
-import models.{Cinema, SourceData}
+import models.{Source, SourceData}
 import org.mongodb.scala.MongoClient
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, RuntimeCorroboration,
   SingleCountryNormalizer, StoredMovieRecord, TitleNormalizer}
@@ -42,11 +42,15 @@ import tools.Env
  */
 object ConsolidateSplitFilms {
 
-  /** One film's row as the evidence this decision needs. */
-  case class Candidate(key: String, tmdbId: Option[Int], ownRuntime: Option[Int], venues: Map[Cinema, SourceData])
+  /** One film's row as the evidence this decision needs. `slots` is keyed by the SLOT
+   *  key the row actually stores — a `CinemaShowing(cinema, titleKey)`, not the bare
+   *  `Cinema`. Keying this on the cinema is the trap: `MovieRecord.cinemaShowings` hands
+   *  back the venue, so a removal expressed as `data -- cinemas` matches NOTHING and the
+   *  repair silently writes nothing at all. */
+  case class Candidate(key: String, tmdbId: Option[Int], ownRuntime: Option[Int], slots: Map[Source, SourceData])
 
   /** Where one venue's listing belongs, and where it is currently duplicated. */
-  case class Move(venue: Cinema, winner: String, losers: Seq[String])
+  case class Move(slot: Source, winner: String, losers: Seq[String])
 
   /** Read the evidence off a stored row. `ownRuntime` comes from the row's `Tmdb` slot —
    *  the runtime of the film TMDB matched it to — never the merged `runtimeMinutes`,
@@ -57,7 +61,7 @@ object ConsolidateSplitFilms {
       key        = StoredMovieRecord.idOf(row, normalizer),
       tmdbId     = row.record.tmdbId,
       ownRuntime = row.record.data.get(models.Tmdb).flatMap(_.runtimeMinutes),
-      venues     = row.record.cinemaShowings.toMap)
+      slots      = row.record.cinemaSlots.toMap)
 
   /** The venues to re-file within ONE `sanitize(title)` group, and where each belongs.
    *
@@ -67,21 +71,22 @@ object ConsolidateSplitFilms {
    *  distinct tmdbIds, or no venue held by more than one row). */
   def movesFor(group: Seq[Candidate]): Seq[Move] = {
     val resolved = group.filter(_.tmdbId.isDefined)
-    val shared   = group.flatMap(_.venues.keys).groupBy(identity).collect { case (venue, held) if held.sizeIs > 1 => venue }.toSeq
+    val shared   = group.flatMap(_.slots.keys).groupBy(identity).collect { case (slot, held) if held.sizeIs > 1 => slot }
     if (resolved.map(_.tmdbId).distinct.sizeIs < 2 || shared.isEmpty) Nil
     else {
-      // The film more venues are screening — the fallback for a venue that published no
+      // The film more venues are screening — the fallback for a slot that published no
       // runtime, and the same reading the scrape path takes: a title shared by a current
       // release and an old picture is overwhelmingly the release when nothing else speaks.
-      val byVenueCount = resolved.groupBy(_.venues.size).maxByOption(_._1).map(_._2).getOrElse(Nil)
+      val byVenueCount = resolved.groupBy(_.slots.size).maxByOption(_._1).map(_._2).getOrElse(Nil)
       val busiest      = if (byVenueCount.map(_.tmdbId).distinct.sizeIs == 1) byVenueCount.map(_.key).minOption else None
-      group.flatMap(_.venues.keys).distinct.sortBy(_.displayName).flatMap { venue =>
-        val holders   = group.filter(_.venues.contains(venue)).map(_.key)
-        val published = group.flatMap(_.venues.get(venue)).flatMap(_.runtimeMinutes).distinct
-        val winner    = RuntimeCorroboration
-          .strictNearest(published, resolved.map(c => c.key -> c.ownRuntime))
+      shared.toSeq.sortBy(_.displayName).flatMap { slot =>
+        val holders   = group.filter(_.slots.contains(slot)).map(_.key)
+        val published = group.flatMap(_.slots.get(slot)).flatMap(_.runtimeMinutes).distinct
+        RuntimeCorroboration.strictNearest(published, resolved.map(c => c.key -> c.ownRuntime))
           .orElse(busiest)
-        winner.filter(holders.contains).map(w => Move(venue, w, holders.filterNot(_ == w))).filter(_.losers.nonEmpty)
+          .filter(holders.contains)
+          .map(w => Move(slot, w, holders.filterNot(_ == w)))
+          .filter(_.losers.nonEmpty)
       }
     }
   }
@@ -109,7 +114,7 @@ object ConsolidateSplitFilms {
     // A short read makes a split look like a single row and vice versa; refuse rather
     // than move screenings on a partial view of the corpus.
     if (rows.isEmpty) { println("movies read returned NOTHING — refusing to act on an empty corpus."); sys.exit(1) }
-    val withVenues = rows.count(_.record.cinemaShowings.nonEmpty)
+    val withVenues = rows.count(_.record.cinemaSlots.nonEmpty)
     if (withVenues == 0) {
       println(s"read ${rows.size} rows and NOT ONE has a cinema — that is a mis-wired or failed " +
         "side-collection read, not a corpus without venues. Refusing to act on it.")
@@ -132,15 +137,15 @@ object ConsolidateSplitFilms {
     planned.foreach { case (title, groupRows, candidates, moves) =>
       println()
       println(s"== '$title' — ${candidates.size} rows: " +
-        candidates.map(c => s"${c.key}(tmdb=${c.tmdbId.getOrElse("—")}, ${c.ownRuntime.getOrElse("—")}min, ${c.venues.size} venues)").mkString(", "))
-      moves.foreach(m => println(s"   ${m.venue.displayName}: -> ${m.winner}   (drop from ${m.losers.mkString(", ")})"))
+        candidates.map(c => s"${c.key}(tmdb=${c.tmdbId.getOrElse("—")}, ${c.ownRuntime.getOrElse("—")}min, ${c.slots.size} slots)").mkString(", "))
+      moves.foreach(m => println(s"   ${m.slot.displayName}: -> ${m.winner}   (drop from ${m.losers.mkString(", ")})"))
 
       val byKey = groupRows.map(r => StoredMovieRecord.idOf(r, normalizer) -> r).toMap
       // Drop each loser's copy of the venue; the winner already holds its own.
-      moves.flatMap(m => m.losers.map(_ -> m.venue)).groupBy(_._1).toSeq.sortBy(_._1).foreach { case (loserKey, pairs) =>
-        val venues = pairs.map(_._2).toSet
+      moves.flatMap(m => m.losers.map(_ -> m.slot)).groupBy(_._1).toSeq.sortBy(_._1).foreach { case (loserKey, pairs) =>
+        val slots = pairs.map(_._2).toSet
         byKey.get(loserKey).foreach { loser =>
-          val kept       = loser.record.data -- venues.map(v => v: models.Source)
+          val kept       = loser.record.data -- slots
           val noCinemas  = kept.keys.forall(source => models.Source.cinemaOf(source).isEmpty)
           if (noCinemas && deleted < max) {
             println(s"   ROW EMPTY -> delete $loserKey")

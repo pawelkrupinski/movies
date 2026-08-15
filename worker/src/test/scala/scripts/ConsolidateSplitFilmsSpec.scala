@@ -1,6 +1,6 @@
 package scripts
 
-import models.{Cinema, CinemaCityKinepolis, Helios, KinoMuza, Multikino, SourceData}
+import models.{Cinema, CinemaCityKinepolis, CinemaShowing, Helios, KinoMuza, Multikino, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.ConsolidateSplitFilms.{Candidate, Move}
@@ -16,11 +16,15 @@ import scripts.ConsolidateSplitFilms.{Candidate, Move}
  */
 class ConsolidateSplitFilmsSpec extends AnyFlatSpec with Matchers {
 
-  private def venue(cinema: Cinema, runtime: Option[Int]): (Cinema, SourceData) =
-    cinema -> SourceData(title = Some("Tylko jedna noc"), runtimeMinutes = runtime)
+  // Keyed as production keys a slot — `CinemaShowing(cinema, titleKey)`, never the bare
+  // `Cinema`. A repair that keys on the venue removes nothing at all from a real row.
+  private def venue(cinema: Cinema, runtime: Option[Int]): (Source, SourceData) =
+    CinemaShowing(cinema, "tylkojednanoc") -> SourceData(title = Some("Tylko jedna noc"), runtimeMinutes = runtime)
 
-  private def row(key: String, tmdbId: Int, ownRuntime: Int, venues: (Cinema, SourceData)*): Candidate =
+  private def row(key: String, tmdbId: Int, ownRuntime: Int, venues: (Source, SourceData)*): Candidate =
     Candidate(key, Some(tmdbId), Some(ownRuntime), venues.toMap)
+
+  private def slotOf(cinema: Cinema): Source = CinemaShowing(cinema, "tylkojednanoc")
 
   private val Romcom  = 1433367
   private val LaNotte = 41050
@@ -30,7 +34,7 @@ class ConsolidateSplitFilmsSpec extends AnyFlatSpec with Matchers {
       row("tylkojednanoc|1961", LaNotte, 121, venue(Multikino, Some(105)), venue(KinoMuza, Some(121))),
       row("tylkojednanoc|2026", Romcom,  102, venue(Multikino, Some(105)))
     ))
-    moves should contain(Move(Multikino, "tylkojednanoc|2026", Seq("tylkojednanoc|1961")))
+    moves should contain(Move(slotOf(Multikino), "tylkojednanoc|2026", Seq("tylkojednanoc|1961")))
   }
 
   it should "leave a venue alone when only one row holds it" in {
@@ -40,7 +44,7 @@ class ConsolidateSplitFilmsSpec extends AnyFlatSpec with Matchers {
       row("tylkojednanoc|1961", LaNotte, 121, venue(Multikino, Some(105)), venue(KinoMuza, Some(121))),
       row("tylkojednanoc|2026", Romcom,  102, venue(Multikino, Some(105)))
     ))
-    moves.map(_.venue) should not contain KinoMuza
+    moves.map(_.slot) should not contain slotOf(KinoMuza)
   }
 
   "a venue that published no runtime" should "go to the film more venues are screening" in {
@@ -48,7 +52,7 @@ class ConsolidateSplitFilmsSpec extends AnyFlatSpec with Matchers {
       row("tylkojednanoc|1961", LaNotte, 121, venue(Multikino, None)),
       row("tylkojednanoc|2026", Romcom,  102, venue(Multikino, None), venue(Helios, Some(102)), venue(CinemaCityKinepolis, Some(102)))
     ))
-    moves should contain(Move(Multikino, "tylkojednanoc|2026", Seq("tylkojednanoc|1961")))
+    moves should contain(Move(slotOf(Multikino), "tylkojednanoc|2026", Seq("tylkojednanoc|1961")))
   }
 
   "two same-titled films that share no venue" should "be left completely alone" in {
