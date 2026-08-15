@@ -142,13 +142,24 @@ object MsiClient {
 
   /** Title cleaner for one venue of a two-cinema MSI portal whose titles are
    *  prefixed `<venue> - …` (e.g. "Chemik - Dzień objawienia"). Keeps only the
-   *  titles carrying this exact prefix (case-insensitive) and strips it before
-   *  the normal clean; returns `("", Nil)` for the other venue's titles so the
-   *  scraper drops them. */
+   *  titles carrying this prefix (case-insensitive) and strips it before the
+   *  normal clean; returns `("", Nil)` for the other venue's titles so the
+   *  scraper drops them.
+   *
+   *  The separator is whatever punctuation the box office typed that week, not a
+   *  contract. bilety.mok.com.pl spelled it `Chemik - …` until August 2026 and
+   *  `Chemik-…` after — with a stray dot on either side of the dash on some rows
+   *  (`.Chemik-.Psi Patrol i dinozaury`) — while the OTHER venue on the same page
+   *  kept `TWIERDZA - …`. Matching the spaced form literally therefore dropped
+   *  every Chemik row while Twierdza kept parsing off the same fetch, i.e. a
+   *  white bar on /uptime that looked exactly like a film-dormant venue. So the
+   *  dash is required (it is what separates venue from title) but the spaces and
+   *  the surrounding dots are not. */
   private[cinemas] def cleanTitleForVenue(venue: String)(raw: String): (String, List[String]) = {
-    val sep = s"$venue - "
-    if (raw.regionMatches(true, 0, sep, 0, sep.length)) cleanTitle(raw.substring(sep.length))
-    else ("", Nil)
+    val pat = s"""(?iu)^[\\s.]*${java.util.regex.Pattern.quote(venue)}\\s*[-–—]\\s*[.]*\\s*""".r
+    pat.findPrefixMatchOf(raw)
+      .map(m => cleanTitle(raw.substring(m.end)))
+      .getOrElse(("", Nil))
   }
 
   /** Title cleaner for a single-venue portal that appends a constant venue label

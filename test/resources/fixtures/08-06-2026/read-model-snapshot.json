@@ -3346,6 +3346,32 @@
     "weightedRating" : 6.566666666666666,
     "synopsisByCity" : { }
   }, {
+    "_id" : "dkforlyrepubliki|2025",
+    "title" : "Dkf:Orły republiki",
+    "originalTitle" : "نسور الجمهورية",
+    "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/06/plakat_orly-republiki.jpg",
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/05/plakat_orly-republiki-200x288.jpg", "https://img.helios.pl/pliki/film/orly-republiki/orly-republiki-plakat-334.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/plakat_orly-republiki-700x1050-1-533x800.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ORLY_REPUBLIKI/plak1at_ORLY_REPUBLIKI_6.jpg_x_standa.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/orly-republiki.png", "https://kinoluna.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://www.iluzjon.fn.org.pl/public/covers/movie-7772.jpg", "https://www.kinokultura.pl/foto,20600,810b7149443646df14d7bbdf31d6c1a3,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a102d595c5cd759370799.jpg", "https://stacjafalenica.pl/wp-content/uploads/2026/06/plakat_orly-republiki-700x1050-1-e1780387742444-500x430.jpg", "https://www.novekino.pl/multimedia/orly_republiki/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1780412407.jpg", "https://ec1lodz.pl/fileadmin/user_upload/u99ouiytrew.png", "https://gcf.org.pl/wp-content/uploads/2026/05/IMG_1005.jpeg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/orly-republiki-700x1050.jpg", "https://ck-lublin.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://okf.czest.pl/wp-content/uploads/2026/05/Orly-Temidy-plakat-441x635.png", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1313&mode=thumb", "https://iframe639.biletyna.pl/file/get/w/260/id/365110/filename/e530faf6be61824836153ed0bb61a9e2.jpg", "https://www.teatrziemirybnickiej.pl/files/events/plakat_orly-republiki-700x1050.jpg", "https://dkino-apollo.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-piast.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://dkino-lot.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/plakat-orly-republiki-700x1050.jpg", "https://image.tmdb.org/t/p/w500/9byIPtcHUF046RIemxzEpcMKUcX.jpg", "https://m.media-amazon.com/images/M/MV5BMjk3ZTJhNjgtODhhOC00Y2YyLThiNWItMzJiNDI5YTEwODBiXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 127,
+    "releaseYear" : 2025,
+    "genres" : [ "Thriller", "Dramat" ],
+    "countries" : [ "Dania", "Francja", "Szwecja", "Finlandia", "Niemcy", "Turcja" ],
+    "directors" : [ "Tarik Saleh" ],
+    "cast" : [ "Fares Fares", "Lyna Khoudri", "Cherien Dabis", "Amr Waked", "Zineb Triki", "Donia Massoud" ],
+    "synopsis" : "Najbardziej ceniony egipski aktor, George Fahmy, z dnia na dzień stracił łaskę władz. Gdy George'owi groziła utrata wszystkiego, zmuszony był przyjąć rolę prezydenta Al-Sisiego w filmie biograficznym o nim samym. Następnie zostaje wciągnięty w najbardziej ekskluzywny krąg władzy i szybko zdaje sobie sprawę, że nie tylko ryzykuje utratę duszy, ale że dosłownie rzuca się w niebezpieczny taniec śmierci.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/ERysio3sHjw", "https://www.youtube.com/embed/HHU_Cy-cwkg" ],
+    "ratings" : {
+      "imdb" : 6.6,
+      "imdbUrl" : "https://www.imdb.com/title/tt30781967/",
+      "metascore" : 67,
+      "metacriticUrl" : "https://www.metacritic.com/movie/eagles-of-the-republic",
+      "rottenTomatoes" : 75,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/eagles_of_the_republic",
+      "filmweb" : 6.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Or%C5%82y+Republiki-2025-10078590"
+    },
+    "weightedRating" : 6.85,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "dkfrozpiecifedericofelliniciaoatutti|1963",
     "title" : "DKF Rozpięci: Federico Fellini: ciao a tutti!",
     "fallbackPosterUrls" : [ ],
@@ -36085,6 +36111,16 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "dkforlyrepubliki|2025|opole|Chemik",
+    "filmId" : "dkforlyrepubliki|2025",
+    "city" : "opole",
+    "cinema" : "Chemik",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-15T19:00:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50876&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "dkfrozpiecifedericofelliniciaoatutti|1963|krakow|Kino Agrafka",
     "filmId" : "dkfrozpiecifedericofelliniciaoatutti|1963",
     "city" : "krakow",
@@ -65772,6 +65808,40 @@
     }, {
       "dateTime" : "2026-06-18T16:00:00",
       "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1382-k-popowe-lowczynie-demonow-156776?id=932314",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "kpopowelowczyniedemonow|2025|opole|Chemik",
+    "filmId" : "kpopowelowczyniedemonow|2025",
+    "city" : "opole",
+    "cinema" : "Chemik",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-12T16:00:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50823&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-13T14:00:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50824&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-13T16:00:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50825&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-14T11:30:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50826&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-15T14:30:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50827&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-16T16:00:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50828&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-17T14:00:00",
+      "bookingUrl" : "https://bilety.mok.com.pl/MSI/Default.aspx?event_id=50829&typetran=1&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {

@@ -3539,6 +3539,7 @@ cinemaFilmUrls:
   Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/k-popowe-lowczynie-demonow/7704d2r
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157357
 cinemaScrapes:
+  Chemik / K-popowe łowczynie demonów / —
   Cinema City / — / —
   Cinema City Arkadia / K-popowe łowczynie demonów / 2025
   Cinema City Bemowo / K-popowe łowczynie demonów / 2025
@@ -6313,7 +6314,7 @@ showings:
 
 === Orły republiki ===
 displayTitle:      Orły republiki
-cinemaTitles:      ORŁY REPUBLIKI | Orły Republiki | Orły republiki | Tani wtorek: ORŁY REPUBLIKI
+cinemaTitles:      Dkf:orły republiki | ORŁY REPUBLIKI | Orły Republiki | Orły republiki | Tani wtorek: ORŁY REPUBLIKI
 runtimeMinutes:    127
 releaseYear:       2025
 countries:         Dania, Francja, Szwecja, Finlandia, Niemcy, Turcja
@@ -6337,6 +6338,7 @@ cinemaFilmUrls:
   Kino Malta Charlie Monroe = https://kinomalta.pl/movies/orly-republiki
   Kino Muza = https://www.kinomuza.pl/movie/orly-republiki/
 cinemaScrapes:
+  Chemik / Dkf:orły republiki / —
   Dolnośląskie Centrum Filmowe / Orły Republiki / 2026
   Gdyńskie Centrum Filmowe / Orły republiki / —
   Helios Alfa / Orły republiki / —

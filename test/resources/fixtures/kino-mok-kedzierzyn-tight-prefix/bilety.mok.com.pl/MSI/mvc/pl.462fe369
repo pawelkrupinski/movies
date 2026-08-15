@@ -1,0 +1,1038 @@
+
+
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="version" content="1.8.71.4 | 11.08.2026 23:05:51">
+    <meta name="format-detection" content="telephone=no">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+             <link rel="stylesheet" href="/MSI/Themes/light/Styles/global.min.css?v=070926085730"/>
+
+             <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/font-awesome.min.css?v=063026114158"/>
+         <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/jquery.fancybox.min.css?v=063026114158"/>
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-3.7.1.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=063026114158"></script>
+
+             <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/handlebars.min-v4.7.7.js?v=063026114158"></script>
+         <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/jquery.fancybox.min.js?v=063026114158"></script>
+
+    <title>Lista wydarzeń: - Miejski Ośrodek Kultury</title>
+
+    <script>
+        var hostUrl = '/MSI/';
+        var currentLanguage = 'pl';
+        var newTabAnnouncement = 'otwiera sie w nowej karcie';
+    </script>
+</head>
+
+<body>
+    <div class="skip-links">
+        <a href="#main-content" class="show-on-focus js-skip-link">Przejdź do gł&#243;wnej treści</a>
+    </div>
+
+            <div id="preloader" class="preloader"></div>
+
+
+        <!-- Fixed navbar -->
+    <header class="navigation-bar" aria-label="Menu">
+        <div class="position-fixed">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-8 col-md-6 ">
+                        <a href="/MSI/" class="navigation-bar-logo">
+                            <img src="/MSI/Themes/light/images/logo.png" alt="Miejski Ośrodek Kultury" title="Miejski Ośrodek Kultury" class="navigation-bar-logo__image">
+                        </a>
+                    </div>
+                    <div class="col-4 col-md-6  navigation-bar-info justify-content-end">
+                        <app-header-menu class="order-12 order-lg-0">
+                            <nav class="navigation-bar-menu d-none d-lg-block" aria-label="Menu">
+                                <ul>
+                                                                                                                                            </ul>
+                            </nav>
+                            <button class="navigation-bar-menu__button js-mobile-menu-open d-block d-lg-none" type="button" aria-label="Menu">
+                                <svg-icon name="menu"></svg-icon>
+                            </button>
+                        </app-header-menu>
+                            <a href="/MSI/mvc/pl/Customer/Login?partnerMode=False" id="loginLink" class="navigation-bar-login" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zaloguj" aria-label="Zaloguj">
+        <span class="user fas fa-user-alt"></span>
+    </a>
+                        <a href="/MSI/ShoppingCart.aspx" class="navigation-bar-shop" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Wyświetl koszyk" aria-label="Wyświetl koszyk" aria-haspopup="true" aria-expanded="false" aria-controls="shoppingCartPreview">
+                            <div class="navigation-bar-shop__basket">
+                            </div>
+                                <span class="cart fas fa-shopping-cart"></span>
+                        </a>
+                        <div class="shopping_cart_preview" id="shoppingCartPreview">
+                        </div>
+                        <div class="navigation-bar-switches d-md-flex d-none">
+                            <button class="js-change-fontsize" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień rozmiar czcionki" aria-label="Zmień rozmiar czcionki">
+                                <span class="fontSize fas fa-text-height"></span>
+                            </button>
+                            <button class="js-change-contrast" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień kontrast" aria-label="Zmień kontrast">
+                                <span class="contrast fas fa-adjust"></span>
+                            </button>
+
+                            <div class="dropdown language-switcher-dropdown">
+                                <button class="btn dropdown-toggle js-tooltip" type="button" id="dropdownLanguageDesktop" data-toggle="dropdown" data-tooltip-trigger="hover focus" title="Zmień język" aria-label="Zmień język" aria-haspopup="true" aria-expanded="false">
+                                    pl
+                                </button>
+                                <div aria-labelledby="dropdownLanguageDesktop" class="dropdown-menu language-switcher-menu">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <menu class="navigation-mobile js-mobile-menu d-flex d-lg-none m-0 p-5 align-items-center">
+        <button class="position-absolute navigation-mobile--close js-mobile-menu-close" type="button" aria-label="Zamknij Menu">
+            <svg-icon name="filterXClose"></svg-icon>
+        </button>
+        <nav class="navigation-mobile-menu" aria-label="Menu">
+            <ul>
+                    <li class="navigation-bar-menu__element navigation-bar-menu__element--active">
+                        <a href="/MSI/">
+                            <span>
+                                Zaplanuj wizytę
+                            </span>
+                        </a>
+                    </li>
+                
+
+            </ul>
+        </nav>
+        <div class="navigation-bar-switches mt-3 d-md-none d-flex row align-items-center justify-content-center text-center">
+            <div class="col-3 col-sm-2">
+                <button class="js-change-fontsize-mobile" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień rozmiar czcionki" aria-label="Zmień rozmiar czcionki">
+                    <span class="fontSize fas fa-text-height"></span>
+                </button>
+            </div>
+            <div class="col-3 col-sm-2">
+                <button class="js-change-contrast-mobile" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień kontrast" aria-label="Zmień kontrast">
+                    <span class="contrast fas fa-adjust"></span>
+                </button>
+            </div>
+                <div class="col-3 col-sm-2">
+                    <div class="dropdown language-switcher-dropdown">
+                        <button class="btn dropdown-toggle js-tooltip" type="button" id="dropdownLanguageMobile" data-toggle="dropdown" data-tooltip-trigger="hover focus" title="Zmień język" aria-label="Zmień język" aria-haspopup="true" aria-expanded="false">
+                            pl
+                        </button>
+
+                    <div aria-labelledby="dropdownLanguageMobile" class="dropdown-menu language-switcher-menu">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </menu>
+    <div class="shopping-cart-expired-modal modal fade" id="shoppingCartExpiredModal" data-backdrop="static" data-keyboard="false" tabindex="-1" aria-labelledby="shoppingCartExpiredModalTitle" aria-describedby="shoppingCartExpiredModalBody" aria-hidden="true" hidden>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="shoppingCartExpiredModalTitle">
+                        <span class="fa fa-warning"></span>Zakończył się czas koszyka!
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij" title="Zamknij">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="shoppingCartExpiredModalBody" class="modal-body">
+                    Czas na zrealizowanie zam&#243;wienia niestety dobiegł końca. Prosimy o ponowne wybranie bilet&#243;w i dodanie ich do koszyka.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btnCloseModalCart" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        function closeShoppingCart() {
+            $(function () {
+                $.ajax({
+                    type: "POST",
+                    url: "../Ajax.aspx/CloseShoppingCart",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+                        var names = response.d;
+                        window.location.reload();
+                    },
+                    error: function (response) {
+                        window.location.reload();
+                    }
+                });
+            });
+        };
+
+    </script>
+
+
+    <div id="body">
+
+        <input type="hidden" id="randomWindowName" value="a9f6934e7fe24bd2bd878f873a8651ce" />
+        <input type="hidden" id="isNewSessionWindowName" value="True" />
+        <input type="hidden" id="sessionWindowName" value="a9f6934e7fe24bd2bd878f873a8651ce" />
+        <input type="hidden" id="absoluteHomeUrl" value="/MSI/" />
+
+        <main id="main-content">
+            <div class="row">
+
+
+            </div>
+
+            
+
+
+
+<div class="row">
+    <div class="col-sm-12 no-gutter padding-0">
+        
+    <div class="movies-filters">
+        <div class="container movies-filters__bar">
+            <div class="row align-items-stretch">
+                <div class="col-xl-9 col-lg-9 col-9 col-md-9 js-slider-dates">
+                    <div class="container movies-filters__dates">
+                        <ul class="movies-filters__dates__list row flex-nowrap w-100">
+                                    <li class="js-filters-dates__29.08.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-08-29&amp;datestart=0" class="" aria-label="sobota 29 sierpnia 2026" title="sobota 29 sierpnia 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">sobota</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">29</span>
+                                                    <sup class="sup " style="top: 0 !important">sie</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__30.08.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-08-30&amp;datestart=0" class="" aria-label="niedziela 30 sierpnia 2026" title="niedziela 30 sierpnia 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">niedziela</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">30</span>
+                                                    <sup class="sup " style="top: 0 !important">sie</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__31.08.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-08-31&amp;datestart=0" class="" aria-label="poniedziałek 31 sierpnia 2026" title="poniedziałek 31 sierpnia 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">poniedziałek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">31</span>
+                                                    <sup class="sup " style="top: 0 !important">sie</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__01.09.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-01&amp;datestart=0" class=" active" aria-label="wtorek 1 września 2026" title="wtorek 1 września 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop  active">wtorek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber  active">01</span>
+                                                    <sup class="sup  active" style="top: 0 !important">wrz</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber  active">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__02.09.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-02&amp;datestart=0" class="" aria-label="środa 2 września 2026" title="środa 2 września 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">środa</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">02</span>
+                                                    <sup class="sup " style="top: 0 !important">wrz</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__03.09.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-03&amp;datestart=0" class="" aria-label="czwartek 3 września 2026" title="czwartek 3 września 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">czwartek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">03</span>
+                                                    <sup class="sup " style="top: 0 !important">wrz</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__19.10.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-19&amp;datestart=0" class="" aria-label="poniedziałek 19 października 2026" title="poniedziałek 19 października 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">poniedziałek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">19</span>
+                                                    <sup class="sup " style="top: 0 !important">paź</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-3 col-md-3">
+                    <div class="d-flex align-items-stretch justify-content-end movies-filters__buttons">
+                            <div class="">
+                                <div class="movies-filters__calendar" id="datePickerMovieFilters">
+                                    <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-calendar-button" type="button" data-target="#datePickerMovieFilters" data-toggle="datetimepicker" aria-haspopup="dialog" aria-expanded="false">
+                                        <span class="fas fa-calendar-alt mr-1"></span>
+                                        <span class="d-none d-lg-block movies-filters__button__label">KALENDARZ</span>
+                                    </button>
+                                </div>
+                            </div>
+                        <div class="movies-filters__filters">
+                            <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-filters-button" type="button" aria-expanded="false" aria-controls="repertoireFiltersPanel">
+                                <span class="fas fa-filter mr-1"></span>
+                                <span class="d-none d-lg-block">Filtry</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-max-width">
+        <div class="position-relative">
+<div class="movies-filters--opened position-absolute w-100">
+    <div class="row">
+        <div class="container">
+            <div class="col-12 position-relative flex-wrap js-filters d-none" id="repertoireFiltersPanel">
+                <button class="position-absolute movies-filters--close offset-11 mt-3 mt-md-5 js-filters-close" type="button" aria-label="Zamknij Filtry" aria-controls="repertoireFiltersPanel" style="z-index:300;">
+                    <svg-icon name="filterXClose"></svg-icon>
+                </button>
+                    <div class="p-3 col-12 col-md-6 col-lg-4 col-xl-3 p-md-5  categories filter-container">
+                        <p><strong> Darmowe/Płatne:</strong></p>
+                        <ul>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="1" filter-name="Darmowe">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Darmowe
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="0" filter-name="Płatne">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Płatne
+                                    </button>
+                                </li>
+                        </ul>
+                    </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Lokalizacja: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=localization-group-filter filter-type="localization-group-filter" filter-value="8" filter-name="Kino &quot;Twierdza&quot;">
+                                        <svg-icon name="filterDot" class=""></svg-icon>
+                                        Kino &quot;Twierdza&quot;
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong> Podkategoria: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="72" filter-name="familijny przygodowy">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    familijny przygodowy
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="9" filter-name="dramat">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    dramat
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="5" filter-name="komedia">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    komedia
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Odbiorca</strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="10" filter-name="bez ograniczeń">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    bez ograniczeń
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="8" filter-name="15">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    15
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="14" filter-name="13">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    13
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+        <div class="movies-selected">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 movies-selected__filters">
+                        <ul class="js-filters-selected">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template id="js-filters-selected-template">
+            <li>
+                <button>
+                    <span>{{name}}</span>
+                    <svg-icon name="filterX"></svg-icon>
+                </button>
+            </li>
+        </template>
+
+    </div>
+
+    </div>
+</div>
+<div class="repertoire main-container container-max-width">
+    <div class="wrapper">
+        <div class="container" style="display:flex; flex-direction:column;">
+            <h1 class="sr-only">Lista wydarzeń:</h1>
+            <div class="float-right">
+                
+        <div class="dropdown sorting-buttons float-right btn">
+            <button class="btn dropdown-toggle event-sort-btn" type="button" id="dropdownSort" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-exchange-alt fa-rotate-90">  </i>
+                Sortuj
+            </button>
+
+            <div class="dropdown-menu dropdown-menu-sort" aria-labelledby="dropdownSort">
+                    <a href="?sort=Name&amp;date=2026-08-27&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Tytuły rosnąco
+                    </a>
+                    <a href="?sort=NameDesc&amp;date=2026-08-27&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Tytuły malejąco
+                    </a>
+                    <a href="?sort=Date&amp;date=2026-08-27&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Data/godzina
+                    </a>
+            </div>
+        </div>
+
+            </div>
+
+
+
+    <div class="col-10">
+        <div class="row">
+            <div class="col-10">
+                <h2 class="movie-section">wrzesień 2026</h2>
+            </div>
+        </div>
+    </div>
+
+<div class="movie-list">
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3307')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - KSIĘGA PUSTYNI" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - KSIĘGA PUSTYNI" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=2251&mode=thumb" alt="TWIERDZA - KSIĘGA PUSTYNI">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="TWIERDZA - KSIĘGA PUSTYNI">TWIERDZA - KSIĘGA PUSTYNI</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 92 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3307')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - KSIĘGA PUSTYNI" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - KSIĘGA PUSTYNI" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3307)" event-filter="51604" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51604&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51604" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - KSIĘGA PUSTYNI&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - KSIĘGA PUSTYNI, termin: wtorek 1 września 2026, 16:15. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+01 wrz 16:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3307)" event-filter="51607" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51607&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51607" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - KSIĘGA PUSTYNI&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - KSIĘGA PUSTYNI, termin: środa 2 września 2026, 16:15. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+02 wrz 16:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3307)" event-filter="51610" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51610&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51610" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - KSIĘGA PUSTYNI&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - KSIĘGA PUSTYNI, termin: czwartek 3 września 2026, 16:15. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+03 wrz 16:15    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3307">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3307)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51604&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51604" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - KSIĘGA PUSTYNI&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - KSIĘGA PUSTYNI, termin: wtorek 1 września 2026, 16:15. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+01 wrz 16:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3307)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51607&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51607" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - KSIĘGA PUSTYNI&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - KSIĘGA PUSTYNI, termin: środa 2 września 2026, 16:15. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+02 wrz 16:15    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3307)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51610&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51610" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - KSIĘGA PUSTYNI&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - KSIĘGA PUSTYNI, termin: czwartek 3 września 2026, 16:15. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+03 wrz 16:15    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3307">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3305')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - TYLKO JEDNA NOC" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - TYLKO JEDNA NOC" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=2249&mode=thumb" alt="TWIERDZA - TYLKO JEDNA NOC">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="TWIERDZA - TYLKO JEDNA NOC">TWIERDZA - TYLKO JEDNA NOC</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 105 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3305')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - TYLKO JEDNA NOC" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - TYLKO JEDNA NOC" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3305)" event-filter="51603" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51603&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51603" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - TYLKO JEDNA NOC&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - TYLKO JEDNA NOC, termin: wtorek 1 września 2026, 20:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+01 wrz 20:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3305)" event-filter="51606" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51606&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51606" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - TYLKO JEDNA NOC&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - TYLKO JEDNA NOC, termin: środa 2 września 2026, 20:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+02 wrz 20:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3305)" event-filter="51609" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51609&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51609" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - TYLKO JEDNA NOC&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - TYLKO JEDNA NOC, termin: czwartek 3 września 2026, 20:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+03 wrz 20:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3305">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3305)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51603&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51603" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - TYLKO JEDNA NOC&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - TYLKO JEDNA NOC, termin: wtorek 1 września 2026, 20:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+01 wrz 20:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3305)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51606&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51606" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - TYLKO JEDNA NOC&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - TYLKO JEDNA NOC, termin: środa 2 września 2026, 20:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+02 wrz 20:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3305)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51609&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51609" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - TYLKO JEDNA NOC&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - TYLKO JEDNA NOC, termin: czwartek 3 września 2026, 20:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+03 wrz 20:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3305">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3308')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - WRONG GIRLS" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - WRONG GIRLS" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=2252&mode=thumb" alt="TWIERDZA - WRONG GIRLS">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="TWIERDZA - WRONG GIRLS">TWIERDZA - WRONG GIRLS</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 99 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3308')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - WRONG GIRLS" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia TWIERDZA - WRONG GIRLS" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3308)" event-filter="51605" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51605&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51605" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - WRONG GIRLS&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - WRONG GIRLS, termin: wtorek 1 września 2026, 18:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+01 wrz 18:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3308)" event-filter="51608" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51608&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51608" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - WRONG GIRLS&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - WRONG GIRLS, termin: środa 2 września 2026, 18:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+02 wrz 18:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3308)" event-filter="51611" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51611&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51611" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - WRONG GIRLS&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - WRONG GIRLS, termin: czwartek 3 września 2026, 18:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+03 wrz 18:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3308">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3308)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51605&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51605" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - WRONG GIRLS&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - WRONG GIRLS, termin: wtorek 1 września 2026, 18:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+01 wrz 18:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3308)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51608&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51608" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - WRONG GIRLS&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - WRONG GIRLS, termin: środa 2 września 2026, 18:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+02 wrz 18:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3308)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=51611&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09" class="js-link-popup js-repo-popup" data-event="51611" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;TWIERDZA - WRONG GIRLS&lt;/strong&gt;&lt;br&gt;Sala: &lt;strong&gt;150&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;150&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="TWIERDZA - WRONG GIRLS, termin: czwartek 3 września 2026, 18:00. Sala: 150 miejsc. Dostępnych: 150. Kliknij aby kupić lub zarezerwować bilet.">
+03 wrz 18:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3308">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+
+
+            <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="modalEventTitle" aria-describedby="eventDetailsModalBody">
+    <div class="modal-dialog modal-dialog-centered event-details">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="eventDetailsModalBody" class="modal-body">
+                <div class="container">
+                    <div class="row">
+                        <div class="poster col-12 col-md-4 col-lg-3 mb-3 mb-md-0">
+                            <div class="modalEventPoster text-center">
+                                <img id="modalEventPoster" src="" alt="" />
+                            </div>
+                            <p class="modalEventYtLink mt-3 mb-0 font-weight-bold text-uppercase d-flex justify-content-center align-items-center">
+                                <a id="modalEventYtLink" class="d-flex justify-content-center align-items-center" href="" target="_blank" rel="noopener noreferrer" aria-label="Zobacz zwiastun:">
+                                    <span>Zobacz zwiastun:</span>
+                                    <i class="fa fa-play-circle ml-2" aria-hidden="true"></i>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="details col-12 col-md-8 col-lg-9">
+                            <div id="modalEventTitle" class="modal-title modalEventTitle"></div>
+                            <div class="row mt-3 mb-4">
+                                <div class="modalEventPremiere col-12 col-md-6 mb-2 mb-md-0 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-calendar-alt" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Data premiery:</p>
+                                        <p id="modalEventPremiere" class="m-0"></p>
+                                    </div>
+                                </div>
+                                <div class="modalEventLength col-12 col-md-6 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-clock" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Czas trwania:</p>
+                                        <p id="modalEventLength" class="m-0"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="modalEventDescription"><span id="modalEventDescription"></span></p>
+                            <p class="modalEventType mb-0">Gatunek: <strong id="modalEventType"></strong></p>
+                            <p class="modalEventAgeCategory mb-0">Ograniczenia wiekowe: <span id="modalEventAgeCategory"></span></p>
+                            <p class="modalEventAdditionalInfo mb-0">Wersja: <span id="modalEventAdditionalInfo"></span></p>
+                            <p class="modalEventWwwLink mb-0">Strona www: <strong><a id="modalEventWwwLink" href="" target="_blank" rel="noopener noreferrer" aria-label="Strona www:"></a></strong></p>
+                            <div class="col-xs-12 event-gallery-background" id="modalEventImageGallery">
+                                <h2 class=""><span class="fa fa-camera" aria-hidden="true"></span> Galeria</h2>
+                                <div id="modalEventImageGalleryItems" style="display: flex; flex-wrap: wrap;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        localStorage.removeItem('carouselIndex');
+    });
+</script>
+
+
+            <div class="row">
+            </div>
+        </main>
+    </div>
+
+    
+<footer class="footer"><div class="container"><div class="row"><div class="col-12 col-md-4 col-lg-4 col-xl-4"><section id="cms" class="hidden" data-document-link-suffix=" (plik dokumentu)" data-new-tab-suffix=" (otwiera sie w nowej karcie)"><div id="cmstitle" class="footer__section-title text-uppercase"></div><ul id="onas"></ul></section></div><div class="col-12 col-md-4 col-lg-4 col-xl-4 offset-xl-12"><div class="footer__section-title">Kontakt</div><ul><li><span class="fa fa-phone text-color" aria-hidden="true"></span> Kasa Chemik tel. 77 48 02 552</li><li><span class="fa fa-phone text-color" aria-hidden="true"></span> Kasa Twierdza tel. 77 405 30 70</li><li><a class="link" href="/MSI/mvc/pl/Sitemap/Index">Mapa strony</a></li></ul></div><div class="col-12 col-md-4 col-lg-3 col-xl-4 offset-xl-13"><ul class="footer__social"></ul><address class="footer__address"><div class="footer__section-title">Miejski Ośrodek Kultury</div><span class="fa fa-map-marker text-color" aria-hidden="true"></span> al. Jana Pawła II 27, 47-220 Kędzierzyn-Koźle<br><span class="fa fa-clock text-color" aria-hidden="true"></span>  Kasy czynne p&#243;ł godziny przed pierwszym seansem <br><span class="fa fa-book text-color" aria-hidden="true"></span> 7491003186<br></address></div></div><div class="row justify-content-center"><div class="col-12 footer__info"><div id="footer-logos"></div></div></div></div></footer>
+
+
+
+    
+
+    <script id="repo-template" type="text/x-handlebars-template">
+        <div class="modal  fade in dialog" id="RepoModal" style="display: block">
+
+            <button id="trap-top-focus" type="button" title="Początek okna dialogowego" aria-label="Początek okna dialogowego" style="opacity:0;cursor:pointer;" tabindex="0">
+                Początek okna dialogowego
+            </button>
+            <div class="dialog-backdrop active fade in" style="bottom: 0">
+                <div class="modal-dialog" id="modalDialog" role="dialog" aria-modal="true">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close modal-Focus first-element-in-modal" data-dismiss="modal" aria-label="Zamknij" title="Zamknij" id="closeModalBtn">
+                                <span class="sr-only">Zamknij </span>
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h3 class="modal-title dialog-title " tabindex="0">
+                                <span class="glyphicon glyphicon-tag"></span>
+                                {{Name}}
+                            </h3>
+                        </div>
+                        <div class="modal-body" style=" word-wrap:break-word;">
+                            <div class="media">
+                                {{#ifCond PosterId '>' 0}}
+                                <div class="media-left hidden-xs" tabindex="0">
+                                    <button type="button" class="modal-Focus btn btn-link p-0" aria-label="Data: {{Name}}">
+                                        <img src="/MSI/ImageData.ashx?id={{PosterId}}&amp;mode=thumb" alt="{{Name}}" class="" />
+                                    </button>
+                                </div>
+                                {{/ifCond}}
+                                <div class="media-body" style=" word-wrap:break-word;" tabindex="0">
+                                    Data: <strong class="dialog-strong">{{Date}}</strong>
+                                    {{#if Hour}}
+                                    <div>Godzina: <strong class="dialog-strong">{{Hour}}</strong></div>
+                                    {{/if}}
+                                    {{#if Description}}
+                                    <br />
+                                    <div class="hidden-xs">{{{Description}}}</div>
+                                    {{/if}}
+                                </div>
+                                <div class="modal-footer">
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <button type="button" class="btn btn-anuluj btn-block modal-Focus" data-dismiss="modal" aria-label="Zamknij" title="Zamknij">
+                                                <span class="sr-only">Zamknij  </span>
+                                                <span class="glyphicon glyphicon-remove"></span>ANULUJ
+                                            </button>
+                                        </div>
+
+                                        {{#if ShowFreeEventButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>WYBIERAM
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowBuyButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block  modal-Focus">
+                                                <span class="glyphicon glyphicon-credit-card"></span>KUP BILET
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowReservationButton}}
+                                        <div class="col-sm-5">
+                                            <a href="{{ UrlRez }}" class="btn btn-rezerwuj btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>REZERWUJ MIEJSCE
+                                            </a>
+                                        </div>
+                                        {{/if}}
+
+                                    </div>
+                                    <div class="row" tabindex="0" id="modalLastItem">
+                                        <div class="col-12" style="margin-top: 15px; text-align: justify">
+                                            <div class="alert alert-warning last-element-on-modal" style="margin-bottom: 0">
+                                                Uwaga! W następnym kroku nie ma już możliwości wyboru pomiędzy Kupnem bilet&#243;w a Rezerwacją miejsc.
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="trap-down-focus" type="button" title="Koniec okna dialogowego" aria-label="Koniec okna dialogowego" style="opacity:0;cursor:pointer;position:absolute;left:-100px;">
+                Koniec okna dialogowego
+            </button>
+        </div>
+    </script>
+    <script type="text/javascript">
+        var RepertoireEvents = [{ 'Id': 51604, 'Name': 'TWIERDZA - KSIĘGA PUSTYNI', 'Date': '01.09.2026', 'Hour': '16:15', 'PosterId': '2251', 'Description': 'Czternastoletnia Sun wyrusza na Saharę, by rozwikłać sekret starej legendy opowiadanej przez dziadka. Na miejscu poznaje prawdziwe losy chłopca, który w wieku dwóch lat zaginął podczas potężnej burzy piaskowej. Pozostawiony na pastwę pustyni, zostaje cudownie ocalony przez stado strusi. Spędza z nimi następne dziesięć lat,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51607, 'Name': 'TWIERDZA - KSIĘGA PUSTYNI', 'Date': '02.09.2026', 'Hour': '16:15', 'PosterId': '2251', 'Description': 'Czternastoletnia Sun wyrusza na Saharę, by rozwikłać sekret starej legendy opowiadanej przez dziadka. Na miejscu poznaje prawdziwe losy chłopca, który w wieku dwóch lat zaginął podczas potężnej burzy piaskowej. Pozostawiony na pastwę pustyni, zostaje cudownie ocalony przez stado strusi. Spędza z nimi następne dziesięć lat,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51610, 'Name': 'TWIERDZA - KSIĘGA PUSTYNI', 'Date': '03.09.2026', 'Hour': '16:15', 'PosterId': '2251', 'Description': 'Czternastoletnia Sun wyrusza na Saharę, by rozwikłać sekret starej legendy opowiadanej przez dziadka. Na miejscu poznaje prawdziwe losy chłopca, który w wieku dwóch lat zaginął podczas potężnej burzy piaskowej. Pozostawiony na pastwę pustyni, zostaje cudownie ocalony przez stado strusi. Spędza z nimi następne dziesięć lat,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51603, 'Name': 'TWIERDZA - TYLKO JEDNA NOC', 'Date': '01.09.2026', 'Hour': '20:00', 'PosterId': '2249', 'Description': 'Owen i pełna nadziei romantyczka Allie mogą być jedynymi singlami w mieście, którzy szukają czegoś więcej niż przelotnej przygody. Kiedy się poznają między nimi natychmiast pojawia się iskra, ale seria pomyłek i nieoczekiwanych zwrotów akcji komplikuje sytuację. Błądząc po mieście odkrywają, że to, czego pragną najbardziej,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51606, 'Name': 'TWIERDZA - TYLKO JEDNA NOC', 'Date': '02.09.2026', 'Hour': '20:00', 'PosterId': '2249', 'Description': 'Owen i pełna nadziei romantyczka Allie mogą być jedynymi singlami w mieście, którzy szukają czegoś więcej niż przelotnej przygody. Kiedy się poznają między nimi natychmiast pojawia się iskra, ale seria pomyłek i nieoczekiwanych zwrotów akcji komplikuje sytuację. Błądząc po mieście odkrywają, że to, czego pragną najbardziej,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51609, 'Name': 'TWIERDZA - TYLKO JEDNA NOC', 'Date': '03.09.2026', 'Hour': '20:00', 'PosterId': '2249', 'Description': 'Owen i pełna nadziei romantyczka Allie mogą być jedynymi singlami w mieście, którzy szukają czegoś więcej niż przelotnej przygody. Kiedy się poznają między nimi natychmiast pojawia się iskra, ale seria pomyłek i nieoczekiwanych zwrotów akcji komplikuje sytuację. Błądząc po mieście odkrywają, że to, czego pragną najbardziej,...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51605, 'Name': 'TWIERDZA - WRONG GIRLS', 'Date': '01.09.2026', 'Hour': '18:00', 'PosterId': '2252', 'Description': 'Frankie (Kristen Stewart) jest uosobieniem chaosu, a Molly (Alia Shawkat) to kulinarny talent. Razem tworzą duet, który kompletnie nie radzi sobie z dorosłością, a tym bardziej z… regularnym płaceniem czynszu. Kiedy Frankie przypadkiem zgarnia na imprezie tajemniczą walizkę z eksperymentalną substancją, życie przyjaciółek zalicza...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51608, 'Name': 'TWIERDZA - WRONG GIRLS', 'Date': '02.09.2026', 'Hour': '18:00', 'PosterId': '2252', 'Description': 'Frankie (Kristen Stewart) jest uosobieniem chaosu, a Molly (Alia Shawkat) to kulinarny talent. Razem tworzą duet, który kompletnie nie radzi sobie z dorosłością, a tym bardziej z… regularnym płaceniem czynszu. Kiedy Frankie przypadkiem zgarnia na imprezie tajemniczą walizkę z eksperymentalną substancją, życie przyjaciółek zalicza...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 51611, 'Name': 'TWIERDZA - WRONG GIRLS', 'Date': '03.09.2026', 'Hour': '18:00', 'PosterId': '2252', 'Description': 'Frankie (Kristen Stewart) jest uosobieniem chaosu, a Molly (Alia Shawkat) to kulinarny talent. Razem tworzą duet, który kompletnie nie radzi sobie z dorosłością, a tym bardziej z… regularnym płaceniem czynszu. Kiedy Frankie przypadkiem zgarnia na imprezie tajemniczą walizkę z eksperymentalną substancją, życie przyjaciółek zalicza...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false}];
+    </script>
+<script>
+    $(document).ready(function () {
+        $("#RepoModal").on('shown.bs.modal', function () {
+            $(this).find('#closeModalBtn').focus();
+        });
+    });
+</script>
+
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire_filters.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/glide.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.countdown.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/moment-with-locales.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/bootstrap.bundle.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/tempusdominus-bootstrap-4.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/passes.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/svgicons.class.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/global.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/main.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-cookie.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/cookies.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/calendar.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/cms.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.inputmask.bundle.min.js?v=063026114158"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=063026114158"></script>
+
+
+
+    <script>
+        getCms(currentLanguage);
+        getFooterImages();
+        createSkipLinks();
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            $(window).on('load', function () {
+                $('#preloader').fadeOut('slow', function () { $(this).remove(); });
+            });
+            $("#scrollToVodButton").click(function () {
+                $([document.documentElement, document.body]).animate({
+                    scrollTop: $("#eventsVod").offset().top
+                }, 2000);
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            var lng = "pl";
+            var theMonths;
+            var theDays;
+
+            theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+
+            theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+            Global.init({
+                months: theMonths,
+                days: theDays,
+                allDatesUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/AllDates?sort=Name",
+                currentLocale: 'pl'
+            });
+
+            Filter.init({
+                currentLocale: 'pl',
+                getShortEventsWithFiltersUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/Repertoire/GetShortEventsWithFilters"
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        $(window).on('load', function () {
+            $(".se-pre-con").fadeOut("slow");
+        });
+    </script>
+
+</body>
+</html>

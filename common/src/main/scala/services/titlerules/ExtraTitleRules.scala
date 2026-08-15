@@ -292,7 +292,10 @@ object ExtraTitleRules {
     // 'xtra-pp-dkf-named' only matches 'DKF <name>: ', so a clubless 'DKF: <film>'
     // / 'DKF - <film>' never stripped. Query-only (Drugie życie, Czytając Lolitę
     // w Teheranie). Anchored so 'DKF Kropka: …' still falls to the named prog rule.
-    searchStrip("xtra-dkf-bare-prefix",            """(?iu)^DKF\s*[-–—:]\s+""",                  "'DKF - / DKF: <film>' clubless film-club prefix (Drugie życie, Czytając Lolitę w Teheranie)"),
+    // The space after the separator is optional: MOK Kędzierzyn types the banner
+    // closed up ("DKF:Orły Republiki"), which a `\s+` tail left unstripped and
+    // therefore unresolvable on TMDB.
+    searchStrip("xtra-dkf-bare-prefix",            """(?iu)^DKF\s*[-–—:]\s*""",                  "'DKF - / DKF: <film>' clubless film-club prefix, with or without a space after the separator (Drugie życie, Czytając Lolitę w Teheranie, DKF:Orły Republiki)"),
     searchStrip("xtra-filmowy-klub-seniora-dash",  """(?iu)^Filmowy\s+Klub\s+Seniora\s*[-–—]\s+""", "'Filmowy Klub Seniora - <film>' dash variant of the seed senior-club banner (Drugie życie)"),
     // Sixth-wave (2026-06-20) audit. Only rules whose stripped query was VERIFIED
     // to resolve unambiguously on TMDB are kept — most residual no-match titles

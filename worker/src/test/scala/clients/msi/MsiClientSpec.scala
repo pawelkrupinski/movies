@@ -232,6 +232,38 @@ class MsiClientSpec
     twierdza.exists(_.movie.title.toLowerCase.contains("toy story 5")) shouldBe true
   }
 
+  // The portal does NOT spell that separator consistently, and drifting on it is
+  // invisible from the outside: the fetch keeps succeeding, only the prefix match
+  // stops. Captured live on 2026-08-15, after Chemik went white for three scrapes
+  // running while Twierdza stayed green on the very same page — Chemik's rows had
+  // become "Chemik-Flavia de Luce" (no spaces around the dash) and, on two of
+  // them, ".Chemik-.Psi Patrol i dinozaury" (a stray dot on either side), while
+  // TWIERDZA kept the spaced form.
+  private def mokTightPrefix(cinema: Cinema, prefix: String) =
+    new MsiClient(new FakeHttpFetch("kino-mok-kedzierzyn-tight-prefix"), "https://bilety.mok.com.pl",
+      cinema, today = LocalDate.of(2026, 8, 15), titlePrefix = Some(prefix)).fetch()
+
+  it should "keep Chemik's feed when the portal drops the spaces around the venue dash" in {
+    val movies = mokTightPrefix(KinoChemik, "Chemik")
+    movies should not be empty
+    movies.map(_.cinema).toSet shouldBe Set(KinoChemik)
+    val titles = movies.map(_.movie.title.toLowerCase)
+    titles.exists(_.contains("flavia de luce")) shouldBe true
+    // The stray dots are separator noise, not title text.
+    titles should contain("psi patrol i dinozaury")
+    titles.exists(_.startsWith(".")) shouldBe false
+    // A Twierdza-only film stays out of Chemik's feed.
+    titles.exists(_.contains("buntownik")) shouldBe false
+  }
+
+  it should "still read Twierdza's spaced prefix off the same tightened portal" in {
+    val movies = mokTightPrefix(KinoTwierdza, "TWIERDZA")
+    movies should not be empty
+    val titles = movies.map(_.movie.title.toLowerCase)
+    titles.exists(_.contains("buntownik")) shouldBe true
+    titles.exists(_.contains("flavia de luce")) shouldBe false
+  }
+
   /** Serves the `recorded` fixture's month page ONLY when the request asks for
    *  `month`, and an empty body for every other month — so a client that never
    *  requests `month` finds nothing at all. Real recorded bytes, re-labelled: the

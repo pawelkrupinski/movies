@@ -224,6 +224,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // Clubless 'DKF - / DKF:' prefix + the 'Filmowy Klub Seniora -' dash variant.
     "DKF - Drugie życie"                                       -> "Drugie życie",
     "DKF: Czytając Lolitę w Teheranie"                         -> "Czytając Lolitę w Teheranie",
+    // …including with no space after the colon, which is how the MOK Kędzierzyn
+    // box office types it ("Chemik-DKF:Orły Republiki"). Without this the query
+    // went out as "Dkf:orły republiki" and the screening resolved to nothing.
+    "DKF:Orły Republiki"                                       -> "Orły Republiki",
     "Filmowy Klub Seniora - Drugie życie"                      -> "Drugie życie",
     "Tajny agent | Filozoficzny Klub Filmowy"                  -> "Tajny agent",
     // Sixth-wave (2026-06-20). Studio-attribution strip, re-release banner, and a
