@@ -14,7 +14,7 @@ import sbt._
 object Dependencies {
   // ── Versions ───────────────────────────────────────────────────────────────
   private val playVersion          = "3.0.11"
-  private val mongoScalaVersion    = "5.9.2"
+  private val mongoScalaVersion    = "5.10.0"
   private val caffeineVersion      = "3.2.4"
   private val jsoupVersion         = "1.23.1"
   // Pure-Java webp ImageReader (no native libs), so the OG-card compositor can
