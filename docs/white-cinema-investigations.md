@@ -49,6 +49,191 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-08-15
+
+**PL: 20 white, 0 red**, out of 322 non-enrichment services, newest bucket
+2026-08-15 20:45 UTC. `kinowo_de` and `kinowo_uk` hold **zero** `uptimeBuckets`
+for the fifth run running (workers stopped since 2026-08-02, ~24 h retention) —
+Poland only, again.
+
+**One code change, and this one is a genuine parser break with films behind it:
+Chemik (Kędzierzyn-Koźle), `fixed` @c2a9b2fd0.** The venue was NOT dormant; we
+had simply stopped recognising its rows.
+
+**Set changes vs 2026-08-12 (19 white / 3 red then):**
+- **NEW (1):** **Chemik** — `fixed` @c2a9b2fd0 (below). New to this log entirely.
+- **FELL OFF (0)** — every one of the 19 carried over.
+- **The RED set emptied (3 → 0):** **Kino Powiśle**, **Zacisze** and **Kino
+  Muzeum** are all **24/24 green** this run. Powiśle's dead MSI host answered
+  again on its own, so its `needs-human` ("own-site parser or retirement?") is
+  **closed without a decision being needed** — do not re-open it, and do not
+  retire the venue. Zacisze and Kino Muzeum squeezing under the 8 s adaptive
+  budget for a full day likewise closes the "is the budget too tight" question
+  for now.
+
+**Distribution check:** 19 of the 20 whites are `allZeroHistory = true`. The five
+that are not (ADA, CK Lublin, PDK, Kino Warszawa, Miejskie Centrum Kultury —
+`allZero=false` in the sweep) each carry a **single isolated red/yellow timeout
+blip** among 24 zeroes, not a green. So there is again **not one green→white
+transition** in the window: no OTHER parser broke in the last 24 h. Chemik
+itself flipped more than 24 h ago, before the window opens.
+
+### Chemik (Kędzierzyn-Koźle) — `fixed` @c2a9b2fd0 — the venue prefix lost its spaces
+
+`MsiClient` on `bilety.mok.com.pl`, which hosts **two** cinemas on one MSI page
+and tells them apart by prefixing every title with the venue name. Chemik is
+wired `titlePrefix = Some("Chemik")`, Twierdza `Some("TWIERDZA")`.
+
+**The discriminator that made this a five-minute diagnosis:** **Kino Twierdza was
+24/24 GREEN on the same 24 h, off the same URL, on the same fetch.** One venue
+white and its portal-mate green cannot be a fetch, TLS, host or platform problem
+— it can only be something that distinguishes the two, and the only thing that
+does is the prefix match. (Worth reaching for in future runs: on any shared
+portal, check the co-tenant's bar before probing anything.)
+
+Live capture of `?sort=Name&date=2026-08` confirmed it — 13 films on the page,
+split as:
+
+| Venue | Rows | Spelling |
+|---|---|---|
+| TWIERDZA | 8 | `TWIERDZA - BUNTOWNIK` (spaced, unchanged) |
+| Chemik | 5 | `Chemik-Flavia de Luce` (**no spaces**), and on two rows `.Chemik-.Psi Patrol i dinozaury` (**a stray dot on either side of the dash**) |
+
+`cleanTitleForVenue` matched the literal `"Chemik - "`, so all five Chemik rows
+returned `("", Nil)` and were dropped — a parse that succeeds and yields nothing,
+i.e. white, indistinguishable from a dark venue.
+
+**The fix keeps the dash and drops the ceremony:** the separator is punctuation a
+box office typed, not a contract, so the matcher now accepts optional
+whitespace/dots around a required `[-–—]`. Twierdza's spaced form still matches
+the same rule.
+
+**The drift is older than the bar, and the June corpus proves it.** The checked-in
+`08-06-2026` fixture already carried **two** tight-dash rows —
+`Chemik-K-popowe łowczynie demonów` and `Chemik-DKF:Orły Republiki` — that we
+have been silently dropping since the corpus was recorded. Both now surface, so
+this is a coverage fix as well as a white-bar fix.
+
+**The second of those needed a title rule too, or it landed as garbage.**
+`Chemik-DKF:Orły Republiki` cleans to `Dkf:orły republiki`, and
+`xtra-dkf-bare-prefix` required a space after the colon (`^DKF\s*[-–—:]\s+`), so
+the query went out with the banner attached, resolved to nothing, and the
+screening projected as its OWN bare film record — no year, no poster, no
+ratings, sitting next to the real `Orły republiki`. Widening the tail to `\s*`
+lets it strip, and the slot now folds onto the real film as a `cinemaTitles`
+spelling. Caught only because the snapshot regen surfaced the orphan row; worth
+remembering that a scraper fix can hand the pipeline a title no rule was written
+for.
+
+**Tests (fail-before / pass-after):**
+
+| Spec | Case | Before |
+|---|---|---|
+| `MsiClientSpec` | "keep Chemik's feed when the portal drops the spaces around the venue dash" | `List() was empty` |
+| `MsiClientSpec` | "still read Twierdza's spaced prefix off the same tightened portal" | passed — pins that the OTHER venue never broke |
+| `ExtraTitleRulesSpec` | `"DKF:Orły Republiki" -> "Orły Republiki"` | `"[DKF:]Orły Republiki" was not equal to "[]Orły Republiki"` |
+
+The fixture is the real live page (both `date=2026-08` and `date=2026-09`),
+recorded under `RealHttpFetch`'s exact `Chrome/124.0.0.0` User-Agent into
+`kino-mok-kedzierzyn-tight-prefix/`, and the Twierdza test is the load-bearing
+half of the pair: it proves the fixture is a working page and that the fix is
+about the prefix, not about the fetch.
+
+**Snapshots: two of the three layers moved, and they moved by exactly two slots.**
+`expected-schedules.txt` gains `Chemik / K-popowe łowczynie demonów` and, on the
+real `Orły republiki` film, `Chemik / Dkf:orły republiki` plus that spelling in
+`cinemaTitles`. `read-model-snapshot.json` gains the two `opole|Chemik` screening
+rows. **`expected-*.html` did NOT move** and needed no regen — Kędzierzyn-Koźle
+is in the Opole city, and the rendered snapshots cover Poznań / Wrocław /
+Warszawa / `/plan` only; `PageSnapshotSpec` 5/5 green untouched, which is the
+check that says so rather than an assumption.
+
+**A guard was considered and deliberately NOT added.** The natural sibling of the
+Sfinks/Kinematograf guards would be: if the page parsed rows but none carried our
+prefix, throw (red) instead of returning empty. It would have caught this drift
+on the first scrape. It is wrong here anyway — on a **shared** portal the other
+venue's rows are always present, so a genuinely dark Chemik in a quiet January
+with Twierdza still screening would go permanently RED. The co-tenant's green bar
+is the signal, and it is available for free on /uptime; a throw would trade a
+diagnosable white for a false red.
+
+### The 19 carried-over venues — all re-probed live at the URL the scraper uses
+
+All 19 returned **HTTP 200 with no cross-host redirect**, and none carries a film
+programme. Counts measured this run.
+
+| Venue | Client / URL | What the source shows |
+|---|---|---|
+| ADA Kino Studyjne | `BiletynaClient` `www.biletyna.pl/Warszawa/ADA-Kino-Studyjne` | JSON-LD holds **0** events of ANY type (Place/PostalAddress/Geo only); "Brak wydarzeń" |
+| Kino PDK | `biletyna.pl/Pyrzyce/Pyrzycki-Dom-Kultury` | 0 `ScreeningEvent` of 2 (1 ComedyEvent, 1 TheaterEvent) |
+| Miejskie Centrum Kultury | `biletyna.pl/Aleksandrow-Kujawski/Miejskie-Centrum-Kultury` | 0 `ScreeningEvent` of 4 (3 MusicEvent, 1 ComedyEvent) |
+| Kino MDK | `Bilety24OrganizerClient` `…/miejski-dom-kultury-w-radomsku-1546` | 86 dated slot titles, **0** `Film:` (10 Spektakl, 30 Koncert, 4 Wydarzenie, 1 Wystawa) |
+| Kino nad Wartą | `…/koninskie-centrum-kultury-1626` | 90 slots, **0** `Film:` (36 Koncert, 6 Spektakl, …) |
+| Kino Wisła Brzeszcze | `…/osrodek-kultury-w-brzeszczach-1539` | 74 slots, **0** `Film:` |
+| Piast | `…/ostrzeszowskie-centrum-kultury-601` | 90 slots, **0** `Film:` |
+| Kino CK Lublin | `Bilety24Client` `ck-lublin.bilety24.pl/repertuar/` | 16 distinct `/wydarzenie/?id=` events, **every one fetched**: 10 Koncert, 2 Spektakl, 2 Wydarzenie, 1 Widowisko — **0 Film** |
+| Kino Świt | `SwitClient` `dkswit.com.pl/kino/` | **0** real `div.cks-movie-card`; "Brak nadchodzących seansów filmowych." |
+| Patria | `kinopatria.com/repertuar/` | 7 day tabs, all `data-movie=""`, 0 populated; "Brak filmu" |
+| Studio (Opole) | `mdk.opole.pl` two-slug fallback | in-season slug: **0** `div.ckeditor` (soft-404); break slug: 1, "W czasie wakacji nasze kino jest nieczynne" |
+| Kino Ślęża | `rcks.pl/kino-sleza/repertuar/` | **2** `div.movie` now — see below |
+| Kino Chatka Żaka | `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | `header-light` = 0, `box-row` = 0, "Brak wydarzeń" |
+| Kino Kuźnica | `shd.systembiletowy.pl` | **185** × "brak terminów", 0 bookable |
+| Kino Warszawa (Przeworsk) | `MsiClient` MSI months | 0 titles for both 2026-08 and 2026-09, byte-identical 27,098 B shells (unchanged from 08-12) |
+| Jaworzyna | `EkobiletClient` `ekobilet.pl/kino-jaworzyna` | 10 `card-date`, **0** `available-color`, 9 `pointer-events-none`, 0 `event-card` |
+| Kino Kinematograf | `muzeumkinematografii.pl/kino/repertuar-kina/` | 0 cards, `items-counte` = **0 wydarzeń**, 9 day tabs, 8 "brak seansów" |
+| Kino Zachęta | Filmweb 2405 | literal `[]` (2 bytes) |
+| DKF Politechnika | Filmweb 1645 | literal `[]` (2 bytes) |
+
+#### Kino Ślęża — the summer break is ENDING, and the parser is right to stay quiet
+
+`rcks.pl` now renders **two** `div.movie` blocks, not one: the standing
+"Wakacyjna przerwa 🌞" notice **and a real film — "Odyseja"** (Nolan, with genres,
+`// napisy //` and a full synopsis). That looks alarming next to a white bar, and
+it is not: the card's own showtime slot reads **"Seans: Daty i godziny seansów
+podamy niebawem"** and the page carries **zero** `D.MM.YYYY` rows. `parseMovie`
+requires `showtimes.nonEmpty`, so it correctly declines to emit a film with no
+screenings. **Nothing to fix; this is the earliest possible warning that the
+venue is about to come back.** Next run: if "Odyseja" is still there with dates
+posted and the bar is still white, THAT is drift — start at
+`KinoSlezaClient.parseShowtimes` and the `<h6>Seans:</h6><ul><li>` shape.
+
+#### A methodology note worth keeping: probe the URL the CATALOG names
+
+A first sweep this run used venue URLs copied from the prose of previous entries
+(`biletyna.pl/organizator/<slug>`, `mdkradomsko.bilety24.pl`, `kinoswit.pl`) and
+came back with **nine 404s and two timeouts** — a result that reads like mass
+site drift and is entirely an artifact. Every one of those hosts is fine; the
+scrapers use different URLs (`www.biletyna.pl/<City>/<Venue>`,
+`www.bilety24.pl/kino/organizator/<slug>-<id>`, `dkswit.com.pl/kino/`). **Take
+the URL from `CinemaScraperCatalog` (and the client's `RepertoireUrl`), never
+from this log's prose.** The uptime data says so independently: a white bar means
+the fetch SUCCEEDED, so a 404 in your own probe is your probe's bug, not the
+venue's.
+
+### Next run's re-check list
+
+1. **Chemik** — the fix is verifiable the ordinary way, unlike Kinematograf's:
+   the venue IS screening, so its bar must be **green** within a scrape or two of
+   the deploy. If it is still white, the prefix drifted further (check whether the
+   dash itself is gone, e.g. `Chemik Flavia de Luce`).
+2. **Kino Ślęża** — sharpest item now. "Odyseja" is on the page awaiting dates;
+   once dates are posted the bar must go green.
+3. **Jaworzyna** — the 18.08 repopulation prediction is now DUE. Still 0
+   `available-color` on 15.08. If it is white after **20.08**, that IS drift →
+   `EkobiletClient.availableDates`.
+4. **Kino MDK** — after 31.08 (WAJDA cycle), per the 2026-08-08 trigger.
+5. **Studio (Opole)** — after 3 September; the two-slug fallback already handles
+   the break, nothing owed before then.
+6. **Kino Kinematograf** — still white, **not** red, so the @83cee0128 guard is
+   not misfiring. Remaining item unchanged: around **03.09 / 10.09** check whether
+   the two `wydarzenia` film events show up in the repertoire module; if they
+   screen while it still reads "0 wydarzeń", repoint at
+   `/wydarzenia/aktualne-wydarzenia/?wydarzenia_kategoria=kino`.
+7. **DKF Politechnika** — when the academic year starts.
+8. **Powiśle / Zacisze / Kino Muzeum** — recovered, all green. Nothing owed.
+
+---
+
 ## 2026-08-12
 
 **PL: 19 white, 3 red**, out of 310 non-enrichment services, newest bucket
