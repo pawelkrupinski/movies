@@ -148,6 +148,14 @@ is in the Opole city, and the rendered snapshots cover Poznań / Wrocław /
 Warszawa / `/plan` only; `PageSnapshotSpec` 5/5 green untouched, which is the
 check that says so rather than an assumption.
 
+**CONFIRMED IN PROD, and here a green bar IS the success criterion** (unlike
+Kinematograf, whose fix had to be confirmed by the *absence* of a red). Chemik
+ran 24 consecutive `zero` buckets through **21:00 UTC**; the **21:30 bucket — the
+first scrape after the deploy rolled — is `green` with `successes=1`**. All CI
+shards green (`ci / test`, `integration-test`, `e2e` rest/scrape/staging, every
+page-test shard on Chrome + Safari, `mobile-local-server`, iOS and Android
+LocalServer) and all six deploys rolled.
+
 **A guard was considered and deliberately NOT added.** The natural sibling of the
 Sfinks/Kinematograf guards would be: if the page parsed rows but none carried our
 prefix, throw (red) instead of returning empty. It would have caught this drift
@@ -212,10 +220,10 @@ venue's.
 
 ### Next run's re-check list
 
-1. **Chemik** — the fix is verifiable the ordinary way, unlike Kinematograf's:
-   the venue IS screening, so its bar must be **green** within a scrape or two of
-   the deploy. If it is still white, the prefix drifted further (check whether the
-   dash itself is gone, e.g. `Chemik Flavia de Luce`).
+1. **Chemik** — already **confirmed green at 21:30 UTC**, so nothing is owed
+   unless it goes white again. If it does, the prefix drifted further; check
+   whether the dash itself is gone (e.g. `Chemik Flavia de Luce`), which the
+   current matcher still requires.
 2. **Kino Ślęża** — sharpest item now. "Odyseja" is on the page awaiting dates;
    once dates are posted the bar must go green.
 3. **Jaworzyna** — the 18.08 repopulation prediction is now DUE. Still 0
