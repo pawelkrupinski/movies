@@ -132,6 +132,21 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "keep the capture when tar reports the tree changing under it" in {
+    // The publish runs on `always()`, so its most valuable case is a leg that just
+    // ran out of time — and the runner reaps that leg's JVM in its POST-job phase,
+    // well after this step. `RecordingHttpFetch` is therefore still writing into the
+    // tree being read; GNU tar prints "file changed as we read it" and exits 1, a
+    // warning status beside a complete archive. Under `set -e` that failed the step
+    // and discarded the whole capture — the exact trap the publish exists to close,
+    // and it cost Germany's first full leg in a week its entire corpus capture.
+    val publish = RepoFile.read(".github/actions/convergence-publish/action.yml")
+    publish should include("packed=$?")
+    withClue("tar's warning status (1) must not fail the step; 2+ still must: ") {
+      publish should include("""if [ "$packed" -gt 1 ]""")
+    }
+  }
+
   it should "let the sample write the release it now publishes to" in {
     // `contents: read` was right while the sample only consumed the tree. It publishes
     // now, and a permission short of `write` fails that step and nothing else — the

@@ -50,7 +50,7 @@ runs:
     - name: Pack the enrichment fixtures this leg recorded
       shell: bash
       run: |
-          set -euo pipefail
+          set -uo pipefail
           DIR="test/resources/fixtures/enrichment-${{ inputs.code }}"
           if [ ! -d "$DIR" ]; then
               echo "nothing recorded — no $DIR"
@@ -59,7 +59,32 @@ runs:
           echo "recorded fixture files: $(find "$DIR" -type f -not -path '*/.enrichment-cache/*' | wc -l)"
           echo "remembered enrichment answers: $( { find "$DIR/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l )"
           mkdir -p enrichment-upload
+          # NOT `set -e` around this tar, and the exit code is graded rather than
+          # tested for zero.
+          #
+          # This step runs on `always()`, so its most valuable case is the leg that
+          # just ran out of time — and a step killed by `timeout-minutes` does not
+          # take the JVM with it instantly. The runner only reaps orphans in its
+          # post-job phase, well after this, so `RecordingHttpFetch` is still
+          # writing responses into the very tree being read. GNU tar notices, prints
+          # "file changed as we read it", and exits 1 — a WARNING status, with a
+          # complete and perfectly valid archive on disk. Under `set -e` that
+          # failed the step and threw away the whole capture, which is precisely
+          # the "a timeout that discards its own progress cannot converge" trap the
+          # rest of this action exists to close. Germany's first full leg in a week
+          # lost its entire corpus capture to it.
+          #
+          # 2 and above is a real tar failure (unwritable target, corrupt stream)
+          # and still fails the step.
           tar -czf "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz" "$DIR"
+          packed=$?
+          if [ "$packed" -gt 1 ]; then
+              echo "::error::tar failed with status $packed"
+              exit "$packed"
+          fi
+          if [ "$packed" -eq 1 ]; then
+              echo "tar reported files changing under it — the leg's JVM is still recording; archive kept"
+          fi
           du -h "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
           # The cache is dot-prefixed and lives INSIDE the tree, so `tar` carries it
           # along with the recorded responses and one asset restores both. Asserted
