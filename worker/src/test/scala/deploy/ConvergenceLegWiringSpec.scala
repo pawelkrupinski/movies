@@ -48,9 +48,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       }
       .toMap
 
-  /** The leg workflow's `timeout-minutes:` in file order — the sample job, the full job, then its suite step. */
-  private lazy val budgets: Seq[Int] =
-    """timeout-minutes:\s*(\d+)""".r.findAllMatchIn(leg).map(_.group(1).toInt).toSeq
+  /** One job's `timeout-minutes:` in file order — the job's own ceiling first, then the
+   *  suite step it wraps. Read per JOB rather than across the whole file, because a
+   *  flat scan silently re-pairs the numbers the moment a job gains or loses one. */
+  private def budgetsOf(job: String): Seq[Int] =
+    """timeout-minutes:\s*(\d+)""".r.findAllMatchIn(RepoFile.block(leg, job)).map(_.group(1).toInt).toSeq
+
+  /** Both jobs publish through the same composite action, so neither can drift from the
+   *  other on what "publish the tree" means. */
+  private val PublishAction = "uses: ./.github/actions/convergence-publish"
+
+  private val Jobs = Seq("sample", "convergence")
 
   "the convergence caller" should "run every country through the single-country leg workflow" in {
     countries.keySet shouldBe Set("poland", "germany", "united-kingdom")
@@ -88,17 +96,46 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     leg.linesIterator.map(_.trim).toList should not contain "concurrency:"
   }
 
-  it should "keep the full job's ceiling clear of the suite step it wraps" in {
+  it should "keep EVERY job's ceiling clear of the suite step it wraps" in {
     // A job that hits `timeout-minutes` is CANCELLED, and a cancelled job runs its
     // `always()` publish steps only inside a short grace window — so a leg that
     // overruns discards the very capture that would have made the next run fast
     // enough not to overrun. The gap between the two numbers is what pays for setup
-    // and the four publishes; raising the step without the job reintroduces exactly
-    // that. Order in the file is: sample job, full job, suite step.
-    val Seq(sampleJob, fullJob, suiteStep) = budgets.take(3)
-    withClue(s"sample job $sampleJob, full job $fullJob, suite step $suiteStep: ") {
-      fullJob should be > suiteStep
-      fullJob - suiteStep should be >= 10
+    // and the publishes; raising the step without the job reintroduces exactly that.
+    //
+    // The rule was written for the full leg and applied only there, and the sample —
+    // which had no step ceiling at all, so it could only ever be cancelled — is the
+    // job that then spent ten consecutive runs discarding its own progress.
+    Jobs.foreach { job =>
+      val found = budgetsOf(job)
+      withClue(s"$job declares ${found.size} timeout-minutes, wanted the job's and its suite step's: ") {
+        found.size should be >= 2
+      }
+      val Seq(ceiling, suiteStep) = found.take(2)
+      withClue(s"$job: job $ceiling, suite step $suiteStep: ") {
+        ceiling should be > suiteStep
+        ceiling - suiteStep should be >= 10
+      }
     }
+  }
+
+  it should "publish the tree it recorded from BOTH jobs, not just the full one" in {
+    // The gate REPLAYS a fixture tree it is not allowed to extend, and every recorded
+    // response in that tree expires after `EnrichmentFreshness.Ttl` (5 days). Only the
+    // full leg republished it, and the full leg is `needs: sample` — so a country whose
+    // sample failed for five days had its tree pruned to nothing, which made the sample
+    // slower still, which kept the full leg from ever running again. Germany sat in
+    // exactly that loop for ten runs from 2026-08-09: an asset that could only be
+    // refreshed by a job that could only run once the asset was fresh.
+    Jobs.foreach { job =>
+      withClue(s"$job: ") { RepoFile.block(leg, job) should include(PublishAction) }
+    }
+  }
+
+  it should "let the sample write the release it now publishes to" in {
+    // `contents: read` was right while the sample only consumed the tree. It publishes
+    // now, and a permission short of `write` fails that step and nothing else — the
+    // suite still passes, and the loop above quietly stays open.
+    RepoFile.block(RepoFile.block(leg, "sample"), "permissions") should include("contents: write")
   }
 }

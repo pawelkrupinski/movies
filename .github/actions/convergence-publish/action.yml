@@ -1,0 +1,126 @@
+# Everything a convergence leg owes the NEXT one: the enrichment tree it just
+# recorded, tarred and pushed back to the rolling release it was restored from.
+#
+# Extracted for the same reason `convergence-setup` was — two jobs need it, and a
+# drifted copy is silent. It is the exact mirror of that action: setup restores the
+# tree, this publishes it, and a leg that does one without the other is a leg that
+# consumes a shared resource without replenishing it.
+#
+# That asymmetry is not hypothetical. The sample gate restored the tree and published
+# nothing for its whole life, on the reasonable-sounding grounds that a fast gate has
+# no business writing to a release. But the tree EXPIRES — `EnrichmentFreshness.Ttl`
+# is five days, and `prune` deletes every recorded response older than that before the
+# leg reads a byte of it. The only job that refreshed the tree was the full leg, and
+# the full leg is `needs: sample`. Germany's sample failed on 2026-08-09; five days
+# later its tree pruned to nothing, every one of its ~100 sample films went to live
+# HTTP at 1-8 seconds a call, and the leg could no longer finish inside any budget —
+# which kept the full leg from running, which kept the tree from being refreshed. Ten
+# consecutive red runs, and the one thing that would have broken the loop was the
+# gate writing down what it had already paid to fetch.
+name: Publish a convergence leg's enrichment capture
+description: Tar the enrichment tree this leg recorded and replace the country's asset in the rolling release.
+
+inputs:
+  code:
+    description: The country's two-letter code (pl / de / uk).
+    required: true
+  token:
+    description: A token that can write this repo's releases.
+    required: true
+
+runs:
+  using: composite
+  steps:
+
+    # The leg both CONSUMES and EXTENDS the fixture tree: `ArchiveReplayWiring` wraps
+    # the live leg in a `RecordingHttpFetch` pointed at the same directory, so whatever
+    # wasn't already recorded is on disk by the time the run ends. Publishing here is
+    # what closes the loop — a partial capture converges on a complete one over
+    # successive runs, with no Mongo cache to write through and no tunnel to dump it
+    # back out of.
+    #
+    # Both writers land on disk PER CALL — `RecordingHttpFetch` writes each response as
+    # it arrives, and `EnrichmentCache.remember` writes its verdict through the
+    # single-flight lock — so there is no buffer to flush and a killed JVM loses only
+    # the fetch that was in flight. That is what makes publishing from a leg that ran
+    # out of time worth doing at all.
+    #
+    # `if-no-files-found`-equivalent handling inline, for the first run on a new
+    # country where nothing has been recorded yet.
+    - name: Pack the enrichment fixtures this leg recorded
+      shell: bash
+      run: |
+          set -euo pipefail
+          DIR="test/resources/fixtures/enrichment-${{ inputs.code }}"
+          if [ ! -d "$DIR" ]; then
+              echo "nothing recorded — no $DIR"
+              exit 0
+          fi
+          echo "recorded fixture files: $(find "$DIR" -type f -not -path '*/.enrichment-cache/*' | wc -l)"
+          echo "remembered enrichment answers: $( { find "$DIR/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l )"
+          mkdir -p enrichment-upload
+          tar -czf "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz" "$DIR"
+          du -h "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
+          # The cache is dot-prefixed and lives INSIDE the tree, so `tar` carries it
+          # along with the recorded responses and one asset restores both. Asserted
+          # rather than assumed: if a future change to this tar drops hidden paths, the
+          # loss is invisible — every leg simply gets slower and still passes.
+          # `grep -c`, which reads to EOF, NOT `grep -q`, which doesn't.
+          #
+          # `tar -tzf … | grep -q` exits the moment it matches and closes the pipe; GNU
+          # tar is still streaming, takes SIGPIPE and returns 141, and under
+          # `set -euo pipefail` the PIPELINE is then a failure even though the pattern
+          # was found. The `!` turned that into "the cache is missing", so this guard
+          # failed all three legs on a tarball that contained the cache perfectly — the
+          # published asset had 3,745 cache paths in it. Reading the listing to the end
+          # removes the race entirely, and the count is worth printing anyway.
+          #
+          # (BSD tar on macOS absorbs the SIGPIPE, so this could not be reproduced
+          # locally — it needs a Linux runner. Verified instead by inspecting the asset
+          # the same run published.)
+          cached=$(tar -tzf "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz" \
+                   | grep -c '/\.enrichment-cache/.*\.entry' || true)
+          echo "remembered answers inside the archive: $cached"
+          if [ -d "$DIR/.enrichment-cache" ] && [ "$cached" -eq 0 ]; then
+              echo "::error::the enrichment cache exists on disk but is NOT in the tarball"
+              exit 1
+          fi
+
+    # Replaces the country's asset IN PLACE, so the release holds one copy per country
+    # and never a history — the newest capture is the only one anyone reads, and
+    # keeping the rest was pure storage.
+    #
+    # Called under `always()` by both jobs, because a leg that failed or was cancelled
+    # has usually still enriched most of the corpus, and that capture is exactly what
+    # stops the next run repeating the work. Today's two largest captures (301 MB and
+    # 434 MB) both came from CANCELLED legs.
+    #
+    # `create ... || true` because the country legs race to create the release on the
+    # very first run and exactly one of them can win; the others find it already there,
+    # which is the outcome they wanted anyway.
+    #
+    # A country's sample and its full leg are chained by `needs:`, never concurrent, so
+    # the two `--clobber`s of one asset are ordered: the sample publishes what it
+    # recorded, the full leg restores that and republishes the superset.
+    - name: Publish the tree to the rolling release
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          # FIXTURE_RELEASE_TAG comes from the calling workflow's `env`, which is
+          # exported into every step's shell, composite-action steps included.
+          TAG="$FIXTURE_RELEASE_TAG"
+          ARCHIVE="enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
+          if [ ! -f "$ARCHIVE" ]; then
+              echo "nothing to publish — no $ARCHIVE"
+              exit 0
+          fi
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --prerelease \
+              --title "Convergence fixture trees (rolling)" \
+              --notes "Recorded enrichment responses and remembered answers per country.
+          Replaced in place by every convergence leg — one copy each, no history.
+          Not a version of anything; do not treat as a release." || true
+          gh release upload "$TAG" "$ARCHIVE" --clobber
+          echo "published $ARCHIVE to release $TAG"

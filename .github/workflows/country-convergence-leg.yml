@@ -61,11 +61,18 @@ jobs:
     #
     # It replays the same four assertions the full leg does — fixpoint,
     # order-independence, no-loss, and the production-coverage band — over a sample
-    # recorded beside the corpus. That takes about 90 seconds against 12 to 73
-    # minutes, and it is a real gate rather than a smoke test: the two regressions
-    # this suite has caught (a rating source starved by the one above it, a 404
-    # flattened into an outage by a fallback chain) both showed up on these axes and
-    # would both have been caught here.
+    # recorded beside the corpus. Five to eight minutes warm against 12 to 73, and it
+    # is a real gate rather than a smoke test: the two regressions this suite has
+    # caught (a rating source starved by the one above it, a 404 flattened into an
+    # outage by a fallback chain) both showed up on these axes and would both have been
+    # caught here.
+    #
+    # NOT the ~90 seconds this comment used to claim. That was the leg with its
+    # enrichment answers already on disk and none of them expired — a state the
+    # `~100-film slice rotates nightly` design never actually holds, since a fresh draw
+    # from the corpus is a fresh draw of films to enrich. Measured across 2026-08-14 to
+    # 08-16 the warm legs run 3m32s to 9m08s; the number here has to cover the cold end
+    # of that, not the best case.
     #
     # A separate JOB rather than a first step inside the full leg, so the full leg
     # never starts when the sample already knows the answer — the UK's is 73 minutes
@@ -73,11 +80,25 @@ jobs:
     sample:
         name: sample
         runs-on: ubuntu-latest
-        # Ten, against the full leg's 135. A sample that takes longer than this is not
-        # a fast gate any more and wants investigating rather than accommodating.
-        timeout-minutes: 10
+        # Thirty-two, against the full leg's 135 — and the twenty below is the number
+        # that matters. Ten was measured on a WARM tree and quietly assumed the tree
+        # would always be warm, which is only true while the full leg keeps running,
+        # which is only true while the sample passes. A cold sample cannot fit in ten:
+        # Germany's ~100-film slice is ~1.5 minutes of setup, ~1.5 of compile and boot,
+        # ~2 of scrape and staging, and then ~11 of live enrichment (measured at 47
+        # films in 5m15s on 2026-08-16, every one of them a live fetch), and no budget
+        # sized for the warm case can absorb that.
+        #
+        # Cold is a state this gate has to survive, not an anomaly to be timed out of —
+        # a five-day gap in a country's legs is enough to produce it (see
+        # `convergence-publish`), and the run that meets it is the run that has to
+        # rebuild the tree. Warm, which is the normal case, it still finishes in five to
+        # eight minutes and gates the 73-minute leg behind it exactly as before.
+        timeout-minutes: 32
         permissions:
-            contents: read
+            # `contents: write` since the gate publishes the tree it records — see the
+            # publish step below for why it has to.
+            contents: write
             checks: write
             actions: read
         steps:
@@ -87,8 +108,16 @@ jobs:
                   code:  ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
 
+            # Bounded BELOW the job's ceiling, for the reason spelled out over the full
+            # leg's suite step: a job that hits its own `timeout-minutes` is CANCELLED,
+            # and a cancelled job runs its `always()` steps only inside a short grace
+            # window. Failing the STEP keeps the job alive so the publish below runs
+            # normally. The sample had no step ceiling at all, so it could only ever be
+            # cancelled — which is how it spent ten consecutive runs throwing away the
+            # capture that would have made the eleventh fast enough to pass.
             - name: Run the ${{ inputs.country }} sample
               shell: bash
+              timeout-minutes: 20
               run: |
                   set -o pipefail
                   sbt ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
@@ -99,6 +128,18 @@ jobs:
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+
+            # The gate REPLAYS the tree and — until now — extended it only in the
+            # runner's filesystem, which is discarded with the runner. Every recorded
+            # response expires after `EnrichmentFreshness.Ttl`, so a tree only the full
+            # leg refreshes is a tree that goes empty five days after that leg last ran;
+            # and the full leg runs only behind this one. Publishing here is what stops
+            # a red sample from being self-perpetuating.
+            - uses: ./.github/actions/convergence-publish
+              if: always()
+              with:
+                  code:  ${{ inputs.code }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
 
     convergence:
         name: convergence
@@ -271,87 +312,11 @@ jobs:
                       echo '```'
                   } >> "$GITHUB_STEP_SUMMARY"
 
-            # The leg both CONSUMES and EXTENDS the fixture tree: `ArchiveReplayWiring`
-            # wraps the live leg in a `RecordingHttpFetch` pointed at the same
-            # directory, so whatever wasn't already recorded is on disk by the time
-            # the run ends. Publishing it here is what closes the loop — a partial
-            # capture converges on a complete one over successive runs, with no Mongo
-            # cache to write through and no tunnel to dump it back out of.
-            #
-            # `always()` because a leg that FAILED or was cancelled has usually still
-            # enriched most of the corpus, and that capture is exactly what stops the
-            # next run repeating the work. `if-no-files-found: ignore` for the first
-            # run on a new country, where nothing has been recorded yet.
-            - name: Publish the enrichment fixtures this leg recorded
+            # The capture this leg just spent an hour building, back to the release it
+            # was restored from. Shared with the sample gate above — the two must agree
+            # on what publishing means, and a drifted copy would be silent.
+            - uses: ./.github/actions/convergence-publish
               if: always()
-              run: |
-                  set -euo pipefail
-                  DIR="test/resources/fixtures/enrichment-${{ inputs.code }}"
-                  if [ ! -d "$DIR" ]; then
-                      echo "nothing recorded — no $DIR"
-                      exit 0
-                  fi
-                  echo "recorded fixture files: $(find "$DIR" -type f -not -path '*/.enrichment-cache/*' | wc -l)"
-                  echo "remembered enrichment answers: $( { find "$DIR/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l )"
-                  mkdir -p enrichment-upload
-                  tar -czf "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz" "$DIR"
-                  du -h "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
-                  # The cache is dot-prefixed and lives INSIDE the tree, so `tar` carries
-                  # it along with the recorded responses and one artifact restores both.
-                  # Asserted rather than assumed: if a future change to this tar drops
-                  # hidden paths, the loss is invisible — every leg simply gets slower and
-                  # still passes.
-                  # `grep -c`, which reads to EOF, NOT `grep -q`, which doesn't.
-                  #
-                  # `tar -tzf … | grep -q` exits the moment it matches and closes the
-                  # pipe; GNU tar is still streaming, takes SIGPIPE and returns 141, and
-                  # under `set -euo pipefail` the PIPELINE is then a failure even though
-                  # the pattern was found. The `!` turned that into "the cache is
-                  # missing", so this guard failed all three legs on a tarball that
-                  # contained the cache perfectly — the published asset had 3,745 cache
-                  # paths in it. Reading the listing to the end removes the race
-                  # entirely, and the count is worth printing anyway.
-                  #
-                  # (BSD tar on macOS absorbs the SIGPIPE, so this could not be
-                  # reproduced locally — it needs a Linux runner. Verified instead by
-                  # inspecting the asset the same run published.)
-                  cached=$(tar -tzf "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz" \
-                           | grep -c '/\.enrichment-cache/.*\.entry' || true)
-                  echo "remembered answers inside the archive: $cached"
-                  if [ -d "$DIR/.enrichment-cache" ] && [ "$cached" -eq 0 ]; then
-                      echo "::error::the enrichment cache exists on disk but is NOT in the tarball"
-                      exit 1
-                  fi
-
-            # Replaces the country's asset IN PLACE, so the release holds one copy per
-            # country and never a history — the newest capture is the only one anyone
-            # reads, and keeping the rest was pure storage.
-            #
-            # `always()` for the same reason the tar above is: a leg that failed or was
-            # cancelled has usually still enriched most of the corpus, and that capture
-            # is exactly what stops the next run repeating the work. Today's two largest
-            # captures (301 MB and 434 MB) both came from CANCELLED legs.
-            #
-            # `create ... || true` because three country legs race to create the release
-            # on the very first run and exactly one of them can win; the other two find
-            # it already there, which is the outcome they wanted anyway.
-            - name: Publish the tree to the rolling release
-              if: always()
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: |
-                  set -uo pipefail
-                  TAG="$FIXTURE_RELEASE_TAG"
-                  ARCHIVE="enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
-                  if [ ! -f "$ARCHIVE" ]; then
-                      echo "nothing to publish — no $ARCHIVE"
-                      exit 0
-                  fi
-                  gh release view "$TAG" >/dev/null 2>&1 || \
-                    gh release create "$TAG" --prerelease \
-                      --title "Convergence fixture trees (rolling)" \
-                      --notes "Recorded enrichment responses and remembered answers per country.
-                  Replaced in place by every convergence leg — one copy each, no history.
-                  Not a version of anything; do not treat as a release." || true
-                  gh release upload "$TAG" "$ARCHIVE" --clobber
-                  echo "published $ARCHIVE to release $TAG"
+              with:
+                  code:  ${{ inputs.code }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
