@@ -69,7 +69,7 @@ class TaskWorker(
   processingTimeout: FiniteDuration = 5.minutes,
   retryBackoff:      FiniteDuration = 2.seconds,
   idleBackstop:      FiniteDuration = 30.seconds,
-  poolSize:          Int            = 4,
+  poolSize:          Int            = TaskWorker.DefaultPoolSize,
   reapInterval:      FiniteDuration = 30.seconds,
   // CPU-credit throttle signal + the duty-cycle pause a busy worker takes before
   // each claim while throttled. The reaper backoff only trims NEW enqueues; a
@@ -270,6 +270,14 @@ class TaskWorker(
 }
 
 object TaskWorker {
+  /** How many worker threads the pool runs by default.
+   *
+   *  Named rather than inlined because the test harness's synchronous stand-in for
+   *  this pool sizes itself from the same number: a harness that drains one task at
+   *  a time is not standing in for a pool of four, it is a slower thing with a
+   *  different shape. */
+  val DefaultPoolSize: Int = 4
+
   /** Exponential backoff a transiently-failing task is held back before re-claim:
    *  5s, 10s, 20s, 40s, … doubling per attempt, capped at 30 min. Keyed on
    *  `attempts` (incremented on each claim, so the first failure ⇒ attempts=1 ⇒

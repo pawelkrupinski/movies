@@ -169,9 +169,20 @@ private[tools] abstract class DelegatingExecutorService(delegate: ExecutorServic
 trait ExecutionBudget {
   def executionContext(name: String): ExecutionContextExecutorService
   def executionContext(name: String, subLimit: Int): ExecutionContextExecutorService
+
+  /** How many background tasks this budget lets run at once; `<= 0` is unbounded.
+   *
+   *  Exposed so a caller that drives work itself rather than submitting it — the test
+   *  harness's synchronous queue drains — can size its own claimants from the SAME
+   *  lever, instead of restating a concurrency rule beside the one that already
+   *  exists. That matters in both directions: the determinism specs and the
+   *  convergence replay passes swap in a same-thread budget to remove every race but
+   *  their seeded shuffle, and a drain that pooled regardless would put the race
+   *  straight back under the order-independence assertion. */
+  def maxConcurrent: Int
 }
 
-final class SharedExecutionBudget(val maxConcurrent: Int) extends ExecutionBudget {
+final class SharedExecutionBudget(override val maxConcurrent: Int) extends ExecutionBudget {
   private val permits: Option[Semaphore] =
     if (maxConcurrent > 0) Some(new Semaphore(maxConcurrent)) else None
 

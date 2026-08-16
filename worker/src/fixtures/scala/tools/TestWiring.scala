@@ -7,7 +7,7 @@ import services.{Drainable, MongoConnection}
 import services.events.{DomainEvent, EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{ResolutionCache, UnresolvedPolicy}
-import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, HandlerOutcome, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType}
+import services.tasks.{ChunkScrapeStore, EnrichDetailsHandler, HandlerOutcome, InMemoryChunkScrapeStore, InMemoryTaskQueue, TaskQueue, TaskType, TaskWorker}
 
 import scala.concurrent.{Await, ExecutionContextExecutorService, Future}
 import scala.concurrent.duration._
@@ -343,21 +343,62 @@ trait TestWiring extends WorkerWiring {
 
   private lazy val ratingHandlerByType = ratingHandlers.map(h => h.taskType -> h).toMap
 
-  /** Work every claimable rating task through the REAL handlers — the synchronous
-   *  stand-in for the prod `TaskWorker`, and the same shape `drainStagingQueueOnce`
-   *  uses. A non-rating task is completed and dropped so it cannot spin this drain. */
+  /** How many claimants [[drainRatingQueueOnce]] runs — production's own pool size,
+   *  read off the SAME `backgroundBudget` that caps every other background consumer.
+   *
+   *  Derived rather than declared, so it cannot drift from the lever callers already
+   *  use. The convergence suite's order-independence passes and the determinism specs
+   *  swap in a `SameThreadExecutionBudget` to leave their seeded shuffle as the only
+   *  nondeterminism; that budget reports 1, so those drains stay strictly serial with
+   *  nothing extra to remember. Everything else — `bootCorpus` above all — gets the
+   *  real budget's cap. An unbounded budget (`<= 0`) means "no cap", which is not a
+   *  usable claimant count, so the pool default stands in. */
+  private[tools] def ratingDrainClaimants: Int =
+    backgroundBudget.maxConcurrent match {
+      case bounded if bounded > 0 => bounded
+      case _                      => TaskWorker.DefaultPoolSize
+    }
+
+  /**
+   * Work every claimable rating task through the REAL handlers — the synchronous
+   * stand-in for the prod `TaskWorker`. A non-rating task is completed and dropped so
+   * it cannot spin this drain.
+   *
+   * A POOL, exactly as `TaskWorker` runs one. This claimed a single task at a time for
+   * its whole life, which made the harness strictly slower than the thing it stands in
+   * for, and it dominated the convergence legs: Poland's `enrichRatings` phase was
+   * 1,615s of a 2,201s boot, while 85% of its enrichment calls were free fixture
+   * replays — so nearly all of it was a serial tail of network round-trips production
+   * would have overlapped four ways.
+   *
+   * Concurrency is safe here for the same reason it is safe in production: `claim` is
+   * atomic per task, so N claimants partition the queue rather than racing for a row,
+   * and the handlers are the same ones four prod threads already run side by side.
+   *
+   * A claimant that finds the queue momentarily empty simply stops; the round loop in
+   * [[enrichRatingsSync]] re-offers the corpus and drains again, so work another
+   * claimant enqueued mid-round is picked up on the next one rather than lost.
+   */
   private def drainRatingQueueOnce(): Int = {
-    val workerId = "rating-sync"
-    var handled  = 0
-    Iterator.continually(taskQueue.claim(workerId, 5.minutes))
-      .takeWhile(_.isDefined).flatten
-      .foreach { task =>
-        ratingHandlerByType.get(task.taskType).foreach { h =>
-          try { h.handle(task); handled += 1 } catch { case _: Exception => () }
-        }
-        taskQueue.complete(task.id, workerId)
-      }
-    handled
+    val handled   = new java.util.concurrent.atomic.AtomicInteger(0)
+    val claimants = (0 until ratingDrainClaimants).map { i =>
+      val workerId = s"rating-sync-$i"
+      val thread   = new Thread(
+        () =>
+          Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+            .takeWhile(_.isDefined).flatten
+            .foreach { task =>
+              ratingHandlerByType.get(task.taskType).foreach { h =>
+                try { h.handle(task); handled.incrementAndGet() } catch { case _: Exception => () }
+              }
+              taskQueue.complete(task.id, workerId)
+            },
+        workerId)
+      thread.start()
+      thread
+    }
+    claimants.foreach(_.join())
+    handled.get()
   }
 
   /** Apply deferred per-film detail to the bare-scraped rows, the way the

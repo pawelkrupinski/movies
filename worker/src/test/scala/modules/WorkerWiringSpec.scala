@@ -267,6 +267,91 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
+  /** A wiring whose rating sources report how many of them are in flight at once.
+   *
+   *  Each `refreshOneSync` holds its slot briefly, so a serial drain peaks at one
+   *  claimant and a pooled one peaks at the budget's cap. The sleep is what makes the
+   *  difference observable at all — without it a handler returns before the next
+   *  claimant has started and even four threads peak at one. */
+  class ConcurrencyRecordingWiring(budget: tools.ExecutionBudget) extends SpyWiring {
+    override lazy val backgroundBudget: tools.ExecutionBudget = budget
+
+    private val inFlight = new java.util.concurrent.atomic.AtomicInteger(0)
+    private val peak     = new java.util.concurrent.atomic.AtomicInteger(0)
+    def peakInFlight: Int = peak.get()
+
+    private def occupyASlot(): Option[String] = {
+      val now = inFlight.incrementAndGet()
+      peak.updateAndGet(seen => math.max(seen, now))
+      try { Thread.sleep(120); None } finally { inFlight.decrementAndGet(); () }
+    }
+
+    // Four films rather than one: a single film's four sources would let a serial
+    // drain look concurrent if the queue ever handed the same task out twice.
+    override lazy val movieRepository: services.movies.MovieRepository =
+      new services.movies.InMemoryMovieRepository(Seq(
+        ("Diuna",     Some(2024), models.MovieRecord(tmdbId = Some(438631), imdbId = Some("tt15239678"))),
+        ("Zimna wojna", Some(2018), models.MovieRecord(tmdbId = Some(468622), imdbId = Some("tt6543652"))),
+        ("Ida",       Some(2013), models.MovieRecord(tmdbId = Some(228150), imdbId = Some("tt2718492"))),
+        ("Boże Ciało", Some(2019), models.MovieRecord(tmdbId = Some(550310), imdbId = Some("tt9078374")))))
+
+    override lazy val imdbRatings: services.enrichment.ImdbRatings =
+      new services.enrichment.ImdbRatings(movieCache, imdbClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
+      }
+    override lazy val rottenTomatoesRatings: services.enrichment.RottenTomatoesRatings =
+      new services.enrichment.RottenTomatoesRatings(movieCache, tmdbClient, rottenTomatoesClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
+      }
+    override lazy val metascoreRatings: services.enrichment.MetascoreRatings =
+      new services.enrichment.MetascoreRatings(movieCache, tmdbClient, metacriticClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
+      }
+    override lazy val filmwebRatings: services.enrichment.FilmwebRatings =
+      new services.enrichment.FilmwebRatings(movieCache, tmdbClient, filmwebClient) {
+        override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
+      }
+  }
+
+  /**
+   * Production drains the rating queue with a POOL — `TaskWorker` runs
+   * `TaskWorker.DefaultPoolSize` threads, each claiming and handling independently.
+   * The harness's synchronous stand-in claimed one task at a time, and that is a rule
+   * it restated rather than inherited: it made the harness strictly slower than the
+   * thing it stands in for, and it dominated the convergence legs. Poland's
+   * `enrichRatings` phase was 1,615s of a 2,201s boot — 85% of its enrichment calls
+   * are free fixture replays, so nearly all of that was a serial tail of network
+   * round-trips that production would have overlapped four ways.
+   */
+  "the harness rating drain" should "claim through as many workers as the background budget allows" in {
+    val wiring = new ConcurrencyRecordingWiring(new SharedExecutionBudget(4))
+    wiring.movieCache.rehydrate()
+
+    wiring.enrichRatingsSync()
+
+    withClue(s"peak in-flight rating handlers: ${wiring.peakInFlight}: ") {
+      wiring.peakInFlight should be > 1
+    }
+    wiring.stop()
+  }
+
+  /** …and follows that same budget DOWN. The convergence suite's order-independence
+   *  passes wire `SameThreadExecutionBudget` precisely so the only nondeterminism left
+   *  is their seeded shuffle; a drain that pooled regardless would put a thread race
+   *  back under the assertion written to catch order dependence, and it would flake
+   *  rather than fail. The budget is the one lever, so no spec has to restate it. */
+  it should "stay strictly serial under a same-thread budget" in {
+    val wiring = new ConcurrencyRecordingWiring(new tools.SameThreadExecutionBudget)
+    wiring.movieCache.rehydrate()
+
+    wiring.enrichRatingsSync()
+
+    withClue(s"peak in-flight rating handlers: ${wiring.peakInFlight}: ") {
+      wiring.peakInFlight shouldBe 1
+    }
+    wiring.stop()
+  }
+
   "the harness rating sweep" should "not drive Filmweb for a country that has no Filmweb" in {
     val wiring = new RatingSourceRecordingWiring { override protected def filmwebEnabled: Boolean = false }
     wiring.movieCache.rehydrate()

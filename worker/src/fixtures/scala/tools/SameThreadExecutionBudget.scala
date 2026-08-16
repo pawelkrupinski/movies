@@ -14,4 +14,11 @@ class SameThreadExecutionBudget extends ExecutionBudget {
     SameThreadExecutorService.newEC()
   override def executionContext(name: String, subLimit: Int): ExecutionContextExecutorService =
     SameThreadExecutorService.newEC()
+
+  /** One, and that is the whole point of this budget — it is what carries the
+   *  single-threaded guarantee to the harness's synchronous queue drains, which run
+   *  work on their own claimants rather than submitting it to an EC. Without it a
+   *  drain would pool while the cascade beside it ran inline, and the seeded shuffle
+   *  would no longer be the only nondeterminism in a determinism spec. */
+  override def maxConcurrent: Int = 1
 }
