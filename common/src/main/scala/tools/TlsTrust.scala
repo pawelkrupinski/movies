@@ -43,6 +43,13 @@ import scala.util.{Try, Using}
  *      of them died with the same PKIX error. The chain is complete (the servers
  *      send the `nazwaSSL DV TLS G2 E29 CA` sub-CA), so we only need the root as a
  *      trust anchor — one cert recovers every nazwa.pl venue at once.
+ *   4. `ec1lodz.pl` (Kino NCKF EC1) renewed in Aug 2026 onto a leaf issued by
+ *      `Certum OV TLS G2 R39 CA` and serves that leaf ALONE — no intermediate at
+ *      all. Its root IS the `Certum Trusted Root CA` of case (1), which we already
+ *      bundle, so the anchor was never the problem: the path builder simply had
+ *      nothing to bridge leaf -> root with, and the AIA fetch of (2a) evidently
+ *      does not survive the worker's egress (the venue went red and stayed red).
+ *      Same remedy as (2b) — bundle the intermediate so the path closes offline.
  *
  * The extra roots are ADDED to the defaults, never a replacement: well-behaved
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
@@ -59,13 +66,15 @@ object TlsTrust extends Logging {
 
   /** Classpath-absolute paths of PEM certs to add as trust anchors on top of the
    *  default store: the two Certum roots the JDK omits (RSA `Certum Trusted Root
-   *  CA` for case 1, ECC `Certum EC-384 CA` for case 3), plus the artmuseum.pl
-   *  leaf's issuing intermediate (see point 2b above) so its broken chain
-   *  validates without a per-handshake AIA network fetch. */
+   *  CA` for case 1, ECC `Certum EC-384 CA` for case 3), plus the two issuing
+   *  intermediates whose servers omit them — artmuseum.pl's (point 2b) and
+   *  ec1lodz.pl's (point 4) — so those chains validate without a per-handshake
+   *  AIA network fetch. */
   val BundledRootResources: Seq[String] = Seq(
     "/certs/certum-trusted-root-ca.pem",
     "/certs/home-pl-dv-tls-g2-r35-ca.pem",
-    "/certs/certum-ec-384-ca.pem"
+    "/certs/certum-ec-384-ca.pem",
+    "/certs/certum-ov-tls-g2-r39-ca.pem"
   )
 
   /** The bundled extra roots, parsed. Empty if a resource is missing (logged). */

@@ -24,6 +24,12 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
   private val CertumEc384Sha256 =
     "6B328085625318AA50D173C98D8BDA09D57E27413D114CF787A0F5D06C030CF6"
 
+  // SHA-256 of the `Certum OV TLS G2 R39 CA` intermediate — ec1lodz.pl's leaf
+  // issuer (Kino NCKF EC1). That host ships ONLY its leaf, so without this cert
+  // the path builder has nothing to bridge leaf -> Certum Trusted Root CA with.
+  private val CertumOvR39IntermediateSha256 =
+    "F54CE21EA0F79548F1201A619049CA15F065E49A69F26FB9CF1282C7EECF9C4C"
+
   private def sha256(bytes: Array[Byte]): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).map("%02X".format(_)).mkString
 
@@ -46,6 +52,19 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
     // The load-bearing property: the bundled intermediate is signed by the
     // bundled root, so leaf -> intermediate -> root is a complete OFFLINE path.
     // verify() throws on a bad signature; passing proves the chain link holds.
+    noException should be thrownBy intermediate.verify(root.getPublicKey)
+  }
+
+  it should "bundle the Certum OV R39 intermediate so ec1lodz.pl's leaf-only chain needs no AIA fetch" in {
+    val root = bySubject("Certum Trusted Root CA")
+      .getOrElse(fail("Certum root not bundled"))
+    val intermediate = bySubject("Certum OV TLS G2 R39 CA")
+      .getOrElse(fail("Certum OV R39 intermediate not bundled"))
+
+    sha256(intermediate.getEncoded) shouldBe CertumOvR39IntermediateSha256
+    // Same load-bearing property as the home.pl case: the bundled intermediate
+    // is signed by the bundled root, so leaf -> intermediate -> root is a
+    // complete OFFLINE path and no per-handshake AIA fetch is needed.
     noException should be thrownBy intermediate.verify(root.getPublicKey)
   }
 
