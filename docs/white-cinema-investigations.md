@@ -114,6 +114,24 @@ i.e. that the bundled pair really is a complete offline path — the same shape 
 home.pl case already uses. `sbt testUnit` green (7 + 979 + 2986 + 553 + 49).
 No snapshot layer moves: a trust bundle changes no scraper output.
 
+**The unit test is the gate, but the load-bearing verification was a REAL JVM
+handshake** — the standing rule for this class is "verify through the JVM, not
+curl", because OpenSSL accepts chains the JVM rejects. A throwaway spec did an
+`HttpsURLConnection` GET of the live repertoire page through
+`TlsTrust.augmentedContext` with `enableAIAcaIssuers` forced to **false**, so
+only the bundled anchors could close the path: **200, 1,355,401 bytes**. Backing
+the one PEM out of `BundledRootResources` and re-running reproduced prod's
+failure exactly (`AbstractTrustManagerWrapper.checkServerTrusted`). The spec was
+deleted before committing — it needs the network, so it does not belong in
+`testUnit`.
+
+**CONFIRMED IN PROD.** All jobs green in the deploy run (unit, integration, the
+three e2e legs, every Chrome + WebKit page-test shard, iOS LocalServer) and all
+six deploys rolled, `kinowo-worker` among them. EC1 scrapes hourly and had been
+`failures=1` on every bucket through **21:00 UTC**; the **22:00 UTC bucket — the
+first scrape after the deploy — is `successes=1`**, so the venue is not merely
+un-red, it is returning showtimes again.
+
 ### Kino Warszawa (Przeworsk) — `unfixable: upstream certificate expired` (and dormant anyway)
 
 The other red, and the mirror image of EC1 — **nothing on our side can fix it.**
