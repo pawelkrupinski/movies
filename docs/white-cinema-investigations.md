@@ -49,6 +49,121 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-08-21
+
+**PL: 13 white, 2 red**, out of 310 non-enrichment services, newest bucket
+2026-08-20 21:15 UTC. `kinowo_de` and `kinowo_uk` hold **zero** `uptimeBuckets`
+for the sixth run running (workers stopped since 2026-08-02, ~24 h retention) —
+Poland only, again.
+
+**No white venue is a parser bug this run.** All 13 were re-probed live at the
+URL their scraper uses and every source is genuinely empty. The one code change
+that landed came out of the RED column instead: **Kino NCKF EC1 — `fixed`
+@931a5aa09**, a TLS trust break, not a parse.
+
+**Set changes vs 2026-08-15 (20 white / 0 red then):**
+- **NEW white (0).** Not a single green→white transition: no parser broke in the
+  window.
+- **RECOVERED (6):** **Kino Świt**, **Kino Ślęża**, **Jaworzyna**, **Kino
+  Kinematograf** and **Miejskie Centrum Kultury** are all green now (10/10 green
+  buckets except Świt, which flipped mid-window: `GGGGGGGGWW` newest→oldest).
+  Ślęża recovering is the one that was *predicted* — the 08-15 entry read its
+  "Odyseja" card with an unpopulated showtime slot as a break that was about to
+  end, and it did.
+- **Chemik's fix is holding:** 10/10 green, four days after @c2a9b2fd0. Its
+  portal-mate Kino Twierdza likewise 10/10.
+- **LEFT the white set by going RED (1):** **Kino Warszawa** (Przeworsk) — its
+  certificate expired, see below.
+- **NEW red (2):** **Kino NCKF EC1** and **Kino Warszawa**. Both TLS, and they
+  are opposite cases — one is ours to fix, one is not.
+
+### Kino NCKF EC1 (Łódź) — `fixed` @931a5aa09 — a leaf-only chain, not a dead site
+
+RED (not white), so strictly outside this run's brief, but it is a PL venue gone
+completely dark on a five-minute diagnosis, so it got fixed.
+
+`ec1lodz.pl` renewed on **2026-08-13** onto a leaf issued by `Certum OV TLS G2
+R39 CA` and **serves that leaf alone — a one-cert chain, no intermediate.** The
+site is perfectly healthy: a plain `curl` of
+`ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/` returns 200 with
+1.35 MB, and the cert is valid to Feb 2027.
+
+The trap is that the anchor was **never** missing. The R39 intermediate chains to
+`Certum Trusted Root CA`, which `TlsTrust` has bundled since the Kinomuzeum work
+— so "PKIX path building failed" here did not mean "unknown CA", it meant the
+path builder had nothing to bridge leaf→root with. `enableAIAcaIssuers` exists
+for exactly this and is on; it evidently does not survive the worker's egress
+(the venue stayed red across every bucket in the window). Same remedy as
+artmuseum.pl's case 2b: bundle the intermediate so the path closes offline with
+no per-handshake network fetch.
+
+**The evidence, reproducible in two commands:**
+
+```
+openssl verify -CAfile certs/certum-trusted-root-ca.pem ec1-leaf.pem
+  → error 20: unable to get local issuer certificate
+openssl verify -CAfile certs/certum-trusted-root-ca.pem \
+               -untrusted certum-ov-r39.pem ec1-leaf.pem   → OK
+```
+
+**Test (fail-before / pass-after):** `TlsTrustSpec` — "bundle the Certum OV R39
+intermediate so ec1lodz.pl's leaf-only chain needs no AIA fetch". Before:
+`Certum OV R39 intermediate not bundled`. It pins the intermediate's published
+SHA-256 (`F54CE21E…9C4C`) and asserts `intermediate.verify(root.getPublicKey)`,
+i.e. that the bundled pair really is a complete offline path — the same shape the
+home.pl case already uses. `sbt testUnit` green (7 + 979 + 2986 + 553 + 49).
+No snapshot layer moves: a trust bundle changes no scraper output.
+
+### Kino Warszawa (Przeworsk) — `unfixable: upstream certificate expired` (and dormant anyway)
+
+The other red, and the mirror image of EC1 — **nothing on our side can fix it.**
+`*.przeworsk.um.gov.pl` expired **2026-08-20 00:00 UTC**, which is exactly when
+the bar turned red. Per the standing rule the first probe was plain `http://`:
+port 80 is **not served** (Zyte returns 476, local curl times out), so the
+scheme flip that recovered Kozienice and Wybrzeże is not available here.
+
+Fetched anyway through Zyte to see what is behind the wall: 200, 27,064 bytes,
+**0 `movies-movie__single`** — byte-for-byte the same empty shell it has served
+since 08-12. So the venue was film-dormant before the cert died and still is.
+No action: not worth disabling verification for one host (and per the standing
+rule, no per-host special-casing), and the fix is the town hall renewing.
+Expect it back as a white bar.
+
+### The 13 white venues — all re-probed live, all genuinely empty
+
+| Venue | Client / URL | What the source shows |
+|---|---|---|
+| ADA Kino Studyjne | `BiletynaClient` `www.biletyna.pl/Warszawa/ADA-Kino-Studyjne` | **0** events of any `@type` (Place/PostalAddress/Geo only); renders "Brak wydarzeń" |
+| Kino PDK | `biletyna.pl/Pyrzyce/Pyrzycki-Dom-Kultury` | 0 `ScreeningEvent`; 1 `TheaterEvent` + 1 `ComedyEvent` |
+| Kino MDK | `Bilety24OrganizerClient` `…/miejski-dom-kultury-w-radomsku-1546` | **0** `Film:` (23 Koncert, 6 Spektakl, 4 Wydarzenie, 1 Wystawa) |
+| Kino nad Wartą | `…/koninskie-centrum-kultury-1626` | **0** `Film:` (26 Koncert, 5 Spektakl, …) |
+| Kino Wisła Brzeszcze | `…/osrodek-kultury-w-brzeszczach-1539` | **0** `Film:` (23 Koncert, 4 Spektakl, …) |
+| Piast | `…/ostrzeszowskie-centrum-kultury-601` | **0** `Film:` (28 Koncert, 5 Spektakl, …) |
+| Kino CK Lublin | `Bilety24Client` `ck-lublin.bilety24.pl/repertuar/` | 15 events, **all 15 fetched**: 11 Koncert, 2 Wydarzenie, 1 Widowisko, 1 Spektakl — **0 Film** |
+| Kino Kuźnica | `SystemBiletowyClient` `shd.systembiletowy.pl` | events wrapper empty, `#repertoire-no-events` showing; 184 calendar days Aug 2026–Jan 2027 all "brak terminów" |
+| Patria | `kinopatria.com/repertuar/` | 7 day tabs (20–26 Aug), **0/7** populated `data-movie`; "Brak filmu" |
+| Studio (Opole) | `mdk.opole.pl` two-slug fallback | break slug carries "…nasze kino jest nieczynne… Startujemy już 3 września" |
+| Kino Chatka Żaka | `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | `header-light` = 0, `box-row` = 0; "Brak wydarzeń" |
+| Kino Zachęta | Filmweb 2405 | literal `[]` (2 bytes) for all 7 dates 08-21…08-27; `/info` still names it Kino Zachęta, Kleczew |
+| DKF Politechnika | Filmweb 1645 | literal `[]` for all 7 dates; `/info` still names it, Wrocław |
+
+Every one of the 13 is `intentionally-dormant`, re-confirmed live this run. Two
+notes for the next run, both **not** action items today:
+
+- **biletyna.pl now Cloudflare-challenges a residential IP too** (403 on the
+  "Just a moment…" page), not just datacenter egress. Probing ADA and PDK needed
+  the Zyte route the scraper itself uses (`bnFetch`); ADA additionally needed
+  `browserHtml` — the plain `httpResponseBody` fetch came back "Website Ban".
+  If a future run reports these two as empty from a bare `curl`, that is a
+  blocked probe, not a dormant venue.
+- **Studio (Opole) is one week from its own deadline.** The in-season
+  `kino-studio.html` slug is still a soft-404 (200, `view_templates-404`, 0
+  `div.ckeditor`) and the homepage still links "Kino STUDIO" to
+  `kino-studio-przerwa.html`. The notice says 3 September. The **next run falls
+  after that date**: check whether the repertoire comes back on
+  `kino-studio.html` or whether they keep a new slug — if the latter,
+  `KinoStudioClient.RepertoireUrl` needs updating and its fixture re-recording.
+
 ## 2026-08-15
 
 **PL: 20 white, 0 red**, out of 322 non-enrichment services, newest bucket
