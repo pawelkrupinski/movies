@@ -42,7 +42,10 @@ class EnrichmentPipelineSpec extends AnyFlatSpec with Matchers {
     title: String, year: Option[Int]
   ): Option[MovieRecord] =
     for {
-      hit    <- tmdb.search(title, year)
+      // `searchUnique`, because that is what production resolves through — this spec
+      // exists to catch drift between the real wiring and what we believe it does, and
+      // it was calling a `search` entry point no production path has ever reached.
+      hit    <- tmdb.searchUnique(title, year)
       imdbId <- tmdb.imdbId(hit.id)
     } yield {
       val fw          = scala.util.Try(filmweb.lookup(title, year)).toOption.flatten

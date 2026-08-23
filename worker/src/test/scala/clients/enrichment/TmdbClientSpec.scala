@@ -85,201 +85,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     new TmdbClient(http = fake, apiKey = Some("fake"))
   }
 
-  "search" should "prefer an exact-title match over the closer-by-year sequel (Top Gun regression)" in {
-    val noYear =
-      """{"results":[
-        |  {"id":361743,"title":"Top Gun: Maverick","original_title":"Top Gun: Maverick",
-        |   "release_date":"2022-05-21","popularity":600.0},
-        |  {"id":744,"title":"Top Gun","original_title":"Top Gun",
-        |   "release_date":"1986-05-16","popularity":120.0},
-        |  {"id":243655,"title":"Top Gun","original_title":"Top Gun",
-        |   "release_date":"1955-12-01","popularity":2.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map(
-      "&year=2026"  -> """{"results":[]}""",  // year-restricted: nothing in 2026
-      "query=Top"   -> noYear                  // no-year fallback hits this
-    ))
-    // 1986 "Top Gun" (id 744) beats 2022 "Maverick" because the title matches
-    // exactly. Among the two exact-title matches (1986 and 1955), 1986 wins
-    // on year-distance to 2026.
-    client.search("Top Gun", Some(2026)).map(_.id) shouldBe Some(744)
-  }
-
-  // Precision guard: a year-LESS retry must NOT accept a bare fuzzy hit. The cinema
-  // reported year 2026 (a re-release year TMDB doesn't index), so the year-scoped
-  // search is empty and we retry year-less. Neither candidate is an exact title
-  // match and no director is reported, so there is nothing corroborating either —
-  // the search must REFUSE rather than guess by year-distance/popularity. (Before
-  // the corroboration gate this returned the year-closest hit, id 10.)
-  it should "refuse an uncorroborated fuzzy hit in the year-less retry (no exact title, no director)" in {
-    val noYear =
-      """{"results":[
-        |  {"id":10,"title":"Some Other Title","original_title":"Foreign Original",
-        |   "release_date":"2025-01-01","popularity":50.0},
-        |  {"id":11,"title":"Foo po polsku","original_title":"Foo Origins",
-        |   "release_date":"1990-01-01","popularity":10.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map(
-      "&year=2026" -> """{"results":[]}""",
-      "query=Foo"  -> noYear
-    ))
-    client.search("Foo", Some(2026)) shouldBe None
-  }
-
-  it should "recover a wrong-corpus-year film via the year-less retry when the reported director corroborates a hit" in {
-    // Same shape as the guard above, but now the cinema reports a director. The
-    // year-distance pick (id 10, closest to 2026) has a different director; the
-    // REAL film (id 11, 1990) is non-exact but its credited director matches — so
-    // the director-overlap corroboration flips the resolution to id 11. Before the
-    // change the year-less retry blindly took the year-closest id 10.
-    val noYear =
-      """{"results":[
-        |  {"id":10,"title":"Some Other Title","original_title":"Foreign Original",
-        |   "release_date":"2025-01-01","popularity":50.0},
-        |  {"id":11,"title":"Foo po polsku","original_title":"Foo Origins",
-        |   "release_date":"1990-01-01","popularity":10.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map(
-      "&year=2026"          -> """{"results":[]}""",
-      "query=Foo"           -> noYear,
-      "/movie/10/credits"   -> """{"crew":[{"job":"Director","name":"Inny Reżyser"}],"cast":[]}""",
-      "/movie/11/credits"   -> """{"crew":[{"job":"Director","name":"Jane Director"}],"cast":[]}"""
-    ))
-    client.search("Foo", Some(2026), director = Some("Jane Director")).map(_.id) shouldBe Some(11)
-  }
-
-  it should "recover an em-dash decorated title via a dash-normalized query variant" in {
-    // The cinema reports an em-dash ("—"); TMDB indexes the film under a plain
-    // hyphen. TMDB's search tokeniser treats the two as different strings, so the
-    // verbatim em-dash query returns nothing — the dash-normalized variant query
-    // ("Mission - Impossible") is what finds (and exact-matches) the film.
-    val hyphenHit =
-      """{"results":[
-        |  {"id":777,"title":"Mission - Impossible","original_title":"Mission - Impossible",
-        |   "release_date":"2024-01-01","popularity":50.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map(
-      "%E2%80%94"            -> """{"results":[]}""",  // any query carrying the em-dash → empty
-      "Mission+-+Impossible" -> hyphenHit              // dash-normalized variant → the film
-    ))
-    client.search("Mission — Impossible", None).map(_.id) shouldBe Some(777)
-  }
-
-  it should "recover a banner-decorated title by stripping the pipe banner and trailing parenthetical" in {
-    // "POKAZ SPECJALNY | Wymazać (2024)" — the verbatim decorated query finds
-    // nothing; stripping the festival banner (left of the pipe) and the trailing
-    // year parenthetical yields the bare title "Wymazać", which exact-matches.
-    val cleanHit =
-      """{"results":[
-        |  {"id":888,"title":"Wymazać","original_title":"Wymazać",
-        |   "release_date":"2024-05-01","popularity":10.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map(
-      "query=POKAZ"   -> """{"results":[]}""",  // any banner-led query → nothing
-      "query=Wymaza"  -> cleanHit               // stripped bare-title variant → the film
-    ))
-    client.search("POKAZ SPECJALNY | Wymazać (2024)", None).map(_.id) shouldBe Some(888)
-  }
-
-  it should "match on original_title when the Polish title differs from the query" in {
-    val noYear =
-      """{"results":[
-        |  {"id":361743,"title":"Top Gun: Maverick","original_title":"Top Gun: Maverick",
-        |   "release_date":"2022-05-21","popularity":600.0},
-        |  {"id":744,"title":"Top Gun po polsku","original_title":"Top Gun",
-        |   "release_date":"1986-05-16","popularity":120.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map(
-      "&year=2026" -> """{"results":[]}""",
-      "query=Top"  -> noYear
-    ))
-    // Polish title differs but original_title is the exact query → still wins.
-    client.search("Top Gun", Some(2026)).map(_.id) shouldBe Some(744)
-  }
-
-  // Regression: year=None previously bypassed the exact-title preference and
-  // just took the most popular result. "Camper" picked "Sleepaway Camper",
-  // "Odlot" picked Pixar's "Up", etc.
-
-  it should "prefer an exact title match over a more popular partial match when year is None" in {
-    val noYear =
-      """{"results":[
-        |  {"id":1053705,"title":"Sleepaway Camper","original_title":"Sleepaway Camper",
-        |   "release_date":"2008-01-01","popularity":0.3},
-        |  {"id":1192319,"title":"Camper","original_title":"Camper",
-        |   "release_date":"2025-12-12","popularity":0.2}
-        |]}""".stripMargin
-    val client = fakeClient(Map("query=Camper" -> noYear))
-    // "Camper" matches id=1192319 exactly. Without the fix, Sleepaway Camper
-    // (higher popularity) would have won.
-    client.search("Camper", None).map(_.id) shouldBe Some(1192319)
-  }
-
-  it should "never resolve to a dateless stub/featurette over the dated film (Brzezina / 874482 regression)" in {
-    // 874482 "Brzezina - Andrzej Wajda o filmie" is a dateless companion entry
-    // (no release_date, 0 runtime, no director). Under the OLD un-stripped search
-    // the decorated cinema title queried its OWN full text, which exact-matched
-    // the stub — so it stuck as a SECOND resolved id under "Brzezina" and tripped
-    // clusterByFilm's ambiguity-refuse, leaving the real film's decorated editions
-    // un-folded. A dateless stub must never beat the dated film.
-    val results =
-      """{"results":[
-        |  {"id":42539,"title":"Brzezina","original_title":"Brzezina",
-        |   "release_date":"1970-11-10","popularity":0.40},
-        |  {"id":874482,"title":"Brzezina - Andrzej Wajda o filmie",
-        |   "original_title":"Brzezina - Andrzej Wajda o filmie","popularity":0.03}
-        |]}""".stripMargin
-    val client = fakeClient(Map("query=Brzezina" -> results))
-    // the exact-match of the decorated title (the stub) must lose to the dated film
-    client.search("Brzezina - Andrzej Wajda o filmie", None).map(_.id) shouldBe Some(42539)
-    // and the clean query is unaffected
-    client.search("Brzezina", None).map(_.id) shouldBe Some(42539)
-  }
-
-  it should "prefer an exact title match over a far-more-popular partial match (Odlot vs Up)" in {
-    val noYear =
-      """{"results":[
-        |  {"id":14160,"title":"Odlot","original_title":"Up",
-        |   "release_date":"2009-05-13","popularity":20.9},
-        |  {"id":1355269,"title":"Odlot","original_title":"Odlot",
-        |   "release_date":"2007-01-01","popularity":0.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map("query=Odlot" -> noYear))
-    // Both Polish titles match exactly. Among equally-exact hits, year-distance
-    // is undefined (no year given), so insertion order (popularity-desc) breaks
-    // the tie → Pixar's "Up" wins by popularity. Still correct as both rows
-    // are technically exact matches — what matters is that we *try* the exact
-    // filter; the year-distance preference works when the cinema provides a
-    // year (next test).
-    val pick = client.search("Odlot", None)
-    pick should not be empty
-    Set(14160, 1355269) should contain (pick.get.id)
-  }
-
-  it should "use year-distance to disambiguate among multiple exact title matches" in {
-    val noYear =
-      """{"results":[
-        |  {"id":14160,"title":"Odlot","original_title":"Up",
-        |   "release_date":"2009-05-13","popularity":20.9},
-        |  {"id":1355269,"title":"Odlot","original_title":"Odlot",
-        |   "release_date":"2007-01-01","popularity":0.0}
-        |]}""".stripMargin
-    val client = fakeClient(Map(
-      "&year=2007"  -> """{"results":[]}""",
-      "query=Odlot" -> noYear
-    ))
-    // Both exact matches; closest to year=2007 wins.
-    client.search("Odlot", Some(2007)).map(_.id) shouldBe Some(1355269)
-  }
-
-  // ── findByImdbId / /find/{external_id} parsing ────────────────────────────
-  //
-  // Reverse-look up a TMDB record by IMDb id. Same response shape as
-  // /search/movie except the array key is "movie_results". Used today by
-  // sister-row reconstruction paths and by scripts that have an IMDb id in
-  // hand and need TMDB's canonical metadata.
-
-  it should "parse a TMDB /find response into a SearchResult (Girl Climber)" in {
+  "findByImdbId" should "parse a TMDB /find response into a SearchResult (Girl Climber)" in {
     val findBody =
       """{
         |  "movie_results":[
@@ -398,29 +204,6 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     val client = fakeClient(Map("/movie/1?language=pl-PL" -> body))
     client.fullDetails(1).get.genres shouldBe empty
   }
-
-  it should "apply exact-title preference inside a year-restricted result set too" in {
-    // Year-restricted (year=2025) returns BOTH the real "Camper" and a
-    // partial-title hit. Previously we just took the first by popularity
-    // (the partial). Now exact-match wins regardless of popularity.
-    val yearScoped =
-      """{"results":[
-        |  {"id":9999,"title":"The Happy Camper","original_title":"The Happy Camper",
-        |   "release_date":"2025-06-01","popularity":1.5},
-        |  {"id":1192319,"title":"Camper","original_title":"Camper",
-        |   "release_date":"2025-12-12","popularity":0.2}
-        |]}""".stripMargin
-    val client = fakeClient(Map("query=Camper" -> yearScoped))
-    client.search("Camper", Some(2025)).map(_.id) shouldBe Some(1192319)
-  }
-
-  // ── directorsFor: original_name for native-script directors ──────────────
-  //
-  // Regression for "Tom i Jerry: Przygoda w muzeum" (tmdbId=1497970):
-  // Multikino reports director "张钢" (Chinese), TMDB stores name="Gang Zhang".
-  // Without original_name in the set, verifyByDirector always fails (no
-  // substring match between "gangzhang" and "张钢") → re-resolve fires every
-  // scrape cycle → CPU steal + rating cascade on every tick.
 
   "directorsFor" should "include original_name so a native-script director name matches" in {
     val creditsBody =
@@ -592,22 +375,6 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     "Dokument o matczynej niedźwiedzicy, która w Tatrach prowadzi swoje młode " +
       "przez pierwszy rok życia, ucząc je przetrwania w dzikich górach."
 
-  "search" should "fall to popularity among same-year exact-title hits without a reference synopsis (regression guard)" in {
-    val client = fakeClient(Map("&year=2026" -> niedzwiedzicaSameYear))
-    client.search("Niedźwiedzica", Some(2026)).map(_.id) shouldBe Some(100)
-  }
-
-  it should "break a same-year exact-title tie toward the synopsis-matching hit when a reference is given" in {
-    val client = fakeClient(Map("&year=2026" -> niedzwiedzicaSameYear))
-    client.search("Niedźwiedzica", Some(2026), Some(bearDocCinemaBlurb)).map(_.id) shouldBe Some(200)
-  }
-
-  it should "keep the legacy pick when the reference synopsis matches neither candidate" in {
-    val client = fakeClient(Map("&year=2026" -> niedzwiedzicaSameYear))
-    val unrelated = "Komedia o grupie przyjaciół otwierających food truck nad morzem."
-    client.search("Niedźwiedzica", Some(2026), Some(unrelated)).map(_.id) shouldBe Some(100)
-  }
-
   "parseSearchResults" should "carry the Polish overview onto each SearchResult" in {
     val json =
       """{"results":[
@@ -646,14 +413,5 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   it should "preserve diacritics — punctuation-blind is not diacritic-blind" in {
     TmdbClient.isExactTitleMatch(
       TmdbClient.SearchResult(1, "Pokłosie", Some("Aftermath"), Some(2012), 1.0), "Poklosie") shouldBe false
-  }
-
-  "pickBest" should "select the trailing-period 2026 film over the period-clean 2022 same-title film for year 2026" in {
-    // Mixed-era result set, query "Zaproszenie", year 2026. Before the
-    // punctuation fix, "Zaproszenie." was dropped from the exact-match set and
-    // the closest-year period-clean exact match (the 2022 horror) won. Now the
-    // 2026 film is an exact match at year-distance 0 and wins.
-    val results = Seq(Zaproszenie1986, Invitation2016, Invitation2022, Invite2026)
-    client.pickBest(results, "Zaproszenie", Some(2026)).map(_.id) shouldBe Some(950028)
   }
 }

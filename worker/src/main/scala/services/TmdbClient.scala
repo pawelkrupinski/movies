@@ -1,7 +1,7 @@
 package clients
 
 import play.api.libs.json._
-import tools.{Env, HttpFetch, HttpStatusException, RetryWithBackoff, SynopsisSimilarity}
+import tools.{Env, HttpFetch, HttpStatusException, RetryWithBackoff}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -81,98 +81,14 @@ class TmdbClient(
     RetryWithBackoff("TMDB GET", maxAttempts = 3, initialBackoff = 300.millis,
       retryOn = TmdbClient.isTransient)(http.get(url, auth))
 
-  /**
-   * Resolve a Polish title (+ optional year) to its best-match TMDB record.
-   * First tries a year-restricted search; if that's empty (common — the year a
-   * cinema reports as "release year" can be the production year while TMDB
-   * stores the theatrical date, off by 1 in either direction), falls back to a
-   * year-less search and picks the candidate whose own year is closest to the
-   * requested one. Ties broken by popularity.
-   */
+  /** One TMDB title search, popularity-ordered by [[parseSearchResults]]. Scoped to a
+   *  year when one is given — the year a cinema reports can be the production year while
+   *  TMDB stores the theatrical date, so the two forms return materially different result
+   *  sets and the two callers choose deliberately between them. */
   private def searchOnce(title: String, yearParameter: Option[Int], auth: Map[String, String]): Seq[TmdbClient.SearchResult] = {
     val yp = yearParameter.map(y => s"&year=$y&primary_release_year=$y").getOrElse("")
     val url = s"$ApiBase/search/movie?language=$languageTag&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
     parseSearchResults(httpGet(url, auth))
-  }
-
-  def search(
-    title:             String,
-    year:              Option[Int],
-    referenceSynopsis: Option[String] = None,
-    // Cinema-reported director(s), comma-separated. When present it corroborates a
-    // NON-exact year-less / banner-stripped hit (see `corroboratedYearless`); when
-    // absent only an exact-title hit survives those riskier tiers. Optional with a
-    // default so existing callers compile unchanged.
-    director:          Option[String] = None
-  ): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
-    // Tier 1 — year-restricted. Most precise: TMDB only returns films of that
-    // year, so a non-exact pickBest hit there is same-year and safe. Unchanged.
-    //   - "Camper" (year=None) → would otherwise pick "Sleepaway Camper"
-    //   - "Odlot"  (year=None) → would otherwise pick Pixar's "Up" (pop 21)
-    val yearScoped = if (year.isDefined) pickBest(searchOnce(title, year, auth), title, year, referenceSynopsis) else None
-
-    // Tier 2 — year-less retry on the RAW title. Broader than Tier 1 (the cinema's
-    // "year" can be a re-release/production year TMDB doesn't index), so it accepts
-    // ONLY a corroborated candidate: an exact-title match, or — when a director is
-    // reported — a hit whose TMDB credits overlap it. A bare fuzzy/year-distance hit
-    // is REFUSED here (that's the "Zaproszenie / Sleepaway Camper" mis-resolve).
-    def yearlessRaw = corroboratedYearless(title, year, referenceSynopsis, director, auth)
-
-    // Tier 3 — banner-stripped / dash-normalised query VARIANTS, for decorated
-    // exhibitor titles the raw query can't find ("POKAZ | Film (2024)", an em-dash
-    // where TMDB indexes a hyphen). Each variant is tried year-restricted (exact
-    // only) then year-less (corroborated), with the same precision gate as Tier 2.
-    def variantRecovery = TmdbClient.bannerStrippedVariants(title).iterator.flatMap { variant =>
-      val vScoped =
-        if (year.isDefined)
-          pickBest(searchOnce(variant, year, auth), variant, year, referenceSynopsis)
-            .filter(TmdbClient.isExactTitleMatch(_, variant))
-        else None
-      vScoped.orElse(corroboratedYearless(variant, year, referenceSynopsis, director, auth))
-    }.nextOption()
-
-    yearScoped.orElse(yearlessRaw).orElse(variantRecovery)
-  }
-
-  /** Year-less search for `query` accepting ONLY a corroborated candidate:
-   *    1. pickBest's choice when it's an exact-title match (keeps the exact +
-   *       year-distance semantics — e.g. "Odlot" → the year-closest "Odlot");
-   *    2. otherwise, when the result set has exactly ONE dated film, that singleton
-   *       (the `searchUnique` precedent — an unambiguous lone hit is safe even when
-   *       the verbatim title differs, e.g. a decorated cinema query whose only dated
-   *       result is the real film, the dateless companion stub having been dropped);
-   *    3. otherwise, when the row reports a director, the first hit whose TMDB
-   *       credits overlap it.
-   *  Returns None on a bare fuzzy hit picked from SEVERAL candidates by
-   *  year-distance/popularity — the precision gate the year-less tier needs because
-   *  it isn't scoped to a year (the "pick the year-closest of two unrelated films"
-   *  mis-resolve). */
-  private def corroboratedYearless(
-    query:             String,
-    year:              Option[Int],
-    referenceSynopsis: Option[String],
-    director:          Option[String],
-    auth:              Map[String, String]
-  ): Option[TmdbClient.SearchResult] = {
-    val results       = searchOnce(query, None, auth)
-    val onlyOneDated  = results.count(_.releaseYear.isDefined) == 1
-    pickBest(results, query, year, referenceSynopsis)
-      .filter(b => TmdbClient.isExactTitleMatch(b, query) || onlyOneDated)
-      .orElse(directorOverlapHit(results, director))
-  }
-
-  /** First result whose TMDB credits overlap the cinema-reported director(s).
-   *  None (and no HTTP) when no director is reported — so production rows that
-   *  don't pass a director, and the precision-guard path, never accept a fuzzy
-   *  hit here. `directorsFor` is failure-tolerant (missing credits → empty set →
-   *  no match), so an unresolvable candidate is simply skipped. */
-  private def directorOverlapHit(
-    results:  Seq[TmdbClient.SearchResult],
-    director: Option[String]
-  ): Option[TmdbClient.SearchResult] = {
-    val cinemaNames = director.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
-    if (cinemaNames.isEmpty) None
-    else results.find(r => TmdbClient.directorNamesOverlap(cinemaNames, directorsFor(r.id)))
   }
 
   /** Resolve ONLY when the title search is unambiguous — exactly one result.
@@ -203,61 +119,6 @@ class TmdbClient(
     else authHeader.flatMap { auth =>
       searchOnce(title, year, auth).filter(TmdbClient.isExactTitleMatch(_, title)).headOption
     }
-
-  /**
-   * From a set of TMDB hits, pick the best match for the query.
-   *   1. Exact title matches (Polish OR original) win over everything else.
-   *   2. Among exact matches (or when none exist), prefer the result closest
-   *      to the requested year.
-   *   3. When several survivors TIE at that closest year-distance and the caller
-   *      supplied `referenceSynopsis` (the row's cinema-published Polish blurb),
-   *      the candidate whose TMDB `overview` is the confident closest match to it
-   *      wins — a content signal title+year can't provide (same-title films of
-   *      the same year). Falls back to the popularity order when no candidate is
-   *      a confident winner (see `SynopsisSimilarity.confidentTieBreak`), so the
-   *      behaviour is byte-identical to before whenever the synopsis is absent,
-   *      ambiguous, or weak.
-   *   4. With no year and no tie-break needed, the parseSearchResults
-   *      insertion order (popularity-descending) wins.
-   */
-  private[clients] def pickBest(
-    results:           Seq[TmdbClient.SearchResult],
-    title:             String,
-    year:              Option[Int],
-    referenceSynopsis: Option[String] = None
-  ): Option[TmdbClient.SearchResult] = {
-    // A TMDB entry with NO release date is a stub/placeholder — a making-of, a
-    // featurette, an unreleased shell — never the theatrical film a cinema is
-    // actually screening. 874482 "Brzezina - Andrzej Wajda o filmie" is exactly
-    // this: a dateless, runtime-0, director-less companion entry that exact-matched
-    // a decorated cinema title under the OLD un-stripped search and stuck as a
-    // SECOND resolved id under "Brzezina", tripping clusterByFilm's ambiguity-refuse
-    // so the real film's decorated editions never folded. Drop dateless entries
-    // whenever a dated candidate exists so a stub can't win the exact-title match;
-    // keep the raw set only when EVERY result is dateless (don't regress an
-    // all-stub query to None).
-    val dated = results.filter(_.releaseYear.isDefined)
-    val pool  = if (dated.nonEmpty) dated else results
-    if (pool.isEmpty) None
-    else {
-      def yearDistance(r: TmdbClient.SearchResult): Int =
-        year.flatMap(y => r.releaseYear.map(ry => math.abs(ry - y))).getOrElse(Int.MaxValue)
-      val exactMatches = pool.filter(r => TmdbClient.isExactTitleMatch(r, title))
-      val candidates = if (exactMatches.nonEmpty) exactMatches else pool
-      // Stable sort keeps the popularity order within an equal year-distance, so
-      // `tied.head` is exactly the legacy winner.
-      val sorted = candidates.sortBy(yearDistance)
-      sorted.headOption.map { top =>
-        val tied = sorted.takeWhile(r => yearDistance(r) == yearDistance(top))
-        if (tied.lengthCompare(1) > 0)
-          referenceSynopsis
-            .flatMap(ref => SynopsisSimilarity.confidentTieBreak(ref, tied.map(_.overview.getOrElse(""))))
-            .map(tied)
-            .getOrElse(top)
-        else top
-      }
-    }
-  }
 
   /** Look up the IMDB id of a TMDB movie. Returns None when TMDB knows the
    *  movie but hasn't been told its IMDB cross-reference yet (rare for theatrical
@@ -616,16 +477,17 @@ object TmdbClient {
     originalTitle: Option[String],
     releaseYear:   Option[Int],
     popularity:    Double,
-    // Deployment-language `overview` from the search row — carried so `pickBest`
-    // can break a same-year same-title tie on synopsis closeness without an extra
-    // HTTP call (`/search/movie?language=<deployment>` already returns it). Empty
-    // for the person-credits decoder, which never feeds the synopsis tie-break.
+    // Deployment-language `overview` from the search row, carried because
+    // `/search/movie?language=<deployment>` already returns it and a caller that wants
+    // to judge synopsis closeness should not pay a second HTTP call for it. Empty for
+    // the person-credits decoder. No resolution path reads it today — the synopsis
+    // tie-break went with `pickBest`.
     overview:      Option[String] = None
   )
 
   /** A TMDB hit whose Polish OR original title matches the query, ignoring case,
-   *  surrounding whitespace AND punctuation — the exactness both
-   *  [[TmdbClient.pickBest]] and [[TmdbClient.searchYearExactTop]] gate on.
+   *  surrounding whitespace AND punctuation — the exactness
+   *  [[TmdbClient.searchYearExactTop]] gates on.
    *
    *  Punctuation-blind because TMDB's Polish title for a film routinely carries a
    *  trailing period (or other punctuation) the exhibitor's title omits: tmdb
@@ -661,37 +523,6 @@ object TmdbClient {
    *  (2024)". Stripped to recover the bare film title. */
   private val TrailingParenthetical =
     java.util.regex.Pattern.compile("\\s*\\([^()]*\\)\\s*$")
-
-  /** Decoration-stripped query variants for a decorated exhibitor title, used by
-   *  `search`'s Tier-3 recovery. Folds dash variants, splits a "Banner | Film"
-   *  pipe into each side, and drops a trailing parenthetical from each piece. The
-   *  raw `title` itself is excluded — Tiers 1/2 already tried it — so an
-   *  undecorated title yields no variants (Tier 3 is a no-op for it). Deliberately
-   *  self-contained: no cross-client title-normalisation import. */
-  private[clients] def bannerStrippedVariants(title: String): Seq[String] = {
-    val dashNormalized = normalizeDashes(title).trim
-    val pieces         = (Seq(dashNormalized) ++ dashNormalized.split("\\|").toSeq)
-      .map(_.trim).filter(_.nonEmpty)
-    pieces
-      .flatMap(p => Seq(p, TrailingParenthetical.matcher(p).replaceAll("").trim))
-      .map(_.trim)
-      .filter(_.nonEmpty)
-      .distinct
-      .filterNot(_ == title)
-  }
-
-  /** Loose director-name overlap between the cinema's reported names and a TMDB
-   *  film's credited directors: punctuation/case-blind, matching when either
-   *  collapsed name contains the other (so "Asgeir Helgestad" ties TMDB's same
-   *  name, and a single cinema name ties one of several co-directors). Self-
-   *  contained — the richer token-set match lives in MovieService and isn't
-   *  imported here. */
-  private[clients] def directorNamesOverlap(cinemaNames: Seq[String], tmdbDirectors: Set[String]): Boolean = {
-    def key(s: String): String = titleMatchKey(s)
-    val cinemaKeys = cinemaNames.map(key).filter(_.nonEmpty)
-    val tmdbKeys   = tmdbDirectors.map(key).filter(_.nonEmpty)
-    cinemaKeys.exists(c => tmdbKeys.exists(t => c.contains(t) || t.contains(c)))
-  }
 
   /** Slim shape returned by `details(tmdbId)` — just the fields the ratings
    *  classes need for MC/RT URL resolution.
