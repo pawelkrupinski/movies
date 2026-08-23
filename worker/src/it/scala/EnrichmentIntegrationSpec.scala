@@ -56,16 +56,32 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   // classic (Wajda) which exercises old-films-with-diacritics matching.
   private val knownFilms = Seq(
     ("Diabeł ubiera się u Prady 2",  Some(2026)),
-    ("Mortal Kombat II",             Some(2025)),
-    ("Mandalorian & Grogu",          Some(2026)),
+    // 2026, not 2025 — TMDB stores the theatrical date (931285, 2026-05-06) and a
+    // year-scoped search for 2025 returns nothing at all. The wrong year survived here
+    // only because `TmdbClient.search`'s year-less retry rescued it, and production has
+    // never resolved through that method; the live path refuses a wrong year outright.
+    ("Mortal Kombat II",             Some(2026)),
+    // The spelling Polish cinemas actually list (and the archive carries), not the
+    // English marketing title: TMDB indexes it as "Gwiezdne wojny: Mandalorian i Grogu",
+    // and a search for "Mandalorian & Grogu" returns the film PLUS a Disney+ featurette,
+    // which the singleton rule refuses — correctly, on a title no exhibitor emits.
+    ("Gwiezdne wojny: Mandalorian i Grogu", Some(2026)),
     ("Wartość sentymentalna",        Some(2025)),
     ("Niewinni czarodzieje",         Some(1960))
   )
 
-  "TmdbClient.search" should "find a TMDB id for each known Polish title" in viaTmdb {
+  /** What production resolves a title through: the strict singleton rule first, then a
+   *  year-scoped search whose top hit matches the title verbatim. `TmdbClient.search`
+   *  used to stand in for this here, but no production path has ever called it — and a
+   *  LIVE spec asserting that real Polish titles resolve is worth nothing if it resolves
+   *  them by a route the worker cannot take. Mirrors `MovieService.resolveTmdbId`. */
+  private def resolve(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] =
+    tmdb.searchUnique(title, year).orElse(tmdb.searchYearExactTop(title, year))
+
+  "TMDB resolution" should "find a TMDB id for each known Polish title" in viaTmdb {
     knownFilms.foreach { case (title, year) =>
       withClue(s"$title (${year.getOrElse("?")}): ") {
-        val hit = tmdb.search(title, year)
+        val hit = resolve(title, year)
         hit       should not be empty
         info(s"  TMDB id for $title = ${hit.get.id}")
       }
@@ -75,7 +91,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   "TmdbClient.imdbId" should "follow a TMDB id to a valid IMDb id" in viaTmdb {
     knownFilms.foreach { case (title, year) =>
       withClue(s"$title (${year.getOrElse("?")}): ") {
-        val imdbId = tmdb.search(title, year).map(_.id).flatMap(tmdb.imdbId)
+        val imdbId = resolve(title, year).map(_.id).flatMap(tmdb.imdbId)
         imdbId                       should not be empty
         imdbId.get                   should startWith ("tt")
         info(s"  IMDb id for $title = ${imdbId.get}")
@@ -88,7 +104,7 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
     var found = 0
     knownFilms.foreach { case (title, year) =>
       val result = for {
-        hit    <- tmdb.search(title, year)
+        hit    <- resolve(title, year)
         imdbId <- tmdb.imdbId(hit.id)
       } yield (hit, imdbId, imdb.lookup(imdbId))
 
@@ -107,6 +123,6 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   "Title normalisation" should "let TMDB find a film whose Polish title we lowercased" in viaTmdb {
     // Just sanity-checks that TMDB itself is forgiving of case — our normaliser
     // is for de-duplicating cache keys, not for sanitising the search query.
-    tmdb.search("diabeł ubiera się u prady 2", Some(2026)) should not be empty
+    resolve("diabeł ubiera się u prady 2", Some(2026)) should not be empty
   }
 }
