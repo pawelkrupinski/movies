@@ -11,8 +11,8 @@ import org.scalatest.matchers.should.Matchers
 import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
-import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusFixture, CountryScrapeCorpus, EnrichmentCache,
-  EnrichmentFreshness, Env, FileEnrichmentCacheStore, ProdCoverageBaseline,
+import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CountryScrapeCorpus,
+  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, ProdCoverageBaseline,
   SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -392,29 +392,17 @@ abstract class CountryConvergenceBehaviour(
   private def recordSnapshot(w: ArchiveReplayWiring): Seq[StoredMovieRecord] =
     w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
 
+  /** The WHOLE corpus's enrichment, counted per source — the ladder, over every film
+   *  the replay built. Unlike the band below this is not compared against anything, so
+   *  it stays over all records: a film the archive still carries and prod no longer
+   *  screens is exactly as informative about whether a resolver is answering. */
   private def enrichmentCoverage(w: ArchiveReplayWiring): String = {
     val records = w.movieRepository.findAll().map(_.record)
-    def count(predicate: MovieRecord => Boolean): Int = records.count(predicate)
-    s"${records.size} films — tmdbId ${count(_.tmdbId.isDefined)}, tmdbNoMatch ${count(_.tmdbNoMatch)}, " +
-    s"imdbId ${count(_.imdbId.isDefined)}, imdbRating ${count(_.imdbRating.isDefined)}, " +
-    s"filmwebRating ${count(_.filmwebRating.isDefined)}, metascore ${count(_.metascore.isDefined)}, " +
-    s"rottenTomatoes ${count(_.rottenTomatoes.isDefined)}"
-  }
-
-  /** This run's coverage in the shape production's was recorded in, so the two can
-   *  be compared field by field. */
-  private def coverageOf(w: ArchiveReplayWiring): ProdCoverageBaseline = {
-    val records = w.movieRepository.findAll().map(_.record)
-    def count(predicate: MovieRecord => Boolean): Int = records.count(predicate)
-    ProdCoverageBaseline(
-      recordedAt     = Instant.EPOCH,   // unused on this side; the comparison is field-wise
-      films          = records.size,
-      tmdbId         = count(_.tmdbId.isDefined),
-      imdbId         = count(_.imdbId.isDefined),
-      imdbRating     = count(_.imdbRating.isDefined),
-      filmwebRating  = count(_.filmwebRating.isDefined),
-      metascore      = count(_.metascore.isDefined),
-      rottenTomatoes = count(_.rottenTomatoes.isDefined))
+    val counts  = CorpusCoverage.of(records)
+    s"${counts.films} films — tmdbId ${counts.tmdbId}, tmdbNoMatch ${records.count(_.tmdbNoMatch)}, " +
+    s"imdbId ${counts.imdbId}, imdbRating ${counts.imdbRating}, " +
+    s"filmwebRating ${counts.filmwebRating}, metascore ${counts.metascore}, " +
+    s"rottenTomatoes ${counts.rottenTomatoes}"
   }
 
   /** How far this run may sit from production on any one axis before it is a
@@ -1045,7 +1033,21 @@ abstract class CountryConvergenceBehaviour(
            s"imdbRating ${baseline.imdbRating}, filmwebRating ${baseline.filmwebRating}, " +
            s"metascore ${baseline.metascore}, rottenTomatoes ${baseline.rottenTomatoes}")
 
-      val mine = coverageOf(w)
+      // Counted over the films a cinema was still SCREENING when the baseline was
+      // captured — the same restriction `ProdCoverage` applies on the other side, and
+      // for the mirror-image reason. Prod keeps a film's row after its last showtime
+      // passes; the archive keeps a WHITE venue's last content-bearing scrape for as
+      // long as it stays white. Counted whole, the replay was scoring its stale tail
+      // against production's live one: Poland sat 31-40 films above prod on every run
+      // for as long as the band existed, and crossed 5% on 2026-08-23 without anything
+      // in the pipeline moving. See `CorpusCoverage`.
+      val corpus       = w.movieRepository.findAll().map(_.record)
+      val screeningAt  = CorpusCoverage.localise(baseline.recordedAt, country)
+      val mine         = CorpusCoverage.of(CorpusCoverage.screening(corpus, screeningAt))
+      info(s"${country.displayName}: counted over the ${mine.films} film(s) a cinema was still screening at " +
+           s"$screeningAt — ${corpus.size - mine.films} of the corpus's ${corpus.size} had no showtime left " +
+           s"by then, which is the tail production does not count either")
+
       // Printed whether or not it passes. A band that only speaks when it breaks hides
       // an axis drifting TOWARDS the line — Poland's identification sat at 5.0% of a 5%
       // band while the rating axes it feeds were the ones failing.

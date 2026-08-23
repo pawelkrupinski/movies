@@ -28,6 +28,13 @@ import java.nio.file.{Files, Path, Paths}
  * written — so comparing a one-day corpus replay against the full collection reads
  * as a 20% shortfall that is really a back catalogue. Restricted to what is
  * actually screening, the same comparison came out at 741 films against 727.
+ *
+ * BOTH SIDES, and it took a failure to learn the second half. The replay has the
+ * mirror-image tail — `cinema_scrapes` keeps a white venue's last content-bearing
+ * scrape indefinitely, so its long-past showtimes still build films — and counting
+ * those put Poland 31-40 films above production on every run the band ever made,
+ * until it crossed 5% with nothing in the pipeline having moved. The run side is
+ * now restricted the same way; see [[CorpusCoverage]].
  */
 case class ProdCoverageBaseline(
   recordedAt:     java.time.Instant,

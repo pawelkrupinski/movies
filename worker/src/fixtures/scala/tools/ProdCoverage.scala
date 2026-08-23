@@ -18,6 +18,11 @@ import scala.concurrent.duration._
  * moment of the read. Without that restriction the comparison is meaningless: prod
  * keeps a film's row after its last showtime passes, so the collection is a running
  * total while the corpus is a single day.
+ *
+ * [[CorpusCoverage]] is the other side of that comparison and applies the same
+ * restriction to the replay, which has a running total of its own. The two must move
+ * together: a change to what counts as screening here that is not made there turns
+ * the band into a measure of the difference between the two definitions.
  */
 object ProdCoverage {
 
