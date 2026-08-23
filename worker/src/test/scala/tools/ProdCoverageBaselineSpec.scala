@@ -1,6 +1,7 @@
 package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 
 /**
@@ -9,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
  * to get wrong and invisible when they are: it compares SHARES rather than counts,
  * and it treats a zero baseline strictly.
  */
-class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
+class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def coverage(films: Int, tmdb: Int = 0, imdb: Int = 0, imdbRating: Int = 0,
                        filmweb: Int = 0, metascore: Int = 0, rt: Int = 0) =
@@ -33,6 +34,64 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers {
     val run  = coverage(films = 110, tmdb = 77)      // +10% films, +10% count, identical 70% rate
 
     ProdCoverageBaseline.divergences(run, prod, Band).filter(_.contains("tmdbId")) shouldBe empty
+  }
+
+  /** IDENTIFICATION is scored against a wider band than the rating axes, because the
+   *  two sides are not measuring the same quantity.
+   *
+   *  Every rating axis is a share of the films THIS run identified, so both sides are
+   *  normalised to their own denominator and a like-for-like 5% holds. `tmdbId` is not:
+   *  it is a share of the corpus, and production's numerator is an id INVENTORY built
+   *  up over months, while the replay re-derives every id from one snapshot under the
+   *  current, deliberately strict rules. Measured 2026-08-23 on the films production
+   *  resolved and the replay did not: 17 of 17 were refused BY DESIGN — a title with
+   *  several same-title TMDB entries and no year to separate them (six films are
+   *  literally called "Zawodowcy"), or a query TMDB answers with nothing at all.
+   *  None was a defect, and prod holds ids today's code cannot re-derive.
+   *
+   *  So the identification axis sits structurally below production and always will.
+   *  10% is the same reasoning that chose 5% for the rest — roughly double the
+   *  observed spread (3.7-5.0% across runs), not a number picked to make a day pass. */
+  it should "judge identification against its own, wider band" in {
+    // 450 of 681 is 66.1% against production's 71.0% — a 6.9% offset, PAST the 5% the
+    // rating axes are held to and inside the identification band. This is the case that
+    // discriminates: under one shared tolerance it is a failure.
+    val prod = coverage(films = 683, tmdb = 485)
+    val run  = coverage(films = 681, tmdb = 450)
+
+    ProdCoverageBaseline.divergences(run, prod, Band) shouldBe empty
+  }
+
+  it should "keep the measured offset comfortably inside that band" in {
+    // The real 2026-08-23 Poland numbers, as an anchor: 4.0% of the band it is judged
+    // against, so a normal run is not sitting on the line the way it was at 5.0%.
+    val prod = coverage(films = 683, tmdb = 485)
+    val run  = coverage(films = 681, tmdb = 464)
+
+    ProdCoverageBaseline.divergences(run, prod, Band) shouldBe empty
+    ProdCoverageBaseline.report(run, prod, Band).find(_.startsWith("tmdbId")).value should not include "NEARING"
+  }
+
+  it should "not extend that licence to the rating axes" in {
+    // The SAME proportional gap on a rating axis is still a finding: those are shares
+    // of each side's own identified films, so there is no inventory effect to excuse.
+    val prod = coverage(films = 683, tmdb = 485, metascore = 253)
+    val run  = coverage(films = 683, tmdb = 485, metascore = 180)   // 37% vs 52% of identified
+
+    val flagged = ProdCoverageBaseline.divergences(run, prod, Band)
+    flagged.map(_.takeWhile(_ != ' ')) should contain ("metascore")
+  }
+
+  // The wider band must still catch what the axis exists to catch. The fallback chain
+  // that broke the rating ladders put Poland 281 films from production on one axis;
+  // a resolver that stopped answering is nothing like a 4% inventory offset.
+  it should "still flag an identification COLLAPSE" in {
+    val prod = coverage(films = 683, tmdb = 485)
+    val run  = coverage(films = 681, tmdb = 204)      // the shape of a broken resolver
+
+    val flagged = ProdCoverageBaseline.divergences(run, prod, Band)
+    flagged should have size 1
+    flagged.head should include ("tmdbId")
   }
 
   it should "flag an axis that resolved a smaller share than production" in {
