@@ -414,14 +414,7 @@ abstract class CountryConvergenceBehaviour(
    *  Measured before it was chosen. On the day the baseline was first recorded every
    *  axis of all three countries sat within ~2.5%, so 5% is a doubling of the observed
    *  spread rather than a number picked to make today pass — which is what keeps this
-   *  a regression detector instead of a snapshot of one afternoon.
-   *
-   *  Applies to every axis EXCEPT identification: `tmdbId` is judged against the wider
-   *  `ProdCoverageBaseline.IdentificationTolerance`, because it is the one axis whose
-   *  two sides measure different quantities — prod's accumulated id inventory against
-   *  what the replay can re-derive from one snapshot. See there for the measurement.
-   *  Both bands are applied inside `ProdCoverageBaseline`, so the report and the
-   *  assertion cannot disagree about which one an axis got. */
+   *  a regression detector instead of a snapshot of one afternoon. */
   private val ProdTolerance = 0.05
 
   /** Whether production is still PROJECTING this country — i.e. whether the
@@ -1024,7 +1017,7 @@ abstract class CountryConvergenceBehaviour(
    * before. A MISSING baseline still fails hard below; only a frozen one cancels.
    */
   s"the ${country.displayName} pipeline's coverage" should
-    "stay within band of what production achieves on the same repertoire" in {
+    "stay within 5% of what production achieves on the same repertoire" in {
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       val (w, _, _) = shared
@@ -1056,10 +1049,8 @@ abstract class CountryConvergenceBehaviour(
            s"by then, which is the tail production does not count either")
 
       // Printed whether or not it passes. A band that only speaks when it breaks hides
-      // an axis drifting TOWARDS the line — Poland's identification sat at 5.0% of the
-      // 5% it was then judged against while the rating axes it feeds were the ones
-      // failing. (That axis now has its own wider band; the NEARING marker is what keeps
-      // the drift visible in a PASSING leg either way.)
+      // an axis drifting TOWARDS the line — Poland's identification sat at 5.0% of a 5%
+      // band while the rating axes it feeds were the ones failing.
       info(s"${country.displayName}: coverage against production —\n  " +
            ProdCoverageBaseline.report(mine, baseline, ProdTolerance).mkString("\n  "))
 
@@ -1074,12 +1065,12 @@ abstract class CountryConvergenceBehaviour(
           s"${country.displayName} is not deployed, so its production baseline is frozen and this band " +
           s"cannot mean anything: prod stopped being projected while the archive kept the scrapes it had " +
           s"not yet folded, so the replay is expected to exceed it (currently ${offBand.size} axis/axes " +
-          s"outside their band). Every other assertion in this leg still ran. " +
+          s"outside ${f"${100 * ProdTolerance}%.0f"}%). Every other assertion in this leg still ran. " +
           s"Restoring the country's webUrl re-arms this one.")
 
       withClue(
-        s"${offBand.size} coverage axis/axes drifted from production by more than their band " +
-        s"allows (each line names its own):\n${offBand.mkString("\n")}\n\n" +
+        s"${offBand.size} coverage axis/axes drifted from production by more than " +
+        f"${100 * ProdTolerance}%.0f%%:\n${offBand.mkString("\n")}\n\n" +
         s"A regression here means this pipeline now identifies or rates less of the corpus than prod does " +
         s"(or MORE — a source prod does not run for this country). If prod itself moved, re-record the " +
         s"corpus and its baseline together.\n") {

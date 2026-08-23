@@ -115,41 +115,6 @@ object ProdCoverageBaseline {
   val NoiseFloorFilms = 15
 
   /**
-   * The band the IDENTIFICATION axis is judged against, wider than the rest, because
-   * `tmdbId` is the one axis where the two sides are not measuring the same quantity.
-   *
-   * Every rating axis is a share of the films THIS run identified — both sides
-   * normalised to their own denominator, so a like-for-like 5% holds. `tmdbId` is a
-   * share of the CORPUS, and there the numerators differ in kind: production's is an id
-   * INVENTORY accumulated over months and retained once earned, while the replay
-   * re-derives every id from a single snapshot under the current, deliberately strict
-   * rules.
-   *
-   * Measured rather than assumed (2026-08-23, Poland). Of the films production had
-   * resolved and the replay had not, 17 of 17 were refused BY DESIGN: a title with
-   * several same-title TMDB entries and no year to separate them — six films are
-   * literally called "Zawodowcy", two "Nienawiść" — or a query TMDB answers with
-   * nothing at all. Not one was a defect, and production holds ids that today's code
-   * on today's data cannot re-derive. So the axis sits structurally below production
-   * and always will; scoring it at 5% measures the age of prod's collection, not the
-   * health of the pipeline, and flaps with repertoire composition (3.7 → 5.0% over four
-   * days as August festival programming grew).
-   *
-   * 10% is the same reasoning that chose 5% for the rest — roughly double the observed
-   * spread, not a number picked to make a day pass — and it keeps every failure this
-   * axis exists to catch. A resolver that stops answering is nothing like a 4% offset:
-   * the fallback chain that broke the rating ladders put Poland 281 films from
-   * production, which is 58% of the axis.
-   */
-  val IdentificationTolerance = 0.10
-
-  /** The band an axis is judged against. ONE definition, consulted by both [[report]]
-   *  and [[divergences]], so the two can never disagree about whether a run passed —
-   *  the same reason [[axes]] exists. */
-  private def toleranceFor(axis: String, base: Double): Double =
-    if (axis == "tmdbId") math.max(base, IdentificationTolerance) else base
-
-  /**
    * Each axis as `(name, run share, prod share, run count, prod count)`.
    *
    * ONE definition of what every axis is measured against, so the band and the report
@@ -189,29 +154,27 @@ object ProdCoverageBaseline {
    */
   def report(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] =
     axes(actual, prod).map { case (name, a, b, mine, theirs) =>
-      val band  = toleranceFor(name, tolerance)
       val off   = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
       val apart = math.abs(mine - theirs)
       val note =
-        if (off > band && apart > NoiseFloorFilms) "OUT"
-        else if (off > band * 0.8 && apart > NoiseFloorFilms) "NEARING"
+        if (off > tolerance && apart > NoiseFloorFilms) "OUT"
+        else if (off > tolerance * 0.8 && apart > NoiseFloorFilms) "NEARING"
         else ""
-      f"$name%-15s run=$mine%5d prod=$theirs%5d — ${100 * off}%5.1f%% of a ${100 * band}%.0f%% band, " +
+      f"$name%-15s run=$mine%5d prod=$theirs%5d — ${100 * off}%5.1f%% of a ${100 * tolerance}%.0f%% band, " +
       f"$apart%3d film(s) apart $note"
     }
 
   def divergences(actual: ProdCoverageBaseline, prod: ProdCoverageBaseline, tolerance: Double): Seq[String] = {
     axes(actual, prod).flatMap { case (name, a, b, mine, theirs) =>
-      val band = toleranceFor(name, tolerance)
-      val off  = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
+      val off = if (b == 0.0) (if (a == 0.0) 0.0 else Double.PositiveInfinity) else math.abs(a - b) / b
       // Outside the relative band AND more than a few films apart. Either alone
       // misfires: the ratio is noise-dominated on a small corpus, and a raw count is
       // meaningless on a large one.
       val filmsApart = math.abs(mine - theirs)
-      Option.when(off > band && filmsApart > NoiseFloorFilms)(
+      Option.when(off > tolerance && filmsApart > NoiseFloorFilms)(
         f"$name%-15s run=$mine%5d (${100 * a}%.1f${if (name == "films") "" else "%"}) " +
         f"prod=$theirs%5d (${100 * b}%.1f${if (name == "films") "" else "%"}) " +
-        f"— off by ${100 * off}%.1f%%, band is ${100 * band}%.0f%%")
+        f"— off by ${100 * off}%.1f%%, band is ${100 * tolerance}%.0f%%")
     }
   }
 }
