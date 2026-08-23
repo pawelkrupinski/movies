@@ -136,6 +136,25 @@ object ExtraTitleRules {
     prog("xtra-pp-klasyka-na-topie",  """(?i)^Klasyka\s+na\s+TOPie(?:\s+na\s+[^:]+)?:\s*""", "'Klasyka na TOPie [na …]:' classics strand"),
     prog("xtra-pp-klasyka-atlantic",  """(?i)^Klasyka\s+w\s+kinie\s+Atlantic:\s*""",      "'Klasyka w kinie Atlantic:' classics strand"),
     prog("xtra-pp-pnkf-prefix",       """(?i)^\d+\.\s*PRZEGLĄD\s+NOWEGO\s+KINA\s+FRANCUSKIEGO:\s*""", "'17. Przegląd Nowego Kina Francuskiego:' festival prefix"),
+    // Twenty-first wave (2026-08-23), from the convergence leg's TMDB-no-match list:
+    // the same numbered-festival shape as the two named rules above, but generic in the
+    // festival's NAME rather than needing one rule per festival. Anchored three ways so
+    // it stays a banner rule and not a blind "strip anything before a colon": a leading
+    // edition ORDINAL, the literal word Festiwal/Festival, and a terminating colon, with
+    // `{{NSEP}}` guarding the name so the match stops at the first hard separator.
+    //
+    // That guard is what keeps a NESTED strand conservative: '12. Przeźrocza Festiwal
+    // Filmowy: Klasyka Gatunku: "Człowiek z żelaza"' loses only the festival banner and
+    // keeps 'Klasyka Gatunku: …', because stripping a second unnamed 'Word: ' prefix is
+    // exactly the dangerous shape the programme-prefix audit warns about.
+    //
+    // Query-only, like every rule here: the festival screening keeps its own display row
+    // and merge key (Kino Orzeł lists these as festival rows and they must stay that
+    // way), and only the external lookup sees the bare film. Verified on TMDB:
+    // '"Zmruż oczy"' → 2003, '"Żywot Mateusza"' → 1968, '"Niespodziewane"' → 2026 —
+    // the wrapping quotes are harmless to the search and are deliberately kept (see the
+    // '"Whiplash"' negative control).
+    prog("xtra-pp-numbered-festival",  """(?iu)^\d+\.\s*{{NSEP}}*Festiwal\s+{{NSEP}}*:\s+""", "'12. Przeźrocza Festiwal Filmowy: <film>' numbered festival-edition prefix, generic in the festival name — sibling of the named 'xtra-pp-pnkf-prefix' / 'xtra-fga-prefix' (Zmruż oczy, Żywot Mateusza, Niespodziewane, Following)"),
     // Third-wave (2026-06-19) audit of the rating-less corpus: audience / club
     // programme banners that prefix the film (own display row, query stripped).
     prog("xtra-pp-bezpieczne-wakacje", """(?i)^Bezpieczne\s+wakacje:\s+""",                "'Bezpieczne wakacje:' kids-summer strand (Fleak, Hitpig, Tom i Jerry, …)"),
@@ -475,6 +494,22 @@ object ExtraTitleRules {
     // 'WSP' banner to 'Wsp:' — a display regression the 3 rows it helped don't
     // justify. An acronym cycle needs a recase carve-out before it can be stripped.)
     searchStrip("xtra-4k-suffix",                   """(?iu)\s+4K\b\s*$""",                               "'<film> (YYYY) 4K' trailing restoration-resolution tag — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323)"),
+    // Twenty-first wave (2026-08-23), from the same TMDB-no-match list. Three decoration
+    // shapes the existing suffix rules just miss:
+    //
+    //  - 'odrestaurowana wersja' with the ADJECTIVE FIRST. The seed 'structural-wersja-suffix'
+    //    and 'xtra-rerelease-suffix' both spell the noun first ('wersja odrestaurowana'), so
+    //    'DKF: Absolwent - odrestaurowana wersja 4K' came out of the fold as 'Absolwent -
+    //    odrestaurowana wersja' (the 4K rule fires first, alphabetically) and TMDB returns
+    //    NOTHING for it, where bare 'Absolwent' is 1967's The Graduate.
+    //  - a parenthesised subtitle/dub tag. `FormatTags` peels these at INGEST, but a title
+    //    that reaches the resolver still carrying one ('Andy Warhol. Amerykański sen (napisy
+    //    Pl)' → TMDB empty; without the tag → the 2023 documentary, exactly) had nothing to
+    //    strip it at the query boundary.
+    //  - '(re-release)'. Purely a re-issue marker; the film is the same film.
+    searchStrip("xtra-restored-adjective-first-suffix", """(?iu)\s*[-–—|.]\s*(?:odrestaurowan\w*|zremasterowan\w*|zrekonstruowan\w*)\s+wersj\w*\s*$""", "'<film> - odrestaurowana wersja [4K]' restoration suffix with the ADJECTIVE first — the mirror of 'xtra-rerelease-suffix', which only spells 'wersja odrestaurowana' (DKF: Absolwent → TMDB 1443)"),
+    searchStrip("xtra-subtitle-paren-tag",             """(?iu)\s*\((?:napisy|dubbing|lektor)(?:\s+\p{L}{2,})?\)\s*$""", "'<film> (napisy PL)' / '(dubbing)' / '(lektor)' parenthesised language tag left on a title that reached the resolver — FormatTags peels these at ingest, this catches the ones that get through (Andy Warhol. Amerykański sen → TMDB 1108437)"),
+    searchStrip("xtra-rerelease-paren-suffix",         """(?iu)\s*\(re[-\s]?release\)\s*$""", "'<film> (re-release)' re-issue marker — the same film (Auta (re-release) → Auta)"),
     searchStrip("xtra-helios-replay-suffix",        """(?iu)\s+w\s+Helios\s+RePlay\s*$""",                "'<film> w Helios RePlay' Helios classics re-release strand suffix (Wejście smoka w Helios RePlay → TMDB 9461)"),
     // Eighteenth-wave (2026-07-09) audit of the TMDB-no-match corpus (prod mirror,
     // 200 rating-less rows). An English-subtitled screening is a DISTINCT version

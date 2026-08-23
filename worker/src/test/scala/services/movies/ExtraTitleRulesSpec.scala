@@ -26,6 +26,11 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Wtorki dla Seniora: Młode matki"                 -> ("Wtorki dla Seniora: ",             "Młode matki"),
     "Filmowy Klub Seniora i Seniorki: OJCZYZNA"       -> ("Filmowy Klub Seniora i Seniorki: ", "OJCZYZNA"),
     "DKF Kropka: Riefenstahl"                         -> ("DKF Kropka: ",                     "Riefenstahl"),
+    // Numbered festival edition, generic in the festival's NAME. The banner is the
+    // whole '12. <name> Festiwal <words>: ' run; the quoted film survives it (a
+    // fully-quoted title is deliberately left quoted — TMDB answers it fine).
+    "12. Przeźrocza Festiwal Filmowy: \"Zmruż oczy\"" -> ("12. Przeźrocza Festiwal Filmowy: ", "\"Zmruż oczy\""),
+    "12. Przeźrocza Festiwal Filmowy: \"Żywot Mateusza\"" -> ("12. Przeźrocza Festiwal Filmowy: ", "\"Żywot Mateusza\""),
     "DKF Człowiek w Zagrożeniu: Pociągi"              -> ("DKF Człowiek w Zagrożeniu: ",      "Pociągi"),
     "Klub Filmowy Urania: Młode matki"               -> ("Klub Filmowy Urania: ",            "Młode matki"),
     // Polish summer/holiday and family cycles found unresolved in the real PL corpus:
@@ -365,7 +370,16 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland → 1437696).
     "Sakr w Canaria - english subtitles"                   -> "Sakr w Canaria",
     "Fatherland (Ojczyzna) [eng subtitles only]"           -> "Fatherland (Ojczyzna)",
-    "Perfect Days [english subtitles]"                     -> "Perfect Days"
+    "Perfect Days [english subtitles]"                     -> "Perfect Days",
+    // Twenty-first wave (2026-08-23), from the convergence leg's TMDB-no-match list.
+    // 'Absolwent - odrestaurowana wersja 4K' needs BOTH the 4K rule and the
+    // adjective-first restoration rule; the pair is what takes it to a bare film.
+    "Absolwent - odrestaurowana wersja 4K"                 -> "Absolwent",
+    "Rejs - zremasterowana wersja"                         -> "Rejs",
+    "Andy Warhol. Amerykański sen (napisy Pl)"             -> "Andy Warhol. Amerykański sen",
+    "Ojczyzna (napisy PL)"                                 -> "Ojczyzna",
+    "Ojczyzna (dubbing)"                                   -> "Ojczyzna",
+    "Auta (re-release)"                                    -> "Auta"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -389,6 +403,30 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // (b) needs the literal 'w ramach cyklu'; a quoted film with an unrelated 'w …'
     // must NOT be amputated to its first word (left untouched, quotes and all).
     withClue("quoted film, unrelated 'w …': ")(withExtras.search("\"Lato w mieście\"") shouldBe "\"Lato w mieście\"")
+  }
+
+  it should "keep a numbered prefix that is not a festival edition, and a nested strand" in {
+    // The rule is anchored on the literal word Festiwal/Festival, not on "digits then a
+    // colon" — an ordinal in front of an ordinary decorated title must survive it.
+    withClue("numbered non-festival: ")(
+      withExtras.search("60. ROCZNICA PREMIERY: Rocznica") shouldBe "60. ROCZNICA PREMIERY: Rocznica")
+    // The `{{NSEP}}` name guard stops at the first hard separator, so a strand NESTED
+    // under the festival banner keeps its own prefix rather than being peeled a second
+    // time — an unnamed 'Word: ' strip is the shape the programme-prefix audit warns
+    // about, and 'Klasyka Gatunku' is not a rule.
+    withClue("nested strand: ")(
+      withExtras.search("12. Przeźrocza Festiwal Filmowy: Klasyka Gatunku: \"Człowiek z żelaza\"") shouldBe
+        "Klasyka Gatunku: \"Człowiek z żelaza\"")
+  }
+
+  it should "not mistake a film's own parenthetical or restoration wording for decoration" in {
+    // The paren tag rule is anchored on the language words themselves, so an ordinary
+    // parenthetical disambiguator survives.
+    withClue("real parenthetical: ")(
+      withExtras.search("Fatherland (Ojczyzna)") shouldBe "Fatherland (Ojczyzna)")
+    // 'Wersja' as part of a TITLE, with no separator in front of it, is not a suffix.
+    withClue("wersja in the title: ")(
+      withExtras.search("Wersja odrestaurowana mojego życia") shouldBe "Wersja odrestaurowana mojego życia")
   }
 
   it should "strip a pipe banner only when a cycle keyword follows the pipe" in {
