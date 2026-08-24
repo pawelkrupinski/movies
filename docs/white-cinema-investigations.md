@@ -49,6 +49,159 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ---
 
+## 2026-08-24
+
+**PL: 10 white, 4 red**, out of 324 non-enrichment services, newest bucket
+2026-08-24 08:45 UTC. `kinowo_de` and `kinowo_uk` hold **zero** `uptimeBuckets`
+for the seventh run running (workers stopped since 2026-08-02, ~24 h retention) —
+Poland only, again.
+
+**One fix landed, and it came out of the RED column: Kino Studio (Opole) —
+`fixed` @0ded8f0f4.** MDK Opole rebuilt its site onto a new CMS; both `.html`
+slugs now hard-404 and the cinema's whole autumn season was sitting unread at a
+new slug. Every one of the 10 white venues is genuinely film-dormant, all
+re-probed live this run.
+
+**Set changes vs 2026-08-21 (13 white / 2 red then):**
+- **NEW white (0).** Again not a single green→white transition — no parser broke
+  in the window.
+- **RECOVERED (2):** **ADA Kino Studyjne** and **Kino CK Lublin**, both 24/24
+  green. Their seasons started; nothing was ever wrong with either scraper.
+- **LEFT the white set by going RED (1):** **Studio (Opole)** — the 08-21 entry
+  predicted this venue would move by today and told the next run to check the
+  slug. It moved harder than predicted (the whole site was rebuilt) and it is
+  the run's one code fix. See below.
+- **NEW red (2):** **Kino GOK** (503, `needs-human`) and the `img:
+  www.multikino.pl` poster row (not a cinema). **Kino Warszawa** stays red on
+  its expired certificate — unchanged and still `unfixable`, town-hall side.
+
+### Kino Studio (Opole) — `fixed` @0ded8f0f4 — the site was rebuilt, not the cinema closed
+
+The 08-21 entry left this as the one open action item: "the next run falls after
+3 September — check whether the repertoire comes back on `kino-studio.html` or
+whether they keep a new slug". Both slugs are now a **hard 404**:
+
+```
+curl -o /dev/null -w '%{http_code}' https://mdk.opole.pl/kino-studio.html          → 404
+curl -o /dev/null -w '%{http_code}' https://mdk.opole.pl/kino-studio-przerwa.html  → 404
+```
+
+which is why the venue went from white to **RED, 24/24 buckets** — the two-slug
+walk threw instead of parsing an empty page. `mdk.opole.pl` is now Drupal 11
+("Design System"), extensionless URLs throughout, and the homepage links the
+cinema at **`/kino-studio`**. That page is not dormant at all: it carries the
+**whole autumn season — 14 films, weekly Thursday double-bills 18:00 + 20:30,
+3 September through 3 December** (Drugie życie, O czym sobie nie mówimy, Takie
+jest życie, Wędrówka na północ, … 500 mil). 28 showtimes were being dropped.
+
+**What actually broke, beyond the URL** — the rebuild moved three things the
+parser keys on, and exposed a fourth bug:
+
+| | pre-rebuild | rebuilt |
+|---|---|---|
+| title | `<h1>` | `<h2><strong>` |
+| showtime | `18.00 i 20.30` | `18:00 i 20:30` |
+| poster | `<p><img></p>` | bare `<img>` |
+| films per page | 1 | 14 |
+
+The fourth is the interesting one. The state machine flushed a film when it hit
+the **title**, but each block's date header *precedes* its title — harmless
+while the page only ever held one film, fatal at 14: film #1 collected every
+date on the page and every later film ended up with none. Films now flush at the
+next block's START (poster, date header, or the `<hr>` between films).
+
+**The dead-slug guard needed tightening too, and this is the trap worth
+remembering:** the rebuilt site's "Strona nie znaleziona" body **carries
+`ckeditor` elements of its own** (`title-section ckeditor`, a modal pane), so
+the old `div.ckeditor` discriminator would have accepted a 404 body as content —
+turning a doubly-dead source back into a white bar, exactly the failure the
+guard was added in July to prevent. Only an editable content block carries
+`ckeditor clearfix`, verified against all three page kinds (live repertoire,
+break notice, 404), so that is the selector now.
+
+While in there, the `produkcja:` / `czas trwania:` lines the page has always
+carried are now harvested as **release year + countries + runtime**. Per the
+hint-harvest memory the cinema-side year is the dominant lever on TMDB match
+rate, and this programme is exactly the corpus that needs it — "Obcy",
+"Ojczyzna", "Rozważna i romantyczna", "Róża" all resolve to the wrong film on a
+yearless search.
+
+**Test (fail-before / pass-after):** `KinoStudioClientSpec`, rewritten against a
+freshly recorded `kino-studio` capture — 11 of its 14 cases fail on the old
+parser (0 films returned; the dead-page case does not even throw, proving the
+`ckeditor` leak) and all 14 pass after. The pre-rebuild capture is kept as
+`kino-studio-opole-legacy-markup` with a test of its own, because the recorded
+scrape corpus still carries that markup and the parser stays tolerant of both
+spellings.
+
+**Layers:** `sbt testUnitNoE2e` green (7 + 979 + 2988 + 553),
+`FilmScheduleEndToEndSpec` green, `PageSnapshotSpec` green.
+`read-model-snapshot.json` moved by exactly one line — the corpus film's
+`filmUrl` following the slug — and `expected-schedules.txt` and all four
+`expected-*.html` did not move at all (the corpus capture's single film is a
+25.06 screening, already past the corpus date, and Opole is not a snapshot city).
+
+### The 10 white venues — all re-probed live, all genuinely empty
+
+| Venue | Client / URL | What the source shows |
+|---|---|---|
+| Kino nad Wartą | `Bilety24OrganizerClient` `…/koninskie-centrum-kultury-1626` | **0** `Film:` of 50 entries (39 Koncert, 7 Spektakl, 4 Wydarzenie) |
+| Piast | `…/ostrzeszowskie-centrum-kultury-601` | **0** `Film:` of 52 (37 Koncert, 7 Spektakl, 8 Wydarzenie) |
+| Kino Wisła Brzeszcze | `…/osrodek-kultury-w-brzeszczach-1539` | **0** `Film:` of 36 (29 Koncert, 3 Spektakl, 4 Wydarzenie) |
+| Kino MDK | `…/miejski-dom-kultury-w-radomsku-1546` | **0** `Film:` of 42 (29 Koncert, 9 Spektakl, 4 Wydarzenie) |
+| Kino PDK | `BiletynaClient` `biletyna.pl/Pyrzyce/Pyrzycki-Dom-Kultury` | **0** `ScreeningEvent` (1 `TheaterEvent`) — see the probe note below |
+| Kino Kuźnica | `SystemBiletowyClient` `shd.systembiletowy.pl` | `#repertoire-no-events` showing; 185 calendar days ALL "brak terminów" |
+| Patria | `kinopatria.com/repertuar/` | 0 `h3.amy-movie-field-title`; site renders "Brak filmu" |
+| Kino Chatka Żaka | `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | 0 `div.box-row`; "Brak wydarzeń" |
+| Kino Zachęta | Filmweb 2405 | literal `[]` (2 bytes) for every date sampled |
+| DKF Politechnika | Filmweb 1645 | literal `[]` for every date sampled |
+
+All 10 `intentionally-dormant`, re-confirmed live. Three notes:
+
+- **Kino PDK needed the production fetch chain, and a bare curl lies about it.**
+  A plain probe returns 403 with `cf-mitigated: challenge` — biletyna.pl's
+  blanket Cloudflare block, which per the standing memory hits residential IPs
+  too. Re-probed through the SAME chain the scraper uses (Decodo proxy primary →
+  Zyte → direct) it answers **61,078 bytes, no challenge, 0 `ScreeningEvent`,
+  1 `TheaterEvent`** and `BiletynaClient` itself returns 0 films. Dormant, not
+  blocked. A future run that reports PDK "empty" from a bare curl has proved
+  nothing.
+- **Kino Kuźnica's parser is NOT stale** — worth recording because the first
+  read of the page suggests it is. The live page renders a
+  `div.calendar-day[data-date]` grid and none of the three shapes
+  `SystemBiletowyClient` parses. But `kgl.systembiletowy.pl` (Kino Kawiarnia, a
+  populated instance of the same platform) renders `calendar-day` **204 times
+  as well** — the identical date-picker widget — *alongside* 229 `event-item` /
+  122 `event-title`. The calendar is the chrome every instance carries; the
+  parser's `div.event-item[data-date]` shape is current. Kuźnica just has no
+  screenings, through January 2027.
+- **Kino Zachęta and DKF Politechnika** have now been white for six consecutive
+  runs on empty Filmweb responses. Both are DKF-style venues whose seasons start
+  in autumn; if either is still `[]` in October, it is worth asking whether
+  Filmweb has quietly dropped them (the pattern that moved Chemik onto an
+  own-site scraper) rather than continuing to log them as dormant.
+
+### Kino GOK (Tychowo) — `needs-human: upstream 503 to our egress only`
+
+Red, not white, so outside the brief, but it is a PL venue completely dark and
+the diagnosis does not close. `bilety.goktychowo.pl` has answered **HTTP 503 on
+every one of the last 24 buckets**, yet the identical MSI request from a
+residential IP returns **200 / 49,606 bytes**:
+
+```
+curl 'https://bilety.goktychowo.pl/MSI/mvc/pl?sort=Name&date=2026-08-24'  → 200, 49606 bytes
+worker (24/24 buckets)                                                    → HTTP 503
+```
+
+That asymmetry has exactly the shape of the flicks.co.uk / Multikino egress
+blocks, whose remedy is the residential-proxy route (`proxyPrimary`) — but the
+evidence does not yet distinguish an IP block from a host that is simply
+rate-limiting or intermittently 503ing a datacenter ASN, and no other MSI venue
+is affected. Routing a host through the proxy on a guess is the per-host
+special-casing this repo avoids, so it is logged rather than fixed. The cheap
+next step for whoever picks it up: run the MSI request from the worker machine
+itself and compare, before touching wiring.
+
 ## 2026-08-21
 
 **PL: 13 white, 2 red**, out of 310 non-enrichment services, newest bucket
