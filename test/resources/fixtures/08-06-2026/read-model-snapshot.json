@@ -31953,7 +31953,7 @@
     "filmId" : "czytajaclolitewteheranie|2024",
     "city" : "opole",
     "cinema" : "Studio",
-    "filmUrl" : "https://mdk.opole.pl/kino-studio.html",
+    "filmUrl" : "https://mdk.opole.pl/kino-studio",
     "showtimes" : [ {
       "dateTime" : "2026-06-25T18:00:00",
       "format" : [ ]

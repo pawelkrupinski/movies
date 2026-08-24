@@ -1,0 +1,2331 @@
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'html' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ html--node--11839.html.twig
+   ▪️ html--node--%.html.twig
+   ▪️ html--node.html.twig
+   ✅ html.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/html.html.twig' -->
+<!DOCTYPE html>
+<html lang="pl" dir="ltr" prefix="og: https://ogp.me/ns#">
+	<head>
+		<link rel="icon" type="image/x-icon" href="/themes/custom/bazowy/img/favicon/favicon.ico?v=3">
+		<meta name="application-name" content="&nbsp;"/>
+		<meta name="msapplication-TileColor" content="#FFFFFF"/>
+		<meta name="msapplication-TileImage" content="mstile-144x144.png"/>
+		<meta name="msapplication-square70x70logo" content="mstile-70x70.png"/>
+		<meta name="msapplication-square150x150logo" content="mstile-150x150.png"/>
+		<meta name="msapplication-wide310x150logo" content="mstile-310x150.png"/>
+		<meta name="msapplication-square310x310logo" content="mstile-310x310.png"/>
+
+		<meta name="msapplication-TileColor" content="#000">
+
+
+		<meta name="theme-color" content="#000">
+
+
+		<meta charset="utf-8" />
+<link rel="canonical" href="https://mdk.opole.pl/kino-studio" />
+<meta name="Generator" content="Drupal 11 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="/themes/custom/bazowy/favicon.ico" type="image/vnd.microsoft.icon" />
+<link rel="alternate" hreflang="pl" href="https://mdk.opole.pl/kino-studio" />
+
+			<title>Kino Studio | Design System</title>
+
+			<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/core.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/controlgroup.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/checkboxradio.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/resizable.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/button.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/dialog.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/align.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/container-inline.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/clearfix.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/hidden.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/js.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/libraries/cookiesjsr/dist/cookiesjsr.min.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/misc/components/resize.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/misc/components/progress.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/misc/components/ajax-progress.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.element.details.toggle.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.element.message.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/ckeditor5/css/ckeditor5.dialog.fix.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.element.terms_of_service.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.form.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/theme.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.ajax.css?tk4inq" />
+<link rel="stylesheet" media="all" href="https://fonts.googleapis.com/css2?family=Encode+Sans+Semi+Condensed:wght@400;500;600;700;800&amp;display=swap" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/style.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/footer-fixes.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/bootstrap.min.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/font-awesome.min.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/magnific-popup.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/style.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/legacy-page-section.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/legacy-gallery-fixes.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/legacy-main-menu.css?tk4inq" />
+<link rel="stylesheet" media="all" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css" />
+<link rel="stylesheet" media="all" href="//cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/magnific-popup.min.css" />
+
+
+
+				<script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/11839","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"pl"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"ajaxPageState":{"libraries":"eJx1j2uOwjAMhC-UJkdCTjKEdPMA2wXK6SlbqpXo8scjfTMjazw9-m12qXRPZRCdC4xf2QkUwSV72UhBojAPEUq5fMBKuQ0Vbdr4mVE6RRN6_8kQ99ZR2IbY_sO_32VxGC7ydKZiFXclBg0MyQ-sXm4Kbos7XibwbI-dqxElzaI5yNb9I0ZmUVTnSWBu8K-Ce6ulke47iIJli9p1qlih6775GdKeUvkeqxCh9N1fRlU59ONBwNcc9sHXeQIxLahJ","theme":"bazowy","theme_token":null},"ajaxTrustedUrl":{"form_action_p_pvdeGsVG5zNF_XLGPTvYSKCf43t8qZYSwcfZl2uzM":true,"\/kino-studio?ajax_form=1":true},"cookies":{"cookiesjsr":{"config":{"cookie":{"name":"cookiesjsr","expires":31536000000,"domain":"","sameSite":"Lax","secure":false},"library":{"libBasePath":"https:\/\/cdn.jsdelivr.net\/gh\/jfeltkamp\/cookiesjsr@1\/dist","libPath":"https:\/\/cdn.jsdelivr.net\/gh\/jfeltkamp\/cookiesjsr@1\/dist\/cookiesjsr.min.js","scrollLimit":0},"callback":{"method":"post","url":"\/cookies\/consent\/callback.json","headers":[]},"interface":{"openSettingsHash":"#editCookieSettings","showDenyAll":true,"denyAllOnLayerClose":false,"settingsAsLink":false,"availableLangs":["pl","en"],"defaultLang":"pl","groupConsent":false,"cookieDocs":true}},"services":{"functional":{"id":"functional","services":[{"key":"functional","type":"functional","name":"Obowi\u0105zkowe","info":{"value":"\u003Ctable\u003E\r\n\t\u003Cthead\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003ECookie name\u003C\/th\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003EDefault expiration time\u003C\/th\u003E\r\n\t\t\t\u003Cth\u003EDescription\u003C\/th\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/thead\u003E\r\n\t\u003Ctbody\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003ESSESS\u0026lt;ID\u0026gt;\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 month\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EIf you are logged in to this website, a session cookie is required to identify and connect your browser to your user account in the server backend of this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003Ecookiesjsr\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 year\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EWhen you visited this website for the first time, you were asked for your permission to use several services (including those from third parties) that require data to be saved in your browser (cookies, local storage). Your decisions about each service (allow, deny) are stored in this cookie and are reused each time you visit this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/tbody\u003E\r\n\u003C\/table\u003E\r\n","format":"full_html"},"uri":"","needConsent":false}],"weight":1},"security_storage":{"id":"security_storage","services":[{"key":"security_storage","type":"security_storage","name":"security storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych zwi\u0105zanych z zabezpieczeniami, takimi jak funkcja uwierzytelniania, zapobieganie oszustwom i inne mechanizmy ochrony u\u017cytkownik\u00f3w.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":false}],"weight":20},"analytics_storage":{"id":"analytics_storage","services":[{"key":"analytics_storage","type":"analytics_storage","name":"analytics_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) dotycz\u0105cych statystyk, np. czasu trwania wizyty.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":30},"personalization_storage":{"id":"personalization_storage","services":[{"key":"personalization_storage","type":"personalization_storage","name":"personalization_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych dotycz\u0105cych personalizacji, np. rekomendacji film\u00f3w, Kolor strony, ulubione przedmioty itd...\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":40},"ad_user_data":{"id":"ad_user_data","services":[{"key":"ad_user_data","type":"ad_user_data","name":"ad user data","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na wysy\u0142anie do Google danych u\u017cytkownika zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":50},"ad_storage":{"id":"ad_storage","services":[{"key":"ad_storage","type":"ad_storage","name":"ad storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":60},"ad_personalization":{"id":"ad_personalization","services":[{"key":"ad_personalization","type":"ad_personalization","name":"ad personalization","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na reklamy spersonalizowane.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":70}},"translation":{"_core":{"default_config_hash":"PpB_t3-mnEd5Lckhxc9rfquSMa0CndPslGvJZlcg61E"},"langcode":"pl","bannerText":"Wykorzystujemy pliki cookies na stronie aby zapewni\u0107 lepsze dzia\u0142anie strony.\r\nKlikaj\u0105c Akceptuj\u0119 zgadzasz si\u0119 na przechowywanie plik\u00f3w na twoim komputerze.","privacyPolicy":"Polityka prywatno\u015bci","privacyUri":"","imprint":"Imprint","imprintUri":"","cookieDocs":"Cookie documentation","cookieDocsUri":"\/cookies\/documentation","officialWebsite":"Official website","denyAll":"Odrzu\u0107 wszystkie","alwaysActive":"Zawsze\u00a0aktywne","settings":"Ustawienia cookies","acceptAll":"Zaakceptuj wszystkie","requiredCookies":"Obowi\u0105zkowe","cookieSettings":"Ustawienia cookies","close":"Zamknij","readMore":"Czytaj dalej","allowed":"Dozwolone","denied":"Denied","settingsAllServices":"Ustawienia dla wszystkich us\u0142ug","saveSettings":"Zapisz","default_langcode":"en","disclaimerText":"All cookie information is subject to change by the service providers. We update this information regularly.","disclaimerTextPosition":"above","processorDetailsLabel":"Dane firmy przetwarzaj\u0105cej","processorLabel":"Firma","processorWebsiteUrlLabel":"Strona internetowa firmy","processorPrivacyPolicyUrlLabel":"Polityka prywatno\u015bci firmy","processorCookiePolicyUrlLabel":"Polityka plik\u00f3w cookie firmy","processorContactLabel":"Data Protection Contact Details","placeholderAcceptAllText":"Zaakceptuj wszystkie pliki cookie","functional":{"title":"Funkcjonalne","details":"Cookies to ma\u0142e pliki tekstowe, kt\u00f3re Twoja przegl\u0105darka umieszcza na Twoim urz\u0105dzeniu w celu przechowywania okre\u015blonych informacji. Korzystaj\u0105c z informacji, kt\u00f3re s\u0105 przechowywane i zwracane, strona internetowa mo\u017ce rozpozna\u0107, \u017ce wcze\u015bniej uzyska\u0142e\u015b do niej dost\u0119p i odwiedzi\u0142e\u015b j\u0105 za pomoc\u0105 przegl\u0105darki na swoim urz\u0105dzeniu ko\u0144cowym. Wykorzystujemy te informacje w celu optymalnego u\u0142o\u017cenia i wy\u015bwietlenia serwisu zgodnie z Twoimi preferencjami. W ramach tego procesu na Twoim urz\u0105dzeniu identyfikowany jest tylko sam plik cookie. Dane osobowe s\u0105 przechowywane wy\u0142\u0105cznie za Twoj\u0105 wyra\u017an\u0105 zgod\u0105 lub gdy jest to absolutnie konieczne do umo\u017cliwienia korzystania z us\u0142ug \u015bwiadczonych przez nas i do kt\u00f3rych masz dost\u0119p."},"security_storage":{"title":"Zabezpieczenia","details":"Przechowuj\u0105 najwa\u017cniejsze informacje odno\u015bnie u\u017cytkowania strony, aby w odpowiedni spos\u00f3b wykorzystywa\u0107 mechanizmy zabezpieczaj\u0105ce tre\u015bci, a tak\u017ce u\u017cytkownik\u00f3w z niej korzystaj\u0105cych."},"analytics_storage":{"title":"Analityczne","details":"Opcjonalne ciasteczka zbieraj\u0105ce dane analityczne. Dane te s\u0105 bardzo ograniczone, bardzo cz\u0119sto wykorzystywane s\u0105 do og\u00f3lnej statystyki odwiedzin strony, kraju czy d\u0142ugo\u015bci przegl\u0105dania. Dzi\u0119ki tym danym, mo\u017cna p\u00f3\u017aniej udoskonala\u0107 serwisy i tworzy\u0107 jeszcze lepsze strony."},"personalization_storage":{"title":"Personalizacyjne","details":"Pozwala przechowywa\u0107 dane dotycz\u0105ce personalizacji wygl\u0105du oraz tre\u015bci strony.\r\nOpcjonalne ciasteczka przechowuj\u0105ce informacje odno\u015bnie personalizacji strony, zmian wygl\u0105du pod w\u0142asne upodobania czy samych tre\u015bci strony. Odmowa zgody na te ciasteczka, mo\u017ce skutkowa\u0107, \u017ce nasze wybory rozmiaru czcionki, koloru tekstu lub kontrastu nie zostan\u0105 zapami\u0119tane."},"ad_user_data":{"title":"Dane osobowe - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera informacje o u\u017cytkowniku w celach dobrania lepszej oferty reklamowej skupionej g\u0142\u00f3wnie na bezpo\u015brednim dopasowniu."},"ad_storage":{"title":" Przechowywanie danych - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera og\u00f3lne informacje w celach dobrania lepszej oferty reklamowej skierowanej g\u0142\u00f3wnie w przegl\u0105d\u0105jcego stron\u0119."},"ad_personalization":{"title":"Spersonalizowane reklamy","details":"Opcjonalne ciasteczko, kt\u00f3re pozwala wy\u015bwietla\u0107 spersonalizowane reklamy u\u017cytkownikowi."}}},"cookiesTexts":{"_core":{"default_config_hash":"PpB_t3-mnEd5Lckhxc9rfquSMa0CndPslGvJZlcg61E"},"langcode":"pl","bannerText":"Wykorzystujemy pliki cookies na stronie aby zapewni\u0107 lepsze dzia\u0142anie strony.\r\nKlikaj\u0105c Akceptuj\u0119 zgadzasz si\u0119 na przechowywanie plik\u00f3w na twoim komputerze.","privacyPolicy":"Polityka prywatno\u015bci","privacyUri":"","imprint":"Imprint","imprintUri":"","cookieDocs":"Cookie documentation","cookieDocsUri":"\/cookies\/documentation","officialWebsite":"Official website","denyAll":"Odrzu\u0107 wszystkie","alwaysActive":"Zawsze\u00a0aktywne","settings":"Ustawienia cookies","acceptAll":"Zaakceptuj wszystkie","requiredCookies":"Obowi\u0105zkowe","cookieSettings":"Ustawienia cookies","close":"Zamknij","readMore":"Czytaj dalej","allowed":"Dozwolone","denied":"Denied","settingsAllServices":"Ustawienia dla wszystkich us\u0142ug","saveSettings":"Zapisz","default_langcode":"en","disclaimerText":"All cookie information is subject to change by the service providers. We update this information regularly.","disclaimerTextPosition":"above","processorDetailsLabel":"Dane firmy przetwarzaj\u0105cej","processorLabel":"Firma","processorWebsiteUrlLabel":"Strona internetowa firmy","processorPrivacyPolicyUrlLabel":"Polityka prywatno\u015bci firmy","processorCookiePolicyUrlLabel":"Polityka plik\u00f3w cookie firmy","processorContactLabel":"Data Protection Contact Details","placeholderAcceptAllText":"Zaakceptuj wszystkie pliki cookie"},"services":{"ad_personalization":{"uuid":"1c1638a7-610b-41a1-bd33-27669d0f2eaf","langcode":"pl","status":true,"dependencies":[],"id":"ad_personalization","label":"ad personalization","group":"ad_personalization","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na reklamy spersonalizowane.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Spersonalizowane reklamy","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"ad_storage":{"uuid":"bc4e4fb0-2b97-4e07-9e97-70976862289f","langcode":"pl","status":true,"dependencies":[],"id":"ad_storage","label":"ad storage","group":"ad_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane zwi\u0105zane z reklamami","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"ad_user_data":{"uuid":"350d8b35-0caa-4d60-8f94-c3fa9ab64d39","langcode":"pl","status":true,"dependencies":[],"id":"ad_user_data","label":"ad user data","group":"ad_user_data","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na wysy\u0142anie do Google danych u\u017cytkownika zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane u\u017cytkownika zwi\u0105zanych z reklamami","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"analytics_storage":{"uuid":"e53d7be7-6c80-4a71-8075-7a21fb8c2110","langcode":"pl","status":true,"dependencies":[],"id":"analytics_storage","label":"analytics_storage","group":"analytics_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) dotycz\u0105cych statystyk, np. czasu trwania wizyty.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane analityczne","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"functional":{"uuid":"0fc27db0-867d-4163-ba24-1ec9dc2fa750","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"N-O3629vb-jExOxfM0FYcfPzEu6QVzgWHMm06jMERLg"},"id":"functional","label":"Obowi\u0105zkowe","group":"functional","info":{"value":"\u003Ctable\u003E\r\n\t\u003Cthead\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003ECookie name\u003C\/th\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003EDefault expiration time\u003C\/th\u003E\r\n\t\t\t\u003Cth\u003EDescription\u003C\/th\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/thead\u003E\r\n\t\u003Ctbody\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003ESSESS\u0026lt;ID\u0026gt;\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 month\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EIf you are logged in to this website, a session cookie is required to identify and connect your browser to your user account in the server backend of this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003Ecookiesjsr\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 year\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EWhen you visited this website for the first time, you were asked for your permission to use several services (including those from third parties) that require data to be saved in your browser (cookies, local storage). Your decisions about each service (allow, deny) are stored in this cookie and are reused each time you visit this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/tbody\u003E\r\n\u003C\/table\u003E\r\n","format":"full_html"},"consentRequired":false,"purpose":"Essential functional cookies to provide general functionality","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Ta zawarto\u015b\u0107 jest zablokowana, poniewa\u017c nie zaakceptowano wymaganych funkcjonalnych plik\u00f3w cookie.","placeholderAcceptText":"Only accept required functional cookies"},"personalization_storage":{"uuid":"f31667bb-340d-45da-b809-57b3a28a9c5e","langcode":"pl","status":true,"dependencies":[],"id":"personalization_storage","label":"personalization_storage","group":"personalization_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych dotycz\u0105cych personalizacji, np. rekomendacji film\u00f3w, Kolor strony, ulubione przedmioty itd...\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane rekomndacji","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"security_storage":{"uuid":"1238b576-2b36-45dc-b468-86401a625e46","langcode":"pl","status":true,"dependencies":[],"id":"security_storage","label":"security storage","group":"security_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych zwi\u0105zanych z zabezpieczeniami, takimi jak funkcja uwierzytelniania, zapobieganie oszustwom i inne mechanizmy ochrony u\u017cytkownik\u00f3w.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":false,"purpose":"Wymagane zabezpieczenia","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Wymagane","placeholderAcceptText":"Akceptuj"}},"groups":{"ad_personalization":{"uuid":"40924f11-c901-4005-9d9b-b64fb22a689a","langcode":"pl","status":true,"dependencies":[],"id":"ad_personalization","label":"ad personalization","weight":70,"title":"Spersonalizowane reklamy","details":"Opcjonalne ciasteczko, kt\u00f3re pozwala wy\u015bwietla\u0107 spersonalizowane reklamy u\u017cytkownikowi."},"ad_storage":{"uuid":"f8e52cc9-5fc3-464d-8617-5ad3a417daef","langcode":"pl","status":true,"dependencies":[],"id":"ad_storage","label":"ad storage","weight":60,"title":" Przechowywanie danych - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera og\u00f3lne informacje w celach dobrania lepszej oferty reklamowej skierowanej g\u0142\u00f3wnie w przegl\u0105d\u0105jcego stron\u0119."},"ad_user_data":{"uuid":"a25b019b-fb83-4276-b7eb-3c3bb3492e13","langcode":"pl","status":true,"dependencies":[],"id":"ad_user_data","label":"ad user data","weight":50,"title":"Dane osobowe - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera informacje o u\u017cytkowniku w celach dobrania lepszej oferty reklamowej skupionej g\u0142\u00f3wnie na bezpo\u015brednim dopasowniu."},"analytics_storage":{"uuid":"1456cc37-d1c2-4d1c-80a7-0cc166a76e5b","langcode":"pl","status":true,"dependencies":[],"id":"analytics_storage","label":"analytics_storage","weight":30,"title":"Analityczne","details":"Opcjonalne ciasteczka zbieraj\u0105ce dane analityczne. Dane te s\u0105 bardzo ograniczone, bardzo cz\u0119sto wykorzystywane s\u0105 do og\u00f3lnej statystyki odwiedzin strony, kraju czy d\u0142ugo\u015bci przegl\u0105dania. Dzi\u0119ki tym danym, mo\u017cna p\u00f3\u017aniej udoskonala\u0107 serwisy i tworzy\u0107 jeszcze lepsze strony."},"functional":{"uuid":"3d3b5738-00f8-4068-aaf3-76c1a1cc33b6","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"aHm4Q63Ge97tcktTa_qmUqJMir45iyGY2lEvvqPW68g"},"id":"functional","label":"Funkcjonalne","weight":1,"title":"Funkcjonalne","details":"Cookies to ma\u0142e pliki tekstowe, kt\u00f3re Twoja przegl\u0105darka umieszcza na Twoim urz\u0105dzeniu w celu przechowywania okre\u015blonych informacji. Korzystaj\u0105c z informacji, kt\u00f3re s\u0105 przechowywane i zwracane, strona internetowa mo\u017ce rozpozna\u0107, \u017ce wcze\u015bniej uzyska\u0142e\u015b do niej dost\u0119p i odwiedzi\u0142e\u015b j\u0105 za pomoc\u0105 przegl\u0105darki na swoim urz\u0105dzeniu ko\u0144cowym. Wykorzystujemy te informacje w celu optymalnego u\u0142o\u017cenia i wy\u015bwietlenia serwisu zgodnie z Twoimi preferencjami. W ramach tego procesu na Twoim urz\u0105dzeniu identyfikowany jest tylko sam plik cookie. Dane osobowe s\u0105 przechowywane wy\u0142\u0105cznie za Twoj\u0105 wyra\u017an\u0105 zgod\u0105 lub gdy jest to absolutnie konieczne do umo\u017cliwienia korzystania z us\u0142ug \u015bwiadczonych przez nas i do kt\u00f3rych masz dost\u0119p."},"functional_storage":{"uuid":"5be0bb52-cb58-4ff1-9728-7b34e4d72434","langcode":"pl","status":true,"dependencies":[],"id":"functional_storage","label":"functional storage","weight":10,"title":"Funkcjonalne","details":"Ciasteczka wymagane do poprawnego dzia\u0142ania serwisu internetowego. Przechowuj\u0105 one tylko informacje o podj\u0119tych wyborach, s\u0105 przetwarzane tylko w celach poprawnego wy\u015bwietlania zawarto\u015bci przez u\u017cytkownika."},"marketing":{"uuid":"a00fbd39-8a21-45cc-88b1-513065976c25","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"JkP6try0AxX_f4RpFEletep5NHSlVB1BbGw0snW4MO8"},"id":"marketing","label":"Marketing","weight":20,"title":"Marketing","details":"Komunikacja z klientem i narz\u0119dzia marketingowe."},"performance":{"uuid":"f60212cb-f5d7-4c83-87a8-7e7ced5d6828","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"Jv3uIJviBj7D282Qu1ZpEQwuOEb3lCcDvx-XVHeOJpw"},"id":"performance","label":"Wydajno\u015b\u0107","weight":30,"title":"Pliki cookie dotycz\u0105ce wydajno\u015bci","details":"Wydajno\u015bciowe pliki cookie zbieraj\u0105 zagregowane informacje o sposobie korzystania z naszej strony internetowej. Ma to na celu popraw\u0119 jego atrakcyjno\u015bci, zawarto\u015bci i funkcjonalno\u015bci. Te pliki cookie pomagaj\u0105 nam okre\u015bli\u0107, czy, jak cz\u0119sto i jak d\u0142ugo poszczeg\u00f3lne podstrony naszego serwisu s\u0105 odwiedzane oraz jakie tre\u015bci interesuj\u0105 u\u017cytkownik\u00f3w. Wyszukiwane has\u0142a, kraj, region i (je\u015bli dotyczy) miasto, z kt\u00f3rego pochodzi strona s\u0105 r\u00f3wnie\u017c rejestrowane, podobnie jak odsetek urz\u0105dze\u0144 mobilnych u\u017cywanych do uzyskiwania dost\u0119pu do witryny. Wykorzystujemy te informacje do sporz\u0105dzania raport\u00f3w statystycznych, kt\u00f3re pomagaj\u0105 nam dostosowa\u0107 zawarto\u015b\u0107 naszego serwisu do Twoich potrzeb i zoptymalizowa\u0107 nasz\u0105 ofert\u0119."},"personalization_storage":{"uuid":"b8a8a3f3-3c9d-4d78-a425-b7833ca56dce","langcode":"pl","status":true,"dependencies":[],"id":"personalization_storage","label":"personalization_storage","weight":40,"title":"Personalizacyjne","details":"Pozwala przechowywa\u0107 dane dotycz\u0105ce personalizacji wygl\u0105du oraz tre\u015bci strony.\r\nOpcjonalne ciasteczka przechowuj\u0105ce informacje odno\u015bnie personalizacji strony, zmian wygl\u0105du pod w\u0142asne upodobania czy samych tre\u015bci strony. Odmowa zgody na te ciasteczka, mo\u017ce skutkowa\u0107, \u017ce nasze wybory rozmiaru czcionki, koloru tekstu lub kontrastu nie zostan\u0105 zapami\u0119tane."},"security_storage":{"uuid":"e9a78e2e-1a72-4596-9fd4-a657f992afe3","langcode":"pl","status":true,"dependencies":[],"id":"security_storage","label":"security storage","weight":20,"title":"Zabezpieczenia","details":"Przechowuj\u0105 najwa\u017cniejsze informacje odno\u015bnie u\u017cytkowania strony, aby w odpowiedni spos\u00f3b wykorzystywa\u0107 mechanizmy zabezpieczaj\u0105ce tre\u015bci, a tak\u017ce u\u017cytkownik\u00f3w z niej korzystaj\u0105cych."}}},"statistics":{"data":{"nid":"11839"},"url":"\/modules\/contrib\/statistics\/statistics.php"},"ajax":{"edit-actions-submit":{"callback":"::submitAjaxForm","event":"click","effect":"fade","speed":500,"progress":{"type":"throbber","message":""},"disable-refocus":true,"url":"\/kino-studio?ajax_form=1","httpMethod":"POST","dialogType":"ajax","submit":{"_triggering_element_name":"op","_triggering_element_value":"Wy\u015blij formularz"}}},"user":{"uid":0,"permissionsHash":"f769c722b0ea3240b4be7118783245050e7efd952f4ecebb119c8a3de7a1f020"}}</script>
+<script src="/core/assets/vendor/jquery/jquery.min.js?v=4.0.0"></script>
+<script src="/sites/default/files/languages/pl_QbbSMqjmB09g9vb78ubamagWvRrFjm_Niqr9emyBxcQ.js?tk4inq"></script>
+<script src="/core/misc/drupalSettingsLoader.js?v=11.4.4"></script>
+<script src="/core/misc/drupal.js?v=11.4.4"></script>
+<script src="/core/misc/drupal.init.js?v=11.4.4"></script>
+<script src="/themes/custom/bazowy/js/cookie.js?tk4inq"></script>
+<script src="/core/misc/debounce.js?v=11.4.4"></script>
+<script src="/core/misc/announce.js?v=11.4.4"></script>
+<script src="/core/misc/message.js?v=11.4.4"></script>
+<script src="/modules/contrib/cookies/js/cookiesjsr.conf.js?v=11.4.4" defer></script>
+</head>
+
+				<body class="path-node page-node-type-page">
+
+
+					
+					
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'off_canvas_page_wrapper' -->
+<!-- BEGIN OUTPUT from 'core/modules/system/templates/off-canvas-page-wrapper.html.twig' -->
+  <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'page' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ page--node--11839.html.twig
+   ▪️ page--node--%.html.twig
+   ▪️ page--node.html.twig
+   ✅ page.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/page.html.twig' -->
+
+
+
+<header class="top dont_print affix-top header legacy-main-header">
+	<div class="my_container legacy-main-header__container">
+		<div class="logo_main" aria-label="Strona główna">
+			
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ block--bazowy-logo.html.twig
+   ▪️ block--block-content--1995ac07-95b5-446b-a968-b1150c4ffbcd.html.twig
+   ▪️ block--block-content--id-view--bazowy-logo--full.html.twig
+   ▪️ block--block-content--id--bazowy-logo.html.twig
+   ▪️ block--block-content--view-type--logo--full.html.twig
+   ▪️ block--block-content--type--logo.html.twig
+   ▪️ block--block-content--view--full.html.twig
+   ▪️ block--block-content.html.twig
+   ▪️ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy-logo.html.twig' -->
+	<a href="/" class="logo__link" aria-label="Strona główna">
+		<span class="sprite logo" role="img" aria-label="Młodzieżowy Dom Kultury w Opolu"></span>
+		<span class="sprite logo_white" aria-hidden="true"></span>
+	</a>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy-logo.html.twig' -->
+
+
+		</div>
+	</div>
+
+	<div class="legacy-main-header__menu">
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'menu__main' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ menu--main.html.twig
+   ✅ menu--main.html.twig
+   ▪️ menu.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/menu--main.html.twig' -->
+
+<div class="menu_wrapper cell_flex legacy-main-menu">
+  <nav class="menu_top" aria-label="Główne menu">
+    <ul>
+              <li class="" data-id="root-1">
+          <a href="/o-nas" class="carret">
+            <span>O nas</span>
+          </a>
+        </li>
+              <li class="" data-id="root-2">
+          <a href="/zajecia-stale" class="carret">
+            <span>Zajęcia stałe</span>
+          </a>
+        </li>
+              <li class="" data-id="root-3">
+          <a href="/projekty-i-programy" class="carret">
+            <span>Projekty i programy</span>
+          </a>
+        </li>
+              <li class="" data-id="root-4">
+          <a href="/konkursy-i-imprezy" class="carret">
+            <span>Konkursy i imprezy</span>
+          </a>
+        </li>
+              <li class="" data-id="root-5">
+          <a href="/wypoczynek" class="carret">
+            <span>Wypoczynek</span>
+          </a>
+        </li>
+              <li class="active" data-id="root-6">
+          <a href="/kino-studio" class="">
+            <span>Kino Studio</span>
+          </a>
+        </li>
+              <li class="" data-id="root-7">
+          <a href="/fotogaleria" class="">
+            <span>Fotogaleria</span>
+          </a>
+        </li>
+              <li class="" data-id="root-8">
+          <a href="/kontakt" class="">
+            <span>Kontakt</span>
+          </a>
+        </li>
+          </ul>
+  </nav>
+
+  <button class="legacy-menu-toggle legacy-hamburger thiIsContent" aria-label="Menu" data-title="Menu" aria-expanded="false" aria-controls="legacy-main-menu-slide">
+    <span class="line top"></span>
+    <span class="line mid"></span>
+    <span class="line bot"></span>
+  </button>
+
+  <nav class="menu_slide cell_flex" id="legacy-main-menu-slide" aria-label="Rozwinięte menu" aria-hidden="true">
+    <div class="my_container">
+      <ul class="level_0 menu_raw hidden">
+                    <li class="" data-id="root-1">
+      <a href="/o-nas" class="carret">
+        <span>O nas</span>
+      </a>
+              <ul class="level_1" data-parent="root-1">
+                      <li class="" data-id="root-1-1">
+      <a href="/misja-i-statut-mdk" class="">
+        <span>Misja i statut MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2">
+      <a href="/dyrekcja-i-pracownicy" class="carret">
+        <span>Dyrekcja i pracownicy</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-2">
+                      <li class="" data-id="root-1-2-1">
+      <a href="/dyrekcja" class="">
+        <span>Dyrekcja</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2-2">
+      <a href="/kierownicy-pracowni-i-zespolow" class="">
+        <span>Kierownicy pracowni i zespołów</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2-3">
+      <a href="/nauczyciele-i-instruktorzy" class="">
+        <span>Nauczyciele i instruktorzy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2-4">
+      <a href="/pracownicy-administracji-i-obslugi" class="">
+        <span>Pracownicy administracji i obsługi</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-3">
+      <a href="/historia-mdk" class="carret">
+        <span>Historia MDK</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-3">
+                      <li class="" data-id="root-1-3-1">
+      <a href="/rys-historyczny" class="">
+        <span>Rys historyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-3-2">
+      <a href="/kalendarium-wydarzen-1954-1997" class="">
+        <span>Kalendarium wydarzeń 1954-1997</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-4">
+      <a href="/wspolpraca-miedzynarodowa" class="">
+        <span>Współpraca międzynarodowa</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-5">
+      <a href="/nagroda-pegaz" class="carret">
+        <span>Nagroda &quot;PEGAZ&quot;</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-5">
+                      <li class="" data-id="root-1-5-1">
+      <a href="/idea-i-regulamin-nagrody" class="">
+        <span>Idea i regulamin nagrody</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-5-2">
+      <a href="/dotychczasowi-laureaci" class="">
+        <span>Dotychczasowi laureaci</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-6">
+      <a href="/wydawnictwa-ksiazkowe" class="carret">
+        <span>Wydawnictwa książkowe</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-6">
+                      <li class="" data-id="root-1-6-1">
+      <a href="/pol-wieku-mdk-u-2004" class="">
+        <span>&quot;Pół wieku MDK-u&quot; (2004)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-2">
+      <a href="/legendy-o-opolu-2006" class="">
+        <span>&quot;Legendy o Opolu&quot; (2006)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-3">
+      <a href="/nie-tylko-nauka-2007" class="">
+        <span>&quot;Nie tylko nauka&quot; (2007)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-4">
+      <a href="/otworzyl-sie-przede-mna-swiat-2010" class="">
+        <span>&quot;Otworzył się przede mną świat&quot; (2010)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-5">
+      <a href="/zachowac-od-zapomnienia-2011" class="">
+        <span>&quot;Zachować od zapomnienia&quot; (2011)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-6">
+      <a href="/edukacja-teatralna-dzieci-i-mlodziezy-2012" class="">
+        <span>&quot;Edukacja teatralna dzieci i młodzieży&quot; (2012)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-7">
+      <a href="/slowem-i-piorem-2021" class="">
+        <span>&quot;Słowem i piórem&quot; (2021)</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-7">
+      <a href="/logo-mdk-do-pobrania" class="">
+        <span>Logo MDK do pobrania</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-8">
+      <a href="/ochrona-danych-osobowych" class="">
+        <span>Ochrona danych osobowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-9">
+      <a href="/standardy-ochrony-maloletnich" class="">
+        <span>Standardy ochrony małoletnich</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-10">
+      <a href="/procedura-sygnalisty" class="">
+        <span>Procedura sygnalisty</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-11">
+      <a href="/wielkanoc-tuz-tuz" class="carret">
+        <span>Projekty unijne</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-11">
+                      <li class="" data-id="root-1-11-1">
+      <a href="/rewitalizacja-przestrzeni-publicznych-w-opolu" class="">
+        <span>Rewitalizacja przestrzeni publicznych w Opolu</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-12">
+      <a href="/swietlice-dzielnicowe" class="">
+        <span>Świetlice dzielnicowe</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13">
+      <a href="/zamowienia-publiczne" class="carret">
+        <span>Zamówienia publiczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-13">
+                      <li class="" data-id="root-1-13-1">
+      <a href="/zamowienia-ponizej-170000-pln" class="">
+        <span>Zamówienia poniżej 170.000 PLN</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-2">
+      <a href="/zamowienia-powyzej-170000-pln" class="">
+        <span>Zamówienia powyżej 170.000 PLN</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-3">
+      <a href="/plany-zamowien-publicznych" class="">
+        <span>Plany zamówień publicznych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4">
+      <a href="/zamowienia-archiwalne" class="carret">
+        <span>Zamówienia archiwalne</span>
+      </a>
+              <ul class="level_3" data-parent="root-1-13-4">
+                      <li class="" data-id="root-1-13-4-1">
+      <a href="/budowa-placu-zabaw-w-filii-mdk-nr-3-etap-i" class="">
+        <span>Budowa placu zabaw w Filii MDK nr 3 - etap I</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-2">
+      <a href="/budowa-placu-zabaw-w-filii-mdk-nr-3-etap-ii" class="">
+        <span>Budowa placu zabaw w Filii MDK nr 3 - etap II</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-3">
+      <a href="/remont-korytarzy-w-budynku-glownym-mdk-etap-i" class="">
+        <span>Remont korytarzy w budynku głównym MDK - etap I</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-4">
+      <a href="/budowa-placu-zabaw-w-filii-mdk-nr-3-etap-ii-ponowne-ogloszenie" class="">
+        <span>Budowa placu zabaw w Filii MDK nr 3 - etap II (ponowne ogłoszenie)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-5">
+      <a href="/remont-korytarzy-w-budynku-glownym-mdk-etap-i-ponowne-ogloszenie" class="">
+        <span>Remont korytarzy w budynku głównym MDK - etap I (ponowne ogłoszenie)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-6">
+      <a href="/przebudowa-kuchni-na-sale-dydaktyczna-w-filii-mdk-nr-1" class="">
+        <span>Przebudowa kuchni na salę dydaktyczną w Filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-7">
+      <a href="/przebudowa-kuchni-na-sale-dydaktyczna-w-filii-mdk-nr-1-ponowne-ogl" class="">
+        <span>Przebudowa kuchni na salę dydaktyczną w Filii MDK nr 1 (ponowne ogł.)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-8">
+      <a href="/wykonanie-wykladziny-z-tworzyw-sztucznych-w-filii-mdk-nr-1" class="">
+        <span>Wykonanie wykładziny z tworzyw sztucznych w Filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-9">
+      <a href="/wymiana-swietlikow-dachowych-w-filii-mdk-nr-1" class="">
+        <span>Wymiana świetlików dachowych w Filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-10">
+      <a href="/usuniecie-drzew-krzewow-frezowanie-pni-oraz-ciecia-drzewostanu" class="">
+        <span>Usunięcie drzew, krzewów, frezowanie pni oraz cięcia drzewostanu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-11">
+      <a href="/bilety-lotnicze-dla-czlonkow-zespolu-tanecznego-pech" class="">
+        <span>Bilety lotnicze dla członków i opiekunów Zespołu Tanecznego PECH</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-12">
+      <a href="/pech-z-workiem-medali" class="">
+        <span>Usunięcie drzew, frezowanie pni oraz cięcia pielęgnacyjne drzewostanu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-13">
+      <a href="/dostawa-pior-wiecznych-i-dlugopisow-firmy-parker" class="">
+        <span>Dostawa piór wiecznych i długopisów marki Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-14">
+      <a href="/remont-pokrycia-dachowego-w-filii-mdk-nr-1" class="">
+        <span>Remont pokrycia dachowego w filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-15">
+      <a href="/wymiana-okien-w-filii-mdk-nr-1" class="">
+        <span>Wymiana okien w filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-16">
+      <a href="/wykonanie-dostawa-i-montaz-mebli-do-pomieszczenia-edukacyjnego" class="">
+        <span>Wykonanie, dostawa i montaż mebli do pomieszczenia edukacyjnego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-17">
+      <a href="/wykonanie-dostawa-i-montaz-mebli-do-pomieszczenia-rodzicow" class="">
+        <span>Wykonanie, dostawa i montaż mebli do pomieszczenia rodziców</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-18">
+      <a href="/zakup-i-dostawa-mebli-oraz-wyposazenia-do-dwoch-pomieszczen-mdk" class="">
+        <span>Zakup i dostawa mebli oraz wyposażenia do dwóch pomieszczeń MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-19">
+      <a href="/dostawa-pior-wiecznych-i-dlugopisow-marki-parker" class="">
+        <span>Dostawa piór wiecznych i długopisów firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-20">
+      <a href="/zakup-i-dostawa-sprzetu-muzycznego" class="">
+        <span>Zakup i dostawa sprzętu muzycznego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-21">
+      <a href="/dostawa-rekreacyjnych-urzadzen-pneumatycznych" class="">
+        <span>Dostawa rekreacyjnych urządzeń pneumatycznych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-22">
+      <a href="/przeprowadzenie-warsztatow-recyklingowych" class="">
+        <span>Przeprowadzenie warsztatów recyklingowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-23">
+      <a href="/pelnienie-funkcji-wychowawcy-polkolonii-zimowej-eko-ferie-z-mdk" class="">
+        <span>Pełnienie funkcji wychowawcy półkolonii zimowej EKO FERIE Z MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-24">
+      <a href="/remont-pokrycia-dachowego" class="">
+        <span>Remont pokrycia dachowego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-25">
+      <a href="/dostawa-pior-wiecznych-i-dlugopisow-marki-parker-0" class="">
+        <span>Dostawa piór wiecznych i długopisów marki Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-26">
+      <a href="/na-jesienny-wieczor" class="">
+        <span>Przeprowadzenie rodzinnych warsztatów recyklingowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-27">
+      <a href="/przeprowadzenie-rodzinnych-warsztatow-recyklingowych" class="">
+        <span>Przeprowadzenie rodzinnych warsztatów recyklingowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-28">
+      <a href="/pelnienie-funkcji-wychowawcy-polkolonii-letniej-eko-lato-z-mdk" class="">
+        <span>Pełnienie funkcji wychowawcy półkolonii letniej EKO LATO Z MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-29">
+      <a href="/pelnienie-funkcji-wychowawcy-polkolonii-letniej-eko-lato-z-mdk-0" class="">
+        <span>Pełnienie funkcji wychowawcy półkolonii letniej EKO LATO Z MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-30">
+      <a href="/pelnienie-funkcji-czlonka-komisji-konkursowej-konkursu-filmowego" class="">
+        <span>Pełnienie funkcji członka komisji konkursowej konkursu filmowego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-31">
+      <a href="/wykonanie-dostawa-i-montaz-drzwi-wejsciowych-do-budynku-filii-mdk-nr-1" class="">
+        <span>Wykonanie, dostawa i montaż drzwi wejściowych do budynku filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-32">
+      <a href="/bilety-lotnicze-dla-czlonkow-i-opiekunow-zespolu-tanecznego-pech" class="">
+        <span>Bilety lotnicze dla członków i opiekunów Zespołu Tanecznego PECH</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-33">
+      <a href="/dostawa-pior-wiecznych-marki-parker" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-34">
+      <a href="/dostawa-i-montaz-calorocznej-toalety-jednostanowiskowej" class="">
+        <span>Dostawa i montaż całorocznej toalety jednostanowiskowej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-35">
+      <a href="/dostawa-pior-wiecznych-marki-parker-0" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-36">
+      <a href="/zakup-i-dostawa-krzesel-tapicerowanych-do-sali-widowiskowej-mdk" class="">
+        <span>Zakup i dostawa krzeseł tapicerowanych do sali widowiskowej MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-37">
+      <a href="/dostawa-srodkow-czystosci-do-mdk" class="">
+        <span>Dostawa środków czystości do MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-38">
+      <a href="/dostawa-pior-wiecznych-firmy-parker-0" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-39">
+      <a href="/wykonanie-dostawa-i-montaz-okien-w-budynku-filii-mdk-nr-2" class="">
+        <span>Wykonanie, dostawa i montaż okien w budynku filii MDK nr 2</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-40">
+      <a href="/dostawa-pior-wiecznych-firmy-parker-1" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-41">
+      <a href="/zakup-dostawa-i-nasadzenie-bluszczu-pospolitego-na-terenie-parku-mdk" class="">
+        <span>Zakup, dostawa i nasadzenie bluszczu pospolitego na terenie parku MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-42">
+      <a href="/dostawa-pior-wiecznych-firmy-parker" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-43">
+      <a href="/zakup-sprzetu-audiowizualnego-dla-kina-studio-w-mdk" class="">
+        <span>Zakup sprzętu audiowizualnego dla Kina Studio w MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-44">
+      <a href="/dostawa-artykulow-spozywczych" class="">
+        <span>Dostawa artykułów spożywczych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-45">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-w-roku-2025" class="">
+        <span>Zakup i dostawa środków czystości w roku 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-46">
+      <a href="/dostawa-pior-wiecznych-marki-parker-1" class="">
+        <span>Dostawa piór wiecznych marki Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-47">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-w-roku-2025-0" class="">
+        <span>Zakup i dostawa środków czystości w roku 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-48">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-w-roku-2025-1" class="">
+        <span>Zakup i dostawa środków czystości w roku 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-49">
+      <a href="/transport-uczestnikow-zajec-mdk-na-zawody-taneczne" class="">
+        <span>Transport uczestników zajęć MDK na zawody taneczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-50">
+      <a href="/transport-uczestnikow-kolonii-letniej-w-szczyrku" class="">
+        <span>Transport uczestników kolonii letniej w Szczyrku</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-51">
+      <a href="/transport-uczestnikow-polkolonii-letniej-na-wycieczki" class="">
+        <span>Transport uczestników półkolonii letniej na wycieczki</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-52">
+      <a href="/zapewnienie-posilkow-dla-uczestnikow-polkolonii-letnich-mdk" class="">
+        <span>Zapewnienie posiłków dla uczestników półkolonii letnich MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-53">
+      <a href="/transport-czlonkow-zespolu-piesni-i-tanca-opole-do-grecji" class="">
+        <span>Transport członków Zespołu Pieśni i Tańca OPOLE do Grecji</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-54">
+      <a href="/technika-estradowa-imprez-plenerowych-koncerty-promenadowe-2025" class="">
+        <span>Technika estradowa imprez plenerowych - koncerty promenadowe 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-55">
+      <a href="/wykonanie-i-dostawa-materialow-na-potrzeby-mdk" class="">
+        <span>Wykonanie i dostawa materiałów na potrzeby MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-56">
+      <a href="/technika-estradowa-imprezy-plenerowej-06092025" class="">
+        <span>Technika estradowa imprezy plenerowej 06.09.2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-57">
+      <a href="/transport-uczestnikow-projektu-europejskie-sciezki-kultury-do-francji" class="">
+        <span>Transport uczestników projektu „Europejskie ścieżki kultury” do Francji</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-58">
+      <a href="/technika-estradowa-imprezy-plenerowej-11112025" class="">
+        <span>Technika estradowa imprezy plenerowej 11.11.2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-59">
+      <a href="/dostawa-artykulow-spozywczych-0" class="">
+        <span>Dostawa artykułów spożywczych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-60">
+      <a href="/technika-estradowa-imprezy-07122025" class="">
+        <span>Technika estradowa imprezy 07.12.2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-61">
+      <a href="/technika-estradowa-imprezy-plenerowej-orszak-trzech-kroli-06012026" class="">
+        <span>Technika estradowa imprezy plenerowej Orszak Trzech Króli 06.01.2026</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-62">
+      <a href="/sukcesywne-swiadczenie-uslug-cateringowych-na-rzecz-mdk-w-opolu" class="">
+        <span>Sukcesywne świadczenie usług cateringowych na rzecz MDK w Opolu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-63">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-zapytanie-nr-1" class="">
+        <span>Zakup i dostawa środków czystości - zapytanie nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-64">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-zapytanie-nr-2" class="">
+        <span>Zakup i dostawa środków czystości - zapytanie nr 2</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-65">
+      <a href="/juz-wkrotce-piosenkobranie-2016" class="">
+        <span>Dostawa piór wiecznych marki Parker</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2">
+      <a href="/zajecia-stale" class="carret">
+        <span>Zajęcia stałe</span>
+      </a>
+              <ul class="level_1" data-parent="root-2">
+                      <li class="" data-id="root-2-1">
+      <a href="/taniec" class="carret">
+        <span>Taniec</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-1">
+                      <li class="" data-id="root-2-1-1">
+      <a href="/zespol-piesni-i-tanca-opole" class="">
+        <span>Zespół Pieśni i Tańca &quot;OPOLE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-1-2">
+      <a href="/zespol-taneczny-adena" class="">
+        <span>Zespół Taneczny &quot;ADENA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-1-3">
+      <a href="/zespol-taneczny-pech" class="">
+        <span>Zespół Taneczny &quot;PECH&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-1-4">
+      <a href="/zajecia-breakdance" class="">
+        <span>Zajęcia breakdance</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-2">
+      <a href="/muzyka-i-spiew" class="carret">
+        <span>Muzyka i śpiew</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-2">
+                      <li class="" data-id="root-2-2-1">
+      <a href="/zajecia-umuzykalniajace-coro-piccolino" class="">
+        <span>Zajęcia umuzykalniające dla dzieci &quot;CORO PICCOLINO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-2">
+      <a href="/dzieciecy-zespol-muzyczny-sing-play" class="">
+        <span>Dziecięcy Zespół Muzyczny &quot;SING &amp; PLAY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-3">
+      <a href="/dzieciecy-zespol-instrumentalny-magiczna-orkiestra" class="">
+        <span>Dziecięcy Zespół Instrumentalny &quot;MAGICZNA ORKIESTRA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-4">
+      <a href="/studio-piosenki-debiut" class="">
+        <span>Studio Piosenki &quot;DEBIUT&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-5">
+      <a href="/talentarium-wokalne-singasong" class="">
+        <span>Talentarium Wokalne &quot;SINGASONG&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-6">
+      <a href="/wokalne-studio-ksztalcenia-jazzowego" class="">
+        <span>Wokalne Studio Kształcenia Jazzowego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-7">
+      <a href="/studio-emisji-glosu" class="">
+        <span>Studio Emisji Głosu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-8">
+      <a href="/zajecia-hip-hop-rozkminki-kontrolowane" class="">
+        <span>Zajęcia hip-hopu &quot;ROZKMINKI KONTROLOWANE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-9">
+      <a href="/klub-szesciu-strun" class="">
+        <span>Klub Sześciu Strun</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-10">
+      <a href="/studio-instrumentow-klawiszowych" class="">
+        <span>Studio Instrumentów Klawiszowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-11">
+      <a href="/zespol-klawiszowy-w-duecie" class="">
+        <span>Zespół klawiszowy &quot;W DUECIE&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-3">
+      <a href="/teatr-i-recytacja" class="carret">
+        <span>Teatr i recytacja</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-3">
+                      <li class="" data-id="root-2-3-1">
+      <a href="/teatr-nasza-strefa-0" class="">
+        <span>Teatr &quot;NASZA STREFA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-2">
+      <a href="/studio-ksztalcenia-artystycznego-bb" class="">
+        <span>Studio Kształcenia Artystycznego &quot;BB&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-3">
+      <a href="/teatr-asceza" class="">
+        <span>Teatr &quot;ASCEZA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-4">
+      <a href="/teatr-gromadka" class="">
+        <span>Teatr &quot;GROMADKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-5">
+      <a href="/teatr-jednego-wiersza" class="">
+        <span>Teatr Jednego Wiersza</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-6">
+      <a href="/teatr-piktogram" class="">
+        <span>Teatr &quot;PIKTOGRAM&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-7">
+      <a href="/teatr-spotkanie" class="">
+        <span>Teatr &quot;SPOTKANIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-8">
+      <a href="/teatr-zapadnia" class="">
+        <span>Teatr &quot;ZAPADNIA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-9">
+      <a href="/warsztaty-od-szekspira-do-becketta" class="">
+        <span>Warsztaty &quot;OD SZEKSPIRA DO BECKETTA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-10">
+      <a href="/warsztaty-recytatorskie-slowem" class="">
+        <span>Warsztaty recytatorskie &quot;SŁOWEM&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-4">
+      <a href="/film-i-fotografia" class="carret">
+        <span>Film i fotografia</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-4">
+                      <li class="" data-id="root-2-4-1">
+      <a href="/klub-dobrego-filmu-studio" class="">
+        <span>Klub Dobrego Filmu &quot;STUDIO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-4-2">
+      <a href="/pracownia-edukacji-filmowej-abecadlo-kina" class="">
+        <span>Pracownia edukacji filmowej &quot;ABECADŁO KINA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-4-3">
+      <a href="/pracownia-animacji-poklatkowej-stop-klatka" class="">
+        <span>Pracownia animacji poklatkowej &quot;STOP-KLATKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-4-4">
+      <a href="/pracownia-fotograficzna-blenda" class="">
+        <span>Pracownia fotograficzna &quot;BLENDA&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-5">
+      <a href="/plastyka-i-ceramika" class="carret">
+        <span>Plastyka i ceramika</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-5">
+                      <li class="" data-id="root-2-5-1">
+      <a href="/pracownia-plastyczna-arte" class="">
+        <span>Pracownia plastyczna &quot;ARTE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-2">
+      <a href="/pracownia-plastyczna-plastusie" class="">
+        <span>Pracownia plastyczna &quot;PLASTUSIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-3">
+      <a href="/pracownia-plastyczna-plastyk" class="">
+        <span>Pracownia plastyczna &quot;PLASTYK&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-4">
+      <a href="/pracownia-plastyczna-ramka" class="">
+        <span>Pracownia plastyczna &quot;RAMKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-5">
+      <a href="/pracownia-plastyczna-szkatulka" class="">
+        <span>Pracownia plastyczna &quot;SZKATUŁKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-6">
+      <a href="/pracownia-plastyczna-tecza" class="">
+        <span>Pracownia plastyczna &quot;TĘCZA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-7">
+      <a href="/pracownia-plastyczna-wrobel" class="">
+        <span>Pracownia plastyczna &quot;WRÓBEL&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-8">
+      <a href="/pracownia-ceramiki-artystycznej" class="">
+        <span>Pracownia Ceramiki Artystycznej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-9">
+      <a href="/pracownia-ceramiczna-amfora" class="">
+        <span>Pracownia ceramiczna &quot;AMFORA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-10">
+      <a href="/pracownia-szkla-artystycznego" class="">
+        <span>Pracownia Szkła Artystycznego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-11">
+      <a href="/pracownia-rekodziela-i-kosmetykow-malwa" class="">
+        <span>Pracownia rękodzieła i kosmetyków &quot;MALWA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-12">
+      <a href="/kolo-gospodyn-miejskich" class="">
+        <span>Koło Gospodyń Miejskich</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-6">
+      <a href="/informatyka-i-technika" class="carret">
+        <span>Informatyka i technika</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-6">
+                      <li class="" data-id="root-2-6-1">
+      <a href="/robotyka-lego" class="">
+        <span>Robotyka &quot;LEGO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-6-2">
+      <a href="/modelarnia" class="">
+        <span>Modelarnia</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-7">
+      <a href="/edukacja-przedszkolna" class="carret">
+        <span>Edukacja przedszkolna</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-7">
+                      <li class="" data-id="root-2-7-1">
+      <a href="/artystyczna-akademia-przedszkolaka" class="">
+        <span>Artystyczna Akademia Przedszkolaka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-7-2">
+      <a href="/akademia-pieciolatka" class="">
+        <span>Akademia Pięciolatka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-7-3">
+      <a href="/rodzinna-pracownia-kreatywnosci-michalki" class="">
+        <span>Rodzinna pracownia kreatywności &quot;MICHAŁKI&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-7-4">
+      <a href="/zajecia-sensoryczne-sensosmyki" class="">
+        <span>Zajęcia sensoryczne &quot;SENSOSMYKI&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-8">
+      <a href="/edukacja-jezykowa" class="carret">
+        <span>Edukacja językowa</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-8">
+                      <li class="" data-id="root-2-8-1">
+      <a href="/fun-english" class="">
+        <span>Fun English</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-8-2">
+      <a href="/zajecia-jezyka-angielskiego" class="">
+        <span>Zajęcia języka angielskiego</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-9">
+      <a href="/kulinaria" class="carret">
+        <span>Kulinaria</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-9">
+                      <li class="" data-id="root-2-9-1">
+      <a href="/klub-kulinarny-smak" class="">
+        <span>Klub kulinarny &quot;SMAK&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-10">
+      <a href="/sport-i-rekreacja" class="carret">
+        <span>Sport i rekreacja</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-10">
+                      <li class="" data-id="root-2-10-1">
+      <a href="/grupa-akrobatyczna-salto" class="">
+        <span>Grupa akrobatyczna &quot;SALTO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-10-2">
+      <a href="/akrobatyka-taneczna-reflex" class="">
+        <span>Akrobatyka taneczna &quot;REFLEX&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-10-3">
+      <a href="/zajecia-szachowe-szach-mat" class="">
+        <span>Zajęcia szachowe &quot;SZACH-MAT&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-10-4">
+      <a href="/tenis-stolowy" class="">
+        <span>Tenis stołowy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-11">
+      <a href="/wolontariat-i-profilaktyka" class="carret">
+        <span>Wolontariat i profilaktyka</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-11">
+                      <li class="" data-id="root-2-11-1">
+      <a href="/spotkania-profilaktyczne" class="">
+        <span>Spotkania profilaktyczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-11-2">
+      <a href="/mlodziezowy-wolontariat" class="">
+        <span>Młodzieżowy wolontariat</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-11-3">
+      <a href="/opolski-sztab-wielkiej-orkiestry-swiatecznej-pomocy" class="">
+        <span>Opolski sztab Wielkiej Orkiestry Świątecznej Pomocy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-12">
+      <a href="/rekrutacja-na-zajecia-202627" class="">
+        <span>Rekrutacja na zajęcia 2026/27</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-3">
+      <a href="/projekty-i-programy" class="carret">
+        <span>Projekty i programy</span>
+      </a>
+              <ul class="level_1" data-parent="root-3">
+                      <li class="" data-id="root-3-1">
+      <a href="/artystyczne-soboty-w-mdk" class="">
+        <span>Artystyczne soboty w MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-2">
+      <a href="/edukacja-mlode-horyzonty" class="">
+        <span>Edukacja Młode Horyzonty</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-3">
+      <a href="/klub-malego-matematyka" class="">
+        <span>Klub Małego Matematyka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-4">
+      <a href="/klub-malego-odkrywcy" class="">
+        <span>Klub Małego Odkrywcy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-5">
+      <a href="/kulinarne-podroze-mlodego-odkrywcy" class="">
+        <span>Kulinarne Podróże Młodego Odkrywcy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-6">
+      <a href="/lekcje-grotowskiego" class="">
+        <span>Lekcje Grotowskiego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-7">
+      <a href="/maly-opolanin" class="">
+        <span>Mały Opolanin</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-8">
+      <a href="/na-szkle-malowane" class="">
+        <span>Na szkle malowane</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-9">
+      <a href="/oswajamy-matematyke" class="">
+        <span>Oswajamy matematykę</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-10">
+      <a href="/strefa-odkrywania-wyobrazni-i-aktywnosci-sowa" class="">
+        <span>Strefa Odkrywania, Wyobraźni i Aktywności (SOWA)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-11">
+      <a href="/teatralne-abc" class="">
+        <span>Teatralne ABC</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-12">
+      <a href="/tworcza-mama-tworczy-tato" class="">
+        <span>Twórcza mama, twórczy tato</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-13">
+      <a href="/uczen-zdolny" class="">
+        <span>Uczeń zdolny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-14">
+      <a href="/uczen-zdolny-olimpijczyk" class="">
+        <span>Uczeń zdolny - olimpijczyk</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-15">
+      <a href="/wakacyjna-przygoda-z-nauka" class="">
+        <span>Wakacyjna przygoda z nauką</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16">
+      <a href="/teatralna-wiosna-w-mdk" class="carret">
+        <span>Wspólna akcja segregacja</span>
+      </a>
+              <ul class="level_2" data-parent="root-3-16">
+                      <li class="" data-id="root-3-16-1">
+      <a href="/opis-projektu" class="">
+        <span>Opis projektu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-2">
+      <a href="/dzialania-promocyjne" class="">
+        <span>Działania promocyjne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-3">
+      <a href="/zimowe-warsztaty-ekologiczne" class="">
+        <span>Zimowe warsztaty ekologiczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-4">
+      <a href="/rodzinne-warsztaty-recyklingowe" class="">
+        <span>Rodzinne warsztaty recyklingowe</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-5">
+      <a href="/spektakl-ekologiczny" class="">
+        <span>Spektakl ekologiczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-6">
+      <a href="/letnie-warsztaty-ekologiczne" class="">
+        <span>Letnie warsztaty ekologiczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-7">
+      <a href="/konkurs-filmowy-zielone-kadry" class="">
+        <span>Konkurs filmowy &quot;ZIELONE KADRY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-8">
+      <a href="/festiwal-piosenki-ekologicznej" class="">
+        <span>Festiwal Piosenki Ekologicznej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-9">
+      <a href="/wystawa-ksiazka-kartki-pocztowe" class="">
+        <span>Wystawa, książka, kartki pocztowe</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4">
+      <a href="/konkursy-i-imprezy" class="carret">
+        <span>Konkursy i imprezy</span>
+      </a>
+              <ul class="level_1" data-parent="root-4">
+                      <li class="" data-id="root-4-1">
+      <a href="/taneczne" class="carret">
+        <span>Taneczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-1">
+                      <li class="" data-id="root-4-1-1">
+      <a href="/ogolnopolskie-spotkania-artystyczne-opole-artis-1" class="">
+        <span>Ogólnopolskie Spotkania Artystyczne &quot;OPOLE ARTIS&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-1-2">
+      <a href="/wojewodzki-festiwal-tanca-fantan" class="">
+        <span>Wojewódzki Festiwal Tańca &quot;FANTAN&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-1-3">
+      <a href="/festiwal-artystyczny-opolskie-mlode-talenty-1" class="">
+        <span>Festiwal Artystyczny &quot;OPOLSKIE MŁODE TALENTY&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-2">
+      <a href="/muzyczne" class="carret">
+        <span>Muzyczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-2">
+                      <li class="" data-id="root-4-2-1">
+      <a href="/ogolnopolski-festiwal-piosenki-piosenkobranie" class="">
+        <span>Ogólnopolski Festiwal Piosenki &quot;PIOSENKOBRANIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-2">
+      <a href="/ogolnopolskie-spotkania-artystyczne-opole-artis-2" class="">
+        <span>Ogólnopolskie Spotkania Artystyczne &quot;OPOLE ARTIS&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-3">
+      <a href="/festiwal-artystyczny-opolskie-mlode-talenty-2" class="">
+        <span>Festiwal Artystyczny &quot;OPOLSKIE MŁODE TALENTY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-4">
+      <a href="/festiwal-piosenki-przedszkolnej" class="">
+        <span>Festiwal Piosenki Przedszkolnej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-5">
+      <a href="/mikolajkowy-festiwal-piosenki-dzieciecej" class="">
+        <span>Mikołajkowy Festiwal Piosenki Dziecięcej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-6">
+      <a href="/koncert-muzyki-wakacyjnej" class="">
+        <span>Koncert Muzyki Wakacyjnej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-7">
+      <a href="/tydzien-kultury-niebanalnej-4" class="">
+        <span>Tydzień Kultury Niebanalnej</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-3">
+      <a href="/teatralne" class="carret">
+        <span>Teatralne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-3">
+                      <li class="" data-id="root-4-3-1">
+      <a href="/ogolnopolskie-forum-teatrow-dzieciecych-i-mlodziezowych-miniatury" class="">
+        <span>Ogólnopolskie Forum Teatrów Dziecięcych i Młodzieżowych &quot;MINIATURY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-2">
+      <a href="/festiwal-artystyczny-opolskie-mlode-talenty-0" class="">
+        <span>Festiwal Artystyczny &quot;OPOLSKIE MŁODE TALENTY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-3">
+      <a href="/przeglad-dzieciecych-inscenizacji-teatralnych" class="">
+        <span>Przegląd Dziecięcych Inscenizacji Teatralnych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-4">
+      <a href="/tydzien-kultury-niebanalnej-5" class="">
+        <span>Tydzień Kultury Niebanalnej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-5">
+      <a href="/zimowe-spotkania-teatralne" class="">
+        <span>Zimowe Spotkania Teatralne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-6">
+      <a href="/swietojanska-noc-teatralna" class="">
+        <span>Świętojańska Noc Teatralna</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-4">
+      <a href="/recytatorskie" class="carret">
+        <span>Recytatorskie</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-4">
+                      <li class="" data-id="root-4-4-1">
+      <a href="/ogolnopolski-turniej-sztuki-recytatorskiej-klubu-zapalonej-swiecy-3" class="">
+        <span>Ogólnopolski Turniej Sztuki Recytatorskiej Klubu Zapalonej Świecy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-2">
+      <a href="/ogolnopolski-konkurs-recytatorski" class="">
+        <span>Ogólnopolski Konkurs Recytatorski</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-3">
+      <a href="/konkurs-recytatorski-slowo" class="">
+        <span>Konkurs Recytatorski &quot;SŁOWO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-4">
+      <a href="/konkurs-recytatorski-dla-przedszkolakow-biale-wierszowanie" class="">
+        <span>Konkurs Recytatorski dla Przedszkolaków &quot;BIAŁE WIERSZOWANIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-5">
+      <a href="/konkurs-recytatorski-w-jezyku-niemieckim-mlodziez-recytuje-poezje-0" class="">
+        <span>Konkurs Recytatorski w Języku Niemieckim &quot;MŁODZIEŻ RECYTUJE POEZJĘ&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-5">
+      <a href="/plastyczne" class="carret">
+        <span>Plastyczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-5">
+                      <li class="" data-id="root-4-5-1">
+      <a href="/wojewodzki-konkurs-plastyczny-projekt-kartki-swiatecznej" class="">
+        <span>Wojewódzki Konkurs Plastyczny &quot;PROJEKT KARTKI ŚWIĄTECZNEJ&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-5-2">
+      <a href="/wojewodzki-konkurs-zdobienia-jaj-wielkanocnych-pisanka-0" class="">
+        <span>Wojewódzki Konkurs Zdobienia Jaj Wielkanocnych &quot;PISANKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-5-3">
+      <a href="/wojewodzki-konkurs-plastyczny-projekt-kartki-wielkanocnej" class="">
+        <span>Wojewódzki Konkurs Plastyczny &quot;PROJEKT KARTKI WIELKANOCNEJ&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-5-4">
+      <a href="/plener-plastyczny-opole-kredka-rysowane" class="">
+        <span>Plener plastyczny &quot;OPOLE KREDKĄ RYSOWANE&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-6">
+      <a href="/filmowe-i-fotograficzne" class="carret">
+        <span>Filmowe i fotograficzne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-6">
+                      <li class="" data-id="root-4-6-1">
+      <a href="/wojewodzki-konkurs-fotograficzny-sam-nie-pale-i-innym-odradzam" class="">
+        <span>Wojewódzki konkurs fotograficzny &quot;SAM NIE PALĘ I INNYM ODRADZAM&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-6-2">
+      <a href="/festiwal-filmow-dla-dzieci-i-mlodziezy-zero-nudy" class="">
+        <span>Festiwal Filmów dla Dzieci i Młodzieży &quot;ZERO NUDY&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-7">
+      <a href="/integracyjne" class="carret">
+        <span>Integracyjne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-7">
+                      <li class="" data-id="root-4-7-1">
+      <a href="/dzien-dziecka" class="">
+        <span>Dzień Dziecka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-2">
+      <a href="/lato-tuz-tuz" class="">
+        <span>Lato tuż-tuż</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-3">
+      <a href="/europejski-dzien-bez-samochodu" class="">
+        <span>Europejski Dzień Bez Samochodu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-4">
+      <a href="/spotkanie-wigilijne" class="">
+        <span>Spotkanie wigilijne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-5">
+      <a href="/bal-karnawalowy" class="">
+        <span>Bal karnawałowy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-8">
+      <a href="/regionalne" class="carret">
+        <span>Regionalne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-8">
+                      <li class="" data-id="root-4-8-1">
+      <a href="/final-projektu-maly-opolanin" class="">
+        <span>Finał projektu &quot;MAŁY OPOLANIN&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-8-2">
+      <a href="/jarmark-franciszkanski" class="">
+        <span>Jarmark Franciszkański</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-9">
+      <a href="/samorzadowe-i-wolontariackie" class="carret">
+        <span>Samorządowe i wolontariackie</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-9">
+                      <li class="" data-id="root-4-9-1">
+      <a href="/konferencja-samorzadow-uczniowskich" class="">
+        <span>Konferencja Samorządów Uczniowskich</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-9-2">
+      <a href="/final-wielkiej-orkiestry-swiatecznej-pomocy" class="">
+        <span>Finał Wielkiej Orkiestry Świątecznej Pomocy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-10">
+      <a href="/edukacyjne" class="carret">
+        <span>Edukacyjne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-10">
+                      <li class="" data-id="root-4-10-1">
+      <a href="/zarzadzenia-terminarz-i-wzory-dokumentow" class="">
+        <span>Zarządzenia, terminarz i wzory dokumentów</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-2">
+      <a href="/wojewodzki-konkurs-polonistyczny" class="">
+        <span>Wojewódzki Konkurs Polonistyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-3">
+      <a href="/wojewodzki-konkurs-matematyczny" class="">
+        <span>Wojewódzki Konkurs Matematyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-4">
+      <a href="/wojewodzki-konkurs-jezyka-angielskiego" class="">
+        <span>Wojewódzki Konkurs Języka Angielskiego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-5">
+      <a href="/wojewodzki-konkurs-jezyka-niemieckiego" class="">
+        <span>Wojewódzki Konkurs Języka Niemieckiego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-6">
+      <a href="/wojewodzki-konkurs-historyczny" class="">
+        <span>Wojewódzki Konkurs Historyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-7">
+      <a href="/wojewodzki-konkurs-geograficzny" class="">
+        <span>Wojewódzki Konkurs Geograficzny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-8">
+      <a href="/wojewodzki-konkurs-biologiczny" class="">
+        <span>Wojewódzki Konkurs Biologiczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-9">
+      <a href="/wojewodzki-konkurs-chemiczny" class="">
+        <span>Wojewódzki Konkurs Chemiczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-10">
+      <a href="/wojewodzki-konkurs-fizyczny" class="">
+        <span>Wojewódzki Konkurs Fizyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-11">
+      <a href="/wojewodzki-konkurs-informatyczny" class="">
+        <span>Wojewódzki Konkurs Informatyczny</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-5">
+      <a href="/wypoczynek" class="carret">
+        <span>Wypoczynek</span>
+      </a>
+              <ul class="level_1" data-parent="root-5">
+                      <li class="" data-id="root-5-1">
+      <a href="/polkolonie-letnie" class="">
+        <span>Półkolonie letnie</span>
+      </a>
+          </li>
+          <li class="" data-id="root-5-2">
+      <a href="/warsztaty-i-zajecia-otwarte-w-czasie-ferii-zimowych" class="">
+        <span>Warsztaty i zajęcia otwarte w czasie ferii zimowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-5-3">
+      <a href="/polkolonie-zimowe" class="">
+        <span>Półkolonie zimowe</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="active" data-id="root-6">
+      <a href="/kino-studio" class="">
+        <span>Kino Studio</span>
+      </a>
+          </li>
+          <li class="" data-id="root-7">
+      <a href="/fotogaleria" class="">
+        <span>Fotogaleria</span>
+      </a>
+          </li>
+          <li class="" data-id="root-8">
+      <a href="/kontakt" class="">
+        <span>Kontakt</span>
+      </a>
+          </li>
+  
+      </ul>
+
+      <div class="menu_col_divider_wrapper cell_flex">
+        <div class="menu_col_divider top_level"></div>
+        <div class="menu_col_divider mid_level"></div>
+        <div class="menu_col_divider bot_level"></div>
+      </div>
+    </div>
+
+    <div class="footer cell_flex legacy-menu-footer">
+      <a href="/kalendarz" class="item">
+        <span class="cell_flex">
+          <span>
+            <span class="sprite cellendar"></span>
+            <span class="sprite cellendar_red hover"></span>
+            <span class="text">Kalendarz</span>
+          </span>
+        </span>
+      </a>
+
+      <a href="/aktualnosci" class="item">
+        <span class="cell_flex">
+          <span>
+            <span class="sprite news"></span>
+            <span class="sprite news_red hover"></span>
+            <span class="text">Aktualności</span>
+          </span>
+        </span>
+      </a>
+
+      <button type="button" class="item open_newsletter">
+        <span class="cell_flex">
+          <span>
+            <span class="sprite bell"></span>
+            <span class="sprite bell_red hover"></span>
+            <span class="text">Newsletter</span>
+          </span>
+        </span>
+      </button>
+
+      <a href="/szukaj" class="item search">
+        <span class="cell_flex">
+          <span>
+            <span class="fa fa-search" aria-hidden="true"></span>
+            <span class="text">Szukaj</span>
+          </span>
+        </span>
+      </a>
+
+      <div class="item social">
+        <span class="cell_flex">
+          <span>
+            <a href="https://www.facebook.com/mdkopole" class="facebook" target="_blank" rel="noopener noreferrer" title="Młodzieżowy Dom Kultury w Opolu">
+              <span class="fa fa-facebook" aria-hidden="true"></span>
+            </a>
+          </span>
+        </span>
+      </div>
+    </div>
+  </nav>
+</div>
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/menu--main.html.twig' -->
+
+
+	</div>
+</header>
+
+
+<main class="main ">
+			
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'region' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ region--content.html.twig
+   ✅ region.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/region/region.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ block--bazowy-content.html.twig
+   ▪️ block--system-main-block.html.twig
+   ▪️ block--system.html.twig
+   ✅ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'node' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ node--11839--full.html.twig
+   ▪️ node--11839.html.twig
+   ▪️ node--page--full.html.twig
+   ✅ node--page.html.twig
+   ▪️ node--full.html.twig
+   ▪️ node.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/node/node--page.html.twig' -->
+
+
+
+<section class="my_container cell_flex page-detail-legacy">
+	<div class="text_wrapper">
+					
+	<nav class="breadcrumb" aria-label="Breadcrumb">
+					<div class="breadcrumb__item">
+				<a href="/" class="breadcrumb-link just-url">Start</a>
+			</div>
+			<span class="breadcrumb__separator" aria-hidden="true">&gt;</span>
+				<div class="breadcrumb__item">
+			<div class="breadcrumb__current u-alt-font">
+				Kino Studio
+			</div>
+		</div>
+	</nav>
+		
+		<h1 class="title go_back thiIsContent" data-title="Tresc">
+			<a href="/" class="back_button" aria-label="Przejdz do: Start">
+				<span class="sprite chevron_left_black"></span>
+				<span class="sprite chevron_left hover"></span>
+			</a>
+			Kino Studio
+		</h1>
+
+		<div class="ckeditor clearfix">
+			
+			
+			<img src="/sites/default/files/inline-images/Drugie%20%C5%BCycie_1.jpg" data-align="center" data-entity-uuid="f8875729-db68-4d37-9c30-9da0c37e107d" data-entity-type="file" width="500" height="720"><h3><strong>03.09 (czwartek) - inauguracja nowego sezonu</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong></p><h2><strong>Drugie życie</strong></h2><p>reżyseria:&nbsp;<strong>Maryam Touzani</strong><br>obsada:&nbsp;<strong>Carmen Maura, Marta Etura, Ahmed Boulane, María Alfonsa Rosso</strong><br>gatunek:&nbsp;<strong>komediodramat</strong><br>produkcja:&nbsp;<strong>Hiszpania 2025</strong><br>czas trwania:&nbsp;<strong>116 min</strong><br>nagrody:&nbsp;<strong>nagroda publiczności na festiwalu w Wenecji, 3 nagrody na festiwalu w Mar del Plata (w tym dla najlepszego filmu w konkursie międzynarodowym)</strong></p><p><em>Nowy film Maryam Touzani („Turkusowa suknia”) to poruszająca i uskrzydlająca opowieść o przywiązaniu do miejsca, o dojrzałym życiu bez rezygnacji z siebie i o kobiecej niezależności, która nie zna wieku. Na ekranie zachwyca Carmen Maura, ikona filmów Almodóvara, tworząc jedną z najbardziej magnetycznych i energetycznych ról ostatnich lat – pełną humoru, uporu i czułości.</em></p><p><em>María Ángeles od czterdziestu lat mieszka w słonecznym apartamencie w sercu marokańskiego Tangeru. To miejsce, które pamięta jej miłość, codzienne rytuały i całe życie zapisane w ścianach, meblach i drobnych gestach. Gdy zostaje zmuszona do opuszczenia swojego domu, nie potrafi się z tym pogodzić – bo dom to nie tylko adres, lecz część tożsamości. To, co początkowo wydaje się bolesną koniecznością, nieoczekiwanie stanie się jednak nowym początkiem. W życiu Marii Ángeles pojawi się miejsce zarówno na nowe grono przyjaciół, jak i na niespodziewaną miłość.</em></p><p><em>„Drugie życie” to kino delikatne, słoneczne i bliskie widzowi. Opowieść o tym, że czasem, by ocalić siebie, trzeba zawalczyć o swój dom. I że nigdy nie jest za późno, by zacząć od nowa.</em></p><h4><a href="https://www.youtube.com/watch?v=VCx2NCBexzE"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/O%20czym%20sobie%20nie%20m%C3%B3wimy_1.jpg" data-align="center" data-entity-uuid="262d9bbf-59dc-4bcd-aa47-e33429b43cc7" data-entity-type="file" width="500" height="720"><h3><strong>10.09 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>O czym sobie nie mówimy</strong></h2><p>reżyseria:&nbsp;<strong>Gabriele Muccino</strong><br>obsada:&nbsp;<strong>Stefano Accorsi,&nbsp;Carolina Crescentini,&nbsp;Miriam Leone,&nbsp;Claudio Santamaria</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Włochy 2026</strong><br>czas trwania:&nbsp;<strong>114 min</strong></p><p><em>Carlo i Elisa mieszkają w Rzymie, tworząc z pozoru udany związek. On jest profesorem filozofii na uniwersytecie i pisarzem walczącym z kryzysem twórczym. Ona z kolei to utalentowana, błyskotliwa dziennikarka, której felietony ukazują się w międzynarodowych magazynach lifestylowych. Do ich trwającego od dwóch dekad związku wkrada się coraz więcej rutyny oraz dystansu.</em></p><p><em>Aby odzyskać dawną energię, decydują się na wyjazd do Maroka w towarzystwie wieloletnich przyjaciół: Anny i Paola oraz ich trzynastoletniej córki Vittorii – inteligentnej, dociekliwej i ekscentrycznej nastolatki. Okazuje się, że także oni przeżywają poważny kryzys, który najbardziej odbija się na dziewczynce. Vittoria, która nie może dogadać się z rodzicami, znajduje oparcie w Carlu, nawiązując z nim bliską więź. To dopiero początek nadchodzących problemów...</em></p><p><em>„O czym sobie nie mówimy” to pasjonująca opowieść o związkach, tajemnicach, tłumionych emocjach i niebezpiecznych pragnieniach. Film inspirowany jest powieścią „Siracusa” autorstwa Delii Ephron, która ukazała się także w Polsce. Pisarka jest również współscenarzystką filmu.</em></p><h4><a href="https://www.youtube.com/watch?v=oThsHFYpkl4"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Takie%20jest%20%C5%BCycie_0.jpg" data-align="center" data-entity-uuid="2ced4fe3-721d-4612-99bf-96c6d62e0e9d" data-entity-type="file" width="500" height="720"><h3><strong>17.09 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Takie jest życie</strong></h2><p>reżyseria:&nbsp;<strong>Riccardo Milani</strong><br>obsada:&nbsp;<strong>Virginia Raffaele, Giuseppe Ignazio Loi, Diego Abatantuono, Aldo Baglio</strong><br>gatunek:&nbsp;<strong>komedia</strong><br>produkcja:&nbsp;<strong>Włochy 2025</strong><br>czas trwania:&nbsp;<strong>118 min</strong></p><p><em>„Takie jest życie” to inspirowana prawdziwymi wydarzeniami poruszająca historia, która rozgrywa się na słonecznym wybrzeżu południowej Sardynii.</em></p><p><em>Efisio Mulas, żyjący po swojemu pasterz, musi nagle stanąć do nierównej walki z bezkompromisowym deweloperem. Niespodziewany najeźdźca chce zamienić jego dom i ziemię w luksusowy kurort. Gdy w grę wchodzą milionowe oferty oraz nowe miejsca pracy dla lokalnej społeczności, drobny konflikt przeradza się w pełną emocji, ale i komediowego absurdu batalię. Stawką są dom, ziemia i przyszłość kolejnych pokoleń, a także prawo do życia w zgodzie ze swoimi wartościami. W centrum tej historii znajduje się Francesca, córka pasterza – rozdarta między obietnicą zmian a rodzinnymi relacjami. To pokrzepiająca i wzruszająca opowieść o korzeniach, odwadze i sile, by bronić tego, co najważniejsze.</em></p><h4><a href="https://www.youtube.com/watch?v=C0URJrovmfs"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/W%C4%99dr%C3%B3wka%20na%20p%C3%B3%C5%82noc.jpg" data-align="center" data-entity-uuid="4f4509d0-b03b-49b3-ba63-5f05d08bb926" data-entity-type="file" width="500" height="721"><h3><strong>24.09 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Wędrówka na północ</strong></h2><p>reżyseria:&nbsp;<strong>Bart Schrijver</strong><br>obsada:&nbsp;<strong>Bart Harder, Carlos Pulido, Matthijs van de Sande Bakhuyzen, Olly Bassi</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Holandia 2025</strong><br>czas trwania:&nbsp;<strong>133 min</strong></p><p><em>„Wędrówka na północ” to filmowa pochwała pieszej podróży, podczas której wysiłek wynagradzają oszałamiające widoki, życie nabiera właściwej perspektywy, a drogi, które się rozeszły, po latach mają szansę znów się skrzyżować.&nbsp;</em></p><p><em>Chris i Lluis, kiedyś bardzo sobie bliscy, nie widzieli się 10 lat. Przyjaciele postanawiają – jak za starych dobrych czasów – wyruszyć pieszo szkockimi West Highland Way i The Cape Wrath Trail. Trzydziestodniowa wędrówka jednymi z najpiękniejszych, ale i najtrudniejszych tras w Wielkiej Brytanii, okazuje się sprawdzianem męskiej przyjaźni. Dzika natura, strome podejścia, zacinające deszcze i roje meszek stanowią prawdziwe wyzwanie dla niedoświadczonych podróżników. Ale równie trudno jest dotrzeć do siebie nawzajem, sprawić, by milczenie nie stało się najcięższym bagażem, z perspektywy spojrzeć na to, co zostało z bliskiej relacji i na własne życiowe wybory.&nbsp;</em></p><p><em>Podczas gdy Chris nie może uwolnić się od telefonów z pracy, Lluis marzy o wyprawie z mapą zamiast GPS-u. Jednemu się spieszy, drugi chciałby pokonać 600 kilometrów w swoim tempie. Liczy się cel czy droga? – każdy z nich będzie musiał odpowiedzieć sobie na to pytanie. „Wędrówka na północ” uważnie przygląda się młodym mężczyznom, temu, jak radzą sobie ze stresem, gniewem i smutkiem. Kim są, kiedy schodzą z utartego szlaku ról i kariery, co zgubili po drodze, czy potrafią się zatrzymać, czy wciąż mogą liczyć na siebie nawzajem.&nbsp;</em></p><p><em>„Wędrówka na północ” to fabularny film zrealizowany w oszałamiających pięknem naturalnych plenerach podczas wielotygodniowej pieszej wędrówki kilkuosobowej filmowej ekipy. Projekt, który powstał z pasji, niewielkim nakładem środków, stał się sensacją europejskich kin. Prawa kinowe zostały sprzedane na cały świat, w tym do Stanów Zjednoczonych. W maju 2026 film otrzymał główną nagrodę festiwalu w Trento, najstarszego i jednego z najważniejszych na świecie wydarzeń filmowych poświęconych górom i naturze.</em>&nbsp;</p><h4><a href="https://www.youtube.com/watch?v=sNN-P2LQHtE"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Historie%20r%C3%B3wnoleg%C5%82e_0.jpg" data-align="center" data-entity-uuid="166fa44d-c8d3-4d86-916e-be4ea2f6b838" data-entity-type="file" width="500" height="733"><h3><strong>01.10 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><p><strong>pokazy w ramach 24. Festiwalu Filmowego OPOLSKIE LAMY 2026</strong></p><h2><strong>Historie równoległe</strong></h2><p>reżyseria:&nbsp;<strong>Asghar Farhadi</strong><br>obsada:&nbsp;<strong>Isabelle Huppert, Vincent Cassel, Virginie Efira, Pierre Niney,&nbsp;Catherine Deneuve</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Francja 2026</strong><br>czas trwania:&nbsp;<strong>139 min</strong></p><p><em>Prezentowany w konkursie tegorocznego festiwalu w Cannes nowy film znakomitego Asghara Farhadiego, zdobywcy Oscarów za „Rozstanie” i „Klienta”, inspirowany szóstą częścią słynnego „Dekalogu” Krzysztofa Kieślowskiego. Gwiazdorska obsada w pełnej pasji i tajemnic opowieści o niebezpiecznych konsekwencjach igrania z namiętnościami. Wirtuozersko poprowadzona historia miłosnego trójkąta, który staje się obsesją znakomitej pisarki.</em></p><p><em>W poszukiwaniu inspiracji do nowej powieści Sylvie zaczyna podglądać mieszkających naprzeciwko braci i ich tajemniczą, piękna przyjaciółkę. Kiedy Sylvie zatrudnia do pomocy w codziennych obowiązkach młodego Adama, nie spodziewa się, że wkroczy on tak zdecydowanie w życie jej i obserwowanych przez nią braci. Adam spróbuje przekroczyć niebezpieczną granicę między fikcją kreowaną przez Sylvie, a rzeczywistością rodzącego się na ich oczach miłosnego trójkąta...</em></p><h4><a href="https://www.youtube.com/watch?v=5LakFXBHcKE"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Ojczyzna_0.jpg" data-align="center" data-entity-uuid="6659d5f1-8395-41de-affb-75dff44a0d2f" data-entity-type="file" width="500" height="720"><h3><strong>08.10 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><p><strong>pokazy w ramach 24. Festiwalu Filmowego OPOLSKIE LAMY 2026</strong></p><h2><strong>Ojczyzna</strong></h2><p>reżyseria:&nbsp;<strong>Paweł Pawlikowski</strong><br>obsada:&nbsp;<strong>Sandra Hüller, Hanns Zischler, August Diehl, Anna Madeley, Joanna Kulig</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Niemcy, Polska 2026</strong><br>czas trwania:&nbsp;<strong>82 min</strong><br>nagrody:&nbsp;<strong>nagroda za najlepszą reżyserię na festiwalu w Cannes</strong></p><p><em>Najnowszy, długo wyczekiwany film Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, laureata Oscara.&nbsp;W swoim najnowszym dziele – podobnie jak w dwóch poprzednich – reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.&nbsp;</em></p><p><em>„Ojczyzna” opowiada o relacji między Thomasem Mannem, laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką, aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.</em></p><h4><a href="https://www.youtube.com/watch?v=Ny7JujsNhNc"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Pejza%C5%BC%20w%20kolorze%20sepii_0.jpg" data-align="center" data-entity-uuid="fd9ff7f4-ecb4-4c32-8b85-2cee607ca0e8" data-entity-type="file" width="500" height="721"><h3><strong>15.10 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Pejzaż w kolorze sepii</strong></h2><p>reżyseria:&nbsp;<strong>Kei Ishikawa</strong><br>obsada:&nbsp;<strong>Suzu Hirose, Fumi Nikaidô, Yoh Yoshida, Camilla Aiko,&nbsp;Kôhei Matsushita</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Japonia 2025</strong><br>czas trwania:&nbsp;<strong>123 min</strong></p><p><em>„Pejzaż w kolorze sepii” to japońsko-brytyjsko-polska produkcja na podstawie głośnej powieści Kazuo Ishiguro, laureata Nagrody Nobla, premierowo pokazana w selekcji oficjalnej festiwalu w Cannes. Film w reżyserii Keiego Ishikawy jest pełną napięcia i niedopowiedzeń opowieścią o rodzinnych sekretach, pułapkach pamięci i kruchej więzi między matką a córką.</em></p><p><em>Niki, 25-letnia pisarka wychowana w Wielkiej Brytanii, odwiedza na angielskiej prowincji swoją matkę Etsuko. Pretekstem jest sprzedaż rodzinnego domu, ale za pozornie zwyczajnym spotkaniem kryje się potrzeba zadania pytań, które przez lata pozostawały niewypowiedziane. Niki wie niewiele o japońskiej przeszłości matki, o powojennym Nagasaki, z którego Etsuko wyjechała do Wielkiej Brytanii, ani o okolicznościach, w jakich wraz z nią opuściła Japonię jej starsza córka Keiko. Wyznania Etsuko pełne są luk, uników i przemilczeń; każde wspomnienie może być zarówno tropem prowadzącym do prawdy, jak i zasłoną chroniącą przed bolesną pamięcią.</em></p><p><em>Kei Ishikawa przenosi na ekran charakterystyczny dla Ishiguro świat ulotnych wspomnień, emocji ukrytych pod powierzchnią i przeszłości, która nigdy nie daje się opowiedzieć do końca.</em></p><h4><a href="https://www.youtube.com/watch?v=KlY6GRri7io"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Zaproszenie.jpg" data-align="center" data-entity-uuid="b5e81ce0-d77d-4d49-8cc5-2eda4426ed6b" data-entity-type="file" width="500" height="730"><h3><strong>22.10 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Zaproszenie</strong></h2><p>reżyseria:&nbsp;<strong>Olivia Wilde</strong><br>obsada:&nbsp;<strong>Olivia Wilde, Penélope Cruz, Seth Rogen, Edward Norton</strong><br>gatunek:&nbsp;<strong>komedia</strong><br>produkcja:&nbsp;<strong>USA 2026</strong><br>czas trwania:&nbsp;<strong>108 min</strong></p><p><em>Gwiazdorska obsada w błyskotliwie pikantnej komedii o blaskach i cieniach pożycia małżeńskiego.&nbsp;</em></p><p><em>Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?...</em></p><p><em>Genialne aktorstwo, przezabawne dialogi nierzadko zaprawione nutką goryczy i sporo erotycznego napięcia.</em></p><h4><a href="https://www.youtube.com/watch?v=EB1OiJ4og_w"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Vivaldi%20i%20ja_0.jpg" data-align="center" data-entity-uuid="88e168a3-c908-40ea-b460-5e98eb5144ef" data-entity-type="file" width="500" height="720"><h3><strong>29.10 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Vivaldi i ja</strong></h2><p>reżyseria:&nbsp;<strong>Damiano Michieletto</strong><br>obsada:&nbsp;<strong>Tecla Insolia,&nbsp;Michele Riondino,&nbsp;Fabrizia Sacchi,&nbsp;Valentina Bellè, Stefano Accorsi</strong><br>gatunek:&nbsp;<strong>dramat biograficzny</strong><br>produkcja:&nbsp;<strong>Włochy 2025</strong><br>czas trwania:&nbsp;<strong>110 min</strong><br>nagrody:&nbsp;<strong>4 nagrody Włoskiej Akademii Filmowej - David di Donatello (w tym za najlepszą muzykę i kostiumy)</strong></p><p><em>Barwna, porywająca, wypełniona muzyką opowieść o jednym z najwybitniejszych kompozytorów w historii – Antonio Vivaldim.</em></p><p><em>Wenecja, początek XVIII wieku&nbsp;– miasto kontrastów. Z jednej strony – bogactwo, sztuka i swoboda obyczajowa, z drugiej – surowe instytucje religijne i wyraźne podziały społeczne. Przebywająca w sierocińcu Ospedale della Pietà nastoletnia utalentowana skrzypaczka Cecilia trafia pod skrzydła nowego nauczyciela, Antonio Vivaldiego. Otoczona jego opieką zaczyna wierzyć, że uda jej się uniknąć zaaranżowanego małżeństwa i zawalczyć o własną drogę...</em></p><h4><a href="https://www.youtube.com/watch?v=ERvSaJG__JY"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Gorzkie%20%C5%9Bwi%C4%99ta.jpg" data-align="center" data-entity-uuid="92ce8528-a4d3-4067-b889-6648557499cd" data-entity-type="file" width="500" height="721"><h3><strong>05.11 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Gorzkie święta</strong></h2><p>reżyseria:&nbsp;<strong>Pedro Almodóvar</strong><br>obsada:&nbsp;<strong>Bárbara Lennie, Leonardo Sbaraglia, Aitana Sánchez-Gijón, Victoria Luengo</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Hiszpania 2026</strong><br>czas trwania:&nbsp;<strong>111 min</strong></p><p><em>Pedro Almodóvar powraca w szczytowej formie z jednym ze swoich najbardziej osobistych filmów. W „Gorzkich świętach” – jego pierwszej od 5 lat hiszpańskojęzycznej produkcji – jest wszystko, za co widzowie kochają jego kino: namiętność, intensywne kolory, przewrotny humor i pełnokrwiste postaci, które wymykają się prostym schematom.</em></p><p><em>Bohaterką filmu jest 40-letnia Elza, która po śmierci matki rzuca się w wir pracy, nie pozwalając sobie na żałobę. Dopiero atak paniki zmusza ją do zatrzymania się i wyruszenia w podróż, która stanie się konfrontacją z przeszłością, utraconymi relacjami i niespełnionymi pragnieniami. Z przypadkowych spotkań, emocjonalnych zwrotów i splatających się życiorysów Almodóvar tka opowieść o tym, jak pamięć, fikcja i pragnienie nieustannie przepisują nasze życie.</em></p><p><em>„Gorzkie święta” to szczególny prezent dla tych, którzy dorastali z kinem hiszpańskiego mistrza – od „Kobiet na skraju załamania nerwowego”, przez „Wszystko o mojej matce” i „Porozmawiaj z nią”, po „Volver”, „Przerwane objęcia” i „Ból i blask”. To także film, który idzie o krok dalej: jeszcze mocniej pokazuje, że każdy z nas nie tylko przeżywa własną historię, ale też bez końca ją sobie opowiada. Almodóvar składa tu poruszające wyznanie wiary w siłę kina, pamięci i narracji.</em></p><h4><a href="https://www.youtube.com/watch?v=sZiiP7todmk"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Obcy.jpg" data-align="center" data-entity-uuid="bbf7839f-5111-4cbb-b8e6-6bf87e8c9aca" data-entity-type="file" width="500" height="721"><h3><strong>12.11 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Obcy</strong></h2><p>reżyseria:&nbsp;<strong>François Ozon</strong><br>obsada:&nbsp;<strong>Benjamin Voisin, Rebecca Marder, Pierre Lottin, Denis Lavant, Swann Arlaud</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Francja 2025</strong><br>czas trwania:&nbsp;<strong>122 min</strong><br>nagrody:&nbsp;<strong>nagroda Francuskiej Akademii Filmowej - Cezar dla najlepszego aktora drugoplanowego, 3 nagrody Lumière (w tym za najlepszy film i zdjęcia)</strong></p><p><em>Najnowszy film Françoisa Ozona („8 kobiet”, „U niej w domu”, „Frantz”) to nowa ekranizacja jednej z najwybitniejszych francuskich powieści XX wieku, autorstwa Alberta Camusa. Prezentowana w konkursie głównym festiwalu w Wenecji to wciąż niezwykle aktualna opowieść o poszukiwaniu sensu w świecie, w którym wszelki sens został zagubiony.&nbsp;</em></p><p><em>„Obcy” jest historią Meursaulta, młodego mężczyzny, skromnego urzędnika, którego codziennej rutyny nie przerywa nawet śmierć matki. Wszystko zmienia się pewnego gorącego dnia, gdy na plaży dochodzi do tragicznego zdarzenia z jego udziałem...&nbsp;</em></p><p><em>Oszczędne dialogi i piękne, czarno-białe zdjęcia, będące hołdem dla klasycznego kina, budują wyjątkową atmosferę filmu.</em></p><h4><a href="https://www.youtube.com/watch?v=b2yaQbsNAk0"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/Rozwa%C5%BCna%20i%20romantyczna_0.jpg" data-align="center" data-entity-uuid="d5a88239-e732-409d-bb3d-869d58b2011e" data-entity-type="file" width="500" height="719"><h3><strong>19.11 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Rozważna i romantyczna</strong></h2><p>reżyseria:&nbsp;<strong>Georgia Oakley</strong><br>obsada:&nbsp;<strong>Daisy Edgar-Jones,&nbsp;Esme Creed-Miles,&nbsp;Caitríona Balfe,&nbsp;George MacKay,&nbsp;Fiona Shaw</strong><br>gatunek:&nbsp;<strong>melodramat kostiumowy</strong><br>produkcja:&nbsp;<strong>USA 2026</strong><br>czas trwania:&nbsp;<strong>131 min</strong>&nbsp;</p><p><em>Najnowsza ekranizacja kultowej powieści Jane Austen.</em></p><p><em>Akcja, osadzona w Anglii epoki georgiańskiej, podąża za losami zamożnego pana Dashwooda, który umiera, pozostawiając swoją drugą żonę oraz trzy córki w trudnej sytuacji finansowej. Kobiety przenoszą się do skromnej wiejskiej posiadłości, gdzie dwie starsze siostry rywalizują o względy różnych adoratorów, poszukując prawdziwej miłości...</em></p><h4><a href="https://www.youtube.com/watch?v=XrNC0lmED1Y"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/13.%20R%C3%B3%C5%BCa%20%28Gutek%29%2026.11.jpg" data-align="center" data-entity-uuid="7233cc39-1693-462c-8b28-37d51b066097" data-entity-type="file" width="500" height="625"><h3><strong>26.11 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>Róża</strong></h2><p>reżyseria:&nbsp;<strong>Markus Schleinzer</strong><br>obsada:&nbsp;<strong>Sandra Hüller, Caro Braun, Marisa Growaldt, Godehard Giese, Augustino Renken</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Austria, Niemcy 2026</strong><br>czas trwania:&nbsp;<strong>93 min</strong><br>nagrody:&nbsp;<strong>Srebrny Niedźwiedź za najlepszą rolę pierwszoplanową na festiwalu w Berlinie, nagroda za najlepszy scenariusz na festiwalu w Stambule</strong></p><p><em>„Róża” to jeden z najgłośniejszych tytułów ostatniego Berlinale za sprawą brawurowej roli Sandry Hüller. Aktorka znana z „Anatomii upadku”, „Strefy interesów” i „Toniego Erdmanna” wciela się tym razem w tajemniczego żołnierza. Do tej roli przeszła nie tylko niezwykłą fizyczną metamorfozę, ukrywając kobiecość pod męskim strojem, ale też fenomenalnie połączyła szorstkość z łagodnością i humorem.</em></p><p><em>Do położonej na uboczu wsi przybywa naznaczony wojną żołnierz, który podaje się za spadkobiercę porzuconego gospodarstwa. Obcy budzi początkowo nieufność, ale szybko przekonuje do siebie wieśniaków dzięki przywiezionym dokumentom, niepospolitej pracowitości i gotowości, by podporządkować się surowym regułom protestanckiej wspólnoty. W okrutnych realiach XVII-wiecznych Niemiec ktoś, kto nie ma żadnych praw, może być sobą wyłącznie w przebraniu – dlatego tytułowa postać musi skrzętnie ukrywać swoją prawdziwą naturę i tożsamość.</em></p><p><em>„Róża” jest przewrotną opowieścią o cenie wolności i o odwadze życia na własnych zasadach. Kwestionujący patriarchalny przywilej i binarny podział płci, chłodno analizujący mechanizmy społeczne, film Markusa Schleinzera okazuje się zaskakująco współczesny. Choć minimalistyczny, to pieczołowicie odtwarza detale życia XVII-wiecznej niemieckiej wsi, a eleganckie, surowe zdjęcia budują gęstą atmosferę narastającego zagrożenia. Schleinzer, podobnie jak Robert Eggers, jest mistrzem stylizacji i niepokojącej aury. Dla obu historia bywa pretekstem do filmowej przypowieści o naszych czasach. „Róża” składa hołd tym, którzy przetarli nam ścieżki, ale też przypomina, że prawo do bycia sobą jest zdobyczą, o którą wciąż trzeba walczyć.</em></p><h4><a href="https://www.youtube.com/watch?v=65a_NtXl-sM"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr><img src="/sites/default/files/inline-images/500%20mil_0.jpg" data-align="center" data-entity-uuid="886ae8ae-3c2a-4a2e-b460-00ddebcb2fdf" data-entity-type="file" width="500" height="719"><h3><strong>03.12 (czwartek)</strong></h3><p>godziny seansów: <strong>18:00 i 20:30</strong><br>bilety: <strong>15 zł</strong>&nbsp;</p><h2><strong>500 mil</strong></h2><p>reżyseria:&nbsp;<strong>Morgan Matthews</strong><br>obsada:&nbsp;<strong>Bill Nighy, Roman Griffin Davis, Dexter Sol Ansell, Clare Dunne, Maisie Williams</strong><br>gatunek:&nbsp;<strong>dramat</strong><br>produkcja:&nbsp;<strong>Wielka Brytania,&nbsp;Irlandia 2026</strong><br>czas trwania:&nbsp;<strong>102&nbsp;min</strong></p><p><em>Nastoletni Finn i jego młodszy brat Charlie uciekają z domu, by uniknąć rozdzielenia po rozstaniu rodziców. Ich celem jest dzikie zachodnie wybrzeże Irlandii oraz dom ukochanego dziadka Johna – ostatnia bezpieczna przystań w ich rozpadającym się świecie.&nbsp;Przed nimi 500 mil niełatwej podróży, podczas której muszą polegać na sprycie, uroku osobistym i życzliwości napotkanych ludzi – zwłaszcza wolnej duchem ulicznej muzykantki Cáit...</em></p><p><em>„500 mil” to ciepłe, poruszające kino drogi, w którym subtelny humor przeplata się ze wzruszeniem, a historia przywodzi na myśl wrażliwość „Billy'ego Elliota” i emocjonalną szczerość „Był sobie chłopiec”. To szczera, pozbawiona fałszywej nuty i głęboko refleksyjna opowieść o rodzinie, nadziei i potrzebie bliskości, która w finale nabiera nowego znaczenia i sprawia, że po seansie wraca się myślami do pierwszych scen.</em></p><h4><a href="https://www.youtube.com/watch?v=hK8cw4GLHaU"><strong>ZOBACZ ZWIASTUN</strong></a></h4><p>&nbsp;</p><hr>
+		</div>
+
+		
+					<div class="gallery clearfix cell_flex">
+									<a class="thumbnail-classic" href="/sites/default/files/2026-08/PF%20DKF.png" title="">
+						<figure class="gallery_miniature">
+							<div class="img" style="background-image:url(/sites/default/files/2026-08/PF%20DKF.png)"></div>
+													</figure>
+					</a>
+									<a class="thumbnail-classic" href="/sites/default/files/2026-08/SKS%20%28jasne%20t%C5%82o%29.png" title="">
+						<figure class="gallery_miniature">
+							<div class="img" style="background-image:url(/sites/default/files/2026-08/SKS%20%28jasne%20t%C5%82o%29.png)"></div>
+													</figure>
+					</a>
+							</div>
+		
+		
+			</div>
+
+	</section>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/node/node--page.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ block--bazowy-cookiesui.html.twig
+   ▪️ block--cookies-ui-block.html.twig
+   ▪️ block--cookies.html.twig
+   ✅ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'cookies_block' -->
+<!-- BEGIN OUTPUT from 'modules/contrib/cookies/templates/cookies-block.html.twig' -->
+  
+<div id="cookiesjsr"></div>
+
+<!-- END OUTPUT from 'modules/contrib/cookies/templates/cookies-block.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/region/region.html.twig' -->
+
+
+	</main>
+
+<footer>
+	<div class="container">
+		<div class="footer-menu">
+			<div class="visit_us">
+				<a href="https://www.facebook.com/mdkopole" target="_blank" rel="noopener noreferrer">
+					ODWIEDŹ NASZ PROFIL NA FACEBOOK.COM/MDKOPOLE
+				</a>
+			</div>
+
+			<div class="main_footer cell_flex">
+				<div class="item">&copy; 2026 Młodzieżowy Dom Kultury w Opolu</div>
+				<a href="https://mdk-opole.bip.gov.pl/" class="item" target="_blank" rel="noopener noreferrer">BIP<span class="sr-only">- Otwórz na nowej karcie</span></a>
+				<a href="/deklaracja-dostepnosci" class="item">Deklaracja dostępności</a>
+				<a href="https://cg2.pl/strony-internetowe" class="item just-url" target="_blank" rel="noopener noreferrer">
+					Strony internetowe Opole - CG2
+				</a>
+			</div>
+		</div>
+	</div>
+</footer>
+
+<div class="screen-modal" id="js-contact">
+	<div class="screen-modal__overlay"></div>
+	<button class="screen-modal__close btn" aria-label="Zamknij modal"></button>
+	<button class="screen-modal__close" aria-label="Zamknij modal"></button>
+	<div class="screen-modal__body">
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ block--bazowy-modalglowny.html.twig
+   ▪️ block--block-content--1aaf0347-7bdd-40ad-a5f5-cdba392d52fa.html.twig
+   ▪️ block--block-content--id-view--bazowy-modalglowny--full.html.twig
+   ▪️ block--block-content--id--bazowy-modalglowny.html.twig
+   ▪️ block--block-content--view-type--modal--full.html.twig
+   ▪️ block--block-content--type--modal.html.twig
+   ▪️ block--block-content--view--full.html.twig
+   ▪️ block--block-content.html.twig
+   ▪️ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy_modalglowny.html.twig' -->
+	<div class="screen-modal__left">
+		<h4>
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'field' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ field--block-content--field-tytul-formularza--modal.html.twig
+   ▪️ field--block-content--field-tytul-formularza.html.twig
+   ▪️ field--block-content--modal.html.twig
+   ▪️ field--field-tytul-formularza.html.twig
+   ▪️ field--string-long.html.twig
+   ✅ field.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+																						
+	Tytuł formularza w modalu
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+</h4>
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'field' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ field--block-content--field-formularz--modal.html.twig
+   ▪️ field--block-content--field-formularz.html.twig
+   ▪️ field--block-content--modal.html.twig
+   ▪️ field--field-formularz.html.twig
+   ▪️ field--entity-reference.html.twig
+   ✅ field.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+																						
+	<div id="webform-submission-contact-node-11839-form-ajax-content" tabindex="-1"><div id="webform-submission-contact-node-11839-form-ajax" class="webform-ajax-form-wrapper" data-effect="fade" data-progress-type="throbber">
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ webform--contact.html.twig
+   ✅ webform.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/webform.html.twig' -->
+
+
+
+
+	<form class="webform-submission-form webform-submission-add-form webform-submission-contact-form webform-submission-contact-add-form webform-submission-contact-node-11839-form webform-submission-contact-node-11839-add-form js-webform-details-toggle webform-details-toggle form col-offset-md-1 col-md-12 inner-padding" data-drupal-selector="webform-submission-contact-node-11839-add-form" action="/kino-studio" method="post" id="webform-submission-contact-node-11839-add-form" accept-charset="UTF-8">
+
+	
+	
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform_submission_form' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ webform-submission-form--contact.html.twig
+   ✅ webform-submission-form.html.twig
+-->
+<!-- BEGIN OUTPUT from 'modules/contrib/webform/templates/webform-submission-form.html.twig' -->
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ form-element--webform-textfield.html.twig
+   ✅ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+<label
+	 class="js-webform-type-textfield webform-type-textfield form__label">
+
+
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element_label' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+<span class="js-form-required form-required form__label--text">
+		Imię i nazwisko
+		*
+		
+	</span>
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+
+
+	
+	
+		
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__textfield' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--textfield.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-name" type="text" id="edit-name" name="name" value="" size="60" maxlength="255" class="form-text required text" required="required"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+
+		
+</label>
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ form-element--webform-tel.html.twig
+   ✅ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+<label
+	 class="js-webform-type-tel webform-type-tel form__label">
+
+
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element_label' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+<span class="js-form-required form-required form__label--text">
+		Twój telefon
+		*
+		
+	</span>
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+
+
+	
+	
+		
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__tel' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--tel.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-twoj-telefon" type="tel" id="edit-twoj-telefon" name="twoj_telefon" value="" size="30" maxlength="128" class="form-tel required text" required="required"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+
+		
+</label>
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ form-element--webform-textarea.html.twig
+   ✅ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+<label
+	 class="js-webform-type-textarea webform-type-textarea form__label">
+
+
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element_label' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+<span class="js-form-required form-required form__label--text">
+		Wiadomość
+		*
+		
+	</span>
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+
+
+	
+	
+		
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'textarea' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/textarea.html.twig' -->
+		<textarea data-drupal-selector="edit-message" id="edit-message" name="message" rows="5" cols="60" class="form-textarea required resize-vertical" required="required"> </textarea>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/textarea.html.twig' -->
+
+
+
+
+		
+</label>
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ form-element--webform-checkbox.html.twig
+   ▪️ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element--webform-checkbox.html.twig' -->
+
+<label class="form__radio-label">
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__checkbox' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--checkbox.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-terms-of-service" type="checkbox" id="edit-terms-of-service" name="terms_of_service" value class="form-checkbox required text" required="required"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+	<div class="form__radio-icon form__radio-icon--checkbox"></div>
+
+	<div class="form__radio-text">
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform_html_editor_markup' -->
+<!-- BEGIN OUTPUT from 'modules/contrib/webform/templates/webform-html-editor-markup.html.twig' -->
+<span>Twoje dane są bezpieczne. Zgadzam się z postanowieniami polityki prywatności i RODO</span>
+<!-- END OUTPUT from 'modules/contrib/webform/templates/webform-html-editor-markup.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+</div>
+	</label>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element--webform-checkbox.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform_actions' -->
+<!-- BEGIN OUTPUT from 'modules/contrib/webform/templates/webform-actions.html.twig' -->
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__submit' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ input--submit.html.twig
+   ✅ input--submit.html.twig
+   ▪️ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input--submit.html.twig' -->
+
+
+
+
+<div class="form__submit-wrapper">
+	<button  class="webform-button--submit button button--primary js-form-submit form-submit btn btn--primary" data-drupal-selector="edit-actions-submit" data-disable-refocus="true" type="submit" id="edit-actions-submit" name="op" value="Wyślij formularz" type="submit">
+				Wyślij formularz
+		
+	</button>
+</div>
+
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input--submit.html.twig' -->
+
+
+
+<!-- END OUTPUT from 'modules/contrib/webform/templates/webform-actions.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__hidden' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--hidden.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input autocomplete="off" data-drupal-selector="form-aqkuvpmemubuckqoe5tuqewk1tv-u7mt4agrharpxfs" type="hidden" name="form_build_id" value="form-AqKuVPMEMUbuckQoE5TuqEWk1tv-U7mt4aGrHarPXFs" class="text"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__hidden' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--hidden.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-webform-submission-contact-node-11839-add-form" type="hidden" name="form_id" value="webform_submission_contact_node_11839_add_form" class="text"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+<!-- END OUTPUT from 'modules/contrib/webform/templates/webform-submission-form.html.twig' -->
+
+
+	</form>
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/webform.html.twig' -->
+
+</div></div>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+	</div>
+	<div class="screen-modal__right">
+		
+		<div class="screen-modal__add-info ckeditor">
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'field' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ field--block-content--field-opis--modal.html.twig
+   ▪️ field--block-content--field-opis.html.twig
+   ▪️ field--block-content--modal.html.twig
+   ▪️ field--field-opis.html.twig
+   ▪️ field--text-long.html.twig
+   ✅ field.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+																						
+	<p>Przykładowy tekst pod sekcją ogólną modala</p>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+</div>
+	</div>
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy_modalglowny.html.twig' -->
+
+
+	</div>
+</div>
+
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/page.html.twig' -->
+
+
+  </div>
+
+<!-- END OUTPUT from 'core/modules/system/templates/off-canvas-page-wrapper.html.twig' -->
+
+
+					
+					<script src="/core/assets/vendor/once/once.min.js?v=1.0.1"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/version-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/data-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/disable-selection-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/jquery-patch-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/scroll-parent-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/unique-id-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/focusable-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/keycode-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/plugin-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widget-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/labels-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/controlgroup-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/form-reset-mixin-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/mouse-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/checkboxradio-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/draggable-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/resizable-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/button-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/dialog-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/tabbable/index.umd.min.js?v=6.3.0"></script>
+<script src="/core/assets/vendor/tua-body-scroll-lock/tua-bsl.umd.min.js?v=11.4.4"></script>
+<script src="/themes/custom/bazowy/js/legacy-main-menu.js?tk4inq"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
+<script src="/themes/custom/bazowy/js/jquery.magnific-popup.min.js?tk4inq"></script>
+<script src="/themes/custom/bazowy/js/play_video.js?tk4inq"></script>
+<script src="/themes/custom/bazowy/js/_modal.js?tk4inq"></script>
+<script src="/themes/custom/bazowy/js/script.js?tk4inq"></script>
+<script src="https://cdn.jsdelivr.net/gh/jfeltkamp/cookiesjsr@1/dist/cookiesjsr-preloader.min.js" defer></script>
+<script src="/core/misc/jquery.form.js?v=4.3.0"></script>
+<script src="/modules/contrib/statistics/statistics.js?v=11.4.4"></script>
+<script src="/core/misc/progress.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/loadjs/loadjs.min.js?v=4.3.0"></script>
+<script src="/core/misc/ajax.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.scroll.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.ajax.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.element.details.save.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.element.details.toggle.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.element.message.js?tk4inq"></script>
+<script src="/core/misc/displace.js?v=11.4.4"></script>
+<script src="/core/misc/position.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog-deprecation.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.position.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.jquery-ui.js?v=11.4.4"></script>
+<script src="/core/modules/ckeditor5/js/ckeditor5.dialog.fix.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.ajax.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.element.terms_of_service.js?tk4inq"></script>
+<script src="/core/misc/form.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.behaviors.js?tk4inq"></script>
+<script src="/core/misc/states.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.states.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.form.js?tk4inq"></script>
+</body>
+				</html>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/html.html.twig' -->
+

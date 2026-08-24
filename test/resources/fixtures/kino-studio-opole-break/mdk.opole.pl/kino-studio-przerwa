@@ -1,0 +1,2331 @@
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'html' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ html--node--6756.html.twig
+   ▪️ html--node--%.html.twig
+   ▪️ html--node.html.twig
+   ✅ html.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/html.html.twig' -->
+<!DOCTYPE html>
+<html lang="pl" dir="ltr" prefix="og: https://ogp.me/ns#">
+	<head>
+		<link rel="icon" type="image/x-icon" href="/themes/custom/bazowy/img/favicon/favicon.ico?v=3">
+		<meta name="application-name" content="&nbsp;"/>
+		<meta name="msapplication-TileColor" content="#FFFFFF"/>
+		<meta name="msapplication-TileImage" content="mstile-144x144.png"/>
+		<meta name="msapplication-square70x70logo" content="mstile-70x70.png"/>
+		<meta name="msapplication-square150x150logo" content="mstile-150x150.png"/>
+		<meta name="msapplication-wide310x150logo" content="mstile-310x150.png"/>
+		<meta name="msapplication-square310x310logo" content="mstile-310x310.png"/>
+
+		<meta name="msapplication-TileColor" content="#000">
+
+
+		<meta name="theme-color" content="#000">
+
+
+		<meta charset="utf-8" />
+<link rel="canonical" href="https://mdk.opole.pl/kino-studio-przerwa" />
+<meta name="Generator" content="Drupal 11 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="/themes/custom/bazowy/favicon.ico" type="image/vnd.microsoft.icon" />
+<link rel="alternate" hreflang="pl" href="https://mdk.opole.pl/kino-studio-przerwa" />
+
+			<title>Kino Studio przerwa | Design System</title>
+
+			<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/core.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/controlgroup.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/checkboxradio.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/resizable.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/button.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/dialog.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/align.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/container-inline.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/clearfix.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/hidden.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/system/css/components/js.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/libraries/cookiesjsr/dist/cookiesjsr.min.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/misc/components/resize.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/misc/components/progress.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/misc/components/ajax-progress.module.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.element.details.toggle.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.element.message.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/modules/ckeditor5/css/ckeditor5.dialog.fix.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.element.terms_of_service.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.form.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/core/assets/vendor/jquery.ui/themes/base/theme.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/modules/contrib/webform/css/webform.ajax.css?tk4inq" />
+<link rel="stylesheet" media="all" href="https://fonts.googleapis.com/css2?family=Encode+Sans+Semi+Condensed:wght@400;500;600;700;800&amp;display=swap" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/style.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/footer-fixes.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/bootstrap.min.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/font-awesome.min.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/magnific-popup.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/legacy/css/style.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/legacy-page-section.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/legacy-gallery-fixes.css?tk4inq" />
+<link rel="stylesheet" media="all" href="/themes/custom/bazowy/css/legacy-main-menu.css?tk4inq" />
+<link rel="stylesheet" media="all" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css" />
+<link rel="stylesheet" media="all" href="//cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/magnific-popup.min.css" />
+
+
+
+				<script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/6756","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"pl"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"ajaxPageState":{"libraries":"eJx1j2uOwjAMhC-UJkdCTjKEdPMA2wXK6SlbqpXo8scjfTMjazw9-m12qXRPZRCdC4xf2QkUwSV72UhBojAPEUq5fMBKuQ0Vbdr4mVE6RRN6_8kQ99ZR2IbY_sO_32VxGC7ydKZiFXclBg0MyQ-sXm4Kbos7XibwbI-dqxElzaI5yNb9I0ZmUVTnSWBu8K-Ce6ulke47iIJli9p1qlih6775GdKeUvkeqxCh9N1fRlU59ONBwNcc9sHXeQIxLahJ","theme":"bazowy","theme_token":null},"ajaxTrustedUrl":{"form_action_p_pvdeGsVG5zNF_XLGPTvYSKCf43t8qZYSwcfZl2uzM":true,"\/kino-studio-przerwa?ajax_form=1":true},"cookies":{"cookiesjsr":{"config":{"cookie":{"name":"cookiesjsr","expires":31536000000,"domain":"","sameSite":"Lax","secure":false},"library":{"libBasePath":"https:\/\/cdn.jsdelivr.net\/gh\/jfeltkamp\/cookiesjsr@1\/dist","libPath":"https:\/\/cdn.jsdelivr.net\/gh\/jfeltkamp\/cookiesjsr@1\/dist\/cookiesjsr.min.js","scrollLimit":0},"callback":{"method":"post","url":"\/cookies\/consent\/callback.json","headers":[]},"interface":{"openSettingsHash":"#editCookieSettings","showDenyAll":true,"denyAllOnLayerClose":false,"settingsAsLink":false,"availableLangs":["pl","en"],"defaultLang":"pl","groupConsent":false,"cookieDocs":true}},"services":{"functional":{"id":"functional","services":[{"key":"functional","type":"functional","name":"Obowi\u0105zkowe","info":{"value":"\u003Ctable\u003E\r\n\t\u003Cthead\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003ECookie name\u003C\/th\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003EDefault expiration time\u003C\/th\u003E\r\n\t\t\t\u003Cth\u003EDescription\u003C\/th\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/thead\u003E\r\n\t\u003Ctbody\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003ESSESS\u0026lt;ID\u0026gt;\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 month\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EIf you are logged in to this website, a session cookie is required to identify and connect your browser to your user account in the server backend of this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003Ecookiesjsr\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 year\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EWhen you visited this website for the first time, you were asked for your permission to use several services (including those from third parties) that require data to be saved in your browser (cookies, local storage). Your decisions about each service (allow, deny) are stored in this cookie and are reused each time you visit this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/tbody\u003E\r\n\u003C\/table\u003E\r\n","format":"full_html"},"uri":"","needConsent":false}],"weight":1},"security_storage":{"id":"security_storage","services":[{"key":"security_storage","type":"security_storage","name":"security storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych zwi\u0105zanych z zabezpieczeniami, takimi jak funkcja uwierzytelniania, zapobieganie oszustwom i inne mechanizmy ochrony u\u017cytkownik\u00f3w.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":false}],"weight":20},"analytics_storage":{"id":"analytics_storage","services":[{"key":"analytics_storage","type":"analytics_storage","name":"analytics_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) dotycz\u0105cych statystyk, np. czasu trwania wizyty.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":30},"personalization_storage":{"id":"personalization_storage","services":[{"key":"personalization_storage","type":"personalization_storage","name":"personalization_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych dotycz\u0105cych personalizacji, np. rekomendacji film\u00f3w, Kolor strony, ulubione przedmioty itd...\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":40},"ad_user_data":{"id":"ad_user_data","services":[{"key":"ad_user_data","type":"ad_user_data","name":"ad user data","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na wysy\u0142anie do Google danych u\u017cytkownika zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":50},"ad_storage":{"id":"ad_storage","services":[{"key":"ad_storage","type":"ad_storage","name":"ad storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":60},"ad_personalization":{"id":"ad_personalization","services":[{"key":"ad_personalization","type":"ad_personalization","name":"ad personalization","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na reklamy spersonalizowane.\u003C\/p\u003E","format":"wprowadzenie"},"uri":"","needConsent":true}],"weight":70}},"translation":{"_core":{"default_config_hash":"PpB_t3-mnEd5Lckhxc9rfquSMa0CndPslGvJZlcg61E"},"langcode":"pl","bannerText":"Wykorzystujemy pliki cookies na stronie aby zapewni\u0107 lepsze dzia\u0142anie strony.\r\nKlikaj\u0105c Akceptuj\u0119 zgadzasz si\u0119 na przechowywanie plik\u00f3w na twoim komputerze.","privacyPolicy":"Polityka prywatno\u015bci","privacyUri":"","imprint":"Imprint","imprintUri":"","cookieDocs":"Cookie documentation","cookieDocsUri":"\/cookies\/documentation","officialWebsite":"Official website","denyAll":"Odrzu\u0107 wszystkie","alwaysActive":"Zawsze\u00a0aktywne","settings":"Ustawienia cookies","acceptAll":"Zaakceptuj wszystkie","requiredCookies":"Obowi\u0105zkowe","cookieSettings":"Ustawienia cookies","close":"Zamknij","readMore":"Czytaj dalej","allowed":"Dozwolone","denied":"Denied","settingsAllServices":"Ustawienia dla wszystkich us\u0142ug","saveSettings":"Zapisz","default_langcode":"en","disclaimerText":"All cookie information is subject to change by the service providers. We update this information regularly.","disclaimerTextPosition":"above","processorDetailsLabel":"Dane firmy przetwarzaj\u0105cej","processorLabel":"Firma","processorWebsiteUrlLabel":"Strona internetowa firmy","processorPrivacyPolicyUrlLabel":"Polityka prywatno\u015bci firmy","processorCookiePolicyUrlLabel":"Polityka plik\u00f3w cookie firmy","processorContactLabel":"Data Protection Contact Details","placeholderAcceptAllText":"Zaakceptuj wszystkie pliki cookie","functional":{"title":"Funkcjonalne","details":"Cookies to ma\u0142e pliki tekstowe, kt\u00f3re Twoja przegl\u0105darka umieszcza na Twoim urz\u0105dzeniu w celu przechowywania okre\u015blonych informacji. Korzystaj\u0105c z informacji, kt\u00f3re s\u0105 przechowywane i zwracane, strona internetowa mo\u017ce rozpozna\u0107, \u017ce wcze\u015bniej uzyska\u0142e\u015b do niej dost\u0119p i odwiedzi\u0142e\u015b j\u0105 za pomoc\u0105 przegl\u0105darki na swoim urz\u0105dzeniu ko\u0144cowym. Wykorzystujemy te informacje w celu optymalnego u\u0142o\u017cenia i wy\u015bwietlenia serwisu zgodnie z Twoimi preferencjami. W ramach tego procesu na Twoim urz\u0105dzeniu identyfikowany jest tylko sam plik cookie. Dane osobowe s\u0105 przechowywane wy\u0142\u0105cznie za Twoj\u0105 wyra\u017an\u0105 zgod\u0105 lub gdy jest to absolutnie konieczne do umo\u017cliwienia korzystania z us\u0142ug \u015bwiadczonych przez nas i do kt\u00f3rych masz dost\u0119p."},"security_storage":{"title":"Zabezpieczenia","details":"Przechowuj\u0105 najwa\u017cniejsze informacje odno\u015bnie u\u017cytkowania strony, aby w odpowiedni spos\u00f3b wykorzystywa\u0107 mechanizmy zabezpieczaj\u0105ce tre\u015bci, a tak\u017ce u\u017cytkownik\u00f3w z niej korzystaj\u0105cych."},"analytics_storage":{"title":"Analityczne","details":"Opcjonalne ciasteczka zbieraj\u0105ce dane analityczne. Dane te s\u0105 bardzo ograniczone, bardzo cz\u0119sto wykorzystywane s\u0105 do og\u00f3lnej statystyki odwiedzin strony, kraju czy d\u0142ugo\u015bci przegl\u0105dania. Dzi\u0119ki tym danym, mo\u017cna p\u00f3\u017aniej udoskonala\u0107 serwisy i tworzy\u0107 jeszcze lepsze strony."},"personalization_storage":{"title":"Personalizacyjne","details":"Pozwala przechowywa\u0107 dane dotycz\u0105ce personalizacji wygl\u0105du oraz tre\u015bci strony.\r\nOpcjonalne ciasteczka przechowuj\u0105ce informacje odno\u015bnie personalizacji strony, zmian wygl\u0105du pod w\u0142asne upodobania czy samych tre\u015bci strony. Odmowa zgody na te ciasteczka, mo\u017ce skutkowa\u0107, \u017ce nasze wybory rozmiaru czcionki, koloru tekstu lub kontrastu nie zostan\u0105 zapami\u0119tane."},"ad_user_data":{"title":"Dane osobowe - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera informacje o u\u017cytkowniku w celach dobrania lepszej oferty reklamowej skupionej g\u0142\u00f3wnie na bezpo\u015brednim dopasowniu."},"ad_storage":{"title":" Przechowywanie danych - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera og\u00f3lne informacje w celach dobrania lepszej oferty reklamowej skierowanej g\u0142\u00f3wnie w przegl\u0105d\u0105jcego stron\u0119."},"ad_personalization":{"title":"Spersonalizowane reklamy","details":"Opcjonalne ciasteczko, kt\u00f3re pozwala wy\u015bwietla\u0107 spersonalizowane reklamy u\u017cytkownikowi."}}},"cookiesTexts":{"_core":{"default_config_hash":"PpB_t3-mnEd5Lckhxc9rfquSMa0CndPslGvJZlcg61E"},"langcode":"pl","bannerText":"Wykorzystujemy pliki cookies na stronie aby zapewni\u0107 lepsze dzia\u0142anie strony.\r\nKlikaj\u0105c Akceptuj\u0119 zgadzasz si\u0119 na przechowywanie plik\u00f3w na twoim komputerze.","privacyPolicy":"Polityka prywatno\u015bci","privacyUri":"","imprint":"Imprint","imprintUri":"","cookieDocs":"Cookie documentation","cookieDocsUri":"\/cookies\/documentation","officialWebsite":"Official website","denyAll":"Odrzu\u0107 wszystkie","alwaysActive":"Zawsze\u00a0aktywne","settings":"Ustawienia cookies","acceptAll":"Zaakceptuj wszystkie","requiredCookies":"Obowi\u0105zkowe","cookieSettings":"Ustawienia cookies","close":"Zamknij","readMore":"Czytaj dalej","allowed":"Dozwolone","denied":"Denied","settingsAllServices":"Ustawienia dla wszystkich us\u0142ug","saveSettings":"Zapisz","default_langcode":"en","disclaimerText":"All cookie information is subject to change by the service providers. We update this information regularly.","disclaimerTextPosition":"above","processorDetailsLabel":"Dane firmy przetwarzaj\u0105cej","processorLabel":"Firma","processorWebsiteUrlLabel":"Strona internetowa firmy","processorPrivacyPolicyUrlLabel":"Polityka prywatno\u015bci firmy","processorCookiePolicyUrlLabel":"Polityka plik\u00f3w cookie firmy","processorContactLabel":"Data Protection Contact Details","placeholderAcceptAllText":"Zaakceptuj wszystkie pliki cookie"},"services":{"ad_personalization":{"uuid":"1c1638a7-610b-41a1-bd33-27669d0f2eaf","langcode":"pl","status":true,"dependencies":[],"id":"ad_personalization","label":"ad personalization","group":"ad_personalization","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na reklamy spersonalizowane.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Spersonalizowane reklamy","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"ad_storage":{"uuid":"bc4e4fb0-2b97-4e07-9e97-70976862289f","langcode":"pl","status":true,"dependencies":[],"id":"ad_storage","label":"ad storage","group":"ad_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane zwi\u0105zane z reklamami","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"ad_user_data":{"uuid":"350d8b35-0caa-4d60-8f94-c3fa9ab64d39","langcode":"pl","status":true,"dependencies":[],"id":"ad_user_data","label":"ad user data","group":"ad_user_data","info":{"value":"\u003Cp\u003EOkre\u015bla stan zgody na wysy\u0142anie do Google danych u\u017cytkownika zwi\u0105zanych z reklamami.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane u\u017cytkownika zwi\u0105zanych z reklamami","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"analytics_storage":{"uuid":"e53d7be7-6c80-4a71-8075-7a21fb8c2110","langcode":"pl","status":true,"dependencies":[],"id":"analytics_storage","label":"analytics_storage","group":"analytics_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych (np. plik\u00f3w cookie) dotycz\u0105cych statystyk, np. czasu trwania wizyty.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane analityczne","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"functional":{"uuid":"0fc27db0-867d-4163-ba24-1ec9dc2fa750","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"N-O3629vb-jExOxfM0FYcfPzEu6QVzgWHMm06jMERLg"},"id":"functional","label":"Obowi\u0105zkowe","group":"functional","info":{"value":"\u003Ctable\u003E\r\n\t\u003Cthead\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003ECookie name\u003C\/th\u003E\r\n\t\t\t\u003Cth width=\u002215%\u0022\u003EDefault expiration time\u003C\/th\u003E\r\n\t\t\t\u003Cth\u003EDescription\u003C\/th\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/thead\u003E\r\n\t\u003Ctbody\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003ESSESS\u0026lt;ID\u0026gt;\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 month\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EIf you are logged in to this website, a session cookie is required to identify and connect your browser to your user account in the server backend of this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\t\u003Ctr\u003E\r\n\t\t\t\u003Ctd\u003E\u003Ccode dir=\u0022ltr\u0022 translate=\u0022no\u0022\u003Ecookiesjsr\u003C\/code\u003E\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003E1 year\u003C\/td\u003E\r\n\t\t\t\u003Ctd\u003EWhen you visited this website for the first time, you were asked for your permission to use several services (including those from third parties) that require data to be saved in your browser (cookies, local storage). Your decisions about each service (allow, deny) are stored in this cookie and are reused each time you visit this website.\u003C\/td\u003E\r\n\t\t\u003C\/tr\u003E\r\n\t\u003C\/tbody\u003E\r\n\u003C\/table\u003E\r\n","format":"full_html"},"consentRequired":false,"purpose":"Essential functional cookies to provide general functionality","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Ta zawarto\u015b\u0107 jest zablokowana, poniewa\u017c nie zaakceptowano wymaganych funkcjonalnych plik\u00f3w cookie.","placeholderAcceptText":"Only accept required functional cookies"},"personalization_storage":{"uuid":"f31667bb-340d-45da-b809-57b3a28a9c5e","langcode":"pl","status":true,"dependencies":[],"id":"personalization_storage","label":"personalization_storage","group":"personalization_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych dotycz\u0105cych personalizacji, np. rekomendacji film\u00f3w, Kolor strony, ulubione przedmioty itd...\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":true,"purpose":"Przechowuje dane rekomndacji","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Brak zgody","placeholderAcceptText":"Akceptuj"},"security_storage":{"uuid":"1238b576-2b36-45dc-b468-86401a625e46","langcode":"pl","status":true,"dependencies":[],"id":"security_storage","label":"security storage","group":"security_storage","info":{"value":"\u003Cp\u003EUmo\u017cliwia przechowywanie danych zwi\u0105zanych z zabezpieczeniami, takimi jak funkcja uwierzytelniania, zapobieganie oszustwom i inne mechanizmy ochrony u\u017cytkownik\u00f3w.\u003C\/p\u003E","format":"wprowadzenie"},"consentRequired":false,"purpose":"Wymagane zabezpieczenia","processor":"","processorContact":"","processorUrl":"","processorPrivacyPolicyUrl":"","processorCookiePolicyUrl":"","placeholderMainText":"Wymagane","placeholderAcceptText":"Akceptuj"}},"groups":{"ad_personalization":{"uuid":"40924f11-c901-4005-9d9b-b64fb22a689a","langcode":"pl","status":true,"dependencies":[],"id":"ad_personalization","label":"ad personalization","weight":70,"title":"Spersonalizowane reklamy","details":"Opcjonalne ciasteczko, kt\u00f3re pozwala wy\u015bwietla\u0107 spersonalizowane reklamy u\u017cytkownikowi."},"ad_storage":{"uuid":"f8e52cc9-5fc3-464d-8617-5ad3a417daef","langcode":"pl","status":true,"dependencies":[],"id":"ad_storage","label":"ad storage","weight":60,"title":" Przechowywanie danych - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera og\u00f3lne informacje w celach dobrania lepszej oferty reklamowej skierowanej g\u0142\u00f3wnie w przegl\u0105d\u0105jcego stron\u0119."},"ad_user_data":{"uuid":"a25b019b-fb83-4276-b7eb-3c3bb3492e13","langcode":"pl","status":true,"dependencies":[],"id":"ad_user_data","label":"ad user data","weight":50,"title":"Dane osobowe - Reklamowe","details":"Opcjonalne ciasteczko, kt\u00f3re zbiera informacje o u\u017cytkowniku w celach dobrania lepszej oferty reklamowej skupionej g\u0142\u00f3wnie na bezpo\u015brednim dopasowniu."},"analytics_storage":{"uuid":"1456cc37-d1c2-4d1c-80a7-0cc166a76e5b","langcode":"pl","status":true,"dependencies":[],"id":"analytics_storage","label":"analytics_storage","weight":30,"title":"Analityczne","details":"Opcjonalne ciasteczka zbieraj\u0105ce dane analityczne. Dane te s\u0105 bardzo ograniczone, bardzo cz\u0119sto wykorzystywane s\u0105 do og\u00f3lnej statystyki odwiedzin strony, kraju czy d\u0142ugo\u015bci przegl\u0105dania. Dzi\u0119ki tym danym, mo\u017cna p\u00f3\u017aniej udoskonala\u0107 serwisy i tworzy\u0107 jeszcze lepsze strony."},"functional":{"uuid":"3d3b5738-00f8-4068-aaf3-76c1a1cc33b6","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"aHm4Q63Ge97tcktTa_qmUqJMir45iyGY2lEvvqPW68g"},"id":"functional","label":"Funkcjonalne","weight":1,"title":"Funkcjonalne","details":"Cookies to ma\u0142e pliki tekstowe, kt\u00f3re Twoja przegl\u0105darka umieszcza na Twoim urz\u0105dzeniu w celu przechowywania okre\u015blonych informacji. Korzystaj\u0105c z informacji, kt\u00f3re s\u0105 przechowywane i zwracane, strona internetowa mo\u017ce rozpozna\u0107, \u017ce wcze\u015bniej uzyska\u0142e\u015b do niej dost\u0119p i odwiedzi\u0142e\u015b j\u0105 za pomoc\u0105 przegl\u0105darki na swoim urz\u0105dzeniu ko\u0144cowym. Wykorzystujemy te informacje w celu optymalnego u\u0142o\u017cenia i wy\u015bwietlenia serwisu zgodnie z Twoimi preferencjami. W ramach tego procesu na Twoim urz\u0105dzeniu identyfikowany jest tylko sam plik cookie. Dane osobowe s\u0105 przechowywane wy\u0142\u0105cznie za Twoj\u0105 wyra\u017an\u0105 zgod\u0105 lub gdy jest to absolutnie konieczne do umo\u017cliwienia korzystania z us\u0142ug \u015bwiadczonych przez nas i do kt\u00f3rych masz dost\u0119p."},"functional_storage":{"uuid":"5be0bb52-cb58-4ff1-9728-7b34e4d72434","langcode":"pl","status":true,"dependencies":[],"id":"functional_storage","label":"functional storage","weight":10,"title":"Funkcjonalne","details":"Ciasteczka wymagane do poprawnego dzia\u0142ania serwisu internetowego. Przechowuj\u0105 one tylko informacje o podj\u0119tych wyborach, s\u0105 przetwarzane tylko w celach poprawnego wy\u015bwietlania zawarto\u015bci przez u\u017cytkownika."},"marketing":{"uuid":"a00fbd39-8a21-45cc-88b1-513065976c25","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"JkP6try0AxX_f4RpFEletep5NHSlVB1BbGw0snW4MO8"},"id":"marketing","label":"Marketing","weight":20,"title":"Marketing","details":"Komunikacja z klientem i narz\u0119dzia marketingowe."},"performance":{"uuid":"f60212cb-f5d7-4c83-87a8-7e7ced5d6828","langcode":"pl","status":true,"dependencies":[],"_core":{"default_config_hash":"Jv3uIJviBj7D282Qu1ZpEQwuOEb3lCcDvx-XVHeOJpw"},"id":"performance","label":"Wydajno\u015b\u0107","weight":30,"title":"Pliki cookie dotycz\u0105ce wydajno\u015bci","details":"Wydajno\u015bciowe pliki cookie zbieraj\u0105 zagregowane informacje o sposobie korzystania z naszej strony internetowej. Ma to na celu popraw\u0119 jego atrakcyjno\u015bci, zawarto\u015bci i funkcjonalno\u015bci. Te pliki cookie pomagaj\u0105 nam okre\u015bli\u0107, czy, jak cz\u0119sto i jak d\u0142ugo poszczeg\u00f3lne podstrony naszego serwisu s\u0105 odwiedzane oraz jakie tre\u015bci interesuj\u0105 u\u017cytkownik\u00f3w. Wyszukiwane has\u0142a, kraj, region i (je\u015bli dotyczy) miasto, z kt\u00f3rego pochodzi strona s\u0105 r\u00f3wnie\u017c rejestrowane, podobnie jak odsetek urz\u0105dze\u0144 mobilnych u\u017cywanych do uzyskiwania dost\u0119pu do witryny. Wykorzystujemy te informacje do sporz\u0105dzania raport\u00f3w statystycznych, kt\u00f3re pomagaj\u0105 nam dostosowa\u0107 zawarto\u015b\u0107 naszego serwisu do Twoich potrzeb i zoptymalizowa\u0107 nasz\u0105 ofert\u0119."},"personalization_storage":{"uuid":"b8a8a3f3-3c9d-4d78-a425-b7833ca56dce","langcode":"pl","status":true,"dependencies":[],"id":"personalization_storage","label":"personalization_storage","weight":40,"title":"Personalizacyjne","details":"Pozwala przechowywa\u0107 dane dotycz\u0105ce personalizacji wygl\u0105du oraz tre\u015bci strony.\r\nOpcjonalne ciasteczka przechowuj\u0105ce informacje odno\u015bnie personalizacji strony, zmian wygl\u0105du pod w\u0142asne upodobania czy samych tre\u015bci strony. Odmowa zgody na te ciasteczka, mo\u017ce skutkowa\u0107, \u017ce nasze wybory rozmiaru czcionki, koloru tekstu lub kontrastu nie zostan\u0105 zapami\u0119tane."},"security_storage":{"uuid":"e9a78e2e-1a72-4596-9fd4-a657f992afe3","langcode":"pl","status":true,"dependencies":[],"id":"security_storage","label":"security storage","weight":20,"title":"Zabezpieczenia","details":"Przechowuj\u0105 najwa\u017cniejsze informacje odno\u015bnie u\u017cytkowania strony, aby w odpowiedni spos\u00f3b wykorzystywa\u0107 mechanizmy zabezpieczaj\u0105ce tre\u015bci, a tak\u017ce u\u017cytkownik\u00f3w z niej korzystaj\u0105cych."}}},"statistics":{"data":{"nid":"6756"},"url":"\/modules\/contrib\/statistics\/statistics.php"},"ajax":{"edit-actions-submit":{"callback":"::submitAjaxForm","event":"click","effect":"fade","speed":500,"progress":{"type":"throbber","message":""},"disable-refocus":true,"url":"\/kino-studio-przerwa?ajax_form=1","httpMethod":"POST","dialogType":"ajax","submit":{"_triggering_element_name":"op","_triggering_element_value":"Wy\u015blij formularz"}}},"user":{"uid":0,"permissionsHash":"f769c722b0ea3240b4be7118783245050e7efd952f4ecebb119c8a3de7a1f020"}}</script>
+<script src="/core/assets/vendor/jquery/jquery.min.js?v=4.0.0"></script>
+<script src="/sites/default/files/languages/pl_QbbSMqjmB09g9vb78ubamagWvRrFjm_Niqr9emyBxcQ.js?tk4inq"></script>
+<script src="/core/misc/drupalSettingsLoader.js?v=11.4.4"></script>
+<script src="/core/misc/drupal.js?v=11.4.4"></script>
+<script src="/core/misc/drupal.init.js?v=11.4.4"></script>
+<script src="/themes/custom/bazowy/js/cookie.js?tk4inq"></script>
+<script src="/core/misc/debounce.js?v=11.4.4"></script>
+<script src="/core/misc/announce.js?v=11.4.4"></script>
+<script src="/core/misc/message.js?v=11.4.4"></script>
+<script src="/modules/contrib/cookies/js/cookiesjsr.conf.js?v=11.4.4" defer></script>
+</head>
+
+				<body class="path-node page-node-type-page">
+
+
+					
+					
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'off_canvas_page_wrapper' -->
+<!-- BEGIN OUTPUT from 'core/modules/system/templates/off-canvas-page-wrapper.html.twig' -->
+  <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'page' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ page--node--6756.html.twig
+   ▪️ page--node--%.html.twig
+   ▪️ page--node.html.twig
+   ✅ page.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/page.html.twig' -->
+
+
+
+<header class="top dont_print affix-top header legacy-main-header">
+	<div class="my_container legacy-main-header__container">
+		<div class="logo_main" aria-label="Strona główna">
+			
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ block--bazowy-logo.html.twig
+   ▪️ block--block-content--1995ac07-95b5-446b-a968-b1150c4ffbcd.html.twig
+   ▪️ block--block-content--id-view--bazowy-logo--full.html.twig
+   ▪️ block--block-content--id--bazowy-logo.html.twig
+   ▪️ block--block-content--view-type--logo--full.html.twig
+   ▪️ block--block-content--type--logo.html.twig
+   ▪️ block--block-content--view--full.html.twig
+   ▪️ block--block-content.html.twig
+   ▪️ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy-logo.html.twig' -->
+	<a href="/" class="logo__link" aria-label="Strona główna">
+		<span class="sprite logo" role="img" aria-label="Młodzieżowy Dom Kultury w Opolu"></span>
+		<span class="sprite logo_white" aria-hidden="true"></span>
+	</a>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy-logo.html.twig' -->
+
+
+		</div>
+	</div>
+
+	<div class="legacy-main-header__menu">
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'menu__main' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ menu--main.html.twig
+   ✅ menu--main.html.twig
+   ▪️ menu.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/menu--main.html.twig' -->
+
+<div class="menu_wrapper cell_flex legacy-main-menu">
+  <nav class="menu_top" aria-label="Główne menu">
+    <ul>
+              <li class="" data-id="root-1">
+          <a href="/o-nas" class="carret">
+            <span>O nas</span>
+          </a>
+        </li>
+              <li class="" data-id="root-2">
+          <a href="/zajecia-stale" class="carret">
+            <span>Zajęcia stałe</span>
+          </a>
+        </li>
+              <li class="" data-id="root-3">
+          <a href="/projekty-i-programy" class="carret">
+            <span>Projekty i programy</span>
+          </a>
+        </li>
+              <li class="" data-id="root-4">
+          <a href="/konkursy-i-imprezy" class="carret">
+            <span>Konkursy i imprezy</span>
+          </a>
+        </li>
+              <li class="" data-id="root-5">
+          <a href="/wypoczynek" class="carret">
+            <span>Wypoczynek</span>
+          </a>
+        </li>
+              <li class="" data-id="root-6">
+          <a href="/kino-studio" class="">
+            <span>Kino Studio</span>
+          </a>
+        </li>
+              <li class="" data-id="root-7">
+          <a href="/fotogaleria" class="">
+            <span>Fotogaleria</span>
+          </a>
+        </li>
+              <li class="" data-id="root-8">
+          <a href="/kontakt" class="">
+            <span>Kontakt</span>
+          </a>
+        </li>
+          </ul>
+  </nav>
+
+  <button class="legacy-menu-toggle legacy-hamburger thiIsContent" aria-label="Menu" data-title="Menu" aria-expanded="false" aria-controls="legacy-main-menu-slide">
+    <span class="line top"></span>
+    <span class="line mid"></span>
+    <span class="line bot"></span>
+  </button>
+
+  <nav class="menu_slide cell_flex" id="legacy-main-menu-slide" aria-label="Rozwinięte menu" aria-hidden="true">
+    <div class="my_container">
+      <ul class="level_0 menu_raw hidden">
+                    <li class="" data-id="root-1">
+      <a href="/o-nas" class="carret">
+        <span>O nas</span>
+      </a>
+              <ul class="level_1" data-parent="root-1">
+                      <li class="" data-id="root-1-1">
+      <a href="/misja-i-statut-mdk" class="">
+        <span>Misja i statut MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2">
+      <a href="/dyrekcja-i-pracownicy" class="carret">
+        <span>Dyrekcja i pracownicy</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-2">
+                      <li class="" data-id="root-1-2-1">
+      <a href="/dyrekcja" class="">
+        <span>Dyrekcja</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2-2">
+      <a href="/kierownicy-pracowni-i-zespolow" class="">
+        <span>Kierownicy pracowni i zespołów</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2-3">
+      <a href="/nauczyciele-i-instruktorzy" class="">
+        <span>Nauczyciele i instruktorzy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-2-4">
+      <a href="/pracownicy-administracji-i-obslugi" class="">
+        <span>Pracownicy administracji i obsługi</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-3">
+      <a href="/historia-mdk" class="carret">
+        <span>Historia MDK</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-3">
+                      <li class="" data-id="root-1-3-1">
+      <a href="/rys-historyczny" class="">
+        <span>Rys historyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-3-2">
+      <a href="/kalendarium-wydarzen-1954-1997" class="">
+        <span>Kalendarium wydarzeń 1954-1997</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-4">
+      <a href="/wspolpraca-miedzynarodowa" class="">
+        <span>Współpraca międzynarodowa</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-5">
+      <a href="/nagroda-pegaz" class="carret">
+        <span>Nagroda &quot;PEGAZ&quot;</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-5">
+                      <li class="" data-id="root-1-5-1">
+      <a href="/idea-i-regulamin-nagrody" class="">
+        <span>Idea i regulamin nagrody</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-5-2">
+      <a href="/dotychczasowi-laureaci" class="">
+        <span>Dotychczasowi laureaci</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-6">
+      <a href="/wydawnictwa-ksiazkowe" class="carret">
+        <span>Wydawnictwa książkowe</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-6">
+                      <li class="" data-id="root-1-6-1">
+      <a href="/pol-wieku-mdk-u-2004" class="">
+        <span>&quot;Pół wieku MDK-u&quot; (2004)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-2">
+      <a href="/legendy-o-opolu-2006" class="">
+        <span>&quot;Legendy o Opolu&quot; (2006)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-3">
+      <a href="/nie-tylko-nauka-2007" class="">
+        <span>&quot;Nie tylko nauka&quot; (2007)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-4">
+      <a href="/otworzyl-sie-przede-mna-swiat-2010" class="">
+        <span>&quot;Otworzył się przede mną świat&quot; (2010)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-5">
+      <a href="/zachowac-od-zapomnienia-2011" class="">
+        <span>&quot;Zachować od zapomnienia&quot; (2011)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-6">
+      <a href="/edukacja-teatralna-dzieci-i-mlodziezy-2012" class="">
+        <span>&quot;Edukacja teatralna dzieci i młodzieży&quot; (2012)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-6-7">
+      <a href="/slowem-i-piorem-2021" class="">
+        <span>&quot;Słowem i piórem&quot; (2021)</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-7">
+      <a href="/logo-mdk-do-pobrania" class="">
+        <span>Logo MDK do pobrania</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-8">
+      <a href="/ochrona-danych-osobowych" class="">
+        <span>Ochrona danych osobowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-9">
+      <a href="/standardy-ochrony-maloletnich" class="">
+        <span>Standardy ochrony małoletnich</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-10">
+      <a href="/procedura-sygnalisty" class="">
+        <span>Procedura sygnalisty</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-11">
+      <a href="/wielkanoc-tuz-tuz" class="carret">
+        <span>Projekty unijne</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-11">
+                      <li class="" data-id="root-1-11-1">
+      <a href="/rewitalizacja-przestrzeni-publicznych-w-opolu" class="">
+        <span>Rewitalizacja przestrzeni publicznych w Opolu</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-1-12">
+      <a href="/swietlice-dzielnicowe" class="">
+        <span>Świetlice dzielnicowe</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13">
+      <a href="/zamowienia-publiczne" class="carret">
+        <span>Zamówienia publiczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-1-13">
+                      <li class="" data-id="root-1-13-1">
+      <a href="/zamowienia-ponizej-170000-pln" class="">
+        <span>Zamówienia poniżej 170.000 PLN</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-2">
+      <a href="/zamowienia-powyzej-170000-pln" class="">
+        <span>Zamówienia powyżej 170.000 PLN</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-3">
+      <a href="/plany-zamowien-publicznych" class="">
+        <span>Plany zamówień publicznych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4">
+      <a href="/zamowienia-archiwalne" class="carret">
+        <span>Zamówienia archiwalne</span>
+      </a>
+              <ul class="level_3" data-parent="root-1-13-4">
+                      <li class="" data-id="root-1-13-4-1">
+      <a href="/budowa-placu-zabaw-w-filii-mdk-nr-3-etap-i" class="">
+        <span>Budowa placu zabaw w Filii MDK nr 3 - etap I</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-2">
+      <a href="/budowa-placu-zabaw-w-filii-mdk-nr-3-etap-ii" class="">
+        <span>Budowa placu zabaw w Filii MDK nr 3 - etap II</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-3">
+      <a href="/remont-korytarzy-w-budynku-glownym-mdk-etap-i" class="">
+        <span>Remont korytarzy w budynku głównym MDK - etap I</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-4">
+      <a href="/budowa-placu-zabaw-w-filii-mdk-nr-3-etap-ii-ponowne-ogloszenie" class="">
+        <span>Budowa placu zabaw w Filii MDK nr 3 - etap II (ponowne ogłoszenie)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-5">
+      <a href="/remont-korytarzy-w-budynku-glownym-mdk-etap-i-ponowne-ogloszenie" class="">
+        <span>Remont korytarzy w budynku głównym MDK - etap I (ponowne ogłoszenie)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-6">
+      <a href="/przebudowa-kuchni-na-sale-dydaktyczna-w-filii-mdk-nr-1" class="">
+        <span>Przebudowa kuchni na salę dydaktyczną w Filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-7">
+      <a href="/przebudowa-kuchni-na-sale-dydaktyczna-w-filii-mdk-nr-1-ponowne-ogl" class="">
+        <span>Przebudowa kuchni na salę dydaktyczną w Filii MDK nr 1 (ponowne ogł.)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-8">
+      <a href="/wykonanie-wykladziny-z-tworzyw-sztucznych-w-filii-mdk-nr-1" class="">
+        <span>Wykonanie wykładziny z tworzyw sztucznych w Filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-9">
+      <a href="/wymiana-swietlikow-dachowych-w-filii-mdk-nr-1" class="">
+        <span>Wymiana świetlików dachowych w Filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-10">
+      <a href="/usuniecie-drzew-krzewow-frezowanie-pni-oraz-ciecia-drzewostanu" class="">
+        <span>Usunięcie drzew, krzewów, frezowanie pni oraz cięcia drzewostanu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-11">
+      <a href="/bilety-lotnicze-dla-czlonkow-zespolu-tanecznego-pech" class="">
+        <span>Bilety lotnicze dla członków i opiekunów Zespołu Tanecznego PECH</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-12">
+      <a href="/pech-z-workiem-medali" class="">
+        <span>Usunięcie drzew, frezowanie pni oraz cięcia pielęgnacyjne drzewostanu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-13">
+      <a href="/dostawa-pior-wiecznych-i-dlugopisow-firmy-parker" class="">
+        <span>Dostawa piór wiecznych i długopisów marki Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-14">
+      <a href="/remont-pokrycia-dachowego-w-filii-mdk-nr-1" class="">
+        <span>Remont pokrycia dachowego w filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-15">
+      <a href="/wymiana-okien-w-filii-mdk-nr-1" class="">
+        <span>Wymiana okien w filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-16">
+      <a href="/wykonanie-dostawa-i-montaz-mebli-do-pomieszczenia-edukacyjnego" class="">
+        <span>Wykonanie, dostawa i montaż mebli do pomieszczenia edukacyjnego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-17">
+      <a href="/wykonanie-dostawa-i-montaz-mebli-do-pomieszczenia-rodzicow" class="">
+        <span>Wykonanie, dostawa i montaż mebli do pomieszczenia rodziców</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-18">
+      <a href="/zakup-i-dostawa-mebli-oraz-wyposazenia-do-dwoch-pomieszczen-mdk" class="">
+        <span>Zakup i dostawa mebli oraz wyposażenia do dwóch pomieszczeń MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-19">
+      <a href="/dostawa-pior-wiecznych-i-dlugopisow-marki-parker" class="">
+        <span>Dostawa piór wiecznych i długopisów firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-20">
+      <a href="/zakup-i-dostawa-sprzetu-muzycznego" class="">
+        <span>Zakup i dostawa sprzętu muzycznego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-21">
+      <a href="/dostawa-rekreacyjnych-urzadzen-pneumatycznych" class="">
+        <span>Dostawa rekreacyjnych urządzeń pneumatycznych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-22">
+      <a href="/przeprowadzenie-warsztatow-recyklingowych" class="">
+        <span>Przeprowadzenie warsztatów recyklingowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-23">
+      <a href="/pelnienie-funkcji-wychowawcy-polkolonii-zimowej-eko-ferie-z-mdk" class="">
+        <span>Pełnienie funkcji wychowawcy półkolonii zimowej EKO FERIE Z MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-24">
+      <a href="/remont-pokrycia-dachowego" class="">
+        <span>Remont pokrycia dachowego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-25">
+      <a href="/dostawa-pior-wiecznych-i-dlugopisow-marki-parker-0" class="">
+        <span>Dostawa piór wiecznych i długopisów marki Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-26">
+      <a href="/na-jesienny-wieczor" class="">
+        <span>Przeprowadzenie rodzinnych warsztatów recyklingowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-27">
+      <a href="/przeprowadzenie-rodzinnych-warsztatow-recyklingowych" class="">
+        <span>Przeprowadzenie rodzinnych warsztatów recyklingowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-28">
+      <a href="/pelnienie-funkcji-wychowawcy-polkolonii-letniej-eko-lato-z-mdk" class="">
+        <span>Pełnienie funkcji wychowawcy półkolonii letniej EKO LATO Z MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-29">
+      <a href="/pelnienie-funkcji-wychowawcy-polkolonii-letniej-eko-lato-z-mdk-0" class="">
+        <span>Pełnienie funkcji wychowawcy półkolonii letniej EKO LATO Z MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-30">
+      <a href="/pelnienie-funkcji-czlonka-komisji-konkursowej-konkursu-filmowego" class="">
+        <span>Pełnienie funkcji członka komisji konkursowej konkursu filmowego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-31">
+      <a href="/wykonanie-dostawa-i-montaz-drzwi-wejsciowych-do-budynku-filii-mdk-nr-1" class="">
+        <span>Wykonanie, dostawa i montaż drzwi wejściowych do budynku filii MDK nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-32">
+      <a href="/bilety-lotnicze-dla-czlonkow-i-opiekunow-zespolu-tanecznego-pech" class="">
+        <span>Bilety lotnicze dla członków i opiekunów Zespołu Tanecznego PECH</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-33">
+      <a href="/dostawa-pior-wiecznych-marki-parker" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-34">
+      <a href="/dostawa-i-montaz-calorocznej-toalety-jednostanowiskowej" class="">
+        <span>Dostawa i montaż całorocznej toalety jednostanowiskowej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-35">
+      <a href="/dostawa-pior-wiecznych-marki-parker-0" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-36">
+      <a href="/zakup-i-dostawa-krzesel-tapicerowanych-do-sali-widowiskowej-mdk" class="">
+        <span>Zakup i dostawa krzeseł tapicerowanych do sali widowiskowej MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-37">
+      <a href="/dostawa-srodkow-czystosci-do-mdk" class="">
+        <span>Dostawa środków czystości do MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-38">
+      <a href="/dostawa-pior-wiecznych-firmy-parker-0" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-39">
+      <a href="/wykonanie-dostawa-i-montaz-okien-w-budynku-filii-mdk-nr-2" class="">
+        <span>Wykonanie, dostawa i montaż okien w budynku filii MDK nr 2</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-40">
+      <a href="/dostawa-pior-wiecznych-firmy-parker-1" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-41">
+      <a href="/zakup-dostawa-i-nasadzenie-bluszczu-pospolitego-na-terenie-parku-mdk" class="">
+        <span>Zakup, dostawa i nasadzenie bluszczu pospolitego na terenie parku MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-42">
+      <a href="/dostawa-pior-wiecznych-firmy-parker" class="">
+        <span>Dostawa piór wiecznych firmy Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-43">
+      <a href="/zakup-sprzetu-audiowizualnego-dla-kina-studio-w-mdk" class="">
+        <span>Zakup sprzętu audiowizualnego dla Kina Studio w MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-44">
+      <a href="/dostawa-artykulow-spozywczych" class="">
+        <span>Dostawa artykułów spożywczych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-45">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-w-roku-2025" class="">
+        <span>Zakup i dostawa środków czystości w roku 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-46">
+      <a href="/dostawa-pior-wiecznych-marki-parker-1" class="">
+        <span>Dostawa piór wiecznych marki Parker</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-47">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-w-roku-2025-0" class="">
+        <span>Zakup i dostawa środków czystości w roku 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-48">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-w-roku-2025-1" class="">
+        <span>Zakup i dostawa środków czystości w roku 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-49">
+      <a href="/transport-uczestnikow-zajec-mdk-na-zawody-taneczne" class="">
+        <span>Transport uczestników zajęć MDK na zawody taneczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-50">
+      <a href="/transport-uczestnikow-kolonii-letniej-w-szczyrku" class="">
+        <span>Transport uczestników kolonii letniej w Szczyrku</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-51">
+      <a href="/transport-uczestnikow-polkolonii-letniej-na-wycieczki" class="">
+        <span>Transport uczestników półkolonii letniej na wycieczki</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-52">
+      <a href="/zapewnienie-posilkow-dla-uczestnikow-polkolonii-letnich-mdk" class="">
+        <span>Zapewnienie posiłków dla uczestników półkolonii letnich MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-53">
+      <a href="/transport-czlonkow-zespolu-piesni-i-tanca-opole-do-grecji" class="">
+        <span>Transport członków Zespołu Pieśni i Tańca OPOLE do Grecji</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-54">
+      <a href="/technika-estradowa-imprez-plenerowych-koncerty-promenadowe-2025" class="">
+        <span>Technika estradowa imprez plenerowych - koncerty promenadowe 2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-55">
+      <a href="/wykonanie-i-dostawa-materialow-na-potrzeby-mdk" class="">
+        <span>Wykonanie i dostawa materiałów na potrzeby MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-56">
+      <a href="/technika-estradowa-imprezy-plenerowej-06092025" class="">
+        <span>Technika estradowa imprezy plenerowej 06.09.2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-57">
+      <a href="/transport-uczestnikow-projektu-europejskie-sciezki-kultury-do-francji" class="">
+        <span>Transport uczestników projektu „Europejskie ścieżki kultury” do Francji</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-58">
+      <a href="/technika-estradowa-imprezy-plenerowej-11112025" class="">
+        <span>Technika estradowa imprezy plenerowej 11.11.2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-59">
+      <a href="/dostawa-artykulow-spozywczych-0" class="">
+        <span>Dostawa artykułów spożywczych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-60">
+      <a href="/technika-estradowa-imprezy-07122025" class="">
+        <span>Technika estradowa imprezy 07.12.2025</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-61">
+      <a href="/technika-estradowa-imprezy-plenerowej-orszak-trzech-kroli-06012026" class="">
+        <span>Technika estradowa imprezy plenerowej Orszak Trzech Króli 06.01.2026</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-62">
+      <a href="/sukcesywne-swiadczenie-uslug-cateringowych-na-rzecz-mdk-w-opolu" class="">
+        <span>Sukcesywne świadczenie usług cateringowych na rzecz MDK w Opolu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-63">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-zapytanie-nr-1" class="">
+        <span>Zakup i dostawa środków czystości - zapytanie nr 1</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-64">
+      <a href="/zakup-i-dostawa-srodkow-czystosci-zapytanie-nr-2" class="">
+        <span>Zakup i dostawa środków czystości - zapytanie nr 2</span>
+      </a>
+          </li>
+          <li class="" data-id="root-1-13-4-65">
+      <a href="/juz-wkrotce-piosenkobranie-2016" class="">
+        <span>Dostawa piór wiecznych marki Parker</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2">
+      <a href="/zajecia-stale" class="carret">
+        <span>Zajęcia stałe</span>
+      </a>
+              <ul class="level_1" data-parent="root-2">
+                      <li class="" data-id="root-2-1">
+      <a href="/taniec" class="carret">
+        <span>Taniec</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-1">
+                      <li class="" data-id="root-2-1-1">
+      <a href="/zespol-piesni-i-tanca-opole" class="">
+        <span>Zespół Pieśni i Tańca &quot;OPOLE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-1-2">
+      <a href="/zespol-taneczny-adena" class="">
+        <span>Zespół Taneczny &quot;ADENA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-1-3">
+      <a href="/zespol-taneczny-pech" class="">
+        <span>Zespół Taneczny &quot;PECH&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-1-4">
+      <a href="/zajecia-breakdance" class="">
+        <span>Zajęcia breakdance</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-2">
+      <a href="/muzyka-i-spiew" class="carret">
+        <span>Muzyka i śpiew</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-2">
+                      <li class="" data-id="root-2-2-1">
+      <a href="/zajecia-umuzykalniajace-coro-piccolino" class="">
+        <span>Zajęcia umuzykalniające dla dzieci &quot;CORO PICCOLINO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-2">
+      <a href="/dzieciecy-zespol-muzyczny-sing-play" class="">
+        <span>Dziecięcy Zespół Muzyczny &quot;SING &amp; PLAY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-3">
+      <a href="/dzieciecy-zespol-instrumentalny-magiczna-orkiestra" class="">
+        <span>Dziecięcy Zespół Instrumentalny &quot;MAGICZNA ORKIESTRA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-4">
+      <a href="/studio-piosenki-debiut" class="">
+        <span>Studio Piosenki &quot;DEBIUT&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-5">
+      <a href="/talentarium-wokalne-singasong" class="">
+        <span>Talentarium Wokalne &quot;SINGASONG&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-6">
+      <a href="/wokalne-studio-ksztalcenia-jazzowego" class="">
+        <span>Wokalne Studio Kształcenia Jazzowego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-7">
+      <a href="/studio-emisji-glosu" class="">
+        <span>Studio Emisji Głosu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-8">
+      <a href="/zajecia-hip-hop-rozkminki-kontrolowane" class="">
+        <span>Zajęcia hip-hopu &quot;ROZKMINKI KONTROLOWANE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-9">
+      <a href="/klub-szesciu-strun" class="">
+        <span>Klub Sześciu Strun</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-10">
+      <a href="/studio-instrumentow-klawiszowych" class="">
+        <span>Studio Instrumentów Klawiszowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-2-11">
+      <a href="/zespol-klawiszowy-w-duecie" class="">
+        <span>Zespół klawiszowy &quot;W DUECIE&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-3">
+      <a href="/teatr-i-recytacja" class="carret">
+        <span>Teatr i recytacja</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-3">
+                      <li class="" data-id="root-2-3-1">
+      <a href="/teatr-nasza-strefa-0" class="">
+        <span>Teatr &quot;NASZA STREFA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-2">
+      <a href="/studio-ksztalcenia-artystycznego-bb" class="">
+        <span>Studio Kształcenia Artystycznego &quot;BB&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-3">
+      <a href="/teatr-asceza" class="">
+        <span>Teatr &quot;ASCEZA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-4">
+      <a href="/teatr-gromadka" class="">
+        <span>Teatr &quot;GROMADKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-5">
+      <a href="/teatr-jednego-wiersza" class="">
+        <span>Teatr Jednego Wiersza</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-6">
+      <a href="/teatr-piktogram" class="">
+        <span>Teatr &quot;PIKTOGRAM&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-7">
+      <a href="/teatr-spotkanie" class="">
+        <span>Teatr &quot;SPOTKANIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-8">
+      <a href="/teatr-zapadnia" class="">
+        <span>Teatr &quot;ZAPADNIA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-9">
+      <a href="/warsztaty-od-szekspira-do-becketta" class="">
+        <span>Warsztaty &quot;OD SZEKSPIRA DO BECKETTA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-3-10">
+      <a href="/warsztaty-recytatorskie-slowem" class="">
+        <span>Warsztaty recytatorskie &quot;SŁOWEM&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-4">
+      <a href="/film-i-fotografia" class="carret">
+        <span>Film i fotografia</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-4">
+                      <li class="" data-id="root-2-4-1">
+      <a href="/klub-dobrego-filmu-studio" class="">
+        <span>Klub Dobrego Filmu &quot;STUDIO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-4-2">
+      <a href="/pracownia-edukacji-filmowej-abecadlo-kina" class="">
+        <span>Pracownia edukacji filmowej &quot;ABECADŁO KINA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-4-3">
+      <a href="/pracownia-animacji-poklatkowej-stop-klatka" class="">
+        <span>Pracownia animacji poklatkowej &quot;STOP-KLATKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-4-4">
+      <a href="/pracownia-fotograficzna-blenda" class="">
+        <span>Pracownia fotograficzna &quot;BLENDA&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-5">
+      <a href="/plastyka-i-ceramika" class="carret">
+        <span>Plastyka i ceramika</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-5">
+                      <li class="" data-id="root-2-5-1">
+      <a href="/pracownia-plastyczna-arte" class="">
+        <span>Pracownia plastyczna &quot;ARTE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-2">
+      <a href="/pracownia-plastyczna-plastusie" class="">
+        <span>Pracownia plastyczna &quot;PLASTUSIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-3">
+      <a href="/pracownia-plastyczna-plastyk" class="">
+        <span>Pracownia plastyczna &quot;PLASTYK&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-4">
+      <a href="/pracownia-plastyczna-ramka" class="">
+        <span>Pracownia plastyczna &quot;RAMKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-5">
+      <a href="/pracownia-plastyczna-szkatulka" class="">
+        <span>Pracownia plastyczna &quot;SZKATUŁKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-6">
+      <a href="/pracownia-plastyczna-tecza" class="">
+        <span>Pracownia plastyczna &quot;TĘCZA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-7">
+      <a href="/pracownia-plastyczna-wrobel" class="">
+        <span>Pracownia plastyczna &quot;WRÓBEL&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-8">
+      <a href="/pracownia-ceramiki-artystycznej" class="">
+        <span>Pracownia Ceramiki Artystycznej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-9">
+      <a href="/pracownia-ceramiczna-amfora" class="">
+        <span>Pracownia ceramiczna &quot;AMFORA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-10">
+      <a href="/pracownia-szkla-artystycznego" class="">
+        <span>Pracownia Szkła Artystycznego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-11">
+      <a href="/pracownia-rekodziela-i-kosmetykow-malwa" class="">
+        <span>Pracownia rękodzieła i kosmetyków &quot;MALWA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-5-12">
+      <a href="/kolo-gospodyn-miejskich" class="">
+        <span>Koło Gospodyń Miejskich</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-6">
+      <a href="/informatyka-i-technika" class="carret">
+        <span>Informatyka i technika</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-6">
+                      <li class="" data-id="root-2-6-1">
+      <a href="/robotyka-lego" class="">
+        <span>Robotyka &quot;LEGO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-6-2">
+      <a href="/modelarnia" class="">
+        <span>Modelarnia</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-7">
+      <a href="/edukacja-przedszkolna" class="carret">
+        <span>Edukacja przedszkolna</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-7">
+                      <li class="" data-id="root-2-7-1">
+      <a href="/artystyczna-akademia-przedszkolaka" class="">
+        <span>Artystyczna Akademia Przedszkolaka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-7-2">
+      <a href="/akademia-pieciolatka" class="">
+        <span>Akademia Pięciolatka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-7-3">
+      <a href="/rodzinna-pracownia-kreatywnosci-michalki" class="">
+        <span>Rodzinna pracownia kreatywności &quot;MICHAŁKI&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-7-4">
+      <a href="/zajecia-sensoryczne-sensosmyki" class="">
+        <span>Zajęcia sensoryczne &quot;SENSOSMYKI&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-8">
+      <a href="/edukacja-jezykowa" class="carret">
+        <span>Edukacja językowa</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-8">
+                      <li class="" data-id="root-2-8-1">
+      <a href="/fun-english" class="">
+        <span>Fun English</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-8-2">
+      <a href="/zajecia-jezyka-angielskiego" class="">
+        <span>Zajęcia języka angielskiego</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-9">
+      <a href="/kulinaria" class="carret">
+        <span>Kulinaria</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-9">
+                      <li class="" data-id="root-2-9-1">
+      <a href="/klub-kulinarny-smak" class="">
+        <span>Klub kulinarny &quot;SMAK&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-10">
+      <a href="/sport-i-rekreacja" class="carret">
+        <span>Sport i rekreacja</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-10">
+                      <li class="" data-id="root-2-10-1">
+      <a href="/grupa-akrobatyczna-salto" class="">
+        <span>Grupa akrobatyczna &quot;SALTO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-10-2">
+      <a href="/akrobatyka-taneczna-reflex" class="">
+        <span>Akrobatyka taneczna &quot;REFLEX&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-10-3">
+      <a href="/zajecia-szachowe-szach-mat" class="">
+        <span>Zajęcia szachowe &quot;SZACH-MAT&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-10-4">
+      <a href="/tenis-stolowy" class="">
+        <span>Tenis stołowy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-11">
+      <a href="/wolontariat-i-profilaktyka" class="carret">
+        <span>Wolontariat i profilaktyka</span>
+      </a>
+              <ul class="level_2" data-parent="root-2-11">
+                      <li class="" data-id="root-2-11-1">
+      <a href="/spotkania-profilaktyczne" class="">
+        <span>Spotkania profilaktyczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-11-2">
+      <a href="/mlodziezowy-wolontariat" class="">
+        <span>Młodzieżowy wolontariat</span>
+      </a>
+          </li>
+          <li class="" data-id="root-2-11-3">
+      <a href="/opolski-sztab-wielkiej-orkiestry-swiatecznej-pomocy" class="">
+        <span>Opolski sztab Wielkiej Orkiestry Świątecznej Pomocy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-2-12">
+      <a href="/rekrutacja-na-zajecia-202627" class="">
+        <span>Rekrutacja na zajęcia 2026/27</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-3">
+      <a href="/projekty-i-programy" class="carret">
+        <span>Projekty i programy</span>
+      </a>
+              <ul class="level_1" data-parent="root-3">
+                      <li class="" data-id="root-3-1">
+      <a href="/artystyczne-soboty-w-mdk" class="">
+        <span>Artystyczne soboty w MDK</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-2">
+      <a href="/edukacja-mlode-horyzonty" class="">
+        <span>Edukacja Młode Horyzonty</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-3">
+      <a href="/klub-malego-matematyka" class="">
+        <span>Klub Małego Matematyka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-4">
+      <a href="/klub-malego-odkrywcy" class="">
+        <span>Klub Małego Odkrywcy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-5">
+      <a href="/kulinarne-podroze-mlodego-odkrywcy" class="">
+        <span>Kulinarne Podróże Młodego Odkrywcy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-6">
+      <a href="/lekcje-grotowskiego" class="">
+        <span>Lekcje Grotowskiego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-7">
+      <a href="/maly-opolanin" class="">
+        <span>Mały Opolanin</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-8">
+      <a href="/na-szkle-malowane" class="">
+        <span>Na szkle malowane</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-9">
+      <a href="/oswajamy-matematyke" class="">
+        <span>Oswajamy matematykę</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-10">
+      <a href="/strefa-odkrywania-wyobrazni-i-aktywnosci-sowa" class="">
+        <span>Strefa Odkrywania, Wyobraźni i Aktywności (SOWA)</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-11">
+      <a href="/teatralne-abc" class="">
+        <span>Teatralne ABC</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-12">
+      <a href="/tworcza-mama-tworczy-tato" class="">
+        <span>Twórcza mama, twórczy tato</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-13">
+      <a href="/uczen-zdolny" class="">
+        <span>Uczeń zdolny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-14">
+      <a href="/uczen-zdolny-olimpijczyk" class="">
+        <span>Uczeń zdolny - olimpijczyk</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-15">
+      <a href="/wakacyjna-przygoda-z-nauka" class="">
+        <span>Wakacyjna przygoda z nauką</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16">
+      <a href="/teatralna-wiosna-w-mdk" class="carret">
+        <span>Wspólna akcja segregacja</span>
+      </a>
+              <ul class="level_2" data-parent="root-3-16">
+                      <li class="" data-id="root-3-16-1">
+      <a href="/opis-projektu" class="">
+        <span>Opis projektu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-2">
+      <a href="/dzialania-promocyjne" class="">
+        <span>Działania promocyjne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-3">
+      <a href="/zimowe-warsztaty-ekologiczne" class="">
+        <span>Zimowe warsztaty ekologiczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-4">
+      <a href="/rodzinne-warsztaty-recyklingowe" class="">
+        <span>Rodzinne warsztaty recyklingowe</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-5">
+      <a href="/spektakl-ekologiczny" class="">
+        <span>Spektakl ekologiczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-6">
+      <a href="/letnie-warsztaty-ekologiczne" class="">
+        <span>Letnie warsztaty ekologiczne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-7">
+      <a href="/konkurs-filmowy-zielone-kadry" class="">
+        <span>Konkurs filmowy &quot;ZIELONE KADRY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-8">
+      <a href="/festiwal-piosenki-ekologicznej" class="">
+        <span>Festiwal Piosenki Ekologicznej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-3-16-9">
+      <a href="/wystawa-ksiazka-kartki-pocztowe" class="">
+        <span>Wystawa, książka, kartki pocztowe</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4">
+      <a href="/konkursy-i-imprezy" class="carret">
+        <span>Konkursy i imprezy</span>
+      </a>
+              <ul class="level_1" data-parent="root-4">
+                      <li class="" data-id="root-4-1">
+      <a href="/taneczne" class="carret">
+        <span>Taneczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-1">
+                      <li class="" data-id="root-4-1-1">
+      <a href="/ogolnopolskie-spotkania-artystyczne-opole-artis-1" class="">
+        <span>Ogólnopolskie Spotkania Artystyczne &quot;OPOLE ARTIS&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-1-2">
+      <a href="/wojewodzki-festiwal-tanca-fantan" class="">
+        <span>Wojewódzki Festiwal Tańca &quot;FANTAN&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-1-3">
+      <a href="/festiwal-artystyczny-opolskie-mlode-talenty-1" class="">
+        <span>Festiwal Artystyczny &quot;OPOLSKIE MŁODE TALENTY&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-2">
+      <a href="/muzyczne" class="carret">
+        <span>Muzyczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-2">
+                      <li class="" data-id="root-4-2-1">
+      <a href="/ogolnopolski-festiwal-piosenki-piosenkobranie" class="">
+        <span>Ogólnopolski Festiwal Piosenki &quot;PIOSENKOBRANIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-2">
+      <a href="/ogolnopolskie-spotkania-artystyczne-opole-artis-2" class="">
+        <span>Ogólnopolskie Spotkania Artystyczne &quot;OPOLE ARTIS&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-3">
+      <a href="/festiwal-artystyczny-opolskie-mlode-talenty-2" class="">
+        <span>Festiwal Artystyczny &quot;OPOLSKIE MŁODE TALENTY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-4">
+      <a href="/festiwal-piosenki-przedszkolnej" class="">
+        <span>Festiwal Piosenki Przedszkolnej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-5">
+      <a href="/mikolajkowy-festiwal-piosenki-dzieciecej" class="">
+        <span>Mikołajkowy Festiwal Piosenki Dziecięcej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-6">
+      <a href="/koncert-muzyki-wakacyjnej" class="">
+        <span>Koncert Muzyki Wakacyjnej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-2-7">
+      <a href="/tydzien-kultury-niebanalnej-4" class="">
+        <span>Tydzień Kultury Niebanalnej</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-3">
+      <a href="/teatralne" class="carret">
+        <span>Teatralne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-3">
+                      <li class="" data-id="root-4-3-1">
+      <a href="/ogolnopolskie-forum-teatrow-dzieciecych-i-mlodziezowych-miniatury" class="">
+        <span>Ogólnopolskie Forum Teatrów Dziecięcych i Młodzieżowych &quot;MINIATURY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-2">
+      <a href="/festiwal-artystyczny-opolskie-mlode-talenty-0" class="">
+        <span>Festiwal Artystyczny &quot;OPOLSKIE MŁODE TALENTY&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-3">
+      <a href="/przeglad-dzieciecych-inscenizacji-teatralnych" class="">
+        <span>Przegląd Dziecięcych Inscenizacji Teatralnych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-4">
+      <a href="/tydzien-kultury-niebanalnej-5" class="">
+        <span>Tydzień Kultury Niebanalnej</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-5">
+      <a href="/zimowe-spotkania-teatralne" class="">
+        <span>Zimowe Spotkania Teatralne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-3-6">
+      <a href="/swietojanska-noc-teatralna" class="">
+        <span>Świętojańska Noc Teatralna</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-4">
+      <a href="/recytatorskie" class="carret">
+        <span>Recytatorskie</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-4">
+                      <li class="" data-id="root-4-4-1">
+      <a href="/ogolnopolski-turniej-sztuki-recytatorskiej-klubu-zapalonej-swiecy-3" class="">
+        <span>Ogólnopolski Turniej Sztuki Recytatorskiej Klubu Zapalonej Świecy</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-2">
+      <a href="/ogolnopolski-konkurs-recytatorski" class="">
+        <span>Ogólnopolski Konkurs Recytatorski</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-3">
+      <a href="/konkurs-recytatorski-slowo" class="">
+        <span>Konkurs Recytatorski &quot;SŁOWO&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-4">
+      <a href="/konkurs-recytatorski-dla-przedszkolakow-biale-wierszowanie" class="">
+        <span>Konkurs Recytatorski dla Przedszkolaków &quot;BIAŁE WIERSZOWANIE&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-4-5">
+      <a href="/konkurs-recytatorski-w-jezyku-niemieckim-mlodziez-recytuje-poezje-0" class="">
+        <span>Konkurs Recytatorski w Języku Niemieckim &quot;MŁODZIEŻ RECYTUJE POEZJĘ&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-5">
+      <a href="/plastyczne" class="carret">
+        <span>Plastyczne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-5">
+                      <li class="" data-id="root-4-5-1">
+      <a href="/wojewodzki-konkurs-plastyczny-projekt-kartki-swiatecznej" class="">
+        <span>Wojewódzki Konkurs Plastyczny &quot;PROJEKT KARTKI ŚWIĄTECZNEJ&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-5-2">
+      <a href="/wojewodzki-konkurs-zdobienia-jaj-wielkanocnych-pisanka-0" class="">
+        <span>Wojewódzki Konkurs Zdobienia Jaj Wielkanocnych &quot;PISANKA&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-5-3">
+      <a href="/wojewodzki-konkurs-plastyczny-projekt-kartki-wielkanocnej" class="">
+        <span>Wojewódzki Konkurs Plastyczny &quot;PROJEKT KARTKI WIELKANOCNEJ&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-5-4">
+      <a href="/plener-plastyczny-opole-kredka-rysowane" class="">
+        <span>Plener plastyczny &quot;OPOLE KREDKĄ RYSOWANE&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-6">
+      <a href="/filmowe-i-fotograficzne" class="carret">
+        <span>Filmowe i fotograficzne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-6">
+                      <li class="" data-id="root-4-6-1">
+      <a href="/wojewodzki-konkurs-fotograficzny-sam-nie-pale-i-innym-odradzam" class="">
+        <span>Wojewódzki konkurs fotograficzny &quot;SAM NIE PALĘ I INNYM ODRADZAM&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-6-2">
+      <a href="/festiwal-filmow-dla-dzieci-i-mlodziezy-zero-nudy" class="">
+        <span>Festiwal Filmów dla Dzieci i Młodzieży &quot;ZERO NUDY&quot;</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-7">
+      <a href="/integracyjne" class="carret">
+        <span>Integracyjne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-7">
+                      <li class="" data-id="root-4-7-1">
+      <a href="/dzien-dziecka" class="">
+        <span>Dzień Dziecka</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-2">
+      <a href="/lato-tuz-tuz" class="">
+        <span>Lato tuż-tuż</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-3">
+      <a href="/europejski-dzien-bez-samochodu" class="">
+        <span>Europejski Dzień Bez Samochodu</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-4">
+      <a href="/spotkanie-wigilijne" class="">
+        <span>Spotkanie wigilijne</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-7-5">
+      <a href="/bal-karnawalowy" class="">
+        <span>Bal karnawałowy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-8">
+      <a href="/regionalne" class="carret">
+        <span>Regionalne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-8">
+                      <li class="" data-id="root-4-8-1">
+      <a href="/final-projektu-maly-opolanin" class="">
+        <span>Finał projektu &quot;MAŁY OPOLANIN&quot;</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-8-2">
+      <a href="/jarmark-franciszkanski" class="">
+        <span>Jarmark Franciszkański</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-9">
+      <a href="/samorzadowe-i-wolontariackie" class="carret">
+        <span>Samorządowe i wolontariackie</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-9">
+                      <li class="" data-id="root-4-9-1">
+      <a href="/konferencja-samorzadow-uczniowskich" class="">
+        <span>Konferencja Samorządów Uczniowskich</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-9-2">
+      <a href="/final-wielkiej-orkiestry-swiatecznej-pomocy" class="">
+        <span>Finał Wielkiej Orkiestry Świątecznej Pomocy</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-4-10">
+      <a href="/edukacyjne" class="carret">
+        <span>Edukacyjne</span>
+      </a>
+              <ul class="level_2" data-parent="root-4-10">
+                      <li class="" data-id="root-4-10-1">
+      <a href="/zarzadzenia-terminarz-i-wzory-dokumentow" class="">
+        <span>Zarządzenia, terminarz i wzory dokumentów</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-2">
+      <a href="/wojewodzki-konkurs-polonistyczny" class="">
+        <span>Wojewódzki Konkurs Polonistyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-3">
+      <a href="/wojewodzki-konkurs-matematyczny" class="">
+        <span>Wojewódzki Konkurs Matematyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-4">
+      <a href="/wojewodzki-konkurs-jezyka-angielskiego" class="">
+        <span>Wojewódzki Konkurs Języka Angielskiego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-5">
+      <a href="/wojewodzki-konkurs-jezyka-niemieckiego" class="">
+        <span>Wojewódzki Konkurs Języka Niemieckiego</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-6">
+      <a href="/wojewodzki-konkurs-historyczny" class="">
+        <span>Wojewódzki Konkurs Historyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-7">
+      <a href="/wojewodzki-konkurs-geograficzny" class="">
+        <span>Wojewódzki Konkurs Geograficzny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-8">
+      <a href="/wojewodzki-konkurs-biologiczny" class="">
+        <span>Wojewódzki Konkurs Biologiczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-9">
+      <a href="/wojewodzki-konkurs-chemiczny" class="">
+        <span>Wojewódzki Konkurs Chemiczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-10">
+      <a href="/wojewodzki-konkurs-fizyczny" class="">
+        <span>Wojewódzki Konkurs Fizyczny</span>
+      </a>
+          </li>
+          <li class="" data-id="root-4-10-11">
+      <a href="/wojewodzki-konkurs-informatyczny" class="">
+        <span>Wojewódzki Konkurs Informatyczny</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-5">
+      <a href="/wypoczynek" class="carret">
+        <span>Wypoczynek</span>
+      </a>
+              <ul class="level_1" data-parent="root-5">
+                      <li class="" data-id="root-5-1">
+      <a href="/polkolonie-letnie" class="">
+        <span>Półkolonie letnie</span>
+      </a>
+          </li>
+          <li class="" data-id="root-5-2">
+      <a href="/warsztaty-i-zajecia-otwarte-w-czasie-ferii-zimowych" class="">
+        <span>Warsztaty i zajęcia otwarte w czasie ferii zimowych</span>
+      </a>
+          </li>
+          <li class="" data-id="root-5-3">
+      <a href="/polkolonie-zimowe" class="">
+        <span>Półkolonie zimowe</span>
+      </a>
+          </li>
+  
+        </ul>
+          </li>
+          <li class="" data-id="root-6">
+      <a href="/kino-studio" class="">
+        <span>Kino Studio</span>
+      </a>
+          </li>
+          <li class="" data-id="root-7">
+      <a href="/fotogaleria" class="">
+        <span>Fotogaleria</span>
+      </a>
+          </li>
+          <li class="" data-id="root-8">
+      <a href="/kontakt" class="">
+        <span>Kontakt</span>
+      </a>
+          </li>
+  
+      </ul>
+
+      <div class="menu_col_divider_wrapper cell_flex">
+        <div class="menu_col_divider top_level"></div>
+        <div class="menu_col_divider mid_level"></div>
+        <div class="menu_col_divider bot_level"></div>
+      </div>
+    </div>
+
+    <div class="footer cell_flex legacy-menu-footer">
+      <a href="/kalendarz" class="item">
+        <span class="cell_flex">
+          <span>
+            <span class="sprite cellendar"></span>
+            <span class="sprite cellendar_red hover"></span>
+            <span class="text">Kalendarz</span>
+          </span>
+        </span>
+      </a>
+
+      <a href="/aktualnosci" class="item">
+        <span class="cell_flex">
+          <span>
+            <span class="sprite news"></span>
+            <span class="sprite news_red hover"></span>
+            <span class="text">Aktualności</span>
+          </span>
+        </span>
+      </a>
+
+      <button type="button" class="item open_newsletter">
+        <span class="cell_flex">
+          <span>
+            <span class="sprite bell"></span>
+            <span class="sprite bell_red hover"></span>
+            <span class="text">Newsletter</span>
+          </span>
+        </span>
+      </button>
+
+      <a href="/szukaj" class="item search">
+        <span class="cell_flex">
+          <span>
+            <span class="fa fa-search" aria-hidden="true"></span>
+            <span class="text">Szukaj</span>
+          </span>
+        </span>
+      </a>
+
+      <div class="item social">
+        <span class="cell_flex">
+          <span>
+            <a href="https://www.facebook.com/mdkopole" class="facebook" target="_blank" rel="noopener noreferrer" title="Młodzieżowy Dom Kultury w Opolu">
+              <span class="fa fa-facebook" aria-hidden="true"></span>
+            </a>
+          </span>
+        </span>
+      </div>
+    </div>
+  </nav>
+</div>
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/menu--main.html.twig' -->
+
+
+	</div>
+</header>
+
+
+<main class="main ">
+			
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'region' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ region--content.html.twig
+   ✅ region.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/region/region.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ block--bazowy-content.html.twig
+   ▪️ block--system-main-block.html.twig
+   ▪️ block--system.html.twig
+   ✅ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'node' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ node--6756--full.html.twig
+   ▪️ node--6756.html.twig
+   ▪️ node--page--full.html.twig
+   ✅ node--page.html.twig
+   ▪️ node--full.html.twig
+   ▪️ node.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/node/node--page.html.twig' -->
+
+
+
+<section class="my_container cell_flex page-detail-legacy">
+	<div class="text_wrapper">
+					
+	<nav class="breadcrumb" aria-label="Breadcrumb">
+					<div class="breadcrumb__item">
+				<a href="/" class="breadcrumb-link just-url">Start</a>
+			</div>
+			<span class="breadcrumb__separator" aria-hidden="true">&gt;</span>
+				<div class="breadcrumb__item">
+			<div class="breadcrumb__current u-alt-font">
+				Kino Studio przerwa
+			</div>
+		</div>
+	</nav>
+		
+		<h1 class="title go_back thiIsContent" data-title="Tresc">
+			<a href="/" class="back_button" aria-label="Przejdz do: Start">
+				<span class="sprite chevron_left_black"></span>
+				<span class="sprite chevron_left hover"></span>
+			</a>
+			Kino Studio przerwa
+		</h1>
+
+		<div class="ckeditor clearfix">
+			
+			
+			<img src="/sites/default/files/inline-images/Chaplin%20The%20Kid.jpg" data-entity-uuid="d2bc97da-354f-4da9-8dd2-91c279b899dd" data-entity-type="file" width="500" height="677"><h2><strong>Drodzy Widzowie!</strong></h2><p><strong>W czasie wakacji nasze kino jest nieczynne.</strong><br><strong>Z niecierpliwością czekamy na inaugurację nowego sezonu.</strong><br><strong>Startujemy już 3 września :)</strong><br><strong>Zatem do zobaczenia przed ekranem!</strong></p><p>&nbsp;</p>
+		</div>
+
+		
+					<div class="gallery clearfix cell_flex">
+									<a class="thumbnail-classic" href="/sites/default/files/2026-08/PF%20DKF.png" title="">
+						<figure class="gallery_miniature">
+							<div class="img" style="background-image:url(/sites/default/files/2026-08/PF%20DKF.png)"></div>
+													</figure>
+					</a>
+									<a class="thumbnail-classic" href="/sites/default/files/2026-08/SKS%20%28jasne%20t%C5%82o%29.png" title="">
+						<figure class="gallery_miniature">
+							<div class="img" style="background-image:url(/sites/default/files/2026-08/SKS%20%28jasne%20t%C5%82o%29.png)"></div>
+													</figure>
+					</a>
+							</div>
+		
+		
+			</div>
+
+	</section>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/node/node--page.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ block--bazowy-cookiesui.html.twig
+   ▪️ block--cookies-ui-block.html.twig
+   ▪️ block--cookies.html.twig
+   ✅ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'cookies_block' -->
+<!-- BEGIN OUTPUT from 'modules/contrib/cookies/templates/cookies-block.html.twig' -->
+  
+<div id="cookiesjsr"></div>
+
+<!-- END OUTPUT from 'modules/contrib/cookies/templates/cookies-block.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/region/region.html.twig' -->
+
+
+	</main>
+
+<footer>
+	<div class="container">
+		<div class="footer-menu">
+			<div class="visit_us">
+				<a href="https://www.facebook.com/mdkopole" target="_blank" rel="noopener noreferrer">
+					ODWIEDŹ NASZ PROFIL NA FACEBOOK.COM/MDKOPOLE
+				</a>
+			</div>
+
+			<div class="main_footer cell_flex">
+				<div class="item">&copy; 2026 Młodzieżowy Dom Kultury w Opolu</div>
+				<a href="https://mdk-opole.bip.gov.pl/" class="item" target="_blank" rel="noopener noreferrer">BIP<span class="sr-only">- Otwórz na nowej karcie</span></a>
+				<a href="/deklaracja-dostepnosci" class="item">Deklaracja dostępności</a>
+				<a href="https://cg2.pl/strony-internetowe" class="item just-url" target="_blank" rel="noopener noreferrer">
+					Strony internetowe Opole - CG2
+				</a>
+			</div>
+		</div>
+	</div>
+</footer>
+
+<div class="screen-modal" id="js-contact">
+	<div class="screen-modal__overlay"></div>
+	<button class="screen-modal__close btn" aria-label="Zamknij modal"></button>
+	<button class="screen-modal__close" aria-label="Zamknij modal"></button>
+	<div class="screen-modal__body">
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'block' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ block--bazowy-modalglowny.html.twig
+   ▪️ block--block-content--1aaf0347-7bdd-40ad-a5f5-cdba392d52fa.html.twig
+   ▪️ block--block-content--id-view--bazowy-modalglowny--full.html.twig
+   ▪️ block--block-content--id--bazowy-modalglowny.html.twig
+   ▪️ block--block-content--view-type--modal--full.html.twig
+   ▪️ block--block-content--type--modal.html.twig
+   ▪️ block--block-content--view--full.html.twig
+   ▪️ block--block-content.html.twig
+   ▪️ block.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy_modalglowny.html.twig' -->
+	<div class="screen-modal__left">
+		<h4>
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'field' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ field--block-content--field-tytul-formularza--modal.html.twig
+   ▪️ field--block-content--field-tytul-formularza.html.twig
+   ▪️ field--block-content--modal.html.twig
+   ▪️ field--field-tytul-formularza.html.twig
+   ▪️ field--string-long.html.twig
+   ✅ field.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+																						
+	Tytuł formularza w modalu
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+</h4>
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'field' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ field--block-content--field-formularz--modal.html.twig
+   ▪️ field--block-content--field-formularz.html.twig
+   ▪️ field--block-content--modal.html.twig
+   ▪️ field--field-formularz.html.twig
+   ▪️ field--entity-reference.html.twig
+   ✅ field.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+																						
+	<div id="webform-submission-contact-node-6756-form-ajax-content" tabindex="-1"><div id="webform-submission-contact-node-6756-form-ajax" class="webform-ajax-form-wrapper" data-effect="fade" data-progress-type="throbber">
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ webform--contact.html.twig
+   ✅ webform.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/webform.html.twig' -->
+
+
+
+
+	<form class="webform-submission-form webform-submission-add-form webform-submission-contact-form webform-submission-contact-add-form webform-submission-contact-node-6756-form webform-submission-contact-node-6756-add-form js-webform-details-toggle webform-details-toggle form col-offset-md-1 col-md-12 inner-padding" data-drupal-selector="webform-submission-contact-node-6756-add-form" action="/kino-studio-przerwa" method="post" id="webform-submission-contact-node-6756-add-form" accept-charset="UTF-8">
+
+	
+	
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform_submission_form' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ webform-submission-form--contact.html.twig
+   ✅ webform-submission-form.html.twig
+-->
+<!-- BEGIN OUTPUT from 'modules/contrib/webform/templates/webform-submission-form.html.twig' -->
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ form-element--webform-textfield.html.twig
+   ✅ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+<label
+	 class="js-webform-type-textfield webform-type-textfield form__label">
+
+
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element_label' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+<span class="js-form-required form-required form__label--text">
+		Imię i nazwisko
+		*
+		
+	</span>
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+
+
+	
+	
+		
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__textfield' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--textfield.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-name" type="text" id="edit-name" name="name" value="" size="60" maxlength="255" class="form-text required text" required="required"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+
+		
+</label>
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ form-element--webform-tel.html.twig
+   ✅ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+<label
+	 class="js-webform-type-tel webform-type-tel form__label">
+
+
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element_label' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+<span class="js-form-required form-required form__label--text">
+		Twój telefon
+		*
+		
+	</span>
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+
+
+	
+	
+		
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__tel' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--tel.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-twoj-telefon" type="tel" id="edit-twoj-telefon" name="twoj_telefon" value="" size="30" maxlength="128" class="form-tel required text" required="required"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+
+		
+</label>
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ form-element--webform-textarea.html.twig
+   ✅ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+<label
+	 class="js-webform-type-textarea webform-type-textarea form__label">
+
+
+		
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element_label' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+<span class="js-form-required form-required form__label--text">
+		Wiadomość
+		*
+		
+	</span>
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element-label.html.twig' -->
+
+
+	
+	
+		
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'textarea' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/textarea.html.twig' -->
+		<textarea data-drupal-selector="edit-message" id="edit-message" name="message" rows="5" cols="60" class="form-textarea required resize-vertical" required="required"> </textarea>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/textarea.html.twig' -->
+
+
+
+
+		
+</label>
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'form_element' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ form-element--webform-checkbox.html.twig
+   ▪️ form-element.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element--webform-checkbox.html.twig' -->
+
+<label class="form__radio-label">
+	
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__checkbox' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--checkbox.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-terms-of-service" type="checkbox" id="edit-terms-of-service" name="terms_of_service" value class="form-checkbox required text" required="required"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+	<div class="form__radio-icon form__radio-icon--checkbox"></div>
+
+	<div class="form__radio-text">
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform_html_editor_markup' -->
+<!-- BEGIN OUTPUT from 'modules/contrib/webform/templates/webform-html-editor-markup.html.twig' -->
+<span>Twoje dane są bezpieczne. Zgadzam się z postanowieniami polityki prywatności i RODO</span>
+<!-- END OUTPUT from 'modules/contrib/webform/templates/webform-html-editor-markup.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+</div>
+	</label>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/form-element--webform-checkbox.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'container' -->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'webform_actions' -->
+<!-- BEGIN OUTPUT from 'modules/contrib/webform/templates/webform-actions.html.twig' -->
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__submit' -->
+<!-- FILE NAME SUGGESTIONS:
+   ✅ input--submit.html.twig
+   ✅ input--submit.html.twig
+   ▪️ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input--submit.html.twig' -->
+
+
+
+
+<div class="form__submit-wrapper">
+	<button  class="webform-button--submit button button--primary js-form-submit form-submit btn btn--primary" data-drupal-selector="edit-actions-submit" data-disable-refocus="true" type="submit" id="edit-actions-submit" name="op" value="Wyślij formularz" type="submit">
+				Wyślij formularz
+		
+	</button>
+</div>
+
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input--submit.html.twig' -->
+
+
+
+<!-- END OUTPUT from 'modules/contrib/webform/templates/webform-actions.html.twig' -->
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/container/container.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__hidden' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--hidden.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input autocomplete="off" data-drupal-selector="form-wzrm6mxbkxvbgyv8oolzdjcpludkfy7vp-2kx51b-7o" type="hidden" name="form_build_id" value="form-WzRm6mxBKxvbgYV8oOlzDjCpLUDKFy7Vp-2kX51B_7o" class="text"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'input__hidden' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ input--hidden.html.twig
+   ✅ input.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+	<input data-drupal-selector="edit-webform-submission-contact-node-6756-add-form" type="hidden" name="form_id" value="webform_submission_contact_node_6756_add_form" class="text"/>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/input.html.twig' -->
+
+
+
+<!-- END OUTPUT from 'modules/contrib/webform/templates/webform-submission-form.html.twig' -->
+
+
+	</form>
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/webform/webform.html.twig' -->
+
+</div></div>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+	</div>
+	<div class="screen-modal__right">
+		
+		<div class="screen-modal__add-info ckeditor">
+
+<!-- THEME DEBUG -->
+<!-- THEME HOOK: 'field' -->
+<!-- FILE NAME SUGGESTIONS:
+   ▪️ field--block-content--field-opis--modal.html.twig
+   ▪️ field--block-content--field-opis.html.twig
+   ▪️ field--block-content--modal.html.twig
+   ▪️ field--field-opis.html.twig
+   ▪️ field--text-long.html.twig
+   ✅ field.html.twig
+-->
+<!-- 💡 BEGIN CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+
+																						
+	<p>Przykładowy tekst pod sekcją ogólną modala</p>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/field/field.html.twig' -->
+
+</div>
+	</div>
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/block/block--bazowy_modalglowny.html.twig' -->
+
+
+	</div>
+</div>
+
+
+
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/page.html.twig' -->
+
+
+  </div>
+
+<!-- END OUTPUT from 'core/modules/system/templates/off-canvas-page-wrapper.html.twig' -->
+
+
+					
+					<script src="/core/assets/vendor/once/once.min.js?v=1.0.1"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/version-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/data-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/disable-selection-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/jquery-patch-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/scroll-parent-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/unique-id-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/focusable-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/keycode-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/plugin-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widget-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/labels-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/controlgroup-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/form-reset-mixin-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/mouse-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/checkboxradio-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/draggable-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/resizable-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/button-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/jquery.ui/ui/widgets/dialog-min.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/tabbable/index.umd.min.js?v=6.3.0"></script>
+<script src="/core/assets/vendor/tua-body-scroll-lock/tua-bsl.umd.min.js?v=11.4.4"></script>
+<script src="/themes/custom/bazowy/js/legacy-main-menu.js?tk4inq"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
+<script src="/themes/custom/bazowy/js/jquery.magnific-popup.min.js?tk4inq"></script>
+<script src="/themes/custom/bazowy/js/play_video.js?tk4inq"></script>
+<script src="/themes/custom/bazowy/js/_modal.js?tk4inq"></script>
+<script src="/themes/custom/bazowy/js/script.js?tk4inq"></script>
+<script src="https://cdn.jsdelivr.net/gh/jfeltkamp/cookiesjsr@1/dist/cookiesjsr-preloader.min.js" defer></script>
+<script src="/core/misc/jquery.form.js?v=4.3.0"></script>
+<script src="/modules/contrib/statistics/statistics.js?v=11.4.4"></script>
+<script src="/core/misc/progress.js?v=11.4.4"></script>
+<script src="/core/assets/vendor/loadjs/loadjs.min.js?v=4.3.0"></script>
+<script src="/core/misc/ajax.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.scroll.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.ajax.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.element.details.save.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.element.details.toggle.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.element.message.js?tk4inq"></script>
+<script src="/core/misc/displace.js?v=11.4.4"></script>
+<script src="/core/misc/position.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog-deprecation.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.position.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.jquery-ui.js?v=11.4.4"></script>
+<script src="/core/modules/ckeditor5/js/ckeditor5.dialog.fix.js?v=11.4.4"></script>
+<script src="/core/misc/dialog/dialog.ajax.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.element.terms_of_service.js?tk4inq"></script>
+<script src="/core/misc/form.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.behaviors.js?tk4inq"></script>
+<script src="/core/misc/states.js?v=11.4.4"></script>
+<script src="/modules/contrib/webform/js/webform.states.js?tk4inq"></script>
+<script src="/modules/contrib/webform/js/webform.form.js?tk4inq"></script>
+</body>
+				</html>
+
+<!-- END CUSTOM TEMPLATE OUTPUT from 'themes/custom/bazowy/templates/html.html.twig' -->
+
