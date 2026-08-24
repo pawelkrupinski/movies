@@ -134,6 +134,17 @@ parser (0 films returned; the dead-page case does not even throw, proving the
 scrape corpus still carries that markup and the parser stays tolerant of both
 spellings.
 
+**CONFIRMED IN PROD.** All 47 CI jobs green and all six deploys rolled,
+`kinowo-worker` among them (run 32711979480). Studio scrapes at :30 and had been
+`failures=1` on every bucket through **09:30 UTC**; the **10:30 UTC bucket — the
+first scrape after the deploy — is `successes=1`**. Downstream it landed whole:
+`cinema_scrapes` records the venue scraped 10:34:26 UTC with
+`listingComplete: true`, and **14 slots are in `web_screenings`** — the read
+model the site actually serves — each with its two showtimes
+(`drugiezycie|2025` on 03.09, `gorzkieswieta|2026` on 05.11, `500mil|2026` on
+03.12), `filmUrl` following the new slug. The film ids carry the harvested
+`produkcja:` year, so that half of the change is live too.
+
 **Layers:** `sbt testUnitNoE2e` green (7 + 979 + 2988 + 553),
 `FilmScheduleEndToEndSpec` green, `PageSnapshotSpec` green.
 `read-model-snapshot.json` moved by exactly one line — the corpus film's
