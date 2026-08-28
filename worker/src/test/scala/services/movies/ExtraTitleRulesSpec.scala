@@ -389,7 +389,18 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Andy Warhol. Amerykański sen (napisy Pl)"             -> "Andy Warhol. Amerykański sen",
     "Ojczyzna (napisy PL)"                                 -> "Ojczyzna",
     "Ojczyzna (dubbing)"                                   -> "Ojczyzna",
-    "Auta (re-release)"                                    -> "Auta"
+    "Auta (re-release)"                                    -> "Auta",
+    // Twenty-second wave (2026-08-28) corpus-wide TMDB-no-match audit — live
+    // duplicates confirmed on prod (see ExtraTitleRules.scala for the full note).
+    "GŁM:ODZYSKANY:MARCIN KWAŚNY"                          -> "ODZYSKANY",
+    "Opętanie - PLAKATOWA TRASA"                           -> "Opętanie",
+    "SZTUKA NA EKRANIE - André Rieu Niech żyje Maastricht! (koncert z 2026)" -> "André Rieu Niech żyje Maastricht!",
+    "Mistyczka PRZEDPREMIERA"                              -> "Mistyczka",
+    "Kino dla Ducha… MISTYCZKA"                            -> "MISTYCZKA",
+    "Ghost in the Shell | KLASYCZNE ŚRODY"                 -> "Ghost in the Shell",
+    "SMOK (Spotkania Młodych Odkrywców Kina): Przekleństwa niewinności (4K)" -> "Przekleństwa niewinności",
+    "Klasyka na TOPie: Do utraty tchu (4K)"                -> "Do utraty tchu",
+    "Wymiary Kina na Placu Wilsona: Miłość, śmierć i dojrzewanie w Camp Miasma" -> "Miłość, śmierć i dojrzewanie w Camp Miasma"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {

@@ -540,7 +540,55 @@ object ExtraTitleRules {
     // subtitles]') shapes and the 'eng' abbreviation. Anchored on a leading
     // separator + the exact 'subtitles' keyword so a real title can't be amputated.
     // (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696.)
-    searchStrip("xtra-english-subtitles-suffix",    """(?iu)\s*[-–—\[(]\s*eng(?:lish)?\s+subtitles(?:\s+only)?\s*[\])]?\s*$""", "'<film> - english subtitles' / '<film> [eng subtitles only]' English-subtitled-screening marker — sibling of xtra-ukrainski-lang-suffix; query-only strip so the EN-subtitle screening keeps its own row but resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696)")
+    searchStrip("xtra-english-subtitles-suffix",    """(?iu)\s*[-–—\[(]\s*eng(?:lish)?\s+subtitles(?:\s+only)?\s*[\])]?\s*$""", "'<film> - english subtitles' / '<film> [eng subtitles only]' English-subtitled-screening marker — sibling of xtra-ukrainski-lang-suffix; query-only strip so the EN-subtitle screening keeps its own row but resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696)"),
+    // Twenty-second wave (2026-08-28) audit of the prod TMDB-no-match corpus, this
+    // time corpus-wide rather than Kinoteka-only (the class of bug the
+    // '25. rocznica premiery' / 'seans bez reklam' fixes closed for Kinoteka). Each
+    // pair below was confirmed live-duplicated on prod: an already-rated `movies`
+    // row under a bare title, and a second, unrated row from a different cinema
+    // under a decorated heading whose banner none of the rules above strip.
+    //
+    //  - Kino Millenium glues a Q&A guest's name onto the film with a SECOND colon
+    //    ('GŁM:<film>:<Guest Name>'), so a plain prefix strip would still leave the
+    //    guest name attached. Capture the film between the two colons; anchored on
+    //    a trailing 'Firstname Lastname' so a title with its own colon-subtitle
+    //    can't be amputated (Odzyskany, Kino Millenium).
+    searchReplace("xtra-glm-guest-prefix",         """(?iu)^GŁM:\s*(.+?):\s*\p{Lu}\S+\s+\p{Lu}\S+\s*$""", "$1", "'GŁM:<film>:<Guest Name>' Kino Millenium director/guest Q&A banner (GŁM:ODZYSKANY:MARCIN KWAŚNY → Odzyskany)"),
+    //  - 'Sztuka na ekranie - <film>' already strips (xtra-sztuka-na-ekranie), but
+    //    the André Rieu summer-concert listing also carries a re-broadcast note
+    //    the base row never got.
+    searchStrip("xtra-koncert-z-rok-suffix",       """(?iu)\s*\(\s*koncert\s+z\s+\d{4}\s*\)\s*$""", "'<film> (koncert z YYYY)' concert-recording-year note (André Rieu. Niech żyje Maastricht!)"),
+    //  - Kino za Rogiem Cafe's dash-suffixed 'poster tour' promo banner — the prefix
+    //    form ('Plakatowa trasa: "<film>"') already folds by containment, but the
+    //    suffix form doesn't (the base title is a PREFIX of the whole, not a token
+    //    run wrapped at both edges, so it needs its own strip).
+    searchStrip("xtra-plakatowa-trasa-suffix",     """(?iu)\s*[-–—]\s*PLAKATOWA\s+TRASA\s*$""", "'<film> - PLAKATOWA TRASA' poster-tour promo suffix (Opętanie, Kino za Rogiem Cafe)"),
+    //  - The seed przedpremiera-suffix rule requires {{SEP}} (a real separator
+    //    character) before 'przedpremiera'; Kino Kijów's listing separates with a
+    //    bare space, so it never matched. Anchored on the exact word so a real
+    //    title can't be amputated.
+    searchStrip("xtra-przedpremiera-bare-space-suffix", """(?i)\s+przedpremiera\s*$""", "'<film> PRZEDPREMIERA' bare-space pre-premiere suffix (no separator character) — sibling of the seed {{SEP}}-anchored rule (Mistyczka PRZEDPREMIERA, Kino Kijów)"),
+    //  - Zacisze's 'Kino dla Ducha…' (Cinema for the Spirit) strand prefix, ellipsis
+    //    included.
+    searchStrip("xtra-kino-dla-ducha-prefix",      """(?iu)^Kino\s+dla\s+Ducha\s*[…\.]{1,3}\s*""", "'Kino dla Ducha… <film>' Zacisze spiritual-cinema strand prefix (Mistyczka)"),
+    //  - Kino Spektrum's weekly classics strand, pipe-suffixed.
+    searchStrip("xtra-klasyczne-srody-suffix",     """(?iu)\s*\|\s*Klasyczne\s+Środy\s*$""", "'<film> | Klasyczne Środy' Kino Spektrum weekly-classics suffix (Ghost in the Shell)"),
+    //  - 'SMOK (Spotkania Młodych Odkrywców Kina): <film>' youth-film-discovery
+    //    strand — the parenthesised expansion means the generic colon-prefix rules
+    //    (which stop at the first separator) can't reach past it.
+    searchStrip("xtra-smok-prefix",                """(?iu)^SMOK\s*\(Spotkania\s+Młodych\s+Odkrywców\s+Kina\)\s*:\s*""", "'SMOK (Spotkania Młodych Odkrywców Kina): <film>' youth-discovery strand prefix (Przekleństwa niewinności)"),
+    //  - The existing 'xtra-4k-suffix' only matches a BARE trailing '4K' (a space
+    //    then the token); several cinemas parenthesise it instead ('(4K)'), which
+    //    the bare rule's '\s+4K\b' can't reach because the string ends in ')' not
+    //    '4K'.
+    searchStrip("xtra-paren-4k-suffix",            """(?iu)\s*\(\s*4K\s*\)\s*$""", "'<film> (4K)' parenthesised restoration-resolution tag — sibling of the bare xtra-4k-suffix, which requires an un-parenthesised trailing '4K' (Do utraty tchu, Przekleństwa niewinności)"),
+    //  - Kino Wisła's preview-series prefix, spelled out in full. NOT the 'WSP:'
+    //    acronym form — that was trialled and dropped above (xtra-4k-suffix's
+    //    preceding comment): an all-caps acronym segment gets sentence-cased by
+    //    `caseSegment` once `leadingBannerBoundary` splits on it, misdisplaying
+    //    'WSP' as 'Wsp'. The spelled-out form is ordinary Title Case, so the same
+    //    split leaves it untouched — no recasing regression.
+    searchStrip("xtra-wymiary-kina-plac-wilsona-prefix", """(?iu)^Wymiary\s+Kina\s+na\s+Placu\s+Wilsona\s*:\s*""", "'Wymiary Kina na Placu Wilsona: <film>' Kino Wisła preview-series prefix, spelled-out form (Miłość, śmierć i dojrzewanie w Camp Miasma)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
