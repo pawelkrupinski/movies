@@ -337,6 +337,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Mistrzowska Kreska: Podwójne życie Weroniki"            -> "Podwójne życie Weroniki",
     "Najlepsze z Najgorszych - Big Shark"                    -> "Big Shark",
     "Brudny Henryk | Najlepsze z Najgorszych"                -> "Brudny Henryk",
+    // Kinoteka appends a '[seans bez reklam]' no-ads tag after the banner; the
+    // suffix rule must still fire with it present (Multikino Stary Browar
+    // duplicate class, 2026-08-28 — the resolved sibling never saw this row).
+    "Kupiłem motocykl, który jest wampirem | Najlepsze z Najgorszych [seans bez reklam]" -> "Kupiłem motocykl, który jest wampirem",
+    "PIANISTKA | Kino dyskomfortu [seans bez reklam]"        -> "PIANISTKA",
+    "KIEŁ | Kino dyskomfortu [seans bez reklam]"             -> "KIEŁ",
     "Sztuka na ekranie - Caravaggio. Arcydzieła niepokornego geniusza" -> "Caravaggio. Arcydzieła niepokornego geniusza",
     "Exhibition On Screen: David Hockney. Pejzaże, portrety i martwe natury" -> "David Hockney. Pejzaże, portrety i martwe natury",
     "Minionki i straszydła - Poranki dziecięce"              -> "Minionki i straszydła",

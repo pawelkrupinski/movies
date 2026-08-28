@@ -461,7 +461,18 @@ object ExtraTitleRules {
     searchStrip("xtra-dialog-przez-film",          """(?iu)^Dialog\s+przez\s+Film:\s*""",             "'Dialog przez Film: <film>' discussion-cycle prefix (Co do... Kury?)"),
     searchStrip("xtra-mistrzowska-kreska",         """(?iu)^Mistrzowska\s+Kreska:\s*""",              "'Mistrzowska Kreska: <film>' animation-cycle prefix (Podwójne życie Weroniki)"),
     searchStrip("xtra-najlepsze-dash-prefix",      """(?iu)^Najlepsze\s+z\s+Najgorszych\s*[-–—]\s*""", "'Najlepsze z Najgorszych - <film>' bad-movie-night DASH prefix — sibling of the existing colon-only rule (Big Shark, Brudny Henryk, The Room)"),
-    searchStrip("xtra-najlepsze-suffix",           """(?iu){{SEP}}Najlepsze\s+z\s+Najgorszych\s*$""", "'<film> | Najlepsze z Najgorszych' bad-movie-night SUFFIX form (Brudny Henryk)"),
+    // The optional trailing '[seans bez reklam]' (no-ads-screening) tag is folded
+    // into this rule rather than stripped separately: `TitleRuleSet.structural`
+    // is a single ordered pass, not a fixpoint, and every searchStrip shares
+    // `order = 0` (tie-broken alphabetically by id) — a standalone tag-strip
+    // would only help rules whose id happens to sort after it. Kinoteka's
+    // "Kupiłem motocykl, który jest wampirem | Najlepsze z Najgorszych [seans bez
+    // reklam]" left the banner unstripped, so its search title never matched the
+    // resolved "Kupiłem motocykl, który jest wampirem" (tmdbId 41153) row —
+    // Multikino Stary Browar 2026-08-28 duplicate class, same shape as the Harry
+    // Potter "rocznica premiery" gap.
+    searchStrip("xtra-najlepsze-suffix",           """(?iu){{SEP}}Najlepsze\s+z\s+Najgorszych\s*(?:\[seans\s+bez\s+reklam\])?\s*$""", "'<film> | Najlepsze z Najgorszych [seans bez reklam]' bad-movie-night SUFFIX form, with its optional no-ads tag (Brudny Henryk, Kupiłem motocykl który jest wampirem)"),
+    searchStrip("xtra-kino-dyskomfortu-suffix",    """(?iu){{SEP}}Kino\s+dyskomfortu\s*(?:\[seans\s+bez\s+reklam\])?\s*$""", "'<film> | Kino dyskomfortu [seans bez reklam]' discomfort-cinema strand SUFFIX, with its optional no-ads tag (Kinoteka: Pianistka, Kieł)"),
     searchStrip("xtra-sztuka-na-ekranie",          """(?iu)^Sztuka\s+na\s+ekranie\s*[-–—]\s*""",     "'Sztuka na ekranie - <film>' art-doc strand (Caravaggio. Arcydzieła niepokornego geniusza) — sibling of Wielka Sztuka w Kinoteatrze Rialto"),
     searchStrip("xtra-exhibition-on-screen",       """(?iu)^Exhibition\s+On\s+Screen:\s*""",          "'Exhibition On Screen: <film>' art-doc series (David Hockney. Pejzaże, portrety i martwe natury)"),
     searchStrip("xtra-poranki-dzieciece-suffix",   """(?iu){{SEP}}Poranki\s+dziecięce\s*$""",         "'<film> - Poranki dziecięce' kids-morning suffix (Minionki i straszydła)"),
