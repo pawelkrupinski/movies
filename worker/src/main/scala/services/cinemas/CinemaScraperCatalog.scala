@@ -177,7 +177,7 @@ class CinemaScraperCatalog(
     new FalenicaClient(http),
     new SdkClient(http),
     new NoveKinoClient(http, "atlantic", KinoAtlantic),
-    new KinotekaClient(http),
+    new KinotekaClient(http, titles),
     new UjazdowskiClient(http, today),
     new CytadelaClient(http),
     new NoveKinoClient(http, "wisla", KinoWisla),

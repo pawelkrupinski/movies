@@ -21,7 +21,7 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
 
   private val clients: Seq[(String, CinemaScraper & DetailEnricher)] = Seq(
     ("Kino Apollo",    new KinoApolloClient(new FakeHttpFetch("kino-apollo"), titles = titleNormalizer)),
-    ("Kinoteka",       new KinotekaClient(new FakeHttpFetch("kinoteka"))),
+    ("Kinoteka",       new KinotekaClient(new FakeHttpFetch("kinoteka"), titles = titleNormalizer)),
     ("Cytadela",       new CytadelaClient(new FakeHttpFetch("kino-cytadela"))),
     ("DCF",            new DcfClient(new FakeHttpFetch("dcf"))),
     ("Kino Pałacowe",  new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe"), titles = titleNormalizer)),

@@ -256,6 +256,15 @@ object ExtraTitleRules {
     // "| ŻUŁAWSKI. KINO EKSTAZY"), so Unicode case folding is needed to fold Ż/Ł/Ń —
     // plain `(?i)` is ASCII-only and won't match them (same gotcha as wybrzeze).
     searchStrip("xtra-amerykanska-klasyka",        """(?iu)\s*[–—-]\s*amerykańska\s+klasyka(?:\s*/.*)?\s*$""", "'– amerykańska klasyka [/ N. rocznica]' suffix (Kino Zamek)"),
+    // The seed 'structural-anniversary-suffix' anchors right after 'rocznica' —
+    // 'Harry Potter i Kamień Filozoficzny - 25. rocznica' strips, but Multikino's
+    // '… 25. rocznica premiery' phrasing (a trailing 'premiery' word) doesn't, so
+    // that row's search title never matched its bare-title sibling and the two
+    // never folded: Multikino Stary Browar showed the film twice on /poznan/ —
+    // one TMDB-resolved card (rating 7.4, age 12) and one unresolved stray
+    // (rating 0.0, missing cast). Query-only strip; the row keeps its own
+    // decorated display title.
+    searchStrip("xtra-rocznica-premiery-suffix",   """(?iu)\s*[-–—|.]?\s*\d+\.?\s*rocznic[aeę]\s+premiery\s*$""", "'<film> N. rocznica premiery' anniversary-premiere suffix (Harry Potter i Kamień Filozoficzny, Multikino)"),
     searchStrip("xtra-zulawski-kino-ekstazy",      """(?iu)\s*[|–—-]\s*żuławski\.?\s*kino\s+ekstazy\s*$""", "'… | / – żuławski. Kino ekstazy' retrospective suffix (Kino Zamek)"),
     searchStrip("xtra-poniedzialki-konwicki",      """(?i)\s*\|\s*Poniedziałki\s+z\s+Konwickim\b.*$""", "'… | Poniedziałki z Konwickim …' cycle suffix (Kino Spektrum)"),
     searchStrip("xtra-jim-jarmusch-suffix",        """(?i)\s*//\s*jim\s+jarmusch\s*$""",              "'// jim jarmusch' director-cycle suffix (Kino za Rogiem)"),

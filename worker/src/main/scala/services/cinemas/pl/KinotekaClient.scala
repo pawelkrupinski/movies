@@ -4,6 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.movies.TitleNormalizer
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -15,7 +16,10 @@ import scala.util.Try
  * screening anchors (each with an absolute `data-day`, time and buy link). The
  * `/film/<slug>/` detail page adds runtime / director / countries / year /
  * original title / synopsis. Dates come from the page's own nav, so the replay
- * is deterministic.
+ * is deterministic. The parsed `year` ("Data premiery") is trusted only on a
+ * bare-title page — a decorated one (retrospective/dub/anniversary banner)
+ * reports THIS SCREENING's date, not the underlying film's production year
+ * (see `fetchFilmDetail`).
  *
  * Chunked scrape: `planChunks` enumerates the date nav, each `fetchChunk(date)`
  * pulls + parses one day page independently (its own queued task, so a slow day
@@ -23,7 +27,7 @@ import scala.util.Try
  * films by `/film/<slug>/`. The synchronous `fetch()` (the harness path) composes
  * these to exactly the old whole-scrape output.
  */
-class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEnricher {
+class KinotekaClient(http: HttpFetch, titles: TitleNormalizer) extends ChunkedCinemaScraper with DetailEnricher {
 
   // Static detail pages cached across passes (CachingDetailFetch); the listing
   // and day pages keep the live `http` since their showtimes change every pass.
@@ -100,7 +104,18 @@ class KinotekaClient(http: HttpFetch) extends ChunkedCinemaScraper with DetailEn
         cast           = detail.cast,
         director       = detail.director,
         runtimeMinutes = detail.runtime,
-        releaseYear    = detail.year,
+        // "Data premiery" is reliable for an ordinary bare-title listing, but for
+        // a decorated one (a retrospective/dub/anniversary screening — the heading
+        // carries a banner a title rule recognises) it names THIS EVENT's date,
+        // not the underlying film's production year — the same trap as Multikino's
+        // own releaseDate (see MultikinoParser). Two real Kinoteka pages caught it:
+        // "Harry Potter i Kamień Filozoficzny (dubbing PL)" reported 2026 for a 2001
+        // film (Multikino Stary Browar showed it twice — one resolved, one stray,
+        // 2026-08-28), and "BRZEZINA | WAJDA: re-wizje… w 100. rocznicę urodzin"
+        // reported 2026 for Wajda's 1970 film. `apiQuery` stripping the heading is
+        // the same banner-recognition the title-rule battery already uses corpus-
+        // wide, so a decorated heading distrusts the date instead of a bespoke regex.
+        releaseYear    = detail.year.filter(_ => detail.heading.forall(h => titles.apiQuery(h) == h)),
         originalTitle  = detail.originalTitle,
         countries      = detail.countries,
         genres         = Seq.empty, // genres come from the listing page, not the detail page
@@ -141,8 +156,9 @@ object KinotekaClient {
 
   final case class Detail(runtime: Option[Int], year: Option[Int], originalTitle: Option[String],
                           countries: Seq[String], director: Seq[String], cast: Seq[String],
-                          synopsis: Option[String], poster: Option[String], trailer: Option[String])
-  object Detail { val empty: Detail = Detail(None, None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
+                          synopsis: Option[String], poster: Option[String], trailer: Option[String],
+                          heading: Option[String])
+  object Detail { val empty: Detail = Detail(None, None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None, None) }
 
   private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
     ScraperParse.ddField(document, label, "dl.p-movie-details__general-info dt")
@@ -177,7 +193,12 @@ object KinotekaClient {
       // The trailer is a YouTube `/embed/` iframe in the content figure; skip
       // the GTM/analytics iframes by taking the first src that canonicalises.
       trailer       = document.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
-                        .flatMap(ScraperParse.canonicalTrailer).nextOption()
+                        .flatMap(ScraperParse.canonicalTrailer).nextOption(),
+      // The page's own listing heading — used to tell a bare first-run page from a
+      // decorated retrospective/dub/anniversary one (see the `releaseYear` gate in
+      // `fetchFilmDetail`), independent of whatever title the scrape-time listing
+      // carried for this same film.
+      heading       = Option(document.selectFirst("h1.p-movie-details__hero-title")).map(_.text.trim).filter(_.nonEmpty)
     )
   }
 }

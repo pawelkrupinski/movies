@@ -6,12 +6,13 @@ import clients.tools.FakeHttpFetch
 import models.{Kinoteka, Showtime}
 import services.cinemas.common.FilmDetail
 import services.cinemas.pl.KinotekaClient
+import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import java.time.LocalDateTime
 
 class KinotekaClientSpec extends AnyFlatSpec with Matchers {
 
-  private val client  = new KinotekaClient(new FakeHttpFetch("kinoteka"))
+  private val client  = new KinotekaClient(new FakeHttpFetch("kinoteka"), titles = titleNormalizer)
   private val results = client.fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
@@ -46,6 +47,24 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
     d.releaseYear    shouldBe Some(2026)
     d.countries      shouldBe Seq("USA", "Wielka Brytania")
     d.originalTitle  shouldBe Some("In the Grey")
+  }
+
+  // Regression: "Data premiery" on a decorated (retrospective/dub/anniversary)
+  // page names THIS SCREENING's date, not the underlying film's production
+  // year. "BRZEZINA | WAJDA: re-wizje… w 100. rocznicę urodzin" reports
+  // 27.07.2026 for Andrzej Wajda's 1970 film — trusting it split the corpus's
+  // sanitize(title) group into a wrongly-year-keyed row that never folds back
+  // onto a same-title resolved sibling (the Harry Potter i Kamień Filozoficzny
+  // duplicate at Multikino Stary Browar, 2026-08-28, was this exact shape).
+  it should "not trust the release year on a decorated (retrospective) heading" in {
+    val d = client.fetchFilmDetail("https://kinoteka.pl/film/brzezina-wajda-re-wizje-przeglad-filmow-andrzeja-wajdy-w-100-rocznice-urodzin/")
+      .getOrElse(fail("no detail for the Brzezina retrospective fixture"))
+    d.releaseYear shouldBe None
+    d.director    shouldBe Seq("Andrzej Wajda")
+  }
+
+  it should "still trust the release year on a bare first-run heading" in {
+    detailFor("Zawodowcy").releaseYear shouldBe Some(2026)
   }
 
   it should "take the film poster from the hero <picture>, not the generic site og:image" in {

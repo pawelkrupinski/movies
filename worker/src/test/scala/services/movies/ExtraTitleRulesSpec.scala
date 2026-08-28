@@ -243,6 +243,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Żywot Briana Grupy Monty Pythona"                         -> "Żywot Briana",
     "Żywot Briana - PONOWNIE NA WIELKIM EKRANIE"               -> "Żywot Briana",
     "Chungking Express  - Wong Kar Wai 4K"                     -> "Chungking Express",
+    // The seed anniversary-suffix strip anchors right after 'rocznica'; a trailing
+    // 'premiery' word (Multikino's phrasing) survived it and split the fold —
+    // duplicate Harry Potter card on /poznan/ (Multikino Stary Browar).
+    "Harry Potter i kamień filozoficzny. 25. rocznica premiery" -> "Harry Potter i kamień filozoficzny",
     // Seventh-wave (2026-06-20) quoted cycle/series banners.
     // (a) '"<cycle>" - <film>' — quoted banner prefix, film after the dash. The
     // trailing '(2001)' is a Canonical-only strip, so it stays in the query (TMDB

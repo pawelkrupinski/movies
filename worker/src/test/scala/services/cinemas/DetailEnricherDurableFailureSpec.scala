@@ -54,7 +54,7 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
     "KinoPodBaranami"    -> new KinoPodBaranamiClient(http, KinoApollo),
     "KinoSfinks"         -> new KinoSfinksClient(http, KinoApollo),
     "Kinomuzeum"         -> new KinomuzeumClient(http),
-    "Kinoteka"           -> new KinotekaClient(http),
+    "Kinoteka"           -> new KinotekaClient(http, titles = titleNormalizer),
     "Muranow"            -> new MuranowClient(http),
     "NoveKino"           -> new NoveKinoClient(http, "slug", KinoApollo),
     "NoweHoryzonty"      -> new NoweHoryzontyClient(http),

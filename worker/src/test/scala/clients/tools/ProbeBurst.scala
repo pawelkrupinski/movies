@@ -80,7 +80,7 @@ object ProbeBurst {
     "iluzjon"       -> (f => new IluzjonClient(f)),
     "amondo"        -> (f => new AmondoClient(f)),
     "kinomuzeum"    -> (f => new KinomuzeumClient(f)),
-    "kinoteka"      -> (f => new KinotekaClient(f)),
+    "kinoteka"      -> (f => new KinotekaClient(f, titles = titleNormalizer)),
     "ujazdowski"    -> (f => new UjazdowskiClient(f)),
     "kino-kultura"  -> (f => new KinoKulturaClient(f)),
     "falenica"      -> (f => new FalenicaClient(f)),

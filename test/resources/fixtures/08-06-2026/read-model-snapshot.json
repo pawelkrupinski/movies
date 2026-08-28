@@ -845,24 +845,27 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|2026",
+    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|1944",
     "title" : "Arszenik i stare koronki | Kino cyrkularne – klasyka filmowa",
     "originalTitle" : "Arsenic and Old Lace",
     "posterUrl" : "https://medstore.kinoteka.pl/plakatcyrkularnelq.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 118,
-    "releaseYear" : 2026,
-    "genres" : [ "Czarna Komedia", "Komedia", "Kryminał", "Thriller" ],
+    "releaseYear" : 1944,
+    "genres" : [ "Czarna komedia" ],
     "countries" : [ "USA" ],
     "directors" : [ "Frank Capra" ],
     "cast" : [ "Cary Grant", "Priscilla Lane", "Raymond Massey", "Peter Lorre", "Josephine Hull" ],
+    "synopsis" : "Dwie starsze panie próbują ulżyć cierpieniu zapraszanych do siebie samotnych mężczyzn, podając im wino zatrute arszenikiem.",
     "trailerUrls" : [ "https://www.youtube.com/embed/Mqtku1zL8K4" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Arszenik+i+stare+koronki+%7C+Kino+cyrkularne+%E2%80%93+klasyka+filmowa/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arszenik+i+stare+koronki+%7C+Kino+cyrkularne+%E2%80%93+klasyka+filmowa",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Arszenik+i+stare+koronki+%7C+Kino+cyrkularne+%E2%80%93+klasyka+filmowa"
+      "imdbUrl" : "https://www.imdb.com/title/tt0036613/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Arsenic+and+Old+Lace/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Arsenic+and+Old+Lace",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Arszenik+i+stare+koronki-1944-31599"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.8,
     "synopsisByCity" : {
       "warszawa" : "29 czerwca o 20:00 pokażemy „Arszenik i stare koronki” (1944) – kultową czarną komedię Franka Capry, opartą na słynnej broadwayowskiej sztuce Josepha Kesselringa.\n\nTo pełna absurdalnego humoru i błyskotliwych dialogów historia, w której makabryczne pomysły spotykają się z lekkością klasycznej komedii. Capra mistrzowsko łączy elementy farsy, kryminału i screwball comedy, budując coraz bardziej chaotyczną i komiczną spiralę wydarzeń.\n\nFilm balansuje między grozą a humorem, wykorzystując teatralny rytm, dynamiczne tempo i serię nieoczekiwanych sytuacji, które prowadzą do jednej z najbardziej szalonych komedii w historii kina.\n\nOpis filmu:\n\nMortimer Brewster, nowojorski krytyk teatralny i zagorzały przeciwnik małżeństwa, odwiedza swoje ekscentryczne ciotki tuż po własnym ślubie. Wkrótce odkrywa jednak rodzinny sekret, który zamienia spokojną wizytę w pasmo coraz bardziej absurdalnych wydarzeń. W roli głównej występuje Cary Grant, tworząc jedną ze swoich najbardziej pamiętnych komediowych kreacji.\n\nSeans odbędzie się w sali kinowej wyposażonej w laserowy projektor Barco SP2K-9S.\n\nProsimy o punktualność – przed seansem odbędzie się krótka prelekcja.\n\nCo wyświetlimy na kolejnych pokazach? Decyzję pozostawiamy wam!\n\nPrzed wejściem na seans otrzymacie od nas karty do głosowania – będziecie mogli wybrać następny tytuł z przygotowanej przez nas listy lub wpisać własną propozycję.\n\nKuratorka cyklu: Karolina Fornal"
     }
@@ -1594,29 +1597,27 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "boliblask6razypedro|2026",
+    "_id" : "boliblask6razypedro|2019",
     "title" : "Ból i blask | 6 razy Pedro",
-    "originalTitle" : "Amarga Navidad",
+    "originalTitle" : "Dolor y gloria",
     "posterUrl" : "https://medstore.kinoteka.pl/bbplakatpllq.jpg",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/2lC70ErwkyRS2IX4AiN84qDZMpx.jpg", "https://m.media-amazon.com/images/M/MV5BN2I4ODhmMDItM2EzNS00NmM0LTkzOTQtMWM5MTNhOTYzNDM3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 113,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Komedia" ],
+    "releaseYear" : 2019,
+    "genres" : [ "Dramat" ],
     "countries" : [ "Hiszpania" ],
     "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Bárbara Lennie", "Leonardo Sbaraglia", "Aitana Sánchez-Gijón", "Victoria Luengo", "Patrick Criado" ],
-    "synopsis" : "Elsa, reżyserka reklamowa, ucieka przed żałobą po stracie matki, rzucając się w wir pracy, aż atak paniki zmusza ją do jej przerwania. Aby odbudować swoje życie, leci na Lanzarote, by odpocząć z przyjaciółką Patricią, która również potrzebuje chwili wytchnienia od domu. Bonifacio, jej partner, który stał się dla niej prawdziwym wsparciem w tych trudnych chwilach, pozostaje w Madrycie. Historie tej trójki bohaterów przeplatają się z historią scenarzysty i reżysera Raúla Durána, zacierając granice między rzeczywistością a fikcją w nierozerwalny, a czasem bolesny sposób.",
+    "cast" : [ "Penélope Cruz", "Antonio Banderas", "Asier Etxeandia" ],
+    "synopsis" : "Salvador Mallo, kultowy hiszpański reżyser filmowy, który stroni od mediów i usilnie strzeże swojej prywatności, przeżywa na nowo najważniejsze momenty swojego życia.",
     "trailerUrls" : [ "https://www.youtube.com/embed/ASjGIpOfwNU" ],
     "ratings" : {
-      "imdb" : 6.5,
-      "imdbUrl" : "https://www.imdb.com/title/tt28088049/",
-      "metascore" : 69,
-      "metacriticUrl" : "https://www.metacritic.com/movie/bitter-christmas",
-      "rottenTomatoes" : 91,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/bitter_christmas",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Amarga+Navidad"
+      "imdbUrl" : "https://www.imdb.com/title/tt8291806/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Dolor+y+gloria/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dolor+y+gloria",
+      "filmweb" : 7.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/B%C3%B3l+i+blask-2019-823007"
     },
-    "weightedRating" : 7.5,
+    "weightedRating" : 7.2,
     "synopsisByCity" : {
       "warszawa" : "„Ból i blask” to arcydzieło (Gazeta Wyborcza), najlepszy i zarazem najbardziej osobisty film hiszpańskiego mistrza od lat (The Hollywood Reporter), najpiękniejsza celebracja miłości (The Playlist). Doskonałe recenzje, łzy wzruszenia i 10-minutowa owacja po seansie – to tylko kilka reakcji na najnowszy film jednego z najwybitniejszych reżyserów światowego kina, Pedro Almodóvara. Twórca „Wszystko o mojej matce” i „Porozmawiaj z nią” opowiada o roli przypadku w naszym życiu, o sile pierwszych fascynacji oraz o tym, co po latach zostaje z relacji – zwłaszcza miłosnych – z ważnymi dla nas ludźmi. „Ból i blask” to również ponowne spotkanie hiszpańskiego reżysera ze swoją wieloletnią filmową muzą, Penélope Cruz, oraz – przede wszystkim – z Antonio Banderasem, którego za tę rolę uhonorowano nagrodą dla najlepszego aktora na 72. Festiwalu w Cannes.\n\nGłównym bohaterem filmu jest Salvador Mallo (Banderas), kultowy hiszpański reżyser, który stroni od mediów i usilnie strzeże swojej prywatności. Mężczyzna odnajduje po latach osoby, które wywarły największy wpływ na jego życie, oraz przeżywa na nowo najważniejsze momenty ze swojej przeszłości. Wraca do dzieciństwa, gdy wraz z rodzicami w poszukiwaniu dobrobytu przenieśli się do małego miasteczka. Przywołuje obrazy swojej pierwszej namiętności, pierwszej wielkiej miłości i bólu rozstania. Wspomina spotkanie z kinem, które na lata stało się sensem jego życia. Powracając do najintensywniejszych doświadczeń minionych lat, Salvador odnajduje siłę, by zmierzyć się z teraźniejszością. Czy uda mu się zamknąć niedokończone sprawy z przeszłości, które burzą jego poukładaną codzienność?\n\n„Ból i blask” to najbardziej osobisty spośród wszystkich filmów Almodóvara, a jednocześnie, jak podkreśla światowa krytyka, najlepszy film w jego karierze. Pełne emocji dzieło na miarę „Osiem i pół” Felliniego, w którym hiszpański reżyser po raz kolejny zachwyca swoją niepowtarzalną wrażliwością wizualną i w kapitalny sposób łączy wielką czułość z poczuciem humoru."
     }
@@ -1723,7 +1724,7 @@
     "title" : "Brzezina (The Birch Wood)",
     "originalTitle" : "Brzezina",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/02/story9x16-450x800.png",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/brzezina_23_gallery.jpg", "https://www.novekino.pl/multimedia/brzezina_wajda_re_wizje/plakat.jpg", "https://image.tmdb.org/t/p/w500/nZWaiNDaY6fWUh8KE9nCKFQXQ00.jpg", "https://m.media-amazon.com/images/M/MV5BNWNkZTA4MzItODU1YS00YjdjLTgxYzEtZTJkNDI2Mjc2NzYyXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/brzezina_23_gallery.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja.jpg", "https://www.novekino.pl/multimedia/brzezina_wajda_re_wizje/plakat.jpg", "https://image.tmdb.org/t/p/w500/nZWaiNDaY6fWUh8KE9nCKFQXQ00.jpg", "https://m.media-amazon.com/images/M/MV5BNWNkZTA4MzItODU1YS00YjdjLTgxYzEtZTJkNDI2Mjc2NzYyXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 99,
     "releaseYear" : 1970,
     "genres" : [ "Dramat" ],
@@ -1731,7 +1732,7 @@
     "directors" : [ "Andrzej Wajda" ],
     "cast" : [ "Daniel Olbrychski", "Olgierd Łukaszewicz", "Emilia Krakowska", "Danuta Wodyńska", "Elżbieta Żołek" ],
     "synopsis" : "Akcja tego kameralnego dramatu rozgrywa się w leśniczówce otoczonej przepiękną brzeziną na przełomie zimy i wiosny. Do Bolesława przyjeżdża ciężko chory na gruźlicę brat Stanisław, by u niego spędzić ostatnie miesiące życia. Bolesław, mieszkający po śmierci żony z córką Olą i gosposią Maliną, nie potrafi przyzwyczaić się do ekstrawaganckiego stylu życia Stanisława, który chce czerpać z niego do ostatniej chwili. Rozpoczyna się podświadoma i uczuciowa rywalizacja obu braci.",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
     "ratings" : {
       "imdb" : 6.9,
       "imdbUrl" : "https://www.imdb.com/title/tt0068321/",
@@ -1744,31 +1745,11 @@
     "weightedRating" : 7.366666666666667,
     "synopsisByCity" : { }
   }, {
-    "_id" : "brzezinawajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|2026",
+    "_id" : "brzezinawajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|1970",
     "title" : "BRZEZINA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin",
-    "posterUrl" : "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 109,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Polityczny" ],
-    "countries" : [ "Polska" ],
-    "directors" : [ "Andrzej Wajda" ],
-    "cast" : [ "Daniel Olbrychski", "Olgierd Łukaszewicz", "Emilia Kra" ],
-    "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/BRZEZINA+%7C+WAJDA%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=BRZEZINA+%7C+WAJDA%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=BRZEZINA+%7C+WAJDA%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "warszawa" : "Chory na gruźlicę Staś przybywa do domu starszego brata. Ich spotkanie wyznacza śmierć. Staś, choć umierający, pragnie w ostatniej fazie życia cieszyć się każdą chwilą. Jego brat, Bolesław, choć fizycznie zdrowy, pogrąża się w coraz głębszej żałobie po stracie żony. Staś nawiązuje romans z wiejską dziewczyną, gra na pianinie skoczne melodie, stara się przeżyć najpełniej każdą godzinę życia. Tymczasem Bolesław zatraca się w depresji, znęca się nad córką, odrzuca wszelkie radości, chce nie tylko cierpieć, ale też oczekuje, by cierpieli inni.\nW zmysłowo piękniej adaptacji opowiadania Jarosława Iwaszkiewicza związki Erosa i Tanatosa wyznaczają sens ludzkiego życia. Śmierć i życie, seksualność i martwota ciał łączą się tu w idealnych proporcjach. Wajda stworzył jeden z najbardziej plastycznych filmów, oprawę wizualną oparł na malarstwie pejzażowym i symbolizmie przełomu XIX i XX wieku, a w jednej ze scen dokonał arcydzielnej interpretacji Śmierci Jacka Malczewskiego. Nakręcony dla telewizji film z początku nie miał tak szerokiej dystrybucji jak inne filmy Wajdy, ale gdy po dziesięciu latach trafił na Zachód, został tam przyjęty jako jedno z największych arcydzieł w dorobku reżysera.\n\nENG:\nA sensual, painterly meditation on life and death—an existential confrontation between the affirmation of existence and the abyss of mourning, revealing universal truths about human nature."
-    }
-  }, {
-    "_id" : "brzezina|1970",
-    "title" : "Brzezina",
+    "originalTitle" : "Brzezina",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/02/story9x16-450x800.png",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/brzezina_23_gallery.jpg", "https://www.novekino.pl/multimedia/brzezina_wajda_re_wizje/plakat.jpg", "https://image.tmdb.org/t/p/w500/nZWaiNDaY6fWUh8KE9nCKFQXQ00.jpg", "https://m.media-amazon.com/images/M/MV5BNWNkZTA4MzItODU1YS00YjdjLTgxYzEtZTJkNDI2Mjc2NzYyXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/brzezina_23_gallery.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja.jpg", "https://www.novekino.pl/multimedia/brzezina_wajda_re_wizje/plakat.jpg", "https://image.tmdb.org/t/p/w500/nZWaiNDaY6fWUh8KE9nCKFQXQ00.jpg", "https://m.media-amazon.com/images/M/MV5BNWNkZTA4MzItODU1YS00YjdjLTgxYzEtZTJkNDI2Mjc2NzYyXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 99,
     "releaseYear" : 1970,
     "genres" : [ "Dramat" ],
@@ -1776,7 +1757,33 @@
     "directors" : [ "Andrzej Wajda" ],
     "cast" : [ "Daniel Olbrychski", "Olgierd Łukaszewicz", "Emilia Krakowska", "Danuta Wodyńska", "Elżbieta Żołek" ],
     "synopsis" : "Akcja tego kameralnego dramatu rozgrywa się w leśniczówce otoczonej przepiękną brzeziną na przełomie zimy i wiosny. Do Bolesława przyjeżdża ciężko chory na gruźlicę brat Stanisław, by u niego spędzić ostatnie miesiące życia. Bolesław, mieszkający po śmierci żony z córką Olą i gosposią Maliną, nie potrafi przyzwyczaić się do ekstrawaganckiego stylu życia Stanisława, który chce czerpać z niego do ostatniej chwili. Rozpoczyna się podświadoma i uczuciowa rywalizacja obu braci.",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
+    "ratings" : {
+      "imdb" : 6.9,
+      "imdbUrl" : "https://www.imdb.com/title/tt0068321/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Brzezina/?category=2",
+      "rottenTomatoes" : 80,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/birch_wood",
+      "filmweb" : 7.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Brzezina-1970-1121"
+    },
+    "weightedRating" : 7.366666666666667,
+    "synopsisByCity" : {
+      "warszawa" : "Chory na gruźlicę Staś przybywa do domu starszego brata. Ich spotkanie wyznacza śmierć. Staś, choć umierający, pragnie w ostatniej fazie życia cieszyć się każdą chwilą. Jego brat, Bolesław, choć fizycznie zdrowy, pogrąża się w coraz głębszej żałobie po stracie żony. Staś nawiązuje romans z wiejską dziewczyną, gra na pianinie skoczne melodie, stara się przeżyć najpełniej każdą godzinę życia. Tymczasem Bolesław zatraca się w depresji, znęca się nad córką, odrzuca wszelkie radości, chce nie tylko cierpieć, ale też oczekuje, by cierpieli inni.\nW zmysłowo piękniej adaptacji opowiadania Jarosława Iwaszkiewicza związki Erosa i Tanatosa wyznaczają sens ludzkiego życia. Śmierć i życie, seksualność i martwota ciał łączą się tu w idealnych proporcjach. Wajda stworzył jeden z najbardziej plastycznych filmów, oprawę wizualną oparł na malarstwie pejzażowym i symbolizmie przełomu XIX i XX wieku, a w jednej ze scen dokonał arcydzielnej interpretacji Śmierci Jacka Malczewskiego. Nakręcony dla telewizji film z początku nie miał tak szerokiej dystrybucji jak inne filmy Wajdy, ale gdy po dziesięciu latach trafił na Zachód, został tam przyjęty jako jedno z największych arcydzieł w dorobku reżysera.\n\nENG:\nA sensual, painterly meditation on life and death—an existential confrontation between the affirmation of existence and the abyss of mourning, revealing universal truths about human nature."
+    }
+  }, {
+    "_id" : "brzezina|1970",
+    "title" : "Brzezina",
+    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/02/story9x16-450x800.png",
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/brzezina_23_gallery.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja.jpg", "https://www.novekino.pl/multimedia/brzezina_wajda_re_wizje/plakat.jpg", "https://image.tmdb.org/t/p/w500/nZWaiNDaY6fWUh8KE9nCKFQXQ00.jpg", "https://m.media-amazon.com/images/M/MV5BNWNkZTA4MzItODU1YS00YjdjLTgxYzEtZTJkNDI2Mjc2NzYyXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 99,
+    "releaseYear" : 1970,
+    "genres" : [ "Dramat" ],
+    "countries" : [ "Polska" ],
+    "directors" : [ "Andrzej Wajda" ],
+    "cast" : [ "Daniel Olbrychski", "Olgierd Łukaszewicz", "Emilia Krakowska", "Danuta Wodyńska", "Elżbieta Żołek" ],
+    "synopsis" : "Akcja tego kameralnego dramatu rozgrywa się w leśniczówce otoczonej przepiękną brzeziną na przełomie zimy i wiosny. Do Bolesława przyjeżdża ciężko chory na gruźlicę brat Stanisław, by u niego spędzić ostatnie miesiące życia. Bolesław, mieszkający po śmierci żony z córką Olą i gosposią Maliną, nie potrafi przyzwyczaić się do ekstrawaganckiego stylu życia Stanisława, który chce czerpać z niego do ostatniej chwili. Rozpoczyna się podświadoma i uczuciowa rywalizacja obu braci.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
     "ratings" : {
       "imdb" : 6.9,
       "imdbUrl" : "https://www.imdb.com/title/tt0068321/",
@@ -1990,12 +1997,11 @@
       "warszawa" : "„Caravaggio: Na tropie arcydzieła” to trzymający w napięciu dokumentalny thriller o sztuce, obsesji i pościgu za arcydziełem. W centrum jego akcji znajduje się historia o cudownie odnalezionym dziele Caravaggia „Ecce Homo”.\n\nW kwietniu 2021 roku dom aukcyjny Ansorena w Madrycie wystawił obraz zatytułowany „Ecce Homo” z ceną wywoławczą 1500 euro. Autor dzieła pozostawał nieznany – do czasu. W ciągu kilkunastu godzin eksperci z Hiszpanii i Włoch rozpoznali w nim zaginione dzieło Caravaggia, mistrza baroku. Obraz został natychmiast wycofany z aukcji, a eksperci, marszandzi i kolekcjonerzy ruszyli do gry, oferując zawrotne sumy. Jednak wkrótce pojawiły się również głosy kwestionujące autentyczność obrazu i uczciwość rzeczoznawców. Jak poznać prawdę, gdy w grę wchodzą duże pieniądze?\n\nZrealizowany z napięciem godnym kina sensacyjnego dokument Alvaro Longorii (producent filmu „Wszyscy wiedzą”) odsłania kulisy rynku sztuki, potęgi przypadku i fascynujących losów arcydzieł, które znikają i powracają jak duchy przeszłości. Jednocześnie zapoznaje widza z niezwykłym warsztatem i twórczością Caravaggia. Michelangelo Merisi da Caravaggio (1571-1610), wielki reformator malarstwa europejskiego, jest jedną z najbardziej tajemniczych i fascynujących postaci historii sztuki. Był bezkompromisowy zarówno w podejściu do sztuki, jak i życia. Zerwanie z idealizowaniem formy na rzecz naturalizmu i dramatyzmu, posługiwanie się mocnym światłocieniem, kontrastami barwnymi czy zbliżeniami oburzało zwolenników klasycznego stylu, jednocześnie inspirując młodych artystów z całej Europy. Ogromne zainteresowanie, jakim cieszy się do dziś, wynika nie tylko z jego przełomowej techniki, ale także burzliwego i obfitującego w skandale życia. Skazano go na śmierć za zabójstwo, aresztowano i osadzono w więzieniu za udział w pobiciu, sam też przeżył zamach na swoje życie z rąk nieustalonego sprawcy.\n\n„Caravaggio: Na tropie arcydzieła” to gratka nie tylko dla fanów malarstwa barokowego, osób zainteresowanych kulisami działania rynku sztuki, ale także dla tych, którzy lubią soczyste kryminały o obrazach lub ich podróbkach, jak „Plan prawie doskonały”, „Koneser”, czy „Vinci”. Ten dokument ogląda się jak dobry thriller!\n\n**Gatunek:** thriller, dokumentalny\n\n**Występują:** Maria Cristina Terzaghi, Nicola Spinosa, Antonio Vannugli, Keith Christiansen\n\n**Kraj produkcji:** Hiszpania"
     }
   }, {
-    "_id" : "carmillapokazzmuzykanazywospotkaniezizabelatrojanowskakinoniejawnequeerowekodyprlu|2026",
+    "_id" : "carmillapokazzmuzykanazywospotkaniezizabelatrojanowskakinoniejawnequeerowekodyprlu|",
     "title" : "Carmilla – pokaz z muzyką na żywo + spotkanie z Izabelą Trojanowską | Kino (nie)jawne: queerowe kody PRL-u",
     "posterUrl" : "https://medstore.kinoteka.pl/c(3).jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 68,
-    "releaseYear" : 2026,
     "genres" : [ "Dramat", "Fantasy", "Komedia" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Janusz Kondratiuk" ],
@@ -2690,7 +2696,7 @@
     "title" : "Cykl „Wajda: re-wizje\" - Człowiek z marmuru / Man of Marble (1977)",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2889,7 +2895,7 @@
     "title" : "Człowiek z marmuru (Man of Marble)",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -2910,23 +2916,29 @@
     "weightedRating" : 7.6000000000000005,
     "synopsisByCity" : { }
   }, {
-    "_id" : "czlowiekzmarmuruwajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|2026",
+    "_id" : "czlowiekzmarmuruwajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|1977",
     "title" : "Człowiek Z Marmuru | Wajda: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin",
-    "posterUrl" : "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg",
-    "fallbackPosterUrls" : [ ],
+    "originalTitle" : "Człowiek z marmuru",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Obyczajowy", "Polityczny" ],
+    "releaseYear" : 1977,
+    "genres" : [ "Dramat" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Andrzej Wajda" ],
-    "cast" : [ "Krystyna Janda", "Jerzy Radziwiłowicz", "Tadeusz Łomni" ],
+    "cast" : [ "Krystyna Janda", "Jerzy Radziwiłowicz", "Tadeusz Łomnicki", "Jacek Łomnicki", "Michał Tarkowski", "Krystyna Zachwatowicz" ],
+    "synopsis" : "Rok 1976. Agnieszka, dyplomantka szkoły filmowej, realizuje film o przodowniku pracy z lat 50-tych. Rozpoczyna prywatne śledztwo, mające ustalić przyczyny sukcesu i nagłego upadku.",
     "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cz%C5%82owiek+Z+Marmuru+%7C+Wajda%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cz%C5%82owiek+Z+Marmuru+%7C+Wajda%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cz%C5%82owiek+Z+Marmuru+%7C+Wajda%3A+re-+wizje.+Przegl%C4%85d+film%C3%B3w+Andrzeja+Wajdy+w+100.+rocznic%C4%99+urodzin"
+      "imdb" : 7.6,
+      "imdbUrl" : "https://www.imdb.com/title/tt0075902/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Cz%C5%82owiek+z+marmuru/?category=2",
+      "rottenTomatoes" : 75,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/czlowiek_z_marmuru",
+      "filmweb" : 7.7,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Cz%C5%82owiek+z+marmuru-1976-1123"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.6000000000000005,
     "synopsisByCity" : {
       "warszawa" : "Agnieszka (brawurowy debiut Krystyny Jandy), młoda i zadziorna reżyserka filmowa, decyduje się zrealizować film o stalinowskim przodowniku pracy Mateuszu Birkucie (Jerzy Radziwiłowicz). Jej uwagę przykuł nie tylko porzucony w muzealnych magazynach marmurowy posąg młodzieńca, ale także archiwalny film pokazujący jego zdzierany z muru portret. Agnieszka, śledząc pogmatwane losy mężczyzny, poznaje prywatne losy ludzi uwikłanych i zniszczonych przez komunistyczny system. W swej wędrówce poznaje ludzi biskich Birkutowi: przyjaciół, współpracowników, oficerów SB, dziennikarzy, byłą żonę. Wkracza w świat manipulacji, złudnych nadziei, propagandy i kłamstwa, w którym równie łatwo jest zostać bohaterem ludu, jak i największym wrogiem władzy. Totalitaryzm to świat, w którym jednego dnia można być sławnym na cały kraj, a kolejnego – popaść w sterowane przez cenzurę zapomnienie.\nAleksander Ścibor-Rylski scenariusz do filmu napisał na początku lat 60., a Wajda, usilnie starając się o realizację filmu, w głównej roli chciał obsadzić Agnieszkę Osiecką. Wówczas się nie udało i szansę na dopuszczenie scenariusza do produkcji przyniosła dopiero zmiana na szczytach władz, gdy ministrem kultury został liberalny Józef Tejchma, osobiście uczestniczący w budowie Nowej Huty. Aparat PZPR przyjął film z konsternacją. Dopuścił dzieło do dystrybucji, ale zabronił wszelkiej reklamy. Nie zgodził się na wysłanie filmu na konkurs festiwalu w Cannes (film dostał nagrodę FIPRESCI w sekcji pozakonkursowej), a Tejchma szybko przypłacił zgodę na realizację filmu utratą stanowiska.\nAle to właśnie dzięki m.in. niemu powstało jedno z arcydzieł kina polskiego. W scenariuszu opartym na narracji Obywatela Kane’a Orsona Wellesa Wajda opowiedział o epoce stalinowskiej, o ofiarach i beneficjentach władzy, o wykorzystywaniu i niszczeniu jednostki, o budzeniu się świadomości przedstawicieli proletariatu. W głównej roli obsadził debiutującą na ekranie Krystynę Jandę, której towarzyszył początkujący Jerzy Radziwiłowicz. Opisał przeszłość przez pryzmat pokontestacyjnej, zbuntowanej nowoczesności, którą podkreślił energiczną kompozycją Andrzeja Korzyńskiego. Nie spodziewał się jednak, że tym filmem zainicjuje trylogię filmów o robotnikach. Podczas gdy Człowiek z marmuru był jednym z nielicznych obrazów stalinizmu zrealizowanych w dobie PRL-u, tak nagrodzony Złotą Palmą w Cannes sequel, Człowiek z żelaza, był dziełem zamówionym przez stoczniowców i stanowił symbol czasów Solidarności. Razem z Człowiekiem z nadziei stworzył trylogię o buncie proletariatu i mądrości rewolucjonistów, którzy wiedzieli, że najgorsze dla Polski są kłótnie i przelew krwi.\n\nENG:\nA revelatory journey through archives and memory in Stalinist Poland, exposing propaganda’s power to destroy the individual and standing as one of the most important cinematic portraits of systemic oppression."
     }
@@ -2950,7 +2962,7 @@
     "_id" : "czlowiekzmarmuru|1977",
     "title" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -4975,7 +4987,7 @@
     "title" : "Fiesta kina hiszpańskiego: Prawo pożądania",
     "originalTitle" : "La ley del deseo",
     "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 102,
     "releaseYear" : 1987,
     "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
@@ -4983,7 +4995,7 @@
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
     "synopsis" : "Znany reżyser Pablo oraz jego siostra Tina są dość nietypowym rodzeństwem: on jest homoseksualistą, a Tina transseksualistą. Przypadek sprawi, że obydwoje zwiążą się z tym samym młodym, nieprzewidywalnym człowiekiem - pociągającym, ale niebezpiecznym Antonio (Antonio Banderas).",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
@@ -8892,24 +8904,27 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "lawrencezarabiikinocyrkularneextra|2026",
+    "_id" : "lawrencezarabiikinocyrkularneextra|1962",
     "title" : "Lawrence z Arabii | Kino cyrkularne EXTRA",
     "originalTitle" : "Lawrence of Arabia",
     "posterUrl" : "https://medstore.kinoteka.pl/plakatcyrkularne(2).jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 216,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Przygodowy", "Wojenny" ],
+    "releaseYear" : 1962,
+    "genres" : [ "Wojenny", "Dramat", "Przygodowy" ],
     "countries" : [ "Wielka Brytania" ],
     "directors" : [ "David Lean" ],
     "cast" : [ "Anthony Quinn", "Alec Guinness", "Peter O'Toole" ],
+    "synopsis" : "Film oparty na prawdziwych wydarzeniach. Rok 1916. Młody oficer brytyjski, T.E. Lawrence, zostaje wysłany na Bliski Wschód. Wbrew rozkazom namawia Arabów do buntu przeciwko Turkom.",
     "trailerUrls" : [ "https://www.youtube.com/embed/_AznzZAlwVA" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Lawrence+z+Arabii+%7C+Kino+cyrkularne+EXTRA"
+      "imdbUrl" : "https://www.imdb.com/title/tt0056172/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Lawrence+of+Arabia/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Lawrence+of+Arabia",
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Lawrence+z+Arabii-1962-33560"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.6,
     "synopsisByCity" : {
       "warszawa" : "Oglądamy epickie kino w kinie, nie na telefonie — bo tylko wielki ekran oddaje pełnię takich filmów.\n\nZapraszamy na wyjątkowy pokaz jednego z najważniejszych dzieł w historii kina – epickiej superprodukcji Davida Leana „Lawrence z Arabii” z niezapomnianą kreacją Petera O’Toole’a.\n\n„Lawrence z Arabii” to nie tylko imponująca wizualnie epopeja, nagrodzona 7 Oscarami, ale także poruszająca opowieść o bohaterstwie, tożsamości, moralnych dylematach i cienkiej granicy między legendą a rzeczywistością. Monumentalne krajobrazy pustyni, mistrzowska reżyseria oraz zapadająca w pamięć muzyka sprawiają, że film wciąż zachwyca kolejne pokolenia widzów.\n\nW trakcie seansu (po 139 minutach) zaplanowana jest 15- minutowa przerwa.\n\nKino cyrkularne to cykl poświęcony klasyce – mamy nadzieję spełniać w nim nasze i wasze kinofilskie marzenia o pokazach ulubionych klasycznych filmów na wielkim ekranie.\n\nKuratorka cyklu: Karolina Fornal"
     }
@@ -9629,24 +9644,27 @@
       "szczecin" : "Były torreador, Diego Montes zmuszony do zejścia z areny z powodu ciężkiej rany zadanej przez byka i prawniczka, María Cardenal dzielą chorobliwą obsesję na punkcie śmierci i niczym dwa magnesy przyciągają się do siebie. Wokół nich krążą skrywające niejeden sekret, ekscentryczne postacie: dręczony nagłymi wizjami morderstw adept sztuki walki z bykami, Ángel, jego psychiatra, Julia, narzeczona Diega, Eva, i jej matka, Pilar. Wreszcie do akcji wkracza komisarz policji. Ich historie splatają się w fatalistycznej atmosferze, i zbiegają w tragicznym zakończeniu."
     }
   }, {
-    "_id" : "matkirownolegle6razypedro|2026",
+    "_id" : "matkirownolegle6razypedro|2021",
     "title" : "Matki równoległe | 6 razy Pedro",
     "originalTitle" : "Madres paralelas",
     "posterUrl" : "https://medstore.kinoteka.pl/matkirownolegleplakatpllq.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 120,
-    "releaseYear" : 2026,
+    "releaseYear" : 2021,
     "genres" : [ "Dramat" ],
     "countries" : [ "Hiszpania" ],
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Penélope Cruz", "Milena Smit", "Rossy de Palma", "Aitana" ],
+    "synopsis" : "Dwie kobiety zostają matkami w tym samym dniu.",
     "trailerUrls" : [ "https://www.youtube.com/embed/asE6E7X1gOs" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Matki+r%C3%B3wnoleg%C5%82e+%7C+6+razy+Pedro/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Matki+r%C3%B3wnoleg%C5%82e+%7C+6+razy+Pedro",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Matki+r%C3%B3wnoleg%C5%82e+%7C+6+razy+Pedro"
+      "imdbUrl" : "https://www.imdb.com/title/tt12618926/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Madres+paralelas/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Madres+paralelas",
+      "filmweb" : 6.5,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Matki+r%C3%B3wnoleg%C5%82e-2021-859971"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.5,
     "synopsisByCity" : {
       "warszawa" : "Najnowszy film Pedra Almodóvara, z nagrodzoną za swoją rolę na festiwalu w Wenecji Penélope Cruz, to wyznanie wiary w siłę w kobiet, ich solidarność i odwagę. Czułe, a przy tym żywiołowe; ciepłe, ale niepozbawione dramatycznych zwrotów akcji; pełne nadziei, która przychodzi po bolesnych stratach – „Matki równoległe” portretują życie w jego wszystkich odcieniach. Film został z entuzjazmem przyjęty przez krytykę, która nie szczędzi mu komplementów. Najlepszy Almodóvar od „Wszystko o mojej matce” (Variety), Penélope Cruz w swojej najlepszej roli (Time), Pulsująca emocjami historia (The Wrap), Wielki pean na cześć kobiet (Little White Lies) – piszą zachwyceni recenzenci.\n\nBohaterki filmu, Janis (Cruz) i Ana (Milena Smit), spotykają się na oddziale położniczym. Ta pierwsza jest dojrzałą kobietą, ta druga ledwie przestała być nastolatką. Obie są singielkami, obie czeka samodzielne macierzyństwo. Janis wie, że sobie poradzi, Ana jest pełna obaw. Wydaje się, że ich ścieżki ledwie się przetną, tymczasem więź, która je połączy, okaże się mocna jak pępowina. Jak to u Almodóvara bywa: zbieg okoliczności może stać się przeznaczeniem, a rodzina z wyboru tą, która zaoferuje bezwarunkową akceptację i miłość.\n\n„Matki równoległe” to nie tylko tragikomiczna, intymna opowieść o bólu i blasku macierzyństwa. To również mocny głos przeciw rodzinnym sekretom i ukrywaniu prawdy o przeszłości. I właśnie kobiety, które tworzą pomost pomiędzy przeszłością i przyszłością, okazują się w filmie Almodóvara bezkompromisowymi rzeczniczkami otwartości przynoszącej ulgę i oczyszczenie."
     }
@@ -12647,24 +12665,28 @@
       "lublin" : "Oni są u władzy. Oni są cyniczni, niemoralni i zachłanni. Oni chcą uwielbienia. Oni to Silvio Berlusconi, jego świta i orbitujący wokół nich karierowicze, gotowi zrobić wszystko dla pieniędzy i politycznej chwały. Oni chcą uwieść tłumy. W świecie, gdzie najcenniejszą walutą jest młodość i seks, oni nie mają sobie równych."
     }
   }, {
-    "_id" : "opetaniezulawskikinoekstazy|2026",
+    "_id" : "opetaniezulawskikinoekstazy|1981",
     "title" : "Opętanie | Żuławski. Kino Ekstazy",
     "originalTitle" : "Possession",
-    "posterUrl" : "https://medstore.kinoteka.pl/Opetanie_plakat.png",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 127,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Horror", "Psychologiczny" ],
-    "countries" : [ "Francja" ],
+    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/opetanie5.png?itok=noh-NwOA",
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/Opetanie_plakat.png", "https://kinotatrylodz.pl/wp-content/uploads/2025/07/OPETANIE.jpg", "https://image.tmdb.org/t/p/w500/rUSe3Y2hyQIPxihdjCDgJg3BLNf.jpg", "https://m.media-amazon.com/images/M/MV5BMTAzNjczNmItMGJkMS00YzVhLTg4NzEtOGQyYWUzNDA0ZmNlXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 124,
+    "releaseYear" : 1981,
+    "genres" : [ "Horror" ],
+    "countries" : [ "Francja", "Niemcy" ],
     "directors" : [ "Andrzej Żuławski" ],
-    "cast" : [ "Sam Neill", "Isabelle Adjani" ],
+    "cast" : [ "Isabelle Adjani", "Sam Neill", "Margit Carstensen", "Heinz Bennent", "Johanna Hofer" ],
+    "synopsis" : "Po dłuższej nieobecności Marc powraca do Berlina Zachodniego, gdzie ze zgrozą dowiaduje się od żony, Anny , że ta ma kochanka. Dodatkowo zaniepokojony jej dziwnym zachowaniem wynajmuje detektywa, który ma wyjaśnić sprawę. Okazuje się, że kochankiem Anny jest potwór, bardziej zwierzę niż człowiek. Anna zabija detektywa, to samo czyni z kolejnym, który poszukuje zaginionego kolegi. Marc sam idzie pod wskazany adres. Na miejscu postanawia ukryć ślady zbrodni.",
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Op%C4%99tanie+%7C+%C5%BBu%C5%82awski.+Kino+Ekstazy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Op%C4%99tanie+%7C+%C5%BBu%C5%82awski.+Kino+Ekstazy",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Op%C4%99tanie+%7C+%C5%BBu%C5%82awski.+Kino+Ekstazy"
+      "imdb" : 7.2,
+      "imdbUrl" : "https://www.imdb.com/title/tt0082933/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Possession/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Possession",
+      "filmweb" : 7.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Op%C4%99tanie-1981-8801"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.300000000000001,
     "synopsisByCity" : {
       "warszawa" : "Film prezentowany w ramach przeglądu ŻUŁAWSKI. KINO EKSTAZY\n\nMark (Sam Neill) wraca z misji szpiegowskiej do Berlina Zachodniego, by odkryć, że jego żona Anna (Isabelle Adjani) ma romans. Małżeński kryzys narasta, eksploduje przemocą, a prawda o zdradzie Anny okazuje się znacznie bardziej szokująca i trudna do ogarnięcia rozumem.\n\nDla wielu widzów „Opętanie” może być definicją filmowego stylu Andrzeja Żuławskiego: nie uznającego granic ani tematów tabu, pulsującego nerwowym rytmem, enigmatycznego i fascynującego zarazem. Prowadzącego zarówno aktorów, jak i publiczność na skraj wytrzymałości. Isabelle Adjani, która za rolę w filmie otrzymała Cezara i nagrodę aktorską w Cannes, po latach przyznawała, że Żuławski potrafił zmusić ją do wysiłku niemal nadludzkiego, lecz nigdy więcej nie zgodziłaby się na podobne wyzwanie. „Opętanie” obrosło mrocznymi legendami, Sam Neill w swojej autobiografii wspominał, że współcześnie taki film powstać by już nie mógł, a krytycy doszukiwali się w fabule odniesień do burzliwego rozstania reżysera z Małgorzatą Braunek lub porównywali tytuł do dzieł Polańskiego i Cronenberga. Niezależnie od kontrowersji, „Opętanie” pozostaje jednym z najodważniejszych, najbardziej drastycznych i trudnych do jednoznacznej interpretacji filmów lat 80. I to niezależnie od tego, czy będziemy go oglądać jako psychologiczny dramat o traumie przemocy rodzinnej i rozpadu małżeństwa, polityczną alegorię podzielonego świata czy psychodeliczny monster movie (jeden z tytułów, pod jakimi film Żuławskiego był dystrybuowany w Stanach Zjednoczonych, brzmiał: „Noc, kiedy umilkły krzyki”).\n\nW Polsce film pokazywany był jedynie na nielicznych seansach studyjnych i festiwalowych: na ekrany kin wszedł dopiero w 2023 roku, inaugurując dystrybucyjną działalność Resetu."
     }
@@ -12673,7 +12695,7 @@
     "title" : "Opętanie",
     "originalTitle" : "Possession",
     "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/opetanie5.png?itok=noh-NwOA",
-    "fallbackPosterUrls" : [ "https://kinotatrylodz.pl/wp-content/uploads/2025/07/OPETANIE.jpg", "https://image.tmdb.org/t/p/w500/rUSe3Y2hyQIPxihdjCDgJg3BLNf.jpg", "https://m.media-amazon.com/images/M/MV5BMTAzNjczNmItMGJkMS00YzVhLTg4NzEtOGQyYWUzNDA0ZmNlXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/Opetanie_plakat.png", "https://kinotatrylodz.pl/wp-content/uploads/2025/07/OPETANIE.jpg", "https://image.tmdb.org/t/p/w500/rUSe3Y2hyQIPxihdjCDgJg3BLNf.jpg", "https://m.media-amazon.com/images/M/MV5BMTAzNjczNmItMGJkMS00YzVhLTg4NzEtOGQyYWUzNDA0ZmNlXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 124,
     "releaseYear" : 1981,
     "genres" : [ "Horror" ],
@@ -15018,24 +15040,29 @@
     "weightedRating" : 5.7,
     "synopsisByCity" : { }
   }, {
-    "_id" : "prawopozadania6razypedro|2026",
+    "_id" : "prawopozadania6razypedro|1987",
     "title" : "Prawo pożądania | 6 razy Pedro",
     "originalTitle" : "La ley del deseo",
-    "posterUrl" : "https://medstore.kinoteka.pl/pobrane(1).jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 100,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Romans" ],
+    "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 102,
+    "releaseYear" : 1987,
+    "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
     "countries" : [ "Hiszpania" ],
     "directors" : [ "Pedro Almodóvar" ],
-    "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "M" ],
+    "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
+    "synopsis" : "Znany reżyser Pablo oraz jego siostra Tina są dość nietypowym rodzeństwem: on jest homoseksualistą, a Tina transseksualistą. Przypadek sprawi, że obydwoje zwiążą się z tym samym młodym, nieprzewidywalnym człowiekiem - pociągającym, ale niebezpiecznym Antonio (Antonio Banderas).",
     "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Prawo+po%C5%BC%C4%85dania+%7C+6+razy+Pedro/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Prawo+po%C5%BC%C4%85dania+%7C+6+razy+Pedro",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Prawo+po%C5%BC%C4%85dania+%7C+6+razy+Pedro"
+      "imdb" : 7.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
+      "metacriticUrl" : "https://www.metacritic.com/search/La+ley+del+deseo/?category=2",
+      "rottenTomatoes" : 100,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/law_of_desire",
+      "filmweb" : 7.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Prawo+po%C5%BC%C4%85dania-1987-7061"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 8.066666666666666,
     "synopsisByCity" : {
       "warszawa" : "Tina (Carmen Maura) jest siostrą Pabla. Ich rodzice rozstali się, kiedy Tina miała na imię Tino i była chłopcem, a gdy zamieszkała z ojcem, od pewnego czasu już z nim sypiała. Tino przechodzi zmianę płci, staje się Tiną i jednocześnie żoną ojca, którą ten po kilku latach porzuca, a zraniona Tina nie chce nawet słyszeć o mężczyznach. Nienawidzi ich. Pablo (Eusebio Poncela) jest zakochany w Juanie (Miguel Molina), który nie jest pewien swoich uczuć, więc Pablo próbuje o nim zapomnieć. Poznaje zaborczego, pełnego sprzeczności Antonia (Antonio Banderas) i nawiązuje z nim romans, jednak jego życie staje się jeszcze bardziej skomplikowane. Nie może z tego wyjść nic dobrego…\n\nKlasyczny film Pedra Almodovara, który kładzie podwaliny pod jego styl filmowy, uniemożliwiając, bez obejrzenia go, pełne zrozumienie świata, który reżyser stworzył przez kolejne lata."
     }
@@ -15044,7 +15071,7 @@
     "title" : "Prawo pożądania | Fiesta Kina Hiszpańskiego",
     "originalTitle" : "La ley del deseo",
     "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 102,
     "releaseYear" : 1987,
     "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
@@ -15052,7 +15079,7 @@
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
     "synopsis" : "Znany reżyser Pablo oraz jego siostra Tina są dość nietypowym rodzeństwem: on jest homoseksualistą, a Tina transseksualistą. Przypadek sprawi, że obydwoje zwiążą się z tym samym młodym, nieprzewidywalnym człowiekiem - pociągającym, ale niebezpiecznym Antonio (Antonio Banderas).",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
@@ -15069,7 +15096,7 @@
     "title" : "Prawo pożądania",
     "originalTitle" : "La ley del deseo",
     "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/05/Prawo-pozadania-plakat-200x288.jpg",
-    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/pobrane(1).jpg", "https://bilety.kinospektrum.pl/uploads/event//1778684766.jpg", "https://iframe639.biletyna.pl/file/get/w/260/id/367468/filename/eb4df637488e1c9046caa93ae2201f63.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/fiesta-kina-hiszpanskiego-kasa-org.jpg", "https://image.tmdb.org/t/p/w500/tv5Nf96U43Ym4RlIOsrFHH0GmFg.jpg", "https://m.media-amazon.com/images/M/MV5BMmRlZjZhYjUtMDJhZC00NGIwLWEyYjEtY2Q3ZTEyM2JkMDEzXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 102,
     "releaseYear" : 1987,
     "genres" : [ "Dramat", "Romans", "Thriller", "Komedia" ],
@@ -15077,7 +15104,7 @@
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Eusebio Poncela", "Carmen Maura", "Antonio Banderas", "Miguel Molina", "Fernando Guillén" ],
     "synopsis" : "Znany reżyser Pablo oraz jego siostra Tina są dość nietypowym rodzeństwem: on jest homoseksualistą, a Tina transseksualistą. Przypadek sprawi, że obydwoje zwiążą się z tym samym młodym, nieprzewidywalnym człowiekiem - pociągającym, ale niebezpiecznym Antonio (Antonio Banderas).",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/xP0lTXHn9xs" ],
     "ratings" : {
       "imdb" : 7.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0093412/",
@@ -15716,7 +15743,7 @@
     "title" : "Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -15999,15 +16026,15 @@
     "title" : "Santa Sangre | Amondo Grindhouse",
     "originalTitle" : "Santa Sangre",
     "posterUrl" : "https://kinoamondo.pl/wp-content/uploads/2023/10/91BU0LYQOaL._AC_UF8941000_QL80_-270x340.jpg",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/smO3IbEoD8nf5j2Ru5GRiIuC18r.jpg", "https://m.media-amazon.com/images/M/MV5BNzEzZDRiMzMtYTBiNy00YmIyLWEyYjQtODRlNDRmYWNjMWZhXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/Swietakrewplakat.jpg", "https://image.tmdb.org/t/p/w500/smO3IbEoD8nf5j2Ru5GRiIuC18r.jpg", "https://m.media-amazon.com/images/M/MV5BNzEzZDRiMzMtYTBiNy00YmIyLWEyYjQtODRlNDRmYWNjMWZhXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 123,
     "releaseYear" : 1989,
     "genres" : [ "Thriller", "Dramat", "Horror" ],
-    "countries" : [ "Włochy", "Meksyk" ],
+    "countries" : [ "Włochy", "Meksyk", "Hiszpania" ],
     "directors" : [ "Alejandro Jodorowsky" ],
     "cast" : [ "Axel Jodorowsky", "Blanca Guerra", "Guy Stockwell", "Thelma Tixou", "Sabrina Dennison" ],
     "synopsis" : "W tym pełnym napięcia, wypełnionym halucynacjami thrillerze, straumatyzowany młody mężczyzna asystuje swojej bezrękiej, żądnej krwi matce w makabrycznym szale zabijania.",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/Anm-LVB6wA4" ],
     "ratings" : {
       "imdb" : 7.5,
       "imdbUrl" : "https://www.imdb.com/title/tt0098253/",
@@ -18884,7 +18911,7 @@
     "title" : "WAJDA: re-wizje: Brzezina",
     "originalTitle" : "Brzezina",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/02/story9x16-450x800.png",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/brzezina_23_gallery.jpg", "https://www.novekino.pl/multimedia/brzezina_wajda_re_wizje/plakat.jpg", "https://image.tmdb.org/t/p/w500/nZWaiNDaY6fWUh8KE9nCKFQXQ00.jpg", "https://m.media-amazon.com/images/M/MV5BNWNkZTA4MzItODU1YS00YjdjLTgxYzEtZTJkNDI2Mjc2NzYyXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/brzezina_23_gallery.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja.jpg", "https://www.novekino.pl/multimedia/brzezina_wajda_re_wizje/plakat.jpg", "https://image.tmdb.org/t/p/w500/nZWaiNDaY6fWUh8KE9nCKFQXQ00.jpg", "https://m.media-amazon.com/images/M/MV5BNWNkZTA4MzItODU1YS00YjdjLTgxYzEtZTJkNDI2Mjc2NzYyXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 99,
     "releaseYear" : 1970,
     "genres" : [ "Dramat" ],
@@ -18892,7 +18919,7 @@
     "directors" : [ "Andrzej Wajda" ],
     "cast" : [ "Daniel Olbrychski", "Olgierd Łukaszewicz", "Emilia Krakowska", "Danuta Wodyńska", "Elżbieta Żołek" ],
     "synopsis" : "Akcja tego kameralnego dramatu rozgrywa się w leśniczówce otoczonej przepiękną brzeziną na przełomie zimy i wiosny. Do Bolesława przyjeżdża ciężko chory na gruźlicę brat Stanisław, by u niego spędzić ostatnie miesiące życia. Bolesław, mieszkający po śmierci żony z córką Olą i gosposią Maliną, nie potrafi przyzwyczaić się do ekstrawaganckiego stylu życia Stanisława, który chce czerpać z niego do ostatniej chwili. Rozpoczyna się podświadoma i uczuciowa rywalizacja obu braci.",
-    "trailerUrls" : [ ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/RYlitj4DpgE" ],
     "ratings" : {
       "imdb" : 6.9,
       "imdbUrl" : "https://www.imdb.com/title/tt0068321/",
@@ -18911,7 +18938,7 @@
     "title" : "WAJDA: re- wizje: Człowiek z marmuru (+ eng sub)",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -18956,7 +18983,7 @@
     "title" : "WAJDA: re-wizje: \"Człowiek z marmuru\"",
     "originalTitle" : "Człowiek z marmuru",
     "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/PLAKAT.png",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/03/Plakat-WAJDA-jpg-200x288.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/czlowiek_z_marmuru_03_gallery.jpg?itok=6LXSxhiI", "https://www.kinokultura.pl/foto,20585,ae98ec4d5a4393bf2be6a591c7df589d,jpg.html", "https://www.novekino.pl/multimedia/czlowiek_z_marmuru_wajda_re_wizje/plakat.jpg", "https://medstore.kinoteka.pl/FacebookInstagramplakatpublikacja(4).jpg", "https://bilety.kinomikro.pl/uploads/event//1778572758.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/czlowiek-z-marmuru-08-gallery-1779980835.jpg", "https://okf.czest.pl/wp-content/uploads/2026/02/04czerwiec-czlowiek-z-marmuru-441x231.png", "https://iframe639.biletyna.pl/file/get/w/260/id/334533/filename/a91830d03bb3bd0b55dd5b1f7d21aa92.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/wajda-re-wizje-czlowiek-z-marmuru-kasa.jpg", "https://image.tmdb.org/t/p/w500/iCAc0Eyxa1Gd3DqsoxfD3Pvl0re.jpg", "https://m.media-amazon.com/images/M/MV5BMmU3ODY5MGUtYmU4Ni00YWNiLWJkMjgtNjVmZjBiMzI2ZGMxXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 153,
     "releaseYear" : 1977,
     "genres" : [ "Dramat" ],
@@ -19847,24 +19874,27 @@
     "weightedRating" : 8.15,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wpokojuobok6razypedro|2026",
+    "_id" : "wpokojuobok6razypedro|2024",
     "title" : "W pokoju obok | 6 razy Pedro",
-    "originalTitle" : "The Room Next Door",
+    "originalTitle" : "La habitación de al lado",
     "posterUrl" : "https://medstore.kinoteka.pl/W%20pokoju%20obok_plakat%20PL_LQ.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 107,
-    "releaseYear" : 2026,
+    "releaseYear" : 2024,
     "genres" : [ "Dramat" ],
     "countries" : [ "USA", "Hiszpania" ],
     "directors" : [ "Pedro Almodóvar" ],
     "cast" : [ "Julianne Moore", "Tilda Swinton", "John Turturro" ],
+    "synopsis" : "Dwie przyjaciółki z młodości, po latach bez kontaktu, spotykają się ponownie w ekstremalnej, ale dziwnie miłej sytuacji.",
     "trailerUrls" : [ "https://www.youtube.com/embed/5rphRnnqyu0" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/W+pokoju+obok+%7C+6+razy+Pedro/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=W+pokoju+obok+%7C+6+razy+Pedro",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=W+pokoju+obok+%7C+6+razy+Pedro"
+      "imdbUrl" : "https://www.imdb.com/title/tt29439114/",
+      "metacriticUrl" : "https://www.metacritic.com/search/La+habitaci%C3%B3n+de+al+lado/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=La+habitaci%C3%B3n+de+al+lado",
+      "filmweb" : 6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/W+pokoju+obok-2024-10045112"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6,
     "synopsisByCity" : {
       "warszawa" : "19 grudnia zapraszamy na seans przedpremierowy w ramach cyklu \"Premiery z Kają Klimek\"\n\nZwycięzca festiwalu w Wenecji, „W pokoju obok\", łączy na ekranie dwie wielkie osobowości i gwiazdy kina: Julianne Moore i Tildę Swinton. Melodramat Pedra Almodóvara to pełna emocji opowieść o pożegnaniach, spełnieniu, macierzyństwie i rodzinie z wyboru, a przede wszystkim – o życiu na swoich zasadach. Anglojęzyczny debiut Hiszpana otwiera zupełnie nowy rozdział w jego twórczości, zachowując przy tym charakterystyczne dla reżysera humor, melancholię i uwodzicielski splendor kostiumów i wnętrz. Eksplozja soczystych barw głosi pochwałę życia tak w radosnych, jak i w gorzkich odsłonach i jest hołdem dla przyjaźni, której blask złagodzi każdy ból.\n\nAkcję „W pokoju obok\" umieścił Almodóvar na Wschodnim Wybrzeżu USA. To w Nowym Jorku spotykają się przyjaciółki sprzed lat: wzięta pisarka Ingrid (Moore) i Martha (Swinton), reporterka wojenna, która toczy właśnie najważniejszą bitwę swojego życia. Rozdzieliły je zawodowe i prywatne wybory, a na nowo połączy los, którego się nie wybiera. W dramatycznych okolicznościach Ingrid i Martha dostrzegą szansę, by jeszcze raz przeżyć coś wspólnie.\n\nJeden z najwyżej ocenianych filmów Pedra Amodóvara jest ekranizacją „Pełni miłości\", powieści Sigrid Nunez. „W pokoju obok\" to terapeutyczne, niosące nadzieję kino, które nie wstydzi się wzruszać i wierzyć: w uzdrawiającą moc obecności i relacje odporne na upływ czasu."
     }
@@ -20118,55 +20148,61 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "wtffestcatsickblues|2026",
+    "_id" : "wtffestcatsickblues|2016",
     "title" : "WTF Fest | Cat Sick Blues",
     "originalTitle" : "Cat Sick Blues",
     "posterUrl" : "https://medstore.kinoteka.pl/CatSickBuesplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 94,
-    "releaseYear" : 2026,
+    "releaseYear" : 2016,
     "genres" : [ "Horror" ],
     "countries" : [ "Australia" ],
     "directors" : [ "Dave Jackson" ],
     "cast" : [ ],
+    "synopsis" : "Po śmierci swojego kota Ted wpada w depresję. Mężczyzna jednak postanawia wskrzesić swojego pupila, ale żeby to zrobić, musi najpierw zabić dziewięć osób.",
     "trailerUrls" : [ "https://www.youtube.com/embed/n7oPgrg3pUA" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Cat+Sick+Blues/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Cat+Sick+Blues",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Cat+Sick+Blues"
+      "imdbUrl" : "https://www.imdb.com/title/tt4185862/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Cat+Sick+Blues/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cat+Sick+Blues",
+      "filmweb" : 5.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Cat+Sick+Blues-2015-715321"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 5.3,
     "synopsisByCity" : {
       "warszawa" : "Najbardziej traumatyczny film o miłości do kota\n\n.\n\nClaire nie może pogodzić się ze śmiercią swojego ukochanego kota, internetowej gwiazdy viralowych filmików. Szukając wsparcia, trafia na grupę terapeutyczną dla osób przeżywających żałobę po zwierzętach i poznaje Teda – dziwnego, wycofanego chłopaka, który również obsesyjnie tęskni za swoim kotem. Problem w tym, że Ted jest gotowy zrobić naprawdę bardzo dużo, żeby go odzyskać.\n\n„Cat Sick Blues” zaczyna się jak absurdalny internetowy żart, ale szybko zamienia się w brutalny, emocjonalnie rozchwiany horror o żałobie, obsesji i samotności. Reżyser Dave Jackson balansuje między bardzo czarnym humorem, niezręcznym romansem i scenami, które potrafią autentycznie straumatyzować widza. To film jednocześnie absurdalny, drastyczny i zaskakująco smutny – jeden z tych, po których przez chwilę naprawdę nie wiadomo, czy bardziej chce się śmiać, czy wziąć długi prysznic.\n\nFilm szybko zdobył status jednego z najbardziej osobliwych i ekstremalnych horrorów undergroundowych ostatnich lat. Pod całym absurdem, krwią i kocim futrem kryje się historia ludzi desperacko próbujących poradzić sobie ze stratą — nawet jeśli prowadzi ich to w bardzo niebezpieczne miejsca.\n\nFilm zdobył Nagrodę Publiczności dla Najbardziej Szokującego Filmu na Splat!FilmFest w 2016 roku.\n\n18+ TRIGGER WARNING: film zawiera brutalne sceny przemocy, przemocy seksualnej oraz motywy żałoby po zwierzętach."
     }
   }, {
-    "_id" : "wtffestcrash|2026",
+    "_id" : "wtffestcrash|1996",
     "title" : "WTF Fest | Crash",
+    "originalTitle" : "Crash",
     "posterUrl" : "https://medstore.kinoteka.pl/Crashplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 100,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Erotyczny", "Thriller" ],
+    "releaseYear" : 1996,
+    "genres" : [ "Thriller", "Erotyczny" ],
     "countries" : [ "Wielka Brytania", "Kanada" ],
     "directors" : [ "David Cronenberg" ],
     "cast" : [ ],
+    "synopsis" : "30-letni mężczyzna wkracza w świat ludzi, dla których największym źródłem podniecenia są koszmarne sceny wypadków samochodowych.",
     "trailerUrls" : [ "https://www.youtube.com/embed/jTaGH1POlds" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Crash/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Crash",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Crash"
+      "imdbUrl" : "https://www.imdb.com/title/tt0115964/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Crash/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Crash",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Crash%3A+Niebezpieczne+po%C5%BC%C4%85danie-1996-642"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.1,
     "synopsisByCity" : {
       "warszawa" : "David Cronenberg i jeden z najbardziej niepokojących erotycznych thrillerów w historii kina.\n\nPo poważnym wypadku samochodowym producent filmowy James Ballard trafia do środowiska ludzi seksualnie fascynujących się katastrofami drogowymi, bliznami i rozbitym metalem. Wypadki przestają być dla nich tragedią, a stają się obsesją, fetyszem i sposobem na odczuwanie czegokolwiek. Im dalej Ballard wchodzi w ten świat, tym bardziej zaciera się granica między pożądaniem, bólem i autodestrukcją.\n\n„Crash” działa jak chłodny, hipnotyczny trans o ludziach uzależnionych od adrenaliny, przemocy i własnych obsesji. David Cronenberg zamienia erotyczny thriller w coś dużo bardziej dziwnego i niewygodnego — film o ciałach, technologii i seksualności w epoce, w której emocje coraz częściej zastępuje bodziec. Chłodna muzyka, sterylne zdjęcia i atmosfera emocjonalnego odrętwienia sprawiają, że „Crash” bardzo niepokoi.\n\nFilm powstał na podstawie kultowej powieści J. G. Ballarda i po premierze wywołał gigantyczny skandal. Był oskarżany o deprawację i atakowany przez media i polityków, lokalnie zakazywany i ograniczany w dystrybucji. Jednocześnie zdobył Nagrodę Specjalną Jury na Festiwalu Filmowym w Cannes w 1996 roku, gdzie jury przewodniczył Francis Ford Coppola. Dziś „Crash” uznawany jest za jedno z najważniejszych i najbardziej bezkompromisowych dzieł Cronenberga."
     }
   }, {
-    "_id" : "wtffestdeerskin|2026",
+    "_id" : "wtffestdeerskin|",
     "title" : "WTF Fest | Deerskin",
     "posterUrl" : "https://medstore.kinoteka.pl/Deerskinplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 77,
-    "releaseYear" : 2026,
     "genres" : [ "Czarna Komedia" ],
     "countries" : [ "Szwajcaria", "Belgia", "Francja" ],
     "directors" : [ "Quentin Dupiux" ],
@@ -20182,35 +20218,37 @@
       "warszawa" : "Historia morderczej kurtki w filmie króla absurdu Quentina Dupieux\n\n.\n\nGeorges kupuje zamszową kurtkę z jeleniej skóry i zaczyna traktować ją jak sens własnego życia. Kiedy wpada na pomysł, że powinien być jedyną osobą na świecie noszącą kurtkę, jego codzienność zaczyna zamieniać się w coraz bardziej absurdalny chaos. Podszywając się pod reżysera filmowego i kręcąc kompletnie przypadkowe sceny, Georges coraz mocniej odpływa w świat własnych obsesji i dziwnych decyzji.\n\nQuentin Dupieux bierze historię o facecie zakochanym w kurtce i robi z niej jedną z najlepszych współczesnych komedii absurdu. „Deerskin” jest śmiertelnie poważny w swoim szaleństwie – i właśnie dlatego działa tak dobrze. Absurdalny humor, idealne tempo i kompletna pewność siebie Dupieux sprawiają, że widz zaczyna akceptować nawet najbardziej niedorzeczne decyzje bohatera.\n\nQuentin Dupieux to jeden z najciekawszych współczesnych twórców kina absurdu i autor takich filmów jak „Mordercza opona”, „Palenie powoduje kaszel” czy „Mandibles”. Jego filmy zawsze zaczynają się od pozornie absurdalnego pomysłu, ale bardzo szybko zamieniają się w coś dużo bardziej błyskotliwego i nieprzewidywalnego. W „Deerskin” Dupieux perfekcyjnie łączy komedię, dziwny niepokój i satyrę na męskie ego, tworząc film równie śmieszny, co kompletnie surrealistyczny."
     }
   }, {
-    "_id" : "wtffestglowadowycierania|2026",
+    "_id" : "wtffestglowadowycierania|1977",
     "title" : "WTF Fest | Głowa do wycierania",
     "originalTitle" : "Eraserhead",
     "posterUrl" : "https://medstore.kinoteka.pl/779820113.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 89,
-    "releaseYear" : 2026,
-    "genres" : [ "Czarna Komedia", "Horror", "Surrealistyczny" ],
+    "releaseYear" : 1977,
+    "genres" : [ "Surrealistyczny" ],
     "countries" : [ "USA" ],
     "directors" : [ "David Lynch" ],
     "cast" : [ ],
+    "synopsis" : "Henry żyje w zindustrializowanym świecie. Podczas kolacji u rodziców swojej dziewczyny dowiaduje się, że został ojcem.",
     "trailerUrls" : [ "https://www.youtube.com/embed/J0Eq5GtCYdA" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+G%C5%82owa+do+wycierania/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+G%C5%82owa+do+wycierania",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+G%C5%82owa+do+wycierania"
+      "imdbUrl" : "https://www.imdb.com/title/tt0074486/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Eraserhead/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Eraserhead",
+      "filmweb" : 7.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/G%C5%82owa+do+wycierania-1977-1088"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.3,
     "synopsisByCity" : {
       "warszawa" : "\"Surrealistyczny koszmar Davida Lyncha.\n\nHenry Spencer prowadzi samotne życie w przemysłowym mieście przypominającym niekończący się koszmar. Kiedy jego dziewczyna Mary informuje go, że urodziło im się dziecko, Henry trafia do świata pełnego niezręcznych rodzinnych spotkań, napięcia i coraz trudniejszej do zniesienia codzienności. Problem w tym, że ich nowo narodzone dziecko wygląda bardziej jak dziwne, chorowite stworzenie niż człowiek, a opieka nad nim zaczyna powoli niszczyć psychikę Henry’ego.\n\n„Głowa do wycierania” nie przypomina klasycznego horroru ani zwykłego filmu surrealistycznego. David Lynch buduje tutaj własny język kina: oparty na dźwięku, niepokoju, dziwnej logice snu i obrazach, których nie da się wyrzucić z głowy. Czarny humor miesza się z autentycznym dyskomfortem, a cały film wygląda momentami jak koszmar o dorosłości, rodzicielstwie i strachu przed dpowiedzialnością.\n\nPełnometrażowy debiut Lyncha powstawał z przerwami przez kilka lat. Po premierze nie stał się natychmiastowym hitem – swoją legendę zbudował dopiero dzięki nocnym pokazom i widzom, którzy odkrywali go jak filmowy sekret. To właśnie „Głowa do wycierania” ustanowiła wiele elementów stylu Lyncha: przemysłowy niepokój, czarny humor, logikę snu i obrazy działające bardziej na podświadomość niż rozsądek.\""
     }
   }, {
-    "_id" : "wtffestgogosecondtimevirgin|2026",
+    "_id" : "wtffestgogosecondtimevirgin|",
     "title" : "WTF Fest | Go, go second time virgin",
     "originalTitle" : "Yuke Yuke Nidome no Shojo",
     "posterUrl" : "https://medstore.kinoteka.pl/gogosecondtimevirginplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 65,
-    "releaseYear" : 2026,
     "genres" : [ "Dramat" ],
     "countries" : [ "Japonia" ],
     "directors" : [ "Kôji Wakamatsu" ],
@@ -20226,205 +20264,225 @@
       "warszawa" : "\"Nihilizm, free jazz i bunt w filmie mistrza japońskiego undergroundu Kôji Wakamatsu.\n\nPo brutalnym gwałcie młoda dziewczyna spotyka na dachu budynku wycofanego chłopaka, który obserwował całe wydarzenie i sam nosi w sobie doświadczenie przemocy. Oboje spędzają razem kolejne godziny, dzieląc się traumami, lękami i myślami o śmierci. Ich relacja szybko zamienia się w dziwną mieszankę czułości, nihilizmu i autodestrukcji.\n\nKôji Wakamatsu bierze elementy pinku eiga, kina exploitation i młodzieżowego buntu, ale zamiast zwykłej prowokacji tworzy coś dużo bardziej hipnotycznego i melancholijnego. „Go, Go Second Time Virgin” jest jednocześnie brutalne, poetyckie i zaskakująco delikatne w swoim totalnym nihilizmie.\n\nMinimalistyczne zdjęcia, free jazzowa muzyka i atmosfera emocjonalnego zagubienia sprawiają, że film wygląda momentami jak bardzo smutny sen o młodości i przemocy.\n\nKôji Wakamatsu był jednym z najbardziej radykalnych i politycznych twórców japońskiego kina undergroundowego. Jego filmy regularnie balansowały między erotyką, przemocą i politycznym buntem, ale pod warstwą skandalu zawsze kryło się coś dużo bardziej gorzkiego i osobistego. „Go, Go Second Time Virgin” do dziś pozostaje jednym z najważniejszych filmów jego radykalnego okresu z końca lat 60.\"\n\n\"18+\nTRIGGER WARNING: film zawiera sceny przemocy seksualnej\n\""
     }
   }, {
-    "_id" : "wtffestimperiumzmyslow|2026",
+    "_id" : "wtffestimperiumzmyslow|1976",
     "title" : "WTF Fest | Imperium zmysłów",
-    "originalTitle" : "In the Realm of the Senses / Ai no korîda",
+    "originalTitle" : "愛のコリーダ",
     "posterUrl" : "https://medstore.kinoteka.pl/ImperiumZmyslowplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 109,
-    "releaseYear" : 2026,
+    "releaseYear" : 1976,
     "genres" : [ "Dramat", "Erotyczny" ],
     "countries" : [ "Francja", "Japonia" ],
     "directors" : [ "Nagisa Ôshima" ],
     "cast" : [ ],
     "trailerUrls" : [ "https://www.youtube.com/embed/yFAIcOZaqiE" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Imperium+zmys%C5%82%C3%B3w/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Imperium+zmys%C5%82%C3%B3w",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Imperium+zmys%C5%82%C3%B3w"
+      "imdbUrl" : "https://www.imdb.com/title/tt0074102/",
+      "metacriticUrl" : "https://www.metacritic.com/search/%E6%84%9B%E3%81%AE%E3%82%B3%E3%83%AA%E3%83%BC%E3%83%80/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%E6%84%9B%E3%81%AE%E3%82%B3%E3%83%AA%E3%83%BC%E3%83%80",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=%E6%84%9B%E3%81%AE%E3%82%B3%E3%83%AA%E3%83%BC%E3%83%80"
     },
     "weightedRating" : 0,
     "synopsisByCity" : {
       "warszawa" : "Erotyczny klasyk, który przekroczył każdą granicę\n.\n\nTokio, lata 30. Sada, była prostytutka pracująca jako służąca w gospodzie, wdaje się w romans z właścicielem lokalu. Związek szybko przeradza się w obsesję, która odcina ich od świata zewnętrznego: pracy, obowiązków, innych ludzi. Każde kolejne spotkanie staje się bardziej intensywne i ryzykowne, aż granica między pożądaniem a autodestrukcją całkowicie znika.\n\nNagisa Ōshima nie robi erotyku ani prowokacji dla samego szoku. „Imperium zmysłów” działa jak duszny trans - intymny, cielesny i momentami wręcz niewygodnie bliski. Seks nie jest tu dodatkiem do fabuły, tylko samą fabułą: narzędziem kontroli, uzależnienia i stopniowego zatracania się w obsesji. Im dalej ten film idzie, tym bardziej widz ma wrażenie, że obserwuje coś, czego nie powinien oglądać. Ōshima był jednym z najważniejszych twórców japońskiej Nowej Fali — reżyserem bezkompromisowym, politycznym i obsesyjnie zainteresowanym tym, jak społeczeństwo próbuje kontrolować ciało, seksualność i wolność jednostki.\n\nFilm oparty jest na prawdziwej historii Sady Abe - jednej z najsłynniejszych obyczajowych i kryminalnych historii XX-wiecznej Japonii. Po premierze wywołał gigantyczny skandal: w wielu krajach był zakazywany lub pokazywany wyłącznie w ocenzurowanej wersji. Przez lata funkcjonował jako „film, którego nie wolno oglądać”. W Japonii nie mógł być legalnie pokazywany w pełnej wersji, a kopia filmu była montowana we Francji, by ominąć lokalne przepisy dotyczące pornografii. Dziś „Imperium zmysłów” uznawane jest nie tylko za klasyk kina transgresji, ale też jedno z najważniejszych dzieł w historii światowego kina artystycznego.\n\nTRIGGER WARNING: film zawiera bardzo odważne sceny seksualne"
     }
   }, {
-    "_id" : "wtffestlozkoktorepozera|2026",
+    "_id" : "wtffestlozkoktorepozera|1977",
     "title" : "WTF Fest | Łóżko, które pożera",
     "originalTitle" : "Death Bed: The Bed That Eats",
     "posterUrl" : "https://medstore.kinoteka.pl/lozko.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 77,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Horror", "Surrealistyczny" ],
+    "releaseYear" : 1977,
+    "genres" : [ "Horror" ],
     "countries" : [ "USA" ],
     "directors" : [ "George Barry" ],
     "cast" : [ ],
     "trailerUrls" : [ "https://www.youtube.com/embed/GTKZ0Z-2k2s" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+%C5%81%C3%B3%C5%BCko%2C+kt%C3%B3re+po%C5%BCera"
+      "imdbUrl" : "https://www.imdb.com/title/tt0385639/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Death+Bed%3A+The+Bed+That+Eats/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Death+Bed%3A+The+Bed+That+Eats",
+      "filmweb" : 3.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Death+Bed%3A+The+Bed+That+Eats-1977-172421"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 3.4,
     "synopsisByCity" : {
       "warszawa" : "Film o łóżku, które pożera ludzi i zdrowy rozsądek widzów.\n\nW opuszczonym domu stoi stare łóżko o bardzo nietypowym problemie – regularnie pożera ludzi, którzy mają pecha na nim usiąść, położyć się albo spędzić noc. Kolejne ofiary trafiają do pokoju, nie mając pojęcia, że mebel od dawna żyje własnym życiem i powoli rozpuszcza wszystko, co znajdzie się na jego materacu. Całość obserwuje tajemniczy mężczyzna uwięziony za ścianą obrazu, komentujący wydarzenia, jakby sam do końca nie wierzył w absurd tego, co ogląda.\n\n„Łóżko, które pożera” działa jak horror wymyślony według logiki prawdziwego snu – pełnego przypadkowych dialogów, dziwnych decyzji i scen kompletnie ignorujących normalne zasady narracji. Reżyser George Barry z absolutną powagą traktuje pomysł o morderczym łóżku i właśnie dlatego cały film staje się tak fascynujący. Psychodeliczna atmosfera, surrealistyczny humor i kompletnie nieprzewidywalna logika zamieniają całość w jedno z najbardziej osobliwych doświadczeń horrorowego undergroundu.\n\nFilm został nakręcony w 1977 roku, ale przez lata praktycznie nie istniał w normalnym obiegu i funkcjonował bardziej jako legenda wśród fanów dziwnego kina niż realny film. Dopiero po latach „Łóżko, które pożera” zdobyło status kultowego midnight movie i jednego z najbardziej surrealistycznych horrorów undergroundowych swoich czasów. To dokładnie ten rodzaj filmu, przy którym przez pół seansu nie wiadomo, czy bardziej się śmiać, czy próbować zrozumieć, jakim cudem coś takiego w ogóle powstało."
     }
   }, {
-    "_id" : "wtffestmalyotik|2026",
+    "_id" : "wtffestmalyotik|2001",
     "title" : "WTF Fest | Mały Otik",
+    "originalTitle" : "Otesánek",
     "posterUrl" : "https://medstore.kinoteka.pl/MalyOtikplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 132,
-    "releaseYear" : 2026,
-    "genres" : [ "Czarna Komedia", "Dramat", "Fantasy" ],
+    "releaseYear" : 2001,
+    "genres" : [ "Dramat", "Czarna komedia", "Fantasy" ],
     "countries" : [ "Wielka Brytania", "Japonia", "Czechy" ],
     "directors" : [ "Jan Svankmajer" ],
     "cast" : [ ],
+    "synopsis" : "Bezdzietna para traktuje pień jak własne potomstwo, sprawy wymykają się spod kontroli, gdy rzecz ożywa.",
     "trailerUrls" : [ "https://www.youtube.com/embed/leQHDXoOZL0" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Ma%C5%82y+Otik/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Ma%C5%82y+Otik",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Ma%C5%82y+Otik"
+      "imdbUrl" : "https://www.imdb.com/title/tt0228687/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Otes%C3%A1nek/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Otes%C3%A1nek",
+      "filmweb" : 7.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Ma%C5%82y+Otik-2000-114091"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.3,
     "synopsisByCity" : {
       "warszawa" : "Mistrz surrealizmu Jan Švankmajer i jego najbardziej żarłoczna baśń\n.\nBezdzietne małżeństwo znajduje w lesie kawałek drewna przypominający niemowlę. Kobieta zaczyna traktować go jak własne dziecko - karmi, usypia, wychowuje. I wtedy Otik ożywa. Tyle że zamiast zachowywać się jak dziecko, zaczyna pożerać wszystko wokół. Najpierw jedzenie. Potem rzeczy. Potem ludzi. Dom zamienia się w zamknięty obieg karmienia, a sytuacja wymyka się spod kontroli szybciej, niż ktokolwiek chce to przyznać.\n\nTo film, który działa jak koszmar podszyty absurdem. Z jednej strony: baśń, znajoma struktura, coś niemal dziecięcego. Z drugiej: rosnące poczucie niepokoju, cielesność, coś lepko-organicznego, co wchodzi pod skórę. Otik nie jest tylko potworem - jest ucieleśnieniem potrzeby, która zaczyna pożerać wszystko wokół. Humor i groza idą tu ramię w ramię, ale śmiech szybko zamiera.\n\nReżyser Jan Švankmajer, mistrz filmowego surrealizmu i animacji poklatkowej, bierze na warsztat ludową czeską legendę i przepuszcza ją przez swój charakterystyczny, niepokojący styl. Efekt to jedno z jego najbardziej przystępnych, a jednocześnie najbardziej podstępnych dzieł - film, który funkcjonuje gdzieś między bajką, horrorem i artystycznym eksperymentem. Kultowy wśród fanów kina dziwnego, bo robi dokładnie to, co powinno takie kino robić: destabilizuje."
     }
   }, {
-    "_id" : "wtffestmonos|2026",
+    "_id" : "wtffestmonos|2019",
     "title" : "WTF Fest | Monos",
     "originalTitle" : "Monos",
     "posterUrl" : "https://medstore.kinoteka.pl/Monoplakat.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 102,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Thriller" ],
+    "releaseYear" : 2019,
+    "genres" : [ "Dramat" ],
     "countries" : [ "Szwecja", "Niemcy", "Holandia", "Argentyna" ],
     "directors" : [ "Alejandro Landes" ],
     "cast" : [ ],
+    "synopsis" : "Nastoletni partyzanci pilnują amerykańskiej zakładniczki gdzieś w górach w Ameryce Południowej.",
     "trailerUrls" : [ "https://www.youtube.com/embed/disclpVzoMQ" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Monos/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Monos",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Monos"
+      "imdbUrl" : "https://www.imdb.com/title/tt6062774/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Monos/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Monos",
+      "filmweb" : 6.3,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Monos-2019-815970"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.3,
     "synopsisByCity" : {
       "warszawa" : "Kolumbijski kandydat do Oscara o wojnie, narkotykach i dzieciakach bez żadnych zasad\n.\n\nGrupa nastoletnich partyzantów ukrywających się w górach pilnuje amerykańskiej zakładniczki i funkcjonuje według własnych brutalnych zasad. Początkowo wszystko przypomina dziwny obóz przetrwania z rytuałami i dyscypliną, ale gdy sytuacja zaczyna wymykać się spod kontroli, grupa stopniowo pogrąża się w chaosie. Granica między zabawą, wojną i czystym szaleństwem szybko przestaje istnieć.\n\n„Monos” działa jak narkotyczny sen o przemocy i powolnym rozpadzie moralności. Reżyser Alejandro Landes miesza kino wojenne z horrorem, survivalem i hipnotycznym arthouse’em, tworząc film bardziej odczuwalny niż opowiadany. Duszna elektronika, monumentalne zdjęcia i atmosfera ciągłego napięcia sprawiają, że widz ma wrażenie, jakby razem z bohaterami powoli zanurzał się w chaosie.\n\nFilm miał premierę na Sundance Film Festival, gdzie zdobył Nagrodę Specjalną Jury w sekcji World Cinema Dramatic. „Monos” błyskawicznie stał się międzynarodową sensacją festiwalową i jednym z najgłośniejszych południowoamerykańskich filmów ostatnich lat. Krytycy porównywali go do „Czasu Apokalipsy” i „Władcy much”, ale film Landesa idzie w dużo bardziej psychodeliczną, dziką i nieprzewidywalną stronę. Oficjalny kolumbijski kandydat do Oscara dla najlepszego filmu międzynarodowego."
     }
   }, {
-    "_id" : "wtffestsetkibobrow|2026",
+    "_id" : "wtffestsetkibobrow|2024",
     "title" : "WTF Fest | Setki bobrów",
     "originalTitle" : "Hundreds of Beavers",
     "posterUrl" : "https://medstore.kinoteka.pl/setki.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 108,
-    "releaseYear" : 2026,
+    "releaseYear" : 2024,
     "genres" : [ "Komedia", "Przygodowy" ],
     "countries" : [ "USA" ],
     "directors" : [ "Mike Cheslik" ],
     "cast" : [ ],
+    "synopsis" : "Jean Kayak, po pożarze swojego browaru, musi przetrwać i przechytrzyć setki bobrów, aby zostać najlepszym traperem w Ameryce. A wszystko po to, by zdobyć serce pięknej córki handlarza futrami.",
     "trailerUrls" : [ "https://www.youtube.com/embed/OPPzStE6w_8" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Setki+bobr%C3%B3w/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Setki+bobr%C3%B3w",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Setki+bobr%C3%B3w"
+      "imdbUrl" : "https://www.imdb.com/title/tt12818328/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Hundreds+of+Beavers/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Hundreds+of+Beavers",
+      "filmweb" : 7.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Setki+bobr%C3%B3w-2022-10040091"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.2,
     "synopsisByCity" : {
       "warszawa" : "Jeden z najbardziej absurdalnych i najbardziej pomysłowych filmów ostatnich lat\n.\n\nPo katastrofie, która dosłownie niszczy jego dotychczasowe życie, producent jabłkowego alkoholu zostaje sam na środku zimowego pustkowia. Żeby przetrwać i zdobyć rękę córki handlarza futer, postanawia zostać najlepszym traperem w okolicy. Problem w tym, że przeciwko niemu staje armia sprytnych zwierząt, a szczególnie setki bobrów, które wydają się działać według własnej, całkowicie absurdalnej logiki.\n\n„Setki bobrów” wygląda jak zagubiony niemy film odnaleziony w alternatywnej rzeczywistości, w której kino slapstickowe rozwinęło się w stronę kompletnego szaleństwa. Reżyser Mike Cheslik miesza komedię niemą, kreskówkową fizykę i gry komputerowe, ale robi to z taką precyzją i pomysłowością, że efekt staje się czymś zaskakująco świeżym. Każda kolejna scena próbuje przebić poprzednią nowym pomysłem, kolejnym absurdem albo jeszcze bardziej skomplikowanym żartem wizualnym.\n\nFilm szybko zdobył status jednego z najbardziej zaskakujących sukcesów współczesnego kina niezależnego. Przy minimalnym budżecie twórcy stworzyli widowisko wyglądające momentami jak połączenie filmów Bustera Keatona, kreskówek Looney Tunes i survivalowej gry komputerowej. To jeden z tych bardzo rzadkich przypadków, kiedy absurdalny pomysł okazuje się nie tylko śmieszny, ale po prostu świetnie zrobiony."
     }
   }, {
-    "_id" : "wtffeststolikkawowy|2026",
+    "_id" : "wtffeststolikkawowy|2023",
     "title" : "WTF Fest | Stolik kawowy",
-    "originalTitle" : "La mesita del comedor / The Coffee Table",
+    "originalTitle" : "La mesita del comedor",
     "posterUrl" : "https://medstore.kinoteka.pl/Stolikkawowy2.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 89,
-    "releaseYear" : 2026,
-    "genres" : [ "Czarna Komedia" ],
+    "releaseYear" : 2023,
+    "genres" : [ "Dramat", "Psychologiczny" ],
     "countries" : [ "Hiszpania" ],
     "directors" : [ "Caye Casas" ],
     "cast" : [ ],
+    "synopsis" : "Młoda para kupuje nowy stolik kawowy, który zmienia ich życie za sprawą serii nieprzewidzianych i niepokojących zdarzeń.",
     "trailerUrls" : [ "https://www.youtube.com/embed/kVk7wRuw7gA" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+Stolik+kawowy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+Stolik+kawowy",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+Stolik+kawowy"
+      "imdbUrl" : "https://www.imdb.com/title/tt21874760/",
+      "metacriticUrl" : "https://www.metacritic.com/search/La+mesita+del+comedor/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=La+mesita+del+comedor",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Stolik+kawowy-2022-10024961"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 6.1,
     "synopsisByCity" : {
       "warszawa" : "Jeden z najbardziej szokujących filmów ostatnich lat\n.\n\nJesús kupuje do mieszkania potwornie brzydki stolik kawowy, mimo że jego partnerka absolutnie go nie chce. Chwilę później dochodzi do tragicznego wypadku, a bohater wpada w spiralę paniki, kłamstw i desperackich prób ukrycia tego, co się wydarzyło. Im bardziej próbuje zachować pozory normalności podczas kolejnych rodzinnych wizyt, tym bardziej sytuacja zamienia się w koszmar nie do wytrzymania.\n\n„Stolik kawowy” bierze banalny punkt wyjścia i zamienia go w jedną z najbardziej stresujących czarnych komedii ostatnich lat. Reżyser Caye Casas perfekcyjnie balansuje między absurdem, napięciem i bardzo czarnym humorem, przez cały film zmuszając widza do nerwowego śmiechu. To kino, które jednocześnie bawi i sprawia, że ma się ochotę schować twarz w dłoniach. Największy horror tego filmu polega na tym, że wszystko dzieje się tutaj w zwykłym mieszkaniu, podczas zwykłego dnia i między ludźmi, którzy próbują za wszelką cenę udawać, że nadal panują nad sytuacją.\n\nFilm błyskawicznie zdobył status jednego z najbardziej szokujących, stresujących i najczęściej komentowanych horrorów ostatnich lat. Widzowie wychodzą z niego albo zachwyceni, albo kompletnie straumatyzowani – albo jedno i drugie na raz.\n\nFilm zdobył Nagrodę Publiczności dla Najbardziej Szokującego Filmu na Splat!FilmFest w 2023 roku.\n\nTRIGGER WARNING: film odradzany kobietom w ciąży, osobom spodziewającym się dziecka oraz rodzicom małych dzieci."
     }
   }, {
-    "_id" : "wtffestswietakrew|2026",
+    "_id" : "wtffestswietakrew|1989",
     "title" : "WTF Fest | Święta krew",
     "originalTitle" : "Santa Sangre",
-    "posterUrl" : "https://medstore.kinoteka.pl/Swietakrewplakat.jpg",
-    "fallbackPosterUrls" : [ ],
+    "posterUrl" : "https://kinoamondo.pl/wp-content/uploads/2023/10/91BU0LYQOaL._AC_UF8941000_QL80_-270x340.jpg",
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/Swietakrewplakat.jpg", "https://image.tmdb.org/t/p/w500/smO3IbEoD8nf5j2Ru5GRiIuC18r.jpg", "https://m.media-amazon.com/images/M/MV5BNzEzZDRiMzMtYTBiNy00YmIyLWEyYjQtODRlNDRmYWNjMWZhXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 123,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Horror", "Surrealistyczny", "Thriller" ],
-    "countries" : [ "Meksyk", "Hiszpania" ],
+    "releaseYear" : 1989,
+    "genres" : [ "Thriller", "Dramat", "Horror" ],
+    "countries" : [ "Włochy", "Meksyk", "Hiszpania" ],
     "directors" : [ "Alejandro Jodorowsky" ],
-    "cast" : [ ],
+    "cast" : [ "Axel Jodorowsky", "Blanca Guerra", "Guy Stockwell", "Thelma Tixou", "Sabrina Dennison" ],
+    "synopsis" : "W tym pełnym napięcia, wypełnionym halucynacjami thrillerze, straumatyzowany młody mężczyzna asystuje swojej bezrękiej, żądnej krwi matce w makabrycznym szale zabijania.",
     "trailerUrls" : [ "https://www.youtube.com/embed/Anm-LVB6wA4" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+%C5%9Awi%C4%99ta+krew/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+%C5%9Awi%C4%99ta+krew",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+%C5%9Awi%C4%99ta+krew"
+      "imdb" : 7.5,
+      "imdbUrl" : "https://www.imdb.com/title/tt0098253/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Santa+Sangre/?category=2",
+      "rottenTomatoes" : 88,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/santa_sangre",
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/%C5%9Awi%C4%99ta+krew-1989-104273"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.966666666666666,
     "synopsisByCity" : {
       "warszawa" : "Kultowy klasyk psychodelicznego kina w reżyserii Alejandro Jodorowsky’ego\n.\n\nFenix, syn cyrkowej artystki i miotacza noży, po brutalnej rodzinnej tragedii trafia do szpitala psychiatrycznego. Po latach opuszcza zamknięcie i ponownie spotyka swoją matkę – fanatyczną wyznawczynię religijnego kultu Santa Sangre. Kobieta zaczyna całkowicie podporządkowywać sobie syna, a Fenix coraz bardziej pogrąża się w świecie przemocy, obsesji i halucynacji.\n\n„Święta krew” wygląda jak sen, z którego nie da się obudzić. Alejandro Jodorowsky miesza horror, surrealizm, melodramat, kino psychologiczne i cyrkowy freak show w filmowe doświadczenie przypominające psychodeliczny rytuał. Krwawe rytuały, religijna symbolika, cielesność i absurd tworzą świat jednocześnie odpychający i dziwnie piękny – dokładnie taki, od którego trudno oderwać wzrok.\n\nAlejandro Jodorowsky to jeden z największych wizjonerów kina surrealistycznego i twórca legendarnych „Kret” oraz „Świętej góry”. „Święta krew” stała się jednym z najważniejszych filmów w jego karierze i do dziś uznawana jest za kultowy klasyk kina psychodelicznego. Religia, seksualność, przemoc, rodzinne traumy i cyrkowa groteska mieszają się tutaj w filmowy rytuał, który bardziej hipnotyzuje, niż daje się logicznie wytłumaczyć."
     }
   }, {
-    "_id" : "wtffesttaxidermia|2026",
+    "_id" : "wtffesttaxidermia|2006",
     "title" : "WTF Fest | Taxidermia",
-    "originalTitle" : "Κότα",
+    "originalTitle" : "Taxidermia",
     "posterUrl" : "https://medstore.kinoteka.pl/Taxidermiaplakat.jpg",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/rvzsbpuC4Don5Czv7pHOxsj6mln.jpg", "https://m.media-amazon.com/images/M/MV5BMTFhOWExMzAtYWEzNi00MWM3LTk5NmItNDI4MGNjMDA4ZTRhXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 94,
-    "releaseYear" : 2026,
-    "genres" : [ "Przygodowy", "Dramat" ],
-    "countries" : [ "Węgry", "Francja", "Austria", "Niemcy", "Grecja" ],
+    "releaseYear" : 2006,
+    "genres" : [ "Dramat", "Komedia", "Horror" ],
+    "countries" : [ "Węgry", "Francja", "Austria" ],
     "directors" : [ "György Pálfi" ],
-    "cast" : [ "Γιάννης Κοκιασμένος", "Μαρία Διακοπαναγιώτου", "Αργύρης Πανταζάρας", "Αντώνης Καφετζόπουλος", "Αντώνης Τσιοτσιόπουλος" ],
-    "synopsis" : "Nasza pierzasta bohaterka ucieka z klatki bateryjnej. Znajduje schronienie w podupadłej restauracji na greckim wybrzeżu. Tam odkrywa miłość, poznaje ludzką hierarchię i walczy o ochronę swoich jaj przed chciwym właścicielem. Kura jest świadkiem kradzieży, przemytu i brudnych interesów. Zwierzęca bohaterka, której walka o macierzyństwo odzwierciedla chaotyczne kompromisy i ciche bitwy ludzkiego życia.",
+    "cast" : [ ],
     "trailerUrls" : [ "https://www.youtube.com/embed/xeQqwG3D0l4" ],
     "ratings" : {
-      "imdb" : 7.1,
-      "imdbUrl" : "https://www.imdb.com/title/tt29283995/",
-      "metascore" : 83,
-      "metacriticUrl" : "https://www.metacritic.com/movie/hen",
-      "rottenTomatoes" : 100,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/hen",
+      "imdbUrl" : "https://www.imdb.com/title/tt0410730/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Taxidermia/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Taxidermia",
       "filmweb" : 6.9,
       "filmwebUrl" : "https://www.filmweb.pl/film/Taxidermia-2006-265557"
     },
-    "weightedRating" : 8.075,
+    "weightedRating" : 6.9,
     "synopsisByCity" : {
       "warszawa" : "Jeden z najbardziej obrzydliwych filmów europejskiego arthouse’u.\n\nW świecie „Taxidermii” seks, jedzenie i ciało nie są zwykłymi ludzkimi potrzebami, tylko groteskowymi obsesjami. Pierwszy bohater, ordynans żyjący podczas II wojny światowej, ucieka od upokarzającej codzienności w coraz bardziej dziwne fantazje seksualne. Kilkadziesiąt lat później jego syn staje się gwiazdą zawodów w jedzeniu na czas i podporządkowuje całe życie obsesji jedzenia, rywalizacji i własnemu ciału. Ostatni z rodu pracuje jako samotny taksydermista otoczony rozkładem, wypchanymi zwierzętami i rodzinnymi traumami, próbując odnaleźć sens w rzeczywistości, która wydaje się coraz bardziej martwa. Każda kolejna historia jest coraz bardziej groteskowa, cielesna i absurdalna – jakby cała rodzina była skazana na dziedziczenie obsesji swoich poprzedników.\n\nGyörgy Pálfi miesza czarną komedię, body horror, surrealizm i gorzką satyrę społeczną w film, którego praktycznie nie da się pomylić z niczym innym. „Taxidermia” jest jednocześnie odpychająca i wizualnie hipnotyzująca – pełna jedzenia, seksu, krwi, wydzielin i biologii pokazanej w sposób momentami absurdalny, a momentami autentycznie niepokojący. Im dalej film idzie, tym bardziej wygląda jak groteskowy koszmar o ciele, historii i dziedziczonych obsesjach.\n\nFilm miał premierę na Festiwalu Filmowym w Cannes w 2006 roku w sekcji Un Certain Regard. Z czasem zdobył status jednego z najgłośniejszych europejskich filmów ekstremalnych XXI wieku. Pod warstwą groteski i prowokacji kryje się precyzyjny film o ciele, wstydzie, ambicji i desperackiej potrzebie pozostawienia po sobie jakiegokolwiek śladu.\n\nTRIGGER WARNING: film zawiera obrazy mogące skutecznie odebrać apetyt"
     }
   }, {
-    "_id" : "wtffestzezyciemasens|2026",
+    "_id" : "wtffestzezyciemasens|2001",
     "title" : "WTF Fest | Że życie ma sens",
     "originalTitle" : "Że życie ma sens",
     "posterUrl" : "https://medstore.kinoteka.pl/Zezyciemasensplakat.jpeg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 87,
-    "releaseYear" : 2026,
+    "releaseYear" : 2001,
     "genres" : [ "Dramat" ],
     "countries" : [ "Polska" ],
     "directors" : [ "Grzegorz Lipiec" ],
     "cast" : [ "Krzysztof Czarkowski", "Grzegorz Lipiec", "Jarosław So" ],
+    "synopsis" : "Grupa przyjaciół oddaje się amatorskiej twórczości filmowej. Dołącza do nich chłopak z sąsiedztwa prezentujący nowe pomysły.",
     "trailerUrls" : [ "https://www.youtube.com/embed/ITyEfkPn7c8" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/WTF+Fest+%7C+%C5%BBe+%C5%BCycie+ma+sens/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=WTF+Fest+%7C+%C5%BBe+%C5%BCycie+ma+sens",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=WTF+Fest+%7C+%C5%BBe+%C5%BCycie+ma+sens"
+      "imdbUrl" : "https://www.imdb.com/title/tt0983251/",
+      "metacriticUrl" : "https://www.metacritic.com/search/%C5%BBe+%C5%BCycie+ma+sens/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%C5%BBe+%C5%BCycie+ma+sens",
+      "filmweb" : 7.5,
+      "filmwebUrl" : "https://www.filmweb.pl/film/%C5%BBe+%C5%BCycie+ma+sens-2000-1348"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.5,
     "synopsisByCity" : {
       "warszawa" : "Jeden z pierwszych polskich filmów, w którym pojawił się rap\n.\n\nOsiedle Piastowskie w Zielonej Górze, koniec lat 90. Czas wielkich przemian i wielkich szans. Może pozornie? Grupa przyjaciół spod bloku znajduje sposób na szarzyznę transformacji – zafascynowani hitami wypożyczalni VHS realizują amatorskie sequele szlagierów lat 80., np. „Terminatora”. To produkcje amatorskie, ale robione z sercem i pasją na hollywoodzkim poziomie. O chłopakach robi się głośno – udzielają wywiadów lokalnym stacjom telewizyjnym. Chcą realizować coraz bardziej brawurowe projekty. I wtedy na scenę wchodzi on – chłopak z sąsiedztwa, który wciąga domorosłych filmowców w świat imprez techno, picia na umór, wielkich planów. I narkotyków. Okazuje się, że nie każdy z bohaterów będzie „wiedział, kiedy przestać”.\n\n„Że życie ma sens” to produkcja grupy Sky Piastowskie, która zdefiniowała polskie kino niezależne. Film kultowy, wielokrotnie nagradzany i omawiany na studiach filmowych, z którego kipią lata 90. w całej swojej siermiędze i jaskrawej beznadziei. W chwili premiery narobił tyle szumu, że został wprowadzony do kin przez dystrybutora Best Film. Choć w zaledwie dziesięciu kopiach, wciąż ruch ten był ewenementem. Bo „Że życie ma sens” to film całkowicie amatorski, zrealizowany za kilka tysięcy złotych. Nie ma jednak w polskim kinie mocniejszego portretu ludzi, których życie łamią narkotyki.\n\nStatus filmu kultowego „Że życie ma sens” osiągnęło nie tylko dzięki tematyce, ale i wciąż cytowanym, naturalnym dialogom i muzyce. Na ścieżce dźwiękowej znalazły się m.in. kawałki formacji Kaliber 44. Choć od premiery minęło ponad 20 lat, losy Lipy, Vincenta, Pitera, Jacy, Jarka i Bono wciąż chwytają za serce. Grzegorz Lipiec – filmowy „Lipa” – i reżyser „Że życie ma sens” cztery lata po tym mocnym filmie zrealizował „Dzień, w którym umrę”."
     }
@@ -23360,8 +23418,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|2026|warszawa|Kinoteka",
-    "filmId" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|2026",
+    "_id" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|1944|warszawa|Kinoteka",
+    "filmId" : "arszenikistarekoronkikinocyrkularneklasykafilmowa|1944",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/arszenik-i-stare-koronki-kino-cyrkularne-klasyka-filmowa/",
@@ -29520,8 +29578,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "boliblask6razypedro|2026|warszawa|Kinoteka",
-    "filmId" : "boliblask6razypedro|2026",
+    "_id" : "boliblask6razypedro|2019|warszawa|Kinoteka",
+    "filmId" : "boliblask6razypedro|2019",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/bol-i-blask-6-razy-pedro/",
@@ -29599,8 +29657,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "brzezinawajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|2026|warszawa|Kinoteka",
-    "filmId" : "brzezinawajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|2026",
+    "_id" : "brzezinawajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|1970|warszawa|Kinoteka",
+    "filmId" : "brzezinawajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|1970",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/brzezina-wajda-re-wizje-przeglad-filmow-andrzeja-wajdy-w-100-rocznice-urodzin/",
@@ -30495,8 +30553,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "carmillapokazzmuzykanazywospotkaniezizabelatrojanowskakinoniejawnequeerowekodyprlu|2026|warszawa|Kinoteka",
-    "filmId" : "carmillapokazzmuzykanazywospotkaniezizabelatrojanowskakinoniejawnequeerowekodyprlu|2026",
+    "_id" : "carmillapokazzmuzykanazywospotkaniezizabelatrojanowskakinoniejawnequeerowekodyprlu||warszawa|Kinoteka",
+    "filmId" : "carmillapokazzmuzykanazywospotkaniezizabelatrojanowskakinoniejawnequeerowekodyprlu|",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/carmilla-kino-niejawne-queerowe-kody-prl-u/",
@@ -31423,8 +31481,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "czlowiekzmarmuruwajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|2026|warszawa|Kinoteka",
-    "filmId" : "czlowiekzmarmuruwajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|2026",
+    "_id" : "czlowiekzmarmuruwajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|1977|warszawa|Kinoteka",
+    "filmId" : "czlowiekzmarmuruwajdarewizjeprzegladfilmowandrzejawajdyw100roczniceurodzin|1977",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/czlowiek-z-marmuru-wajda-re-wizje-przeglad-filmow-andrzeja-wajdy-w-100-rocznice-urodzin/",
@@ -69621,8 +69679,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "lawrencezarabiikinocyrkularneextra|2026|warszawa|Kinoteka",
-    "filmId" : "lawrencezarabiikinocyrkularneextra|2026",
+    "_id" : "lawrencezarabiikinocyrkularneextra|1962|warszawa|Kinoteka",
+    "filmId" : "lawrencezarabiikinocyrkularneextra|1962",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/lawrence-z-arabii/",
@@ -80622,8 +80680,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "matkirownolegle6razypedro|2026|warszawa|Kinoteka",
-    "filmId" : "matkirownolegle6razypedro|2026",
+    "_id" : "matkirownolegle6razypedro|2021|warszawa|Kinoteka",
+    "filmId" : "matkirownolegle6razypedro|2021",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/matki-rownolegle-6-razy-pedro/",
@@ -119949,8 +120007,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "opetaniezulawskikinoekstazy|2026|warszawa|Kinoteka",
-    "filmId" : "opetaniezulawskikinoekstazy|2026",
+    "_id" : "opetaniezulawskikinoekstazy|1981|warszawa|Kinoteka",
+    "filmId" : "opetaniezulawskikinoekstazy|1981",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/opetanie-zulawski-kino-ekstazy/",
@@ -129074,8 +129132,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "prawopozadania6razypedro|2026|warszawa|Kinoteka",
-    "filmId" : "prawopozadania6razypedro|2026",
+    "_id" : "prawopozadania6razypedro|1987|warszawa|Kinoteka",
+    "filmId" : "prawopozadania6razypedro|1987",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/prawo-pozadania-6-razy-pedro/",
@@ -194553,8 +194611,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wpokojuobok6razypedro|2026|warszawa|Kinoteka",
-    "filmId" : "wpokojuobok6razypedro|2026",
+    "_id" : "wpokojuobok6razypedro|2024|warszawa|Kinoteka",
+    "filmId" : "wpokojuobok6razypedro|2024",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/w-pokoju-obok-6-razy-pedro/",
@@ -194708,8 +194766,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestcatsickblues|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestcatsickblues|2026",
+    "_id" : "wtffestcatsickblues|2016|warszawa|Kinoteka",
+    "filmId" : "wtffestcatsickblues|2016",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-cat-sick-blues/",
@@ -194719,8 +194777,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestcrash|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestcrash|2026",
+    "_id" : "wtffestcrash|1996|warszawa|Kinoteka",
+    "filmId" : "wtffestcrash|1996",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-crash/",
@@ -194730,8 +194788,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestdeerskin|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestdeerskin|2026",
+    "_id" : "wtffestdeerskin||warszawa|Kinoteka",
+    "filmId" : "wtffestdeerskin|",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-deerskin/",
@@ -194741,8 +194799,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestglowadowycierania|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestglowadowycierania|2026",
+    "_id" : "wtffestglowadowycierania|1977|warszawa|Kinoteka",
+    "filmId" : "wtffestglowadowycierania|1977",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-glowa-do-wycierania/",
@@ -194752,8 +194810,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestgogosecondtimevirgin|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestgogosecondtimevirgin|2026",
+    "_id" : "wtffestgogosecondtimevirgin||warszawa|Kinoteka",
+    "filmId" : "wtffestgogosecondtimevirgin|",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-go-go-second-time-virgin/",
@@ -194763,8 +194821,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestimperiumzmyslow|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestimperiumzmyslow|2026",
+    "_id" : "wtffestimperiumzmyslow|1976|warszawa|Kinoteka",
+    "filmId" : "wtffestimperiumzmyslow|1976",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-imperium-zmyslow/",
@@ -194774,8 +194832,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestlozkoktorepozera|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestlozkoktorepozera|2026",
+    "_id" : "wtffestlozkoktorepozera|1977|warszawa|Kinoteka",
+    "filmId" : "wtffestlozkoktorepozera|1977",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-lozko-ktore-pozera/",
@@ -194785,8 +194843,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestmalyotik|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestmalyotik|2026",
+    "_id" : "wtffestmalyotik|2001|warszawa|Kinoteka",
+    "filmId" : "wtffestmalyotik|2001",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-maly-otik/",
@@ -194796,8 +194854,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestmonos|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestmonos|2026",
+    "_id" : "wtffestmonos|2019|warszawa|Kinoteka",
+    "filmId" : "wtffestmonos|2019",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-monos/",
@@ -194807,8 +194865,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestsetkibobrow|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestsetkibobrow|2026",
+    "_id" : "wtffestsetkibobrow|2024|warszawa|Kinoteka",
+    "filmId" : "wtffestsetkibobrow|2024",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-setki-bobrow/",
@@ -194818,8 +194876,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffeststolikkawowy|2026|warszawa|Kinoteka",
-    "filmId" : "wtffeststolikkawowy|2026",
+    "_id" : "wtffeststolikkawowy|2023|warszawa|Kinoteka",
+    "filmId" : "wtffeststolikkawowy|2023",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-stolik-kawowy/",
@@ -194829,8 +194887,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestswietakrew|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestswietakrew|2026",
+    "_id" : "wtffestswietakrew|1989|warszawa|Kinoteka",
+    "filmId" : "wtffestswietakrew|1989",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-swieta-krew/",
@@ -194840,8 +194898,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffesttaxidermia|2026|warszawa|Kinoteka",
-    "filmId" : "wtffesttaxidermia|2026",
+    "_id" : "wtffesttaxidermia|2006|warszawa|Kinoteka",
+    "filmId" : "wtffesttaxidermia|2006",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-taxidermia/",
@@ -194851,8 +194909,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "wtffestzezyciemasens|2026|warszawa|Kinoteka",
-    "filmId" : "wtffestzezyciemasens|2026",
+    "_id" : "wtffestzezyciemasens|2001|warszawa|Kinoteka",
+    "filmId" : "wtffestzezyciemasens|2001",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/wtf-fest-ze-zycie-ma-sens/",
