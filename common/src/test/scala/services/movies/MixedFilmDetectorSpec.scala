@@ -83,7 +83,7 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
       Multikino -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120))))
 
     MixedFilmDetector.wouldAddASecondFilm(
-      row, Some("I Was A Stranger"), Some(103), Some(2024), titleNormalizer) shouldBe true
+      row, Some("I Was A Stranger"), Some(103), Some(2024), Seq("Brandt Andersen"), titleNormalizer) shouldBe true
   }
 
   /** The listing field the smaller cinemas fill with the POLISH title. It differs
@@ -95,7 +95,7 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
       Multikino -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120))))
 
     MixedFilmDetector.wouldAddASecondFilm(
-      row, Some("Obcy"), Some(120), None, titleNormalizer) shouldBe false
+      row, Some("Obcy"), Some(120), None, Seq.empty, titleNormalizer) shouldBe false
   }
 
   "an incoming listing with nothing to corroborate it" should "still merge" in {
@@ -103,7 +103,7 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
       Multikino -> slot(Seq("François Ozon"), Some("L'étranger"), Some(120))))
 
     MixedFilmDetector.wouldAddASecondFilm(
-      row, Some("I Was A Stranger"), None, None, titleNormalizer) shouldBe false
+      row, Some("I Was A Stranger"), None, None, Seq("Brandt Andersen"), titleNormalizer) shouldBe false
   }
 
   it should "not split on a differing director when neither publishes an original title" in {
@@ -167,6 +167,50 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
       Helios      -> slot(Seq.empty, Some("Jóhanna af Örk"), None).copy(releaseYear = Some(2025))))
 
     MixedFilmDetector.strays(record, titleNormalizer) should have size 1
+  }
+
+  /** A cinema can publish a runtime that is simply WRONG, and a wrong runtime beside
+   *  a translated title is corroboration that looks impeccable. Production, 2026-08-29:
+   *  forty cinemas list "Twoje imię" as "Kimi no na wa" at 110 minutes, Kino Nowe
+   *  Horyzonty as "Your Name (re-release)" at 83 — its own page says `czas: 83'` for a
+   *  106-minute film. Nothing in the title or the runtime says these are one film; the
+   *  director both of them credit does. Left unvetoed the row split on every settle,
+   *  the stray resolved to the same tmdbId and folded straight back, and the two chased
+   *  each other for the life of the corpus. */
+  it should "not split when both sides credit the same director, however far the runtimes drift" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Helios      -> slot(Seq.empty, Some("Kimi no na wa"), Some(110)),
+      KinoMuranow -> slot(Seq("Makoto Shinkai"), Some("Kimi no Na wa."), Some(106)),
+      Multikino   -> slot(Seq("Makoto Shinkai"), Some("Your Name (re-release)"), Some(83))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  it should "read a director the same however the cinema orders the name" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Helios    -> slot(Seq("Makoto Shinkai"), Some("Kimi no na wa"), Some(110)),
+      Multikino -> slot(Seq("Shinkai Makoto"), Some("Your Name (re-release)"), Some(83))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
+
+  /** The veto is whole-name, not per-word: two directors sharing a given name are
+   *  still two directors, and matching the way `titleWords` does would fuse them. */
+  it should "still split when the two directors merely share a given name" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino   -> slot(Seq("Michael Bay"), Some("L'étranger"), Some(120)),
+      KinoMuranow -> slot(Seq("Michael Mann"), Some("I Was A Stranger"), Some(103))))
+
+    MixedFilmDetector.strays(record, titleNormalizer) should have size 1
+  }
+
+  "an incoming listing crediting the row's own director" should "still merge" in {
+    // The scrape boundary asks the same question, so it owes the same answer.
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> slot(Seq("Makoto Shinkai"), Some("Kimi no na wa"), Some(110))))
+
+    MixedFilmDetector.wouldAddASecondFilm(
+      row, Some("Your Name (re-release)"), Some(83), Some(2016), Seq("Makoto Shinkai"), titleNormalizer) shouldBe false
   }
 
   it should "not split on a differing title alone, with nothing to corroborate it" in {

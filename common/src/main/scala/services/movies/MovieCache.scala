@@ -1387,7 +1387,7 @@ class CaffeineMovieCache(
       // the smaller sites — is waved through (see `MixedFilmDetector`).
       val aDifferentFilm = staging.isDefined && rowFor(norm).exists(record =>
         MixedFilmDetector.wouldAddASecondFilm(
-          record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, normalizer))
+          record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
       val divert       = staging.isDefined && ((!knownSanitized(norm) && !knownAliases(norm) &&
                          !knownByCinemaSlot((cinema, norm))) || aDifferentFilm)
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by

@@ -35,12 +35,21 @@ import models.{MovieRecord, Source, SourceData}
  *
  * What is left is a differing original title CORROBORATED by a differing runtime
  * or year — both language-proof, and both things two prints of one film agree on.
+ *
+ * And one VETO over all of it: an AGREEING director. That is not the signal given
+ * up above — a director difference is manufactured by cinemas printing the writer,
+ * where an agreement is only ever published when the two listings really are the
+ * same film. It is needed because the corroboration can be wrong: a cinema is free
+ * to publish a runtime that is simply incorrect ("Twoje imię", 83 minutes for a
+ * 106-minute film), and a wrong runtime beside a translated title reads as a second
+ * film on evidence that looks impeccable. See [[sameDirector]].
  */
 object MixedFilmDetector {
 
   /** One film's worth of a row: the identity its cinemas published, and the slots
-   *  that published it. */
-  case class Group(originalTitle: Set[String], slots: Seq[(Source, SourceData)]) {
+   *  that published it. `directors` is pre-computed because comparing names needs
+   *  the normalizer, which a slot doesn't carry. */
+  case class Group(originalTitle: Set[String], slots: Seq[(Source, SourceData)], directors: Set[String]) {
     def runtimes: Set[Int] = slots.flatMap(_._2.runtimeMinutes).toSet
     def years:    Set[Int] = slots.flatMap(_._2.releaseYear).toSet
   }
@@ -79,11 +88,14 @@ object MixedFilmDetector {
     originalTitle: Option[String],
     runtime:       Option[Int],
     year:          Option[Int],
+    director:      Seq[String],
     normalizer:    TitleNormalizer
   ): Boolean = {
-    val incomingTitle = titleWords(originalTitle, normalizer)
+    val incomingTitle     = titleWords(originalTitle, normalizer)
+    val incomingDirectors = directorKeys(director, normalizer)
     incomingTitle.nonEmpty && identityGroups(record, normalizer).headOption.exists { main =>
       titlesDiffer(main.originalTitle, incomingTitle) &&
+        !sameDirector(main.directors, incomingDirectors) &&
         corroborated(main.runtimes, runtime.toSet, main.years, year.toSet)
     }
   }
@@ -115,6 +127,7 @@ object MixedFilmDetector {
   /** Do these two identities describe DIFFERENT films? */
   def conflicting(a: Group, b: Group): Boolean =
     titlesDiffer(a.originalTitle, b.originalTitle) &&
+      !sameDirector(a.directors, b.directors) &&
       corroborated(a.runtimes, b.runtimes, a.years, b.years)
 
   private def identityGroups(record: MovieRecord, normalizer: TitleNormalizer): Seq[Group] =
@@ -122,11 +135,44 @@ object MixedFilmDetector {
       .filter { case (_, sd) => sd.originalTitle.exists(_.trim.nonEmpty) }
       .groupBy { case (_, sd) => titleWords(sd.originalTitle, normalizer) }
       .toSeq
-      .map { case (title, slots) => Group(title, slots) }
+      .map { case (title, slots) => Group(title, slots, directorKeys(slots.flatMap(_._2.director), normalizer)) }
       .sortBy(g => (-g.slots.size, g.originalTitle.toSeq.sorted.mkString(" ")))
 
   private def titlesDiffer(a: Set[String], b: Set[String]): Boolean =
     a.nonEmpty && b.nonEmpty && a.intersect(b).isEmpty
+
+  /** Do both sides credit the same person? Then it is ONE film, whatever the titles
+   *  and the runtimes say.
+   *
+   *  Read this against the header's "the director does not identify a film": that
+   *  rule is about a director DIFFERENCE, which cinemas manufacture by printing the
+   *  writer instead of the director. AGREEMENT is the other direction and holds
+   *  where the difference doesn't — two unrelated films sharing a Polish title do
+   *  not also share a director, while one film named in two languages does.
+   *
+   *  What forced it: "Twoje imię", 2026-08-29. Forty cinemas publish "Kimi no na
+   *  wa" at 110 minutes; Kino Nowe Horyzonty publishes "Your Name (re-release)" at
+   *  83 — its own page says `czas: 83'` for a 106-minute film. Different words, and
+   *  the runtime "corroborates" them, so the row split on every settle — and the
+   *  stray then resolved to the SAME tmdbId and folded straight back, splitting
+   *  again on the next pass, forever (`CountryConvergenceBehaviour`'s churn axis
+   *  caught it). Both sides credit Makoto Shinkai, which is what settles it. */
+  private def sameDirector(a: Set[String], b: Set[String]): Boolean =
+    a.nonEmpty && b.nonEmpty && a.intersect(b).nonEmpty
+
+  /** Published director names as comparable keys.
+   *
+   *  Order-insensitive — a Japanese name is printed "Makoto Shinkai" by one cinema
+   *  and "Shinkai Makoto" by the next — and whole-name, not per-word: two directors
+   *  routinely share a given name ("Michael Bay", "Michael Mann"), so matching on
+   *  words the way `titleWords` does would read them as one person. Comma-separated
+   *  because some listings pack a whole crew into one string, exactly as the
+   *  director walk's `split(",")` does. */
+  private def directorKeys(names: Iterable[String], normalizer: TitleNormalizer): Set[String] =
+    names.iterator.flatMap(_.split(",")).map(nameKey(_, normalizer)).filter(_.nonEmpty).toSet
+
+  private def nameKey(name: String, normalizer: TitleNormalizer): String =
+    name.split("[^\\p{L}\\p{N}]+").map(normalizer.sanitize).filter(_.nonEmpty).sorted.mkString(" ")
 
   /** Does something OTHER than the title agree that these are two films?
    *
