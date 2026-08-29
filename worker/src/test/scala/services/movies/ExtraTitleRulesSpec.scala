@@ -114,7 +114,23 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Radu Jude. Retrospektywa: Aferim! (2015)"        -> ("Radu Jude. Retrospektywa: ",        "Aferim! (2015)"),
     "Mikrofeminizacje: Pejzaż w kolorze sepii (przedpremierowo)" -> ("Mikrofeminizacje: ",     "Pejzaż w kolorze sepii (przedpremierowo)"),
     "Replika KFF: Magic Hour"                         -> ("Replika KFF: ",                     "Magic Hour"),
-    "Replika Młodzi i Film: La petite mort"           -> ("Replika Młodzi i Film: ",           "La petite mort")
+    "Replika Młodzi i Film: La petite mort"           -> ("Replika Młodzi i Film: ",           "La petite mort"),
+    // Twenty-third wave (2026-08-29), from the Poland convergence leg's identification
+    // gap. Each banner is a shape a sibling rule just fails to reach: the festival year
+    // follows the NAME rather than leading as an ordinal; the ladies' programme is
+    // prefixed here where the existing rule only strips a suffix; and the discussion
+    // strand carries two banner segments, both named in full.
+    "Avant Art. Festival 2026: David Lynch, une énigme à Hollywood" ->
+      ("Avant Art. Festival 2026: ", "David Lynch, une énigme à Hollywood"),
+    "Avant Art. Festiwal 2026: Ellis Park"            -> ("Avant Art. Festiwal 2026: ",        "Ellis Park"),
+    // The 'KLAPS / ' house brand in front of these comes off in the per-cinema tier
+    // (below) — it has to, because the seed slash rule would otherwise have thrown the
+    // film away long before any rule in ExtraTitleRules ran.
+    "Kino Kobiet: Jak żyć, żeby nie zwariować"        -> ("Kino Kobiet: ",                     "Jak żyć, żeby nie zwariować"),
+    "KINO KOBIET: Przepis na święta"                  -> ("KINO KOBIET: ",                     "Przepis na święta"),
+    // 'Spotkania O! złości: ' in front of this comes off in the SEED meeting-cycle rule,
+    // which stops at the first colon; this is the inner banner it leaves behind.
+    "czułe kino: W głowie się nie mieści 2"           -> ("czułe kino: ",                      "W głowie się nie mieści 2")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -400,7 +416,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Ghost in the Shell | KLASYCZNE ŚRODY"                 -> "Ghost in the Shell",
     "SMOK (Spotkania Młodych Odkrywców Kina): Przekleństwa niewinności (4K)" -> "Przekleństwa niewinności",
     "Klasyka na TOPie: Do utraty tchu (4K)"                -> "Do utraty tchu",
-    "Wymiary Kina na Placu Wilsona: Miłość, śmierć i dojrzewanie w Camp Miasma" -> "Miłość, śmierć i dojrzewanie w Camp Miasma"
+    "Wymiary Kina na Placu Wilsona: Miłość, śmierć i dojrzewanie w Camp Miasma" -> "Miłość, śmierć i dojrzewanie w Camp Miasma",
+    // Twenty-third wave, continued: the banner comes FIRST and the film is QUOTED after
+    // it with no colon between, so no colon-anchored prefix rule reaches it and no pure
+    // strip can isolate a film that is wrapped rather than prefixed. The left curly “
+    // arrives verbatim — the seed quote rules fold „ and ” only.
+    "WAKACYJNE PORANKI FILMOWE “JUTRO BĘDĘ ODWAŻNY”"       -> "JUTRO BĘDĘ ODWAŻNY",
+    "WAKACYJNE PORANKI FILMOWE “MISS MOXY.KOCIA EKIPA”"    -> "MISS MOXY.KOCIA EKIPA",
+    "WAKACYJNE PORANKI FILMWE “PSOTY”"                     -> "PSOTY"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -867,6 +890,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   private val perCinemaCases = Seq(
     ("kino-bajka",   "TOY STORY 5 2D DUB. SPS")               -> "TOY STORY 5",
     ("kino-bajka",   "VAIANA 2D DUB. SPS")                    -> "VAIANA",
+    ("kino-bajka-kluczbork", "KLAPS / Kino Kobiet: Jak żyć, żeby nie zwariować") -> "Kino Kobiet: Jak żyć, żeby nie zwariować",
+    ("kino-bajka-kluczbork", "KLAPS / KINO KOBIET: Przepis na święta")           -> "KINO KOBIET: Przepis na święta",
     ("cyfrowe-kino", "Premiera! toy story 5")                 -> "toy story 5",
     ("kino-kijow",   "Diabeł ubiera się u Prady 2 Napisy PL") -> "Diabeł ubiera się u Prady 2",
     ("kino-kijow",   "Mawka: Prawdziwy mit UA Napisy PL")     -> "Mawka: Prawdziwy mit",
@@ -879,6 +904,22 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     ("kino-stary-mlyn", "Toy Story 5 sensoryczny")            -> "Toy Story 5",
     ("kino-farys",      "Tot story 5")                        -> "Toy Story 5"
   )
+
+  /** Two banners that no single tier can strip, pinned end to end.
+   *
+   *  Neither list above sees the whole path: `programmeCases` folds the structural tier
+   *  only, `perCinemaCases` the ingest tier only. These two titles need BOTH, and each
+   *  for a reason that would go unnoticed if only the halves were tested — the seed
+   *  meeting-cycle rule stops at the first colon and leaves an inner banner behind, and
+   *  the seed slash rule would throw the film away entirely if the house brand were not
+   *  already gone by the time the structural tier runs. */
+  "a banner that takes two tiers to strip" should "still reach the bare film" in {
+    withExtras.search("Spotkania O! złości: czułe kino: W głowie się nie mieści 2") shouldBe
+      "W głowie się nie mieści 2"
+    withExtras.search(
+      withExtras.perCinema("kino-bajka-kluczbork", "KLAPS / Kino Kobiet: Jak żyć, żeby nie zwariować")) shouldBe
+      "Jak żyć, żeby nie zwariować"
+  }
 
   "ExtraTitleRules per-cinema rules" should "strip venue-specific junk for the owning cinema" in {
     perCinemaCases.foreach { case ((slug, raw), clean) =>

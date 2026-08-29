@@ -212,7 +212,35 @@ object ExtraTitleRules {
     // a single hit (see MovieService.searchTitleCandidates / effectiveYear).
     prog("xtra-pp-radu-jude-retro",    """(?iu)^Radu\s+Jude\.\s+Retrospektywa:\s+""", "'Radu Jude. Retrospektywa: <film> (YYYY)' director-retrospective prefix — 5 films, each year-scoped-unique on TMDB (Aferim! 2015, Nie obchodzi mnie… 2018, Niefortunny numerek lub szalone porno 2021, Nie obiecujcie sobie… 2023, Dracula 2025)"),
     prog("xtra-pp-mikrofeminizacje",   """(?iu)^Mikrofeminizacje:\s+""",              "'Mikrofeminizacje: <film> (przedpremierowo)' art-cycle prefix (Pejzaż w kolorze sepii → TMDB, the trailing '(przedpremierowo)' peels via the resolver's trailing-paren deDecorate)"),
-    prog("xtra-pp-replika",            """(?iu)^Replika\s+(?:KFF|Młodzi\s+i\s+Film):\s+""", "'Replika KFF: / Replika Młodzi i Film: <film>' festival-replay prefix (KFF = Krakowski Festiwal Filmowy, 'Młodzi i Film' = Koszalin) — Igrając z diabłem 2026 resolves; siblings (Capo, La petite mort, Magic Hour, Zero) are too generic to resolve year-less but the banner is still non-title decoration")
+    prog("xtra-pp-replika",            """(?iu)^Replika\s+(?:KFF|Młodzi\s+i\s+Film):\s+""", "'Replika KFF: / Replika Młodzi i Film: <film>' festival-replay prefix (KFF = Krakowski Festiwal Filmowy, 'Młodzi i Film' = Koszalin) — Igrając z diabłem 2026 resolves; siblings (Capo, La petite mort, Magic Hour, Zero) are too generic to resolve year-less but the banner is still non-title decoration"),
+    // Twenty-third wave (2026-08-29), from the Poland convergence leg's IDENTIFICATION
+    // gap rather than from a rating-less list. That leg scores the replay's tmdbId share
+    // against production's on the same repertoire, and it had drifted 5.3% under a 5%
+    // band. Most of the gap is production's HISTORY — a row that won its id under an
+    // earlier, cleaner spelling, which a cold single-pass replay cannot reproduce — but
+    // these three banners are ordinary missing rules, each on a shape a sibling rule
+    // just fails to reach. Every base film verified on TMDB.
+    //
+    //  - 'Avant Art. Festival 2026: <film>'. The generic numbered-festival rule
+    //    (xtra-pp-numbered-festival) wants the edition ORDINAL first ('12. … Festiwal
+    //    …:'); this festival puts its YEAR after the name and abbreviates with a full
+    //    stop, so neither that rule nor the named ones reach it. Spelled both
+    //    'Festival' and 'Festiwal' across the four cinemas that carry it.
+    prog("xtra-pp-avant-art-festival", """(?iu)^Avant\s+Art\.?\s+Festi[vw]al\s+\d{4}\s*:\s+""", "'Avant Art. Festival/Festiwal YYYY: <film>' festival prefix — the year follows the NAME, so the ordinal-first xtra-pp-numbered-festival cannot reach it (David Lynch, une énigme à Hollywood → TMDB 1419221; Ellis Park → 1315631)"),
+    //  - 'Kino Kobiet: <film>'. The ladies'-programme tag already has a strip, but only
+    //    in its Helios SUFFIX form ('<film> - Kino Kobiet'); Kino Bajka Kluczbork
+    //    prefixes it. Its listings arrive as 'KLAPS / Kino Kobiet: <film>', and the
+    //    cinema's own KLAPS brand comes off in the PER-CINEMA tier below rather than
+    //    here — it has to, because the seed 'structural-slash-suffix' runs before every
+    //    rule in this file (`all` stamps the extras order 100+) and drops everything
+    //    after the slash, leaving the bare banner 'KLAPS' and no film at all.
+    prog("xtra-pp-kino-kobiet-prefix", """(?iu)^Kino\s+Kobiet\s*:\s+""", "'Kino Kobiet: <film>' ladies'-programme PREFIX — sibling of the suffix-only xtra-kino-kobiet-suffix (Jak żyć, żeby nie zwariować → TMDB 1489938; Przepis na Święta → 1601776)"),
+    //  - 'Spotkania O! złości: czułe kino: <film>' carries TWO banner segments. The seed
+    //    meeting-cycle rule takes the first ('Spotkania …:') and stops, leaving 'czułe
+    //    kino: <film>' — so this covers the second. Named in full rather than as a
+    //    generic second 'Word: ' strip, which is the shape the programme-prefix audit
+    //    warns off.
+    prog("xtra-pp-czule-kino", """(?iu)^czułe\s+kino\s*:\s+""", "'czułe kino: <film>' Kino Orzeł discussion strand — the inner banner the seed 'Spotkania …:' rule leaves behind on 'Spotkania O! złości: czułe kino: <film>' (W głowie się nie mieści 2 → TMDB 1022789)")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -586,7 +614,17 @@ object ExtraTitleRules {
     //    `caseSegment` once `leadingBannerBoundary` splits on it, misdisplaying
     //    'WSP' as 'Wsp'. The spelled-out form is ordinary Title Case, so the same
     //    split leaves it untouched — no recasing regression.
-    searchStrip("xtra-wymiary-kina-plac-wilsona-prefix", """(?iu)^Wymiary\s+Kina\s+na\s+Placu\s+Wilsona\s*:\s*""", "'Wymiary Kina na Placu Wilsona: <film>' Kino Wisła preview-series prefix, spelled-out form (Miłość, śmierć i dojrzewanie w Camp Miasma)")
+    searchStrip("xtra-wymiary-kina-plac-wilsona-prefix", """(?iu)^Wymiary\s+Kina\s+na\s+Placu\s+Wilsona\s*:\s*""", "'Wymiary Kina na Placu Wilsona: <film>' Kino Wisła preview-series prefix, spelled-out form (Miłość, śmierć i dojrzewanie w Camp Miasma)"),
+    // Twenty-third wave, continued (see the prog block above for why). Kino Sokół
+    // Sokółka's holiday-mornings strand puts the banner FIRST and the film in quotes
+    // after it, with no colon between them — so the colon-anchored
+    // 'xtra-pp-wakacyjne-cycle' misses it, and no strip can isolate a film that is
+    // wrapped rather than prefixed. A capture is the only shape that reaches it.
+    // Both quote pairs are accepted: the seed rules fold „ and ” to ASCII, but the
+    // LEFT curly “ this cinema opens with has no such rule and arrives verbatim.
+    // 'Film\p{L}*' because the same listing spells the banner 'FILMOWE' three times
+    // and 'FILMWE' once.
+    searchReplace("xtra-wakacyjne-poranki-quoted", """(?iu)^Wakacyjne\s+Poranki\s+Film\p{L}*\s*[“„"]\s*(.+?)\s*[”"]\s*$""", "$1", "'WAKACYJNE PORANKI FILMOWE “<film>”' Kino Sokół Sokółka holiday-mornings strand — banner first, film QUOTED after it with no colon, so the colon-anchored xtra-pp-wakacyjne-cycle cannot reach it (Jutro będę odważny → TMDB 1470499, Psoty → 1584452, Miss Moxy. Kocia ekipa → 587357)")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
@@ -723,7 +761,16 @@ object ExtraTitleRules {
     perCinema("xtra-oskard-kino-cafe",  "kino-oskard",     """(?i)\s*/\s*(?:dubbing\s*/\s*)?Kino\s+Cafe\s*$""", "Kino Oskard '… /Kino Cafe' (and '/dubbing/Kino Cafe') venue suffix (Following, Robin Hood, Drugie życie, Supergirl, Toy Story 5)"),
     perCinema("xtra-starowce-akcja-lato", "kino-na-starowce", """(?i)\s*(?:[-–—]\s*)?(?:film\s+)?akcja\s+lato\s+w\s+kinie\s*$""", "Na Starówce '… [- film] akcja lato w kinie' campaign suffix (Toy Story 5, Vaiana)"),
     perCinema("xtra-starymlyn-sensoryczny", "kino-stary-mlyn", """(?i)\s+sensoryczny\s*$""",                   "Kino Stary Młyn '… sensoryczny' sensory-screening suffix (Toy Story 5)"),
-    perCinemaReplace("xtra-farys-tot-story", "kino-farys", """(?i)^Tot\s+story\s+5$""", "Toy Story 5",        "Kino Farys source typo 'Tot story 5' → 'Toy Story 5'")
+    perCinemaReplace("xtra-farys-tot-story", "kino-farys", """(?i)^Tot\s+story\s+5$""", "Toy Story 5",        "Kino Farys source typo 'Tot story 5' → 'Toy Story 5'"),
+    // Kluczbork brands its whole programme 'KLAPS / <cycle>: <film>'. Stripped HERE, in
+    // the per-cinema tier, and not as a global banner rule: the seed
+    // 'structural-slash-suffix' ('<film> / <decoration>') fires before anything in this
+    // file — `all` stamps every extra order 100+, after the whole seed set — and on this
+    // INVERTED shape it keeps the banner and throws the film away, so a global rule
+    // never sees a title to strip. The per-cinema tier runs at ingest, before the
+    // structural fold, so it gets there first. Leaves 'Kino Kobiet: <film>' for
+    // xtra-pp-kino-kobiet-prefix above, which keeps the programme its own row.
+    perCinema("xtra-bajka-kluczbork-klaps", "kino-bajka-kluczbork", """(?iu)^KLAPS\s*/\s*""", "Kino Bajka Kluczbork 'KLAPS / <cycle>: <film>' house-brand prefix (Jak żyć żeby nie zwariować, Przepis na święta)")
   )
 
   /** Orders stamped by position so the extras fold AFTER the seed rules. */
