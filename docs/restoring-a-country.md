@@ -1,5 +1,13 @@
 # Restoring a stopped country
 
+> **Status: the 2026-08-02 shutdown was reversed on 2026-08-29.** UK and Germany
+> are deployed again — on `uk.showtimes.cc` and `de.showtimes.cc`, on the k3s
+> cluster rather than Fly (see `docs/domain-cutover.md`). Everything below is
+> kept because it is the general procedure, not a description of today; read it
+> as "what to do if a country is stopped again", and note that steps naming
+> `flyctl` now describe a tier that no longer runs on Fly.
+
+
 On **2026-08-02** the UK and German deployments were taken out of service to cut
 hosting cost, leaving Poland as the only country served. Nothing about those
 countries was deleted — their databases, city rosters, scrapers, title rules,
