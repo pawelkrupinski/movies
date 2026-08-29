@@ -418,11 +418,23 @@ jobs:
                   body="$(jq -n --argjson time "$now" \
                       --arg text "deploy ${short} — ${subject} (${SHA})" \
                       '{time: $time, tags: ["deploy", "main"], text: $text}')"
-                  curl -fsS -X POST "${GRAFANA_URL%/}/api/annotations" \
+                  # NEVER FAIL THE DEPLOY OVER A MARKER. This step failed the whole `kinowo` leg on
+                  # 2026-08-29 -- `curl -fsS` returned 35 because GRAFANA_URL still named
+                  # kinowo-grafana.fly.dev, which had been scaled to zero machines when Grafana moved
+                  # to monitoring-1. The web app had already deployed successfully; the run went red
+                  # for an annotation.
+                  #
+                  # A deploy marker is an aid to reading a dashboard later. It is not a release
+                  # gate, and a red run for a missing annotation trains people to ignore red runs on
+                  # the workflow that actually ships production.
+                  if curl -fsS --max-time 20 -X POST "${GRAFANA_URL%/}/api/annotations" \
                       -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
                       -H "Content-Type: application/json" \
-                      -d "$body"
-                  echo "Posted deploy marker for ${short}."
+                      -d "$body"; then
+                      echo "Posted deploy marker for ${short}."
+                  else
+                      echo "::warning title=Deploy marker not posted::Grafana at ${GRAFANA_URL%/} did not accept the annotation for ${short}. The deploy itself succeeded."
+                  fi
 
     # Kick the country convergence suite off ALONGSIDE the deploy matrix — same
     # `needs: ci` the legs have, so the dispatch goes out the moment the build is
