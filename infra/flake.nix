@@ -81,13 +81,21 @@
         modules = hostModules name;
       };
 
-      # A colmena node is just a module list plus a `deployment` block. `targetHost` is the PUBLIC
-      # address for the reason set out below; everything else is identical across the three.
-      node = name: targetHost: tags: {
+      # A colmena node is just a module list plus a `deployment` block; everything but the tags is
+      # identical across the three.
+      node = name: tags: { config, ... }: {
         imports = hostModules name;
 
         deployment = {
-          inherit targetHost tags;
+          inherit tags;
+
+          # READ OFF THE HOST'S OWN CONFIGURATION rather than repeated here. These three addresses
+          # were literals in this file until 2026-08-29, at which point they existed in three
+          # places -- here, each host's `fleet.publicAddress`, and terraform/primary_ips.tf -- and
+          # the host files did not have them at all, so the staging workflow failed on its first
+          # run with `unreachable-by-declaration` for all three. One definition, and colmena and
+          # bin/stage-nixos-closures now necessarily agree about where a host is.
+          targetHost = config.fleet.publicAddress;
 
           # ssh as whoever the operator is rather than forcing root, with sudo for the activation
           # itself -- so a deploy is attributable to a person in the host's journal instead of
@@ -101,6 +109,7 @@
           buildOnTarget = true;
         };
       };
+
     in
     {
       # `nixos-anywhere --flake .#<name>`, `nixos-rebuild --flake .#<name>` and the closure builder
@@ -140,9 +149,9 @@
         # `colmena apply`. The automated half of that same rule is `neverDisturbUnits` in
         # nix/modules/fleet/auto-apply.nix -- tags govern what a human does, that governs what the
         # timer is allowed to do.
-        mongo-1 = node "mongo-1" "2.28.56.140" [ "database" ];
-        monitoring-1 = node "monitoring-1" "2.28.52.210" [ "monitoring" "k3s" ];
-        k3s-worker-1 = node "k3s-worker-1" "204.168.140.213" [ "k3s" ];
+        mongo-1 = node "mongo-1" [ "database" ];
+        monitoring-1 = node "monitoring-1" [ "monitoring" "k3s" ];
+        k3s-worker-1 = node "k3s-worker-1" [ "k3s" ];
       };
 
       devShells = nixpkgs.lib.genAttrs developmentSystems (s:
