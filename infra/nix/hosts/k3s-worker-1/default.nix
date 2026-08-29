@@ -94,7 +94,20 @@
       # picker (Poland included) whenever the request Host is the apex, so any country's pods answer
       # it identically — see models.Country.servesApex. It is pointed at the UK deployment only
       # because the picker is English-language chrome; nothing about the page is UK-specific.
-      "showtimes.cc".upstream = "127.0.0.1:30912";
+      #
+      # ONLY `/` IS THE FRONT DOOR, and everything else redirects, because the app's host check
+      # gates the LANDING alone. Without this, showtimes.cc/london/ would serve the UK repertoire
+      # from a second hostname — and since the canonical link and og:url are built from the request
+      # host, every UK page would self-canonicalise on two domains and the apex would advertise its
+      # own sitemap. That is textbook duplicate content, and it splits the ranking of the site it
+      # is supposed to be a door into.
+      "showtimes.cc" = {
+        upstream = "127.0.0.1:30912";
+        extraConfig = ''
+          @notRoot not path /
+          redir @notRoot https://uk.showtimes.cc{uri} permanent
+        '';
+      };
       "www.showtimes.cc".redirectTo = "showtimes.cc";
     };
   };

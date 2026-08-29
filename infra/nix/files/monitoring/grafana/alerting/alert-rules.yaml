@@ -655,6 +655,65 @@ groups:
       # ON RESTORE, put BOTH back to `Alerting` in the same edit as the new token. A
       # token without this flip leaves the fleet's most important Fly rule silent.
       # ================================================================================
+      # ---- The web tier is down (k3s) --------------------------------------
+      # THE RULE THAT ACTUALLY WATCHES THE PRODUCT since 2026-08-29, and the reason the two
+      # `fly_instance_up` rules below no longer do.
+      #
+      # Moving the web tier onto k3s took every `fly_instance_up{app="kinowo"}` series with it.
+      # Those rules were already `noDataState: OK` (see the long note below), so the migration
+      # did not make them page -- it made them SILENT, which is worse and is invisible: a
+      # critical that can never fire looks exactly like a critical that never needed to.
+      #
+      # This one keys on the fleet's own Prometheus instead, which scrapes all three web pods
+      # by NodePort (`job="kinowo-web"`, see infra/nix/files/monitoring/scrape-kinowo-apps.yaml).
+      # `min by (instance)` so ONE country going dark fires while the others are healthy, and
+      # names which in the notification -- the three run the same image but different databases,
+      # so they fail independently.
+      #
+      # `noDataState: Alerting`, unlike the Fly rules: these targets are STATIC, so the series
+      # exists from the moment the scrape config lands and absence means Prometheus itself has
+      # stopped seeing them. The cost of that honesty is that this fires during the bootstrap
+      # window between the scrape config landing and the pods first serving; that window is a
+      # deliberate deploy, not a surprise (see docs/domain-cutover.md).
+      - uid: kinowo-web-serving-down
+        title: Web tier down (k3s)
+        condition: C
+        for: 3m
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: 'kinowo web pod {{ $labels.instance }} is down or not reporting'
+          description: 'up{job="kinowo-web"} is 0 for 3m on {{ $labels.instance }} — that country''s user-facing site is unreachable. Check `k3s kubectl -n kinowo get pods -l app=web` on monitoring-1, the pod logs, and Mongo (a Mongo hiccup blocks web boot). If every instance is down together, suspect Mongo or the node rather than the app.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: local-prometheus
+            model:
+              datasource: { type: prometheus, uid: local-prometheus }
+              editorMode: code
+              expr: 'min by (instance) (up{job="kinowo-web"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
       - uid: kinowo-serving-down
         title: Serving app down
         condition: C
@@ -664,8 +723,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: 'kinowo (web) is down or not reporting'
-          description: 'fly_instance_up{app="kinowo"} is 0 or absent for 3m — the user-facing app is unreachable. Check `fly status -a kinowo` and Mongo (a Mongo hiccup blocks web boot).'
+          summary: 'kinowo (web, Fly) is down or not reporting'
+          description: 'DORMANT since the web tier moved to k3s on 2026-08-29 — `fly_instance_up{app="kinowo"}` is permanently absent and this rule cannot fire. `kinowo-web-serving-down` above is what watches the live tier. Kept only for the documented Fly rollback (deploy.yml matrix `enabled: true` + `flyctl scale count 1`); retire it with the Fly app.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -724,7 +783,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: 'showtimes-uk (UK web) is down or not reporting'
+          summary: 'showtimes-uk (UK web, Fly) is down or not reporting — DORMANT, see kinowo-web-serving-down'
           description: 'fly_instance_up{app="showtimes-uk"} is 0 for 3m — the UK user-facing app is unreachable. Check `fly status -a showtimes-uk` and Mongo (a Mongo hiccup blocks web boot; UK reads the same cluster, db kinowo_uk). While the UK deployment is stopped this rule is deliberately silent on absence — see the noDataState note above.'
         data:
           - refId: A

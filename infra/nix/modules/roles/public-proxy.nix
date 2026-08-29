@@ -61,6 +61,19 @@ in
             '';
           };
 
+          extraConfig = lib.mkOption {
+            type = lib.types.lines;
+            default = "";
+            description = ''
+              Extra Caddy directives for this vhost, emitted before the upstream or redirect.
+
+              Caddy sorts directives into its own canonical order rather than the order written,
+              so a `redir` here still takes effect ahead of the `reverse_proxy` below regardless
+              of where it appears. That is what makes a partial redirect expressible: send some
+              paths elsewhere and proxy the rest.
+            '';
+          };
+
           redirectTo = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
@@ -99,6 +112,7 @@ in
       # wrong, and no separate acme.sh state to go stale. The config below is the entire deployment.
       virtualHosts = lib.mapAttrs (host: v: {
         extraConfig = ''
+          ${v.extraConfig}
           ${if v.redirectTo != null
             then ''redir https://${v.redirectTo}{uri} permanent''
             else ''reverse_proxy ${v.upstream}''}
