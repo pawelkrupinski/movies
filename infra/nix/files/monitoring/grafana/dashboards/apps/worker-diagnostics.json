@@ -64,8 +64,8 @@
           "value": "pl",
           "selected": true
         },
-        "includeAll": false,
-        "multi": false,
+        "includeAll": true,
+        "multi": true,
         "refresh": 2,
         "sort": 1,
         "hide": 0
@@ -89,7 +89,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "The worker's insides. Come here when the overview says something is wrong with the worker and you need to know **why** — a memory climb, a GC storm, a cache that stopped hitting, an upstream returning errors. The worker now runs as a **k3s pod on `k3s-worker-1`**; every panel reads its own `/metrics`, scraped directly by the fleet Prometheus, so the numbers are the JVM's own and need no Fly credential.\n\n**Two panels are gone:**\n\n* **Fly CPU-credit balance vs throttle floor.** There is no credit bucket outside Fly's shared-cpu plans. The worker's CPU is now bounded by a real node's cores, and the CPU breakdown panel is the whole story.\n* **The cgroup ceiling line on the RSS panel.** It was the Fly machine's ~960MB limit. The k3s pod's memory limit is not exported here (the kube-state-metrics target is down), and drawing a made-up line would be worse than drawing none.\n\n**Careful with host numbers.** `k3s-worker-1` runs the k3s agent alongside this pod, so the host CPU and host memory on the fleet dashboard are always above the worker's own. Every panel here is process-scoped precisely so you are never reading k3s's overhead as the worker's behaviour."
+        "content": "A worker's insides. Come here when the overview says something is wrong with a worker and you need to know **why** — a memory climb, a GC storm, a cache that stopped hitting, an upstream returning errors.\n\n**There are three workers**, one per country: `worker-pl`, `worker-de` and `worker-uk`, each a separate k3s Deployment on `k3s-worker-1`. Every panel below is filtered by the **Country** variable and names the country in its legend. Set it to a single country to read one JVM; set it to All to compare the three — which is how you tell \"the worker is leaking\" from \"the *uk* worker is leaking\". Each panel reads that pod's own `/metrics`, scraped directly by the fleet Prometheus, so the numbers are the JVM's own and need no Fly credential.\n\n**One panel is gone:**\n\n* **Fly CPU-credit balance vs throttle floor.** There is no credit bucket outside Fly's shared-cpu plans. The workers' CPU is now bounded by a real node's cores, and the CPU breakdown panel is the whole story.\n\n**The cgroup ceiling is back.** It was previously dropped because kube-state-metrics was down; that target is now up, so the RSS panel draws each pod's real `resources.limits.memory` from `kube_pod_container_resource_limits`. The limits are not uniform — `de` is given more headroom than `pl` and `uk` — which is exactly why the line is per-country.\n\n**Careful with host numbers.** `k3s-worker-1` runs the k3s agent alongside all three pods, so the host CPU and host memory on the fleet dashboard are always above any one worker's. Every panel here is process-scoped precisely so you are never reading k3s's overhead, or a sibling worker, as this worker's behaviour."
       }
     },
     {
@@ -121,8 +121,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(time() - process_start_time_seconds{job=\"kinowo-worker\"}) / 3600",
-          "legendFormat": "uptime h",
+          "expr": "(time() - process_start_time_seconds{job=\"kinowo-worker\",country=~\"$country\"}) / 3600",
+          "legendFormat": "uptime h {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -159,8 +159,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(process_cpu_seconds_total{job=\"kinowo-worker\"}[5m])) * 100",
-          "legendFormat": "process cc",
+          "expr": "sum by (country) (rate(process_cpu_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
+          "legendFormat": "process cc {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -168,8 +168,8 @@
         },
         {
           "refId": "B",
-          "expr": "sum(rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\"}[5m])) * 100",
-          "legendFormat": "JIT cc",
+          "expr": "sum by (country) (rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
+          "legendFormat": "JIT cc {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -177,8 +177,8 @@
         },
         {
           "refId": "C",
-          "expr": "sum(rate(jvm_gc_collection_seconds_sum{job=\"kinowo-worker\"}[5m])) * 100",
-          "legendFormat": "GC cc",
+          "expr": "sum by (country) (rate(jvm_gc_collection_seconds_sum{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
+          "legendFormat": "GC cc {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -216,8 +216,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",area=\"heap\"}",
-          "legendFormat": "heap used",
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
+          "legendFormat": "heap used {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -225,8 +225,8 @@
         },
         {
           "refId": "B",
-          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",pool=\"Tenured Gen\"}",
-          "legendFormat": "old gen (tenured)",
+          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=\"Tenured Gen\"}",
+          "legendFormat": "old gen {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -234,8 +234,8 @@
         },
         {
           "refId": "C",
-          "expr": "jvm_memory_max_bytes{job=\"kinowo-worker\",area=\"heap\"}",
-          "legendFormat": "heap cap (-Xmx)",
+          "expr": "jvm_memory_max_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
+          "legendFormat": "heap cap {{country}} (-Xmx)",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -245,7 +245,7 @@
     },
     {
       "id": 2,
-      "title": "Resident set size (RSS) — two independent readings",
+      "title": "Resident set size (RSS) against the pod cgroup limit",
       "description": "Two readings of the same number: process_resident_memory_bytes (the JVM's process exporter) and kinowo_worker_process_rss_bytes (VmRSS, read from /proc/self/status by the vitals sampler that also computes the off-book gap below). They should lie on top of each other — drawn together so the gap panel's arithmetic is checkable rather than taken on faith. NO CEILING LINE ANY MORE: this used to carry the Fly machine's ~960MB cgroup limit, but the pod's memory limit on k3s is not exported (the kube-state-metrics target is down), so there is nothing honest to draw. Read the SLOPE, not the distance to a line — a steady climb that resets only at a restart is the native working set growing, and the uptime panel will show you the restarts it ends in.",
       "type": "timeseries",
       "datasource": {
@@ -272,8 +272,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "process_resident_memory_bytes{job=\"kinowo-worker\"}",
-          "legendFormat": "RSS (process exporter)",
+          "expr": "process_resident_memory_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "RSS {{country}} (process exporter)",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -281,12 +281,21 @@
         },
         {
           "refId": "C",
-          "expr": "kinowo_worker_process_rss_bytes{job=\"kinowo-worker\"}",
-          "legendFormat": "VmRSS (/proc/self/status)",
+          "expr": "kinowo_worker_process_rss_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "VmRSS {{country}} (/proc/self/status)",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
           }
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (label_replace(kube_pod_container_resource_limits{namespace=\"kinowo\",resource=\"memory\",pod=~\"worker-(${country:pipe})-.*\"}, \"country\", \"$1\", \"pod\", \"worker-([a-z]+)-.*\"))",
+          "legendFormat": "cgroup limit {{country}}"
         }
       ]
     },
@@ -319,8 +328,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kinowo_worker_native_memory_bytes{job=\"kinowo-worker\"}",
-          "legendFormat": "{{category}}",
+          "expr": "kinowo_worker_native_memory_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "{{country}} {{category}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -357,8 +366,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kinowo_worker_native_offbook_gap_bytes{job=\"kinowo-worker\"}",
-          "legendFormat": "off-book gap",
+          "expr": "kinowo_worker_native_offbook_gap_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "off-book gap {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -396,8 +405,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "jvm_buffer_pool_used_bytes{job=\"kinowo-worker\"}",
-          "legendFormat": "{{pool}} used",
+          "expr": "jvm_buffer_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "{{country}} {{pool}} used",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -405,8 +414,8 @@
         },
         {
           "refId": "B",
-          "expr": "jvm_buffer_pool_capacity_bytes{job=\"kinowo-worker\"}",
-          "legendFormat": "{{pool}} capacity",
+          "expr": "jvm_buffer_pool_capacity_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "{{country}} {{pool}} capacity",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -443,8 +452,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "jvm_threads_current{job=\"kinowo-worker\"}",
-          "legendFormat": "current",
+          "expr": "jvm_threads_current{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "current {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -452,8 +461,8 @@
         },
         {
           "refId": "B",
-          "expr": "jvm_threads_peak{job=\"kinowo-worker\"}",
-          "legendFormat": "peak",
+          "expr": "jvm_threads_peak{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "peak {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -490,8 +499,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1000*sum(rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[5m]))/sum(rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[5m]))",
-          "legendFormat": "avg project ms",
+          "expr": "1000*sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[$__rate_interval]))/sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "avg project ms {{country}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -530,8 +539,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[5m])) / sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "{{source}}",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) / sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{source}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -569,8 +578,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (source, outcome) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"miss_.*\"}[5m]))",
-          "legendFormat": "{{source}} {{outcome}}",
+          "expr": "sum by (country, source, outcome) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"miss_.*\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{source}} {{outcome}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -609,14 +618,65 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[5m])) / sum by (source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[5m]))",
-          "legendFormat": "{{source}}",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[$__rate_interval])) / sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{source}}",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
           }
         }
       ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "GC — collections per second by collector",
+      "description": "How often each collector runs, per country. Young ('Copy') climbing with a flat old-gen line is normal churn; 'MarkSweepCompact' climbing is the shape that precedes a heap-exhaustion death, and pairs with the GC centi-cores line on the CPU panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 57
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, gc) (rate(jvm_gc_collection_seconds_count{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{gc}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "id": 14,
@@ -787,7 +847,7 @@
       ]
     }
   ],
-  "description": "Why the worker is misbehaving, once the application-health dashboard has told you that it is. Memory (heap, NMT native categories, the off-book gap, buffers), CPU split by JIT and GC, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from the worker's own /metrics on k3s via local-prometheus. The Fly CPU-credit panel and the cgroup ceiling line were deleted, not broken — see the note at the top.",
+  "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are THREE workers — pl, de and uk, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. The Fly CPU-credit panel was deleted, not broken — see the note at the top.",
   "links": [
     {
       "type": "dashboards",

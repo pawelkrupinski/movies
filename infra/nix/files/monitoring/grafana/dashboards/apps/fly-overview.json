@@ -89,7 +89,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "The application is one thing on two platforms. **The worker runs on k3s** (`k3s-worker-1`, 10.20.0.12) and **the web tier is still on Fly**, reached through the WireGuard peer. Both are scraped by the fleet's own Prometheus, straight off each app's `/metrics`, so nothing here depends on a Fly credential. Where a panel plots both, the legend says which tier and which platform.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **HTTP request rate and latency for the web tier.** These came from `fly_app_http_response_time_seconds`, measured by the Fly *proxy*, not by the app. The app exports no request histogram of its own, so there is currently NO latency signal for the web tier at any percentile. This is the single biggest hole; closing it needs an HTTP metric added to the application.\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. The worker left that world entirely \u2014 a k3s pod on a dedicated 8-core box has no credit bucket \u2014 and the web tier's credit is only visible from inside Fly's managed Prometheus.\n* **Host memory-available and volume disk for the web tier.** Same reason. For the worker these facts now come from node_exporter and live on the fleet dashboard, linked above; the heap panel below carries a host-free line so the common case needs no second tab.\n\n**Read host CPU and host memory as the HOST, not as the worker.** `k3s-worker-1` also runs the k3s agent, so its node_exporter numbers are always above the worker's own. Where a question is about the worker specifically, the panels below use the JVM's own process metrics."
+        "content": "The application is one thing on two platforms. **Three workers run on k3s** \u2014 `worker-pl`, `worker-de` and `worker-uk`, each its own deployment on `k3s-worker-1` (10.20.0.12) \u2014 and **the web tier is still on Fly**, reached through the WireGuard peer. Both are scraped by the fleet's own Prometheus, straight off each app's `/metrics`, so nothing here depends on a Fly credential.\n\n**Use the Country variable.** Every worker panel is scoped by it and carries the country in its legend, so All compares the three side by side and a single value isolates one. **The web tier serves Poland only**, so the four web-sourced panels (films served per city, residential proxy, empty venues) are deliberately *not* country-filtered \u2014 they would go blank on `de` or `uk` and say nothing true.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. The workers left that world entirely \u2014 a k3s pod on a dedicated 8-core box has no credit bucket \u2014 and the web tier's credit is only visible from inside Fly's managed Prometheus.\n* **Fly edge/proxy request counts and per-region edge latency.** These came from `fly_edge_*`, measured at Fly's edge. The app's own HTTP metrics below replace the *app-side* view of the same question, but the edge view (TLS handshakes, per-PoP breakdown, requests rejected before reaching the app) has no substitute.\n* **Host memory-available and volume disk for the web tier.** Same reason. For the workers these facts now come from node_exporter and live on the fleet dashboard, linked above; the heap panel below carries a host-free line so the common case needs no second tab.\n\n**Web HTTP is now the app's own.** `kinowo_web_http_requests_total` and `kinowo_web_http_request_duration_seconds` are exported by the application, so request rate, error share and latency percentiles are back \u2014 measured at the app, not at Fly's proxy.\n\n**Read host CPU and host memory as the HOST, not as a worker.** `k3s-worker-1` runs the k3s agent and all three worker pods, so its node_exporter numbers are always above any one worker's. Where a question is about a worker specifically, the panels below use that JVM's own process metrics."
       }
     },
     {
@@ -136,14 +136,18 @@
         {
           "refId": "A",
           "expr": "up{job=~\"kinowo-web|kinowo-worker\"}",
-          "legendFormat": "{{tier}} ({{platform}})"
+          "legendFormat": "{{tier}} {{country}} ({{platform}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ],
       "description": "1 = Prometheus scraped that tier's own /metrics endpoint on the last try. The two tiers are reached completely differently and fail differently: the worker is a k3s NodePort on the private network (10.20.0.12:30900), so a 0 there really is the worker being down or wedged; the web tier is still on Fly and is reached through the WireGuard peer into Fly's 6PN, so a 0 there can equally mean the TUNNEL dropped while the app is serving users perfectly well. Before declaring a web outage, check the WireGuard handshake age on the fleet dashboard and load the site."
     },
     {
       "id": 8,
-      "title": "Worker \u2014 throttled (1 = reapers backing off, 0 = full enqueue)",
+      "title": "Worker \u2014 throttled by country (1 = reapers backing off, 0 = full enqueue)",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -173,10 +177,65 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max(kinowo_worker_throttled{country=~\"$country\"})",
-          "legendFormat": "throttled"
+          "expr": "max by (country) (kinowo_worker_throttled{country=~\"$country\"})",
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
+    },
+    {
+      "id": 60,
+      "type": "timeseries",
+      "title": "Worker pods (k3s) \u2014 container restarts by country",
+      "description": "Cumulative container restarts for each worker Deployment, from kube-state-metrics. A step up is a pod that died and was rescheduled \u2014 usually OOMKill or a failed liveness probe. Flat at zero is healthy.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (label_replace(kube_pod_container_status_restarts_total{namespace=\"kinowo\",pod=~\"worker-(${country:pipe})-.*\"}, \"country\", \"$1\", \"pod\", \"worker-([a-z]+)-.*\"))",
+          "legendFormat": "{{country}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "id": 9,
@@ -207,13 +266,21 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-worker\"}[5m]) * 100",
-          "legendFormat": "worker (k3s)"
+          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval]) * 100",
+          "legendFormat": "worker {{country}} (k3s)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
-          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-web\"}[5m]) * 100",
-          "legendFormat": "web (Fly)"
+          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-web\"}[$__rate_interval]) * 100",
+          "legendFormat": "web (Fly)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -232,7 +299,7 @@
     },
     {
       "id": 33,
-      "title": "kinowo \u2014 films served per city (all future showings)",
+      "title": "Web (Fly \u00b7 Poland only) \u2014 films served per city (all future showings)",
       "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
       "type": "timeseries",
       "datasource": {
@@ -260,14 +327,18 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kinowo_web_movies_served{country=~\"$country\",scope=\"all\"}",
-          "legendFormat": "{{city}}"
+          "expr": "kinowo_web_movies_served{scope=\"all\"}",
+          "legendFormat": "{{city}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
     {
       "id": 34,
-      "title": "kinowo \u2014 films served per city (showing tomorrow)",
+      "title": "Web (Fly \u00b7 Poland only) \u2014 films served per city (showing tomorrow)",
       "description": "Distinct films each /:city/ page shows for tomorrow (\u22651 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
       "type": "timeseries",
       "datasource": {
@@ -295,8 +366,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "kinowo_web_movies_served{country=~\"$country\",scope=\"tomorrow\"}",
-          "legendFormat": "{{city}}"
+          "expr": "kinowo_web_movies_served{scope=\"tomorrow\"}",
+          "legendFormat": "{{city}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -331,7 +406,11 @@
         {
           "refId": "A",
           "expr": "kinowo_worker_movies_served{country=~\"$country\",scope=\"all\"}",
-          "legendFormat": "{{city}}"
+          "legendFormat": "{{country}} {{city}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -366,13 +445,17 @@
         {
           "refId": "A",
           "expr": "kinowo_worker_movies_served{country=~\"$country\",scope=\"tomorrow\"}",
-          "legendFormat": "{{city}}"
+          "legendFormat": "{{country}} {{city}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
     {
       "id": 41,
-      "title": "kinowo \u2014 total upcoming showtimes served (all cities)",
+      "title": "kinowo \u2014 total upcoming showtimes per country (all cities)",
       "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city \u2014 sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE \u2014 this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": {
@@ -400,8 +483,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(kinowo_worker_showtimes{country=~\"$country\"})",
-          "legendFormat": "total showtimes"
+          "expr": "sum by (country) (kinowo_worker_showtimes{country=~\"$country\"})",
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -436,7 +523,11 @@
         {
           "refId": "A",
           "expr": "kinowo_worker_showtimes{country=~\"$country\"}",
-          "legendFormat": "{{city}}"
+          "legendFormat": "{{country}} {{city}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -471,7 +562,11 @@
         {
           "refId": "A",
           "expr": "kinowo_worker_corpus_movies{country=~\"$country\"}",
-          "legendFormat": "{{subset}}"
+          "legendFormat": "{{country}} {{subset}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -486,7 +581,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 69
       },
@@ -506,7 +601,11 @@
         {
           "refId": "A",
           "expr": "sum by (country) (rate(kinowo_worker_corpus_scan_incomplete_total{country=~\"$country\"}[$__rate_interval])) * 3600",
-          "legendFormat": "{{country}}"
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -525,7 +624,7 @@
     },
     {
       "id": 10,
-      "title": "Residential proxy \u2014 fetches served vs failed (recent 30 min, from web /metrics)",
+      "title": "Residential proxy \u2014 fetches served vs failed (web tier \u00b7 Poland only, recent 30 min)",
       "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed \u2192 Zyte fallback' is a silent cost regression \u2014 scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
       "type": "timeseries",
       "datasource": {
@@ -553,19 +652,27 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(kinowo_uptime_recent_successes{country=~\"$country\",service=\"Residential proxy\"})",
-          "legendFormat": "served by proxy"
+          "expr": "sum(kinowo_uptime_recent_successes{service=\"Residential proxy\"})",
+          "legendFormat": "served by proxy",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
-          "expr": "sum(kinowo_uptime_recent_failures{country=~\"$country\",service=\"Residential proxy\"})",
-          "legendFormat": "failed \u2192 Zyte fallback"
+          "expr": "sum(kinowo_uptime_recent_failures{service=\"Residential proxy\"})",
+          "legendFormat": "failed \u2192 Zyte fallback",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
     {
       "id": 54,
-      "title": "Venues answering with an EMPTY listing (count of services, recent 30 min)",
+      "title": "Venues answering with an EMPTY listing (web tier \u00b7 Poland only, recent 30 min)",
       "description": "How many services report kinowo_uptime_recent_zeroes \u2014 checks that neither succeeded nor failed: the request went through, the response parsed, and it held no screenings. This is the third outcome the /uptime page tracks and the only one no other panel or alert reads, which is what makes it the quietest failure we have: a cinema site that starts answering 200 with an empty listing counts as zero failures, so the proxy panel beside this one stays green, the failure-share alerts stay silent, and the films simply stop arriving. READ THE LEVEL AS A POPULATION, NOT A FAULT \u2014 measured 2026-07-28, ~123 of ~2,766 services sit here at any moment and every one of them had zero successes, which is what a genuinely dormant venue looks like (see the white-cinema sweeps: dormant, not broken). The signal is the STEP: a jump in this count is a batch of venues that just stopped returning results, and that lands later on the films-served and showtime-volume panels below. Which venues is a question for /uptime, which lists them by name \u2014 this panel exists to tell you WHEN to go look.",
       "type": "timeseries",
       "datasource": {
@@ -593,13 +700,21 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(kinowo_uptime_recent_zeroes{country=~\"$country\"} > 0)",
-          "legendFormat": "venues returning empty"
+          "expr": "count(kinowo_uptime_recent_zeroes > 0)",
+          "legendFormat": "venues returning empty",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
-          "expr": "count(kinowo_uptime_recent_successes{country=~\"$country\"} > 0)",
-          "legendFormat": "venues returning screenings"
+          "expr": "count(kinowo_uptime_recent_successes > 0)",
+          "legendFormat": "venues returning screenings",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -647,17 +762,29 @@
         {
           "refId": "A",
           "expr": "sum(rate(kinowo_worker_tasks_enqueued_total{country=~\"$country\",result=\"added\"}[$__rate_interval])) * 60",
-          "legendFormat": "enqueued"
+          "legendFormat": "enqueued",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "sum(rate(kinowo_worker_tasks_started_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "started"
+          "legendFormat": "started",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
           "expr": "sum(rate(kinowo_worker_tasks_finished_total{country=~\"$country\",outcome=\"done\"}[$__rate_interval])) * 60",
-          "legendFormat": "fully worked (done)"
+          "legendFormat": "fully worked (done)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -695,7 +822,11 @@
         {
           "refId": "A",
           "expr": "sum by (task_type) (rate(kinowo_worker_tasks_enqueued_total{country=~\"$country\",result=\"added\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{task_type}}"
+          "legendFormat": "{{task_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -733,7 +864,11 @@
         {
           "refId": "A",
           "expr": "sum by (task_type) (rate(kinowo_worker_tasks_started_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{task_type}}"
+          "legendFormat": "{{task_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -771,7 +906,11 @@
         {
           "refId": "A",
           "expr": "sum by (task_type) (rate(kinowo_worker_tasks_finished_total{country=~\"$country\",outcome=\"done\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{task_type}}"
+          "legendFormat": "{{task_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -822,7 +961,11 @@
         {
           "refId": "A",
           "expr": "sum by (outcome) (rate(kinowo_worker_tasks_finished_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{outcome}}"
+          "legendFormat": "{{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -857,17 +1000,29 @@
         {
           "refId": "A",
           "expr": "histogram_quantile(0.99, sum by (le) (rate(kinowo_worker_task_duration_seconds_bucket{country=~\"$country\"}[$__rate_interval])))",
-          "legendFormat": "p99"
+          "legendFormat": "p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(kinowo_worker_task_duration_seconds_bucket{country=~\"$country\"}[$__rate_interval])))",
-          "legendFormat": "p95"
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
           "expr": "histogram_quantile(0.50, sum by (le) (rate(kinowo_worker_task_duration_seconds_bucket{country=~\"$country\"}[$__rate_interval])))",
-          "legendFormat": "p50"
+          "legendFormat": "p50",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -932,17 +1087,29 @@
         {
           "refId": "A",
           "expr": "sum(kinowo_worker_queue_depth{country=~\"$country\",state=\"waiting\"})",
-          "legendFormat": "waiting"
+          "legendFormat": "waiting",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "sum(kinowo_worker_queue_depth{country=~\"$country\",state=\"worked_on\"})",
-          "legendFormat": "worked_on"
+          "legendFormat": "worked_on",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
-          "expr": "max(kinowo_worker_pool_size)",
-          "legendFormat": "pool size"
+          "expr": "sum(kinowo_worker_pool_size{country=~\"$country\"})",
+          "legendFormat": "pool size (selected countries)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -980,7 +1147,11 @@
         {
           "refId": "A",
           "expr": "kinowo_worker_queue_waiting_by_type{country=~\"$country\"} > 0",
-          "legendFormat": "{{task_type}}"
+          "legendFormat": "{{country}} {{task_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1015,7 +1186,11 @@
         {
           "refId": "A",
           "expr": "kinowo_worker_queue_oldest_waiting_age_seconds{country=~\"$country\"} > 0",
-          "legendFormat": "{{task_type}}"
+          "legendFormat": "{{country}} {{task_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1050,7 +1225,11 @@
         {
           "refId": "A",
           "expr": "histogram_quantile(0.95, sum by (le, task_type) (rate(kinowo_worker_task_duration_seconds_bucket{country=~\"$country\"}[$__rate_interval])))",
-          "legendFormat": "{{task_type}}"
+          "legendFormat": "{{task_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1085,7 +1264,11 @@
         {
           "refId": "A",
           "expr": "histogram_quantile(0.50, sum by (le, task_type) (rate(kinowo_worker_task_duration_seconds_bucket{country=~\"$country\"}[$__rate_interval])))",
-          "legendFormat": "{{task_type}}"
+          "legendFormat": "{{task_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1123,7 +1306,11 @@
         {
           "refId": "A",
           "expr": "kinowo_worker_staging_movies{country=~\"$country\"}",
-          "legendFormat": "{{step}}"
+          "legendFormat": "{{country}} {{step}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1174,12 +1361,20 @@
         {
           "refId": "A",
           "expr": "sum by (reason) (rate(kinowo_worker_merges_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{reason}}"
+          "legendFormat": "{{reason}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "sum(rate(kinowo_worker_splits_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "splits"
+          "legendFormat": "splits",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1214,7 +1409,11 @@
         {
           "refId": "A",
           "expr": "sum by (op) (rate(kinowo_worker_movie_change_events_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{op}}"
+          "legendFormat": "{{op}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1249,7 +1448,11 @@
         {
           "refId": "A",
           "expr": "sum by (kind) (rate(kinowo_worker_movie_change_update_kinds_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{kind}}"
+          "legendFormat": "{{kind}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1284,12 +1487,20 @@
         {
           "refId": "A",
           "expr": "sum(rate(kinowo_worker_readmodel_films_pruned_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "films pruned"
+          "legendFormat": "films pruned",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "sum(rate(kinowo_worker_readmodel_reconcile_sweeps_total{country=~\"$country\", did_work=\"true\"}[$__rate_interval])) * 60",
-          "legendFormat": "prune sweeps that removed something"
+          "legendFormat": "prune sweeps that removed something",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1324,7 +1535,11 @@
         {
           "refId": "A",
           "expr": "sum by (kind) (rate(kinowo_worker_cache_rehydrate_changes_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{kind}}"
+          "legendFormat": "{{kind}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1339,7 +1554,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 179
       },
@@ -1359,7 +1574,11 @@
         {
           "refId": "A",
           "expr": "sum by (outcome) (rate(kinowo_worker_readmodel_metadata_projections_total{country=~\"$country\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{outcome}}"
+          "legendFormat": "{{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1406,8 +1625,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (site) (kinowo_worker_rating_resolved_not_run{country=~\"$country\"})",
-          "legendFormat": "{{site}}"
+          "expr": "sum by (country, site) (kinowo_worker_rating_resolved_not_run{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{site}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1441,8 +1664,12 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by (site) (kinowo_worker_rating_resolved_not_run_oldest_age_seconds{country=~\"$country\"}) / 3600",
-          "legendFormat": "{{site}}"
+          "expr": "max by (country, site) (kinowo_worker_rating_resolved_not_run_oldest_age_seconds{country=~\"$country\"}) / 3600",
+          "legendFormat": "{{country}} {{site}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1477,12 +1704,20 @@
         {
           "refId": "A",
           "expr": "histogram_quantile(0.5, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket{country=~\"$country\"}[$__rate_interval]))) / 60",
-          "legendFormat": "p50 {{site}}"
+          "legendFormat": "p50 {{site}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "histogram_quantile(0.95, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket{country=~\"$country\"}[$__rate_interval]))) / 60",
-          "legendFormat": "p95 {{site}}"
+          "legendFormat": "p95 {{site}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1517,7 +1752,11 @@
         {
           "refId": "A",
           "expr": "max by (country) (kinowo_worker_cinema_scrape_oldest_age_seconds{country=~\"$country\"}) / 3600",
-          "legendFormat": "{{country}}"
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1552,7 +1791,11 @@
         {
           "refId": "A",
           "expr": "max by (country) (kinowo_worker_cinema_scrape_never_scraped{country=~\"$country\"})",
-          "legendFormat": "{{country}}"
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1587,7 +1830,11 @@
         {
           "refId": "A",
           "expr": "max by (country) (kinowo_worker_cinema_content_oldest_age_seconds{country=~\"$country\"}) / 86400",
-          "legendFormat": "{{country}}"
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1622,7 +1869,11 @@
         {
           "refId": "A",
           "expr": "max by (country) (kinowo_worker_cinema_never_content{country=~\"$country\"})",
-          "legendFormat": "{{country}}"
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1713,27 +1964,47 @@
         {
           "refId": "A",
           "expr": "node_memory_MemAvailable_bytes{host=\"k3s-worker-1\"}",
-          "legendFormat": "Host free"
+          "legendFormat": "Host free",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
-          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",area=\"heap\"}",
-          "legendFormat": "Heap used"
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
+          "legendFormat": "Heap used {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
-          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",pool=\"Tenured Gen\"}",
-          "legendFormat": "Old gen (tenured)"
+          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=\"Tenured Gen\"}",
+          "legendFormat": "Old gen {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "D",
-          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",area=\"nonheap\"}",
-          "legendFormat": "Non-heap"
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"nonheap\"}",
+          "legendFormat": "Non-heap {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "E",
-          "expr": "jvm_memory_max_bytes{job=\"kinowo-worker\",area=\"heap\"}",
-          "legendFormat": "Heap cap (-Xmx)"
+          "expr": "jvm_memory_max_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
+          "legendFormat": "Heap cap {{country}} (-Xmx)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1795,27 +2066,47 @@
         {
           "refId": "A",
           "expr": "jvm_memory_used_bytes{job=\"kinowo-web\",area=\"heap\"}",
-          "legendFormat": "Heap used"
+          "legendFormat": "Heap used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-web\",pool=\"G1 Old Gen\"}",
-          "legendFormat": "Old gen (G1)"
+          "legendFormat": "Old gen (G1)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
           "expr": "jvm_memory_used_bytes{job=\"kinowo-web\",area=\"nonheap\"}",
-          "legendFormat": "Non-heap"
+          "legendFormat": "Non-heap",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "D",
           "expr": "process_resident_memory_bytes{job=\"kinowo-web\"}",
-          "legendFormat": "RSS"
+          "legendFormat": "RSS",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "E",
           "expr": "jvm_memory_max_bytes{job=\"kinowo-web\",area=\"heap\"}",
-          "legendFormat": "Heap cap (-Xmx)"
+          "legendFormat": "Heap cap (-Xmx)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -1952,22 +2243,38 @@
         {
           "refId": "A",
           "expr": "sum(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m]) * 100)",
-          "legendFormat": "read-model projection"
+          "legendFormat": "read-model projection",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
-          "expr": "sum(rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\"}[5m]) * 100)",
-          "legendFormat": "JIT compilation"
+          "expr": "sum(rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[5m]) * 100)",
+          "legendFormat": "JIT compilation",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
-          "expr": "clamp_min( sum(rate(process_cpu_seconds_total{job=\"kinowo-worker\"}[5m]) * 100) - sum(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m]) * 100) - sum(rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\"}[5m]) * 100), 0 )",
-          "legendFormat": "other (GC, scrape, idle poll)"
+          "expr": "clamp_min( sum(rate(process_cpu_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[5m]) * 100) - sum(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m]) * 100) - sum(rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[5m]) * 100), 0 )",
+          "legendFormat": "other (GC, scrape, idle poll)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "D",
-          "expr": "sum(rate(process_cpu_seconds_total{job=\"kinowo-worker\"}[5m]) * 100)",
-          "legendFormat": "total process CPU"
+          "expr": "sum(rate(process_cpu_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[5m]) * 100)",
+          "legendFormat": "total process CPU",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -2002,22 +2309,38 @@
         {
           "refId": "A",
           "expr": "sum(rate(kinowo_worker_movie_change_events_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "movie change-events /s (projection trigger)"
+          "legendFormat": "movie change-events /s (projection trigger)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "projection calls /s"
+          "legendFormat": "projection calls /s",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
           "expr": "sum(rate(kinowo_worker_readmodel_writes_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "readmodel writes /s (projection output)"
+          "legendFormat": "readmodel writes /s (projection output)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "D",
           "expr": "sum(rate(kinowo_worker_tasks_started_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "tasks started /s"
+          "legendFormat": "tasks started /s",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -2077,22 +2400,38 @@
         {
           "refId": "A",
           "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{country=~\"$country\"}[5m]))",
-          "legendFormat": "projections /s"
+          "legendFormat": "projections /s",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "B",
           "expr": "histogram_quantile(0.5, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\"}[5m])) by (le))*1000",
-          "legendFormat": "p50 ms"
+          "legendFormat": "p50 ms",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "C",
           "expr": "histogram_quantile(0.95, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\"}[5m])) by (le))*1000",
-          "legendFormat": "p95 ms"
+          "legendFormat": "p95 ms",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         },
         {
           "refId": "D",
           "expr": "histogram_quantile(0.99, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\"}[5m])) by (le))*1000",
-          "legendFormat": "p99 ms"
+          "legendFormat": "p99 ms",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -2142,7 +2481,11 @@
           "refId": "A",
           "expr": "sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\"}[5m])) by (le)",
           "format": "heatmap",
-          "legendFormat": "{{le}}"
+          "legendFormat": "{{le}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
       ]
     },
@@ -2205,7 +2548,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (route) (rate(kinowo_web_http_requests_total[5m]))",
+          "expr": "sum by (route) (rate(kinowo_web_http_requests_total[$__rate_interval]))",
           "legendFormat": "{{route}}",
           "datasource": {
             "type": "prometheus",
@@ -2216,8 +2559,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Error rate (5xx as a share of all requests)",
-      "description": "The number to alert on. A steady 4xx floor is EXPECTED and is not shown here: /api/me answers 401 to every anonymous caller, so 4xx never reaches zero and is not a fault signal.",
+      "title": "Error share (4xx / 5xx as a share of all requests)",
+      "description": "Share of web-tier responses that were 4xx or 5xx. Guarded with `or vector(0)` so a healthy site draws a flat zero line rather than rendering \"No data\" \u2014 an empty panel here is indistinguishable from a broken one.",
       "id": 9004,
       "datasource": {
         "type": "prometheus",
@@ -2261,12 +2604,21 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(kinowo_web_http_requests_total{status=\"5xx\"}[5m])) / clamp_min(sum(rate(kinowo_web_http_requests_total[5m])), 0.001)",
-          "legendFormat": "5xx share",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
-          }
+          },
+          "expr": "(sum(rate(kinowo_web_http_requests_total{status=\"5xx\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(kinowo_web_http_requests_total[$__rate_interval])), 0.001)",
+          "legendFormat": "5xx share"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "(sum(rate(kinowo_web_http_requests_total{status=\"4xx\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(kinowo_web_http_requests_total[$__rate_interval])), 0.001)",
+          "legendFormat": "4xx share"
         }
       ]
     },
@@ -2316,7 +2668,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(kinowo_web_http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(kinowo_web_http_request_duration_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p50",
           "datasource": {
             "type": "prometheus",
@@ -2325,7 +2677,7 @@
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.90, sum by (le) (rate(kinowo_web_http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(kinowo_web_http_request_duration_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p90",
           "datasource": {
             "type": "prometheus",
@@ -2334,7 +2686,7 @@
         },
         {
           "refId": "C",
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(kinowo_web_http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(kinowo_web_http_request_duration_seconds_bucket[$__rate_interval])))",
           "legendFormat": "p99",
           "datasource": {
             "type": "prometheus",
@@ -2389,7 +2741,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(kinowo_web_http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(kinowo_web_http_request_duration_seconds_bucket[$__rate_interval])))",
           "legendFormat": "{{route}}",
           "datasource": {
             "type": "prometheus",
@@ -2399,7 +2751,7 @@
       ]
     }
   ],
-  "description": "One screen for the whole application, across the two platforms it now runs on: the scraping worker on k3s and the web tier still on Fly. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible \u2014 most importantly, the web tier has no HTTP latency signal at all any more.",
+  "description": "One screen for the whole application, across the two platforms it now runs on: three scraping workers (pl, de, uk) on k3s and the web tier still on Fly. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible.",
   "links": [
     {
       "type": "dashboards",
