@@ -89,12 +89,52 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 3. Add a matrix leg to `.github/workflows/deploy.yml` (the no-op guard is keyed on
    `bin=worker` + `matrix.toml`, so each worker app tracks its own toml).
 
-## 4. Web frontend (`showtimes-<cc>`)
+## 4. Web frontend (`<cc>.showtimes.cc`)
 
-1. **`fly.<cc>.toml`** — clone `fly.de.toml`: `app = 'showtimes-<cc>'`,
-   `KINOWO_COUNTRY = '<cc>'`, `primary_region` near the users (DE→`fra`, UK→`lhr`),
-   G1 web JVM tuning. Add a matrix leg to `deploy.yml`.
-2. **Flip `Country.<Cc>.webUrl` → `Some("https://<cc>.showtimes.cc")`** — now
+The web tier is three k3s Deployments on `k3s-worker-1`, not three Fly apps — see
+`infra/kubernetes/web/README.md` for the shape and `docs/domain-cutover.md` for the
+host/DNS side. A fourth country is a fourth overlay, one line in each of the two places that
+name its NodePort by number (the Caddy vhost and the Prometheus target), a DNS
+record, and the `webUrl` flip.
+
+1. **A kustomize overlay, `infra/kubernetes/web/overlays/<cc>/`** — copy
+   `overlays/de/` and change **only** the three things a country is allowed to
+   differ in: `nameSuffix: -<cc>` + the `country: <cc>` label in
+   `kustomization.yaml`, `KINOWO_COUNTRY: "<cc>"` in the ConfigMap patch, and the
+   Service's `nodePort`. `KINOWO_COUNTRY` is **singular** (the worker's is
+   `KINOWO_COUNTRIES`) and it also selects the database, which is why `MONGODB_DB`
+   is never set here. CPU request: `500m` unless the roster is Poland-sized —
+   memory stays at the base's 1Gi request+limit, which is the sizing proven not to
+   OOM. Anything else you find yourself copying belongs in `base/` instead.
+   Add `<cc>` to `COUNTRIES=(...)` in `infra/kubernetes/apply.sh`, which enumerates
+   them for `apply.sh web all`.
+2. **Allocate the next free NodePort.** The workers hold 30900–30902 and the web
+   tier 30910 (pl) / 30911 (de) / 30912 (uk), so a fourth takes 30913. It is
+   **fixed, never allocated**: the Caddy vhost and the Prometheus target both name
+   the number, so a Service re-created with a fresh port takes the site off the
+   internet and turns the scrape target red at the same moment. Keep the overlay at
+   **one replica** — a second pod behind one NodePort makes kube-proxy alternate
+   between two independent sets of counters and every `kinowo_web_*` alert sees
+   phantom resets.
+3. **A Caddy vhost** in `infra/nix/hosts/k3s-worker-1/default.nix`:
+   `"<cc>.showtimes.cc".upstream = "127.0.0.1:30913";`. Nothing in the cluster
+   terminates TLS — k3s runs with traefik and servicelb disabled — so Caddy on the
+   node *is* the ingress, and the pod's NodePort stays unreachable from outside
+   (the firewall opens 22/80/443 and nothing else).
+4. **A DNS A record at OVH**, `<cc>.showtimes.cc → 204.168.140.213`, **before** the
+   first deploy. Caddy issues certificates over ACME HTTP-01, so a name that does
+   not yet resolve fails issuance and the visitor gets a hard TLS error rather than
+   a degraded page — and Let's Encrypt rate-limits *failed* validations, so being
+   early costs a backoff too. `docs/domain-cutover.md` has the full record list.
+5. **A Prometheus target** in `infra/nix/files/monitoring/scrape-kinowo-apps.yaml`,
+   under the `kinowo-web` job:
+   `- targets: ["10.20.0.12:30913"]` with
+   `labels: { app: kinowo, country: <cc>, tier: web, platform: k3s, instance: kinowo-web-<cc> }`.
+   Prometheus runs outside the cluster with no Kubernetes credentials, so it can
+   neither discover the pod nor resolve cluster DNS; the NodePort is the only
+   address that survives a rollout. The same file's `kinowo-worker` job needs the
+   worker's target alongside it (phase 3).
+6. **Flip `Country.<Cc>.webUrl` → `Some("https://<cc>.showtimes.cc")`** — now
    `switchable`. This one flag AUTO-adds the country to (a) the navbar country
    `<select>`, (b) the debug `?country=` switcher + the dev per-country `DebugStack`
    wiring, and (c) the `/api/catalog` mobile endpoint — all three iterate
@@ -104,12 +144,22 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
    catalog seeds** (`CatalogSeedSpec` rewrites `ios/…/catalog-seed.json` +
    `android/…/catalog-seed.json` — mobile then picks up the country + cities
    automatically).
-3. Provision: `flyctl apps create showtimes-<cc>` + its 7 web secrets — `MONGODB_URI`
-   (prod, same as the worker), OAuth (`GOOGLE_*`/`FACEBOOK_*`), `ADMIN_ALLOWLIST`
-   from `.env.local`, and a **fresh** `APPLICATION_SECRET` (per-app; `secrets.token_urlsafe(48)`).
-   **OAuth login needs the new `<cc>.showtimes.cc` redirect registered in the
-   Google/Facebook consoles** (manual, provider-side) — the repertoire works
-   without it.
+7. **Secrets need nothing new.** All three Deployments `envFrom` the one
+   `kinowo/web-secrets` Secret in the cluster (`MONGODB_URI` at Mongo's private
+   address, TMDB/OMDb, the OAuth client pairs, Sentry, the admin allowlist), so a
+   fourth country inherits it by existing — `infra/kubernetes/web/README.md` lists
+   the keys. Only a value genuinely specific to the new country would need adding,
+   and the Secret is built from the repo-root `.env.local` and piped over SSH
+   rather than passed as arguments, so no value ever reaches a process list.
+   **OAuth login still needs the new `<cc>.showtimes.cc` redirect registered in the
+   Google/Facebook consoles** (manual, provider-side; `AuthController.callbackUrl`
+   builds it from the request host, so no code names the domain) — the repertoire
+   works without it.
+8. **Roll it out.** CI builds `ghcr.io/pawelkrupinski/movies-web:<sha>`; the new
+   Deployment does not exist yet, so create it once with
+   `infra/kubernetes/apply.sh web <cc>` and let CI pin builds after that. Never
+   plain `kubectl apply` — `apply.sh` exists to stop an apply reverting the pinned
+   image to `:latest`.
 
 ## 5. Localization
 
@@ -187,33 +237,51 @@ Play-installed build auto-verifies (see `web/src/main/resources/wellknown/README
 
 ## 7. Observability
 
-`fly/grafana/victoria/scrape.yml` — add a `kinowo-worker-<cc>` target (its
-`kinowo_worker_*` series carry `country="<cc>"`) and a `showtimes-<cc>-web` target.
-Two per-country Grafana steps, and no more — nothing else enumerates countries:
+**The live stack is the fleet's own**, on `monitoring-1`: Prometheus + Grafana at
+`grafana.kinowo.net`, configured under `infra/nix/files/monitoring/`. The
+`fly/grafana/` tree is the RETIRED Grafana-on-Fly stack (`kinowo-grafana` is scaled
+to zero, and the deploy annotation step in `deploy.yml` carries the scar of pointing
+at it) — but it is still committed and still read by the `Grafana*Spec`s under
+`worker/src/test/scala/deploy/`, so keeping it consistent is a CI obligation rather
+than a production one. Do both:
 
-1. **`fly/grafana/victoria/scrape.yml`** (above).
-2. **The throttle backstop** — `fly/grafana/provisioning/alerting/contact-points.yaml`
+1. **`infra/nix/files/monitoring/scrape-kinowo-apps.yaml`** — the one that matters.
+   Add the new worker target to the `kinowo-worker` job and the new web target to
+   the `kinowo-web` job, each carrying `country: <cc>` in its own label block
+   (phases 3 and 4 give the NodePorts). Prometheus runs outside the cluster with no
+   Kubernetes credentials and discovers nothing, so a country missing from this file
+   is simply unmonitored — no error, no red target, no panel.
+2. **`fly/grafana/victoria/scrape.yml`** — add a `kinowo-worker-<cc>` target (its
+   `kinowo_worker_*` series carry `country="<cc>"`) and a `showtimes-<cc>-web`
+   target, so the retired stack stays internally consistent for the specs that read
+   it.
+3. **The throttle backstop** — `fly/grafana/provisioning/alerting/contact-points.yaml`
    needs a `WorkerThrottle<Cc>` webhook pointing at
    `http://kinowo-worker-<cc>.internal:9000/throttle`, and
    `notification-policies.yaml` a route matching `app = kinowo-worker-<cc>` to it.
    This one is unavoidable: Grafana cannot template a webhook URL from
    `$labels.app`, so the target worker must be resolved at routing time. Skipping
-   it is caught by `GrafanaWorkerThrottleCoverageSpec` before it can ship — and
-   note the worker's PRIMARY self-throttle (`CpuCreditPoller`, which polls Fly
-   Prometheus for its own `FLY_APP_NAME`) is per-app automatically; this is only
-   the fail-open backstop for when that poller is unavailable.
+   it is caught by `GrafanaWorkerThrottleCoverageSpec` before it can ship. Read the
+   whole mechanism as inherited from the Fly era: its partner, the worker's primary
+   self-throttle `CpuCreditPoller`, watched a shared-cpu credit bucket that is a Fly
+   billing concept and does not exist for a pod on a dedicated eight-core box.
 
 Everything else follows automatically:
 
 - **App-level panels** (`kinowo_worker_*`, `kinowo_web_*` — task flow, queue depth,
   corpus, films served) carry a `country` label and are scoped by the `Country`
-  dropdown, so the new country appears in it as soon as its worker is scraped.
+  dropdown, which is a `label_values(...)` query rather than a list, so the new
+  country appears in it as soon as its targets are scraped.
+- **Host panels** on the fleet dashboards are node_exporter numbers for
+  `k3s-worker-1`, `monitoring-1` and `mongo-1`. They are per-HOST and can never be
+  per-country: every worker and web pod of every country shares one box, so read
+  them as the machine and drop to the per-process JVM panels for one country.
 - **Fly-host panels** (CPU load / credit / throttle / steal, memory, HTTP latency,
-  instance up) are fleet-wide and are NOT country-scoped — Fly's managed Prometheus
-  exports no `country` label on `fly_instance_*` / `fly_app_*`, only `app`. They
-  scope by app-name convention instead: `kinowo.*|showtimes-.*` for both roles,
-  `kinowo|showtimes-.*` web-only, `kinowo-worker.*` worker-only. Deploying
-  `showtimes-<cc>` / `kinowo-worker-<cc>` is enough to make them show up.
+  instance up) exist only in the retired `fly/grafana/` tree, are fleet-wide and are
+  NOT country-scoped — Fly's managed Prometheus exported no `country` label on
+  `fly_instance_*` / `fly_app_*`, only `app`. They scope by app-name convention
+  instead: `kinowo.*|showtimes-.*` for both roles, `kinowo|showtimes-.*` web-only,
+  `kinowo-worker.*` worker-only.
 
 Never widen those matchers by adding the new app to a list — an enumerated matcher
 is how `showtimes-de` went invisible on all six Fly-host panels and three alert

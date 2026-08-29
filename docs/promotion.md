@@ -15,8 +15,15 @@ them into repeat app users.
 
 ## 0. Do this first (an afternoon, compounding payoff)
 
-1. **Google Search Console** — verify `kinowo.net` (the verification token is
-   already in the landing `<head>`), then submit `https://kinowo.net/sitemap.xml`.
+1. **Google Search Console** — `kinowo.net` is a NEW property and needs its own
+   verification. The meta tag already in the landing `<head>` does NOT carry over:
+   it was issued for the old `kinowo.fly.dev` property, and a token is bound to the
+   property it was minted for. Verify by **DNS TXT record at OVH**, which is now
+   possible because we own the zone — on `fly.dev` it never was, since Fly held the
+   DNS — and which buys a Domain property covering every subdomain and both schemes
+   at once. Leave the old tag in the page regardless: removing a verification a
+   property still rests on un-verifies that property. Then submit
+   `https://kinowo.net/sitemap.xml`.
    Watch the Coverage / Pages report; fix anything stuck in "Discovered – not
    indexed". This is the single highest-leverage action — it's how the ~1,200
    city+film URLs the sitemap now exposes actually get crawled.

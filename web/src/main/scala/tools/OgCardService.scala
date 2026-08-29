@@ -22,8 +22,10 @@ class OgCardService(posters: PosterFetch) {
    *  the cinema fallbacks — mirroring the browser's `<img onerror>` fallback
    *  chain. The card walks it until one URL decodes. This matters because a
    *  film's *primary* poster is often a Multikino origin whose Cloudflare 403s
-   *  our Fly datacenter IP (and weserv SkipHosts Multikino, so the proxy can't
-   *  rescue it) — without the fallbacks ~a third of films rendered text-only. */
+   *  our datacentre egress IP — Fly's before the 2026-08-29 move, Hetzner's
+   *  since; the block is about datacentre ranges, not one provider (and weserv
+   *  SkipHosts Multikino, so the proxy can't rescue it) — without the fallbacks
+   *  ~a third of films rendered text-only. */
   def card(title: String, subtitle: String, badges: Seq[OgCardRenderer.Badge], posterUrls: Seq[String],
            host: String, director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] = {
     val candidates = posterUrls.filter(_.nonEmpty).take(OgCard.MaxPosterCandidates)

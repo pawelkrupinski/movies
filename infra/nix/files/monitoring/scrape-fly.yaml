@@ -1,7 +1,11 @@
 # ---------------------------------------------------------------------------------------------
 # FLY'S MANAGED PROMETHEUS -- the only source of fly_instance_* / fly_edge_*, which are produced
-# by Fly's own host agent and cannot be scraped from anywhere else. While the web and worker apps
-# stay on Fly, this is the only view of them.
+# by Fly's own host agent and cannot be scraped from anywhere else. IT NO LONGER DESCRIBES THE
+# PRODUCT. Both tiers moved to k3s on 2026-08-29 (docs/domain-cutover.md) and are scraped over
+# NodePorts by scrape-kinowo-apps.yaml, so all this job could return now is whatever is left in
+# the Fly org while it is wound down. It is off -- `fleet.prometheus.scrapeFly` is false, so this
+# file is not even written into scrape.d -- and it is kept rather than deleted because the auth
+# trap below cost real time to find and would cost it again.
 #
 # THE AUTH HEADER IS `FlyV1`, NOT `Bearer`. `authorization.type` DEFAULTS TO `Bearer` when it is
 # omitted, and a Bearer header against this endpoint returns 401 with "resolving organization" --

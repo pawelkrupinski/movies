@@ -137,18 +137,28 @@ in
     schedulable = false;
   };
 
-  # A SECOND PEER INTO FLY'S 6PN, AND IT IS HOW THE WEB TIER GETS MONITORED AT ALL.
+  # A SECOND PEER INTO FLY'S 6PN, WHOSE ONE JOB NO LONGER EXISTS.
   #
-  # THE PROBLEM IT SOLVES. `kinowo` and its `/metrics` still run on Fly, and the obvious way to see
-  # them -- Fly's managed Prometheus -- is unavailable: both read-only tokens for it are revoked, and
-  # the only remaining Fly token is org-wide and deploy-capable, which must not sit on the host that
-  # also runs the k3s control plane. So `fleet.prometheus.scrapeFly` is off and the Fly panels have
-  # no data.
+  # THE PROBLEM IT SOLVED. `kinowo` and its `/metrics` used to run on Fly, and the obvious way to
+  # see them -- Fly's managed Prometheus -- is unavailable: both read-only tokens for it are
+  # revoked, and the only remaining Fly token is org-wide and deploy-capable, which must not sit on
+  # the host that also runs the k3s control plane. So `fleet.prometheus.scrapeFly` is off and the
+  # Fly panels have no data. The way round it needed no Fly token at all: the app published its own
+  # `/metrics` on port 9000 over Fly's private network, so this peer scraped it DIRECTLY, on a
+  # WireGuard key this fleet holds rather than a token somebody else issues.
   #
-  # THE WAY ROUND IT NEEDS NO FLY TOKEN AT ALL. The app publishes its own `/metrics` on port 9000
-  # over Fly's private network, so a peer on 6PN can scrape it DIRECTLY -- richer than Fly's
-  # host-level gauges, and it cannot be revoked out from under us. The credential is a WireGuard key
-  # this fleet holds, not a token somebody else issues.
+  # WHAT IS TRUE SINCE THE 2026-08-29 CUTOVER. The web tier moved to k3s beside the workers
+  # (infra/kubernetes/web/, docs/domain-cutover.md), Prometheus now reaches BOTH tiers over
+  # NodePorts on the Hetzner private network, and the 6PN DNS-discovery job that resolved
+  # `kinowo.internal` through this tunnel was deleted with the move -- see
+  # infra/nix/files/monitoring/scrape-kinowo-apps.yaml. Nothing of the product runs on Fly any more,
+  # so nothing on this host routinely sends a packet down this tunnel.
+  #
+  # WHICH MAKES THE PEER A CANDIDATE FOR REMOVAL, left in place deliberately rather than by
+  # oversight: it is the only pre-built route from the monitoring box into Fly's private network
+  # while the Fly org is being wound down, and it costs one interface and one keypair. If nothing
+  # has needed it by the time the org goes, delete it here and revoke it with `fly wireguard
+  # remove` -- and note that the wireguard-fly alert rules then have one fewer host to watch.
   #
   # SEPARATE PEER FROM mongo-1's, deliberately: `fly wireguard create` mints one keypair per peer,
   # and sharing one across two hosts would mean two machines using one identity -- so revoking

@@ -20,11 +20,15 @@
 # ONE LESSON CARRIED OVER VERBATIM FROM bitcashier, about FORWARD. Its monitoring node needed
 # `forwarding_ipv4: true` because a published container port is a ROUTED path -- the packet is
 # DNATed and then has to traverse FORWARD, and with forwarding off the kernel drops it after the
-# DNAT with no RST and no counter anywhere. THAT APPLIES HERE THE DAY k3s DOES ANYTHING: a CNI
+# DNAT with no RST and no counter anywhere. THAT APPLIES HERE TODAY, NOT HYPOTHETICALLY: a CNI
 # turns forwarding on for itself, and a NodePort or a pod-to-pod hop across the flannel VXLAN below
-# is exactly that routed path. k3s-worker-1 is idle today, so nothing here turns forwarding on and
-# nothing here needs to; this note is so that the person who first schedules a workload knows the
-# shape of the failure before they meet it.
+# is exactly that routed path. k3s-worker-1 now carries every application pod
+# -- three workers and three web tiers -- and each public request reaches one of them through Caddy
+# on the host proxying to a NodePort on loopback, which is that DNAT-then-FORWARD path end to end.
+# Nothing HERE turns forwarding on and nothing here needs to, because flannel does it when k3s
+# starts; the note stays because the failure it describes is invisible from every angle a firewall
+# review looks from -- turn forwarding back off and the packets die after the DNAT with no RST and
+# no counter, leaving a correct ruleset, a listening socket, and a site that answers nothing.
 { config, lib, pkgs, ... }:
 
 let

@@ -1,6 +1,6 @@
 {
   "uid": "fly-overview",
-  "title": "Kinowo \u2014 application health (worker on k3s \u00b7 web on Fly)",
+  "title": "Kinowo \u2014 application health (worker and web, both on k3s)",
   "tags": [
     "kinowo",
     "application",
@@ -89,7 +89,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "The application is one thing on two platforms. **Three workers run on k3s** \u2014 `worker-pl`, `worker-de` and `worker-uk`, each its own deployment on `k3s-worker-1` (10.20.0.12) \u2014 and **the web tier is still on Fly**, reached through the WireGuard peer. Both are scraped by the fleet's own Prometheus, straight off each app's `/metrics`, so nothing here depends on a Fly credential.\n\n**Use the Country variable.** Every worker panel is scoped by it and carries the country in its legend, so All compares the three side by side and a single value isolates one. **The web tier serves Poland only**, so the four web-sourced panels (films served per city, residential proxy, empty venues) are deliberately *not* country-filtered \u2014 they would go blank on `de` or `uk` and say nothing true.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. The workers left that world entirely \u2014 a k3s pod on a dedicated 8-core box has no credit bucket \u2014 and the web tier's credit is only visible from inside Fly's managed Prometheus.\n* **Fly edge/proxy request counts and per-region edge latency.** These came from `fly_edge_*`, measured at Fly's edge. The app's own HTTP metrics below replace the *app-side* view of the same question, but the edge view (TLS handshakes, per-PoP breakdown, requests rejected before reaching the app) has no substitute.\n\n**What the app now measures about itself.** `kinowo_web_http_requests_total` and `kinowo_web_http_request_duration_seconds` bring back request rate, error share and latency percentiles \u2014 measured at the app rather than at Fly's proxy. `kinowo_web_host_memory_*` and `kinowo_web_host_disk_*` bring back the machine's free RAM and free disk, read by the process straight from its own kernel rather than from Fly's host agent. Both replace series that died with the managed-Prometheus token, and neither needs a Fly credential.\n\n**Read host CPU and host memory as the HOST, not as a worker.** `k3s-worker-1` runs the k3s agent and all three worker pods, so its node_exporter numbers are always above any one worker's. Where a question is about a worker specifically, the panels below use that JVM's own process metrics."
+        "content": "The application is one thing on two platforms. **Three workers run on k3s** \u2014 `worker-pl`, `worker-de` and `worker-uk`, each its own deployment on `k3s-worker-1` (10.20.0.12) \u2014 and **the web tier is on k3s**, reached through the WireGuard peer. Both are scraped by the fleet's own Prometheus, straight off each app's `/metrics`, so nothing here depends on a Fly credential.\n\n**Use the Country variable.** Every worker panel is scoped by it and carries the country in its legend, so All compares the three side by side and a single value isolates one. **The web tier serves pl/de/uk**, so the four web-sourced panels (films served per city, residential proxy, empty venues) are deliberately *not* country-filtered \u2014 they would go blank on `de` or `uk` and say nothing true.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. The workers left that world entirely \u2014 a k3s pod on a dedicated 8-core box has no credit bucket \u2014 and the web tier's credit is only visible from inside Fly's managed Prometheus.\n* **Fly edge/proxy request counts and per-region edge latency.** These came from `fly_edge_*`, measured at Fly's edge. The app's own HTTP metrics below replace the *app-side* view of the same question, but the edge view (TLS handshakes, per-PoP breakdown, requests rejected before reaching the app) has no substitute.\n\n**What the app now measures about itself.** `kinowo_web_http_requests_total` and `kinowo_web_http_request_duration_seconds` bring back request rate, error share and latency percentiles \u2014 measured at the app rather than at Fly's proxy. `kinowo_web_host_memory_*` and `kinowo_web_host_disk_*` bring back the machine's free RAM and free disk, read by the process straight from its own kernel rather than from Fly's host agent. Both replace series that died with the managed-Prometheus token, and neither needs a Fly credential.\n\n**Read host CPU and host memory as the HOST, not as a worker.** `k3s-worker-1` runs the k3s agent and all three worker pods, so its node_exporter numbers are always above any one worker's. Where a question is about a worker specifically, the panels below use that JVM's own process metrics."
       }
     },
     {
@@ -143,7 +143,7 @@
           }
         }
       ],
-      "description": "1 = Prometheus scraped that tier's own /metrics endpoint on the last try. The two tiers are reached completely differently and fail differently: the worker is a k3s NodePort on the private network (10.20.0.12:30900), so a 0 there really is the worker being down or wedged; the web tier is still on Fly and is reached through the WireGuard peer into Fly's 6PN, so a 0 there can equally mean the TUNNEL dropped while the app is serving users perfectly well. Before declaring a web outage, check the WireGuard handshake age on the fleet dashboard and load the site."
+      "description": "1 = Prometheus scraped that tier's own /metrics endpoint on the last try. The two tiers are reached completely differently and fail differently: the worker is a k3s NodePort on the private network (10.20.0.12:30900), so a 0 there really is the worker being down or wedged; the web tier is on k3s and is reached through the WireGuard peer into Fly's 6PN, so a 0 there can equally mean the TUNNEL dropped while the app is serving users perfectly well. Before declaring a web outage, check the WireGuard handshake age on the fleet dashboard and load the site."
     },
     {
       "id": 8,
@@ -287,7 +287,7 @@
     {
       "id": 101,
       "type": "row",
-      "title": "What the two tiers are serving \u2014 web (Fly) against the collection behind it (worker, k3s)",
+      "title": "What the two tiers are serving \u2014 the web deployments against the collection behind them (the workers)",
       "collapsed": false,
       "panels": [],
       "gridPos": {
@@ -299,7 +299,7 @@
     },
     {
       "id": 33,
-      "title": "Web (Fly \u00b7 Poland only) \u2014 films served per city (all future showings)",
+      "title": "Web (k3s \u00b7 pl/de/uk) \u2014 films served per city (all future showings)",
       "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
       "type": "timeseries",
       "datasource": {
@@ -338,7 +338,7 @@
     },
     {
       "id": 34,
-      "title": "Web (Fly \u00b7 Poland only) \u2014 films served per city (showing tomorrow)",
+      "title": "Web (k3s \u00b7 pl/de/uk) \u2014 films served per city (showing tomorrow)",
       "description": "Distinct films each /:city/ page shows for tomorrow (\u22651 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
       "type": "timeseries",
       "datasource": {
@@ -624,7 +624,7 @@
     },
     {
       "id": 10,
-      "title": "Residential proxy \u2014 fetches served vs failed (web tier \u00b7 Poland only, recent 30 min)",
+      "title": "Residential proxy \u2014 fetches served vs failed (web tier \u00b7 pl/de/uk, recent 30 min)",
       "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed \u2192 Zyte fallback' is a silent cost regression \u2014 scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
       "type": "timeseries",
       "datasource": {
@@ -672,7 +672,7 @@
     },
     {
       "id": 54,
-      "title": "Venues answering with an EMPTY listing (web tier \u00b7 Poland only, recent 30 min)",
+      "title": "Venues answering with an EMPTY listing (web tier \u00b7 pl/de/uk, recent 30 min)",
       "description": "How many services report kinowo_uptime_recent_zeroes \u2014 checks that neither succeeded nor failed: the request went through, the response parsed, and it held no screenings. This is the third outcome the /uptime page tracks and the only one no other panel or alert reads, which is what makes it the quietest failure we have: a cinema site that starts answering 200 with an empty listing counts as zero failures, so the proxy panel beside this one stays green, the failure-share alerts stay silent, and the films simply stop arriving. READ THE LEVEL AS A POPULATION, NOT A FAULT \u2014 measured 2026-07-28, ~123 of ~2,766 services sit here at any moment and every one of them had zero successes, which is what a genuinely dormant venue looks like (see the white-cinema sweeps: dormant, not broken). The signal is the STEP: a jump in this count is a batch of venues that just stopped returning results, and that lands later on the films-served and showtime-volume panels below. Which venues is a question for /uptime, which lists them by name \u2014 this panel exists to tell you WHEN to go look.",
       "type": "timeseries",
       "datasource": {
@@ -2010,7 +2010,7 @@
     },
     {
       "id": 44,
-      "title": "Web (Fly) \u2014 JVM heap against -Xmx, and process RSS",
+      "title": "Web (k3s) \u2014 JVM heap against -Xmx, and process RSS",
       "description": "The web tier's heap, read like the worker panel to its left, except it runs G1 rather than SerialGC so a full old gen is far less alarming. RSS is this process's own footprint; how close the MACHINE is to full is the panel below, which reads /proc/meminfo directly now that Fly's host metrics are gone. RSS climbing well past heap+non-heap means native growth, not a leak the heap graph can show.",
       "type": "timeseries",
       "datasource": {
@@ -2112,7 +2112,7 @@
     },
     {
       "id": 9007,
-      "title": "Web (Fly) \u2014 RAM left on the machine, outside the JVM",
+      "title": "Web (k3s) \u2014 RAM left on the machine, outside the JVM",
       "description": "MemAvailable from the web machine's own /proc/meminfo \u2014 the kernel's estimate of what a new allocation could actually get, so it counts reclaimable page cache rather than collapsing to near-zero the way MemFree does on a healthy box. This is the line the heap panel beside it cannot draw: heap and RSS say what this process holds, never what is left over for the page cache, a heap dump, or the next request's native allocation. It is also the tell for a failure this app has already had \u2014 a 384m heap OOM-crash-looped at a smaller VM size, and the machine's available memory is what went first. Replaces Fly's fly_instance_memory_mem_available, which died with the managed-Prometheus token; the total is the Firecracker VM's configured size, so read the pair as a fraction.",
       "type": "timeseries",
       "datasource": {
@@ -2196,7 +2196,7 @@
     },
     {
       "id": 9008,
-      "title": "Web (Fly) \u2014 free space on the machine's root filesystem",
+      "title": "Web (k3s) \u2014 free space on the machine's root filesystem",
       "description": "The web app mounts no volume (there is no [mounts] block in fly.toml), so the only disk it can fill is the machine's own overlay: request logs, JVM temp files, and a heap dump if one is ever written \u2014 which on a 384m heap arrives as most of a gigabyte at once. Flat is the healthy shape; a staircase down means something is writing and never rotating. Replaces the fly_volume_* family. It is named disk rather than volume because if a volume is ever mounted this panel keeps reading the ROOT filesystem and will need a second series.",
       "type": "timeseries",
       "datasource": {
@@ -2650,7 +2650,7 @@
     },
     {
       "type": "row",
-      "title": "Web tier \u2014 HTTP (the app's own metrics, not Fly's proxy)",
+      "title": "Web tier \u2014 HTTP (the app's own metrics)",
       "id": 9002,
       "gridPos": {
         "x": 0,
@@ -2910,7 +2910,7 @@
       ]
     }
   ],
-  "description": "One screen for the whole application, across the two platforms it now runs on: three scraping workers (pl, de, uk) on k3s and the web tier still on Fly. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
+  "description": "One screen for the whole application, all of it on k3s: three scraping workers (pl, de, uk) and three web deployments (pl, de, uk), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
   "links": [
     {
       "type": "dashboards",

@@ -857,7 +857,9 @@ class MovieController( cc: ControllerComponents,
             OgCardAssembly.cardSubtitle(schedule),
             OgCardAssembly.cardRatingBadges(schedule),
             // Primary poster first, then the cinema fallbacks: the primary is
-            // often a Multikino origin Cloudflare 403s from our Fly IP, so the
+            // often a Multikino origin whose Cloudflare 403s our datacentre
+            // egress IP — Hetzner's since the move off Fly, and the block
+            // followed us rather than being about any one provider — so the
             // card must be free to walk to a reachable fallback (see OgCardService).
             schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls,
             c.country.shareHost,
