@@ -91,6 +91,50 @@ for _ in $(seq 1 60); do
   sleep 5
 done
 
+# REFUSE TO INSTALL ONTO A HETZNER VOLUME. This is the guard for the failure that cost mongo-1 a
+# rebuild on 2026-08-29: the host's disko layout named `/dev/sda`, an attached volume won the race
+# for that name, and disko partitioned and formatted the DATABASE'S DISK while leaving the root disk
+# unformatted. disko does exactly what it is told; the danger is being told the wrong disk.
+#
+# The layouts now name the root disk by its own serial (scsi-0QEMU_QEMU_HARDDISK_<serial>), which a
+# volume can never be assigned -- volumes always present as scsi-0HC_Volume_<id>. This checks, from
+# the rescue system and BEFORE anything is written, that the declared device is actually present
+# there and is not a volume. Both halves matter: a device that is absent means the install would
+# fail late and confusingly, and a device that resolves to a volume means it would succeed
+# catastrophically.
+echo "==> checking the declared root disk on $host"
+declared="$(nix --extra-experimental-features 'nix-command flakes' eval --raw \
+  "$flake_dir#nixosConfigurations.$host.config.disko.devices.disk.main.device")"
+echo "    layout names: $declared"
+
+case "$declared" in
+  */scsi-0HC_Volume_*)
+    echo "convert-host: REFUSING -- $host's disko layout names a Hetzner VOLUME ($declared)." >&2
+    echo "  Installing there would repartition the data disk. Point it at the root disk's own" >&2
+    echo "  scsi-0QEMU_QEMU_HARDDISK_<serial>; read it with: lsblk -dno NAME,SIZE,SERIAL" >&2
+    exit 1
+    ;;
+esac
+
+resolved="$(ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" "readlink -f '$declared' 2>/dev/null || true")"
+if [[ -z "$resolved" ]]; then
+  echo "convert-host: REFUSING -- $declared does not exist on $host." >&2
+  echo "  Disks actually present there:" >&2
+  ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" 'lsblk -dno NAME,SIZE,SERIAL' >&2 || true
+  exit 1
+fi
+
+volume_target="$(ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" \
+  "ls -l /dev/disk/by-id/ 2>/dev/null | grep -E 'scsi-0HC_Volume_[0-9]+ ' | awk '{print \$NF}' | sed 's#\.\./\.\./#/dev/#'")"
+for v in $volume_target; do
+  if [[ "$v" == "$resolved" ]]; then
+    echo "convert-host: REFUSING -- $declared resolves to $resolved on $host, which is a Hetzner VOLUME." >&2
+    echo "  This is the mongo-1 failure of 2026-08-29. Installing would destroy that volume's data." >&2
+    exit 1
+  fi
+done
+echo "    resolves to $resolved, which is not a volume -- proceeding"
+
 echo "==> installing NixOS on $host from $flake_dir#$host"
 # --build-on-target because the operator's machine is aarch64-darwin and cannot produce an
 # x86_64-linux closure at all. The rescue system has enough disk and RAM to do it.
