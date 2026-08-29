@@ -74,25 +74,6 @@
   },
   "panels": [
     {
-      "id": 9001,
-      "type": "text",
-      "title": "What this page can no longer show you",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "The application is one thing on one platform. **Six deployments run on k3s** \u2014 the three scraping workers `worker-pl`, `worker-de`, `worker-uk` and the three web tiers `web-pl`, `web-de`, `web-uk`, all of them on `k3s-worker-1` (10.20.0.12), with Caddy on that same host terminating TLS for kinowo.net, de.showtimes.cc and uk.showtimes.cc. Both tiers are scraped by the fleet's own Prometheus, straight off each app's `/metrics` NodePort, so nothing here depends on a Fly credential \u2014 and nothing of the product runs on Fly any more.\n\n**Use the Country variable.** Every worker panel is scoped by it and carries the country in its legend, so All compares the three side by side and a single value isolates one. **The web-sourced panels are NOT scoped by it** (films served per city, residential proxy, empty venues). They were written when the web tier served Poland alone; now that Germany and the UK are deployed again the same queries draw all three countries at once, so read them as a fleet-wide picture and let the legend's city name say which country a line belongs to.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. Both tiers left that world entirely \u2014 a k3s pod on a dedicated 8-core box has no credit bucket, so this is now data that no longer exists rather than data we cannot reach.\n* **Fly edge/proxy request counts and per-region edge latency.** These came from `fly_edge_*`, measured at Fly's edge. The app's own HTTP metrics below replace the *app-side* view of the same question, but the edge view (TLS handshakes, per-PoP breakdown, requests rejected before reaching the app) has no substitute.\n\n**What the app now measures about itself.** `kinowo_web_http_requests_total` and `kinowo_web_http_request_duration_seconds` bring back request rate, error share and latency percentiles \u2014 measured at the app rather than at Fly's proxy. `kinowo_web_host_memory_*` and `kinowo_web_host_disk_*` bring back free RAM and free disk, read by the process straight from its own kernel rather than from Fly's host agent \u2014 though inside a container that kernel is `k3s-worker-1`'s, so they describe the NODE the six pods share, not this pod's 1Gi limit. Both replace series that died with the managed-Prometheus token, and neither needs a Fly credential.\n\n**Read host CPU and host memory as the HOST, not as a worker.** `k3s-worker-1` runs the k3s agent, all three worker pods, all three web pods and the Caddy that fronts them, so its node_exporter numbers are always above any one worker's. Where a question is about a worker specifically, the panels below use that JVM's own process metrics."
-      }
-    },
-    {
       "id": 100,
       "type": "row",
       "title": "Is it alive?",
@@ -102,7 +83,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 0
       }
     },
     {
@@ -117,7 +98,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 1
       },
       "fieldConfig": {
         "defaults": {
@@ -157,7 +138,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 7
       },
       "fieldConfig": {
         "defaults": {
@@ -199,7 +180,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 7
       },
       "targets": [
         {
@@ -250,7 +231,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 15
       },
       "fieldConfig": {
         "defaults": {
@@ -294,7 +275,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 24
       }
     },
     {
@@ -310,7 +291,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 34
+        "y": 25
       },
       "fieldConfig": {
         "defaults": {
@@ -349,7 +330,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 34
+        "y": 25
       },
       "fieldConfig": {
         "defaults": {
@@ -388,7 +369,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 43
+        "y": 34
       },
       "fieldConfig": {
         "defaults": {
@@ -427,7 +408,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 43
+        "y": 34
       },
       "fieldConfig": {
         "defaults": {
@@ -466,7 +447,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 43
       },
       "fieldConfig": {
         "defaults": {
@@ -505,7 +486,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 52
+        "y": 43
       },
       "fieldConfig": {
         "defaults": {
@@ -544,7 +525,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 60
+        "y": 51
       },
       "fieldConfig": {
         "defaults": {
@@ -583,7 +564,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 69
+        "y": 60
       },
       "fieldConfig": {
         "defaults": {
@@ -619,7 +600,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 77
+        "y": 68
       }
     },
     {
@@ -635,7 +616,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 78
+        "y": 69
       },
       "fieldConfig": {
         "defaults": {
@@ -683,7 +664,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 78
+        "y": 69
       },
       "fieldConfig": {
         "defaults": {
@@ -728,7 +709,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 86
+        "y": 77
       }
     },
     {
@@ -744,7 +725,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 87
+        "y": 78
       },
       "fieldConfig": {
         "defaults": {
@@ -801,7 +782,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 95
+        "y": 86
       },
       "fieldConfig": {
         "defaults": {
@@ -843,7 +824,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 95
+        "y": 86
       },
       "fieldConfig": {
         "defaults": {
@@ -885,7 +866,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 95
+        "y": 86
       },
       "fieldConfig": {
         "defaults": {
@@ -927,7 +908,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 103
+        "y": 94
       },
       "fieldConfig": {
         "defaults": {
@@ -982,7 +963,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 111
+        "y": 102
       },
       "fieldConfig": {
         "defaults": {
@@ -1039,7 +1020,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 111
+        "y": 102
       },
       "fieldConfig": {
         "defaults": {
@@ -1126,7 +1107,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 119
+        "y": 110
       },
       "fieldConfig": {
         "defaults": {
@@ -1168,7 +1149,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 119
+        "y": 110
       },
       "fieldConfig": {
         "defaults": {
@@ -1207,7 +1188,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 127
+        "y": 118
       },
       "fieldConfig": {
         "defaults": {
@@ -1246,7 +1227,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 136
+        "y": 127
       },
       "fieldConfig": {
         "defaults": {
@@ -1285,7 +1266,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 145
+        "y": 136
       },
       "fieldConfig": {
         "defaults": {
@@ -1324,7 +1305,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 154
+        "y": 145
       }
     },
     {
@@ -1340,7 +1321,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 155
+        "y": 146
       },
       "fieldConfig": {
         "defaults": {
@@ -1391,7 +1372,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 163
+        "y": 154
       },
       "fieldConfig": {
         "defaults": {
@@ -1430,7 +1411,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 163
+        "y": 154
       },
       "fieldConfig": {
         "defaults": {
@@ -1469,7 +1450,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 171
+        "y": 162
       },
       "fieldConfig": {
         "defaults": {
@@ -1517,7 +1498,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 171
+        "y": 162
       },
       "fieldConfig": {
         "defaults": {
@@ -1556,7 +1537,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 179
+        "y": 170
       },
       "fieldConfig": {
         "defaults": {
@@ -1592,7 +1573,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 187
+        "y": 178
       }
     },
     {
@@ -1608,7 +1589,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 188
+        "y": 179
       },
       "fieldConfig": {
         "defaults": {
@@ -1647,7 +1628,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 188
+        "y": 179
       },
       "fieldConfig": {
         "defaults": {
@@ -1686,7 +1667,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 196
+        "y": 187
       },
       "fieldConfig": {
         "defaults": {
@@ -1734,7 +1715,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 204
+        "y": 195
       },
       "fieldConfig": {
         "defaults": {
@@ -1773,7 +1754,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 204
+        "y": 195
       },
       "fieldConfig": {
         "defaults": {
@@ -1812,7 +1793,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 212
+        "y": 203
       },
       "fieldConfig": {
         "defaults": {
@@ -1851,7 +1832,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 212
+        "y": 203
       },
       "fieldConfig": {
         "defaults": {
@@ -1887,7 +1868,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 220
+        "y": 211
       }
     },
     {
@@ -1903,7 +1884,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 221
+        "y": 212
       },
       "fieldConfig": {
         "defaults": {
@@ -2021,7 +2002,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 221
+        "y": 212
       },
       "fieldConfig": {
         "defaults": {
@@ -2123,7 +2104,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 230
+        "y": 221
       },
       "fieldConfig": {
         "defaults": {
@@ -2207,7 +2188,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 230
+        "y": 221
       },
       "fieldConfig": {
         "defaults": {
@@ -2282,7 +2263,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 239
+        "y": 230
       },
       "fieldConfig": {
         "defaults": {
@@ -2450,7 +2431,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 248
+        "y": 239
       },
       "fieldConfig": {
         "defaults": {
@@ -2516,7 +2497,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 255
+        "y": 246
       },
       "fieldConfig": {
         "defaults": {
@@ -2607,7 +2588,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 264
+        "y": 255
       },
       "options": {
         "calculate": false,
@@ -2654,7 +2635,7 @@
       "id": 9002,
       "gridPos": {
         "x": 0,
-        "y": 273,
+        "y": 264,
         "w": 24,
         "h": 1
       },
@@ -2672,7 +2653,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 274,
+        "y": 265,
         "w": 12,
         "h": 9
       },
@@ -2727,7 +2708,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 274,
+        "y": 265,
         "w": 12,
         "h": 9
       },
@@ -2792,7 +2773,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 283,
+        "y": 274,
         "w": 12,
         "h": 9
       },
@@ -2865,7 +2846,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 283,
+        "y": 274,
         "w": 12,
         "h": 9
       },
