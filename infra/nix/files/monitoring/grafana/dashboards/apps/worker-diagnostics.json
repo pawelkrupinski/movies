@@ -1,6 +1,6 @@
 {
   "uid": "kinowo-worker-diag",
-  "title": "Kinowo worker — JVM & pipeline diagnostics (k3s)",
+  "title": "Kinowo worker \u2014 JVM & pipeline diagnostics (k3s)",
   "tags": [
     "kinowo",
     "worker",
@@ -12,7 +12,7 @@
   "version": 1,
   "refresh": "1m",
   "time": {
-    "from": "now-24h",
+    "from": "now-3h",
     "to": "now"
   },
   "annotations": {
@@ -89,13 +89,13 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "A worker's insides. Come here when the overview says something is wrong with a worker and you need to know **why** — a memory climb, a GC storm, a cache that stopped hitting, an upstream returning errors.\n\n**There are three workers**, one per country: `worker-pl`, `worker-de` and `worker-uk`, each a separate k3s Deployment on `k3s-worker-1`. Every panel below is filtered by the **Country** variable and names the country in its legend. Set it to a single country to read one JVM; set it to All to compare the three — which is how you tell \"the worker is leaking\" from \"the *uk* worker is leaking\". Each panel reads that pod's own `/metrics`, scraped directly by the fleet Prometheus, so the numbers are the JVM's own and need no Fly credential.\n\n**One panel is gone:**\n\n* **Fly CPU-credit balance vs throttle floor.** There is no credit bucket outside Fly's shared-cpu plans. The workers' CPU is now bounded by a real node's cores, and the CPU breakdown panel is the whole story.\n\n**The cgroup ceiling is back.** It was previously dropped because kube-state-metrics was down; that target is now up, so the RSS panel draws each pod's real `resources.limits.memory` from `kube_pod_container_resource_limits`. The limits are not uniform — `de` is given more headroom than `pl` and `uk` — which is exactly why the line is per-country.\n\n**Careful with host numbers.** `k3s-worker-1` runs the k3s agent alongside all three pods, so the host CPU and host memory on the fleet dashboard are always above any one worker's. Every panel here is process-scoped precisely so you are never reading k3s's overhead, or a sibling worker, as this worker's behaviour."
+        "content": "A worker's insides. Come here when the overview says something is wrong with a worker and you need to know **why** \u2014 a memory climb, a GC storm, a cache that stopped hitting, an upstream returning errors.\n\n**There are three workers**, one per country: `worker-pl`, `worker-de` and `worker-uk`, each a separate k3s Deployment on `k3s-worker-1`. Every panel below is filtered by the **Country** variable and names the country in its legend. Set it to a single country to read one JVM; set it to All to compare the three \u2014 which is how you tell \"the worker is leaking\" from \"the *uk* worker is leaking\". Each panel reads that pod's own `/metrics`, scraped directly by the fleet Prometheus, so the numbers are the JVM's own and need no Fly credential.\n\n**One panel is gone:**\n\n* **Fly CPU-credit balance vs throttle floor.** There is no credit bucket outside Fly's shared-cpu plans. The workers' CPU is now bounded by a real node's cores, and the CPU breakdown panel is the whole story.\n\n**The cgroup ceiling is back.** It was previously dropped because kube-state-metrics was down; that target is now up, so the RSS panel draws each pod's real `resources.limits.memory` from `kube_pod_container_resource_limits`. The limits are not uniform \u2014 `de` is given more headroom than `pl` and `uk` \u2014 which is exactly why the line is per-country.\n\n**Careful with host numbers.** `k3s-worker-1` runs the k3s agent alongside all three pods, so the host CPU and host memory on the fleet dashboard are always above any one worker's. Every panel here is process-scoped precisely so you are never reading k3s's overhead, or a sibling worker, as this worker's behaviour."
       }
     },
     {
       "id": 5,
-      "title": "Uptime (hours) — drops mark restarts",
-      "description": "(now − process_start_time)/3600. Every drop to ~0 is a restart of the worker process. A regular cadence is the tell for an OOM cycle rather than a deploy — deploys are irregular and carry a purple Deploy marker. The worker is a k3s pod now, so the reason lives in `kubectl -n <ns> describe pod` (look for OOMKilled) and `kubectl logs --previous`, not in `flyctl machine status`.",
+      "title": "Uptime (hours) \u2014 drops mark restarts",
+      "description": "(now \u2212 process_start_time)/3600. Every drop to ~0 is a restart of the worker process. A regular cadence is the tell for an OOM cycle rather than a deploy \u2014 deploys are irregular and carry a purple Deploy marker. The worker is a k3s pod now, so the reason lives in `kubectl -n <ns> describe pod` (look for OOMKilled) and `kubectl logs --previous`, not in `flyctl machine status`.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -132,8 +132,8 @@
     },
     {
       "id": 3,
-      "title": "CPU breakdown — centi-cores (process / JIT / GC)",
-      "description": "The worker's own CPU, split three ways: total process, the slice spent JIT-compiling, and the slice spent in GC (100 = one full core). GC climbing toward the process line is the SerialGC full-GC thrash signature — heap pressure, not work. JIT should be a burst after every restart and near-zero afterwards; a JIT line that never settles means the process keeps restarting. There is no credit-breakeven line any more: that was a property of Fly's shared-cpu billing, and this worker now has a whole k3s node's cores available. Note the host's CPU on the fleet dashboard will always read higher than this — k3s itself runs there too.",
+      "title": "CPU breakdown \u2014 centi-cores (process / JIT / GC)",
+      "description": "The worker's own CPU, split three ways: total process, the slice spent JIT-compiling, and the slice spent in GC (100 = one full core). GC climbing toward the process line is the SerialGC full-GC thrash signature \u2014 heap pressure, not work. JIT should be a burst after every restart and near-zero afterwards; a JIT line that never settles means the process keeps restarting. There is no credit-breakeven line any more: that was a property of Fly's shared-cpu billing, and this worker now has a whole k3s node's cores available. Note the host's CPU on the fleet dashboard will always read higher than this \u2014 k3s itself runs there too.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -246,7 +246,7 @@
     {
       "id": 2,
       "title": "Resident set size (RSS) against the pod cgroup limit",
-      "description": "Two readings of the same number: process_resident_memory_bytes (the JVM's process exporter) and kinowo_worker_process_rss_bytes (VmRSS, read from /proc/self/status by the vitals sampler that also computes the off-book gap below). They should lie on top of each other — drawn together so the gap panel's arithmetic is checkable rather than taken on faith. NO CEILING LINE ANY MORE: this used to carry the Fly machine's ~960MB cgroup limit, but the pod's memory limit on k3s is not exported (the kube-state-metrics target is down), so there is nothing honest to draw. Read the SLOPE, not the distance to a line — a steady climb that resets only at a restart is the native working set growing, and the uptime panel will show you the restarts it ends in.",
+      "description": "Two readings of the same number: process_resident_memory_bytes (the JVM's process exporter) and kinowo_worker_process_rss_bytes (VmRSS, read from /proc/self/status by the vitals sampler that also computes the off-book gap below). They should lie on top of each other \u2014 drawn together so the gap panel's arithmetic is checkable rather than taken on faith. NO CEILING LINE ANY MORE: this used to carry the Fly machine's ~960MB cgroup limit, but the pod's memory limit on k3s is not exported (the kube-state-metrics target is down), so there is nothing honest to draw. Read the SLOPE, not the distance to a line \u2014 a steady climb that resets only at a restart is the native working set growing, and the uptime panel will show you the restarts it ends in.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -302,7 +302,7 @@
     {
       "id": 1,
       "title": "Native memory by NMT category (committed)",
-      "description": "Native memory HotSpot admits to committing, by NMT category — the buckets jvm_memory_* cannot see. This is where a non-heap leak shows itself: one category climbing steadily while the others stay flat names the culprit. Flat everything while RSS climbs means the growth is off-book (see the gap panel below), which is a different diagnosis entirely. Requires the JVM to be started with -XX:NativeMemoryTracking=summary; if this panel is empty, that flag is missing rather than the memory being fine.",
+      "description": "Native memory HotSpot admits to committing, by NMT category \u2014 the buckets jvm_memory_* cannot see. This is where a non-heap leak shows itself: one category climbing steadily while the others stay flat names the culprit. Flat everything while RSS climbs means the growth is off-book (see the gap panel below), which is a different diagnosis entirely. Requires the JVM to be started with -XX:NativeMemoryTracking=summary; if this panel is empty, that flag is missing rather than the memory being fine.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -339,8 +339,8 @@
     },
     {
       "id": 16,
-      "title": "Off-book native memory — RSS minus NMT-committed",
-      "description": "kinowo_worker_native_offbook_gap_bytes: RSS minus everything HotSpot admits to committing. Neither of the panels at the top of this dashboard can show it — jvm_memory_* covers the heap, the NMT panel covers the committed native categories, and this is the remainder. It is the primary signal for the ~5-6h non-heap OOM restarts: the 2026-07-09 probe found every NMT category flat across a whole 5h life while RSS climbed ~26MB/hr, which is glibc malloc retention/fragmentation in the C heap and appears here and nowhere else. READ THE SLOPE, NOT THE LEVEL — the level is normally NEGATIVE (around −200 to −320MB in steady state) because committed is not resident: pages can be committed and never touched. That is why this axis is deliberately not floored at zero. A gap climbing steadily toward and past zero, resetting only at a restart, is the pre-OOM signature; Pair it with the RSS panel above: that one shows the absolute number climbing, this one shows that the climb is NOT accounted for by anything the JVM reports.",
+      "title": "Off-book native memory \u2014 RSS minus NMT-committed",
+      "description": "kinowo_worker_native_offbook_gap_bytes: RSS minus everything HotSpot admits to committing. Neither of the panels at the top of this dashboard can show it \u2014 jvm_memory_* covers the heap, the NMT panel covers the committed native categories, and this is the remainder. It is the primary signal for the ~5-6h non-heap OOM restarts: the 2026-07-09 probe found every NMT category flat across a whole 5h life while RSS climbed ~26MB/hr, which is glibc malloc retention/fragmentation in the C heap and appears here and nowhere else. READ THE SLOPE, NOT THE LEVEL \u2014 the level is normally NEGATIVE (around \u2212200 to \u2212320MB in steady state) because committed is not resident: pages can be committed and never touched. That is why this axis is deliberately not floored at zero. A gap climbing steadily toward and past zero, resetting only at a restart, is the pre-OOM signature; Pair it with the RSS panel above: that one shows the absolute number climbing, this one shows that the climb is NOT accounted for by anything the JVM reports.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -379,7 +379,7 @@
       "id": 17,
       "type": "timeseries",
       "title": "Direct & mapped buffer pools",
-      "description": "NIO buffers the JVM allocates outside the heap — the HTTP client's read buffers live here. Sitting beside the NMT and off-book panels because it is the one native consumer with a named, per-pool reading: 'used' growing without bound while the NMT categories stay flat points at buffers never being released, typically a response body left unread. Steady state is a small, flat direct pool.",
+      "description": "NIO buffers the JVM allocates outside the heap \u2014 the HTTP client's read buffers live here. Sitting beside the NMT and off-book panels because it is the one native consumer with a named, per-pool reading: 'used' growing without bound while the NMT categories stay flat points at buffers never being released, typically a response body left unread. Steady state is a small, flat direct pool.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -426,7 +426,7 @@
     {
       "id": 6,
       "title": "JVM threads (current / peak)",
-      "description": "Live and peak JVM thread count. A count that climbs without bound ends in an 'unable to create native thread' OOM and is a thread leak; a stable count means the memory problem is somewhere else. Peak sitting far above current after a quiet period is normal — it is a high-water mark, not a live reading.",
+      "description": "Live and peak JVM thread count. A count that climbs without bound ends in an 'unable to create native thread' OOM and is a thread leak; a stable count means the memory problem is somewhere else. Peak sitting far above current after a quiet period is normal \u2014 it is a high-water mark, not a live reading.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -472,7 +472,7 @@
     },
     {
       "id": 8,
-      "title": "Read-model projection — avg duration (ms)",
+      "title": "Read-model projection \u2014 avg duration (ms)",
       "description": "Per-call cost of the read-model projection. A 3-5x inflation at a FLAT call rate = the daytime GC-thrash flare (projection is a victim of GC pauses, not the cause).",
       "type": "timeseries",
       "datasource": {
@@ -510,8 +510,8 @@
     },
     {
       "id": 11,
-      "title": "Resolution cache — hit rate % by source",
-      "description": "Share of identity resolutions (film → TMDB id / IMDb id / rating-site url) served from cache instead of running a live probe chain. A chain costs up to ~30 upstream GETs for RT/Metacritic and ~36 for Filmweb, so this is the cache's actual saving. Low here means the cache is doing little — the resolved url is persisted on the film record anyway, which is the competing gate.",
+      "title": "Resolution cache \u2014 hit rate % by source",
+      "description": "Share of identity resolutions (film \u2192 TMDB id / IMDb id / rating-site url) served from cache instead of running a live probe chain. A chain costs up to ~30 upstream GETs for RT/Metacritic and ~36 for Filmweb, so this is the cache's actual saving. Low here means the cache is doing little \u2014 the resolved url is persisted on the film record anyway, which is the competing gate.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -550,8 +550,8 @@
     },
     {
       "id": 12,
-      "title": "Resolution chains RUN — by source and kind",
-      "description": "Probe chains actually executed, per second. `miss_resolved` mints a cached answer and should decay as the corpus resolves; `miss_unresolved` is a chain that found nothing and — because the cache is hits-only — was NOT cached, so the same film burns the same chain again next cycle. If miss_unresolved dominates, the fix is caching negative results, not deleting the cache.",
+      "title": "Resolution chains RUN \u2014 by source and kind",
+      "description": "Probe chains actually executed, per second. `miss_resolved` mints a cached answer and should decay as the corpus resolves; `miss_unresolved` is a chain that found nothing and \u2014 because the cache is hits-only \u2014 was NOT cached, so the same film burns the same chain again next cycle. If miss_unresolved dominates, the fix is caching negative results, not deleting the cache.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -590,7 +590,7 @@
     {
       "id": 13,
       "title": "Durable-store share of cache hits % by source",
-      "description": "Of the hits, how many came from the Mongo `resolve_*` collections rather than the in-process Caffeine layer. This is what the durable half buys over a plain in-memory cache — it is the only part that survives a worker restart. Near 0% across sources means the 5 collections + TTL-index reconciliation are carrying nothing and could be dropped.",
+      "description": "Of the hits, how many came from the Mongo `resolve_*` collections rather than the in-process Caffeine layer. This is what the durable half buys over a plain in-memory cache \u2014 it is the only part that survives a worker restart. Near 0% across sources means the 5 collections + TTL-index reconciliation are carrying nothing and could be dropped.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -630,7 +630,7 @@
     {
       "id": 18,
       "type": "timeseries",
-      "title": "GC — collections per second by collector",
+      "title": "GC \u2014 collections per second by collector",
       "description": "How often each collector runs, per country. Young ('Copy') climbing with a flat old-gen line is normal churn; 'MarkSweepCompact' climbing is the shape that precedes a heap-exhaustion death, and pairs with the GC centi-cores line on the CPU panel.",
       "datasource": {
         "type": "prometheus",
@@ -680,8 +680,8 @@
     },
     {
       "id": 14,
-      "title": "Cinema-scrape HTTP outcomes — error share, scrape phase (per country)",
-      "description": "A failure-budget view scoped to phase=\"scrape\": ONLY the cinema-site HTTP — every listing scrape, chunk scrape and per-film detail fetch — with the third-party metadata/rating/resolution APIs (phase=\"enrich\") excluded; its companion enrich-phase panel below covers those. Each error band's thickness is that error's share of scrape attempts, stacked at the floor; the empty space above is the clean remainder. This isolates cinema-scrape health from the enrichment APIs' by-design 404 slug-probing and API 429s: here a rising http_403 (a cinema Cloudflare/datacentre-IP block) or http_5xx/timeout stands out instead of hiding under the enrichment 404 noise floor. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'.",
+      "title": "Cinema-scrape HTTP outcomes \u2014 error share, scrape phase (per country)",
+      "description": "A failure-budget view scoped to phase=\"scrape\": ONLY the cinema-site HTTP \u2014 every listing scrape, chunk scrape and per-film detail fetch \u2014 with the third-party metadata/rating/resolution APIs (phase=\"enrich\") excluded; its companion enrich-phase panel below covers those. Each error band's thickness is that error's share of scrape attempts, stacked at the floor; the empty space above is the clean remainder. This isolates cinema-scrape health from the enrichment APIs' by-design 404 slug-probing and API 429s: here a rising http_403 (a cinema Cloudflare/datacentre-IP block) or http_5xx/timeout stands out instead of hiding under the enrichment 404 noise floor. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all \u2014 a completely different problem that an error-share panel alone would hide as 'no data'.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -764,8 +764,8 @@
     },
     {
       "id": 15,
-      "title": "Enrichment HTTP outcomes — error share, enrich phase (per country)",
-      "description": "The scrape panel's companion, scoped to phase=\"enrich\": ONLY the third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/Filmweb/Letterboxd/Wikidata/Cinemeta), with cinema-site scraping (phase=\"scrape\") excluded. Each error band's thickness is that error's share of enrich attempts, stacked at the floor; the empty space above is the clean remainder. Reading this side on its own: a large steady http_404 band is EXPECTED — the RT/Metacritic resolvers probe up to 4 candidate slugs per title and the wrong ones 404 by design — while http_401 (a bad/missing API key) or a rising http_429 (an API rate-limiting us) is the signal to watch. Improbable codes (409/422/451/…) fold into the residual http_4xx; other categories: http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'.",
+      "title": "Enrichment HTTP outcomes \u2014 error share, enrich phase (per country)",
+      "description": "The scrape panel's companion, scoped to phase=\"enrich\": ONLY the third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/Filmweb/Letterboxd/Wikidata/Cinemeta), with cinema-site scraping (phase=\"scrape\") excluded. Each error band's thickness is that error's share of enrich attempts, stacked at the floor; the empty space above is the clean remainder. Reading this side on its own: a large steady http_404 band is EXPECTED \u2014 the RT/Metacritic resolvers probe up to 4 candidate slugs per title and the wrong ones 404 by design \u2014 while http_401 (a bad/missing API key) or a rising http_429 (an API rate-limiting us) is the signal to watch. Improbable codes (409/422/451/\u2026) fold into the residual http_4xx; other categories: http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all \u2014 a completely different problem that an error-share panel alone would hide as 'no data'.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -847,7 +847,7 @@
       ]
     }
   ],
-  "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are THREE workers — pl, de and uk, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. The Fly CPU-credit panel was deleted, not broken — see the note at the top.",
+  "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are THREE workers \u2014 pl, de and uk, each its own k3s Deployment \u2014 so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. The Fly CPU-credit panel was deleted, not broken \u2014 see the note at the top. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
   "links": [
     {
       "type": "dashboards",
@@ -873,7 +873,7 @@
       "icon": "external link",
       "includeVars": false,
       "keepTime": true,
-      "tooltip": "Host CPU/memory/disk — includes the k3s agent, so always above the worker's own."
+      "tooltip": "Host CPU/memory/disk \u2014 includes the k3s agent, so always above the worker's own."
     }
   ]
 }

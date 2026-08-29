@@ -12,7 +12,7 @@
   "version": 15,
   "refresh": "1m",
   "time": {
-    "from": "now-6h",
+    "from": "now-3h",
     "to": "now"
   },
   "annotations": {
@@ -2751,7 +2751,7 @@
       ]
     }
   ],
-  "description": "One screen for the whole application, across the two platforms it now runs on: three scraping workers (pl, de, uk) on k3s and the web tier still on Fly. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible.",
+  "description": "One screen for the whole application, across the two platforms it now runs on: three scraping workers (pl, de, uk) on k3s and the web tier still on Fly. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
   "links": [
     {
       "type": "dashboards",
