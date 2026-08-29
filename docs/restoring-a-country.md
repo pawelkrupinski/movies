@@ -52,7 +52,7 @@ convergence band. There is no second place to remember for any of them.
    it the next push to main redeploys and restarts a stopped app.
 
 3. **Give the country its `webUrl` back** (the table above):
-   `webUrl = Some("https://showtimes-<cc>.fly.dev")`.
+   `webUrl = Some("https://<cc>.showtimes.cc")`.
 
 4. **Restore the two mobile registries.** `Country.all` in
    `ios/Kinowo/Models/Country.swift` and

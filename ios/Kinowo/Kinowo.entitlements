@@ -14,8 +14,8 @@
 
   The AASA is served on every country deployment at
   https://<host>/.well-known/apple-app-site-association — one identical file
-  (same app ID, same path patterns) across kinowo.fly.dev / showtimes-uk.fly.dev
-  / showtimes-de.fly.dev, since all three run the same web binary + resources.
+  (same app ID, same path patterns) across kinowo.net / uk.showtimes.cc
+  / de.showtimes.cc, since all three run the same web binary + resources.
 -->
 <dict>
 	<!-- Universal Links: the OS fetches https://<host>/.well-known/
@@ -25,12 +25,12 @@
 	     in DeepLink.webHosts and Country.all. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:kinowo.fly.dev</string>
-		<string>applinks:showtimes-uk.fly.dev</string>
-		<string>applinks:showtimes-de.fly.dev</string>
-		<string>webcredentials:kinowo.fly.dev</string>
-		<string>webcredentials:showtimes-uk.fly.dev</string>
-		<string>webcredentials:showtimes-de.fly.dev</string>
+		<string>applinks:kinowo.net</string>
+		<string>applinks:uk.showtimes.cc</string>
+		<string>applinks:de.showtimes.cc</string>
+		<string>webcredentials:kinowo.net</string>
+		<string>webcredentials:uk.showtimes.cc</string>
+		<string>webcredentials:de.showtimes.cc</string>
 	</array>
 </dict>
 </plist>

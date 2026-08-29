@@ -46,7 +46,7 @@ def kinowo_link(rec, enrich):
     title = info.get("title") or rec.get("filmTitle") or ""
     if not city:
         return None
-    return f"https://kinowo.fly.dev/{city}/film?title={quote(title)}"
+    return f"https://kinowo.net/{city}/film?title={quote(title)}"
 
 
 def directors_html(rowDirectors, matched):

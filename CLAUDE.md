@@ -291,7 +291,7 @@ process, or redeploying after a config change — just `destroy` and
 sanity-check, move on. Up to ~15 minutes of worker downtime is in the
 "everything else, just do it" bucket above.
 
-**The web / read tier (`kinowo.fly.dev`) is different — don't bring it
+**The web / read tier (`kinowo.net`) is different — don't bring it
 completely down if there's any way not to.** It's the only part users
 see, and a page that 404s is the failure they notice. Prefer a rolling
 deploy that keeps at least one machine serving; when moving or resizing

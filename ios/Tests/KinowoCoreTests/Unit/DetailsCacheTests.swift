@@ -3,8 +3,8 @@ import XCTest
 
 final class DetailsCacheTests: XCTestCase {
 
-    private let poland = URL(string: "https://kinowo.fly.dev")!
-    private let germany = URL(string: "https://showtimes-de.fly.dev")!
+    private let poland = URL(string: "https://kinowo.net")!
+    private let germany = URL(string: "https://de.showtimes.cc")!
 
     override func tearDown() {
         DetailsCache.save([], deployment: poland, city: "", lastModified: nil)

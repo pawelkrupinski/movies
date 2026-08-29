@@ -19,9 +19,9 @@ class CatalogRepositoryTest {
     val tmp = TemporaryFolder()
 
     private val ukBody =
-        """{"countries":[{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes-uk.fly.dev","language":"en","brand":"Showtimes"}],"cities":[{"slug":"london","name":"London","lat":51.5,"lon":-0.1,"country":"uk"}]}"""
+        """{"countries":[{"code":"uk","name":"United Kingdom","baseUrl":"https://uk.showtimes.cc","language":"en","brand":"Showtimes"}],"cities":[{"slug":"london","name":"London","lat":51.5,"lon":-0.1,"country":"uk"}]}"""
     private val plSeed =
-        """{"etag":"\"seed\"","catalog":{"countries":[{"code":"pl","name":"Polska","baseUrl":"https://kinowo.fly.dev","language":"pl","brand":"Kinowo"}],"cities":[{"slug":"poznan","name":"Poznań","lat":52.4,"lon":16.9,"country":"pl"}]}}"""
+        """{"etag":"\"seed\"","catalog":{"countries":[{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo"}],"cities":[{"slug":"poznan","name":"Poznań","lat":52.4,"lon":16.9,"country":"pl"}]}}"""
 
     private fun api(result: KinowoApi.FetchedCatalog) = CatalogApi { result }
 

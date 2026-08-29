@@ -29,29 +29,29 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers {
 
   private def req(path: String) =
     FakeRequest(GET, path)
-      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "kinowo.fly.dev")
+      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "kinowo.net")
 
   private def canonicalOf(html: String): Option[String] =
     """<link rel="canonical" href="([^"]+)">""".r.findFirstMatchIn(html).map(_.group(1))
 
   "the city index" should "canonicalise to the bare city URL" in {
     val html = contentAsString(controller().index("poznan")(req("/poznan/")))
-    canonicalOf(html) shouldBe Some("https://kinowo.fly.dev/poznan/")
+    canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/")
   }
 
   "the /filmy alias" should "canonicalise to the bare city URL, not /filmy" in {
     val html = contentAsString(controller().browse("poznan", None, None, None, None)(req("/poznan/filmy")))
-    canonicalOf(html) shouldBe Some("https://kinowo.fly.dev/poznan/")
+    canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/")
   }
 
   "a filtered index" should "canonicalise to the bare city URL while og:url keeps the filter" in {
     val html = contentAsString(controller().index("poznan")(req("/poznan/?date=tomorrow")))
-    canonicalOf(html) shouldBe Some("https://kinowo.fly.dev/poznan/")
-    html should include("""<meta property="og:url"         content="https://kinowo.fly.dev/poznan/?date=tomorrow">""")
+    canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/")
+    html should include("""<meta property="og:url"         content="https://kinowo.net/poznan/?date=tomorrow">""")
   }
 
   "the film page" should "self-canonicalise to its own deep-link" in {
     val html = contentAsString(controller().filmBySlug("poznan", "testowy-film")(req("/poznan/film/testowy-film")))
-    canonicalOf(html) shouldBe Some("https://kinowo.fly.dev/poznan/film/testowy-film")
+    canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/film/testowy-film")
   }
 }

@@ -9,7 +9,7 @@ import java.time.{LocalDate, LocalDateTime}
 
 class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
 
-  private val Origin = "https://kinowo.fly.dev"
+  private val Origin = "https://kinowo.net"
 
   // Count literal (non-regex) occurrences — the URLs contain `?`, which
   // String.split would treat as a regex metachar.

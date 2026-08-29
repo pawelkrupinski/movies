@@ -860,6 +860,7 @@ class MovieController( cc: ControllerComponents,
             // often a Multikino origin Cloudflare 403s from our Fly IP, so the
             // card must be free to walk to a reachable fallback (see OgCardService).
             schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls,
+            c.country.shareHost,
             director = OgCardAssembly.cardDirector(schedule),
             // The PNG card draws plain text — drop the markdown emphasis markers.
             synopsis = schedule.synopsis.map(tools.SynopsisMarkdown.strip)
@@ -883,7 +884,7 @@ class MovieController( cc: ControllerComponents,
       val day   = java.time.LocalDate.now(c.zoneId)
       val films = OgCardAssembly.dailyCardFilms(movieControllerService.toSchedules(c), day.toEpochDay, count = 5, normalizer)
         .map(OgCardAssembly.toCityCardFilm)
-      val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), c.country.brandName, films)
+      val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), c.country.brandName, c.country.shareHost, films)
       // 1h, not a day: the card tracks the live repertoire (which shifts through
       // the day), and a shorter TTL means a regenerated card surfaces promptly.
       Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=3600")

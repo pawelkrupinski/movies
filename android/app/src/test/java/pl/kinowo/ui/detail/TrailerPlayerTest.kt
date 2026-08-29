@@ -28,13 +28,13 @@ import pl.kinowo.model.FilmDetails
  * iframes: loading one as a top-level `loadUrl` navigation renders the page but
  * the player refuses to start (no embedding referer), and wrapping it under a
  * fake `youtube.com` base origin breaks the player's parent handshake. The
- * working shape — proven on iOS (TrailerEmbedHTML under the `kinowo.fly.dev`
+ * working shape — proven on iOS (TrailerEmbedHTML under the `kinowo.net`
  * base) — is an iframe document loaded via `loadDataWithBaseURL` under our real
  * site origin, the same referer YouTube already permits playback for on the web.
  *
  * Robolectric can't drive real video, so the reachable mechanism under test is
  * the load call: the WebView gets the iframe HTML (carrying the autoplay embed
- * src) via `loadDataWithBaseURL` under `kinowo.fly.dev`, and never the dead
+ * src) via `loadDataWithBaseURL` under `kinowo.net`, and never the dead
  * top-level `loadUrl` navigation.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -114,7 +114,7 @@ class TrailerPlayerTest {
         // The iframe must be embedded under our real site origin — not a fake
         // youtube.com base (breaks the player handshake) — so YouTube sees the
         // same allowed referer it does on the web.
-        assertEquals("https://kinowo.fly.dev", loaded.baseUrl)
+        assertEquals("https://kinowo.net", loaded.baseUrl)
         assertTrue("expected an <iframe> document, got: ${loaded.data}", loaded.data.contains("<iframe"))
         assertTrue(
             "iframe src should carry the autoplay embed URL, got: ${loaded.data}",

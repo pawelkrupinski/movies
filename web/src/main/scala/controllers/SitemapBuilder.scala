@@ -19,7 +19,7 @@ import models.City
  */
 object SitemapBuilder {
 
-  /** @param origin  scheme + host, no trailing slash (`https://kinowo.fly.dev`)
+  /** @param origin  scheme + host, no trailing slash (`https://kinowo.net`)
    *  @param entries each city paired with the films it's currently showing
    *  @param lastmod the read model's mtime as a W3C date, stamped on the URLs
    *                 whose body IS the read model — the city listings, plans and

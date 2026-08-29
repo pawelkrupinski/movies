@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * Regression: "Istoriya Igrashok 5 - UA" (Helios, Ukrainian-dubbed "Toy Story 5",
  * director "Andrew Stanton", year 2026) bound to the WRONG film's ratings.
  *
- * Captured from prod (kinowo.fly.dev/poznan/film?title=Istoriya%20Igrashok%205%20-%20UA):
+ * Captured from prod (kinowo.net/poznan/film?title=Istoriya%20Igrashok%205%20-%20UA):
  *   - The transliterated Ukrainian title has no TMDB/IMDb entry, so the title
  *     search returns nothing and `directorWalk` is the only path that can fire.
  *   - Andrew Stanton has TWO 2026 directing credits: "In the Blink of an Eye"

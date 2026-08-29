@@ -1,6 +1,6 @@
 # Kinowo iOS
 
-SwiftUI client for [kinowo.fly.dev](https://kinowo.fly.dev) — the same repertuar
+SwiftUI client for [kinowo.net](https://kinowo.net) — the same repertuar
 ("/" page) the web app shows, on an iPhone.
 
 The app calls `/{city}/api/repertoire` (film grid) and `/{city}/api/details`
@@ -70,7 +70,7 @@ Three lanes:
 # Unit + integration (fast, offline). ~125 tests, runs in ~2s on macOS.
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test
 
-# Smoke tests against the live site (opt-in — hits kinowo.fly.dev).
+# Smoke tests against the live site (opt-in — hits kinowo.net).
 RUN_SMOKE_TESTS=1 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
     xcrun swift test --filter Smoke
 

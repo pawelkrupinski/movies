@@ -12,9 +12,9 @@ import Foundation
 /// - **City.** Replaying poznań's timestamp while fetching warszawa draws a 304
 ///   and strands the grid on the old city's films.
 /// - **Deployment.** The same slug can exist on two deployments, and asking the
-///   wrong one is not an error: `kinowo.fly.dev/berlin/api/repertoire` answers
+///   wrong one is not an error: `kinowo.net/berlin/api/repertoire` answers
 ///   `200 []` because Berlin simply isn't a Polish city. Cache that empty body,
-///   then replay its timestamp against `showtimes-de.fly.dev`, and Germany
+///   then replay its timestamp against `de.showtimes.cc`, and Germany
 ///   answers 304 — leaving the grid empty on a city that has a full listing.
 ///   That is what made a deep link into another country's city come up as
 ///   "no screenings" until the entry aged out.

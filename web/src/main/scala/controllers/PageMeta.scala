@@ -18,24 +18,31 @@ import play.api.mvc.RequestHeader
  */
 object PageMeta {
 
-  /** `https://kinowo.fly.dev/?date=tomorrow` for a typical prod request.
+  /** `https://kinowo.net/?date=tomorrow` for a typical prod request.
    *  `canonicalUrl(request) == origin(request) + request.uri`. */
   def canonicalUrl(request: RequestHeader): String =
     origin(request) + request.uri
 
-  /** `https://kinowo.fly.dev` — scheme + host without path/query.
+  /** `https://kinowo.net` — scheme + host without path/query.
    *  Reads `X-Forwarded-Proto` / `X-Forwarded-Host` directly — the
    *  `play.http.forwarded.trustedProxies` knob didn't make `request.secure`
    *  reflect the proxied scheme on this Play 3.0 setup (see the comment on
    *  `AuthController.callbackUrl`, which uses the same workaround). Safe
-   *  because Fly's edge is the only ingress; the internet can't reach our
-   *  container to forge these headers. */
+   *  because the Caddy vhost on k3s-worker-1 is the only ingress — the pod
+   *  binds a NodePort the internet cannot reach, so these headers can't be
+   *  forged by a client. */
   def origin(request: RequestHeader): String = {
     val proto = request.headers.get("X-Forwarded-Proto")
       .getOrElse(if (request.secure) "https" else "http")
-    val host  = request.headers.get("X-Forwarded-Host").getOrElse(request.host)
-    s"$proto://$host"
+    s"$proto://${host(request)}"
   }
+
+  /** The public host this request arrived on — `kinowo.net`, `uk.showtimes.cc`,
+   *  or the bare `showtimes.cc` apex. The proxy's `X-Forwarded-Host` wins over
+   *  the container-local `Host`, which is what makes host-dependent routing
+   *  (the apex country picker) work behind Caddy at all. */
+  def host(request: RequestHeader): String =
+    request.headers.get("X-Forwarded-Host").getOrElse(request.host)
 
   /** `FB_APP_ID` is read once at boot — the value never changes per request,
    *  and the env layer (`tools.Env`) already falls back to `.env.local` so

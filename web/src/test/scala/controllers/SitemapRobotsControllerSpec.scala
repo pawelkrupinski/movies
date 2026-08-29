@@ -31,7 +31,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   // X-Forwarded-* mirror the Fly edge so PageMeta.origin yields the prod host.
   private def req(path: String) =
     FakeRequest(GET, path)
-      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "kinowo.fly.dev")
+      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "kinowo.net")
 
   "robots.txt" should "stay crawlable, advertise the sitemap, and fence off noise" in {
     val res  = controller().robotsTxt(req("/robots.txt"))
@@ -40,7 +40,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     val body = contentAsString(res)
     body should include("User-agent: *")
     body should include("Allow: /")
-    body should include("Sitemap: https://kinowo.fly.dev/sitemap.xml")
+    body should include("Sitemap: https://kinowo.net/sitemap.xml")
     body should include("Disallow: /debug")
     body should include("Disallow: /admin")
     body should include("Disallow: /*/api/")
@@ -66,10 +66,10 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     header("Cache-Control", res) shouldBe Some("public, max-age=3600")
     val body = contentAsString(res)
     body should include("<urlset")
-    body should include("<loc>https://kinowo.fly.dev/</loc>")
-    body should include("<loc>https://kinowo.fly.dev/poznan/</loc>")
-    body should include("<loc>https://kinowo.fly.dev/poznan/plan</loc>")
-    body should include("<loc>https://kinowo.fly.dev/poznan/film/testowy-film</loc>")
+    body should include("<loc>https://kinowo.net/</loc>")
+    body should include("<loc>https://kinowo.net/poznan/</loc>")
+    body should include("<loc>https://kinowo.net/poznan/plan</loc>")
+    body should include("<loc>https://kinowo.net/poznan/film/testowy-film</loc>")
   }
 
   it should "scope to this deployment's country, not the global City.all" in {

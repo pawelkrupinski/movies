@@ -17,7 +17,7 @@
 // uses One UI Sans, stock Android uses Roboto, macOS uses SF Pro).
 //
 // Boots a local `FixtureServerMain` so the screenshots reflect
-// the committed CSS (not whatever's deployed on kinowo.fly.dev).
+// the committed CSS (not whatever's deployed on kinowo.net).
 // Override with `KINOWO_BASE_URL=…` to point at prod or any other
 // URL. Output dir defaults to `/tmp/phone-screens`, override with
 // `OUT_DIR=…`.

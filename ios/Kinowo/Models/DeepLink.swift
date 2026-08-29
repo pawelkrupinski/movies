@@ -3,18 +3,18 @@ import Foundation
 /// A parsed deep link into the app.
 ///
 /// The grammar mirrors the web URLs one-for-one so the SAME links — on any
-/// country deployment (`kinowo.fly.dev`, `showtimes-uk.fly.dev`,
-/// `showtimes-de.fly.dev`) — open the app via Universal Links, including the
+/// country deployment (`kinowo.net`, `uk.showtimes.cc`,
+/// `de.showtimes.cc`) — open the app via Universal Links, including the
 /// copy-to-clipboard filter links, whose query string we decode back into
 /// `DeepLinkFilters`. The `kinowo://` custom scheme is accepted too (host =
 /// city slug), so an internal or fallback link works without the
 /// associated-domain round trip.
 ///
-///   https://kinowo.fly.dev/poznan/                     → city
-///   https://kinowo.fly.dev/poznan/?dim=2D&genre=Komedia → city + filters
-///   https://kinowo.fly.dev/poznan/film/oppenheimer      → city + film detail
-///   https://kinowo.fly.dev/poznan/film?title=Oppenheimer → the same, legacy form
-///   https://showtimes-uk.fly.dev/london/                → city (UK deployment)
+///   https://kinowo.net/poznan/                     → city
+///   https://kinowo.net/poznan/?dim=2D&genre=Komedia → city + filters
+///   https://kinowo.net/poznan/film/oppenheimer      → city + film detail
+///   https://kinowo.net/poznan/film?title=Oppenheimer → the same, legacy form
+///   https://uk.showtimes.cc/london/                → city (UK deployment)
 ///   kinowo://poznan/                                    → city (custom scheme)
 ///   kinowo://poznan/film/oppenheimer                    → film (custom scheme)
 ///
@@ -36,9 +36,9 @@ struct DeepLink: Equatable {
     /// when a country is added. (`Country` lives in a different SPM target, so
     /// this can't derive from `Country.all` directly.)
     static let webHosts: Set<String> = [
-        "kinowo.fly.dev", "www.kinowo.fly.dev",
-        "showtimes-uk.fly.dev",
-        "showtimes-de.fly.dev",
+        "kinowo.net", "www.kinowo.net",
+        "uk.showtimes.cc",
+        "de.showtimes.cc",
     ]
     /// Reserved custom-scheme host already used for the OAuth callback — never a
     /// city, so never a navigation deep link.

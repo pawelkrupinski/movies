@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { firstVisibleSlug, firstVisibleTitle, getVisibleTitles, setDateFilter, waitForCards } from './helpers';
 
-// Broad-strokes liveness check against kinowo.fly.dev. The home page
+// Broad-strokes liveness check against kinowo.net. The home page
 // 200s with at least one visible card, the date filter narrows the
 // set rather than blowing it up, and a film detail page renders the
 // expected title. Catches deploys that ship a green build but break
@@ -12,7 +12,7 @@ import { firstVisibleSlug, firstVisibleTitle, getVisibleTitles, setDateFilter, w
 const visibleCardCount = async (page: import('@playwright/test').Page) =>
   (await getVisibleTitles(page)).length;
 
-test.describe('kinowo.fly.dev smoke', { tag: '@agnostic' }, () => {
+test.describe('kinowo.net smoke', { tag: '@agnostic' }, () => {
   test('home page renders at least one visible card', async ({ page }) => {
     const resp = await page.goto('/poznan/');
     expect(resp?.status()).toBe(200);

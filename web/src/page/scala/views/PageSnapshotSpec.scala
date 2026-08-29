@@ -93,11 +93,11 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     html should include ("""id="country-select"""")
     html should include ("""onchange="onCountryChange(this.value)"""")
     // Every deployed host appears as an option value...
-    html should include ("""value="https://kinowo.fly.dev"""")
-    html should include ("""value="https://showtimes-uk.fly.dev"""")
-    html should include ("""value="https://showtimes-de.fly.dev"""")
+    html should include ("""value="https://kinowo.net"""")
+    html should include ("""value="https://uk.showtimes.cc"""")
+    html should include ("""value="https://de.showtimes.cc"""")
     // ...with the current country (Poland, fromEnv default) pre-selected.
-    html should include ("""value="https://kinowo.fly.dev" selected""")
+    html should include ("""value="https://kinowo.net" selected""")
     // Germany is now deployed (showtimes-de) → present in the switcher.
     html should include (">Deutschland<")
   }

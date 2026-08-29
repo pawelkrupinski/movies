@@ -257,7 +257,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // A Ukrainian-dubbed screening lists under the Cyrillic title "Ваяна"; the
     // Polish listing under Latin "Vaiana" resolved to TMDB. The bare Cyrillic
     // string neither resolves on TMDB nor sanitizes to the Latin key, so it would
-    // sit as its own orphan film (the live kinowo.fly.dev duplicate). `apiQuery`
+    // sit as its own orphan film (the live kinowo.net duplicate). `apiQuery`
     // romanizes the SEARCH title (Ваяна → Vaiana), so both rows now share
     // sanitize(apiQuery) and the search-title edge folds them into one component —
     // WITHOUT the Cyrillic row having to resolve its own tmdbId.

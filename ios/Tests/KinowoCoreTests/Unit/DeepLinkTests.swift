@@ -2,7 +2,7 @@ import XCTest
 @testable import KinowoCore
 
 /// `DeepLink.parse` is the inverse of the web's `buildShareURL()` + the iOS
-/// `FilmShareLink.url`: every kinowo.fly.dev URL the site can produce must round
+/// `FilmShareLink.url`: every kinowo.net URL the site can produce must round
 /// back into the right city / film / filter state, and anything that ISN'T a
 /// city link (OAuth callbacks, unknown hosts, foreign paths) must be rejected so
 /// `onOpenURL` no-ops rather than navigating somewhere wrong.
@@ -15,7 +15,7 @@ final class DeepLinkTests: XCTestCase {
     // MARK: city + film identity
 
     func testCityListingLink() {
-        let dl = parse("https://kinowo.fly.dev/poznan/")
+        let dl = parse("https://kinowo.net/poznan/")
         XCTAssertEqual(dl?.citySlug, "poznan")
         XCTAssertNil(dl?.filmTitle)
         XCTAssertTrue(dl?.filters.isEmpty ?? false)
@@ -23,7 +23,7 @@ final class DeepLinkTests: XCTestCase {
 
     func testFilmDetailSlugLink() {
         // The canonical form the site and the app both mint now.
-        let dl = parse("https://kinowo.fly.dev/warszawa/film/oppenheimer")
+        let dl = parse("https://kinowo.net/warszawa/film/oppenheimer")
         XCTAssertEqual(dl?.citySlug, "warszawa")
         XCTAssertEqual(dl?.filmSlug, "oppenheimer")
         XCTAssertNil(dl?.filmTitle)
@@ -38,21 +38,21 @@ final class DeepLinkTests: XCTestCase {
     func testFilmDetailLink() {
         // The legacy form: still parsed, because links shared before the switch
         // — and by app builds still in the wild — carry it.
-        let dl = parse("https://kinowo.fly.dev/warszawa/film?title=Oppenheimer")
+        let dl = parse("https://kinowo.net/warszawa/film?title=Oppenheimer")
         XCTAssertEqual(dl?.citySlug, "warszawa")
         XCTAssertEqual(dl?.filmTitle, "Oppenheimer")
         XCTAssertNil(dl?.filmSlug)
     }
 
     func testBareFilmPathIsNeitherSlugNorTitle() {
-        let dl = parse("https://kinowo.fly.dev/warszawa/film")
+        let dl = parse("https://kinowo.net/warszawa/film")
         XCTAssertEqual(dl?.citySlug, "warszawa")
         XCTAssertNil(dl?.filmSlug)
         XCTAssertNil(dl?.filmTitle)
     }
 
     func testFilmDetailDecodesEncodedTitle() {
-        let dl = parse("https://kinowo.fly.dev/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga")
+        let dl = parse("https://kinowo.net/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga")
         XCTAssertEqual(dl?.filmTitle, "Diuna: Część druga")
     }
 
@@ -71,24 +71,24 @@ final class DeepLinkTests: XCTestCase {
     // MARK: rejection
 
     func testRejectsOAuthCallback() {
-        XCTAssertNil(parse("https://kinowo.fly.dev/auth/google/callback?code=abc"))
+        XCTAssertNil(parse("https://kinowo.net/auth/google/callback?code=abc"))
         XCTAssertNil(parse("kinowo://auth-done?code=abc"))
     }
 
     func testRejectsUnknownCity() {
-        XCTAssertNil(parse("https://kinowo.fly.dev/uptime"))
-        XCTAssertNil(parse("https://kinowo.fly.dev/nieznane-miasto/"))
+        XCTAssertNil(parse("https://kinowo.net/uptime"))
+        XCTAssertNil(parse("https://kinowo.net/nieznane-miasto/"))
     }
 
     func testRejectsForeignHostAndScheme() {
         XCTAssertNil(parse("https://evil.example.com/poznan/"))
-        XCTAssertNil(parse("mailto:hi@kinowo.fly.dev"))
+        XCTAssertNil(parse("mailto:hi@kinowo.net"))
     }
 
     // MARK: per-country deployment hosts
 
     func testUKDeploymentHostOpensInApp() {
-        let dl = parse("https://showtimes-uk.fly.dev/london/film?title=Wicked")
+        let dl = parse("https://uk.showtimes.cc/london/film?title=Wicked")
         XCTAssertEqual(dl?.citySlug, "london")
         XCTAssertEqual(dl?.filmTitle, "Wicked")
     }
@@ -97,18 +97,18 @@ final class DeepLinkTests: XCTestCase {
         // No German city ships in the compile-time `City.all` fallback (they
         // arrive via the live catalog), so pass the slug set the app hands in at
         // runtime (`catalog.allSlugs`) — the same call `handleDeepLink` makes.
-        let dl = DeepLink.parse(URL(string: "https://showtimes-de.fly.dev/berlin/")!, knownCitySlugs: ["berlin"])
+        let dl = DeepLink.parse(URL(string: "https://de.showtimes.cc/berlin/")!, knownCitySlugs: ["berlin"])
         XCTAssertEqual(dl?.citySlug, "berlin")
     }
 
     func testEmptyTitleParamIsNoFilm() {
-        XCTAssertNil(parse("https://kinowo.fly.dev/poznan/film?title=")?.filmTitle)
+        XCTAssertNil(parse("https://kinowo.net/poznan/film?title=")?.filmTitle)
     }
 
     // MARK: scalar filters
 
     func testScalarFilters() {
-        let f = parse("https://kinowo.fly.dev/poznan/?date=tomorrow&q=duna&dim=2D&lang=NAP&imax=1&from=18:30&sort=rating")!.filters
+        let f = parse("https://kinowo.net/poznan/?date=tomorrow&q=duna&dim=2D&lang=NAP&imax=1&from=18:30&sort=rating")!.filters
         XCTAssertEqual(f.date, .tomorrow)
         XCTAssertEqual(f.query, "duna")
         XCTAssertEqual(f.dimension, "2D")
@@ -120,11 +120,11 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func testIsoDateFilter() {
-        XCTAssertEqual(parse("https://kinowo.fly.dev/poznan/?date=2026-07-01")!.filters.date, .specific("2026-07-01"))
+        XCTAssertEqual(parse("https://kinowo.net/poznan/?date=2026-07-01")!.filters.date, .specific("2026-07-01"))
     }
 
     func testFormatFilterMergesOntoBase() {
-        let f = parse("https://kinowo.fly.dev/poznan/?dim=3D")!.filters
+        let f = parse("https://kinowo.net/poznan/?dim=3D")!.filters
         // Only the dim axis is set; an existing language on the base survives.
         let merged = f.formatFilter(base: FormatFilter(language: "DUB"))
         XCTAssertEqual(merged.dimension, "3D")
@@ -132,7 +132,7 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func testRejectsGarbageScalarValues() {
-        let f = parse("https://kinowo.fly.dev/poznan/?dim=4D&lang=XX&from=99:99&date=lolwut")!.filters
+        let f = parse("https://kinowo.net/poznan/?dim=4D&lang=XX&from=99:99&date=lolwut")!.filters
         XCTAssertNil(f.dimension)
         XCTAssertNil(f.language)
         XCTAssertNil(f.fromHour)
@@ -142,32 +142,32 @@ final class DeepLinkTests: XCTestCase {
     // MARK: multi-value inclusion → exclusion
 
     func testRepeatedAndCommaListInclusionFlatten() {
-        let repeated = parse("https://kinowo.fly.dev/poznan/?genre=Komedia&genre=Dramat")!.filters
-        let comma = parse("https://kinowo.fly.dev/poznan/?genre=Komedia,Dramat")!.filters
+        let repeated = parse("https://kinowo.net/poznan/?genre=Komedia&genre=Dramat")!.filters
+        let comma = parse("https://kinowo.net/poznan/?genre=Komedia,Dramat")!.filters
         XCTAssertEqual(Set(repeated.includedGenres), ["Komedia", "Dramat"])
         XCTAssertEqual(Set(comma.includedGenres), ["Komedia", "Dramat"])
     }
 
     func testInclusionConvertsToExclusionAgainstUniverse() {
-        let f = parse("https://kinowo.fly.dev/poznan/?country=USA&country=Polska")!.filters
+        let f = parse("https://kinowo.net/poznan/?country=USA&country=Polska")!.filters
         let universe: Set<String> = ["USA", "Polska", "Francja", "Niemcy"]
         // Keep USA + Polska → exclude everything else.
         XCTAssertEqual(f.excluded(f.includedCountries, universe: universe), ["Francja", "Niemcy"])
     }
 
     func testEmptyInclusionMeansNoExclusion() {
-        let f = parse("https://kinowo.fly.dev/poznan/")!.filters
+        let f = parse("https://kinowo.net/poznan/")!.filters
         XCTAssertEqual(f.excluded(f.includedCountries, universe: ["USA", "Polska"]), [])
     }
 
     func testCinemaParamInvertsToDisabledSet() {
-        let f = parse("https://kinowo.fly.dev/poznan/?cinema=Kino%20Muza&cinema=Rialto")!.filters
+        let f = parse("https://kinowo.net/poznan/?cinema=Kino%20Muza&cinema=Rialto")!.filters
         let all: Set<String> = ["Kino Muza", "Rialto", "Multikino", "Apollo"]
         XCTAssertEqual(f.disabledCinemas(allCinemas: all), ["Multikino", "Apollo"])
     }
 
     func testAbsentCinemaParamLeavesChoiceAlone() {
-        let f = parse("https://kinowo.fly.dev/poznan/?dim=2D")!.filters
+        let f = parse("https://kinowo.net/poznan/?dim=2D")!.filters
         XCTAssertNil(f.enabledCinemas)
         XCTAssertNil(f.disabledCinemas(allCinemas: ["A", "B"]))
     }

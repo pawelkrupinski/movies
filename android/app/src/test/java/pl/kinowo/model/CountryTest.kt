@@ -15,7 +15,7 @@ class CountryTest {
     fun defaultIsPolandOnTheProdDeployment() {
         val pl = Country.default
         assertEquals("pl", pl.code)
-        assertEquals("https://kinowo.fly.dev", pl.baseUrl)
+        assertEquals("https://kinowo.net", pl.baseUrl)
         assertEquals("pl", pl.languageTag)
     }
 
@@ -24,7 +24,7 @@ class CountryTest {
         val uk = Country.byCode("uk")
         assertEquals("uk", uk.code)
         assertEquals("United Kingdom", uk.displayName)
-        assertEquals("https://showtimes-uk.fly.dev", uk.baseUrl)
+        assertEquals("https://uk.showtimes.cc", uk.baseUrl)
         assertEquals("en", uk.languageTag)
     }
 
@@ -63,12 +63,12 @@ class CountryTest {
     fun countryDtoDecodesTimezoneWithWarsawFallback() {
         assertEquals(
             ZoneId.of("Europe/London"),
-            CountryDto("uk", "United Kingdom", "https://showtimes-uk.fly.dev", "en", "Europe/London").toCountry().zoneId,
+            CountryDto("uk", "United Kingdom", "https://uk.showtimes.cc", "en", "Europe/London").toCountry().zoneId,
         )
         // An older seed / a server predating the field: no timezone → Warsaw.
         assertEquals(
             ZoneId.of("Europe/Warsaw"),
-            CountryDto("pl", "Polska", "https://kinowo.fly.dev", "pl", null).toCountry().zoneId,
+            CountryDto("pl", "Polska", "https://kinowo.net", "pl", null).toCountry().zoneId,
         )
     }
 }

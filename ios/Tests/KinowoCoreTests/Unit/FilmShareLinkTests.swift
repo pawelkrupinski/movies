@@ -20,7 +20,7 @@ final class FilmShareLinkTests: XCTestCase {
         XCTAssertEqual(
             FilmShareLink.url(for: film(title: "Diuna: Część druga", slug: "diuna-czesc-druga"),
                               citySlug: "wroclaw").absoluteString,
-            "https://kinowo.fly.dev/wroclaw/film/diuna-czesc-druga"
+            "https://kinowo.net/wroclaw/film/diuna-czesc-druga"
         )
     }
 
@@ -36,11 +36,11 @@ final class FilmShareLinkTests: XCTestCase {
         // The query form still resolves server-side (301 → the slug address).
         XCTAssertEqual(
             FilmShareLink.url(for: film(title: "Oppenheimer", slug: nil), citySlug: "poznan").absoluteString,
-            "https://kinowo.fly.dev/poznan/film?title=Oppenheimer"
+            "https://kinowo.net/poznan/film?title=Oppenheimer"
         )
         XCTAssertEqual(
             FilmShareLink.url(for: film(title: "Oppenheimer", slug: ""), citySlug: "poznan").absoluteString,
-            "https://kinowo.fly.dev/poznan/film?title=Oppenheimer"
+            "https://kinowo.net/poznan/film?title=Oppenheimer"
         )
     }
 
@@ -49,7 +49,7 @@ final class FilmShareLinkTests: XCTestCase {
     func testPlainAsciiTitleIsLeftIntact() {
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Oppenheimer", citySlug: "poznan").absoluteString,
-            "https://kinowo.fly.dev/poznan/film?title=Oppenheimer"
+            "https://kinowo.net/poznan/film?title=Oppenheimer"
         )
     }
 
@@ -58,7 +58,7 @@ final class FilmShareLinkTests: XCTestCase {
         // `/film?title=…` has no server route and 404s.
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Oppenheimer", citySlug: "bielsko-biala").absoluteString,
-            "https://kinowo.fly.dev/bielsko-biala/film?title=Oppenheimer"
+            "https://kinowo.net/bielsko-biala/film?title=Oppenheimer"
         )
     }
 
@@ -66,14 +66,14 @@ final class FilmShareLinkTests: XCTestCase {
         // Space → %20 (not `+`), `&` → %26.
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Lilo & Stitch", citySlug: "warszawa").absoluteString,
-            "https://kinowo.fly.dev/warszawa/film?title=Lilo%20%26%20Stitch"
+            "https://kinowo.net/warszawa/film?title=Lilo%20%26%20Stitch"
         )
     }
 
     func testColonAndPolishDiacriticsEncode() {
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Diuna: Część druga", citySlug: "wroclaw").absoluteString,
-            "https://kinowo.fly.dev/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga"
+            "https://kinowo.net/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga"
         )
     }
 

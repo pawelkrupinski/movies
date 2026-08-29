@@ -1,6 +1,6 @@
 import XCTest
 
-/// End-to-end guard for inbound deep links: a kinowo.fly.dev Universal Link (or
+/// End-to-end guard for inbound deep links: a kinowo.net Universal Link (or
 /// kinowo:// link) must land the user on the right screen. The link is injected
 /// through the same `handleDeepLink` path a real Universal Link takes, via the
 /// `KINOWO_UITEST_DEEPLINK` launch hook, against the deterministic fixture
@@ -52,7 +52,7 @@ final class DeepLinkUITests: XCTestCase {
     func testCityLinkLandsOnRepertoireWithoutGate() throws {
         // A city-only link satisfies the gate and shows the grid directly —
         // never the city-confirm screen.
-        app.launchEnvironment["KINOWO_UITEST_DEEPLINK"] = "https://kinowo.fly.dev/warszawa/"
+        app.launchEnvironment["KINOWO_UITEST_DEEPLINK"] = "https://kinowo.net/warszawa/"
         app.launch()
 
         let card = app.descendants(matching: .any).matching(identifier: "filmgrid.cell").firstMatch

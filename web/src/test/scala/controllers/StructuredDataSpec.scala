@@ -65,7 +65,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     val arr = parseArray(StructuredData.landing())
     val site = byType(arr, "WebSite").head
     (site \ "name").as[String]  shouldBe "Kinowo"
-    (site \ "url").as[String]   shouldBe "https://kinowo.fly.dev/"
+    (site \ "url").as[String]   shouldBe "https://kinowo.net/"
     // The description is the localized landing copy (single source of truth with
     // og:description), NOT the old hardcoded "…w polskich miastach…" literal.
     (site \ "description").as[String] shouldBe TestMessages.forLang("pl")("landing.ogDescription")
@@ -77,12 +77,12 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
   // ── city page ────────────────────────────────────────────────────────────────
 
   "cityPage JSON-LD" should "carry a Home › City breadcrumb" in {
-    val arr   = parseArray(StructuredData.cityPage("https://kinowo.fly.dev/poznan/", Poznan, Seq(film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))))
+    val arr   = parseArray(StructuredData.cityPage("https://kinowo.net/poznan/", Poznan, Seq(film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))))
     val crumb = byType(arr, "BreadcrumbList").head
     val items = (crumb \ "itemListElement").as[JsArray].value
     items.map(i => (i \ "name").as[String])   shouldBe Seq("Kinowo", "Poznań")
-    (items(0) \ "item").as[String]            shouldBe "https://kinowo.fly.dev/"
-    (items(1) \ "item").as[String]            shouldBe "https://kinowo.fly.dev/poznan/"
+    (items(0) \ "item").as[String]            shouldBe "https://kinowo.net/"
+    (items(1) \ "item").as[String]            shouldBe "https://kinowo.net/poznan/"
     (items(1) \ "position").as[Int]           shouldBe 2
   }
 
@@ -91,23 +91,23 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
       film("Zorro", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))),
       film("Amelia", Seq((Helios, LocalDateTime.of(2026, 5, 17, 20, 0), None))),
     )
-    val list  = byType(parseArray(StructuredData.cityPage("https://kinowo.fly.dev/poznan/", Poznan, films)), "ItemList").head
+    val list  = byType(parseArray(StructuredData.cityPage("https://kinowo.net/poznan/", Poznan, films)), "ItemList").head
     val items = (list \ "itemListElement").as[JsArray].value
     items.map(i => (i \ "name").as[String]) shouldBe Seq("Amelia", "Zorro") // sorted
-    (items.head \ "url").as[String]         shouldBe "https://kinowo.fly.dev/poznan/film/amelia"
+    (items.head \ "url").as[String]         shouldBe "https://kinowo.net/poznan/film/amelia"
     (list \ "numberOfItems").as[Int]        shouldBe 2
     (list \ "name").as[String]              shouldBe "Repertuar kin w Poznaniu"
   }
 
   it should "name the ItemList in the deployment's language (English for a UK city)" in {
     val films = Seq(film("Dune", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))
-    val list  = byType(parseArray(StructuredData.cityPage("https://kinowo.fly.dev/london/", London, films)), "ItemList").head
+    val list  = byType(parseArray(StructuredData.cityPage("https://kinowo.net/london/", London, films)), "ItemList").head
     (list \ "name").as[String] shouldBe "Cinema listings in London"
   }
 
   // ── film page ────────────────────────────────────────────────────────────────
 
-  private val canonical = "https://kinowo.fly.dev/poznan/film/diuna"
+  private val canonical = "https://kinowo.net/poznan/film/diuna"
 
   "film JSON-LD" should "emit a Movie with the core fields" in {
     val arr   = parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)))))

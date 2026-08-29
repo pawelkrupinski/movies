@@ -18,8 +18,8 @@ class LandingPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   "the landing preview" should "point og:image + twitter:image at the dedicated home card" in {
     val html = render()
-    html should include ("""<meta property="og:image"       content="https://kinowo.fly.dev/assets/img/og-home.png">""")
-    html should include ("""<meta name="twitter:image"       content="https://kinowo.fly.dev/assets/img/og-home.png">""")
+    html should include ("""<meta property="og:image"       content="https://kinowo.net/assets/img/og-home.png">""")
+    html should include ("""<meta name="twitter:image"       content="https://kinowo.net/assets/img/og-home.png">""")
   }
 
   it should "use the large-image twitter card declared as 1200×630" in {
@@ -39,6 +39,6 @@ class LandingPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   it should "carry the canonical landing URL so Facebook keeps the card" in {
     val html = render()
-    html should include ("""<meta property="og:url"         content="https://kinowo.fly.dev/">""")
+    html should include ("""<meta property="og:url"         content="https://kinowo.net/">""")
   }
 }

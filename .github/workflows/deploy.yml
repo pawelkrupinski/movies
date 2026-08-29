@@ -74,6 +74,13 @@ jobs:
     # that will skip the worker deploy. Building is not restarting: the skip
     # guard exists to protect the worker from a cold-boot scrape storm, and an
     # unreleased image in the registry costs nothing but builder time.
+    # NOTHING RELEASES THESE IMAGES ANY MORE, and that is worth stating rather than leaving to be
+    # rediscovered: every leg of the `deploy` matrix below is now `enabled: false`, because both
+    # tiers run on k3s and are shipped from their own GHCR workflows. This job is kept for two
+    # reasons — it holds the "take the runners back from an in-flight convergence run" step that the
+    # rest of the push depends on for its runner budget, and a pushed Fly image is what makes the
+    # documented rollback ("flip one word to true") a flip rather than a rebuild. It costs Fly
+    # builder time and nothing else. Retire it with the Fly apps.
     build-image:
         runs-on: ubuntu-latest
         permissions:
@@ -219,16 +226,27 @@ jobs:
                     # would deploy and restart it on the next push to main. This is
                     # the switch that makes a stop stick.
                     #
-                    # UK + Germany went `false` on 2026-08-02 to cut hosting cost.
-                    # Their `fly.*.toml` files are untouched (the Grafana specs still
-                    # assert against them), so a full restore is: flip to `true`,
-                    # `flyctl scale count 1` / `machines start`, and give the country
-                    # a `webUrl` in `models.Country`. See docs/restoring-a-country.md.
+                    # THE WHOLE WEB TIER MOVED TO KUBERNETES 2026-08-29, so all three legs are
+                    # disabled rather than deleted — the same treatment the workers got below, for
+                    # the same reason.
+                    #
+                    # The three sites now run as pods on k3s (infra/kubernetes/web/) behind Caddy on
+                    # k3s-worker-1, on domains this project actually owns: kinowo.net,
+                    # uk.showtimes.cc and de.showtimes.cc. `.github/workflows/build-web-image.yaml`
+                    # builds and rolls them. Leaving any of these `true` would make the next push to
+                    # main deploy a SECOND copy of the site on Fly, serving the same databases from a
+                    # host that no longer has the traffic — and, for `kinowo`, restart a machine that
+                    # is supposed to be scaled to zero.
+                    #
+                    # Kept as entries so the rollback is flipping one word: set back to `true`,
+                    # `flyctl scale count 1`, and scale the k8s deployment to 0. Their `fly.*.toml`
+                    # files are untouched (the Grafana specs still assert against them). Delete these
+                    # entries only once the Fly apps themselves are retired.
                     - app: kinowo
                       toml: fly.toml
                       bin: web
                       builder: kinowo
-                      enabled: true
+                      enabled: false
                     # UK frontend — same `web` binary + build artifact as kinowo,
                     # its own fly config (KINOWO_COUNTRY=uk → the kinowo_uk db).
                     - app: showtimes-uk

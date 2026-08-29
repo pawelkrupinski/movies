@@ -1,0 +1,137 @@
+# Build the web image and push it to GitHub Container Registry, for the k3s deployment.
+#
+# WHY THIS IS A SECOND FILE RATHER THAN A MATRIX LEG OF build-worker-image.yaml, which it otherwise
+# mirrors almost line for line: the two tiers must have DIFFERENT `paths:` filters. A web-only
+# change must not rebuild and redeploy the worker, because deploying a worker restarts it and a
+# restarted worker cold-boots into a scrape storm -- the whole reason its deploy is path-gated. A
+# union-of-paths matrix would quietly undo that, so the duplication is deliberate and the trigger
+# lists are the part to keep apart.
+#
+# The two images come from the SAME Dockerfile (`ARG BIN`) and differ only in which module is
+# staged.
+name: Build web image (GHCR)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'common/**'
+      - 'build.sbt'
+      - 'project/**'
+      - 'Dockerfile'
+      - '.github/workflows/build-web-image.yaml'
+  workflow_dispatch:
+
+concurrency:
+  # One build per ref. Two racing builds would push two tags for the same commit and the later
+  # `latest` would be whichever finished last, not whichever is newer.
+  group: build-web-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # The whole reason this needs no new credential: the built-in GITHUB_TOKEN can push to GHCR.
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: sbt
+
+      - uses: sbt/setup-sbt@v1
+
+      - name: Stage the web distribution
+        run: sbt "web/stage"
+
+      - name: Place the staged distribution where the Dockerfile expects it
+        # The Dockerfile's context is whitelisted down to `stage/` alone (see .dockerignore), which
+        # is why this copy exists rather than the Dockerfile reaching into target/universal/stage:
+        # .dockerignore cannot reliably re-include a deep path whose parents are excluded by `*`.
+        run: rm -rf stage && cp -r web/target/universal/stage stage
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # amd64 ONLY. The cluster is Hetzner x86_64; adding arm64 would double the build for a
+          # platform nothing here runs, and the emulated leg is the slow one.
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            BIN=web
+            COMMIT_SHA=${{ github.sha }}
+          # BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes back on
+          # the exact build that was deployed; `latest` exists only so a hand-applied manifest
+          # resolves to something. Never deploy `latest` -- a pod that restarts under it can come
+          # back on a different build with nothing recording which.
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/movies-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    # SEPARATE JOB, `needs: build`, so a failed build cannot deploy and a failed deploy is
+    # distinguishable from a failed build in the run list -- the two have completely different fixes.
+    needs: build
+    runs-on: ubuntu-latest
+
+    # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image without
+    # putting it on production.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    # ONE DEPLOY AT A TIME, AND DO NOT CANCEL A RUNNING ONE. `cancel-in-progress` is right for the
+    # build (a superseded image is wasted work) and wrong here: killing a job mid-`rollout status`
+    # leaves the Deployment patched and nobody watching whether the new pod came up.
+    #
+    # A GROUP OF ITS OWN, separate from the worker's: the two tiers are independent rollouts and
+    # sharing a group would make a web deploy wait behind a worker deploy for no reason.
+    concurrency:
+      group: deploy-web-k8s
+      cancel-in-progress: false
+
+    steps:
+      - name: Roll the new image onto k3s
+        # NO kubectl, NO kubeconfig, NO cluster credential in CI AT ALL -- one ssh command whose
+        # payload is an image reference, against a key pinned to a forced command on monitoring-1
+        # (infra/nix/modules/roles/k8s-deploy.nix). That endpoint decides which Deployments an image
+        # belongs to FROM THE REPOSITORY NAME, so `movies-web` rolls web-pl/-de/-uk and nothing
+        # else; the same key cannot be talked into deploying anything not in its target list.
+        #
+        # THIS IS A ROLLING UPDATE OF THE ONLY USER-FACING TIER. The Deployments carry
+        # maxUnavailable: 0 with a readiness probe, so the replacement pod serves before the old one
+        # is terminated and the site does not go dark mid-deploy.
+        env:
+          DEPLOY_KEY: ${{ secrets.K8S_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/k8sdeploy
+          chmod 600 ~/.ssh/k8sdeploy
+
+          # accept-new, not `no`: the host key is pinned on first use within this ephemeral runner
+          # and the connection is to a fixed address that terraform/primary_ips.tf keeps stable.
+          ssh -i ~/.ssh/k8sdeploy \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=15 \
+              k8sdeploy@2.28.52.210 \
+              "ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}"

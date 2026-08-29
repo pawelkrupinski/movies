@@ -47,7 +47,7 @@ struct KinowoApp: App {
                 .preferredColorScheme(.dark)
                 .tint(Color(red: 0.42, green: 0.67, blue: 0.87))
                 .task { await authService.checkSession() }
-                // A kinowo.fly.dev Universal Link (or kinowo:// link) opened the
+                // A kinowo.net Universal Link (or kinowo:// link) opened the
                 // app. Switch the city eagerly so the CityGate flips straight to
                 // it on a cold launch; ContentView applies the filters + film.
                 .onOpenURL { handleDeepLink($0) }
@@ -75,7 +75,7 @@ struct KinowoApp: App {
         // wrong deployment's catalog. Setting it re-points `kinowoBaseURL`; the
         // root's `.id(selectedCountry.code)` then rebuilds ContentView, which
         // reloads the new country's catalog + repertoire. No-ops when already
-        // in that country (e.g. a same-country kinowo.fly.dev link).
+        // in that country (e.g. a same-country kinowo.net link).
         if let countryCode = catalog.cities.country(ofSlug: link.citySlug) {
             prefs.setCountry(catalog.country(code: countryCode))
         }

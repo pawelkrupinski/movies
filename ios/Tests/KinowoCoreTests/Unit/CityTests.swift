@@ -182,13 +182,13 @@ final class CityTests: XCTestCase {
     // ── apiURL (city-prefixed endpoints) ──────────────────────────
 
     func testRepertoireURLIsCityPrefixed() {
-        let url = City.apiURL(base: URL(string: "https://kinowo.fly.dev")!, slug: "poznan", endpoint: "repertoire")
-        XCTAssertEqual(url.absoluteString, "https://kinowo.fly.dev/poznan/api/repertoire")
+        let url = City.apiURL(base: URL(string: "https://kinowo.net")!, slug: "poznan", endpoint: "repertoire")
+        XCTAssertEqual(url.absoluteString, "https://kinowo.net/poznan/api/repertoire")
     }
 
     func testApiURLHonoursADifferentSlug() {
-        let url = City.apiURL(base: URL(string: "https://kinowo.fly.dev")!, slug: "warszawa", endpoint: "repertoire")
-        XCTAssertEqual(url.absoluteString, "https://kinowo.fly.dev/warszawa/api/repertoire")
+        let url = City.apiURL(base: URL(string: "https://kinowo.net")!, slug: "warszawa", endpoint: "repertoire")
+        XCTAssertEqual(url.absoluteString, "https://kinowo.net/warszawa/api/repertoire")
     }
 
     // ── matching (city-picker search, per country) ────────────────

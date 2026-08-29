@@ -42,9 +42,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="kinowo.fly.dev" />
-                <data android:scheme="https" android:host="showtimes-uk.fly.dev" />
-                <data android:scheme="https" android:host="showtimes-de.fly.dev" />
+                <data android:scheme="https" android:host="kinowo.net" />
+                <data android:scheme="https" android:host="uk.showtimes.cc" />
+                <data android:scheme="https" android:host="de.showtimes.cc" />
                 <data android:pathPattern="/..*/" />
                 <data android:pathPattern="/..*/film" />
             </intent-filter>

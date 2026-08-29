@@ -23,8 +23,8 @@ class GoogleOauthProviderSpec extends AnyFlatSpec with Matchers {
 
   it should "URL-encode the redirect_uri (colons and slashes)" in {
     val p   = new GoogleOauthProvider(scripted(Map.empty), Client, Secret)
-    val url = p.authUrl(state = "s", redirectUri = "https://kinowo.fly.dev/auth/google/callback")
-    url should include ("redirect_uri=https%3A%2F%2Fkinowo.fly.dev%2Fauth%2Fgoogle%2Fcallback")
+    val url = p.authUrl(state = "s", redirectUri = "https://kinowo.net/auth/google/callback")
+    url should include ("redirect_uri=https%3A%2F%2Fkinowo.net%2Fauth%2Fgoogle%2Fcallback")
   }
 
   it should "ask for prompt=select_account so multi-account browsers re-prompt" in {
@@ -41,7 +41,7 @@ class GoogleOauthProviderSpec extends AnyFlatSpec with Matchers {
 
   it should "omit device_id and device_name for public hosts" in {
     val p   = new GoogleOauthProvider(scripted(Map.empty), Client, Secret)
-    val url = p.authUrl("s", "https://kinowo.fly.dev/auth/google/callback")
+    val url = p.authUrl("s", "https://kinowo.net/auth/google/callback")
     url should not include "device_id"
     url should not include "device_name"
   }
@@ -53,7 +53,7 @@ class GoogleOauthProviderSpec extends AnyFlatSpec with Matchers {
     isPrivateIp("http://172.31.255.1:9000/cb")   shouldBe true
     isPrivateIp("http://192.168.1.100:9000/cb")  shouldBe true
     isPrivateIp("http://127.0.0.1:9000/cb")      shouldBe true
-    isPrivateIp("https://kinowo.fly.dev/cb")     shouldBe false
+    isPrivateIp("https://kinowo.net/cb")     shouldBe false
     isPrivateIp("http://172.32.0.1:9000/cb")     shouldBe false
   }
 

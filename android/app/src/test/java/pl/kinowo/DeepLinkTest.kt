@@ -12,7 +12,7 @@ import pl.kinowo.filter.SortOption
 
 /**
  * [DeepLink.parse] is the inverse of the web's `buildShareURL()`: every
- * kinowo.fly.dev URL the site produces must round back into the right city /
+ * kinowo.net URL the site produces must round back into the right city /
  * film / filter state, and anything that ISN'T a city link (OAuth callbacks,
  * unknown hosts, foreign paths) must be rejected so the activity no-ops.
  */
@@ -21,7 +21,7 @@ class DeepLinkTest {
     // MARK: city + film identity
 
     @Test fun cityListingLink() {
-        val dl = DeepLink.parse("https://kinowo.fly.dev/poznan/")!!
+        val dl = DeepLink.parse("https://kinowo.net/poznan/")!!
         assertEquals("poznan", dl.citySlug)
         assertNull(dl.filmTitle)
         assertTrue(dl.filters.isEmpty)
@@ -29,7 +29,7 @@ class DeepLinkTest {
 
     @Test fun filmDetailSlugLink() {
         // The canonical form the site and the app both mint now.
-        val dl = DeepLink.parse("https://kinowo.fly.dev/warszawa/film/oppenheimer")!!
+        val dl = DeepLink.parse("https://kinowo.net/warszawa/film/oppenheimer")!!
         assertEquals("warszawa", dl.citySlug)
         assertEquals("oppenheimer", dl.filmSlug)
         assertNull(dl.filmTitle)
@@ -42,7 +42,7 @@ class DeepLinkTest {
     }
 
     @Test fun bareFilmPathIsNeitherSlugNorTitle() {
-        val dl = DeepLink.parse("https://kinowo.fly.dev/warszawa/film")!!
+        val dl = DeepLink.parse("https://kinowo.net/warszawa/film")!!
         assertNull(dl.filmSlug)
         assertNull(dl.filmTitle)
     }
@@ -50,19 +50,19 @@ class DeepLinkTest {
     @Test fun filmDetailLink() {
         // The legacy form: still parsed, because links shared before the switch
         // — and by app builds still in the wild — carry it.
-        val dl = DeepLink.parse("https://kinowo.fly.dev/warszawa/film?title=Oppenheimer")!!
+        val dl = DeepLink.parse("https://kinowo.net/warszawa/film?title=Oppenheimer")!!
         assertEquals("warszawa", dl.citySlug)
         assertEquals("Oppenheimer", dl.filmTitle)
         assertNull(dl.filmSlug)
     }
 
     @Test fun filmDetailDecodesEncodedTitle() {
-        val dl = DeepLink.parse("https://kinowo.fly.dev/wroclaw/film?title=Lilo%20%26%20Stitch")!!
+        val dl = DeepLink.parse("https://kinowo.net/wroclaw/film?title=Lilo%20%26%20Stitch")!!
         assertEquals("Lilo & Stitch", dl.filmTitle)
     }
 
     @Test fun filmDetailParsesEncodedPolishTitle() {
-        val dl = DeepLink.parse("https://kinowo.fly.dev/poznan/film?title=Minionki%20i%20straszyd%C5%82a")!!
+        val dl = DeepLink.parse("https://kinowo.net/poznan/film?title=Minionki%20i%20straszyd%C5%82a")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("Minionki i straszydła", dl.filmTitle)
     }
@@ -73,7 +73,7 @@ class DeepLinkTest {
     // those → parse returned null → the film page never opened (the app stayed
     // on the current/main screen). parse() must tolerate the decoded delivery.
     @Test fun filmDetailParsesTitleDeliveredDecoded() {
-        val dl = DeepLink.parse("https://kinowo.fly.dev/poznan/film?title=Minionki i straszydła")!!
+        val dl = DeepLink.parse("https://kinowo.net/poznan/film?title=Minionki i straszydła")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("Minionki i straszydła", dl.filmTitle)
     }
@@ -93,22 +93,22 @@ class DeepLinkTest {
 
     @Test fun rejectsOAuthCallback() {
         assertNull(DeepLink.parse("kinowo://auth-done?code=abc"))
-        assertNull(DeepLink.parse("https://kinowo.fly.dev/auth/google/callback?code=abc"))
+        assertNull(DeepLink.parse("https://kinowo.net/auth/google/callback?code=abc"))
     }
 
     @Test fun rejectsUnknownCityHostAndScheme() {
-        assertNull(DeepLink.parse("https://kinowo.fly.dev/uptime"))
-        assertNull(DeepLink.parse("https://kinowo.fly.dev/nieznane-miasto/"))
+        assertNull(DeepLink.parse("https://kinowo.net/uptime"))
+        assertNull(DeepLink.parse("https://kinowo.net/nieznane-miasto/"))
         assertNull(DeepLink.parse("https://evil.example.com/poznan/"))
-        assertNull(DeepLink.parse("mailto:hi@kinowo.fly.dev"))
+        assertNull(DeepLink.parse("mailto:hi@kinowo.net"))
     }
 
     @Test fun emptyTitleParamIsNoFilm() {
-        assertNull(DeepLink.parse("https://kinowo.fly.dev/poznan/film?title=")!!.filmTitle)
+        assertNull(DeepLink.parse("https://kinowo.net/poznan/film?title=")!!.filmTitle)
     }
 
     @Test fun ukDeploymentHostOpensInApp() {
-        val dl = DeepLink.parse("https://showtimes-uk.fly.dev/london/film?title=Wicked")!!
+        val dl = DeepLink.parse("https://uk.showtimes.cc/london/film?title=Wicked")!!
         assertEquals("london", dl.citySlug)
         assertEquals("Wicked", dl.filmTitle)
     }
@@ -117,14 +117,14 @@ class DeepLinkTest {
         // No German city ships in the compile-time `Cities.all` fallback (they
         // arrive via the live catalog), so pass the slug set the ViewModel hands
         // in at runtime (`countryCatalog.value.cities`) — as `handleDeepLink` does.
-        val dl = DeepLink.parse("https://showtimes-de.fly.dev/berlin/", setOf("berlin"))!!
+        val dl = DeepLink.parse("https://de.showtimes.cc/berlin/", setOf("berlin"))!!
         assertEquals("berlin", dl.citySlug)
     }
 
     // MARK: scalar filters
 
     @Test fun scalarFilters() {
-        val f = DeepLink.parse("https://kinowo.fly.dev/poznan/?date=tomorrow&q=duna&dim=2D&lang=NAP&imax=1&from=18:30&sort=rating")!!.filters
+        val f = DeepLink.parse("https://kinowo.net/poznan/?date=tomorrow&q=duna&dim=2D&lang=NAP&imax=1&from=18:30&sort=rating")!!.filters
         assertEquals(DateFilter.Tomorrow, f.date)
         assertEquals("duna", f.query)
         assertEquals("2D", f.dimension)
@@ -136,18 +136,18 @@ class DeepLinkTest {
     }
 
     @Test fun isoDateFilter() {
-        assertEquals(DateFilter.Specific("2026-07-01"), DeepLink.parse("https://kinowo.fly.dev/poznan/?date=2026-07-01")!!.filters.date)
+        assertEquals(DateFilter.Specific("2026-07-01"), DeepLink.parse("https://kinowo.net/poznan/?date=2026-07-01")!!.filters.date)
     }
 
     @Test fun formatFilterMergesOntoBase() {
-        val f = DeepLink.parse("https://kinowo.fly.dev/poznan/?dim=3D")!!.filters
+        val f = DeepLink.parse("https://kinowo.net/poznan/?dim=3D")!!.filters
         val merged = f.formatFilter(FormatFilter(language = "DUB"))
         assertEquals("3D", merged.dimension)
         assertEquals("DUB", merged.language)
     }
 
     @Test fun rejectsGarbageScalarValues() {
-        val f = DeepLink.parse("https://kinowo.fly.dev/poznan/?dim=4D&lang=XX&from=99:99&date=lolwut")!!.filters
+        val f = DeepLink.parse("https://kinowo.net/poznan/?dim=4D&lang=XX&from=99:99&date=lolwut")!!.filters
         assertNull(f.dimension)
         assertNull(f.language)
         assertNull(f.fromHour)
@@ -157,31 +157,31 @@ class DeepLinkTest {
     // MARK: multi-value inclusion → exclusion
 
     @Test fun repeatedAndCommaListInclusionFlatten() {
-        val repeated = DeepLink.parse("https://kinowo.fly.dev/poznan/?genre=Komedia&genre=Dramat")!!.filters
-        val comma = DeepLink.parse("https://kinowo.fly.dev/poznan/?genre=Komedia,Dramat")!!.filters
+        val repeated = DeepLink.parse("https://kinowo.net/poznan/?genre=Komedia&genre=Dramat")!!.filters
+        val comma = DeepLink.parse("https://kinowo.net/poznan/?genre=Komedia,Dramat")!!.filters
         assertEquals(setOf("Komedia", "Dramat"), repeated.includedGenres.toSet())
         assertEquals(setOf("Komedia", "Dramat"), comma.includedGenres.toSet())
     }
 
     @Test fun inclusionConvertsToExclusionAgainstUniverse() {
-        val f = DeepLink.parse("https://kinowo.fly.dev/poznan/?country=USA&country=Polska")!!.filters
+        val f = DeepLink.parse("https://kinowo.net/poznan/?country=USA&country=Polska")!!.filters
         val universe = setOf("USA", "Polska", "Francja", "Niemcy")
         assertEquals(setOf("Francja", "Niemcy"), f.excluded(f.includedCountries, universe))
     }
 
     @Test fun emptyInclusionMeansNoExclusion() {
-        val f = DeepLink.parse("https://kinowo.fly.dev/poznan/")!!.filters
+        val f = DeepLink.parse("https://kinowo.net/poznan/")!!.filters
         assertEquals(emptySet<String>(), f.excluded(f.includedCountries, setOf("USA", "Polska")))
     }
 
     @Test fun cinemaParamInvertsToDisabledSet() {
-        val f = DeepLink.parse("https://kinowo.fly.dev/poznan/?cinema=Kino%20Muza&cinema=Rialto")!!.filters
+        val f = DeepLink.parse("https://kinowo.net/poznan/?cinema=Kino%20Muza&cinema=Rialto")!!.filters
         val all = setOf("Kino Muza", "Rialto", "Multikino", "Apollo")
         assertEquals(setOf("Multikino", "Apollo"), f.disabledCinemas(all))
     }
 
     @Test fun absentCinemaParamLeavesChoiceAlone() {
-        val f = DeepLink.parse("https://kinowo.fly.dev/poznan/?dim=2D")!!.filters
+        val f = DeepLink.parse("https://kinowo.net/poznan/?dim=2D")!!.filters
         assertNull(f.enabledCinemas)
         assertNull(f.disabledCinemas(setOf("A", "B")))
     }

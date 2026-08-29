@@ -134,10 +134,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   "Country.switchable" should "list every deployed country (webUrl defined), Poland first" in {
     // The navbar country <select> iterates this, in this order.
     Country.switchable shouldBe Seq(Country.Poland, Country.UnitedKingdom, Country.Germany)
-    Country.Poland.webUrl shouldBe Some("https://kinowo.fly.dev")
-    Country.UnitedKingdom.webUrl shouldBe Some("https://showtimes-uk.fly.dev")
-    // Germany is now deployed (showtimes-de) → switchable.
-    Country.Germany.webUrl shouldBe Some("https://showtimes-de.fly.dev")
+    Country.Poland.webUrl shouldBe Some("https://kinowo.net")
+    Country.UnitedKingdom.webUrl shouldBe Some("https://uk.showtimes.cc")
+    Country.Germany.webUrl shouldBe Some("https://de.showtimes.cc")
     Country.switchable should contain (Country.Germany)
     // Every switchable country carries a host (no trailing slash) and a label.
     Country.switchable.foreach { c =>
@@ -148,16 +147,39 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "A country's share-preview (Open Graph) identity" should "carry its own host origin and home-montage filename" in {
     // The `/` landing card and the default og:image are built from these, so a
-    // UK deployment previews off showtimes-uk.fly.dev with an English montage
-    // (og-home-uk.png) instead of Poland's kinowo.fly.dev / og-home.png.
-    Country.Poland.ogOrigin shouldBe "https://kinowo.fly.dev"
+    // UK deployment previews off uk.showtimes.cc with an English montage
+    // (og-home-uk.png) instead of Poland's kinowo.net / og-home.png.
+    Country.Poland.ogOrigin shouldBe "https://kinowo.net"
     Country.Poland.homeOgImage shouldBe "og-home.png"                    // the default keeps the unsuffixed asset
-    Country.UnitedKingdom.ogOrigin shouldBe "https://showtimes-uk.fly.dev"
+    Country.UnitedKingdom.ogOrigin shouldBe "https://uk.showtimes.cc"
     Country.UnitedKingdom.homeOgImage shouldBe "og-home-uk.png"
-    // Germany is now deployed (showtimes-de) → previews off its own host, with a
-    // per-code montage name (og-home-de.png).
-    Country.Germany.ogOrigin shouldBe "https://showtimes-de.fly.dev"
+    // Germany previews off its own host, with a per-code montage name.
+    Country.Germany.ogOrigin shouldBe "https://de.showtimes.cc"
     Country.Germany.homeOgImage shouldBe "og-home-de.png"
+  }
+
+  "Country.shareHost" should "be the bare domain each country's share cards are stamped with" in {
+    // Drawn into every Open Graph PNG. It used to be the literal "kinowo.fly.dev"
+    // in the renderer, so UK and German cards advertised the Polish host.
+    Country.Poland.shareHost shouldBe "kinowo.net"
+    Country.UnitedKingdom.shareHost shouldBe "uk.showtimes.cc"
+    Country.Germany.shareHost shouldBe "de.showtimes.cc"
+    Country.all.foreach(c => c.shareHost should not startWith "http")
+  }
+
+  "Country.servesApex" should "recognise the brand front door but never a country's own host" in {
+    Country.servesApex("showtimes.cc") shouldBe true
+    Country.servesApex("www.showtimes.cc") shouldBe true
+    Country.servesApex("SHOWTIMES.CC") shouldBe true
+    Country.servesApex("showtimes.cc:9000") shouldBe true
+    // The countries themselves are NOT the front door — matching these would
+    // replace each site's homepage with a country picker.
+    Country.servesApex("uk.showtimes.cc") shouldBe false
+    Country.servesApex("de.showtimes.cc") shouldBe false
+    Country.servesApex("kinowo.net") shouldBe false
+    Country.servesApex("localhost") shouldBe false
+    // A lookalike domain that merely ENDS with the apex must not match.
+    Country.servesApex("notshowtimes.cc") shouldBe false
   }
 
   "Country.resolvedDbName" should "prefer an explicit MONGODB_DB over the country default" in {

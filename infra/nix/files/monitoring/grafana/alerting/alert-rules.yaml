@@ -827,7 +827,7 @@ groups:
           severity: warning
         annotations:
           summary: 'The Decodo residential proxy is mostly failing — cinema scrapes are falling back to Zyte'
-          description: 'Over half of the residential-proxy fetches in the last 30 min failed (kinowo_uptime_recent_failures vs _recent_successes for service "Residential proxy"). Scraping still works via the Zyte/direct fallback so no cinema is down — but the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use. Check the "Residential proxy" row on https://kinowo.fly.dev/uptime for the error text (per-IP "Limit: 3" auth cap, 401/407, or a burned IP), and the Decodo dashboard. See reference_decodo_isp_proxy.'
+          description: 'Over half of the residential-proxy fetches in the last 30 min failed (kinowo_uptime_recent_failures vs _recent_successes for service "Residential proxy"). Scraping still works via the Zyte/direct fallback so no cinema is down — but the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use. Check the "Residential proxy" row on https://kinowo.net/uptime for the error text (per-IP "Limit: 3" auth cap, 401/407, or a burned IP), and the Decodo dashboard. See reference_decodo_isp_proxy.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -894,7 +894,7 @@ groups:
           severity: warning
         annotations:
           summary: 'An enrichment source is mostly failing — its ratings have stopped refreshing'
-          description: 'Over half of the fetches to one enrichment source (IMDb / TMDB / Filmweb / Metacritic / Rotten Tomatoes) failed in the last 30 min — kinowo_uptime_recent_failures vs _recent_successes, per service. Nothing user-facing is down: stored ratings keep serving, they just freeze at their last value, which is why this class of outage goes unnoticed (IMDb 2026-07-30, ~47h). Check the source''s row on https://kinowo.fly.dev/uptime for the error text. A 403 across the board is the upstream refusing our requests wholesale — usually a new header/auth requirement rather than a ban; the IMDb case was fixed by naming ourselves via RealHttpFetch.HostPolicies headers.'
+          description: 'Over half of the fetches to one enrichment source (IMDb / TMDB / Filmweb / Metacritic / Rotten Tomatoes) failed in the last 30 min — kinowo_uptime_recent_failures vs _recent_successes, per service. Nothing user-facing is down: stored ratings keep serving, they just freeze at their last value, which is why this class of outage goes unnoticed (IMDb 2026-07-30, ~47h). Check the source''s row on https://kinowo.net/uptime for the error text. A 403 across the board is the upstream refusing our requests wholesale — usually a new header/auth requirement rather than a ban; the IMDb case was fixed by naming ourselves via RealHttpFetch.HostPolicies headers.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -945,7 +945,7 @@ groups:
           severity: warning
         annotations:
           summary: '{{ $labels.city }} ({{ $labels.scope }}) film count swung sharply vs its 1h average'
-          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" is >50% and >=4 films off its trailing 1h average — a sudden jump or drop in what the web is serving. A drop is the read-model-outage shape (a malformed web_movies row empties the corpus, every city craters); a jump can be a scrape/projection anomaly. Check https://kinowo.fly.dev/{{ $labels.city }}/ and the "films served per city" dashboard panel.'
+          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" is >50% and >=4 films off its trailing 1h average — a sudden jump or drop in what the web is serving. A drop is the read-model-outage shape (a malformed web_movies row empties the corpus, every city craters); a jump can be a scrape/projection anomaly. Check https://kinowo.net/{{ $labels.city }}/ and the "films served per city" dashboard panel.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -993,7 +993,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 6h)'
-          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite a >=4 film average over the last 6h — the city went dark. The likely cause is a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage). Check web logs for "findAllMovies failed" / "Missing field", and https://kinowo.fly.dev/{{ $labels.city }}/.'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite a >=4 film average over the last 6h — the city went dark. The likely cause is a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage). Check web logs for "findAllMovies failed" / "Missing field", and https://kinowo.net/{{ $labels.city }}/.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }

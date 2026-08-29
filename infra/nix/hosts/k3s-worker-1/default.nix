@@ -3,6 +3,7 @@
   imports = [
     ./disko.nix
     ../../modules/roles/k3s-agent.nix
+    ../../modules/roles/public-proxy.nix
 
     # See the note on the same import in hosts/monitoring-1: this belongs in
     # modules/fleet/default.nix's `imports`, and is repeated per host only because that list could
@@ -61,6 +62,41 @@
     enable = true;
     serverAddress = "10.20.0.11";
     kubernetesPodLogs.enable = true;
+  };
+
+  # THE PUBLIC FACE OF THE PRODUCT, and the reason this host — not monitoring-1 — terminates it: the
+  # web pods run HERE (nodeSelector pins them to this node), so every vhost below proxies to a
+  # NodePort on loopback. Putting these on monitoring-1's Caddy instead would send every user request
+  # nbg1 → hel1 across the private network and make the monitoring box a single point of failure for
+  # the product, which is precisely backwards.
+  #
+  # WHY NOT AN INGRESS CONTROLLER. k3s ships with traefik and servelb disabled here
+  # (roles/k3s-server.nix), so a Kubernetes-native answer means adding an ingress controller AND
+  # cert-manager AND a LoadBalancer story, to do what Caddy already does on this host with automatic
+  # ACME and no renewal timer to forget.
+  #
+  # EVERY NAME BELOW MUST RESOLVE TO 204.168.140.213 BEFORE A DEPLOY, or Let's Encrypt's HTTP-01
+  # challenge fails and Caddy serves a self-signed certificate — which browsers reject outright, so
+  # the failure mode is a hard TLS error rather than a degraded page. The A records live at OVH.
+  fleet.publicProxy = {
+    enable = true;
+    acmeEmail = "pawel@bitcashier.io";
+    vhosts = {
+      # Poland, on its own domain and its own brand.
+      "kinowo.net".upstream = "127.0.0.1:30910";
+      "www.kinowo.net".redirectTo = "kinowo.net";
+
+      # The Showtimes countries, one subdomain each.
+      "uk.showtimes.cc".upstream = "127.0.0.1:30912";
+      "de.showtimes.cc".upstream = "127.0.0.1:30911";
+
+      # THE BARE APEX IS THE BRAND FRONT DOOR, not a fourth deployment: the app renders a country
+      # picker (Poland included) whenever the request Host is the apex, so any country's pods answer
+      # it identically — see models.Country.servesApex. It is pointed at the UK deployment only
+      # because the picker is English-language chrome; nothing about the page is UK-specific.
+      "showtimes.cc".upstream = "127.0.0.1:30912";
+      "www.showtimes.cc".redirectTo = "showtimes.cc";
+    };
   };
 
   sops.defaultSopsFile = ../../secrets/k3s-worker-1.yaml;

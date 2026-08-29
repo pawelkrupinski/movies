@@ -42,7 +42,7 @@ fun interface CatalogApi {
  * and no on-disk URLCache.
  */
 class KinowoApi(
-    private val baseUrl: String = "https://kinowo.fly.dev",
+    private val baseUrl: String = "https://kinowo.net",
     private val client: OkHttpClient = defaultClient,
 ) : RepertoireApi, DetailsApi, CinemaCatalogApi, CatalogApi {
     private val json = Json { ignoreUnknownKeys = true }

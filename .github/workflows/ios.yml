@@ -30,9 +30,9 @@ permissions:
 #
 #   unit-integration ─► Linux swift:5.10 container, fast.
 #   ui-tests         ─► macOS runner + iOS Simulator, slow.
-#   smoke            ─► Linux container, hits prod (kinowo.fly.dev).
+#   smoke            ─► Linux container, hits prod (kinowo.net).
 #                       Gated on RUN_SMOKE_TESTS=1; scheduled nightly,
-#                       skipped on PRs so kinowo.fly.dev doesn't soak
+#                       skipped on PRs so kinowo.net doesn't soak
 #                       every push.
 jobs:
     unit-integration:
@@ -151,5 +151,5 @@ jobs:
                   RUN_SMOKE_TESTS: '1'
 
             - if: failure()
-              run: echo "::warning::Smoke tests failed — kinowo.fly.dev response shape drifted; see test output above."
+              run: echo "::warning::Smoke tests failed — kinowo.net response shape drifted; see test output above."
 

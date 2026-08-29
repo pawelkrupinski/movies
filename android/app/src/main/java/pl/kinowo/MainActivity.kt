@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // A kinowo.fly.dev App Link or kinowo://<city>/… link. The ViewModel parses
+    // A kinowo.net App Link or kinowo://<city>/… link. The ViewModel parses
     // it (rejecting the auth-done callback handled above), switches the city, and
     // applies the filters + film. Harmless on a plain MAIN/LAUNCHER start: a null
     // or unrecognised data URI is a no-op.

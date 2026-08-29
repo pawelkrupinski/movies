@@ -194,7 +194,7 @@ enum FilmShareLink {
     /// for it. Both segments are already URL-safe (lowercase ASCII + hyphens),
     /// so nothing needs encoding.
     static func url(forSlug slug: String, citySlug: String) -> URL {
-        URL(string: "https://kinowo.fly.dev/\(citySlug)/film/\(slug)")!
+        URL(string: "https://kinowo.net/\(citySlug)/film/\(slug)")!
     }
 
     /// The film's link, preferring its canonical slug address and falling back
@@ -214,6 +214,6 @@ enum FilmShareLink {
         let encoded = title.addingPercentEncoding(withAllowedCharacters: titleAllowed) ?? title
         // Safe to force-unwrap: `encoded` and `citySlug` contain only URL-safe
         // characters and the surrounding string is a fixed, valid absolute URL.
-        return URL(string: "https://kinowo.fly.dev/\(citySlug)/film?title=\(encoded)")!
+        return URL(string: "https://kinowo.net/\(citySlug)/film?title=\(encoded)")!
     }
 }

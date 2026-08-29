@@ -53,21 +53,21 @@ struct Country: Codable, Hashable {
         Country(
             code: "pl",
             displayName: "Polska",
-            baseURL: URL(string: "https://kinowo.fly.dev")!,
+            baseURL: URL(string: "https://kinowo.net")!,
             languageCode: "pl",
             timeZone: TimeZone(identifier: "Europe/Warsaw") ?? warsawZone
         ),
         Country(
             code: "uk",
             displayName: "United Kingdom",
-            baseURL: URL(string: "https://showtimes-uk.fly.dev")!,
+            baseURL: URL(string: "https://uk.showtimes.cc")!,
             languageCode: "en",
             timeZone: TimeZone(identifier: "Europe/London") ?? warsawZone
         ),
         Country(
             code: "de",
             displayName: "Deutschland",
-            baseURL: URL(string: "https://showtimes-de.fly.dev")!,
+            baseURL: URL(string: "https://de.showtimes.cc")!,
             languageCode: "de",
             timeZone: TimeZone(identifier: "Europe/Berlin") ?? warsawZone
         ),

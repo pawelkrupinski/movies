@@ -29,7 +29,7 @@ interface UserStateClient {
 }
 
 class HttpUserStateClient(
-    private val baseUrl: String = "https://kinowo.fly.dev",
+    private val baseUrl: String = "https://kinowo.net",
     private val client: OkHttpClient,
 ) : UserStateClient {
 

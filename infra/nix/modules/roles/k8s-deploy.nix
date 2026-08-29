@@ -1,19 +1,53 @@
-# HOW CI ROLLS A NEW WORKER IMAGE OUT, and the reason it is not simply "give CI a kubeconfig".
+# HOW CI ROLLS A NEW IMAGE OUT, and the reason it is not simply "give CI a kubeconfig".
 #
 # The problem is the same one nix/modules/fleet/deploy-staging.nix solves for closures: a GitHub
 # Actions runner has to be able to change production, and anything it holds is one leaked secret
 # away from being an attacker's. A kubeconfig for this cluster is cluster-admin -- k3s writes one
-# admin credential and no other -- so handing CI that would trade a worker rollout for the whole
-# cluster, including every Secret in it.
+# admin credential and no other -- so handing CI that would trade a rollout for the whole cluster,
+# including every Secret in it.
 #
 # So the same shape is used instead: an ssh key pinned to a FORCED COMMAND. The holder cannot get a
 # shell, cannot run kubectl, and cannot name a resource. It can send one string -- an image
-# reference -- to a script that validates it and updates exactly one container in exactly one
-# Deployment. That is the entire capability the key grants.
+# reference -- to a script that validates it and updates exactly the containers that reference
+# names. That is the entire capability the key grants.
+#
+# TWO TIERS THROUGH ONE KEY, which is the shape this grew into when the web tier joined the worker
+# on the cluster. The image reference itself says which tier it is (`movies-worker` vs
+# `movies-web`), so the endpoint looks it up in `targets` rather than taking a second parameter --
+# there is nothing for CI to get wrong, no way to ask for a target that is not configured, and no
+# second GitHub secret to rotate. An image matching no target is refused, exactly as before.
 { config, lib, pkgs, ... }:
 
 let
   cfg = config.fleet.k8sDeploy;
+
+  # Only `.` is escaped, not `/`. A slash has no meaning in an ERE, and escaping it makes GNU grep
+  # warn "stray \ before /" on every single deploy -- noise in the one output an operator reads
+  # when a rollout has gone wrong.
+  ereEscape = builtins.replaceStrings [ "." ] [ "\\." ];
+
+  rollTarget = t: ''
+    if printf '%s' "$image" | ${pkgs.gnugrep}/bin/grep -qE '^${ereEscape t.imageRepository}:[A-Za-z0-9._-]+$'; then
+      echo "k8s-deploy: rolling ${lib.concatStringsSep ", " t.deployments} in ${cfg.namespace} onto $image"
+
+      for deployment in ${lib.concatStringsSep " " t.deployments}; do
+        ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} set image \
+          "deployment/$deployment" ${t.container}="$image"
+      done
+
+      # WAIT ON EACH IN TURN, AND LET THE EXIT CODE MEAN SOMETHING. Without this the ssh call
+      # returns the moment the Deployments are patched, so CI goes green while the pods are still
+      # pulling -- and an image that crash-loops reports as a successful deploy. `set -e` stops at
+      # the first failure, leaving the rest on their previous image rather than rolling a known-bad
+      # build out across every country.
+      for deployment in ${lib.concatStringsSep " " t.deployments}; do
+        ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} rollout status \
+          "deployment/$deployment" --timeout=${cfg.rolloutTimeout}
+      done
+
+      exit 0
+    fi
+  '';
 
   endpoint = pkgs.writeShellScript "k8s-deploy-endpoint" ''
     set -euo pipefail
@@ -28,47 +62,23 @@ let
       exit 2
     fi
 
-    # Only `.` is escaped, not `/`. A slash has no meaning in an ERE, and escaping it makes GNU grep
-    # warn "stray \ before /" on every single deploy -- noise in the one output an operator reads
-    # when a rollout has gone wrong.
-    #
-    # VALIDATE BEFORE USING, because this string reaches a command line. Anchored, and deliberately
-    # narrow: one registry, one repository, and a tag of hex or dotted-alphanumerics. A digest or a
-    # tag from somewhere else is refused rather than sanitised -- there is no legitimate caller that
-    # needs one, and "sanitise an arbitrary string" is a much harder promise to keep than "match a
-    # known shape".
-    if ! printf '%s' "$image" | ${pkgs.gnugrep}/bin/grep -qE '^${builtins.replaceStrings ["."] ["\\."] cfg.allowedImageRepository}:[A-Za-z0-9._-]+$'; then
-      echo "k8s-deploy: refusing '$image' -- it must be ${cfg.allowedImageRepository}:<tag>." >&2
-      exit 2
-    fi
-
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-    echo "k8s-deploy: rolling ${lib.concatStringsSep ", " cfg.deployments} in ${cfg.namespace} onto $image"
+    # VALIDATE BEFORE USING, because this string reaches a command line. Each test is anchored and
+    # deliberately narrow: one registry, one repository, and a tag of dotted alphanumerics. A digest
+    # or a tag from somewhere else falls through to the refusal below rather than being sanitised --
+    # "match a known shape" is a much easier promise to keep than "sanitise an arbitrary string".
+    ${lib.concatMapStringsSep "\n" rollTarget cfg.targets}
 
-    for deployment in ${lib.concatStringsSep " " cfg.deployments}; do
-      ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} set image \
-        "deployment/$deployment" ${cfg.container}="$image"
-    done
-
-    # WAIT, AND LET THE EXIT CODE MEAN SOMETHING. Without this the ssh call returns the moment the
-    # Deployment is patched, so CI goes green while the new pod is still pulling -- and an image
-    # that crash-loops reports as a successful deploy. The timeout is what turns "never became
-    # ready" into a failure rather than a hang.
-    # WAIT ON EACH IN TURN, and let the exit code mean something. Without this the ssh call returns
-    # the moment the Deployments are patched, so CI goes green while the pods are still pulling --
-    # and an image that crash-loops reports as a successful deploy. `set -e` stops at the first
-    # failure, leaving the rest on their previous image rather than rolling a known-bad build out
-    # across all three countries.
-    for deployment in ${lib.concatStringsSep " " cfg.deployments}; do
-      ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} rollout status \
-        "deployment/$deployment" --timeout=${cfg.rolloutTimeout}
-    done
+    echo "k8s-deploy: refusing '$image' -- it must be one of ${
+      lib.concatMapStringsSep ", " (t: "${t.imageRepository}:<tag>") cfg.targets
+    }." >&2
+    exit 2
   '';
 in
 {
   options.fleet.k8sDeploy = {
-    enable = lib.mkEnableOption "a forced-command ssh endpoint that rolls a new image onto one Deployment";
+    enable = lib.mkEnableOption "a forced-command ssh endpoint that rolls a new image onto its Deployments";
 
     authorizedKey = lib.mkOption {
       type = lib.types.str;
@@ -80,32 +90,40 @@ in
     };
 
     namespace = lib.mkOption { type = lib.types.str; default = "kinowo"; };
-    deployments = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ "worker-pl" "worker-de" "worker-uk" ];
+
+    targets = lib.mkOption {
       description = ''
-        EVERY Deployment this image is rolled onto, in one invocation.
+        The image repositories this endpoint will deploy, and what each rolls.
 
-        THE THREE COUNTRY WORKERS RUN THE SAME IMAGE and differ only in KINOWO_COUNTRIES, so there
-        is no version of "deploy" that sensibly updates one and leaves the others behind on an older
-        build. Rolling all three from one command also keeps the endpoint's INPUT a single image
-        reference: adding a target parameter would mean a second thing to validate, and a way for
-        CI to update two of three and report success.
+        THE COUNTRY DEPLOYMENTS OF A TIER RUN THE SAME IMAGE and differ only in which country they
+        are configured for, so there is no version of "deploy" that sensibly updates one and leaves
+        the others behind on an older build -- hence a list of deployments per target rather than a
+        target per deployment. The order is the order they roll in; if one fails the script stops,
+        and the rest stay on the previous image, which is a coherent state to be left in.
 
-        The order is the order they roll in. If one fails, the script stops -- the remaining
-        deployments stay on the previous image, which is a coherent state to be left in.
+        A repository not listed here cannot be deployed at all. That anchoring is the difference
+        between this being a deploy button and being remote code execution as whatever the pod runs
+        as.
       '';
-    };
-    container = lib.mkOption { type = lib.types.str; default = "worker"; };
-
-    allowedImageRepository = lib.mkOption {
-      type = lib.types.str;
-      default = "ghcr.io/pawelkrupinski/movies-worker";
-      description = ''
-        The one repository this endpoint will deploy from. It is matched anchored, so a key holder
-        cannot point the Deployment at an image of their own -- which is the difference between this
-        being a deploy button and being remote code execution as whatever the pod runs as.
-      '';
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          imageRepository = lib.mkOption { type = lib.types.str; };
+          container       = lib.mkOption { type = lib.types.str; };
+          deployments     = lib.mkOption { type = lib.types.listOf lib.types.str; };
+        };
+      });
+      default = [
+        {
+          imageRepository = "ghcr.io/pawelkrupinski/movies-worker";
+          container       = "worker";
+          deployments     = [ "worker-pl" "worker-de" "worker-uk" ];
+        }
+        {
+          imageRepository = "ghcr.io/pawelkrupinski/movies-web";
+          container       = "web";
+          deployments     = [ "web-pl" "web-de" "web-uk" ];
+        }
+      ];
     };
 
     rolloutTimeout = lib.mkOption { type = lib.types.str; default = "10m"; };
@@ -140,8 +158,7 @@ in
     # the key cannot read the kubeconfig, because reading it requires a shell they cannot get.
     #
     # THE FOLLOW-UP IF THIS EVER MATTERS MORE: a ServiceAccount with a Role limited to `patch` on
-    # this one Deployment, and a token file readable by this user instead. Written down because the
-    # right time to do it is when a second thing needs deploying, not now.
+    # these Deployments, and a token file readable by this user instead.
     systemd.tmpfiles.rules = [
       "z /etc/rancher/k3s/k3s.yaml 0640 root k8sdeploy -"
     ];

@@ -13,7 +13,7 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ## How to find the white list (methodology)
 
-`/uptime` (kinowo.fly.dev) is now **auth-gated** — OAuth login + `ADMIN_ALLOWLIST`
+`/uptime` (kinowo.net) is now **auth-gated** — OAuth login + `ADMIN_ALLOWLIST`
 (checked in `web/.../controllers/AdminAction.scala`); an anonymous `curl` returns
 `401 "Not logged in."`. So query prod Mongo directly instead:
 

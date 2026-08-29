@@ -17,7 +17,7 @@ class FilmShareUrlTest {
     @Test
     fun `prefers the server-supplied slug`() {
         assertEquals(
-            "https://kinowo.fly.dev/wroclaw/film/diuna-czesc-druga",
+            "https://kinowo.net/wroclaw/film/diuna-czesc-druga",
             filmShareUrl("wroclaw", "Diuna: Część druga", "diuna-czesc-druga"),
         )
     }
@@ -34,24 +34,24 @@ class FilmShareUrlTest {
         // An older server leaves `slug` null; the query form still resolves
         // server-side (301 onto the slug address).
         assertEquals(
-            "https://kinowo.fly.dev/poznan/film?title=Oppenheimer",
+            "https://kinowo.net/poznan/film?title=Oppenheimer",
             filmShareUrl("poznan", "Oppenheimer", null),
         )
         assertEquals(
-            "https://kinowo.fly.dev/poznan/film?title=Oppenheimer",
+            "https://kinowo.net/poznan/film?title=Oppenheimer",
             filmShareUrl("poznan", "Oppenheimer", ""),
         )
     }
 
     @Test
     fun `plain ascii title is left intact`() {
-        assertEquals("https://kinowo.fly.dev/poznan/film?title=Oppenheimer", filmShareUrl("poznan", "Oppenheimer"))
+        assertEquals("https://kinowo.net/poznan/film?title=Oppenheimer", filmShareUrl("poznan", "Oppenheimer"))
     }
 
     @Test
     fun `carries the city slug in the path`() {
         assertEquals(
-            "https://kinowo.fly.dev/bielsko-biala/film?title=Oppenheimer",
+            "https://kinowo.net/bielsko-biala/film?title=Oppenheimer",
             filmShareUrl("bielsko-biala", "Oppenheimer"),
         )
     }
@@ -59,7 +59,7 @@ class FilmShareUrlTest {
     @Test
     fun `space and ampersand encode`() {
         assertEquals(
-            "https://kinowo.fly.dev/warszawa/film?title=Lilo%20%26%20Stitch",
+            "https://kinowo.net/warszawa/film?title=Lilo%20%26%20Stitch",
             filmShareUrl("warszawa", "Lilo & Stitch"),
         )
     }
@@ -67,7 +67,7 @@ class FilmShareUrlTest {
     @Test
     fun `colon and polish diacritics encode`() {
         assertEquals(
-            "https://kinowo.fly.dev/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga",
+            "https://kinowo.net/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga",
             filmShareUrl("wroclaw", "Diuna: Część druga"),
         )
     }

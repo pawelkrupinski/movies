@@ -73,7 +73,7 @@ country_language() { case "$1" in pl) echo pl;; uk) echo en;; de) echo de;; *) e
 # ENDONYMS from the catalog — identical in every locale, so they double as a tap
 # target regardless of the app's language.
 country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; esac; }
-country_base()   { case "$1" in pl) echo "https://kinowo.fly.dev";; uk) echo "https://showtimes-uk.fly.dev";; de) echo "https://showtimes-de.fly.dev";; *) echo "";; esac; }
+country_base()   { case "$1" in pl) echo "https://kinowo.net";; uk) echo "https://uk.showtimes.cc";; de) echo "https://de.showtimes.cc";; *) echo "";; esac; }
 # The gate's "Country" header, which IS localized — seeing it is proof the
 # country switch landed.
 country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; esac; }

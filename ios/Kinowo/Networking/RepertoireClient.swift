@@ -33,7 +33,7 @@ final class RepertoireStore: ObservableObject {
 
     private let staleAfter: TimeInterval = 60
 
-    /// `base` is the bare host (`https://kinowo.fly.dev`); the fetch URL is
+    /// `base` is the bare host (`https://kinowo.net`); the fetch URL is
     /// `…/{citySlug}/api/repertoire`. `citySlug` defaults to the fallback
     /// city so the existing default-init call sites (UI-test fixture, tuning
     /// screen) keep working; the app points it at the resolved city via

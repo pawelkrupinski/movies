@@ -23,7 +23,7 @@ class RepertoirePreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   "the city index preview" should "point og:image + twitter:image at the city's own card" in {
     val html = render(Poznan)
-    html should include ("""content="https://kinowo.fly.dev/assets/img/og-poznan.png"""")
+    html should include ("""content="https://kinowo.net/assets/img/og-poznan.png"""")
     // og:image AND twitter:image both carry it.
     html.sliding("og-poznan.png".length).count(_ == "og-poznan.png") should be >= 2
   }

@@ -106,13 +106,13 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
   // (`DebugViewCountrySwitchSpec`).
   "the uptime header" should "offer a switch to another country's uptime page on that country's host" in {
     html should include ("""class="country-switch"""")
-    html should include ("""value="https://showtimes-uk.fly.dev/uptime"""")
-    html should include ("""value="https://showtimes-de.fly.dev/uptime"""")
+    html should include ("""value="https://uk.showtimes.cc/uptime"""")
+    html should include ("""value="https://de.showtimes.cc/uptime"""")
   }
 
   it should "mark this deployment's own country as the selected option" in {
     // KINOWO_COUNTRY unset in tests → Poland; its option is pre-selected.
-    html should include ("""value="https://kinowo.fly.dev/uptime" selected""")
+    html should include ("""value="https://kinowo.net/uptime" selected""")
   }
 
   it should "select the served country's own option, and brand the title after it" in {
@@ -122,8 +122,8 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
       current = models.Country.UnitedKingdom).body
 
     out should include ("<title>Uptime — Showtimes</title>")
-    out should include ("""value="https://showtimes-uk.fly.dev/uptime" selected""")
-    out should not include ("""value="https://kinowo.fly.dev/uptime" selected""")
+    out should include ("""value="https://uk.showtimes.cc/uptime" selected""")
+    out should not include ("""value="https://kinowo.net/uptime" selected""")
   }
 
   it should "show only the most recent history event, with the full history in an instant hover tooltip" in {

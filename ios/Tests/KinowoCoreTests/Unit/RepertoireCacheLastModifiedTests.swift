@@ -3,8 +3,8 @@ import XCTest
 
 final class RepertoireCacheLastModifiedTests: XCTestCase {
 
-    private let poland = URL(string: "https://kinowo.fly.dev")!
-    private let germany = URL(string: "https://showtimes-de.fly.dev")!
+    private let poland = URL(string: "https://kinowo.net")!
+    private let germany = URL(string: "https://de.showtimes.cc")!
 
     override func tearDown() {
         // Reset the bound meta so cases don't leak into one another.
@@ -29,7 +29,7 @@ final class RepertoireCacheLastModifiedTests: XCTestCase {
     }
 
     /// The same slug can live on two deployments, and asking the wrong one is
-    /// not an error — `kinowo.fly.dev/berlin` answers `200 []` because Berlin
+    /// not an error — `kinowo.net/berlin` answers `200 []` because Berlin
     /// isn't a Polish city. Replaying THAT timestamp against the German
     /// deployment drew a 304, so a deep link into Berlin came up empty even
     /// though Germany had a full listing. A deployment switch must send no

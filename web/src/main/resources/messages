@@ -72,6 +72,8 @@ browse.ogDescription=Filmy z {0} kin: {1}. Z aktualnymi seansami, ocenami i opis
 # ── Landing (city picker) ───────────────────────────────────────────────────
 landing.title={0} — repertuar kin w Twoim mieście
 landing.ogDescription=Repertuar wszystkich kin w jednym miejscu — z ocenami IMDb, RT i Filmweb. Sprawdź dzisiejszy repertuar w swoim mieście.
+landing.apexTitle={0} — repertuar kin w Twoim kraju
+landing.chooseCountry=Wybierz kraj
 landing.chooseCity=Wybierz miasto
 landing.searchCity=Szukaj miasta…
 landing.searchCityAria=Szukaj miasta

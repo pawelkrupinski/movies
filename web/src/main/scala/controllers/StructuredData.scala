@@ -23,23 +23,28 @@ import java.time.format.DateTimeFormatter
  */
 object StructuredData {
 
-  private val ProdOrigin = "https://kinowo.fly.dev"
-  private val Ctx        = "https://schema.org"
+  private val Ctx = "https://schema.org"
 
-  /** `scheme://host` from a full page URL, falling back to the prod origin when
-   *  the caller has no request context (fixture/snapshot renders pass `""`). */
+  /** The origin to attribute a render to when the caller has no request context
+   *  (fixture/snapshot renders pass `""`). THIS DEPLOYMENT's own host, not a
+   *  literal: a hardcoded Polish host put `kinowo.fly.dev` into the UK site's
+   *  JSON-LD, telling Google the two were one site. */
+  private def fallbackOrigin: String = models.Country.fromEnv.ogOrigin
+
+  /** `scheme://host` from a full page URL, falling back to [[fallbackOrigin]]
+   *  when the caller has no request context. */
   def originOf(pageUrl: String): String =
-    if (pageUrl.isEmpty) ProdOrigin
+    if (pageUrl.isEmpty) fallbackOrigin
     else {
       val u = java.net.URI.create(pageUrl)
-      if (u.getScheme == null || u.getAuthority == null) ProdOrigin
+      if (u.getScheme == null || u.getAuthority == null) fallbackOrigin
       else s"${u.getScheme}://${u.getAuthority}"
     }
 
   /** Landing page: identify the site + publisher so Google can attach a
    *  knowledge-panel / sitelinks to the brand. Everything is the DEPLOYMENT's:
    *  its brand, its own host (so the UK site self-identifies as
-   *  showtimes-uk.fly.dev, not kinowo.fly.dev), its home montage, and its
+   *  uk.showtimes.cc, not kinowo.net), its home montage, and its
    *  language's landing copy (reusing the `landing.ogDescription` message rather
    *  than a second, drift-prone Polish literal). */
   def landing()(implicit messages: play.api.i18n.Messages): String = {

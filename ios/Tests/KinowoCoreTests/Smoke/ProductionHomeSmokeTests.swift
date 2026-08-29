@@ -11,7 +11,7 @@ import XCTest
 
 final class ProductionHomeSmokeTests: XCTestCase {
 
-    private static let homeURL = URL(string: "https://kinowo.fly.dev/")!
+    private static let homeURL = URL(string: "https://kinowo.net/")!
 
     private func requireSmoke() throws {
         guard ProcessInfo.processInfo.environment["RUN_SMOKE_TESTS"] == "1" else {

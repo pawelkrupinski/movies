@@ -38,7 +38,7 @@ import javax.imageio.ImageIO
  *
  * The `home` target renders this country's landing montage — `og-home.png` for
  * Poland, `og-home-{code}.png` elsewhere (e.g. an English `og-home-uk.png`
- * screenshot off showtimes-uk.fly.dev). It screenshots the country's primary
+ * screenshot off uk.showtimes.cc). It screenshots the country's primary
  * city (its first [[Country.cities]], or `KINOWO_OG_HOME_CITY`).
  *
  * Env: `KINOWO_COUNTRY` (default `pl`) — which country's brand/language/host to

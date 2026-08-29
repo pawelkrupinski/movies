@@ -17,7 +17,7 @@ standing rule; commit each phase.
    `language = Locale.forLanguageTag("<lang>-<REGION>")`, `mongoDb = "kinowo_<cc>"`,
    `filmwebEnabled` (Filmweb is Polish-only → false elsewhere), `brandName`
    ("Showtimes" outside PL), and `webUrl` — **start `None`** (not yet deployed),
-   flip to `Some("https://showtimes-<cc>.fly.dev")` in phase 4. `cities` reads the
+   flip to `Some("https://<cc>.showtimes.cc")` in phase 4. `cities` reads the
    city list from phase 2. `webUrl = Some(...)` is what makes it `switchable`
    (appears in the navbar country switcher) and self-serve its OG origin.
 2. **City roster** (`City.scala`) — the sealed `City` model. Two shapes:
@@ -94,7 +94,7 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 1. **`fly.<cc>.toml`** — clone `fly.de.toml`: `app = 'showtimes-<cc>'`,
    `KINOWO_COUNTRY = '<cc>'`, `primary_region` near the users (DE→`fra`, UK→`lhr`),
    G1 web JVM tuning. Add a matrix leg to `deploy.yml`.
-2. **Flip `Country.<Cc>.webUrl` → `Some("https://showtimes-<cc>.fly.dev")`** — now
+2. **Flip `Country.<Cc>.webUrl` → `Some("https://<cc>.showtimes.cc")`** — now
    `switchable`. This one flag AUTO-adds the country to (a) the navbar country
    `<select>`, (b) the debug `?country=` switcher + the dev per-country `DebugStack`
    wiring, and (c) the `/api/catalog` mobile endpoint — all three iterate
@@ -107,7 +107,7 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 3. Provision: `flyctl apps create showtimes-<cc>` + its 7 web secrets — `MONGODB_URI`
    (prod, same as the worker), OAuth (`GOOGLE_*`/`FACEBOOK_*`), `ADMIN_ALLOWLIST`
    from `.env.local`, and a **fresh** `APPLICATION_SECRET` (per-app; `secrets.token_urlsafe(48)`).
-   **OAuth login needs the new `showtimes-<cc>.fly.dev` redirect registered in the
+   **OAuth login needs the new `<cc>.showtimes.cc` redirect registered in the
    Google/Facebook consoles** (manual, provider-side) — the repertoire works
    without it.
 
@@ -156,7 +156,7 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
 
 ## 6. Deep links (mobile)
 
-The new `showtimes-<cc>.fly.dev` links should open the native apps — **Universal
+The new `<cc>.showtimes.cc` links should open the native apps — **Universal
 Links** on iOS, **App Links** on Android — not the browser. The AASA /
 `assetlinks.json` files are served identically on every deployment (same web
 binary, one app id `CQ4YC43YDM.dev.kinowo.Kinowo` / package `pl.kinowo`), so
@@ -164,10 +164,10 @@ there is **no web change** — this is purely app-side. Add the new host in **fo
 places, mirroring the existing PL/UK/DE entries:
 
 1. **iOS entitlement** (`ios/Kinowo/Kinowo.entitlements`) — add
-   `applinks:showtimes-<cc>.fly.dev` (and a `webcredentials:` line to match).
+   `applinks:<cc>.showtimes.cc` (and a `webcredentials:` line to match).
 2. **iOS parser** (`ios/Kinowo/Models/DeepLink.swift`) — add the host to `webHosts`.
 3. **Android manifest** (`android/app/src/main/AndroidManifest.xml`) — add a
-   `<data android:scheme="https" android:host="showtimes-<cc>.fly.dev"/>` inside the
+   `<data android:scheme="https" android:host="<cc>.showtimes.cc"/>` inside the
    `autoVerify` App Link intent-filter.
 4. **Android parser** (`android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt`) —
    add the host to `WEB_HOSTS`.

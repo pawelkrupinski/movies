@@ -9,7 +9,7 @@ import java.net.URLEncoder
  *
  *   1. Mixed content. About 9 posters (`Kino Bułgarska 19`) ship as
  *      `http://kinobulgarska19.pl/...` and every modern browser
- *      silently blocks them on the HTTPS kinowo.fly.dev page —
+ *      silently blocks them on the HTTPS kinowo.net page —
  *      that's the primary cause of "the poster sometimes doesn't
  *      show". Routing through `https://images.weserv.nl/?url=...`
  *      makes the request HTTPS regardless of origin scheme.

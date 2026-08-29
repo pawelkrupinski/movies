@@ -46,7 +46,7 @@ object OgCardRenderer {
   private val SubCol      = new Color(0x9a, 0xa3, 0xb2)
   private val SynopsisCol = new Color(0xc2, 0xca, 0xd6) // a touch brighter than SubCol so the body copy reads
   private val FooterCol   = new Color(0x70, 0x78, 0x86)
-  private val UrlCol      = new Color(0xbd, 0xa4, 0xff) // the city card's accent "kinowo.fly.dev" line
+  private val UrlCol      = new Color(0xbd, 0xa4, 0xff) // the city card's accent domain line
 
   // ── City page-like card: a grid of repertoire `.card`s as the background.
   //    Colours/metrics copied from the live page CSS so it reads as the site. ──
@@ -131,11 +131,13 @@ object OgCardRenderer {
 
   /** Compose the card. `subtitle` is the year · genres line; `badges` are the
    *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
-   *  None (text-only card for films with no poster). `director` (a pre-joined
-   *  "Name, Name" string) and `synopsis` fill the space below the ratings —
-   *  both optional, each omitted when absent. */
+   *  None (text-only card for films with no poster). `host` is the bare domain
+   *  drawn in the footer — passed in rather than hardcoded so a UK card says
+   *  `uk.showtimes.cc`, which the literal it replaced did not. `director` (a
+   *  pre-joined "Name, Name" string) and `synopsis` fill the space below the
+   *  ratings — both optional, each omitted when absent. */
   def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
-             director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] = {
+             host: String, director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -210,8 +212,7 @@ object OgCardRenderer {
       g.setFont(regular.deriveFont(28f))
       g.setColor(FooterCol)
       val ffm    = g.getFontMetrics
-      val footer = "kinowo.fly.dev"
-      g.drawString(footer, textRight - ffm.stringWidth(footer), footerBaseline)
+      g.drawString(host, textRight - ffm.stringWidth(host), footerBaseline)
     } finally g.dispose()
 
     toPng(img)
@@ -225,7 +226,7 @@ object OgCardRenderer {
    *  `columns` are the city's first few DISTINCT films (no movie/poster repeats),
    *  each paired with its decoded poster (or None).
    *  No films → a clean brand-only card rather than an empty frame. */
-  def renderCityPageCard(cityLine: String, brand: String, columns: Seq[(CityCardFilm, Option[BufferedImage])]): Array[Byte] = {
+  def renderCityPageCard(cityLine: String, brand: String, host: String, columns: Seq[(CityCardFilm, Option[BufferedImage])]): Array[Byte] = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -244,15 +245,15 @@ object OgCardRenderer {
       g.setPaint(new LinearGradientPaint(0f, 0f, Width.toFloat, 0f, stops, shades))
       g.fillRect(0, 0, Width, Height)
 
-      drawBrandOverlay(g, cityLine, brand)
+      drawBrandOverlay(g, cityLine, brand, host)
     } finally g.dispose()
 
     toPng(img)
   }
 
   /** The left brand block: the `brand` wordmark ("Kinowo" / "Showtimes") + the
-   *  city line + decorative rating pills + the URL, vertically centred. */
-  private def drawBrandOverlay(g: Graphics2D, cityLine: String, brand: String): Unit = {
+   *  city line + decorative rating pills + the `host` URL, vertically centred. */
+  private def drawBrandOverlay(g: Graphics2D, cityLine: String, brand: String, host: String): Unit = {
     val leftX   = 80
     val brandFm = g.getFontMetrics(bold.deriveFont(86f))
     val tagFm   = g.getFontMetrics(regular.deriveFont(33f))
@@ -279,7 +280,7 @@ object OgCardRenderer {
 
     y += gapPillsUrl
     g.setFont(regular.deriveFont(23f)); g.setColor(UrlCol)
-    y += urlFm.getAscent; g.drawString("kinowo.fly.dev", leftX, y)
+    y += urlFm.getAscent; g.drawString(host, leftX, y)
   }
 
   /** One film column, drawn like the page's `.card`: rounded `#1e1e2e` panel,

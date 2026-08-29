@@ -13,12 +13,12 @@ class CatalogTest {
 
     @Test
     fun parsesResponseBody() {
-        val json = """{"countries":[{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes-uk.fly.dev","language":"en","brand":"Showtimes"}],"cities":[{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk"}]}"""
+        val json = """{"countries":[{"code":"uk","name":"United Kingdom","baseUrl":"https://uk.showtimes.cc","language":"en","brand":"Showtimes"}],"cities":[{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk"}]}"""
         val c = Catalog.parseBody(json)!!
         assertEquals(1, c.countries.size)
         assertEquals("uk", c.countries[0].code)
         assertEquals("United Kingdom", c.countries[0].displayName)
-        assertEquals("https://showtimes-uk.fly.dev", c.countries[0].baseUrl)
+        assertEquals("https://uk.showtimes.cc", c.countries[0].baseUrl)
         assertEquals("en", c.countries[0].languageTag)
         assertEquals(1, c.cities.size)
         assertEquals("london", c.cities[0].slug)
@@ -27,7 +27,7 @@ class CatalogTest {
 
     @Test
     fun parsesSeedEnvelopeWithEtag() {
-        val seed = """{"etag":"\"abc123\"","catalog":{"countries":[{"code":"pl","name":"Polska","baseUrl":"https://kinowo.fly.dev","language":"pl","brand":"Kinowo"}],"cities":[{"slug":"poznan","name":"Poznań","lat":52.4,"lon":16.9,"country":"pl"}]}}"""
+        val seed = """{"etag":"\"abc123\"","catalog":{"countries":[{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo"}],"cities":[{"slug":"poznan","name":"Poznań","lat":52.4,"lon":16.9,"country":"pl"}]}}"""
         val (etag, cat) = Catalog.parseSeed(seed)!!
         assertEquals("\"abc123\"", etag)   // the ETag survives, with its quotes, for If-None-Match
         assertEquals("poznan", cat.cities[0].slug)

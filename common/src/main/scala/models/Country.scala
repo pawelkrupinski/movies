@@ -53,6 +53,13 @@ sealed abstract class Country(
    *  rather than dangling. (All modelled countries are currently deployed.) */
   def ogOrigin: String = webUrl.getOrElse(Country.default.webUrl.get)
 
+  /** This country's public host with no scheme -- `kinowo.net`, `uk.showtimes.cc`.
+   *  For the places that DISPLAY the domain rather than link to it: the footer
+   *  drawn into every Open Graph card. Derived from [[ogOrigin]] so a domain move
+   *  updates the rendered cards with everything else, which the literal it
+   *  replaced did not — every UK share card said `kinowo.fly.dev`. */
+  def shareHost: String = ogOrigin.stripPrefix("https://").stripPrefix("http://")
+
   /** Filename (under `assets/img/`) of the `/` landing's share-preview montage
    *  for this country. The default country keeps the original, unsuffixed
    *  `og-home.png`; every other country gets a per-code card so a UK deployment's
@@ -71,7 +78,7 @@ object Country {
     // byte-identical — do NOT rename this to `kinowo_pl`.
     mongoDb        = "kinowo",
     filmwebEnabled = true,
-    webUrl         = Some("https://kinowo.fly.dev"),
+    webUrl         = Some("https://kinowo.net"),
     brandName      = "Kinowo",
   ) {
     val cities: Seq[City] = City.polishCities
@@ -86,7 +93,7 @@ object Country {
     language       = Locale.forLanguageTag("en-GB"),
     mongoDb        = "kinowo_uk",
     filmwebEnabled = false,
-    webUrl         = Some("https://showtimes-uk.fly.dev"),
+    webUrl         = Some("https://uk.showtimes.cc"),
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
@@ -102,7 +109,7 @@ object Country {
     language       = Locale.forLanguageTag("de-DE"),
     mongoDb        = "kinowo_de",
     filmwebEnabled = false,
-    webUrl         = Some("https://showtimes-de.fly.dev"),
+    webUrl         = Some("https://de.showtimes.cc"),
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
@@ -121,6 +128,27 @@ object Country {
    *  UK, Germany). The country `<select>` renders only when this holds more than
    *  one entry. */
   val switchable: Seq[Country] = all.filter(_.webUrl.isDefined)
+
+  /** THE BRAND FRONT DOOR: the bare domain that fronts several countries rather
+   *  than serving one. `uk.showtimes.cc` and `de.showtimes.cc` are countries;
+   *  `showtimes.cc` itself is this — a picker listing every deployed country,
+   *  Poland included, even though Poland answers on its own domain.
+   *
+   *  It is a HOST check rather than a deployment of its own, deliberately: every
+   *  web process renders the same picker for this host, so whichever country's
+   *  deployment the proxy happens to send the apex to answers it identically and
+   *  there is no fourth thing to keep running. */
+  val apexHost: String = "showtimes.cc"
+
+  /** The brand named on the front door — the non-Polish brand, since the apex is
+   *  the Showtimes domain. Poland keeps its own brand on its own domain. */
+  val apexBrandName: String = "Showtimes"
+
+  /** Is this request host the front door rather than a country's own site?
+   *  Accepts the `www.` spelling and an explicit port so a direct hit still works
+   *  where the proxy's redirect is not in front of it (local dev, a stale cache). */
+  def servesApex(host: String): Boolean =
+    host.toLowerCase.takeWhile(_ != ':').stripPrefix("www.") == apexHost
 
   def byCode(code: String): Option[Country] =
     all.find(_.code.equalsIgnoreCase(code.trim))

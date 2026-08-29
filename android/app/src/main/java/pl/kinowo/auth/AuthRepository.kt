@@ -31,7 +31,7 @@ import pl.kinowo.net.PersistentCookieJar
 class AuthRepository(
     private val client: OkHttpClient,
     private val cookieJar: PersistentCookieJar,
-    private val baseUrl: String = "https://kinowo.fly.dev",
+    private val baseUrl: String = "https://kinowo.net",
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 

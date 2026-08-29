@@ -1,0 +1,61 @@
+@(countries: Seq[models.Country])(implicit messages: play.api.i18n.Messages)
+@*
+   The BRAND FRONT DOOR, served at the bare `showtimes.cc` apex (see
+   `models.Country.servesApex`). Its sibling `landing.scala.html` picks a CITY
+   within one country; this picks the COUNTRY, and each choice leaves for that
+   country's own domain.
+
+   Poland is listed like the rest even though it answers on kinowo.net under a
+   different brand — someone who lands here wanting Polish listings should not
+   have to know that the two brands are the same product.
+
+   No geolocation here, unlike the city landing: the nearest-city fix is only
+   meaningful once a country is chosen, and guessing a COUNTRY from coordinates
+   would send a visitor somewhere they cannot opt out of without noticing.
+*@
+<!DOCTYPE html>
+<html lang="@messages.lang.code">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@messages("landing.apexTitle", models.Country.apexBrandName)</title>
+  @_ogTagsApp(
+    pageTitle       = messages("landing.apexTitle", models.Country.apexBrandName),
+    pageDescription = messages("landing.ogDescription"),
+    pageUrl         = "https://" + models.Country.apexHost + "/",
+    imageUrl        = "https://" + models.Country.apexHost + "/assets/img/" + models.Country.default.homeOgImage,
+  )
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #e7e7f5; background: #0d0d22; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    main { width: 100%; max-width: 420px; text-align: center; }
+    h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: .25rem; }
+    .sub { color: #9a9ac0; margin-bottom: 1.5rem; }
+    .country-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .country-list a {
+      display: flex; align-items: baseline; justify-content: space-between; gap: .75rem;
+      text-decoration: none; color: #e7e7f5;
+      background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
+      padding: .9rem 1.1rem; font-size: 1.05rem; font-weight: 500;
+      transition: background .15s, border-color .15s;
+    }
+    .country-list a:hover { background: #25254e; border-color: #3a3a7e; }
+    .country-host { color: #9a9ac0; font-size: .85rem; font-weight: 400; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>🎬 @models.Country.apexBrandName</h1>
+    <p class="sub">@messages("landing.chooseCountry")</p>
+    <ul class="country-list" id="country-list">
+      @for(c <- countries) {
+        <li><a href="@{c.webUrl.get}/" data-country="@c.code">@c.displayName<span class="country-host">@c.shareHost</span></a></li>
+      }
+    </ul>
+  </main>
+</body>
+</html>

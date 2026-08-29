@@ -33,8 +33,8 @@ val LocalCitySlug = compositionLocalOf { "" }
  * onto the slug. Pure JVM (no Android APIs) so it's unit-testable directly.
  */
 fun filmShareUrl(citySlug: String, title: String, filmSlug: String? = null): String =
-    if (!filmSlug.isNullOrEmpty()) "https://kinowo.fly.dev/$citySlug/film/$filmSlug"
-    else "https://kinowo.fly.dev/$citySlug/film?title=" +
+    if (!filmSlug.isNullOrEmpty()) "https://kinowo.net/$citySlug/film/$filmSlug"
+    else "https://kinowo.net/$citySlug/film?title=" +
         URLEncoder.encode(title, "UTF-8").replace("+", "%20")
 
 /** Open the system share sheet for a film's public link. Backs the Share

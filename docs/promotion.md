@@ -1,6 +1,6 @@
 # Kinowo — promotion & growth playbook
 
-A prioritized plan for getting Kinowo (`kinowo.fly.dev` + the iOS / Android apps)
+A prioritized plan for getting Kinowo (`kinowo.net` + the iOS / Android apps)
 in front of people. Ordered roughly by leverage-per-effort. The technical SEO
 backbone (sitemap, structured data, canonicals, query-shaped titles, Core Web
 Vitals) shipped alongside this doc — several items below depend on it.
@@ -15,8 +15,8 @@ them into repeat app users.
 
 ## 0. Do this first (an afternoon, compounding payoff)
 
-1. **Google Search Console** — verify `kinowo.fly.dev` (the verification token is
-   already in the landing `<head>`), then submit `https://kinowo.fly.dev/sitemap.xml`.
+1. **Google Search Console** — verify `kinowo.net` (the verification token is
+   already in the landing `<head>`), then submit `https://kinowo.net/sitemap.xml`.
    Watch the Coverage / Pages report; fix anything stuck in "Discovered – not
    indexed". This is the single highest-leverage action — it's how the ~1,200
    city+film URLs the sitemap now exposes actually get crawled.
@@ -25,7 +25,7 @@ them into repeat app users.
 3. **Rich Results Test** — paste a live `/{city}/film/{slug}` URL into
    <https://search.google.com/test/rich-results> and confirm the Movie,
    ScreeningEvent and Breadcrumb JSON-LD parse with no errors. Fix any warnings.
-4. **Validate the sitemap + robots** — `curl https://kinowo.fly.dev/robots.txt`
+4. **Validate the sitemap + robots** — `curl https://kinowo.net/robots.txt`
    (should list the `Sitemap:` line) and open the sitemap in a browser.
 
 ---

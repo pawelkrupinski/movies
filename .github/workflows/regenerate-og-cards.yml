@@ -8,10 +8,10 @@ name: Regenerate OG share cards
 # w {locative}" for Poland — see `web/src/page/scala/tools/OgCardGenerator.scala`.
 #
 # Runs once PER deployed country, selected by KINOWO_COUNTRY. That is POLAND
-# ALONE since 2026-08-02: the UK leg screenshotted showtimes-uk.fly.dev, and that
+# ALONE since 2026-08-02: the UK leg screenshotted uk.showtimes.cc, and that
 # machine is stopped. Its removal is not optional housekeeping — `Country.ogOrigin`
 # now falls back to the deployed host for an undeployed country, so a UK leg would
-# have pointed the generator at kinowo.fly.dev and screenshotted UK region slugs
+# have pointed the generator at kinowo.net and screenshotted UK region slugs
 # that only exist on the UK deployment, committing a PR full of 404 cards.
 #
 # This only authors a branch + PR for a human to review — it does NOT push to
@@ -103,7 +103,7 @@ jobs:
                   KINOWO_COUNTRY: pl
               run: sbt "web/PageTest/runMain tools.OgCardGenerator"
 
-            # The UK cards off showtimes-uk.fly.dev — English overlay ("Showtimes
+            # The UK cards off uk.showtimes.cc — English overlay ("Showtimes
             # / Cinema listings in {city}"), 79 regions. Same generator, same
             # asset dir; UK slugs don't collide with PL slugs.
             #
@@ -111,7 +111,7 @@ jobs:
             # left running: `Country.ogOrigin` now falls back to the deployed host
             # for an undeployed country, so this leg would NOT have failed loudly
             # against a dead host — it would have screenshotted UK region slugs on
-            # kinowo.fly.dev, which 404, and opened a PR full of blank cards.
+            # kinowo.net, which 404, and opened a PR full of blank cards.
             # Kept in place so restoring is deleting the `if: false` line.
             - name: Regenerate per-city UK cards from live prod
               if: false
@@ -139,7 +139,7 @@ jobs:
                       cards (`web/src/main/assets/img/og-{slug}.png`) from the live
                       prod repertoire, so the link previews don't freeze on one
                       week's posters. Covers the one deployed country — Poland
-                      (kinowo.fly.dev).
+                      (kinowo.net).
 
                       Each card is a screenshot of that city's `/{slug}/` page (all
                       dates shown) under the deployment's overlay — "Kinowo /

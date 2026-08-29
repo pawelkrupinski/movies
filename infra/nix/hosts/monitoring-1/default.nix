@@ -74,7 +74,7 @@ in
     # MUST MATCH THE PUBLIC NAME. Grafana builds redirects, OAuth callbacks and the links in alert
     # notifications from root_url, so behind a proxy a wrong value here does not fail loudly -- it
     # sends people to http://localhost:3000, from an email, and looks like the alert is broken.
-    rootUrl = "https://grafana.2-28-52-210.sslip.io/";
+    rootUrl = "https://grafana.kinowo.net/";
   };
 
   # PUBLIC HTTPS FOR GRAFANA ONLY. See roles/public-proxy.nix for why nothing else is published:
@@ -82,9 +82,18 @@ in
   # security boundary -- the proxy adds TLS and a name, not authentication.
   fleet.publicProxy = {
     enable = true;
-    hostName = "grafana.2-28-52-210.sslip.io";
     acmeEmail = "pawel@bitcashier.io";
-    upstream = "10.20.0.11:3000";
+    vhosts = {
+      # A NAME THIS PROJECT OWNS, at last. The sslip.io spelling below was only ever a stand-in for
+      # not having a domain (see roles/public-proxy.nix), and it carried a real cost: sslip.io is a
+      # SHARED registered domain, so Let's Encrypt's per-domain rate limit is consumed by everyone
+      # using it and an issuance here could fail for reasons that have nothing to do with this fleet.
+      "grafana.kinowo.net".upstream = "10.20.0.11:3000";
+
+      # KEPT, AS A REDIRECT, because it is what every existing bookmark and every alert notification
+      # sent before this change points at. It costs one more certificate and removes a dead link.
+      "grafana.2-28-52-210.sslip.io".redirectTo = "grafana.kinowo.net";
+    };
   };
 
   # THE FLEET'S LOG STORE, beside the metrics store and for the same reason: this is the box you go

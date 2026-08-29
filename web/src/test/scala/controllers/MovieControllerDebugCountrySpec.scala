@@ -52,7 +52,7 @@ class MovieControllerDebugCountrySpec extends AnyFlatSpec with Matchers {
     html should include("?country=uk")
     html should include("?country=pl")
     // …and never sends you to the UK prod deployment (which 404s /debug).
-    html should not include ("showtimes-uk.fly.dev")
+    html should not include ("uk.showtimes.cc")
     // The switched-to country is the selected option.
     html should include("""value="/debug?country=uk" selected""")
   }

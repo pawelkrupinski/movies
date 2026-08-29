@@ -28,7 +28,7 @@ final class CountryTests: XCTestCase {
     func testDefaultIsPolandOnTheProdDeployment() {
         let pl = Country.default
         XCTAssertEqual(pl.code, "pl")
-        XCTAssertEqual(pl.baseURL.absoluteString, "https://kinowo.fly.dev")
+        XCTAssertEqual(pl.baseURL.absoluteString, "https://kinowo.net")
         XCTAssertEqual(pl.languageCode, "pl")
     }
 
@@ -36,7 +36,7 @@ final class CountryTests: XCTestCase {
         let uk = Country.byCode("uk")
         XCTAssertEqual(uk.code, "uk")
         XCTAssertEqual(uk.displayName, "United Kingdom")
-        XCTAssertEqual(uk.baseURL.absoluteString, "https://showtimes-uk.fly.dev")
+        XCTAssertEqual(uk.baseURL.absoluteString, "https://uk.showtimes.cc")
         XCTAssertEqual(uk.languageCode, "en")
     }
 
@@ -44,7 +44,7 @@ final class CountryTests: XCTestCase {
         let de = Country.byCode("de")
         XCTAssertEqual(de.code, "de")
         XCTAssertEqual(de.displayName, "Deutschland")
-        XCTAssertEqual(de.baseURL.absoluteString, "https://showtimes-de.fly.dev")
+        XCTAssertEqual(de.baseURL.absoluteString, "https://de.showtimes.cc")
         XCTAssertEqual(de.languageCode, "de")
     }
 
@@ -98,7 +98,7 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(prefs.selectedCountry.code, "uk")
         XCTAssertEqual(
             CountrySelection.current(defaults).baseURL.absoluteString,
-            "https://showtimes-uk.fly.dev"
+            "https://uk.showtimes.cc"
         )
         XCTAssertNil(prefs.selectedCity)
 
@@ -125,7 +125,7 @@ final class CountryTests: XCTestCase {
         // exactly what `kinowoBaseURL` sees at the next launch.
         let reloaded = UserPreferences(store: defaults)
         XCTAssertEqual(reloaded.selectedCountry.code, "uk")
-        XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://showtimes-uk.fly.dev")
+        XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://uk.showtimes.cc")
     }
 
     func testSelectingCountryForcesItsLanguageTag() {

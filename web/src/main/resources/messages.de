@@ -66,6 +66,8 @@ browse.ogDescription=Filme aus {0} Kinos: {1}. Mit aktuellen Spielzeiten, Bewert
 # ── Landing (city picker) ───────────────────────────────────────────────────
 landing.title={0} — Kinoprogramm in deiner Stadt
 landing.ogDescription=Das Programm aller Kinos an einem Ort — mit IMDb-, Rotten-Tomatoes- und Metacritic-Bewertungen. Sieh dir die heutigen Spielzeiten in deiner Stadt an.
+landing.apexTitle={0} — Kinoprogramm in deinem Land
+landing.chooseCountry=Wähle dein Land
 landing.chooseCity=Wähle deine Stadt
 landing.searchCity=Nach einer Stadt suchen…
 landing.searchCityAria=Nach einer Stadt suchen

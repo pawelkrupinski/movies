@@ -8,8 +8,8 @@ Served by `controllers.WellKnownController` at:
 These let `https://<host>/...` links (including the copy-to-clipboard filter
 links) open the native apps instead of the browser. The same web binary +
 resources deploy to every country, so this identical AASA is served on all three
-deployments — `kinowo.fly.dev` (PL), `showtimes-uk.fly.dev` (UK),
-`showtimes-de.fly.dev` (DE) — and one app ID (`CQ4YC43YDM.dev.kinowo.Kinowo`)
+deployments — `kinowo.net` (PL), `uk.showtimes.cc` (UK),
+`de.showtimes.cc` (DE) — and one app ID (`CQ4YC43YDM.dev.kinowo.Kinowo`)
 claims links on all of them.
 
 ## iOS Universal Links need a PAID Apple Developer account
@@ -39,7 +39,7 @@ app appears in `sha256_cert_fingerprints`. Listed today:
 When the app is distributed through **Google Play**, Google re-signs it with the
 **Play App Signing** key — a *different* cert than the upload key above. Until
 that key's SHA-256 is added here, App Links will NOT auto-verify for a
-Play-installed build and `https://kinowo.fly.dev/...` links open the browser.
+Play-installed build and `https://kinowo.net/...` links open the browser.
 
 Get it from **Play Console → (app) → Test and release → App integrity → App
 signing → "SHA-256 certificate fingerprint"**, then add it to the `pl.kinowo`

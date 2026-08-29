@@ -328,9 +328,9 @@ private fun TrailerPlayer(embedUrl: String) {
  * handshake, so it renders but the play button is dead. Using our real site
  * origin makes Android present exactly the referer YouTube already allows
  * playback for on the web — this matches the proven iOS fix
- * (TrailerEmbedHTML + WKWebView under the same `kinowo.fly.dev` base).
+ * (TrailerEmbedHTML + WKWebView under the same `kinowo.net` base).
  */
-internal const val TrailerEmbedBaseUrl = "https://kinowo.fly.dev"
+internal const val TrailerEmbedBaseUrl = "https://kinowo.net"
 
 /**
  * Minimal full-bleed iframe page for a provider embed URL

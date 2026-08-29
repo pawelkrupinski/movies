@@ -20,18 +20,18 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
     val html = views.html.debug(Seq.empty, titleNormalizer).body
     html should include ("""class="debug-nav-country"""")
     // The UK deployment's corpus debug page, on its own host.
-    html should include ("""value="https://showtimes-uk.fly.dev/debug"""")
+    html should include ("""value="https://uk.showtimes.cc/debug"""")
   }
 
   it should "mark this deployment's own country as the selected option" in {
     val html = views.html.debug(Seq.empty, titleNormalizer).body
     // KINOWO_COUNTRY unset in tests → Poland; its option is pre-selected.
-    html should include ("""value="https://kinowo.fly.dev/debug" selected""")
+    html should include ("""value="https://kinowo.net/debug" selected""")
   }
 
   "cadence navbar" should "keep the switcher pointed at the cadence page, not the corpus page" in {
     val html = views.html.cadence(Seq.empty, java.time.Instant.EPOCH).body
-    html should include ("""value="https://showtimes-uk.fly.dev/debug/cadence"""")
+    html should include ("""value="https://uk.showtimes.cc/debug/cadence"""")
   }
 
   // Locally in Dev the wiring builds per-country debug stacks and passes
@@ -42,6 +42,10 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
     val html = views.html.debug(Seq.empty, titleNormalizer, current = models.Country.UnitedKingdom, sameOrigin = true).body
     html should include ("""value="/debug?country=uk" selected""") // the switched-to country, selected
     html should include ("""value="/debug?country=pl"""")
-    html should not include ("fly.dev") // never a cross-host jump to production
+    // Never a cross-host jump to production. Named explicitly rather than by a
+    // shared suffix: the two brands live on different registrable domains, so
+    // there is no one string that catches both.
+    html should not include ("kinowo.net")
+    html should not include ("showtimes.cc")
   }
 }

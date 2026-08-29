@@ -7,12 +7,12 @@ import XCTest
 /// crashing the app.
 final class CountryDTOTests: XCTestCase {
     func testDecodesAndMapsToCountry() throws {
-        let json = #"[{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes-uk.fly.dev","language":"en","brand":"Showtimes","timezone":"Europe/London"}]"#
+        let json = #"[{"code":"uk","name":"United Kingdom","baseUrl":"https://uk.showtimes.cc","language":"en","brand":"Showtimes","timezone":"Europe/London"}]"#
         let dtos = try JSONDecoder().decode([CountryDTO].self, from: Data(json.utf8))
         let country = dtos[0].toCountry()
         XCTAssertEqual(country?.code, "uk")
         XCTAssertEqual(country?.displayName, "United Kingdom")
-        XCTAssertEqual(country?.baseURL.absoluteString, "https://showtimes-uk.fly.dev")
+        XCTAssertEqual(country?.baseURL.absoluteString, "https://uk.showtimes.cc")
         XCTAssertEqual(country?.languageCode, "en")
         // The field the pruning fix reads — a London show disappears on London
         // time, not Warsaw.
@@ -22,7 +22,7 @@ final class CountryDTOTests: XCTestCase {
     func testMissingTimezoneFallsBackToWarsaw() throws {
         // An older bundled seed / a server that predates the field: no timezone
         // key. Decode must still succeed and default to the historical zone.
-        let json = #"[{"code":"pl","name":"Polska","baseUrl":"https://kinowo.fly.dev","language":"pl","brand":"Kinowo"}]"#
+        let json = #"[{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo"}]"#
         let dtos = try JSONDecoder().decode([CountryDTO].self, from: Data(json.utf8))
         XCTAssertEqual(dtos[0].toCountry()?.timeZone, TimeZone(identifier: "Europe/Warsaw"))
     }

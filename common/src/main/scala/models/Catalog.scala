@@ -11,7 +11,7 @@ import java.security.MessageDigest
  *
  * Deliberately country-AGNOSTIC and identical on every deployment: built from
  * [[Country.switchable]] (the deployed countries, i.e. those with a `webUrl`), so
- * `kinowo.fly.dev` and `showtimes-uk.fly.dev` serve byte-identical bytes and the
+ * `kinowo.net` and `uk.showtimes.cc` serve byte-identical bytes and the
  * same ETag. The apps ship a checked-in snapshot of [[json]] + [[etag]] as their
  * bundled seed (`tools.CatalogSnapshot`), so a fresh install can render offline
  * and its first fetch already carries the seed's ETag — a 304 when the build is

@@ -6,7 +6,7 @@ import scala.io.Source
 import scala.util.Using
 
 /**
- * Serves the mobile app-association files that let `https://kinowo.fly.dev/...`
+ * Serves the mobile app-association files that let `https://kinowo.net/...`
  * URLs open the native apps directly (iOS Universal Links, Android App Links)
  * instead of the website. The same links — including the copy-to-clipboard
  * filter links — therefore deep-link into the app when it is installed and fall

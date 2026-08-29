@@ -6,7 +6,7 @@
 GET     /                           controllers.LandingController.index()
 
 # ── Mobile app association (Universal Links / App Links) ───────────────────────
-# Let kinowo.fly.dev URLs (incl. the copy-to-clipboard filter links) open the
+# Let kinowo.net URLs (incl. the copy-to-clipboard filter links) open the
 # native apps. AASA is served with no extension as application/json per Apple.
 GET     /.well-known/apple-app-site-association  controllers.WellKnownController.appleAppSiteAssociation
 GET     /.well-known/assetlinks.json             controllers.WellKnownController.assetLinks

@@ -6,7 +6,7 @@ metadata and ratings from TMDB / IMDb / Filmweb / Metacritic / Rotten
 Tomatoes, and serves the combined view as a website and a native iOS
 app.
 
-Live at **<https://kinowo.fly.dev>**.
+Live at **<https://kinowo.net>**.
 
 ## What it does
 

@@ -1,6 +1,6 @@
 import { defineConfig, devices, type Project } from '@playwright/test';
 
-const BASE_URL = process.env.KINOWO_BASE_URL ?? 'https://kinowo.fly.dev';
+const BASE_URL = process.env.KINOWO_BASE_URL ?? 'https://kinowo.net';
 const IS_LOCAL_FIXTURE = BASE_URL.startsWith('http://127.0.0.1');
 
 // ─── Phone definitions ──────────────────────────────────────────────

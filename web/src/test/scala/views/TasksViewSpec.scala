@@ -15,8 +15,8 @@ class TasksViewSpec extends AnyFlatSpec with Matchers {
 
   "the tasks header" should "offer a switch to another country's task queue on that country's host" in {
     html should include ("""class="country-switch"""")
-    html should include ("""value="https://showtimes-uk.fly.dev/tasks"""")
-    html should include ("""value="https://showtimes-de.fly.dev/tasks"""")
+    html should include ("""value="https://uk.showtimes.cc/tasks"""")
+    html should include ("""value="https://de.showtimes.cc/tasks"""")
   }
 
   it should "point the switcher at /tasks, not another admin page" in {
@@ -28,7 +28,7 @@ class TasksViewSpec extends AnyFlatSpec with Matchers {
 
   it should "mark this deployment's own country as the selected option" in {
     // KINOWO_COUNTRY unset in tests → Poland; its option is pre-selected.
-    html should include ("""value="https://kinowo.fly.dev/tasks" selected""")
+    html should include ("""value="https://kinowo.net/tasks" selected""")
   }
 
   it should "select the served country's own option, and brand the title after it" in {
@@ -37,7 +37,7 @@ class TasksViewSpec extends AnyFlatSpec with Matchers {
     val out = views.html.tasks(current = models.Country.Germany).body
 
     out should include ("<title>Tasks — Showtimes</title>")
-    out should include ("""value="https://showtimes-de.fly.dev/tasks" selected""")
-    out should not include ("""value="https://kinowo.fly.dev/tasks" selected""")
+    out should include ("""value="https://de.showtimes.cc/tasks" selected""")
+    out should not include ("""value="https://kinowo.net/tasks" selected""")
   }
 }

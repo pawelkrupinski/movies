@@ -7,7 +7,7 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
 
   // The whole point of this proxy is to force HTTPS on mixed-content
   // (HTTP-only) origins like kinobulgarska19.pl that browsers were
-  // silently blocking on the HTTPS kinowo.fly.dev page.
+  // silently blocking on the HTTPS kinowo.net page.
   "PosterProxy.proxy" should "force the request URL to HTTPS regardless of origin scheme" in {
     val http  = PosterProxy.proxy("http://kinobulgarska19.pl/wp-content/uploads/2026/04/x.jpg")
     val https = PosterProxy.proxy("https://kinoapollo.pl/wp-content/uploads/2026/04/y.png")

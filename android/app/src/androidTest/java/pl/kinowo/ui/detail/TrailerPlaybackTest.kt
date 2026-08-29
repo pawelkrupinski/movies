@@ -159,7 +159,7 @@ class TrailerPlaybackTest {
 
     private companion object {
         const val TAG = "TrailerExp"
-        const val SITE_ORIGIN = "https://kinowo.fly.dev"
+        const val SITE_ORIGIN = "https://kinowo.net"
         const val VIDEO_ID = "aqz-KE-bpKQ"
         const val EMBED = "https://www.youtube.com/embed/$VIDEO_ID"
         const val CURRENT_TIME_JS =
