@@ -12,19 +12,11 @@ import pl.kinowo.model.Country
 
 /**
  * Proves the country → forced-language → resource pipeline end to end: wrapping
- * a context in a language tag (as MainActivity.attachBaseContext does with the
- * selected `Country.languageTag`) makes `getString` resolve `values-en` /
- * `values-de`, and the Polish default otherwise — regardless of the device
- * locale. Fails before the localized `values-*` strings existed (they'd fall
- * back to the Polish default).
- *
- * The English and German cases pass their tag DIRECTLY rather than through
- * `Country.byCode("GB"/"de")`. Those codes resolved to real registry entries
- * until 2026-08-02, when the UK and German deployments were stopped and dropped
- * from the registry — every code now resolves to Poland. The `values-en` /
- * `values-de` resources still ship and are still what a restored country would
- * render, so the wrapper keeps its coverage; only the lookup that picks the tag
- * moved out of the assertion.
+ * a context in the country's language tag (as MainActivity.attachBaseContext
+ * does) makes `getString` resolve `values-en`/`values-de` for the UK/German
+ * countries and the Polish default otherwise — regardless of the device locale.
+ * Fails before the localized `values-*` strings existed (they'd fall back to the
+ * Polish default).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -33,8 +25,8 @@ class LocaleStringsTest {
     private val base: Context = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun englishTagResolvesEnglishStrings() {
-        val en = LocaleWrapper.wrap(base, "en")
+    fun ukCountryResolvesEnglishStrings() {
+        val en = LocaleWrapper.wrap(base, Country.byCode("GB").languageTag)
         assertEquals("Loading showtimes…", en.getString(R.string.loading_repertoire))
         assertEquals("Country", en.getString(R.string.country_label))
         assertEquals("Try again", en.getString(R.string.retry))
@@ -43,8 +35,8 @@ class LocaleStringsTest {
     }
 
     @Test
-    fun germanTagResolvesGermanStrings() {
-        val de = LocaleWrapper.wrap(base, "de")
+    fun germanCountryResolvesGermanStrings() {
+        val de = LocaleWrapper.wrap(base, Country.byCode("de").languageTag)
         assertEquals("Spielzeiten werden geladen…", de.getString(R.string.loading_repertoire))
         // Strings externalised for the UK translation must also resolve in German
         // (they fall back to the Polish default until values-de carries them).

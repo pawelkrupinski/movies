@@ -32,15 +32,9 @@ struct DeepLink: Equatable {
     let filters: DeepLinkFilters
 
     /// Every country deployment's host — a link on any of them opens the app.
-    /// Keep in sync when a country is added. (`Country` lives in a different SPM
-    /// target, so this can't derive from `Country.all` directly.)
-    ///
-    /// Deliberately WIDER than `Country.all`, which has held Poland alone since
-    /// the UK and German deployments were stopped on 2026-08-02. The two dead
-    /// hosts stay listed because they also stay in `Kinowo.entitlements`, and a
-    /// link someone shared while those sites were up should still open the app
-    /// rather than bounce to a host that no longer answers. The app then resolves
-    /// the city against the live catalog, which no longer carries UK/DE cities.
+    /// Mirrors the `baseURL` hosts of `Country.all` (PL/UK/DE); keep in sync
+    /// when a country is added. (`Country` lives in a different SPM target, so
+    /// this can't derive from `Country.all` directly.)
     static let webHosts: Set<String> = [
         "kinowo.fly.dev", "www.kinowo.fly.dev",
         "showtimes-uk.fly.dev",

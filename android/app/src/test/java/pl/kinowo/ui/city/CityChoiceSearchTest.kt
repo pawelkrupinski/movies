@@ -75,34 +75,4 @@ class CityChoiceSearchTest {
         compose.onNodeWithText("Wrocław").performClick()
         assertEquals("wroclaw", picked?.slug)
     }
-
-    /**
-     * The first-launch gate shows NO country picker while one country is
-     * deployed: the UK and German deployments were stopped on 2026-08-02, so the
-     * catalog carries Poland alone and a one-pill row would be a control the user
-     * can't act on. The gate is then a plain city chooser — the city list below
-     * still renders.
-     */
-    @Test
-    fun countryPickerIsAbsentWhileOnlyOneCountryIsDeployed() {
-        compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
-
-        // "Kraj" is the picker's own label (the production-country filter is the
-        // distinct "Kraj produkcji"; onNodeWithText matches exactly).
-        compose.onNodeWithText("Kraj").assertDoesNotExist()
-        compose.onNodeWithText("Polska").assertDoesNotExist()
-        compose.onNodeWithText("Białystok").assertExists()   // the city list is unaffected
-    }
-
-    /** …and it comes back the moment a second country is deployed — the guard is
-     *  on the LIST, not a hardcoded single-country build. */
-    @Test
-    fun countryPickerReturnsWhenTheCatalogCarriesTwoCountries() {
-        val second = pl.kinowo.model.Country("uk", "United Kingdom", "https://example.test", "en")
-        val twoCountries = Catalog.fallback.copy(countries = Catalog.fallback.countries + second)
-        compose.setContent { CityChoiceScreen(catalog = twoCountries, onPick = {}) }
-
-        compose.onNodeWithText("Kraj").assertExists()
-        compose.onNodeWithText("United Kingdom").assertExists()
-    }
 }

@@ -46,16 +46,15 @@ class MovieControllerDebugCountrySpec extends AnyFlatSpec with Matchers {
     cookies(result).get(DebugCountries.CookieName).map(_.value) shouldBe Some("uk")
   }
 
-  it should "name the country it switched to, and never link to a production host" in {
+  it should "render a SAME-ORIGIN ?country= switcher, not a link to the UK production host" in {
     val html = contentAsString(switchingController.debug().apply(FakeRequest(GET, "/debug?country=uk")))
-    // The db switch above still works when a caller wires the extra stacks by
-    // hand, but the navbar renders no switcher: that control is gated on
-    // `Country.switchable`, which holds Poland alone since the UK and German
-    // deployments were stopped. So the page names the country it is showing…
-    html should include (">United Kingdom<")
-    // …and never sends you to a stopped deployment's host.
+    // The switcher stays on this origin…
+    html should include("?country=uk")
+    html should include("?country=pl")
+    // …and never sends you to the UK prod deployment (which 404s /debug).
     html should not include ("showtimes-uk.fly.dev")
-    html should not include ("""class="debug-nav-country"""")
+    // The switched-to country is the selected option.
+    html should include("""value="/debug?country=uk" selected""")
   }
 
   "GET /debug (cookie only)" should "keep the UK selection across the plain tab links" in {

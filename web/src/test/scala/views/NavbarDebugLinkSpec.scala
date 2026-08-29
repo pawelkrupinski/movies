@@ -41,17 +41,17 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
     html should include ("nav-tab-debug")
   }
 
-  "filter panel" should "render the city picker but no country switcher" in {
-    // Poland has >1 city, so the city picker renders. The country switcher does
-    // NOT: only one country is deployed (`Country.switchable` — the UK and
-    // German deployments were stopped on 2026-08-02), and a one-option select is
-    // a control the user can't act on. Same rule as the iOS gate and the Android
-    // picker, so all three surfaces agree.
+  "filter panel" should "render the country switcher above the city picker" in {
+    // Both selectors render under Poznań: Poland has >1 city (city picker)
+    // and >1 country is deployed (`Country.switchable` → country switcher).
+    // The country switcher must sit above the city picker so the selection
+    // reads country → city top-to-bottom, matching iOS/Android.
     val html = render(devMode = false)
-    html should not include ("""id="country-select"""")
-    html should not include ("showtimes-uk.fly.dev")
-    html should not include ("showtimes-de.fly.dev")
-    html should include ("""id="city-select"""")
+    val countryAt = html.indexOf("""id="country-select"""")
+    val cityAt    = html.indexOf("""id="city-select"""")
+    countryAt should be > -1
+    cityAt should be > -1
+    countryAt should be < cityAt
   }
 
   "shared styles" should "hide `.nav-tab-debug` on the mobile media queries" in {

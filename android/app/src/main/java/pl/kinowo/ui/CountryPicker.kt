@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.R
 import pl.kinowo.model.Country
-import pl.kinowo.model.isSwitchable
 import pl.kinowo.model.withCode
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -28,12 +27,6 @@ import pl.kinowo.ui.theme.TextSecondary
  * activity recreates so the app re-points at that country's deployment and
  * forces its UI language. Kept compact so it can sit above the city list on the
  * first-launch gate without disturbing the two-per-row card layout further down.
- *
- * Renders NOTHING when fewer than two countries are deployed ([isSwitchable]) —
- * a one-pill row is a control the user can't act on, and the label above it
- * would announce a choice that doesn't exist. Guarding here rather than at the
- * call site keeps every caller correct; the filters sheet's parallel
- * [pl.kinowo.ui.list] country section applies the same test.
  */
 @Composable
 fun CountryPicker(
@@ -42,7 +35,6 @@ fun CountryPicker(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (!countries.isSwitchable) return
     val current = countries.withCode(Country.normalizeCode(selectedCode)) ?: Country.default
     Column(modifier.fillMaxWidth()) {
         Text(

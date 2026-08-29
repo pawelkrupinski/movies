@@ -81,23 +81,25 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   }
 
   // Focused assertion for the navbar country switcher (independent of the whole
-  // -page byte diff above): only ONE country is deployed (`Country.switchable` —
-  // showtimes-uk and showtimes-de were stopped on 2026-08-02), so the navbar
-  // renders no #country-select at all rather than a select the user can't act on.
-  "the navbar country switcher" should "not render when only one country is deployed" in {
+  // -page byte diff above): the PL deployment (Country.fromEnv default = Poland)
+  // renders a #country-select listing every DEPLOYED country's host, with the
+  // current country pre-selected. Germany (no webUrl) must NOT appear.
+  "the navbar country switcher" should "render #country-select with each deployed country's host, current one selected" in {
     val html = views.html.repertoire(
       service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders, renderedAt = now
     ).body
 
-    html should not include ("""id="country-select"""")
-    html should not include ("""onchange="onCountryChange(this.value)"""")
-    // No option may point at a host that no longer answers.
-    html should not include ("showtimes-uk.fly.dev")
-    html should not include ("showtimes-de.fly.dev")
-    html should not include (">Deutschland<")
-    // The city picker below it is unaffected — Poland still serves many cities.
-    html should include ("""id="city-select"""")
+    html should include ("""id="country-select"""")
+    html should include ("""onchange="onCountryChange(this.value)"""")
+    // Every deployed host appears as an option value...
+    html should include ("""value="https://kinowo.fly.dev"""")
+    html should include ("""value="https://showtimes-uk.fly.dev"""")
+    html should include ("""value="https://showtimes-de.fly.dev"""")
+    // ...with the current country (Poland, fromEnv default) pre-selected.
+    html should include ("""value="https://kinowo.fly.dev" selected""")
+    // Germany is now deployed (showtimes-de) → present in the switcher.
+    html should include (">Deutschland<")
   }
 
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {

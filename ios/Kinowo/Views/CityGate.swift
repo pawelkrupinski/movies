@@ -151,16 +151,10 @@ struct CityChoiceView: View {
                 // In-app country switch: picking a country swaps the API base URL
                 // and forces the UI language. Sits above the city list so the
                 // user chooses country → city top-to-bottom on first launch.
-                // Hidden entirely when only one country is deployed
-                // (`catalog.isSwitchable`) — a one-option picker is a control the
-                // user can't act on, so the gate becomes a plain city chooser.
-                // Same guard as the filters sheet's country section.
-                if catalog.isSwitchable {
-                    Section {
-                        countryPicker
-                    } header: {
-                        Text("country.label")
-                    }
+                Section {
+                    countryPicker
+                } header: {
+                    Text("country.label")
                 }
 
                 Section {
@@ -199,11 +193,9 @@ struct CityChoiceView: View {
         }
     }
 
-    /// One selectable segment per country in the live catalog. Selecting persists
-    /// the choice (forcing its language) and re-points the stores at the new
-    /// deployment so the city list below immediately reflects the chosen
-    /// country's server. Only rendered when the catalog is switchable — see the
-    /// call site.
+    /// One selectable segment per `Country.all`. Selecting persists the choice
+    /// (forcing its language) and re-points the stores at the new deployment so
+    /// the city list below immediately reflects the chosen country's server.
     private var countryPicker: some View {
         Picker("country.label", selection: Binding(
             get: { prefs.selectedCountry },
