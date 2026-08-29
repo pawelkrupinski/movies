@@ -1,6 +1,6 @@
 {
   "uid": "kinowo-fleet",
-  "title": "Kinowo Fleet — Hetzner hosts",
+  "title": "Kinowo Fleet \u2014 Hetzner hosts",
   "tags": [
     "fleet",
     "hetzner",
@@ -1863,12 +1863,197 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 60
       },
       "options": {
         "mode": "markdown",
         "content": "**Read this before concluding the fleet is fine because everything above is green.**\n\n* **Nothing here watches the product.** The web tier (`kinowo`) and the scraping worker\n  (`kinowo-worker`) are still on Fly. Their metrics live behind the `fly-prometheus`\n  datasource, whose read-only tokens were revoked and cannot be reissued, so the dashboards\n  in the **Fly (no data without a token)** folder are quarantined there rather than mixed\n  into this one. A perfectly green fleet screen is compatible with the site being down.\n* **mongod is watched as a UNIT, not as a database.** There is no `mongodb_exporter` here,\n  so nothing can say whether the single replica-set member is **PRIMARY** (a member that has\n  stepped down accepts reads, refuses every write, and keeps its unit `active` throughout),\n  nor how much **oplog window** is left -- and the application's change streams depend on\n  that window. Both need an exporter and a monitoring user.\n* **k3s is watched as a UNIT, not as a cluster.** There is no `kube-state-metrics`, so node\n  conditions, pods, deployments and scheduling are entirely invisible. A running `k3s.service`\n  whose node is `NotReady` reads green here.\n* **This host cannot watch itself while it is off.** Prometheus, Alertmanager and Grafana all\n  run on monitoring-1. If it stops, this dashboard stops with it and no alert fires. The daily\n  Telegram heartbeat is the only mechanism that turns that silence into a signal, and its\n  ABSENCE is what you are watching for -- so a quiet channel is not the same as a quiet fleet."
       }
+    },
+    {
+      "type": "row",
+      "title": "MongoDB",
+      "id": 31,
+      "gridPos": {
+        "x": 0,
+        "y": 69,
+        "w": 24,
+        "h": 1
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Replica set state",
+      "description": "1 is PRIMARY. THE POINT OF THIS PANEL: a mongod that has stepped down keeps its systemd unit `active` while refusing writes, so every other check on this fleet reads healthy. The application uses change streams, which need a healthy replica set -- if this leaves 1, the web tier keeps serving from memory and silently stops updating.",
+      "id": 32,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 70,
+        "w": 6,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "PRIMARY",
+                  "color": "green"
+                },
+                "2": {
+                  "text": "SECONDARY",
+                  "color": "orange"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mongodb_mongod_replset_my_state",
+          "legendFormat": "state",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Oplog window",
+      "description": "How far back a disconnected change-stream consumer can resume from. Past the end of it a worker cannot resume its token and falls back to a full corpus re-read. This read 2.9h on 2026-08-29 -- the oplog had been cut to 1GB while the volume was being shrunk, and the alert caught it; it is 4GB now and the window should sit far above the 4h threshold.",
+      "id": 33,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 70,
+        "w": 9,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(mongodb_mongod_replset_oplog_head_timestamp - mongodb_mongod_replset_oplog_tail_timestamp)",
+          "legendFormat": "window",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Connections in use",
+      "description": "Against mongod's ceiling. The web tier holds change streams open continuously and each worker holds its own pool, so a steady baseline is expected; a climb that does not level off is the shape of a leak.",
+      "id": 34,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 70,
+        "w": 9,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mongodb_ss_connections{conn_type=\"current\"}",
+          "legendFormat": "current",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "mongodb_ss_connections{conn_type=\"available\"}",
+          "legendFormat": "available",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }
