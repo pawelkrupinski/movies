@@ -24,10 +24,14 @@ import services.metrics.WebJvmMetrics
  * a city's repertoire suddenly swings (the read-model-outage signal: a city
  * silently dropping to zero).
  *
- * Finally appends [[WebJvmMetrics]] — the standard `jvm_*` / `process_*`
- * resource collectors, matching what the worker already exports — so the
- * Fly-health dashboard can chart the web JVM's heap against its `-Xmx384m`
- * rather than inferring it from the machine's free RAM.
+ * Finally appends [[WebJvmMetrics]] — the process-wide Prometheus registry. That
+ * carries the standard `jvm_*` / `process_*` resource collectors, matching what
+ * the worker already exports (so the Fly-health dashboard can chart the web
+ * JVM's heap against its `-Xmx384m` rather than inferring it from the machine's
+ * free RAM), and the `kinowo_web_http_*` request rate / latency families that
+ * [[modules.HttpMetricsFilter]] records. The latter replace the dead
+ * `fly_app_http_*` proxy series, whose managed-Prometheus tokens are revoked —
+ * they are now the tier's ONLY request-rate, error-rate and latency signal.
  */
 class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, movieMetrics: WebMovieMetrics,
   jvmMetrics: WebJvmMetrics, country: String = Country.default.code) extends AbstractController(cc) {

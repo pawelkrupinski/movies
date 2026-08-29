@@ -42,8 +42,14 @@ import scala.jdk.CollectionConverters._
 class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
 
   private val Dashboards = Seq(
-    "fly/grafana/provisioning/dashboards/fly-overview.json",
-    "fly/grafana/provisioning/dashboards/worker-diagnostics.json"
+    // THE LIVE DASHBOARDS, WHICH MOVED. These used to be
+    // fly/grafana/provisioning/dashboards/*.json, and that copy still exists -- but it is now the
+    // FROZEN ROLLBACK for the stopped kinowo-grafana Fly app, not what anybody looks at. Guarding
+    // it would mean this spec passes while the dashboards people actually open have no panel for a
+    // metric, which is the precise failure it exists to prevent.
+    "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json",
+    "infra/nix/files/monitoring/grafana/dashboards/apps/worker-diagnostics.json",
+    "infra/nix/files/monitoring/grafana/dashboards/fleet/kinowo-fleet.json"
   )
 
   /** Worker metrics deliberately exported without a panel, each with the reason.
@@ -54,6 +60,11 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  through a registry this module can enumerate. */
   private val WebExportedFamilies = Seq(
     "kinowo_web_movies_served",
+    // Added 2026-08-29 with the HTTP filter. These two are the web tier's replacement for Fly's
+    // proxy metrics (fly_app_http_*), which died with the Fly Prometheus token -- and unlike them
+    // they measure the application's own work rather than the edge in front of it.
+    "kinowo_web_http_requests_total",
+    "kinowo_web_http_request_duration_seconds",
     "kinowo_uptime_recent_successes",
     "kinowo_uptime_recent_failures",
     "kinowo_uptime_recent_zeroes"

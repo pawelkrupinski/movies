@@ -60,6 +60,11 @@ class AppComponents(context: Context)
 
   // ── Router + filters ──────────────────────────────────────────────────────
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
+  lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics)(using executionContext)
+  // Metrics FIRST (outermost) so the latency it records is the whole chain —
+  // including gzip of a multi-MB body — and so a request rejected by Play's own
+  // allowed-hosts/CSRF filters still lands on the error-rate panel. Any inner
+  // position would silently exclude exactly the failures worth alerting on.
   // Gzip last so it compresses the final rendered body. The pages are large
   // (the `/` listing is ~4.2 MB of uncompressed HTML — 200+ server-rendered
   // cards); gzip takes that to ~300 KB on the wire, the single biggest
@@ -67,7 +72,7 @@ class AppComponents(context: Context)
   // clients that don't send `Accept-Encoding: gzip` and skips already-
   // compressed payloads (images), so it only ever helps.
   override def httpFilters: Seq[EssentialFilter] =
-    super.httpFilters :+ corsFilter :+ cspFilter :+ gzipFilter
+    (httpMetricsFilter +: super.httpFilters) :+ corsFilter :+ cspFilter :+ gzipFilter
 
   // Replace Play's default error handler with the truncation-tolerant
   // variant so `EntityStreamException` from client-side body cutoffs

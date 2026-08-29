@@ -112,8 +112,14 @@ DELETE  /api/me                     controllers.UserStateController.deleteAccoun
 
 # ── Health / Uptime ───────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
-# Prometheus exposition of the in-app /uptime health, scraped by Fly's managed
-# Prometheus (see the [[metrics]] block in fly.toml) for the self-hosted Grafana.
+# Prometheus exposition: the in-app /uptime health, JVM/process metrics, and the HTTP request
+# counter and latency histogram from modules.HttpMetricsFilter.
+#
+# SCRAPED DIRECTLY BY THE FLEET'S OWN PROMETHEUS on monitoring-1, over a WireGuard peer into Fly's
+# private 6PN -- NOT by Fly's managed Prometheus any more. The [[metrics]] block in fly.toml still
+# points Fly at this endpoint and is harmless, but nothing reads what it collects: both read-only
+# tokens for Fly's Prometheus are revoked and cannot be reissued. Scraping the app directly needs no
+# Fly credential at all, which is why it is the path that survived.
 GET     /metrics                    controllers.MetricsController.metrics
 GET     /uptime                     controllers.UptimeController.index()
 GET     /uptime/stream              controllers.UptimeController.stream()
