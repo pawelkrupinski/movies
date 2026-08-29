@@ -38,6 +38,11 @@ import scala.concurrent.duration._
  *                  ONLY UK source, so this seam carries all ~843 UK venues; a
  *                  direct fetch blacks out the whole country (2026-07-26). The
  *                  diagnostic ctor + fixture wiring default it back to `http`.
+ *   - `odeonFetch` — Decodo residential egress for vwc.odeon.co.uk. Odeon's
+ *                  ocapi backend used to answer our datacenter IP directly, but
+ *                  Cloudflare 403s it from the Hetzner egress the worker moved to
+ *                  on 2026-08-29, which took all 102 Odeon venues red at once.
+ *                  Same shape (and same remedy) as `flicksFetch`.
  *   - `today`    — the date Helios bakes into its REST URLs.
  *
  * Returns RAW scrapers. `WorkerWiring` wraps each in a `RetryingCinemaScraper`
@@ -69,6 +74,11 @@ class CinemaScraperCatalog(
   // split the POST and GET onto different IPs. Defaults to `http` in the secondary
   // ctor/tests.
   vueFetch: HttpFetch,
+  // Residential-proxy egress for Odeon's Vista ocapi backend (see the ctor doc).
+  // Own param rather than reusing `flicksFetch` so an Odeon venue keeps its flicks
+  // FALLBACK on the flicks seam while its own-site primary rides this one. Same
+  // no-default reason as `zyteFetch`.
+  odeonFetch: HttpFetch,
   // Supplies Odeon's short-lived Vista JWT (harvested via Zyte in prod, see
   // [[services.cinemas.uk.OdeonAuthHarvester]]). No primary-ctor default (Scala 3
   // forbids two overloaded ctors both carrying defaults); the diagnostic ctor +
@@ -94,7 +104,7 @@ class CinemaScraperCatalog(
       (_, h, ttl) => new CachingDetailFetch(h, ttl), zyteFetch = ZyteFallback.fetchFor(http),
       // No residential proxy outside WorkerWiring — a diagnostic runs from a
       // developer's own (unblocked) IP, so plain `http` is the right default.
-      flicksFetch = http, vueFetch = http,
+      flicksFetch = http, vueFetch = http, odeonFetch = http,
       // A diagnostic has no Zyte harvester wired, so Odeon venues throw → flicks fallback.
       odeonAuthToken = () => None,
       titles = titles)
@@ -427,8 +437,9 @@ class CinemaScraperCatalog(
   // `WorkerWiring.recordingScraper`). Cineworld + Vue are Cloudflare-403'd from our
   // Fly datacenter IP (verified in prod 2026-07-27), so they egress residential:
   // Cineworld via `flicksFetch` (GET-only, per-venue sticky is fine), Vue via
-  // `vueFetch` (host-sticky, for its token cookie). Showcase/Everyman + Odeon reach
-  // Fly directly, so they use `http`. Any proxy failure rolls to the flicks fallback.
+  // `vueFetch` (host-sticky, for its token cookie), Odeon via `odeonFetch`.
+  // Showcase/Everyman still reach the origin directly, so they use `http`. Any
+  // proxy failure rolls to the flicks fallback.
   private def cineworld(id: String, cinema: Cinema): CineworldClient =
     new CineworldClient(flicksFetch, id, cinema, today = today)
   private def vueUk(id: String, cinema: Cinema): VueCinemasPlatformClient =
@@ -437,11 +448,14 @@ class CinemaScraperCatalog(
     new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.ShowcaseBaseUrl, id, cinema)
   private def everyman(id: String, cinema: Cinema): GatsbyBoxOfficeClient =
     new GatsbyBoxOfficeClient(http, GatsbyBoxOfficeClient.EverymanBaseUrl, id, cinema)
-  // Odeon pulls Vista `ocapi` over the injected JWT (harvested via Zyte) — the
-  // ocapi host isn't Cloudflare-gated, so the DATA fetch uses direct `http`; only
-  // the token harvest needs a browser. A missing token throws → flicks fallback.
+  // Odeon pulls Vista `ocapi` over the injected JWT (harvested via Zyte); only the
+  // token harvest needs a browser, the data fetch needs only the bearer. The ocapi
+  // host DOES sit behind Cloudflare though — it answered our Fly IP but 403s the
+  // Hetzner egress the worker moved to on 2026-08-29 — so the data fetch goes over
+  // the residential `odeonFetch`, not direct `http`. A missing token, or a proxy
+  // that can't get through either, throws → flicks fallback.
   private def odeon(id: String, cinema: Cinema): OdeonClient =
-    new OdeonClient(http, id, cinema, odeonAuthToken, today = today)
+    new OdeonClient(odeonFetch, id, cinema, odeonAuthToken, today = today)
   private val londonScrapers: Seq[CinemaScraper] = Seq(
     flicks("act-one-acton", ActOneActon),
     flicks("arthouse-crouch-end", ArthouseCrouchEnd),

@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -24,6 +24,9 @@ import scala.concurrent.duration._
  *     true-residential network in prod, the one egress that reaches it).
  *   - www.flicks.co.uk 403s our IP behind Cloudflare → every UK venue fetches
  *     through `flicksFetch` (the Decodo residential proxy in prod).
+ *   - vwc.odeon.co.uk 403s our IP behind Cloudflare too (since the 2026-08-29 move
+ *     to Hetzner changed the egress IP) → all 102 Odeon venues fetch through
+ *     `odeonFetch`.
  * Each seam's fixture-less `http` makes a leaked fetch throw / come back empty,
  * so a refactor that re-buries the fetch on `http` is caught here. (CI also sets
  * ZYTE_API_KEY, so a leak onto `http` would route biletyna through real Zyte.)
@@ -38,15 +41,17 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   /** Catalog with each Fly-IP-blocked seam pointed at a fixture directory (or the
    *  fixture-less `http` by default); a cinema that leaks onto the wrong seam
    *  throws / returns empty. */
-  private def catalog(biletyna: String = "does-not-exist",
-                      zyte:     String = "does-not-exist",
-                      flicks:   HttpFetch = http,
-                      vue:      HttpFetch = http): CinemaScraperCatalog =
+  private def catalog(biletyna:   String = "does-not-exist",
+                      zyte:       String = "does-not-exist",
+                      flicks:     HttpFetch = http,
+                      vue:        HttpFetch = http,
+                      odeon:      HttpFetch = http,
+                      odeonToken: Option[String] = None): CinemaScraperCatalog =
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = new FakeHttpFetch(biletyna), today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl),
       zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
-      odeonAuthToken = () => None, titles = titleNormalizer
+      odeonFetch = odeon, odeonAuthToken = () => odeonToken, titles = titleNormalizer
     )
 
   /** An HttpFetch that fails every GET and POST with a uniquely-identifiable
@@ -164,6 +169,22 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     seamChain(ex) should include ("SEAM:VUE")
   }
 
+  // Odeon's Vista `ocapi` backend was the one UK chain that reached the origin from
+  // our datacenter IP, so it was wired on the shared `http`. The 2026-08-29 move off
+  // Fly changed the egress IP and Cloudflare now serves it an "Attention Required"
+  // 403 — the identical unauthenticated GET returns 401 (i.e. reaches the origin)
+  // from a residential IP and from every Decodo port — which took all 102 Odeon
+  // venues red at once. So it must egress residential like Cineworld/Vue. A token is
+  // supplied because the client throws before fetching without one, which would make
+  // this pass for the wrong reason.
+  it should "route Odeon through the odeon residential seam, not the shared http" in {
+    val ex = intercept[Exception] {
+      catalog(odeon = probe("ODEON"), odeonToken = Some("jwt"))
+        .all.find(_.cinema == OdeonCinemaActon).value.fetch()
+    }
+    seamChain(ex) should include ("SEAM:ODEON")
+  }
+
   // KinoPort was moved onto Filmweb (id 1735) when a 2026-06 rebuild retired its
   // gcsw.pl/kino/ programme alias — and Filmweb then went silently empty for it,
   // serving `[]` on every date while the venue screened five films a day. It now
@@ -263,7 +284,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     new CinemaScraperCatalog(
       http, mkFetch = http, bnFetch = http, today = LocalDate.of(2026, 6, 6),
       chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
-      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonAuthToken = () => None, titles = titleNormalizer)
+      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonFetch = http, odeonAuthToken = () => None, titles = titleNormalizer)
 
     requested.size should be > 1
     withClue(s"chains built: ${requested.mkString(", ")} — ") {

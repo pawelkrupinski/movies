@@ -256,6 +256,7 @@ class WorkerWiring(
     zyteFetch = zyteFetch,
     flicksFetch = flicksFetch,
     vueFetch = vueFetch,
+    odeonFetch = odeonFetch,
     odeonAuthToken = odeonAuthHarvester.token,
     titles = titleNormalizer)
 
@@ -263,8 +264,21 @@ class WorkerWiring(
   // token-gated, so it egresses residential AND host-sticky (one IP+cookie for the
   // token POST + films GET — see proxyPrimary/keyOf). Cineworld reuses flicksFetch
   // (GET-only, no cookie, so per-venue stickiness is fine). Both fall back to flicks
-  // if the proxy is down. Showcase/Everyman + Odeon reach Fly directly, so stay on http.
+  // if the proxy is down. Showcase/Everyman still reach their origins directly.
   lazy val vueFetch: HttpFetch = proxyPrimary(httoFetch, keyOf = StickyShardHttpFetch.hostOnly)
+
+  // vwc.odeon.co.uk — Odeon's Vista ocapi backend — is Cloudflare-403'd too. It was
+  // NOT when the client was written: it answered our Fly egress directly, and only
+  // the www page needed a browser. The 2026-08-29 move to Hetzner changed the egress
+  // IP and the identical GET now returns 403 (a Cloudflare "Attention Required" page)
+  // from k3s-worker-1 while returning 401 — i.e. reaching the origin, just
+  // unauthenticated — from a residential IP and from every Decodo pool port. That
+  // took all 102 Odeon venues red at once, so the data fetch moves onto the proxy.
+  // Per-venue (default host+path) stickiness, not host-only: Odeon carries its auth
+  // in a header, not a cookie, so nothing has to share an IP, and the per-date
+  // showtimes paths spread the sweep across the pool. Falls back to direct — a
+  // burned proxy is no worse than today, and the flicks fallback sits behind that.
+  lazy val odeonFetch: HttpFetch = proxyPrimary(httoFetch)
 
   // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
   // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL

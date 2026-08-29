@@ -11,14 +11,19 @@ import java.time.{LocalDate, ZoneId}
  * its Vista booking backend `vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1`.
  *
  * HYBRID auth by design. Odeon's www site sits behind Cloudflare (a plain fetch
- * 403s), but the ocapi DATA backend is NOT — it needs only a bearer JWT. That
- * JWT is global (one token covers every venue), lives in the Cloudflare-served
+ * 403s) and needs a real browser; the ocapi DATA backend needs only a bearer JWT.
+ * That JWT is global (one token covers every venue), lives in the Cloudflare-served
  * page HTML as `window.initialData.api.authToken`, and expires in ~12h. So the
  * token is harvested OUT OF BAND (production: a Zyte `browserHtml` fetch of a
  * www page, ~2×/day) and injected here via `authToken` — this client never
  * touches the www page or Zyte, keeping the harvest seam wired separately
  * (see the composition root). Every ocapi call is plain HTTP over the injected
  * `http`, carrying `Authorization: Bearer <token>`.
+ *
+ * The bearer is not sufficient on its own: ocapi is ALSO behind Cloudflare, which
+ * gates on egress-IP reputation. It answered our Fly datacenter IP, but 403s the
+ * Hetzner one the worker moved to on 2026-08-29, so production injects the
+ * residential-proxy `odeonFetch` here rather than the shared direct `http`.
  *
  * chain=true: Odeon is a large, reliably-fed network whose own API is the
  * source of truth, so it's excluded from the Filmweb-style fallback.

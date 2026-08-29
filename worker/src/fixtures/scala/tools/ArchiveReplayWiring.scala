@@ -78,6 +78,8 @@ class ArchiveReplayWiring(
   override lazy val biletynaFetch: HttpFetch   = httoFetch
   override lazy val zyteFetch: HttpFetch       = httoFetch
   override lazy val flicksFetch: HttpFetch     = httoFetch
+  override lazy val vueFetch: HttpFetch        = httoFetch
+  override lazy val odeonFetch: HttpFetch      = httoFetch
 
   /** Enrichment runs against the per-country cache when one is supplied.
    *

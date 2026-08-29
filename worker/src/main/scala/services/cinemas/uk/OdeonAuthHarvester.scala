@@ -18,10 +18,12 @@ import scala.util.matching.Regex
  *
  * Odeon's www site is Cloudflare-gated but embeds the token in its page HTML as
  * `window.initialData.api.authToken`; the Vista `ocapi` backend it authorises
- * (`vwc.odeon.co.uk`) is NOT gated. So we harvest the token by loading ONE Odeon
- * page through Zyte's `browserHtml` mode (the only Zyte mode that clears the
- * challenge and runs the page's JS), read the JWT, and hand it to the client — the
- * client then pulls all showtimes over plain HTTP. The token is global to the
+ * (`vwc.odeon.co.uk`) needs no browser — only the bearer (it is Cloudflare-gated on
+ * egress-IP reputation, which the residential proxy clears; see [[OdeonClient]]).
+ * So we harvest the token by loading ONE Odeon page through Zyte's `browserHtml`
+ * mode (the only Zyte mode that clears the challenge and runs the page's JS), read
+ * the JWT, and hand it to the client — the client then pulls all showtimes over
+ * plain HTTP. The token is global to the
  * estate (one page covers all 102 venues) and lasts ~12h.
  *
  * Lazy TTL cache, mirroring [[services.cinemas.common.SharedZyteSession]]: `token()`

@@ -80,10 +80,13 @@ class FixtureTestWiring(val fixture: String) extends TestWiring {
   // the fixture rather than hitting real Zyte (CI sets ZYTE_API_KEY).
   override lazy val zyteFetch: HttpFetch = httoFetch
 
-  // Same single override point for the Flicks seam (every UK venue): replay the
-  // fixture rather than egressing through the Decodo residential proxy, which a
-  // developer with KINOWO_PROXY_* in .env.local would otherwise do.
+  // Same single override point for the residential-proxy seams (Flicks — every UK
+  // venue — plus Vue and Odeon): replay the fixture rather than egressing through
+  // the Decodo residential proxy, which a developer with KINOWO_PROXY_* in
+  // .env.local would otherwise do.
   override lazy val flicksFetch: HttpFetch = httoFetch
+  override lazy val vueFetch: HttpFetch    = httoFetch
+  override lazy val odeonFetch: HttpFetch  = httoFetch
 
   /** Convenience: scrape every cinema once, drain the cascade, run the daily
    *  `UnscreenedCleanup` pass, then project into the read model. After this
