@@ -521,6 +521,22 @@ in
 
     systemd.tmpfiles.rules = [
       "d ${builtins.dirOf cfg.logPath} 0750 mongodb mongodb -"
+
+      # CLAIM THE DATA DIRECTORY. `dbPath` is a Hetzner Volume mounted at /var/lib/mongodb, and a
+      # freshly formatted ext4 comes up owned by ROOT with nothing on it but lost+found. mongod runs
+      # as `mongodb`, cannot write to its own dbPath, and exits 100.
+      #
+      # THE FAILURE IS NEARLY MUTE, WHICH IS WHY THIS IS SPELLED OUT. `systemLog.destination: file`
+      # sends the explanation to mongod.log, so `journalctl -u mongodb` shows only a restart loop
+      # and `status=100/n/a` with no cause -- the reason sits in a file nothing points you at. Hit
+      # on mongo-1's first deploy, 2026-08-29.
+      #
+      # `d` and not `D`: it creates when absent and corrects ownership and mode when present, but
+      # never empties. `D` would wipe the database on every boot.
+      #
+      # 0700, stricter than the log directory above, because the dump directory lives under it and a
+      # database backup is exactly as sensitive as the database.
+      "d ${cfg.dbPath} 0700 mongodb mongodb -"
       "d ${cfg.backup.directory} 0700 mongodb mongodb -"
       # NOTHING HERE CREATES THE TEXTFILE DIRECTORY. modules/fleet/observability.nix owns it for
       # every publisher on the host at once, and a second `d` rule for the same path from a role

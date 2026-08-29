@@ -43,7 +43,10 @@ keys:
   # paste the result as the anchor below, add it to that host's `key_groups`, then
   # `sops updatekeys nix/secrets/<host>.yaml`.
   #
-  # - &mongo_1        age1...
+  # Derived on 2026-08-29 from the host key mongo-1 minted on its first boot after `convert-host`.
+  # This is the SECOND key this host has had: the first conversion installed onto the wrong disk and
+  # the machine was rebuilt, discarding it. A host key is only ever as old as the last install.
+  - &mongo_1 age10axwfl5cxr86rkx0ev033cx3he8lxf5stvwujpyw7gj7ydj8qd7srqr206
   # Derived on 2026-08-29 from the host key monitoring-1 minted on its first boot after
   # `convert-host`. This is the file on the fleet whose recipient list matters most: it holds the
   # Grafana and Alertmanager Telegram bot tokens, the Fly Prometheus token, and the k3s cluster
@@ -66,7 +69,7 @@ creation_rules:
     key_groups:
       - age:
           - *operator
-          # - *mongo_1
+          - *mongo_1
 
   - path_regex: nix/secrets/monitoring-1\.yaml$
     key_groups:

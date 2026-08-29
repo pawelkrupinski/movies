@@ -72,7 +72,9 @@ in
     # the Fly 6PN address for the actual application traffic. NEVER the public IP -- see
     # roles/mongodb.nix, which asserts the loopback entry is present because the backup timer
     # depends on it.
-    bindAddresses = [ "127.0.0.1" "10.20.0.10" ];
+    # The third entry is the WireGuard address and it is the one the APPLICATION uses; the other
+    # two serve the local backup timer and this fleet's own Prometheus. Still never the public IP.
+    bindAddresses = [ "127.0.0.1" "10.20.0.10" "fdaa:74:b6b5:a7b:35c:d566:7af5:7502" ];
   };
 
   # Opens 27017 on the PRIVATE interface only. The Fly apps do not arrive that way -- they come down
@@ -80,18 +82,29 @@ in
   # monitoring-1, not for the application.
   fleet.firewall.mongo = true;
 
-  # THE TUNNEL THE APPLICATION ACTUALLY ARRIVES ON, and the reason mongod is never exposed publicly.
-  # mongo-1 joins Fly's 6PN as a peer, so `kinowo`, `kinowo-worker` and the rest keep reaching their
-  # database over Fly's private network exactly as they do today and only the HOST in MONGODB_URI
-  # changes.
+  # THE TUNNEL THE APPLICATION ACTUALLY ARRIVES ON, and the reason mongod is never exposed
+  # publicly. mongo-1 joins Fly's 6PN as a peer, so `kinowo`, `kinowo-worker` and the rest keep
+  # reaching their database over Fly's private network exactly as they do today -- only the HOST in
+  # MONGODB_URI changes.
   #
-  # THE PEER VALUES ARE NOT SET HERE YET. They come from `fly wireguard create`, which mints a
-  # keypair and allocates an fdaa: address; the private half belongs in nix/secrets/mongo-1.yaml and
-  # the rest in this block. The role is left DISABLED rather than half-configured, because a
-  # half-configured tunnel is one that comes up, routes nothing, and takes the database offline for
-  # the Fly apps at cutover -- whereas disabled is simply the state we are in until that command has
-  # been run.
-  fleet.wireguardFly.enable = false;
+  # THESE VALUES CAME FROM `fly wireguard create personal arn kinowo-mongo-1`, 2026-08-29, and the
+  # peer is named there so it can be found and revoked. `arn` because that is where the web and
+  # worker apps run; the gateway region decides which Fly edge the tunnel terminates at, so any
+  # other choice adds a transatlantic hop to every query for no reason.
+  #
+  # NOTE THE ENDPOINT: this side DIALS OUT to arn1.gateway.6pn.dev. Fly does not dial in, which is
+  # why roles/wireguard-fly.nix sets no `listenPort` and why neither firewall opens 51820 -- return
+  # traffic is an established flow. If that ever changes, all three move together.
+  #
+  # THE PRIVATE KEY CANNOT BE RECOVERED. flyctl prints it once, at creation; losing it means
+  # removing the peer and adding a new one. It is in nix/secrets/mongo-1.yaml and nowhere else.
+  fleet.wireguardFly = {
+    enable = true;
+    address = "fdaa:74:b6b5:a7b:35c:d566:7af5:7502/120";
+    peerPublicKey = "tyYPi0DmwNDs3YEhnm4CeNy5I9m2QSsdry4H46Zfr3M=";
+    peerEndpoint = "arn1.gateway.6pn.dev:51820";
+    allowedIPs = [ "fdaa:74:b6b5::/48" ];
+  };
 
   sops.defaultSopsFile = ../../secrets/mongo-1.yaml;
 
