@@ -55,6 +55,23 @@ scrape_configs:
   # `kinowo.internal` is Fly's own DNS name for all instances of the app; systemd-resolved on this
   # host forwards `.internal` to Fly's resolver (see roles/prometheus.nix). AAAA because 6PN is
   # IPv6-only.
+
+    # DROP `exported_country`, WHICH IS 3961 SERIES OF PURE NOISE. Both apps export a `country`
+    # label of their own, and this job also SETS one from the target definition -- so Prometheus
+    # keeps its own and renames the app's to `exported_country` rather than silently overwriting it.
+    #
+    # They have never disagreed (checked across all 360 worker and web series on 2026-08-29: zero
+    # mismatches), which is the point: it is the same fact twice. Keeping it costs a label on every
+    # series and invites a query grouped by `exported_country` that quietly works until the day the
+    # two DO diverge.
+    #
+    # THE SCRAPE'S LABEL IS THE ONE KEPT, deliberately. It comes from the target definition in this
+    # file, so it is true by construction even if a worker were misconfigured to report the wrong
+    # country -- and a worker writing to the wrong database is exactly the failure where you want
+    # the monitoring to say which target it was, not which country the process believes it is.
+    metric_relabel_configs:
+      - regex: exported_country
+        action: labeldrop
   - job_name: kinowo-web
     metrics_path: /metrics
     scrape_interval: 30s
@@ -81,3 +98,20 @@ scrape_configs:
         replacement: web
       - target_label: platform
         replacement: fly
+
+    # DROP `exported_country`, WHICH IS 3961 SERIES OF PURE NOISE. Both apps export a `country`
+    # label of their own, and this job also SETS one from the target definition -- so Prometheus
+    # keeps its own and renames the app's to `exported_country` rather than silently overwriting it.
+    #
+    # They have never disagreed (checked across all 360 worker and web series on 2026-08-29: zero
+    # mismatches), which is the point: it is the same fact twice. Keeping it costs a label on every
+    # series and invites a query grouped by `exported_country` that quietly works until the day the
+    # two DO diverge.
+    #
+    # THE SCRAPE'S LABEL IS THE ONE KEPT, deliberately. It comes from the target definition in this
+    # file, so it is true by construction even if a worker were misconfigured to report the wrong
+    # country -- and a worker writing to the wrong database is exactly the failure where you want
+    # the monitoring to say which target it was, not which country the process believes it is.
+    metric_relabel_configs:
+      - regex: exported_country
+        action: labeldrop
