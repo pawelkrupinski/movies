@@ -83,9 +83,24 @@ on:
   push:
     branches: [main]
     paths:
-      - 'infra/nix/**'
-      - 'infra/flake.nix'
-      - 'infra/flake.lock'
+      # EVERYTHING UNDER infra/, NOT JUST infra/nix/**, AND THE DIFFERENCE IS NOT THEORETICAL.
+      #
+      # The flake root IS infra/ (see infra/flake.nix), so every git-tracked file underneath it is
+      # part of the flake's source. Changing any of them changes the source hash, which changes
+      # `system.configurationRevision`, which changes the closure -- including files that never get
+      # imported by a module, like infra/version-dashboard/app.py or infra/bin/check.
+      #
+      # WITH THE NARROWER FILTER THOSE COMMITS SILENTLY SKIPPED STAGING. Observed on eb596e32e,
+      # which added the dashboard: the hosts were deployed by hand and moved to a new closure, CI
+      # never ran, and the pin on every host still named the closure from the previous commit -- so
+      # nixos-auto-apply sat reporting "staged, not activated" against something older than what was
+      # running, for ever. A gate that is narrower than what actually affects the artefact does not
+      # save a build; it strands the fleet one commit behind with no error anywhere.
+      #
+      # The cost of the wider filter is some staging runs that rebuild an identical closure. That is
+      # cheap -- nix is content-addressed, so an unchanged closure is a cache hit and the copy is a
+      # no-op -- and it is the right side to err on.
+      - 'infra/**'
       - '.github/workflows/nix-stage-closures.yaml'
   workflow_dispatch:
   # PULL REQUESTS, FOR THE EVALUATE JOB ONLY -- see the `if:` on `stage`, which is what keeps a PR
