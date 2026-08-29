@@ -513,7 +513,7 @@ object ExtraTitleRules {
     // split the title, and `caseSegment` then sentence-cases the isolated all-caps
     // 'WSP' banner to 'Wsp:' — a display regression the 3 rows it helped don't
     // justify. An acronym cycle needs a recase carve-out before it can be stripped.)
-    searchStrip("xtra-4k-suffix",                   """(?iu)\s+4K\b\s*$""",                               "'<film> (YYYY) 4K' trailing restoration-resolution tag — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323)"),
+    searchStrip("xtra-4k-suffix",                   """(?iu)\s*(?:\s+4K\b|\(\s*4K\s*\))\s*$""",           "'<film> (YYYY) 4K' / '<film> (4K)' trailing restoration-resolution tag, bare or parenthesised — the trailing '(YYYY)' stays (TMDB resolves it, like the 'Noce Cabirii (1957)' convention) but the '4K' breaks the title match ('Klasyka w NCKF: Generał (1926) 4K' → 'Generał (1926)' → TMDB 961, 'Ghost in the shell (1995) 4K' → 9323, 'Do utraty tchu (4K)' → base film)"),
     // Twenty-first wave (2026-08-23), from the same TMDB-no-match list. Three decoration
     // shapes the existing suffix rules just miss:
     //
@@ -577,11 +577,9 @@ object ExtraTitleRules {
     //    strand — the parenthesised expansion means the generic colon-prefix rules
     //    (which stop at the first separator) can't reach past it.
     searchStrip("xtra-smok-prefix",                """(?iu)^SMOK\s*\(Spotkania\s+Młodych\s+Odkrywców\s+Kina\)\s*:\s*""", "'SMOK (Spotkania Młodych Odkrywców Kina): <film>' youth-discovery strand prefix (Przekleństwa niewinności)"),
-    //  - The existing 'xtra-4k-suffix' only matches a BARE trailing '4K' (a space
-    //    then the token); several cinemas parenthesise it instead ('(4K)'), which
-    //    the bare rule's '\s+4K\b' can't reach because the string ends in ')' not
-    //    '4K'.
-    searchStrip("xtra-paren-4k-suffix",            """(?iu)\s*\(\s*4K\s*\)\s*$""", "'<film> (4K)' parenthesised restoration-resolution tag — sibling of the bare xtra-4k-suffix, which requires an un-parenthesised trailing '4K' (Do utraty tchu, Przekleństwa niewinności)"),
+    //  - Several cinemas parenthesise the restoration tag instead of the bare
+    //    trailing '4K' — folded into 'xtra-4k-suffix' above as an alternation
+    //    rather than a separate rule (Do utraty tchu, Przekleństwa niewinności).
     //  - Kino Wisła's preview-series prefix, spelled out in full. NOT the 'WSP:'
     //    acronym form — that was trialled and dropped above (xtra-4k-suffix's
     //    preceding comment): an all-caps acronym segment gets sentence-cased by
