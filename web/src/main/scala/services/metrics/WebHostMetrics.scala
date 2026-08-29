@@ -22,7 +22,9 @@ import scala.util.Try
  * It is a genuinely different signal from the heap and RSS panels beside it.
  * `-Xmx384m` inside a 1 GB machine leaves room for exactly one surprise, and
  * this app has already OOM-crash-looped once at a smaller VM size (see the
- * `[[vm]]` note in fly.toml) — the tell was the machine's free memory, which
+ * `[[vm]]` note in fly.toml, and the memory limit in
+ * infra/kubernetes/web/base/all.yaml, which is the same bet on this platform) —
+ * the tell was the free memory in whatever bounds the process, which
  * neither `jvm_memory_used_bytes` nor `process_resident_memory_bytes` can show,
  * because neither counts the page cache, the sidecar processes, or a second
  * machine's share of the same host.
@@ -32,9 +34,22 @@ import scala.util.Try
  * kernel spends everything it can on page cache — so a panel drawn from it
  * looks like a permanent emergency. `MemAvailable` is the kernel's own estimate
  * of what a new allocation could actually get, and is what Fly's metric
- * reported. A Fly machine is a Firecracker microVM, so `MemTotal` is the
- * machine's configured size (`memory = '1024mb'`) rather than some shared
- * host's.
+ * reported.
+ *
+ * ⚠️ BUT THE CGROUP WINS WHERE THERE IS ONE, and on k3s there always is. This
+ * was written for a Firecracker microVM, where `/proc/meminfo` describes the
+ * machine and `MemTotal` is its configured size. In a container it describes
+ * the NODE: all three web pods would publish k3s-worker-1's ~16 GB and its
+ * node-wide available memory, identical to each other and unrelated to the 1Gi
+ * limit that is what actually OOM-kills them. That is not a smaller version of
+ * the truth, it is a different fact wearing the same name — the panel would sit
+ * at 90% free while a pod was being killed.
+ *
+ * So `memory.max` / `memory.current` (cgroup v2) are preferred when readable and
+ * numeric, and `/proc/meminfo` is the fallback. `memory.max` reads the literal
+ * string `max` for an unlimited cgroup, which is the Fly case and every
+ * developer box that has the files at all — that spelling is treated as "no
+ * limit", so the fallback still answers for a VM.
  *
  * DISK is the ROOT filesystem, not a volume: the web app mounts none (no
  * `[mounts]` in fly.toml), so the thing that can fill up is the machine's own
@@ -61,7 +76,8 @@ class WebHostMetrics(
   registry: PrometheusRegistry,
   country: String,
   meminfo: Path = Paths.get("/proc/meminfo"),
-  diskRoot: File = new File("/")
+  diskRoot: File = new File("/"),
+  cgroup: Path = Paths.get("/sys/fs/cgroup")
 ) {
 
   private def gauge(name: String, help: String, read: () => Option[Long]): Unit =
@@ -76,6 +92,23 @@ class WebHostMetrics(
   private def meminfoField(key: String): Option[Long] =
     Try(Files.readString(meminfo)).toOption.flatMap(WebHostMetrics.meminfoBytes(_, key))
 
+  /** One cgroup v2 pseudo-file as a byte count. `None` when the file is absent
+   *  (not containerised, or cgroup v1) or holds `max`, the kernel's spelling for
+   *  "no limit" — both mean the cgroup has nothing useful to say and the caller
+   *  should fall back to the machine's own numbers. */
+  private def cgroupBytes(file: String): Option[Long] =
+    Try(Files.readString(cgroup.resolve(file))).toOption
+      .map(_.trim)
+      .filter(_.forall(_.isDigit))
+      .flatMap(text => Try(text.toLong).toOption)
+
+  /** What the process can still allocate before something kills it: the cgroup's
+   *  headroom where a limit exists, the machine's MemAvailable otherwise. */
+  private def memoryAvailable: Option[Long] =
+    cgroupBytes("memory.max")
+      .flatMap(limit => cgroupBytes("memory.current").map(used => math.max(0L, limit - used)))
+      .orElse(meminfoField("MemAvailable"))
+
   /** `getTotalSpace` answers 0 for a path the process cannot stat, which would
    *  otherwise be published as a machine with no disk at all. */
   private def diskSpace(read: File => Long): Option[Long] =
@@ -83,17 +116,17 @@ class WebHostMetrics(
 
   gauge(
     "kinowo_web_host_memory_available_bytes",
-    "MemAvailable from the web machine's /proc/meminfo — the kernel's estimate of what a new " +
-      "allocation could get, counting reclaimable page cache. The replacement for Fly's " +
-      "fly_instance_memory_mem_available.",
-    () => meminfoField("MemAvailable")
+    "What the web process can still allocate before it is killed: the cgroup's memory.max minus " +
+      "memory.current under k3s, MemAvailable from /proc/meminfo on an unlimited machine. The " +
+      "replacement for Fly's fly_instance_memory_mem_available.",
+    () => memoryAvailable
   )
 
   gauge(
     "kinowo_web_host_memory_total_bytes",
-    "MemTotal from the web machine's /proc/meminfo — the Firecracker VM's configured size, so the " +
-      "available line above can be read as a fraction rather than an absolute.",
-    () => meminfoField("MemTotal")
+    "The ceiling the line above is a fraction of: the cgroup's memory.max under k3s (the pod's " +
+      "limit, NOT the node's RAM), MemTotal from /proc/meminfo on an unlimited machine.",
+    () => cgroupBytes("memory.max").orElse(meminfoField("MemTotal"))
   )
 
   gauge(

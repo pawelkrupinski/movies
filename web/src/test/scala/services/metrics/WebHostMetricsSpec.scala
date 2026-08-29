@@ -51,10 +51,60 @@ class WebHostMetricsSpec extends AnyFlatSpec with Matchers {
   /** A registry carrying only these gauges, rendered as exposition text.
    *  `diskRoot` defaults to a real directory so `getUsableSpace` runs the
    *  production `statfs` path rather than a stub. */
-  private def render(meminfo: Path, diskRoot: File = new File(".")): String = {
+  private def render(meminfo: Path, diskRoot: File = new File("."),
+                     cgroup: Path = Paths.get("/nonexistent-cgroup")): String = {
     val registry = new PrometheusRegistry()
-    new WebHostMetrics(registry, country = "pl", meminfo = meminfo, diskRoot = diskRoot)
+    new WebHostMetrics(registry, country = "pl", meminfo = meminfo, diskRoot = diskRoot, cgroup = cgroup)
     PrometheusExposition.render(registry)
+  }
+
+  /** A cgroup v2 directory holding the two files the reader consults. `null`
+   *  for either writes no file at all, which is the not-containerised shape. */
+  private def cgroupDir(max: String, current: String): Path = {
+    val dir = Files.createTempDirectory("cgroup")
+    if (max != null) Files.writeString(dir.resolve("memory.max"), max + "\n")
+    if (current != null) Files.writeString(dir.resolve("memory.current"), current + "\n")
+    dir
+  }
+
+  // ── The cgroup, where there is one ───────────────────────────────────────────
+  // On k3s `/proc/meminfo` describes the NODE, so all three web pods would
+  // publish k3s-worker-1's ~16 GB and its node-wide free memory — identical to
+  // each other and unrelated to the 1Gi limit that actually kills them. The
+  // panel would read 90% free while a pod was being OOM-killed, which is worse
+  // than no panel. These four lock the precedence that fixes it.
+
+  "the memory gauges" should "report the CGROUP's headroom and limit when one is set, not the node's" in {
+    // 1Gi limit, 700MiB used -> 348160 KiB of headroom, and a total that is the
+    // POD's limit rather than the node's 1009836 kB of MemTotal in the fixture.
+    val out = render(meminfoAt(Meminfo), cgroup = cgroupDir("1073741824", "734003200"))
+    sample(out, Available) shouldBe Some(1073741824d - 734003200d)
+    sample(out, TotalMem) shouldBe Some(1073741824d)
+    // Nothing from /proc/meminfo leaked through.
+    sample(out, Available) should not be Some(651932d * 1024d)
+    sample(out, TotalMem) should not be Some(1009836d * 1024d)
+  }
+
+  it should "fall back to /proc/meminfo when the cgroup is unlimited (`max`)" in {
+    // The Fly/VM shape, and any box where the files exist but bound nothing.
+    // `max` is a kernel spelling, not a number, and parsing it as one would be
+    // either an exception or a nonsense ceiling.
+    val out = render(meminfoAt(Meminfo), cgroup = cgroupDir("max", "734003200"))
+    sample(out, Available) shouldBe Some(651932d * 1024d)
+    sample(out, TotalMem) shouldBe Some(1009836d * 1024d)
+  }
+
+  it should "fall back to /proc/meminfo when there is no cgroup at all" in {
+    val out = render(meminfoAt(Meminfo), cgroup = Paths.get("/nonexistent-cgroup"))
+    sample(out, Available) shouldBe Some(651932d * 1024d)
+    sample(out, TotalMem) shouldBe Some(1009836d * 1024d)
+  }
+
+  it should "not publish negative headroom when usage has passed the limit" in {
+    // memory.current can exceed memory.max briefly before the kernel reclaims or
+    // kills. A negative gauge would render as a downward spike on a bytes panel.
+    val out = render(meminfoAt(Meminfo), cgroup = cgroupDir("1073741824", "1200000000"))
+    sample(out, Available) shouldBe Some(0d)
   }
 
   /** The gauge's sample value, or `None` when the family carried no data point. */
@@ -62,6 +112,14 @@ class WebHostMetricsSpec extends AnyFlatSpec with Matchers {
     exposition.linesIterator.collectFirst {
       case line if line.startsWith(s"""$name{country="pl"} """) => line.split(' ').last.toDouble
     }
+
+  /** `Meminfo` on disk, for the tests that vary the CGROUP and so cannot use
+   *  `withMeminfo`, which fixes the cgroup at "absent". */
+  private def meminfoAt(contents: String): Path = {
+    val file = Files.createTempFile("meminfo", ".txt")
+    Files.writeString(file, contents)
+    file
+  }
 
   private def withMeminfo(contents: String)(check: String => Unit): Unit = {
     val file = Files.createTempFile("meminfo", ".txt")
