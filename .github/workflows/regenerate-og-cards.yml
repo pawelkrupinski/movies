@@ -107,14 +107,18 @@ jobs:
             # / Cinema listings in {city}"), 79 regions. Same generator, same
             # asset dir; UK slugs don't collide with PL slugs.
             #
-            # DISABLED 2026-08-02 with the UK deployment, and it could not simply be
-            # left running: `Country.ogOrigin` now falls back to the deployed host
-            # for an undeployed country, so this leg would NOT have failed loudly
-            # against a dead host — it would have screenshotted UK region slugs on
-            # kinowo.net, which 404, and opened a PR full of blank cards.
-            # Kept in place so restoring is deleting the `if: false` line.
+            # RE-ENABLED 2026-08-29, when the UK deployment came back on uk.showtimes.cc.
+            # It was disabled on 2026-08-02 with the shutdown, and could not simply be left
+            # running: `Country.ogOrigin` falls back to the DEPLOYED host for an undeployed
+            # country, so this leg would not have failed loudly against a dead host — it would
+            # have screenshotted UK region slugs on the Polish site, which 404, and opened a PR
+            # full of blank cards. That fallback is exactly why re-enabling it is safe again
+            # only now that `Country.UnitedKingdom.webUrl` names a host that answers.
+            #
+            # There is still NO German leg, and that predates the shutdown rather than being
+            # left over from it: Germany's 158 regions have never had per-city cards. Adding
+            # them is a separate decision about ~13 minutes of screenshotting, not a restore.
             - name: Regenerate per-city UK cards from live prod
-              if: false
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: uk

@@ -38,26 +38,31 @@ convergence band. There is no second place to remember for any of them.
 
 ## Checklist
 
-1. **Bring the machines back.** The web apps were `flyctl scale count 0` (machines
-   destroyed — app, config, secrets, IPs and volumes all kept); the workers were
-   `flyctl machines stop` (machines kept, so `/data` with its heap dumps, logs and
-   AppCDS archive survives).
+1. **Bring the country's workloads back.** ⚠️ **Superseded by the k3s migration.** Both
+   tiers now run as Kubernetes Deployments, not Fly machines, so there is nothing to
+   `flyctl start` — scale the country's Deployments back up instead:
 
    ```
-   flyctl scale count 1 -a showtimes-<cc>          # web
-   flyctl machines start -a kinowo-worker-<cc>     # worker
+   infra/kubernetes/apply.sh worker <cc>
+   infra/kubernetes/apply.sh web <cc>
    ```
+
+   The Fly instructions this step used to give (`flyctl scale count 1 -a showtimes-<cc>`,
+   `flyctl machines start -a kinowo-worker-<cc>`) would start a SECOND copy of the country
+   alongside the cluster's — two workers both holding change streams and both projecting the
+   read model. Do not follow them unless you are deliberately rolling the whole tier back to
+   Fly.
 
    ⚠️ Stopping a WEB app does not hold — `auto_start_machines = true` with
    `auto_stop_machines = false` means any inbound request boots it and it never
    stops again. That is why the web tier was scaled to zero rather than stopped.
    Re-check machine state a few minutes after any future stop.
 
-2. **Re-enable its deploy legs.** `.github/workflows/deploy.yml`, matrix rows
-   `showtimes-<cc>` and `kinowo-worker-<cc>`: `enabled: false` → `true`. The rows,
-   their `fly.*.toml` and their artifacts were never removed. This flag exists
-   because both real skip guards probe the live machine and fail OPEN, so without
-   it the next push to main redeploys and restarts a stopped app.
+2. **Re-enable its deploy legs.** ⚠️ **Superseded.** Every row in
+   `.github/workflows/deploy.yml` is now `enabled: false`, deliberately and permanently:
+   both tiers ship from `build-worker-image.yaml` / `build-web-image.yaml` to k3s, and
+   flipping a row back to `true` deploys a second copy on Fly (the workflow says so in
+   place). Nothing needs re-enabling here for a country to come back.
 
 3. **Give the country its `webUrl` back** (the table above):
    `webUrl = Some("https://<cc>.showtimes.cc")`.
