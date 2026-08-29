@@ -31,6 +31,18 @@ class FallbackHttpFetch(
 
   override def get(url: String): String = tryEach("get", url, _.get(url))
 
+  // Headers must ride the chain — must NOT inherit the base default
+  // (`get(url, headers) = get(url)`), which silently DROPS them. Odeon
+  // authenticates its Vista ocapi with an `Authorization: Bearer`, so inheriting
+  // the default sent every proxied Odeon call unauthenticated: the origin answered
+  // 401, the JVM's proxy Authenticator surfaced that as `IOException:
+  // WWW-Authenticate header missing`, the chain rolled to the direct leg, and that
+  // leg 403'd on the Cloudflare block the proxy existed to clear (2026-08-29). The
+  // gap was invisible until then because every other proxied source authenticates
+  // with a cookie or nothing at all.
+  override def get(url: String, headers: Map[String, String]): String =
+    tryEach("get", url, _.get(url, headers))
+
   // Raw bytes through the same fallback chain — must NOT inherit the lossy base
   // default (`get(url).getBytes(UTF_8)`), which would mojibake a legacy
   // single-byte page fetched through this chain.

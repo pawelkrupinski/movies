@@ -18,6 +18,13 @@ class SessionWarmingHttpFetch(delegate: HttpFetch, warmUrl: String) extends GetO
 
   override def get(url: String): String = warmAndRetry(delegate.get(url))
 
+  // Same reason as FallbackHttpFetch's override: the base default would drop the
+  // caller's headers. Multikino (this wrapper's only production user) authenticates
+  // with a cookie, so nothing depends on it today — but a delegating wrapper that
+  // silently discards half its input is a trap for the next caller.
+  override def get(url: String, headers: Map[String, String]): String =
+    warmAndRetry(delegate.get(url, headers))
+
   override def getBytes(url: String): Array[Byte] = warmAndRetry(delegate.getBytes(url))
 
   private def warmAndRetry[T](attempt: => T): T =
