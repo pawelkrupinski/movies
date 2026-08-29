@@ -26,23 +26,24 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 flake_dir="$(cd "$here/../.." && pwd)"
 repo_root="$(cd "$flake_dir/.." && pwd)"
 
-# The server ids are written here rather than looked up by name because the lookup and the
-# destruction would then share a failure: a typo that matches no server is an error, but a typo that
-# matches the WRONG server silently wipes it. An explicit table cannot resolve to a machine nobody
-# named.
-declare -A SERVER_ID=(
-  [mongo-1]=163926647
-  [monitoring-1]=163926648
-  [k3s-worker-1]=163926716
-)
+# The server ids and addresses are written here rather than looked up by name, because the lookup
+# and the destruction would otherwise share a failure mode: a typo that matches no server is an
+# error, but a typo that matches the WRONG server silently wipes it. An explicit table cannot
+# resolve to a machine nobody named.
+#
+# A `case` AND NOT AN ASSOCIATIVE ARRAY, WHICH IS NOT A STYLE CHOICE. macOS ships bash 3.2 (2007),
+# which has no `declare -A`. It does not fail loudly either: the declaration is ignored, the
+# assignment degrades to an INDEXED array, and `[mongo-1]` is then evaluated as ARITHMETIC -- so
+# under `set -u` the script dies with "mongo: unbound variable", naming a variable nobody wrote.
+# This ran on the operator's Mac and did exactly that. `case` works on every bash there is.
+case "$host" in
+  mongo-1)      id=163926647; ip=2.28.56.140 ;;
+  monitoring-1) id=163926648; ip=2.28.52.210 ;;
+  k3s-worker-1) id=163926716; ip=204.168.140.213 ;;
+  *)            id=""; ip="" ;;
+esac
 
-declare -A PUBLIC_IP=(
-  [mongo-1]=2.28.56.140
-  [monitoring-1]=2.28.52.210
-  [k3s-worker-1]=204.168.140.213
-)
-
-if [[ -z "$host" || -z "${SERVER_ID[$host]:-}" ]]; then
+if [[ -z "$host" || -z "$id" ]]; then
   echo "usage: convert-host <mongo-1|monitoring-1|k3s-worker-1> --yes" >&2
   exit 1
 fi
@@ -51,7 +52,7 @@ if [[ "$confirm" != "--yes" ]]; then
   cat >&2 <<MSG
 convert-host: refusing to run without --yes.
 
-  This will REPARTITION /dev/sda on $host (${PUBLIC_IP[$host]}, Hetzner server ${SERVER_ID[$host]})
+  This will REPARTITION /dev/sda on $host ($ip, Hetzner server $id)
   and install NixOS over whatever is there. It is irreversible.
 
   Attached Hetzner Volumes are not touched.
@@ -60,8 +61,6 @@ MSG
 fi
 
 token="$(grep -E '^HETZNER_API_TOKEN=' "$repo_root/.env.local" | head -1 | cut -d= -f2- | tr -d '"'"'"' \r')"
-id="${SERVER_ID[$host]}"
-ip="${PUBLIC_IP[$host]}"
 
 api() {
   curl -fsS -H "Authorization: Bearer $token" -H "Content-Type: application/json" "$@"

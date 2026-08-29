@@ -45,7 +45,12 @@ keys:
   #
   # - &mongo_1        age1...
   # - &monitoring_1   age1...
-  # - &k3s_worker_1   age1...
+
+  # Derived on 2026-08-29 with ssh-to-age from the ssh_host_ed25519_key k3s-worker-1 minted on its
+  # first boot after `convert-host`. NOTE this is NOT a key the machine had as an Ubuntu host: the
+  # nixos-anywhere install repartitioned the disk and discarded that one, which is why the first
+  # activation could not decrypt anything and reported "0 successful groups required, got 0".
+  - &k3s_worker_1 age17t47vs4zkcgylgtkdeuem04yc4dwxhsaytp8g3cs3phr8ld2e45q9h03v8
 
 # ONE FILE PER HOST, keyed by path, and never a shared file. A shared secrets file would mean every
 # host could decrypt every other host's material -- so the k3s worker, which holds no cluster state
@@ -69,4 +74,4 @@ creation_rules:
     key_groups:
       - age:
           - *operator
-          # - *k3s_worker_1
+          - *k3s_worker_1
