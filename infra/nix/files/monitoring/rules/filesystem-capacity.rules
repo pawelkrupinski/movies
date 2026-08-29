@@ -24,6 +24,19 @@
 # WHY PROPORTIONS AND NOT FLOORS. A gigabyte free is roomy on a 40G root and nearly nothing on the
 # Mongo volume, so a byte floor is either noise on the small disks or blindness on the big ones.
 #
+# POST-MIGRATION AUDIT (2026-08-29): EVERY RULE IN THIS FILE IS KEPT AS WRITTEN. It was written
+# against node_exporter on these three Hetzner hosts, so nothing in it assumed a Fly-shaped world
+# and nothing in it needed rewriting. Two things DID change around it:
+#
+#   * It now covers the two mountpoints that the Grafana rule "Disk space low (persistent volume)"
+#     used to watch on Fly (`/data/db` and `/var/lib/grafana` on Fly volumes). Those machines no
+#     longer exist and that rule is dropped where it lives, in
+#     grafana/alerting/alert-rules.yaml. The equivalent volumes are now /var/lib/mongodb and
+#     /var/lib/monitoring, and they are covered here by the generic mountpoint match rather than by
+#     name -- which is better, because a mount nobody thought to list is watched by default.
+#   * `FilesystemWillFillWithin7Days` at the bottom is NEW, and is the rewrite of the other dropped
+#     Fly rule ("Disk projected to fill within 7 days"). See its own comment.
+#
 # WHY tmpfs AND ramfs ARE EXCLUDED AND NOTHING ELSE IS. They are memory, not disk, and several sit
 # permanently at 0% free by construction -- systemd's 1MB `/run/credentials/*` mounts are full the
 # moment they exist. The filter is an EXCLUDE list rather than an allow-list of ext4/xfs on
@@ -107,6 +120,52 @@ groups:
             A full data volume stops the service that owns it: mongod refuses writes and cannot
             grow its oplog, and on the monitoring host a full volume takes Prometheus AND Grafana's
             database down together. Free space or grow the volume now.
+
+      # -----------------------------------------------------------------------------------------
+      # THE TREND, AS OPPOSED TO THE LEVEL. This is the REWRITE of the Fly rule "Disk projected to
+      # fill within 7 days", which read `fly_instance_filesystem_blocks_avail` on the Fly machines'
+      # volumes and has had no data since those machines stopped. Same intent, same 7-day horizon,
+      # same 6-hour fitting window; node_exporter's series instead of Fly's agent's.
+      #
+      # WHY A PROJECTION IS WORTH HAVING BESIDE FOUR LEVEL ALERTS. The level rules fire when the
+      # disk is ALREADY nearly full, which on /var/lib/mongodb is a capacity decision -- attach a
+      # bigger volume, resize the filesystem, restart mongod -- and that is a change to make on a
+      # Tuesday afternoon, not at the point `FilesystemSpaceCritical` fires. A monotonically
+      # growing database gives days of warning if anything is looking for the slope.
+      #
+      # `predict_linear` IS A STRAIGHT LINE THROUGH SIX HOURS AND IT IS A CRUDE ONE. It will predict
+      # doom from an ordinary six-hour import and predict safety through a step change it has not
+      # seen yet. The two-hour `for:` absorbs most of the first kind; nothing absorbs the second,
+      # which is what the level alerts above are for. Both halves are needed and neither is
+      # sufficient.
+      # -----------------------------------------------------------------------------------------
+      - alert: FilesystemWillFillWithin7Days
+        expr: >-
+          predict_linear(
+            node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}[6h],
+            7 * 24 * 3600) < 0
+          and
+          node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"} < 0.40
+        # THE SECOND CLAUSE IS NOT REDUNDANT AND IS THE DIFFERENCE BETWEEN THIS FIRING USEFULLY AND
+        # FIRING CONSTANTLY. On a nearly empty disk a trivial slope still extrapolates to zero
+        # inside a week -- 500MB written onto a 40G root over six hours projects out to 14G, which
+        # "fills" a disk that has 38G free. Requiring the filesystem to be under 60% used as well
+        # means the projection is only consulted once there is something to project INTO.
+        # 40% free is a guess, chosen to sit comfortably above `FilesystemSpaceLow`'s 15% so the
+        # two alerts arrive in the right order rather than together.
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.host }} is on course to fill within 7 days"
+          description: >-
+            A TREND, NOT A LEVEL -- there is still room right now. On /var/lib/mongodb this is the
+            alert that gives enough notice to grow the volume deliberately; on / it usually means
+            the Nix store is accumulating faster than the collector removes it, so check
+            `NixGarbageCollectionStale` in nixos-deploy.rules before treating it as a capacity
+            problem. Straight-line extrapolation over six hours is easily fooled by a one-off bulk
+            write; confirm against a longer window before acting.
 
       # -----------------------------------------------------------------------------------------
       # THE COMPANION, AND IT IS NOT DECORATION. Every rule above is a COMPARISON, and a comparison

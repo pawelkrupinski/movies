@@ -13,6 +13,35 @@
 # WHAT IS WATCHED INSTEAD is the two things that can be seen from outside the process: whether the
 # unit is running, and whether the backup that protects the data is still happening.
 #
+# ------------------------------------------------------------------------------------------------
+# POST-MIGRATION AUDIT (2026-08-29): EVERY RULE HERE KEPT. AND IT NOW CARRIES A LOAD IT DID NOT.
+# ------------------------------------------------------------------------------------------------
+#
+# `MongodNotRunning` is the REPLACEMENT for the Grafana rule "Mongo down"
+# (`max(fly_instance_up{app="kinowo-mongo"})`), which is dropped where it lives in
+# grafana/alerting/alert-rules.yaml. That rule was set to `noDataState: Alerting`, so with the Fly
+# Mongo app stopped AND the Fly datasource's token revoked it had no way to do anything except fire
+# permanently -- an always-on critical about a machine that no longer exists. This rule watches the
+# real database on mongo-1 and is the only "is the database up" alert this fleet has.
+#
+# THE EXPORTER GAP, RESTATED WITH THE SPECIFIC QUESTIONS IT LEAVES UNANSWERED, because "we have no
+# mongodb_exporter" is easy to read past. Nothing on this fleet can currently tell you:
+#
+#   * WHETHER THE SINGLE MEMBER IS PRIMARY. A replica-set member that has stepped down to SECONDARY
+#     accepts reads and refuses every write, and the unit is `active` throughout -- so
+#     `MongodNotRunning` stays silent and the worker's writes fail while the site keeps serving.
+#     This is the same silent shape as a dropped WireGuard tunnel, and it is not covered.
+#   * HOW MUCH OPLOG WINDOW IS LEFT. roles/mongodb.nix pins `oplogSizeMB` specifically to protect
+#     the application's change-stream resume; a burst of writes can consume that window in less
+#     time than the resume token needs, at which point the web tier's change stream dies and
+#     silently stops updating. Nothing here would notice.
+#   * Connection counts, replication lag, query latency, lock contention.
+#
+# THE FIX IS AN EXPORTER, NOT A CLEVERER RULE. Those numbers come out of `replSetGetStatus` and
+# `serverStatus`, which need a Mongo connection and a monitoring user. Guessing at them from
+# outside the process -- inferring PRIMARY from a port being open, say -- would produce an alert
+# that is wrong in exactly the cases it exists for.
+#
 # EVERY RULE BELOW DEPENDS ON A node_exporter COLLECTOR BEING ENABLED, and this file cannot enforce
 # that -- `node_systemd_unit_state` needs the systemd collector, and the two `kinowo_*` series are
 # written into node_exporter's textfile directory by nix/modules/roles/mongodb.nix and

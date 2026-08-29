@@ -14,11 +14,63 @@
 # thing that keeps this copy honest; THAT SCRIPT DOES NOT EXIST YET, so today the answer is a
 # `diff -r` before believing either copy. It should exist, and CI should run it.
 #
-# THIS IS AN UNEDITED COPY apart from this header. The datasource uid `fly-prometheus` in every
-# rule below is a CONTRACT with roles/grafana.nix, which provisions a datasource under exactly that
-# uid; renaming either silently empties every rule that queries it.
+# THE datasource uid `fly-prometheus` in every rule below is a CONTRACT with roles/grafana.nix,
+# which provisions a datasource under exactly that uid; renaming either silently empties every rule
+# that queries it.
 #
 # sha256 of the source at the time of copying: 791dff7f24500ca8649e5825a56b5e608c5a391504bd231196013bdde28c4a9b
+#
+# ================================================================================================
+# IT IS NO LONGER AN UNEDITED COPY. POST-MIGRATION AUDIT, 2026-08-29.
+# ================================================================================================
+#
+# This file was copied verbatim and then audited rule by rule against the world that exists after
+# the move off Fly. FOUR RULES WERE DELETED and ONE WAS CHANGED; everything else is untouched. The
+# deletions each leave a comment where the rule used to be, so a reader diffing this against
+# fly/grafana/provisioning/alerting/alert-rules.yaml finds an explanation rather than a hole. THE
+# `diff -r` CHECK THAT THIS FILE'S HEADER RECOMMENDS WILL NOW SHOW DIFFERENCES: those five, and
+# nothing else. That is the intended state, not drift.
+#
+# ------------------------------------------------------------------------------------------------
+# READ THIS BEFORE CONCLUDING THAT ANY RULE BELOW IS WORKING
+# ------------------------------------------------------------------------------------------------
+#
+# EVERY RULE IN THIS FILE QUERIES THE `fly-prometheus` DATASOURCE, AND THAT DATASOURCE HAS NO
+# WORKING CREDENTIAL. Both read-only Fly tokens were revoked; the only token this estate has is
+# org-wide, it cannot mint a replacement (`createLimitedAccessToken Not authorized`), and an
+# org-wide token must not sit on the host that also runs the k3s control plane -- the long note on
+# `fleet.prometheus.scrapeFly` in roles/prometheus.nix sets out why. So as of the audit date:
+#
+#   * every rule here evaluates to an execution error, not to data;
+#   * the ones with `noDataState`/`execErrState: OK` -- which is nearly all of them -- go quietly
+#     to Normal, which is why this is not currently a firehose of false pages;
+#   * NONE of them is protecting anything. A rule in the Normal state because its datasource is
+#     unreachable looks exactly like a rule in the Normal state because everything is fine.
+#
+# THEY ARE KEPT RATHER THAN DELETED BECAUSE THE APPS THEY WATCH ARE STILL RUNNING. The web tier
+# (`kinowo`) and the scraping worker (`kinowo-worker`) are both still on Fly; the day a genuinely
+# read-only token exists, every rule below starts working again with no edit. Deleting them would
+# be throwing away working alerting to tidy up a credential problem.
+#
+# WHAT COVERS THE HETZNER SIDE INSTEAD is nix/files/monitoring/rules/*.rules, evaluated by
+# Prometheus rather than by Grafana, against the local `local-prometheus` datasource, with no Fly
+# dependency of any kind. Two of the deletions below were made specifically because a rule in that
+# directory now does the same job better.
+#
+# ------------------------------------------------------------------------------------------------
+# THE ONE PATTERN THAT KEPT THE AUDIT SHORT, and it was already in this file before the migration
+# ------------------------------------------------------------------------------------------------
+#
+# The fleet rules reach their apps by `app=~` REGEX, and every one of them is already
+# `noDataState: OK` -- so an app that stops simply drops out of them, silently and correctly. That
+# was written for the 2026-08-02 UK/DE shutdown (see the note above the `app-uptime` group) and it
+# is why `kinowo-mongo` and `showtimes-.*` were left in those regexes here rather than edited out:
+# a dead app costs nothing in a rule shaped this way, the regexes are asserted country-blind by
+# GrafanaCountryBlindAppMatcherSpec in the application repository, and narrowing them would break
+# that spec to fix a problem that does not exist. THE RULES THAT HAD TO BE TOUCHED ARE EXACTLY THE
+# ONES THAT DID NOT FOLLOW THAT PATTERN: two that named Fly VOLUME MOUNTPOINTS which no longer
+# exist, one that was `noDataState: Alerting` on an app that is gone, and one whose only consumer
+# was a webhook this host cannot reach.
 #
 apiVersion: 1
 
@@ -39,6 +91,33 @@ apiVersion: 1
 # has no HTTP series for minutes), EXCEPT serving-app-down where missing data IS
 # the alarm.
 groups:
+  # ================================================================================================
+  # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `fly-resources`
+  #
+  #   KEEP  CPU credit exhausted (serving app)      kinowo is still on Fly; `app=~` + noData:OK, so
+  #                                                 the retired kinowo-mongo/showtimes-* simply drop
+  #                                                 out. Nothing to change.
+  #   KEEP  CPU throttled (serving app)             As above.
+  #   KEEP  CPU steal high                          As above. Steal is a property of Fly's shared
+  #                                                 hosts and has no analogue on a dedicated Hetzner
+  #                                                 vCPU, so this rule does not migrate -- it stays
+  #                                                 pointed at the apps that are still on Fly.
+  #   KEEP  Worker CPU starved (sustained throttle)  kinowo-worker is still on Fly.
+  #   KEEP  Worker crash-looping                     As above.
+  #   KEEP  Memory pressure (pre-OOM)                As above. The Hetzner hosts get their own
+  #                                                 coverage from MemoryAvailableLow/Critical in
+  #                                                 rules/host-health.rules; the two do not overlap
+  #                                                 because they watch different machines.
+  #   KEEP  Memory pressure building (PSI)           As above; rules/host-health.rules'
+  #                                                 `MemoryStallHigh` is its Hetzner counterpart,
+  #                                                 written from this rule's intent.
+  #   DROP  Disk space low (persistent volume)       Fly volumes that no longer exist. Tombstone
+  #                                                 below, at the point it was removed.
+  #   DROP  Disk projected to fill within 7 days     Same. Tombstone below.
+  #
+  # EVERY "KEEP" ABOVE IS A KEEP WITH A CAVEAT, and the caveat is the same one for all of them: the
+  # datasource has no token, so none of these is currently doing anything. See the header.
+  # ================================================================================================
   - orgId: 1
     name: fly-resources
     folder: Fly Alerts
@@ -327,108 +406,45 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
-      # ---- Disk space low (the 2026-06-10 Mongo disk-full crash) -----------
-      # A persistent Fly volume filling up. The 2026-06-10 outage was the
-      # kinowo-mongo /data/db volume at ~92% full: mongod's FTDC thread could no
-      # longer write metrics.interim.temp, aborted (SIGABRT, exit 134), and the
-      # crash-loop took web down with it (the blocking boot dependency). This
-      # was only visible via `df` on the box — nothing alerted on it. Covers
-      # every attached data volume (Mongo /data/db, Grafana's own /var/lib/
-      # grafana); the web app has no persistent volume so it never produces a
-      # series here. fraction-used = 1 - blocks_avail/blocks, which counts the
-      # root-reserved blocks as used and so reads a touch higher than `df` Use%
-      # — conservative on purpose. The Mongo volume sits ~50% at steady state
-      # (the 990MB oplog cap + journal + tiny dataset on a 3GB volume), so 80%
-      # is genuine headroom-gone with days of runway, not noise.
-      - uid: kinowo-disk-space-low
-        title: Disk space low (persistent volume)
-        condition: C
-        for: 15m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-        annotations:
-          summary: '{{ $labels.app }} volume {{ $labels.mount }} is > 80% full'
-          description: 'fly_instance_filesystem on {{ $labels.app }} ({{ $labels.instance }}) mount {{ $labels.mount }} is > 80% used for 15m. A full data volume is what crashed kinowo-mongo on 2026-06-10 (FTDC write failure -> SIGABRT -> web cascade). Extend the volume (`flyctl volumes extend <id> --size N -a {{ $labels.app }}`, then stop/start the machine) or prune /data/db.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 900, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'max by (app, instance, mount) (1 - fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"} / fly_instance_filesystem_blocks{mount=~"/data/db|/var/lib/grafana"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [0.8] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # ================================================================================
+      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Disk space low (persistent
+      # volume)", uid kinowo-disk-space-low.
+      #
+      # It watched `fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"}`
+      # -- the Fly volumes belonging to the kinowo-mongo app and the kinowo-grafana app.
+      # BOTH OF THOSE MACHINES ARE STOPPED AND SUPERSEDED: the database is on mongo-1 and
+      # Grafana is on monitoring-1. There is no filesystem left for the rule to describe,
+      # so it could never fire again for any reason other than a mistake.
+      #
+      # ITS JOB IS NOT LOST, it moved: nix/files/monitoring/rules/filesystem-capacity.rules
+      # watches every mountpoint on all three Hetzner hosts through node_exporter, at 15%
+      # (warning) and 7% (critical) free, and it watches INODES as well -- the axis the Fly
+      # rule never had and the one that actually bit the fleet those rules were ported from.
+      # /var/lib/mongodb and /var/lib/monitoring are covered there by the generic match
+      # rather than by name, so a mount nobody remembered to list is still watched.
+      #
+      # THE INCIDENT IT WAS WRITTEN FOR STILL HAPPENED and is still worth knowing about: on
+      # 2026-06-10 the Fly kinowo-mongo /data/db volume reached ~92%, mongod's FTDC thread
+      # could not write its temp file, mongod aborted, and the crash-loop took web down with
+      # it. Nothing alerted; it was found with `df`. That is precisely the shape the
+      # filesystem-capacity rules exist to catch, on the machine that now holds that data.
+      # ================================================================================
 
-      # ---- Disk fill PROJECTION (lead-time before disk-space-low fires) -----
-      # predict_linear on free blocks: at the current trend, will the volume hit
-      # 0 free within 7 days? This is the *ahead-of-time* warning the 80% rule
-      # above can't give — it catches a slow leak (oplog/journal growth, a
-      # runaway collection) days before it actually fills. Validated:
-      # predict_linear is supported on Fly's VictoriaMetrics backend. 6h lookback
-      # (not 24h) so a one-off volume *resize* ages out of the window within 6h;
-      # during that window the regression only ever projects MORE space, so it
-      # cannot false-fire. for:2h smooths WiredTiger checkpoint-burst variance —
-      # to project to 0 within 7d the volume must lose ~12MB/h sustained, which
-      # noise never holds. Steady state trends flat (oplog ring-buffers at its
-      # 990MB cap), so any sustained negative projection is a real leak.
-      - uid: kinowo-disk-fill-projected
-        title: Disk projected to fill within 7 days
-        condition: C
-        for: 2h
-        noDataState: OK
-        execErrState: OK
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} volume {{ $labels.mount }} is on track to fill within 7 days'
-          description: 'predict_linear over the last 6h projects {{ $labels.app }} ({{ $labels.instance }}) mount {{ $labels.mount }} running OUT of free space within 7 days at the current growth rate — the early warning before kinowo-disk-space-low. Find what is growing (`du -sh /data/db/* | sort -rh` on the box) and extend the volume or prune before it crashes mongod.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 21600, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'min by (app, instance, mount) (predict_linear(fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"}[6h], 7*24*3600))'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: lt, params: [0] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # ================================================================================
+      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Disk projected to fill within
+      # 7 days", uid kinowo-disk-fill-projected.
+      #
+      # Same reason as the rule above it: it read `predict_linear` over
+      # `fly_instance_filesystem_blocks_avail` on the SAME two Fly volumes, and those
+      # volumes are gone with the machines they were attached to.
+      #
+      # REWRITTEN RATHER THAN ABANDONED. `FilesystemWillFillWithin7Days` in
+      # nix/files/monitoring/rules/filesystem-capacity.rules keeps the intent, the 7-day
+      # horizon and the 6-hour regression window, against node_exporter's series instead of
+      # Fly's agent's. It adds one clause this rule did not need and the node version does:
+      # a floor of 40% free, because on a nearly empty disk any slope at all extrapolates to
+      # zero inside a week and the rule would otherwise never stop firing.
+      # ================================================================================
 
       # ---- Memory PSI pressure (earliest pre-OOM lead indicator) -----------
       # Linux PSI "some" = % of wall-clock any task stalled waiting on memory. It
@@ -476,56 +492,54 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+  # ================================================================================================
+  # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `fly-serving`
+  #
+  #   DROP     Mongo down                 The app is retired AND the rule was noDataState:Alerting,
+  #                                       so it was firing permanently. Tombstone below. Replaced by
+  #                                       `MongodNotRunning` in rules/mongodb.rules.
+  #   KEEP     HTTP 5xx rate high         `kinowo` still serves from Fly and its edge 5xx rate is
+  #                                       still the truest "are users seeing errors" signal this
+  #                                       estate has. Nothing on Hetzner can replace it: the web
+  #                                       tier is not here.
+  #   KEEP     HTTP p95 latency high      As above.
+  #   REWRITE  Serving app down           noDataState/execErrState Alerting -> OK, because the
+  #                                       revoked token turned "no data" into a permanent page. The
+  #                                       reasoning, and how to undo it, is written above the rule.
+  #   KEEP     UK serving app down        Already handled correctly before the migration -- it was
+  #                                       flipped to noDataState:OK when showtimes-uk was stopped on
+  #                                       2026-08-02, with its own note explaining the restore. The
+  #                                       migration changes nothing about it, so it is left exactly
+  #                                       as found.
+  # ================================================================================================
   - orgId: 1
     name: fly-serving
     folder: Fly Alerts
     interval: 1m
     rules:
-      # ---- Mongo down (the root cause of the web cascade) ------------------
-      # serving-down below watches kinowo (web) — but web only falls over BECAUSE
-      # mongo did (blocking boot dependency); both the 2026-06-06 OOM and the
-      # 2026-06-10 disk-full outages started at mongo. Alerting on mongo directly
-      # names the root cause instead of inferring it from a downstream web
-      # outage. Missing data IS the alarm (machine gone/wedged), as in
-      # serving-down. This is the rule that pages you the moment the DB drops.
-      - uid: kinowo-mongo-down
-        title: Mongo down
-        condition: C
-        for: 3m
-        noDataState: Alerting
-        execErrState: Alerting
-        labels:
-          severity: critical
-        annotations:
-          summary: 'kinowo-mongo is down or not reporting'
-          description: 'fly_instance_up{app="kinowo-mongo"} is 0 or absent for 3m — the database is unreachable, which blocks web boot and cascades to a full outage. Check `fly status -a kinowo-mongo` and the machine logs (OOM? disk full? FTDC SIGABRT?).'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'max (fly_instance_up{app="kinowo-mongo"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: lt, params: [1] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+
+      # ================================================================================
+      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Mongo down", uid
+      # kinowo-mongo-down.
+      #
+      # It read `max(fly_instance_up{app="kinowo-mongo"})` with `noDataState: Alerting` and
+      # `execErrState: Alerting` -- deliberately, because when it was written a Mongo that
+      # had stopped reporting WAS the alarm.
+      #
+      # THAT SETTING IS EXACTLY WHY IT COULD NOT BE LEFT IN PLACE. The kinowo-mongo app is
+      # stopped, so the series is permanently absent; the Fly datasource has no working
+      # token, so the query errors as well. Both states are configured to fire. This rule
+      # was therefore a critical Telegram page every four hours, for ever, about a machine
+      # that was retired on purpose -- and an always-firing critical does not merely add
+      # noise, it teaches the channel that criticals can be ignored.
+      #
+      # REPLACED BY `MongodNotRunning` in nix/files/monitoring/rules/mongodb.rules, which
+      # watches the unit state of the real database on mongo-1 through node_exporter's
+      # systemd collector, with a 3-minute `for:` so an ordinary restart does not page. Note
+      # what neither rule can do: say whether mongod is PRIMARY, or how much oplog window is
+      # left. Both need a mongodb_exporter this fleet does not have, and mongodb.rules'
+      # header says so at length rather than pretending otherwise.
+      # ================================================================================
 
       # ---- HTTP 5xx rate ---------------------------------------------------
       - uid: kinowo-http-5xx-high
@@ -610,12 +624,43 @@ groups:
       # ---- Serving app down ------------------------------------------------
       # The ONLY rule where missing data is the alarm: if kinowo stops reporting
       # fly_instance_up (machine gone / wedged), or reports 0, page after 3m.
+      #
+      # ================================================================================
+      # REWRITTEN AT THE POST-MIGRATION AUDIT (2026-08-29). ONE CHANGE, TWO WORDS:
+      # `noDataState` and `execErrState` were `Alerting` and are now `OK`.
+      #
+      # WHY, AND IT IS NOT BECAUSE THE OLD SETTING WAS WRONG. It was right, and it is
+      # the setting this rule should go back to. It says "an app that has stopped
+      # reporting is an app that is down", which is true of a healthy datasource and is
+      # the whole point of watching `kinowo`.
+      #
+      # IT IS NOT TRUE OF THIS DATASOURCE TODAY. The `fly-prometheus` token was revoked
+      # and cannot be reissued (see this file's header), so EVERY query through it
+      # returns an execution error -- which `execErrState: Alerting` turns into a firing
+      # critical. The result is a permanent, unresolvable "Serving app down" page every
+      # four hours about a web tier that is, in fact, up. That does more damage than
+      # having no rule: a critical that is always on is a critical nobody reads, and this
+      # channel carries the mongod, WireGuard and filesystem criticals too.
+      #
+      # THIS IS EXACTLY THE PRECEDENT ALREADY SET IN THIS FILE by `showtimes-uk-serving-down`
+      # below, which was flipped to OK for the same reason (a permanently absent series
+      # turning a 3-minute `for:` into a page every four hours, for ever) and kept rather
+      # than deleted so that restoring it is a one-word edit.
+      #
+      # WHAT IS LOST WHILE IT IS OK: the case this rule was written for -- kinowo's
+      # machine vanishing entirely. What it still catches: a machine that is up and
+      # reporting `fly_instance_up == 0`, which needs the datasource to work anyway.
+      # Realistically, nothing here watches the Fly web tier until there is a token.
+      #
+      # ON RESTORE, put BOTH back to `Alerting` in the same edit as the new token. A
+      # token without this flip leaves the fleet's most important Fly rule silent.
+      # ================================================================================
       - uid: kinowo-serving-down
         title: Serving app down
         condition: C
         for: 3m
-        noDataState: Alerting
-        execErrState: Alerting
+        noDataState: OK
+        execErrState: OK
         labels:
           severity: critical
         annotations:
@@ -722,6 +767,38 @@ groups:
   # `uptimeBuckets` health that Fly's host metrics can't see — exposed as
   # Prometheus gauges by web's MetricsController (kinowo_uptime_recent_* over a
   # 30-min window) and scraped via the [[metrics]] block in fly.toml.
+  # ================================================================================================
+  # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `app-uptime`: ALL SIX KEPT, UNCHANGED.
+  #
+  #   KEEP  Residential proxy failing (falling back to Zyte)
+  #   KEEP  Enrichment source failing (ratings stopped refreshing)
+  #   KEEP  Films served per city swung suddenly
+  #   KEEP  City serving zero films (was active)
+  #   KEEP  Showtime volume collapsed (country)
+  #   KEEP  Corpus census stuck (country)
+  #
+  # WHY THIS GROUP NEEDED NO EDITS AT ALL, unlike the two above it: these rules read `kinowo_*`
+  # gauges published by the APPLICATION -- the web tier's MetricsController and the worker's own
+  # instrumentation -- not `fly_instance_*` produced by Fly's host agent. They are statements about
+  # the product (is any city serving zero films? did a country's showtime volume collapse?), and
+  # the product did not move. Every one of them will be exactly as correct on the day these
+  # services run on Hetzner as it was on Fly.
+  #
+  # WHAT DID CHANGE IS ONLY HOW THE NUMBERS REACH GRAFANA, and it changed for the worse in two
+  # independent ways, either of which alone is enough to make this whole group inert today:
+  #
+  #   1. They are queried through `fly-prometheus`, whose token is revoked (see the header).
+  #   2. Even with a token, Fly's managed Prometheus runs these series 15-25 MINUTES BEHIND -- which
+  #      is why the Fly deployment ran a VictoriaMetrics sidecar scraping the apps directly over 6PN
+  #      as the `app-metrics-live` datasource. monitoring-1 has no 6PN path, so that sidecar has no
+  #      equivalent here; roles/grafana.nix's header names this as a known, unfixed gap.
+  #
+  # THE REAL FIX FOR BOTH IS THE SAME ONE and it is not a rule edit: give monitoring-1 its own Fly
+  # WireGuard peer, exactly as roles/wireguard-fly.nix does for mongo-1, and let the LOCAL
+  # Prometheus scrape the apps' /metrics endpoints directly. That would make this group work
+  # against `local-prometheus` with no token at all -- at which point the datasource uid in these
+  # six rules is the only thing that needs changing.
+  # ================================================================================================
   - orgId: 1
     name: app-uptime
     folder: Fly Alerts
@@ -1087,7 +1164,38 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
+  # ================================================================================================
+  # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `worker-throttle`
+  #
+  #   DROP  Worker credit low (drive backoff)          Its only consumer was a webhook this host
+  #                                                    cannot reach. Tombstone inside the group,
+  #                                                    where the rule was.
+  #   KEEP  Worker throttling                          Reports that the worker IS backing off, for
+  #                                                    any reason, from the app's own
+  #                                                    `kinowo_worker_throttled` gauge. Still true,
+  #                                                    still a useful human heads-up.
+  #   KEEP  Worker task queue head-of-line age high    Application queue health; nothing to do with
+  #                                                    Fly beyond how the number is fetched.
+  #   KEEP  Worker task queue backlog high             As above.
+  #
+  # THE GROUP NAME IS NOW HALF A LIE AND IT IS LEFT ALONE DELIBERATELY. With the control rule gone
+  # this group throttles nothing -- the three survivors are plain notifications. Renaming it would
+  # change the group identity Grafana keys alert state on, for a cosmetic gain, and would diverge
+  # this copy from the Fly original by more than the audit already has. If the 6PN peer is ever
+  # added and the control rule comes back, the name becomes accurate again.
+  #
+  # THE 30s `interval` BELOW IS ALSO NOW OVERSPECIFIED, and is likewise left alone: it was 30s
+  # because a control loop wants to react quickly, and the three remaining rules would be perfectly
+  # happy at 1m. It costs three extra queries a minute against a datasource that 401s. Not worth an
+  # edit today; worth one if this group ever stops being a control loop for good.
+  # ================================================================================================
+  #
   # ---- Worker CPU-credit throttle CONTROL (drives the worker's /throttle) -----
+  # HISTORICAL. The rule this paragraph describes was dropped at the audit -- see the tombstone
+  # inside the group below. It is kept here because it is the only written record of how the
+  # credit-driven backoff loop actually worked, and restoring that loop means restoring exactly
+  # this.
+  #
   # NOT a page. The worker runs credit-starved by design; this rule is the
   # external "credit logic" for its self-heal backoff. When kinowo-worker's
   # shared-CPU credit balance drops below ~5k (its 2x cap is ~8k) the rule FIRES →
@@ -1107,67 +1215,33 @@ groups:
     folder: Fly Alerts
     interval: 30s
     rules:
-      - uid: kinowo-worker-credit-low
-        title: Worker credit low (drive backoff)
-        condition: C
-        for: 1m
-        # VALUE hysteresis (see the threshold's evaluator + unloadEvaluator below):
-        # FIRE only when credit drops under 6000, RECOVER (resolve) only once it
-        # climbs back over 12000. The 6k→12k band is scaled to the shared-cpu-4x
-        # ceiling (~19k; on 2x it was 2.5k/5k for the ~8k cap). The wide band keeps
-        # the worker backed off long enough for the idle pool to rebuild a real
-        # buffer before resuming — otherwise it resumed the instant credit touched
-        # the trip line and a rating sweep right after drained it to the floor
-        # (measured on 2x: 4922→1 as ratings burst to 118/min). At 4x credit rarely
-        # dips into this band at all, so it's mostly a deep safety net — which is why
-        # a fire here is far more likely a noisy sample than a real drain, hence the
-        # 2-min avg + `for: 1m` debounce on the query below. (A top-level
-        # `keep_firing_for` is silently ignored by file provisioning — the API
-        # showed keepFiringFor=None — so the hysteresis lives in the threshold's
-        # unloadEvaluator, which IS honoured.)
-        noDataState: OK
-        execErrState: OK
-        labels:
-          notify: worker-throttle
-        annotations:
-          summary: '{{ $labels.app }} shared-CPU credit < 6k — backing off its reapers until it rebuilds past 12k'
-          description: 'fly_instance_cpu_balance for {{ $labels.app }} dropped below 6000; the WorkerThrottle webhook for that app tells the worker to throttle all reapers and HOLDS until credit climbs back over 12000 (the recovery threshold), so the idle pool builds a buffer before resuming. Band scaled to the 4x ~19k cap. By design — not an incident.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              # 2-min trailing average, not the raw instantaneous gauge: one spurious
-              # low/zero scrape (the gauge is occasionally noisy) gets diluted by the
-              # ~3 healthy ~19k samples around it, so it never alone pulls the mean
-              # under 6k. Window (120s) < relativeTimeRange.from (300s), so it's fully
-              # covered. Single venue still evaluated instantly at eval time.
-              expr: 'min by (app, instance) (avg_over_time(fly_instance_cpu_balance{app=~"kinowo-worker.*"}[2m]))'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: lt, params: [6000] }
-                  # Recovery threshold (hysteresis): once firing, stay firing until
-                  # the balance climbs back OVER 12000 — not the moment it re-crosses
-                  # the 6000 trip line. Scaled to the 4x ~19k cap.
-                  unloadEvaluator: { type: gt, params: [12000] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # ================================================================================
+      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Worker credit low (drive
+      # backoff)", uid kinowo-worker-credit-low.
+      #
+      # THIS RULE WAS NEVER A PAGE -- it was a CONTROL LOOP. It fired on kinowo-worker's Fly
+      # CPU-credit balance falling under 6000, and the `notify: worker-throttle` label routed
+      # it to a webhook contact point that POSTed to
+      # http://kinowo-worker.internal:9000/throttle over Fly 6PN, which flipped
+      # ExternalThrottleGate on and made the reapers back off until credit rebuilt. The
+      # threshold lived out here precisely so the worker only had to receive firing/resolved.
+      #
+      # THE WEBHOOK IT DROVE DOES NOT EXIST ON THIS HOST. monitoring-1 is not a Fly 6PN peer
+      # -- only mongo-1 is (roles/wireguard-fly.nix) -- so the three `WorkerThrottle*` contact
+      # points were deliberately not carried across, and grafana-contactpoints.yaml says so in
+      # its own header. With no receiver named `worker-throttle`, this rule falls through to
+      # the root policy and arrives on TELEGRAM instead: a critical-looking page about a
+      # shared-CPU credit balance, every hour, that nobody can act on and that no longer
+      # throttles anything. A control signal delivered to a human is not a quieter version of
+      # a control loop; it is noise plus a broken control loop.
+      #
+      # WHAT IS LOST, STATED PLAINLY: the worker's external credit-based backoff. Its
+      # IN-PROCESS scrape-duration backstop is unaffected and still runs, and
+      # `kinowo_worker_throttled` (the rule immediately below) still reports when the worker
+      # is backing off for any reason. RESTORING THE LOOP means giving monitoring-1 a 6PN peer
+      # of its own, at which point this rule and the webhook contact points come back together
+      # from the Fly copy verbatim -- both, or neither.
+      # ================================================================================
 
       # ---- Worker throttle NOTIFICATION (Telegram on start / end) -----------------
       # A human heads-up, separate from the control gate above. Fires to Telegram

@@ -12,7 +12,7 @@
 #
 # THIS JOB IS THE UNVERIFIED HALF OF THE FLY PATH, AND THAT IS STATED PLAINLY. What is PROVEN to
 # work against api.fly.io is the QUERY API, which is what Grafana's datasource uses and what all
-# 24 alert rules already run through. Whether this endpoint also serves Prometheus FEDERATION at
+# 20 alert rules already run through. Whether this endpoint also serves Prometheus FEDERATION at
 # /federate has not been checked here. If it does not, this job simply sits down, the
 # `FlyFederationDown` rule in monitoring-self.rules says so by name, and nothing else is lost --
 # the alerting on Fly metrics lives in Grafana, not here. Do not delete the job on that basis

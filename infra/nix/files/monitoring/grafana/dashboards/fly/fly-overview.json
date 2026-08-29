@@ -1,9 +1,11 @@
 {
   "uid": "fly-overview",
-  "title": "kinowo — Fly health",
+  "title": "Fly — kinowo health (quarantined: needs a Fly token)",
   "tags": [
     "fly",
-    "kinowo"
+    "kinowo",
+    "needs-fly-token",
+    "quarantined"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -122,6 +124,21 @@
   },
   "panels": [
     {
+      "id": 9000,
+      "type": "text",
+      "title": "Read this before believing anything below",
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# ⚠ QUARANTINED — this dashboard has no data source that works today\n\n**Nothing on this page is broken. Nothing on it is connected either.** Every panel below reads one\nof two datasources, and neither can reach anything from monitoring-1:\n\n* **`fly-prometheus`** — Fly's managed Prometheus, the *only* source of `fly_instance_*`,\n  `fly_edge_*` and `fly_app_*`, which are produced by Fly's own host agent and cannot be scraped\n  from anywhere else. Both read-only Fly tokens were **revoked**, and the org token this estate\n  still has **cannot mint a replacement** (`createLimitedAccessToken Not authorized`). An org-wide\n  token must not live on this host: monitoring-1 also runs the k3s control plane, so anything that\n  compromised a workload there would gain the ability to **deploy to Fly**, where the production\n  web tier still runs. Scraping some gauges is not worth that.\n* **`app-metrics-live`** — on Fly this was a VictoriaMetrics sidecar scraping the apps' `/metrics`\n  endpoints directly over 6PN every 15s, because the same series read back from Fly's managed\n  Prometheus run **15–25 minutes behind**. There is no such sidecar here. The datasource is still\n  provisioned, pointing at the local Prometheus, purely so these panels render *\"No data\"* instead\n  of *\"Datasource app-metrics-live was not found\"* — which would make the page unreadable rather\n  than empty.\n\n**Why this dashboard still exists.** The apps it watches are still running: `kinowo` (web) and\n`kinowo-worker` are both still on Fly. Every panel is correct and will start working again the day\nthere is a credential — deleting them would be throwing away working instrumentation to tidy up a\ncredential problem. They live in this folder rather than beside the fleet dashboards so that a\nscreen full of *No data* is somewhere you go **on purpose**, not something you trip over while\nlooking at the machines.\n\n**To bring it back.**\n\n1. Mint a genuinely read-only token from an account that may: `fly tokens create readonly --org personal`.\n2. Put it in `nix/secrets/monitoring-1.yaml` as `grafana/fly-token` (and `prometheus/fly-token` if\n   you also want the federation scrape), then set `fleet.prometheus.scrapeFly = true`.\n3. Re-read the note above `Serving app down` in `alert-rules.yaml`: its `noDataState` and\n   `execErrState` were flipped to `OK` because the dead datasource turned them into a permanent\n   page, and they must go **back to `Alerting`** in the same edit as the new token.\n\nThe `app-metrics-live` panels need something different and larger: a **Fly 6PN peer for\nmonitoring-1**, exactly as `roles/wireguard-fly.nix` builds one for mongo-1, so the local Prometheus\ncan scrape the apps directly. That is a known, named gap and it is not fixed.\n\n**For the machines, use the “Kinowo Fleet — Hetzner hosts” dashboard**, which queries the local\nPrometheus only and needs no credential at all.\n"
+      }
+    },
+    {
       "id": 9,
       "title": "CPU load by app — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
       "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. FLEET-WIDE: shows every country's instances at once and is NOT filtered by the Country dropdown — fly_instance_* carries no country label, so scoping is by app name. The matcher app=~\"kinowo.*|showtimes-.*\" follows the naming convention (PL web = kinowo, other web = showtimes-<cc>, workers = kinowo-worker[-<cc>]), so a new country appears here the moment it deploys, with no dashboard edit. filmowo has its own dashboard, schowek is separate.",
@@ -134,7 +151,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 11
       },
       "fieldConfig": {
         "defaults": {
@@ -196,7 +213,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 9
+        "y": 20
       },
       "fieldConfig": {
         "defaults": {
@@ -229,7 +246,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 20
       },
       "fieldConfig": {
         "defaults": {
@@ -263,7 +280,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 17
+        "y": 28
       },
       "fieldConfig": {
         "defaults": {
@@ -297,7 +314,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 17
+        "y": 28
       },
       "fieldConfig": {
         "defaults": {
@@ -333,7 +350,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 25
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
@@ -381,7 +398,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 25
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
@@ -418,7 +435,7 @@
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 44
       },
       "fieldConfig": {
         "defaults": {
@@ -454,7 +471,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 39
+        "y": 50
       },
       "fieldConfig": {
         "defaults": {
@@ -494,7 +511,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 39
+        "y": 50
       },
       "fieldConfig": {
         "defaults": {
@@ -534,7 +551,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 58
       },
       "fieldConfig": {
         "defaults": {
@@ -579,7 +596,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 55
+        "y": 66
       },
       "fieldConfig": {
         "defaults": {
@@ -617,7 +634,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 55
+        "y": 66
       },
       "fieldConfig": {
         "defaults": {
@@ -655,7 +672,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 55
+        "y": 66
       },
       "fieldConfig": {
         "defaults": {
@@ -693,7 +710,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 63
+        "y": 74
       },
       "fieldConfig": {
         "defaults": {
@@ -744,7 +761,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 71
+        "y": 82
       },
       "fieldConfig": {
         "defaults": {
@@ -789,7 +806,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 71
+        "y": 82
       },
       "fieldConfig": {
         "defaults": {
@@ -864,7 +881,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 79
+        "y": 90
       },
       "fieldConfig": {
         "defaults": {
@@ -902,7 +919,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 79
+        "y": 90
       },
       "fieldConfig": {
         "defaults": {
@@ -937,7 +954,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 87
+        "y": 98
       },
       "fieldConfig": {
         "defaults": {
@@ -972,7 +989,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 96
+        "y": 107
       },
       "fieldConfig": {
         "defaults": {
@@ -1007,7 +1024,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 105
+        "y": 116
       },
       "fieldConfig": {
         "defaults": {
@@ -1045,7 +1062,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 114
+        "y": 125
       },
       "fieldConfig": {
         "defaults": {
@@ -1088,7 +1105,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 122
+        "y": 133
       },
       "fieldConfig": {
         "defaults": {
@@ -1123,7 +1140,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 122
+        "y": 133
       },
       "fieldConfig": {
         "defaults": {
@@ -1158,7 +1175,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 131
+        "y": 142
       },
       "fieldConfig": {
         "defaults": {
@@ -1193,7 +1210,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 131
+        "y": 142
       },
       "fieldConfig": {
         "defaults": {
@@ -1228,7 +1245,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 140
+        "y": 151
       },
       "fieldConfig": {
         "defaults": {
@@ -1263,7 +1280,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 149
+        "y": 160
       },
       "fieldConfig": {
         "defaults": {
@@ -1298,7 +1315,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 149
+        "y": 160
       },
       "fieldConfig": {
         "defaults": {
@@ -1333,7 +1350,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 157
+        "y": 168
       },
       "fieldConfig": {
         "defaults": {
@@ -1368,7 +1385,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 157
+        "y": 168
       },
       "fieldConfig": {
         "defaults": {
@@ -1403,7 +1420,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 165
+        "y": 176
       },
       "fieldConfig": {
         "defaults": {
@@ -1438,7 +1455,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 165
+        "y": 176
       },
       "fieldConfig": {
         "defaults": {
@@ -1478,7 +1495,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 173
+        "y": 184
       },
       "fieldConfig": {
         "defaults": {
@@ -1513,7 +1530,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 173
+        "y": 184
       },
       "fieldConfig": {
         "defaults": {
@@ -1548,7 +1565,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 181
+        "y": 192
       },
       "fieldConfig": {
         "defaults": {
@@ -1583,7 +1600,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 181
+        "y": 192
       },
       "fieldConfig": {
         "defaults": {
@@ -1618,7 +1635,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 189
+        "y": 200
       },
       "fieldConfig": {
         "defaults": {
@@ -1658,7 +1675,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 197
+        "y": 208
       },
       "fieldConfig": {
         "defaults": {
@@ -1693,7 +1710,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 197
+        "y": 208
       },
       "fieldConfig": {
         "defaults": {
@@ -1728,7 +1745,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 205
+        "y": 216
       },
       "fieldConfig": {
         "defaults": {
@@ -1763,7 +1780,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 205
+        "y": 216
       },
       "fieldConfig": {
         "defaults": {
@@ -1798,7 +1815,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 213
+        "y": 224
       },
       "fieldConfig": {
         "defaults": {
@@ -1916,7 +1933,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 213
+        "y": 224
       },
       "fieldConfig": {
         "defaults": {
@@ -2034,7 +2051,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 230
+        "y": 241
       },
       "fieldConfig": {
         "defaults": {
@@ -2144,7 +2161,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 239
+        "y": 250
       },
       "fieldConfig": {
         "defaults": {
@@ -2296,7 +2313,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 248
+        "y": 259
       },
       "fieldConfig": {
         "defaults": {
@@ -2346,7 +2363,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 255
+        "y": 266
       },
       "fieldConfig": {
         "defaults": {
@@ -2421,7 +2438,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 264
+        "y": 275
       },
       "options": {
         "calculate": false,
@@ -2471,7 +2488,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 273
+        "y": 284
       },
       "fieldConfig": {
         "defaults": {
@@ -2539,7 +2556,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 273
+        "y": 284
       },
       "fieldConfig": {
         "defaults": {
@@ -2576,5 +2593,6 @@
         }
       ]
     }
-  ]
+  ],
+  "description": "QUARANTINED after the 2026-08-29 migration off Fly. Every panel reads `fly-prometheus` (no working token) or `app-metrics-live` (no 6PN path from monitoring-1), so the whole page renders No data. Kept, not deleted: the apps it watches are still running on Fly and it starts working again the day there is a credential. The first panel explains how. For the Hetzner machines, use \"Kinowo Fleet — Hetzner hosts\"."
 }

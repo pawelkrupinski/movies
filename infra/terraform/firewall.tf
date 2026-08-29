@@ -35,16 +35,45 @@ resource "hcloud_firewall" "fleet" {
   #
   # mongo-1 does join Fly's 6PN over WireGuard, but it is the side that DIALS OUT: `fly wireguard
   # create` hands back a peer configuration carrying Fly's gateway as the `Endpoint`, so the tunnel
-  # is established from here outwards and the return traffic arrives on the ephemeral source port
-  # of an already-established flow -- which a stateful firewall passes without any rule naming it.
-  # Opening 51820 inbound would therefore grant nothing except a listener for the whole internet to
-  # find. See infra/nix/modules/roles/wireguard-fly.nix, which sets no `listenPort` for exactly this
-  # reason, and relies on `persistentKeepalive` to hold the flow open through NAT.
+  # is established from here outwards and return traffic arrives on the ephemeral source port of an
+  # already-established flow, which a stateful firewall passes without any rule naming it.
   #
-  # IF THE DIRECTION EVER REVERSES -- Fly dialling in, which would mean a fixed `listenPort` on this
-  # side -- then this is the rule that has to come back, and it must land in the same change as that
-  # `listenPort`. Split across two commits, the tunnel simply never establishes and the symptom is a
-  # database the Fly apps cannot reach.
+  # AN OPERATOR VPN WAS BUILT HERE AND BACKED OUT THE SAME DAY, which is worth recording so it is
+  # not proposed a second time. The problem it solved -- reaching Grafana, Prometheus and the k3s
+  # apiserver, all of which bind the private subnet -- is already solved by the SSH access this
+  # fleet is administered through: `ssh -N -L 3000:10.20.0.11:3000 root@<monitoring-1>` forwards any
+  # one of them, and `ssh -D` covers the rest at once. A VPN would have added an open UDP port, a
+  # role and a second set of keys to maintain, to make an existing capability slightly more
+  # convenient.
+  #
+  # Public HTTPS for Grafana is a genuinely different requirement and is solved separately, by a
+  # reverse proxy on 80/443 -- see the rules for those.
+
+  # HTTPS, AND HTTP, FOR GRAFANA ONLY -- the fleet's one published service.
+  #
+  # 80 IS NOT AN OVERSIGHT. ACME's HTTP-01 challenge is served on it, so closing 80 does not harden
+  # anything: it makes the certificate fail to RENEW, silently, about sixty days later, and the
+  # symptom is a browser TLS warning on a service that was working yesterday. Caddy redirects
+  # everything that is not a challenge to 443.
+  #
+  # WHAT IS BEHIND THIS AND WHAT IS NOT: Grafana, and nothing else. It is the only service on this
+  # fleet that authenticates its own users, which is what makes it the only one that can stand
+  # behind a proxy whose job is TLS rather than auth. Prometheus, Alertmanager, VictoriaLogs, the
+  # k3s apiserver and mongod stay private and are reached with `ssh -L`. See
+  # infra/nix/modules/roles/public-proxy.nix.
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "80"
+    source_ips = ["0.0.0.0/0", "::/0"]
+  }
+
+  rule {
+    direction  = "in"
+    protocol   = "tcp"
+    port       = "443"
+    source_ips = ["0.0.0.0/0", "::/0"]
+  }
 
   # THE PRIVATE NETWORK IS NOT COVERED BY THIS FIREWALL AT ALL and that is worth being explicit
   # about, because it is the thing that makes every rule above readable as the complete public

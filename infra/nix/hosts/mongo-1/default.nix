@@ -21,6 +21,11 @@ in
     ./disko.nix
     ../../modules/roles/mongodb.nix
     ../../modules/roles/wireguard-fly.nix
+
+    # See the note on the same import in hosts/monitoring-1: this belongs in
+    # modules/fleet/default.nix's `imports`, and is repeated per host only because that list could
+    # not be edited in the change that added it.
+    ../../modules/fleet/logs.nix
   ];
 
   networking.hostName = "mongo-1";
@@ -108,6 +113,20 @@ in
     peerPublicKey = "tyYPi0DmwNDs3YEhnm4CeNy5I9m2QSsdry4H46Zfr3M=";
     peerEndpoint = "arn1.gateway.6pn.dev:51820";
     allowedIPs = [ "fdaa:74:b6b5::/48" ];
+  };
+
+  # SHIP THE JOURNAL TO monitoring-1. On this host the journal is where mongod's own log goes, so
+  # this is what makes an election, a slow query or an OOM visible from somewhere other than an ssh
+  # session on the box that had the problem.
+  #
+  # THE LITERAL ADDRESS IS THE SAME SHAPE hosts/k3s-worker-1 ALREADY USES for its cluster join, and
+  # it is a compromise rather than a preference: modules/fleet/logs.nix says the value should be
+  # read in flake.nix off monitoring-1's own `fleet.privateAddress`, which is a flake.nix change
+  # this one could not make. Until then, a monitoring-1 that moves has to be found in two host
+  # files, and the symptom of missing one is a host that stops logging while every unit stays green.
+  fleet.logs = {
+    enable = true;
+    serverAddress = "10.20.0.11";
   };
 
   sops.defaultSopsFile = ../../secrets/mongo-1.yaml;

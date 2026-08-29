@@ -1,0 +1,267 @@
+---
+# THE THREE MACHINES THEMSELVES -- memory, CPU, OOM, failed units, read-only filesystems.
+#
+# WHY THIS FILE IS NEW RATHER THAN PORTED. The alerting this fleet inherited was written for Fly,
+# where the HOST was somebody else's problem and the only host-shaped series available were
+# `fly_instance_*` from Fly's own agent. Three Hetzner machines are now this fleet's problem, and
+# nothing was watching them: before this file, a host could exhaust its memory, OOM-kill mongod,
+# and come back with a failed unit, and the only rule that would have said anything is
+# `MongodNotRunning` -- and only for the three minutes mongod was actually down.
+#
+# WHAT IS DELIBERATELY NOT HERE, so its absence does not read as an oversight:
+#
+#   * "node_exporter is down" / "the host is unreachable". That is `TargetDown` in
+#     monitoring-self.rules, which fires on `up == 0` for ANY job and names the `job` and
+#     `instance`. Writing a second, node-only copy of it here would page twice for one event, and
+#     two rules that must agree about a threshold are one edit away from disagreeing.
+#   * Disk and inode capacity. filesystem-capacity.rules, which is the older and better-tested of
+#     the two files.
+#   * Network throughput and error counters. node_exporter publishes them and nobody here has a
+#     threshold for them that is not invented; a rule with a made-up threshold is noise until it is
+#     ignored, and then it is nothing. If a network fault ever bites this fleet, the number it bit
+#     at is the number to write here.
+#
+# ------------------------------------------------------------------------------------------------
+# THE THRESHOLDS BELOW ARE REASONED, NOT MEASURED. NONE OF THEM CAME OFF A GRAPH OF THIS FLEET.
+# ------------------------------------------------------------------------------------------------
+#
+# These machines were built on 2026-08-29 and have no history to fit a threshold to. Every number
+# here is derived from the machine's size and its job -- stated in each rule's comment -- and is
+# expected to be WRONG in one direction or the other for the first month. The right way to revise
+# one is to look at what the series actually did in the week before it fired, not to raise it
+# because it fired.
+#
+# WHY `host` AND `role` ARE AVAILABLE AS LABELS AT ALL, and it is worth knowing where they come
+# from: they are TARGET labels, attached by the `node` scrape job in
+# /etc/prometheus/scrape.d/node-targets.yaml, which roles/prometheus.nix generates from
+# `fleet.prometheus.nodeTargets`. They are not published by the exporter. So `role="mongodb"` is
+# true of every series scraped from mongo-1, including ones that say nothing about MongoDB -- and a
+# machine missing from `nodeTargets` has no labels here because it is not scraped at all.
+groups:
+  - name: host-health
+    rules:
+      # -----------------------------------------------------------------------------------------
+      # MEMORY. The axis mongo-1 is thinnest on.
+      #
+      # mongo-1 is a cx23: 2 cores, 4GB, running a mongod whose WiredTiger cache is pinned to 1GB
+      # (roles/mongodb.nix). WiredTiger's cache is anonymous memory, so it is NOT reclaimable and
+      # it does NOT show up as page cache -- which makes `MemAvailable` the honest axis here and
+      # "free memory" the misleading one. On top of that 1GB sit mongod's per-connection stacks and
+      # the page cache the storage engine still wants for the files it maps.
+      #
+      # WHY A PROPORTION AND NOT A FLOOR: monitoring-1 and mongo-1 are 4GB and k3s-worker-1 is
+      # 16GB. 400MB free is a fifth of the headroom on one and a rounding error on the other.
+      # -----------------------------------------------------------------------------------------
+      - alert: MemoryAvailableLow
+        expr: >-
+          node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15
+        # FIFTEEN MINUTES. A build, a mongodump or a k3s image pull all take a big transient bite
+        # and give it back; fifteen minutes is past every one of those and still hours ahead of the
+        # OOM killer on a machine that is genuinely leaking.
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 15% of {{ $labels.host }}'s memory is available"
+          description: >-
+            A GUESSED THRESHOLD -- see this file's header. On mongo-1 the first thing to rule out is
+            the WiredTiger cache being larger than roles/mongodb.nix pins it to, which happens when
+            the pin is removed and mongod falls back to its default of half of RAM minus 1GB; on
+            monitoring-1 it is Prometheus's head block, which grows with series count and is
+            reported by `prometheus_tsdb_head_series`. `systemd-cgtop -m --order=memory` names the
+            unit responsible in one screen.
+
+      - alert: MemoryAvailableCritical
+        expr: >-
+          node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.07
+        # FIVE MINUTES, because past here the next thing to happen is the OOM killer, and it does
+        # not wait fifteen. Short enough to arrive BEFORE the kill rather than alongside it, which
+        # is the only version of this alert that is worth anything.
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.host }} is nearly out of memory ({{ $value | humanizePercentage }} available)"
+          description: >-
+            The OOM killer takes the LARGEST process, not the guilty one. On mongo-1 that is mongod
+            and the database goes down; on monitoring-1 it is Prometheus, and the CPUWeight
+            ordering in roles/prometheus.nix does nothing about memory -- it is stated there that
+            weights are a CPU mechanism and buy no protection here. Free memory now or accept which
+            process the kernel picks.
+
+      # PSI: the pressure metric, which says how much time was actually LOST to memory reclaim
+      # rather than how much memory is left. This is the rewrite of the Fly rule "Memory pressure
+      # building (PSI)", which read `fly_instance_memory_pressure_some` and has no data any more.
+      #
+      # WHY IT IS WORTH HAVING BESIDE THE TWO ABOVE: a machine can sit at 20% available and spend
+      # half its wall-clock in direct reclaim, thrashing the page cache without ever tripping a
+      # headroom threshold. Availability says how close the wall is; pressure says whether the
+      # machine is already grinding against it.
+      #
+      # IT CAN SILENTLY NOT EXIST, AND THAT IS WHY IT IS NOT THE ONLY MEMORY RULE. PSI needs
+      # CONFIG_PSI in the kernel and node_exporter's `pressure` collector reading /proc/pressure;
+      # if either is missing the series is simply absent and this rule can never fire. The two
+      # `MemAvailable` rules above depend on neither and are the backstop, which is why no
+      # `absent()` companion is written for this one -- it would be an alert about a nice-to-have.
+      - alert: MemoryStallHigh
+        expr: rate(node_pressure_memory_stalled_seconds_total[5m]) > 0.10
+        # 10% OF WALL-CLOCK WITH EVERY TASK STALLED is the `full` PSI number, and it is a big
+        # number: `full` means NOTHING on the machine could make progress. A guess, but a
+        # conservative one -- healthy machines sit at approximately zero here, so this is not a
+        # threshold that has to be tuned so much as a floor above the noise.
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} is spending over 10% of its time stalled on memory"
+          description: >-
+            Every task on the host is blocked in reclaim for a tenth of the time. This is what
+            "slow for no reason" looks like from the outside -- the machine answers, everything it
+            does takes longer, and no single process looks wrong. Check the memory rules above for
+            which process grew.
+
+      # -----------------------------------------------------------------------------------------
+      # OOM KILLS. The event the rules above are trying to get ahead of, alerted on separately
+      # because getting ahead of it does not always work.
+      # -----------------------------------------------------------------------------------------
+      - alert: HostOomKilled
+        expr: increase(node_vmstat_oom_kill[10m]) > 0
+        # NO `for:`. This is a COUNTER OF A PAST EVENT, not a condition -- by the time it is
+        # visible the kill has already happened, and waiting to confirm it only delays the message.
+        labels:
+          severity: critical
+        annotations:
+          summary: "The kernel OOM-killed a process on {{ $labels.host }}"
+          description: >-
+            `dmesg -T | grep -i 'killed process'` names the victim and its RSS at the time. THE
+            VICTIM IS NOT THE CULPRIT: the kernel takes the largest process, which on mongo-1 is
+            mongod and on monitoring-1 is Prometheus, whatever actually consumed the memory. If the
+            victim is mongod, note that the web tier will keep serving its in-memory read model and
+            look healthy while it stops updating -- the same silent shape wireguard-fly.rules
+            describes.
+
+      - alert: OomKillMetricAbsent
+        expr: absent(node_vmstat_oom_kill)
+        # SIX HOURS, and a warning rather than a page: this is a rule about a rule, and the thing
+        # it protects (`HostOomKilled`) is a backstop that only matters on a bad day.
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No host is publishing the kernel's OOM-kill counter"
+          description: >-
+            `HostOomKilled` is a comparison and cannot fire without this series, so an OOM kill
+            would now pass unremarked. The counter comes from `oom_kill` in /proc/vmstat via
+            node_exporter's vmstat collector, whose default field filter includes it; check the
+            field is present on the host (`grep oom_kill /proc/vmstat`) before assuming the
+            exporter is at fault.
+
+      # -----------------------------------------------------------------------------------------
+      # CPU. Two rules, because utilisation and saturation are different questions and a busy
+      # machine is only a problem when work is queueing behind the busyness.
+      # -----------------------------------------------------------------------------------------
+      - alert: CpuBusySustained
+        expr: >-
+          1 - avg by (host, role) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.90
+        # THIRTY MINUTES at over 90% BUSY. Long enough that a nixos-rebuild, a mongodump or a k3s
+        # image unpack does not page -- all three genuinely peg a 2-core box for minutes.
+        #
+        # K3S-WORKER-1 IS EXPECTED TO TRIP THIS ONE DAY AND THAT WILL NOT BE A FAULT. It is an
+        # 8-core machine bought to run work, and a batch job using all of it is the machine doing
+        # its job. It is left in scope anyway rather than filtered out, because today it is idle
+        # and an unexplained pegged CPU on an idle box is exactly the thing worth knowing about.
+        # When it has real workloads, the honest fix is a per-role threshold here, not deleting the
+        # rule.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has been over 90% busy for half an hour"
+          description: >-
+            Utilisation, not saturation -- see `CpuRunQueueDeep` for whether anything is actually
+            waiting. On monitoring-1 the ordering under contention is deliberate and written down
+            in roles/prometheus.nix: Prometheus (CPUWeight 400) and Alertmanager (300) outrank
+            Grafana (200) and k3s (100), so a starved monitoring host keeps RECORDING the
+            starvation even when it stops being pleasant to look at.
+
+      - alert: CpuRunQueueDeep
+        # LOAD PER CORE, which is the number that means the same thing on a 2-core cx23 and an
+        # 8-core cx43. `count by (host) (node_cpu_seconds_total{mode="idle"})` is the core count:
+        # one idle series per logical CPU.
+        expr: >-
+          node_load15 / on (host) group_left ()
+            count by (host) (node_cpu_seconds_total{mode="idle"}) > 2
+        # TWO RUNNABLE TASKS PER CORE, sustained for twenty minutes. A GUESS, and a deliberately
+        # loose one: load average on Linux counts uninterruptible I/O waits as well as runnable
+        # tasks, so a machine doing heavy disk work reads high here without being CPU-bound at all.
+        # That is not a defect of the rule so much as of loadavg, and it is why this is a warning
+        # that sends somebody to look rather than a page.
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has more than 2 runnable tasks per core (15m load)"
+          description: >-
+            Work is queueing rather than merely arriving. Remember that Linux loadavg includes
+            uninterruptible I/O waits, so a machine blocked on its disk looks identical here to one
+            short of CPU -- `vmstat 1 5` separates them (the `r` column is runnable, `b` is
+            blocked). On mongo-1, blocked-on-disk with a healthy CPU usually means the volume, not
+            the processor.
+
+      # -----------------------------------------------------------------------------------------
+      # FAILED UNITS AND READ-ONLY FILESYSTEMS -- two cheap rules that catch a large class of
+      # "the machine is up and something on it silently is not".
+      # -----------------------------------------------------------------------------------------
+      - alert: SystemdUnitFailed
+        expr: node_systemd_unit_state{state="failed"} == 1
+        # FIFTEEN MINUTES, so a unit that fails and is restarted successfully by its own
+        # `Restart=on-failure` does not page. What is left after fifteen minutes is a unit systemd
+        # has given up on, which is the interesting case -- including the `start-limit-hit` shape
+        # that modules/fleet/observability.nix describes for node_exporter itself.
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} has failed on {{ $labels.host }}"
+          description: >-
+            `systemctl status {{ $labels.name }}` and `journalctl -u {{ $labels.name }} -n 200`.
+            Note that units systemd has given up on stay failed until somebody runs
+            `systemctl reset-failed`, so this alert holds after the underlying cause is fixed --
+            which is correct: a unit nobody restarted is still not running.
+
+      - alert: FilesystemReadOnly
+        expr: node_filesystem_readonly{fstype!~"tmpfs|ramfs"} == 1
+        # FIVE MINUTES. ext4 remounts read-only on a metadata error, which is a hardware or volume
+        # fault rather than a transient, so there is nothing to wait out -- the five minutes only
+        # cover a filesystem legitimately mounted read-only during a maintenance window.
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.host }} is mounted read-only"
+          description: >-
+            Almost always ext4 remounting itself after a metadata error -- check `dmesg -T` for I/O
+            errors on the underlying device. If this is /var/lib/mongodb, mongod is still running
+            and still answering reads while every write fails, which is the same
+            looks-healthy-but-is-not shape as a dropped WireGuard tunnel. Hetzner volume faults are
+            rare and not unheard of; a fsck needs the volume detached from a running mongod.
+
+      # -----------------------------------------------------------------------------------------
+      # A REBOOT NOBODY EXPECTED.
+      # -----------------------------------------------------------------------------------------
+      - alert: HostRecentlyRebooted
+        expr: time() - node_boot_time_seconds < 900
+        # NO `for:`, and it self-resolves fifteen minutes after boot. This is a NOTIFICATION, not a
+        # fault: it costs one Telegram message per deliberate reboot, and it buys knowing about an
+        # undeliberate one. On a three-host fleet that is rebooted by hand a few times a month that
+        # trade is worth taking; on a fleet with rolling reboots it would not be.
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} rebooted within the last 15 minutes"
+          description: >-
+            If you rebooted it, this message is the system working. If you did not: `last -x
+            reboot` and `journalctl --list-boots` say when, and `journalctl -b -1 -e` shows how the
+            previous boot ended -- a clean shutdown looks quite different from a host that was
+            fenced or lost power. Check nixos-deploy.rules' `RebootOwed` too: a reboot clears a
+            pending boot-chain change, so one that was owed and is now gone was probably this.

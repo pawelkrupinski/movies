@@ -4,9 +4,33 @@
 # WHERE THE PROVISIONING COMES FROM, AND WHY IT IS VENDORED RATHER THAN READ IN PLACE
 # ------------------------------------------------------------------------------------------------
 #
-# The alert rules and the dashboards ARE the Fly instance's -- fly/grafana/provisioning/ -- copied
-# into nix/files/monitoring/grafana/. Not transcribed, not rewritten: copied, and the dashboards
-# byte for byte.
+# The alert rules and the dashboards STARTED as the Fly instance's -- fly/grafana/provisioning/ --
+# copied into nix/files/monitoring/grafana/. Not transcribed, not rewritten: copied, and the
+# dashboards byte for byte.
+#
+# ------------------------------------------------------------------------------------------------
+# THEY ARE NO LONGER BYTE-FOR-BYTE COPIES. POST-MIGRATION AUDIT, 2026-08-29.
+# ------------------------------------------------------------------------------------------------
+#
+# The copy was audited against the world that exists after the move off Fly, and four things
+# changed. Anyone running the `diff -r` this header recommends will see exactly these and nothing
+# else; that is the intended state, not drift.
+#
+#   1. FOUR ALERT RULES DELETED AND ONE CHANGED in alerting/alert-rules.yaml -- two that named Fly
+#      volume mountpoints belonging to machines that no longer exist, one ("Mongo down") that was
+#      `noDataState: Alerting` on a retired app and therefore firing permanently, and one whose only
+#      consumer was a webhook this host cannot reach. The one change is `Serving app down`'s
+#      no-data handling, for the same permanent-firing reason. Every deletion leaves a tombstone
+#      comment in place of the rule, and every group carries a written verdict for each of its
+#      surviving rules. Twenty rules remain, not twenty-four.
+#   2. THE DASHBOARDS ARE SPLIT INTO TWO DIRECTORIES, dashboards/fleet and dashboards/fly, and
+#      provisioned into two Grafana folders by two providers (below). See the note on those
+#      providers for why quarantine beats a mixed folder.
+#   3. EACH FLY DASHBOARD GAINED A BANNER PANEL AND A RETITLE saying it is quarantined, why, and
+#      what would bring it back. A page full of "No data" with no explanation is indistinguishable
+#      from a page that is broken.
+#   4. A NEW DASHBOARD, dashboards/fleet/kinowo-fleet.json, which has no counterpart on the Fly
+#      side at all -- it is about the three Hetzner machines, which did not exist there.
 #
 # COPIED RATHER THAN REFERENCED BECAUSE OF THE FLAKE ROOT, which is infra/ and not the repository
 # root (infra/flake.nix's header sets out why: rooting it at the top drags ~18k tracked files of a
@@ -63,6 +87,13 @@
 # THOSE ENDPOINTS: only mongo-1 is a 6PN peer (roles/wireguard-fly.nix), and monitoring-1 is not.
 # So `app-metrics-live` is provisioned here pointing at the LOCAL Prometheus -- see the datasource
 # block below for why it is provisioned at all rather than dropped.
+#
+# THE CONSEQUENCE IS A WHOLE FOLDER OF EMPTY DASHBOARDS, and the post-migration audit's answer to it
+# is quarantine rather than deletion: the three Fly dashboards live in their own Grafana folder,
+# named for the reason they are empty, each opening with a banner panel that says what would bring
+# it back. The one dashboard that works -- dashboards/fleet/kinowo-fleet.json, about the three
+# Hetzner machines -- is in a folder of its own so that "is the fleet healthy" is answerable without
+# walking past four pages of "No data". See the two dashboard providers below.
 #
 # Grafana's own SQLITE DATABASE DOES NOT COME ACROSS either. Alert state, silences and the
 # CI-posted deploy annotations start empty; every rule re-evaluates from Normal, so anything firing
@@ -218,14 +249,19 @@ in
         # THE POINT OF SELF-HOSTING GRAFANA AT ALL. Fly's hosted fly-metrics.net Grafana cannot
         # evaluate alert rules -- that is why the kinowo-grafana app exists, and the reason survives
         # the move to Hetzner unchanged. Stated explicitly rather than left to a default, because a
-        # default that flips turns 24 alert rules into 24 dashboards nobody is watching.
+        # default that flips turns 20 alert rules into 20 dashboards nobody is watching.
         unified_alerting.enabled = true;
       };
 
-      # NO `declarativePlugins`. The Fly instance needs none, and the datasources below are all
-      # `type: prometheus`, which is built in. Named so that its absence reads as "nothing needs
-      # one" rather than as an oversight -- installing a plugin at runtime is the failure mode the
-      # bitcashier grafana role documents at length, and it is avoided here by not needing one.
+      # ONE PLUGIN, DECLARATIVELY, AND NEVER AT RUNTIME. Every datasource here is `type: prometheus`
+      # -- built in -- except VictoriaLogs, which needs its own. `declarativePlugins` puts it in the
+      # closure, so it is present before Grafana starts and identical on a rebuilt host.
+      #
+      # The alternative, letting Grafana install it at first run, is the failure the bitcashier role
+      # documents at length: a plugin fetched at runtime makes startup depend on a third party being
+      # reachable, and a host rebuilt while that is down comes up with a datasource whose panels all
+      # error and no indication why.
+      declarativePlugins = [ pkgs.grafanaPlugins.victoriametrics-logs-datasource ];
 
       provision = {
         enable = true;
@@ -258,9 +294,19 @@ in
               type = "prometheus";
               access = "proxy";
               url = "https://api.fly.io/prometheus/personal";
-              # Default, as on the Fly instance: the ported dashboards' panels that omit an
-              # explicit datasource resolve here.
-              isDefault = true;
+              # NO LONGER THE DEFAULT -- it was, on the Fly instance, where it was the only useful
+              # source. Here the default belongs to the datasource that WORKS, and this one has no
+              # credential: the read-only tokens were revoked and cannot be reissued (see
+              # `fleet.prometheus.scrapeFly`).
+              #
+              # WHY THE FLIP IS SAFE, and it was checked rather than assumed: the default is what a
+              # panel or an ad-hoc query resolves to when it names no datasource, and EVERY PANEL
+              # in all four vendored dashboards carries an explicit `datasource` block. (Some
+              # TARGETS omit one, but a target inherits its panel's, not the default.) So nothing
+              # silently changes datasource because of this line; what changes is where a NEW panel
+              # or a query typed into Explore points -- and pointing those at a datasource that
+              # 401s is a bad first experience of this Grafana.
+              isDefault = false;
               editable = false;
               jsonData = {
                 httpMethod = "POST";
@@ -282,9 +328,30 @@ in
             }
 
             {
+              # THE FLEET'S LOGS.
+              #
+              # THE PRIVATE ADDRESS, NOT LOOPBACK, EVEN THOUGH IT IS THE SAME MACHINE. VictoriaLogs
+              # follows this fleet's convention and binds `fleet.privateAddress` ONLY -- nothing is
+              # listening on 127.0.0.1:9428. This line said 127.0.0.1 on the assumption that
+              # same-host meant loopback; the datasource answered nothing and the panels were empty
+              # while the service was perfectly healthy, which is exactly the shape of failure that
+              # wastes an afternoon looking at the wrong process.
+              #
+              # It matches how Prometheus is addressed above, and how fleet/logs.nix ships to it.
+              name = "VictoriaLogs";
+              uid = "victorialogs";
+              orgId = 1;
+              type = "victoriametrics-logs-datasource";
+              access = "proxy";
+              url = "http://10.20.0.11:9428";
+              isDefault = false;
+              editable = false;
+            }
+            {
               # THIS HOST'S OWN PROMETHEUS -- the node_exporters, mongod's dump freshness, the
-              # WireGuard handshake age, and this stack watching itself. Everything in
-              # nix/files/monitoring/rules/ is queried through here.
+              # WireGuard handshake age, the deploy state, and this stack watching itself.
+              # Everything in nix/files/monitoring/rules/ is queried through here, and so is every
+              # panel of dashboards/fleet/kinowo-fleet.json.
               name = "Prometheus (Hetzner)";
               uid = "local-prometheus";
               orgId = 1;
@@ -295,7 +362,11 @@ in
               # address changes. Not `localhost`, which can resolve to ::1 and produce a
               # connection-refused against a service listening on IPv4 only.
               url = "http://127.0.0.1:9090";
-              isDefault = false;
+              # THE DEFAULT, as of the post-migration audit. It is the only datasource on this
+              # instance that answers, it is where every rule this fleet actually evaluates lives,
+              # and it needs no credential -- so an unqualified query, a new panel or anything
+              # typed into Explore should land here rather than on a 401.
+              isDefault = true;
               editable = false;
               jsonData = {
                 httpMethod = "POST";
@@ -344,29 +415,86 @@ in
 
         dashboards.settings = {
           apiVersion = 1;
-          providers = [{
-            name = "kinowo";
-            orgId = 1;
-            folder = "Fly";
-            type = "file";
-            # BOTH FALSE, WHICH IS A CHANGE FROM THE FLY PROVISIONING (it allows UI updates and
-            # deletion). There, the dashboards were the only copy anyone could edit; here the file
-            # in fly/grafana/provisioning/dashboards IS the source and a UI edit would be silently
-            # reverted on the next provisioning pass -- which is the confusing outcome. Making it
-            # refuse the edit is kinder than letting it be made and lost.
-            disableDeletion = true;
-            allowUiUpdates = false;
-            updateIntervalSeconds = 60;
-            options.path = "${grafanaProvisioning}/dashboards";
-          }];
+
+          # ------------------------------------------------------------------------------------
+          # TWO PROVIDERS AND TWO FOLDERS, WHICH IS THE POST-MIGRATION CHANGE. THE FLY PROVISIONING
+          # HAD ONE OF EACH.
+          # ------------------------------------------------------------------------------------
+          #
+          # THE PROBLEM IT SOLVES. Three of the four dashboards here read `fly-prometheus` (no
+          # working token) or `app-metrics-live` (no 6PN path from this host), so every panel on
+          # them renders "No data" and will keep doing so until somebody mints a credential this
+          # estate cannot currently mint. One dashboard -- kinowo-fleet -- reads the local
+          # Prometheus and works.
+          #
+          # IN ONE FOLDER, THOSE FOUR ARE INDISTINGUISHABLE AT A GLANCE, and that is not a cosmetic
+          # complaint. A person opening Grafana during an incident does not know which pages are
+          # supposed to be empty; a screen of "No data" reads as "the monitoring is broken", which
+          # sends them to debug Prometheus rather than the fault they came for. Worse, a folder
+          # where most pages are permanently empty is a folder people stop opening -- the same
+          # argument roles/prometheus.nix makes for why `scrapeFly` is OFF rather than configured
+          # with a dead credential, applied to dashboards instead of scrape targets.
+          #
+          # SO: WORKING PAGES IN ONE FOLDER, QUARANTINED ONES IN ANOTHER, with the folder name
+          # itself carrying the reason. Each quarantined dashboard also opens with a banner panel
+          # explaining what it needs, and is retitled so the quarantine survives a search that
+          # bypasses the folder.
+          #
+          # NOT DELETED, and that decision is worth restating here because two folders look like a
+          # step towards deleting one of them: the apps those dashboards watch ARE STILL RUNNING on
+          # Fly. Every panel is still correct. They start working again the day there is a token.
+          providers = [
+            {
+              # THE ONE THAT WORKS. Everything in it queries `local-prometheus` and needs no
+              # credential of any kind.
+              name = "kinowo-fleet";
+              orgId = 1;
+              folder = "Kinowo Fleet";
+              type = "file";
+              disableDeletion = true;
+              allowUiUpdates = false;
+              updateIntervalSeconds = 60;
+              options.path = "${grafanaProvisioning}/dashboards/fleet";
+            }
+
+            {
+              # THE QUARANTINE. The folder NAME is the label -- it is what somebody sees in the
+              # dashboard list before they open anything, which is the only place the warning can
+              # arrive early enough to be useful.
+              name = "kinowo-fly";
+              orgId = 1;
+              folder = "Fly (no data without a token)";
+              type = "file";
+              # BOTH FALSE, WHICH IS A CHANGE FROM THE FLY PROVISIONING (it allows UI updates and
+              # deletion). There, the dashboards were the only copy anyone could edit; here the
+              # file in fly/grafana/provisioning/dashboards IS the source and a UI edit would be
+              # silently reverted on the next provisioning pass -- which is the confusing outcome.
+              # Making it refuse the edit is kinder than letting it be made and lost.
+              disableDeletion = true;
+              allowUiUpdates = false;
+              updateIntervalSeconds = 60;
+              options.path = "${grafanaProvisioning}/dashboards/fly";
+            }
+          ];
         };
 
         alerting = {
-          # THE 24 ALERT RULES, in four groups (fly-resources, fly-serving, app-uptime,
-          # worker-throttle). Every expression in them was validated against the live Fly endpoint
-          # when it was written, and every one queries the `fly-prometheus` uid above -- which is
-          # why that uid is carried across unrenamed. Renaming it here would empty all 24 rules
-          # without any of them failing.
+          # THE 20 ALERT RULES (24 before the post-migration audit deleted four), in the same four
+          # groups: fly-resources, fly-serving, app-uptime, worker-throttle. Every expression in
+          # them was validated against the live Fly endpoint when it was written, and every one
+          # queries the `fly-prometheus` uid above -- which is why that uid is carried across
+          # unrenamed. Renaming it here would empty all 20 rules without any of them failing.
+          #
+          # NONE OF THEM IS PROTECTING ANYTHING TODAY, and that is worth knowing at the composition
+          # root rather than only in the file: the datasource they all query has no working token,
+          # so they evaluate to an execution error and (being `execErrState: OK`, nearly all of
+          # them) go quietly to Normal. A rule sitting in Normal because its datasource is
+          # unreachable looks exactly like a rule sitting in Normal because everything is fine.
+          #
+          # THE ALERTING THAT IS ACTUALLY RUNNING ON THIS FLEET is Prometheus's, not Grafana's:
+          # nix/files/monitoring/rules/*.rules, evaluated by the process next door and delivered
+          # through Alertmanager. Grafana's unified alerting is kept enabled for these Fly rules
+          # and for the day they work again.
           rules.path = "${grafanaProvisioning}/alerting/alert-rules.yaml";
 
           # THE CONTACT POINT AND THE NOTIFICATION POLICY, vendored because they had to change.

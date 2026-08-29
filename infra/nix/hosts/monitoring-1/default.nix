@@ -1,4 +1,4 @@
-{ ... }:
+{ config, ... }:
 
 let
   # Allocated by Terraform; read it back with
@@ -10,9 +10,21 @@ in
 {
   imports = [
     ./disko.nix
+    ../../modules/roles/public-proxy.nix
     ../../modules/roles/prometheus.nix
     ../../modules/roles/grafana.nix
     ../../modules/roles/k3s-server.nix
+    ../../modules/roles/victoria-logs.nix
+
+    # THE SHIPPER, IMPORTED PER HOST -- WHICH IS THE WRONG PLACE FOR IT, AND IS SAID OUT LOUD HERE
+    # RATHER THAN LEFT TO BE DISCOVERED. It lives under modules/fleet/ because it is true of every
+    # machine, and on bitcashier the equivalent file sits in fleet/default.nix's `imports` so that
+    # a host CANNOT be built without it. That list could not be edited in the change that added
+    # this. The consequence is concrete: a fourth host added to this fleet gets a firewall, a
+    # node_exporter and a persistent journal automatically, and ships its logs NOWHERE until
+    # somebody remembers this line. Moving `./logs.nix` into modules/fleet/default.nix's imports and
+    # deleting the three copies of it is the follow-up.
+    ../../modules/fleet/logs.nix
   ];
 
   networking.hostName = "monitoring-1";
@@ -54,7 +66,48 @@ in
     ];
   };
 
-  fleet.grafana.enable = true;
+  fleet.grafana = {
+    enable = true;
+
+    # MUST MATCH THE PUBLIC NAME. Grafana builds redirects, OAuth callbacks and the links in alert
+    # notifications from root_url, so behind a proxy a wrong value here does not fail loudly -- it
+    # sends people to http://localhost:3000, from an email, and looks like the alert is broken.
+    rootUrl = "https://grafana.2-28-52-210.sslip.io/";
+  };
+
+  # PUBLIC HTTPS FOR GRAFANA ONLY. See roles/public-proxy.nix for why nothing else is published:
+  # Grafana is the only service here that authenticates its own users, and its login IS the
+  # security boundary -- the proxy adds TLS and a name, not authentication.
+  fleet.publicProxy = {
+    enable = true;
+    hostName = "grafana.2-28-52-210.sslip.io";
+    acmeEmail = "pawel@bitcashier.io";
+    upstream = "10.20.0.11:3000";
+  };
+
+  # THE FLEET'S LOG STORE, beside the metrics store and for the same reason: this is the box you go
+  # to when you want to know what happened, and there is no second one. It writes to the monitoring
+  # volume (/var/lib/monitoring/victoria-logs) alongside the TSDB and Grafana's sqlite -- see
+  # roles/victoria-logs.nix for the arithmetic that lets three things share a 40GB disk, and for why
+  # its bound is 10GiB rather than "whatever is left".
+  fleet.victoriaLogs.enable = true;
+
+  # AND IT SHIPS ITS OWN JOURNAL TO ITSELF. Not redundant: without this, the one host whose logs
+  # would explain a monitoring outage is the one host missing from the store, and every query that
+  # sweeps the fleet would silently cover two machines out of three.
+  #
+  # NO POD LOGS HERE. This node runs the k3s control plane with `schedulable = false`, so the only
+  # containers on it are the control plane's own -- and k3s logs those through its own systemd
+  # units, which the journal source already covers.
+  fleet.logs = {
+    enable = true;
+
+    # ITSELF, read from its own declaration above rather than written out again -- a second literal
+    # is a second thing to get wrong on the day this address changes. The other two hosts cannot do
+    # this and carry the literal; see the option's own note for the flake.nix wiring that would fix
+    # all three at once.
+    serverAddress = config.fleet.privateAddress;
+  };
 
   # THE k3s CONTROL PLANE, ON THE SAME BOX, per the fleet design. `clusterInit` because this is the
   # first and only server; a second would join against it rather than repeat this.

@@ -94,7 +94,27 @@ let
   # fire) or a path Prometheus cannot find (loud -- it refuses to start). The silent half is the
   # dangerous one; bitcashier guards it with a check script, which this repository does not have
   # yet and should.
-  ruleNames = [ "filesystem-capacity" "mongodb" "monitoring-self" "wireguard-fly" ];
+  #
+  # ALPHABETICAL, matching the order in prometheus.yaml's `rule_files`, so the two lists can be
+  # compared by eye without sorting one of them in your head. The comparison is the only check
+  # there is until the guard script exists.
+  ruleNames = [
+    "filesystem-capacity"
+    # THE HOSTS THEMSELVES -- memory, OOM, CPU, failed units, read-only filesystems. NEW at the
+    # post-migration audit: on Fly the host was somebody else's problem, and nothing had replaced
+    # `fly_instance_*` with a view of these three machines.
+    "host-health"
+    # The k3s units, watched through node_exporter's systemd collector. There is no
+    # kube-state-metrics on this fleet, so node conditions and workloads are NOT covered; the file
+    # says so at length rather than writing rules against series nothing produces.
+    "k3s"
+    "mongodb"
+    "monitoring-self"
+    # Whether the fleet is still deploying itself. The failure this covers is completely silent:
+    # an applier that has stopped leaves every service running and every other alert green.
+    "nixos-deploy"
+    "wireguard-fly"
+  ];
 in
 {
   options.fleet.prometheus = {

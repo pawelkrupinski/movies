@@ -1,0 +1,222 @@
+---
+# IS THIS FLEET STILL DEPLOYING ITSELF?
+#
+# THE FAILURE THIS FILE EXISTS FOR IS COMPLETELY SILENT, and it is the one modules/fleet/auto-apply.nix
+# and modules/fleet/observability.nix both warn about at length. CI stages a closure onto each host
+# and `nixos-auto-apply` decides whether to switch to it. When that applier stops -- a broken timer,
+# a host that cannot reach the cache, a verdict of `blocked` nobody read -- NOTHING GOES WRONG. The
+# machines keep running the closure they already had, every service stays up, every other alert in
+# this directory stays green, and merges to main pile up unapplied for as long as nobody looks.
+#
+# WORSE, THE FLEET-WIDE CHECK EVERYBODY WRITES FIRST HAS ITS HOLE EXACTLY HERE. "Are all hosts on
+# the same revision?" is green when NO host has activated: all three sit on the same old closure and
+# the fleet looks perfectly consistent. observability.nix states this in its own words; these rules
+# are the other half of that argument.
+#
+# ------------------------------------------------------------------------------------------------
+# WHY EVERY STALENESS RULE HERE KEYS ON A TIMESTAMP AND NOT ON A VALUE
+# ------------------------------------------------------------------------------------------------
+#
+# A node_exporter textfile IS NOT A HEARTBEAT. The publisher writes a file; node_exporter reads it
+# on every scrape and reports its contents as current FOR EVER, whether the publisher ran a minute
+# ago or died a fortnight ago. So `nixos_auto_apply_pending == 0` is not evidence that nothing is
+# pending -- it is evidence that nothing was pending the last time anything looked, which may have
+# been before the applier stopped. The two timestamp series below are what turn "the last thing it
+# said" into "when it last said anything".
+#
+# ------------------------------------------------------------------------------------------------
+# WHERE THE `host` LABEL COMES FROM, BECAUSE THERE ARE TWO OF THEM AND IT MATTERS
+# ------------------------------------------------------------------------------------------------
+#
+# `nixos-auto-apply.py` labels every series it writes with `host` itself (see its `Metrics.gauge`).
+# The `node` scrape job ALSO attaches a `host` target label. Prometheus resolves that collision by
+# keeping the target's label as `host` and renaming the publisher's to `exported_host`. Both hold
+# the same hostname, so it makes no practical difference -- but the rules below use `host`, the
+# target label, because it is the one present on EVERY series from these machines, including the
+# node_exporter metrics that have no opinion about hostnames. Never write `exported_host` into a
+# rule: it exists only by accident of a collision and disappears if the scrape job's labels change.
+groups:
+  - name: nixos-deploy
+    rules:
+      # -----------------------------------------------------------------------------------------
+      # IS THE APPLIER ALIVE? Two separate publishers, on purpose, and the reasoning is
+      # observability.nix's: the applier's own metrics cannot be evidence that the applier is
+      # running, because they are written BY it. `fleet_auto_apply_state_*` comes from a different
+      # unit on a five-minute timer and is what answers this question when the applier is what has
+      # stopped.
+      # -----------------------------------------------------------------------------------------
+      - alert: AutoApplyStatePublisherStale
+        expr: time() - fleet_auto_apply_state_last_run_timestamp_seconds > 1800
+        # THIRTY MINUTES against a five-minute timer -- six consecutive missed runs. Chosen so that
+        # one slow boot, one timer skipped by `AccuracySec`, or a host that was down for a
+        # maintenance window does not page.
+        #
+        # NO `for:`: the expression already measures elapsed time, so a `for:` would be asking for
+        # patience twice and would silently double the real threshold.
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has not published its deploy state for over 30 minutes"
+          description: >-
+            Everything this fleet knows about whether {{ $labels.host }} is up to date comes from
+            two textfiles, and one of them has gone stale -- so `StagedClosureNotActivated` and
+            `AutoApplyBlocked` below are reading numbers that may be hours old and still look
+            current. Check `systemctl status fleet-auto-apply-state.timer` and its service. This is
+            a warning rather than a page because it does not mean anything is BROKEN; it means this
+            fleet has stopped being able to tell.
+
+      - alert: AutoApplyNotReporting
+        # THE JOIN, RATHER THAN THREE `absent()` RULES WITH HOSTNAMES IN THEM. `machine` is the
+        # inventory gauge every host bakes into its own closure (observability.nix), so it is
+        # present for exactly the hosts that are scraped. "Scraped, but publishing no auto-apply
+        # state" is what this asks, and it needs no list of hostnames to maintain -- a fourth
+        # machine is covered the day it is added to `fleet.prometheus.nodeTargets`.
+        expr: machine == 1 unless on (host) fleet_auto_apply_state_last_run_timestamp_seconds
+        # AN HOUR, comfortably past a first boot: the timer's `OnBootSec` is 2min and the unit also
+        # runs on activation, so a host that has been up an hour and published nothing has a real
+        # problem rather than a slow start.
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} is scraped but is publishing no deploy state at all"
+          description: >-
+            Not stale -- ABSENT. The `fleet-auto-apply-state` unit has never written its textfile
+            on this host, or node_exporter is not reading the directory it writes to
+            (`--collector.textfile.directory` must be `fleet.observability.textfileDirectory`).
+            Until it does, this host is invisible to every rule in this file and could sit a month
+            behind main without anything saying so.
+
+      - alert: AutoApplyStalled
+        expr: time() - nixos_auto_apply_last_attempt_timestamp_seconds > 3 * 3600
+        # THREE HOURS = SIX MISSED PASSES. `fleet.autoApply.interval` is 30 minutes with up to
+        # 5 minutes of randomised delay, and the primary trigger is a path unit that fires within
+        # about a second of CI staging -- so the timer is already only a backstop, and three hours
+        # of silence from the backstop means the applier itself is not running.
+        #
+        # NOTE THIS IS A DIFFERENT CLAIM FROM `AutoApplyStatePublisherStale` ABOVE: that one says
+        # the state PUBLISHER stopped, this one says the APPLIER stopped. Both can happen alone.
+        # If both fire together, suspect node_exporter's textfile collector rather than two units.
+        labels:
+          severity: warning
+        annotations:
+          summary: "nixos-auto-apply has not completed a pass on {{ $labels.host }} for over 3 hours"
+          description: >-
+            Merges to main are not reaching this host, and nothing else would say so -- the machine
+            keeps running its old closure perfectly happily. `systemctl status nixos-auto-apply`
+            and `journalctl -u nixos-auto-apply -n 200`. Note that a pass which cannot MEASURE the
+            host still publishes a verdict of `undetermined`, so this firing means no pass
+            finished at all, not that a pass was inconclusive.
+
+      # -----------------------------------------------------------------------------------------
+      # IS THERE SOMETHING WAITING THAT A PERSON HAS TO DECIDE ON?
+      # -----------------------------------------------------------------------------------------
+      - alert: AutoApplyBlocked
+        # `nixos_auto_apply_blocked_reason` RATHER THAN `nixos_auto_apply_info`, and the applier's
+        # own source explains why in as many words: the info gauge carries a `detail` label that
+        # changes whenever the pending change does, and in Prometheus a changed label is a NEW
+        # SERIES -- which resets the `for:` clause below at every merge. A host permanently one
+        # blocked change behind would never fire an alert keyed on the info gauge. This series
+        # carries `host` and `reason` only, both stable while the same kind of change waits.
+        expr: nixos_auto_apply_blocked_reason == 1
+        # TWENTY-FOUR HOURS. Being blocked is the applier working correctly -- it means a pending
+        # change would disturb a unit nobody declared restartable, so it declined. That is a
+        # decision waiting for a person, not a fault, and a person is entitled to a day. Shorter
+        # and this pages for every ordinary blocked deploy until nobody reads it.
+        for: 24h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has been blocked from auto-applying for a day ({{ $labels.reason }})"
+          description: >-
+            The applier found a change it will not make on its own. `reason` says which class;
+            `nixos_auto_apply_info`'s `detail` label carries the specifics. Resolve it by switching
+            by hand, or by declaring the unit in `fleet.autoApply.restartableUnits` if disturbing
+            it really is acceptable on this host. LEAVING IT BLOCKED IS A CHOICE, not a stable
+            state: every later merge queues behind it.
+
+      - alert: StagedClosureNotActivated
+        expr: nixos_staged_pending == 1
+        # A DAY, matching `AutoApplyBlocked`. These two overlap on purpose and answer different
+        # questions: `blocked` is the applier saying "I decided not to", `staged_pending` is the
+        # observable fact that this host is running something other than what was staged for it --
+        # which is also what fires when the applier never ran at all, or is excluded from
+        # auto-applying entirely (`fleet.autoApply.enable = false` hosts still publish this).
+        for: 24h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has been running a closure older than the staged one for a day"
+          description: >-
+            CI has put a closure on this host that it is not running. Look at `AutoApplyBlocked`
+            first -- if that is also firing, this is its consequence and there is one problem, not
+            two. If it is not, the applier either never ran (see `AutoApplyStalled`) or this host
+            is deliberately excluded, which publishes `nixos_auto_apply_excluded` with a reason.
+
+      - alert: RebootOwed
+        expr: nixos_reboot_required == 1
+        # SEVEN DAYS, and the length is the point: this is not urgent and pretending otherwise
+        # makes it noise. What it means is that a switch replaced the kernel, initrd, kernel
+        # modules or systemd, and a switch CANNOT bring any of those into use -- so the host is
+        # running the new userland on the old kernel. A week is long enough that a reboot can be
+        # planned rather than reacted to, and short enough that a kernel security update does not
+        # sit unbooted for a quarter.
+        #
+        # THIS IS THE FOUR-COMPONENT COMPARISON, NOT `booted != current`. observability.nix
+        # measured the naive version getting it wrong on seven hosts (four actually owed a reboot);
+        # a switch replaces the closure every time, so the paths differing means nothing on its own.
+        for: 7d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has owed a reboot for a week"
+          description: >-
+            The running kernel, initrd, kernel modules or systemd differ from what is deployed.
+            `nixos_auto_apply_reboot_component` names WHICH -- a replaced kernel and a replaced
+            initrd are the same gauge and very different news. Reboot order matters on this fleet:
+            mongo-1 takes the database and the Fly WireGuard tunnel down with it, and monitoring-1
+            takes the alerting down, so reboot monitoring-1 LAST if you want the others watched
+            while they go.
+
+      # -----------------------------------------------------------------------------------------
+      # THE GARBAGE COLLECTOR, WHICH IS THE UPSTREAM OF filesystem-capacity.rules' INODE ALERTS.
+      #
+      # The fleet those rules were ported from lost a control-plane host to 100% inode exhaustion
+      # with 19G of bytes still free, caused by accumulated NixOS generations with nothing
+      # collecting the store. This rule is the earlier warning for the same failure: by the time
+      # `FilesystemInodesLow` fires, the collector has usually been dead for weeks.
+      # -----------------------------------------------------------------------------------------
+      - alert: NixGarbageCollectionStale
+        expr: time() - fleet_nix_gc_last_success_timestamp_seconds > 3 * 86400
+        # THREE DAYS against a DAILY timer with `Persistent = true` -- so a host that was off for a
+        # day catches up on boot rather than skipping, and three missed collections is a real
+        # stoppage. Nothing bad happens on day three; the alert is early on purpose, because the
+        # repair (`nix-collect-garbage`) gets HARDER as the disk fills and stops working entirely
+        # at zero inodes, when it cannot take its own lock.
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has not collected its Nix store for over 3 days"
+          description: >-
+            Left alone this ends as inode exhaustion, which `df -h` does not show and which makes
+            its own fix impossible -- see `FilesystemInodesCritical` in filesystem-capacity.rules
+            for how to break that deadlock. `systemctl status fleet-nix-gc` and its timer.
+            `fleet_nix_gc_system_generations` says how many generations are currently retained.
+
+      - alert: NixGarbageCollectionMetricAbsent
+        # The same join as `AutoApplyNotReporting`: scraped, but never published a collection. A
+        # host that has never collected is legitimately absent here rather than stale, and that is
+        # exactly the state a freshly built machine is in -- which is a state somebody should be
+        # told about once, not a state to be silent about.
+        expr: machine == 1 unless on (host) fleet_nix_gc_last_success_timestamp_seconds
+        # TWO DAYS: longer than the daily timer's first run plus its randomised delay, so a machine
+        # built yesterday does not page on its first morning.
+        for: 2d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has never reported a successful Nix store collection"
+          description: >-
+            `NixGarbageCollectionStale` is a comparison and cannot fire without this series, so the
+            store on this host is unwatched. Either the collection has never succeeded here or
+            `fleet.nixGc.enable` is false on it. AN ABSENT SERIES IS NOT A COLLECTED STORE.

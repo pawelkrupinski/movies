@@ -3,6 +3,11 @@
   imports = [
     ./disko.nix
     ../../modules/roles/k3s-agent.nix
+
+    # See the note on the same import in hosts/monitoring-1: this belongs in
+    # modules/fleet/default.nix's `imports`, and is repeated per host only because that list could
+    # not be edited in the change that added it.
+    ../../modules/fleet/logs.nix
   ];
 
   networking.hostName = "k3s-worker-1";
@@ -39,6 +44,24 @@
   };
 
   fleet.firewall.k3sAgent = true;
+
+  # SHIP THE JOURNAL *AND* THE POD LOGS TO monitoring-1. The second half is the point on this host:
+  # containerd writes container stdout/stderr to /var/log/pods and NOT to the journal, so a shipper
+  # with only the journal source would send k3s's own units and nothing the cluster runs -- which is
+  # the whole reason this machine exists. bitcashier hit exactly that gap when its workloads moved
+  # to Kubernetes and nothing replaced the old alloc-log scrape; nothing alerted, because a stream
+  # that has stopped looks the same as one nobody has asked about.
+  #
+  # This host holds no state (see ./disko.nix) -- vector's checkpoint and buffer under /var/lib are
+  # the one exception, and both are disposable: losing them costs a re-ship, not data.
+  #
+  # See the note in hosts/mongo-1 for why the address is a literal here rather than read off
+  # monitoring-1's own declaration.
+  fleet.logs = {
+    enable = true;
+    serverAddress = "10.20.0.11";
+    kubernetesPodLogs.enable = true;
+  };
 
   sops.defaultSopsFile = ../../secrets/k3s-worker-1.yaml;
 

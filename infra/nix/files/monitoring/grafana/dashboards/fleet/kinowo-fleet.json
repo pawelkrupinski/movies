@@ -1,0 +1,1874 @@
+{
+  "uid": "kinowo-fleet",
+  "title": "Kinowo Fleet — Hetzner hosts",
+  "tags": [
+    "fleet",
+    "hetzner",
+    "kinowo"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "description": "One screen answering 'is the fleet healthy'. EVERY PANEL QUERIES THE LOCAL PROMETHEUS (uid local-prometheus, http://127.0.0.1:9090) and nothing here depends on Fly in any way, which is the whole point: it keeps working with no credential of any kind. Panels are ordered the way an incident is read -- what is broken, then which machine, then what changed. Read the text panel at the bottom for what this dashboard deliberately cannot see.",
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Is the fleet healthy?",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "node_exporter reachable",
+      "description": "up{job=\"node\"} -- whether PROMETHEUS CAN SEE THE MACHINE AT ALL, which is a weaker claim than the machine being healthy and a stronger one than everything else on this dashboard. Every other panel here is a comparison against a series from these targets, so a host that reads DOWN makes the rest of this screen meaningless for that host rather than green. Alert: TargetDown (monitoring-self.rules), 10m.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "up",
+                  "color": "green",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO DATA",
+                  "color": "red",
+                  "index": 2
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"node\"}",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "mongod",
+      "description": "node_systemd_unit_state{name=\"mongodb.service\",state=\"active\"} on mongo-1. THE FAILURE THIS PANEL EXISTS FOR IS SILENT: with mongod down the Fly-hosted web tier keeps serving its projected read model from memory and its health checks stay green, so the site looks perfectly fine while it stops updating and every worker write fails. There is no mongodb_exporter on this fleet, so this is unit state ONLY -- it cannot tell you whether the member is PRIMARY or how much oplog window is left. Alert: MongodNotRunning, 3m.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "up",
+                  "color": "green",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO DATA",
+                  "color": "red",
+                  "index": 2
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_systemd_unit_state{name=\"mongodb.service\",state=\"active\"}",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Fly WireGuard tunnel -- handshake age",
+      "description": "time() - kinowo_wireguard_latest_handshake_timestamp_seconds on mongo-1. THE SINGLE PATH BETWEEN THE RUNNING PRODUCT AND ITS DATA: the web tier and the worker are still on Fly and reach MongoDB only through this peer. WireGuard is silent by design -- `ip link` reports wg0 UP whether or not anything is on the other end -- so handshake age is the only observable there is. Under 2 minutes is normal (the peer keepalive is 25s); over 5 minutes means the path is gone and the site is quietly serving an ageing corpus. A reading of ~56 years is the never-handshaked case (the metric is 0), which is a CONFIGURATION fault, not a path one. Alerts: WireguardFlyHandshakeStale / WireguardFlyNeverHandshaked.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 120
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - kinowo_wireguard_latest_handshake_timestamp_seconds",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "k3s unit",
+      "description": "node_systemd_unit_state{name=\"k3s.service\",state=\"active\"}. NixOS names the unit k3s.service for the server and the agent alike, so both hosts appear here: monitoring-1 is the control plane and k3s-worker-1 is the agent. THIS IS NOT NODE READINESS -- there is no kube-state-metrics on this fleet, so nothing here can see conditions, pods or scheduling; a running unit whose node is NotReady looks green on this panel. Alerts: K3sServerNotRunning (critical), K3sAgentNotRunning (warning, because the worker is idle today).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "up",
+                  "color": "green",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO DATA",
+                  "color": "red",
+                  "index": 2
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_systemd_unit_state{name=\"k3s.service\",state=\"active\"}",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Failed systemd units",
+      "description": "count by (host) of node_systemd_unit_state{state=\"failed\"} == 1. A machine can be up, scraped and green on every other panel with a unit systemd has given up on -- including node_exporter itself, which is the worst shape because the thing that would report the gap is the thing that is gone. Units stay failed until `systemctl reset-failed`, so this stays non-zero after a fix until somebody clears it, which is correct. Alert: SystemdUnitFailed, 15m.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count by (host) (node_systemd_unit_state{state=\"failed\"} == 1) or (count by (host) (node_systemd_unit_state{state=\"failed\"}) * 0)",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Staged closure not activated",
+      "description": "nixos_staged_pending -- 1 when CI has put a closure on this host that it is not running. THE FLEET-WIDE 'are all hosts on the same revision' CHECK HAS ITS HOLE EXACTLY HERE: if NO host activates, all three sit on the same old closure and look perfectly consistent. This gauge is per host and answers the question that check cannot. Alert: StagedClosureNotActivated, 24h.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "no",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "YES",
+                  "color": "orange",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NOT REPORTING",
+                  "color": "red",
+                  "index": 2
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nixos_staged_pending",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Auto-apply blocked",
+      "description": "nixos_auto_apply_blocked -- 1 when a pending change would disturb a unit nobody declared restartable, so the applier declined and is waiting for a person. THIS IS THE APPLIER WORKING, not failing; it is on this screen because a blocked host queues every later merge behind it and nothing else would say so. Alert: AutoApplyBlocked, 24h.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "no",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "YES",
+                  "color": "orange",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NOT REPORTING",
+                  "color": "red",
+                  "index": 2
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nixos_auto_apply_blocked",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Reboot owed",
+      "description": "nixos_reboot_required -- 1 when the BOOT CHAIN differs from what is booted: kernel, initrd, kernel modules or systemd. NOT the naive `booted != current` test, which is true after every switch and was measured getting this wrong on seven hosts. A switch cannot bring a new kernel into use, so this host is running new userland on an old kernel until somebody reboots it. Reboot monitoring-1 LAST -- it takes the alerting down with it. Alert: RebootOwed, 7d.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "no",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "YES",
+                  "color": "orange",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NOT REPORTING",
+                  "color": "red",
+                  "index": 2
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nixos_reboot_required",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Per-host resources",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "CPU busy % (all cores)",
+      "description": "100 * (1 - idle). PER HOST, NOT PER CORE: mongo-1 and monitoring-1 are 2-core cx23s and k3s-worker-1 is an 8-core cx43, so 100% means very different amounts of work on each and the lines are not comparable in absolute terms. There is NO 'steal' series here and that is the real difference from the Fly dashboards: these are dedicated vCPUs, so the credit/steal/throttle axis that dominated the Fly view simply does not exist. Alert: CpuBusySustained > 90% for 30m -- which k3s-worker-1 is EXPECTED to trip legitimately once it has workloads.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - avg by (host) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Memory available %",
+      "description": "MemAvailable / MemTotal. MemAvailable RATHER THAN 'free', deliberately: mongo-1's WiredTiger cache is pinned to 1GB of ANONYMOUS memory, which is neither free nor reclaimable and does not show up as page cache, so 'free memory' understates the pressure badly on the host that has the least of it (4GB). A proportion rather than a floor because 400MB is a fifth of the headroom on a cx23 and a rounding error on the cx43. Alerts: MemoryAvailableLow (15%, 15m), MemoryAvailableCritical (7%, 5m).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 7
+              },
+              {
+                "color": "green",
+                "value": 15
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Load average per core (15m)",
+      "description": "node_load15 divided by the host's core count, which is what makes a 2-core and an 8-core machine readable on one axis. REMEMBER WHAT LINUX LOADAVG COUNTS: uninterruptible I/O waits as well as runnable tasks, so a machine blocked on its disk reads identically here to one short of CPU. `vmstat 1 5` separates them -- the `r` column is runnable, `b` is blocked. On mongo-1, high load with low CPU busy above usually means the volume. Alert: CpuRunQueueDeep > 2 for 20m.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_load15 / on (host) group_left () count by (host) (node_cpu_seconds_total{mode=\"idle\"})",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Filesystem used %",
+      "description": "1 - avail/size, per host and mountpoint. /nix/store is EXCLUDED because on these NixOS hosts it is a bind mount of the root filesystem and reports identical values -- without the exclusion every root filesystem appears twice and reads as two machines in trouble. tmpfs and ramfs are excluded as memory rather than disk. WATCH WHICH MOUNTPOINT: on / the cause is usually the Nix store (check the collector, below); on /var/lib/mongodb it is the data itself, which grows monotonically and cannot be collected -- that is a capacity decision to plan, not a cleanup. Alerts: FilesystemSpaceLow (15%), FilesystemSpaceCritical (7%), FilesystemWillFillWithin7Days.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 85
+              },
+              {
+                "color": "red",
+                "value": 93
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|ramfs\",mountpoint!=\"/nix/store\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|ramfs\",mountpoint!=\"/nix/store\"})",
+          "legendFormat": "{{host}} {{mountpoint}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Inodes used %",
+      "description": "THE AXIS `df -h` DOES NOT SHOW, and it is on this dashboard rather than buried because it is the one that actually bit the fleet these rules were ported from: a control-plane host reached 100% inode exhaustion with 19G of bytes still free and nothing fired -- it was found by hand. At zero inodes a machine still routes traffic and answers health checks while every process that tries to CREATE a file fails, and `nix-collect-garbage` cannot even take its own lock, so the ordinary fix stops working exactly when it is needed. The cause is accumulated NixOS generations, which is a property of NixOS rather than of that fleet. Alerts: FilesystemInodesLow (20%), FilesystemInodesCritical (8%).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 92
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - node_filesystem_files_free{fstype!~\"tmpfs|ramfs\",mountpoint!=\"/nix/store\"} / node_filesystem_files{fstype!~\"tmpfs|ramfs\",mountpoint!=\"/nix/store\"})",
+          "legendFormat": "{{host}} {{mountpoint}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "The database path",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Fly WireGuard handshake age (s)",
+      "description": "The same series as the stat at the top, over time, because the SHAPE matters more than the value: healthy is a sawtooth resetting every couple of minutes, and a tunnel that has died is a straight diagonal climbing for ever. A single spike is a re-handshake that took a moment; a ramp is the site quietly serving an ageing corpus while every health check stays green. The 300s line is where WireguardFlyHandshakeStale fires.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 27
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - kinowo_wireguard_latest_handshake_timestamp_seconds",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Age of the last successful mongodump (h)",
+      "description": "HETZNER'S SERVER BACKUPS DO NOT COVER ATTACHED VOLUMES, so the nightly dump is the only logical copy of this database that exists. Expect a sawtooth peaking just under 24h. WHAT IT PROTECTS AND WHAT IT DOES NOT: it is a copy on the SAME volume as the database, so it covers a bad migration or a dropped collection and not the loss of the volume -- off-box replication is a known gap. Alert: MongodumpStale > 36h (one full missed run plus most of a day's grace).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 27
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 36
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - kinowo_mongodump_last_success_timestamp_seconds) / 3600",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Last mongodump size",
+      "description": "A BACKUP THAT IS PRESENT BUT TRUNCATED IS WORSE THAN A MISSING ONE, because it passes every check that only asks whether a dump exists -- and the check that it fails is a restore, at the worst possible moment. A step down that is not explained by a deliberate deletion means a dump that failed part-way and still wrote a directory, or one taken against the wrong database. Alert: MongodumpShrankSharply, at half the smallest dump of the past week.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 27
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_mongodump_last_size_bytes",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Deploy state -- is this fleet still applying what CI stages?",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "What each host is running, and what is waiting for it",
+      "description": "nixos_auto_apply_info, one row per host. `state` is the applier's verdict (up_to_date / applied / blocked / undetermined), `reason` and `detail` say why a pending change has not been applied, `revision` is the commit main would give this host and `running` is the closure it actually has. THIS TABLE IS WRITTEN BY THE APPLIER ITSELF, so it says nothing when the applier is what has stopped -- and a node_exporter textfile is not a heartbeat, so its last values keep being scraped as current for ever. The panel beside it is what catches that.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 14,
+        "x": 0,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nixos_auto_apply_info",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "exported_host": true
+            },
+            "indexByName": {
+              "host": 0,
+              "state": 1,
+              "reason": 2,
+              "revision": 3,
+              "candidate": 4,
+              "detail": 5,
+              "running": 6
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Minutes since each host last reported",
+      "description": "TWO SEPARATE PUBLISHERS, AND THAT IS THE POINT. Blue-ish: the applier's own last pass (nixos_auto_apply_last_attempt_timestamp_seconds), which cannot be evidence that the applier is alive because it is written BY it. The other: fleet-auto-apply-state, a different unit on a five-minute timer, which is what still answers when the applier is the thing that died. If BOTH go stale together, suspect node_exporter's textfile collector rather than two units. Alerts: AutoApplyStalled (3h = six missed passes), AutoApplyStatePublisherStale (30m).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 10,
+        "x": 14,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 30
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - nixos_auto_apply_last_attempt_timestamp_seconds) / 60",
+          "legendFormat": "applier -- {{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "(time() - fleet_auto_apply_state_last_run_timestamp_seconds) / 60",
+          "legendFormat": "state publisher -- {{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Days since the Nix store was last collected",
+      "description": "THE UPSTREAM OF THE INODE PANEL ABOVE. By the time inode alerts fire, the collector has usually been dead for weeks -- and the repair gets harder as the disk fills, then impossible at zero inodes when nix-collect-garbage cannot take its own lock. The timer is daily with Persistent=true, so a host that was off catches up on boot rather than skipping; a line climbing past 1 means the unit is failing rather than being skipped. Alert: NixGarbageCollectionStale, 3 days.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - fleet_nix_gc_last_success_timestamp_seconds) / 86400",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "System generations retained after each collection",
+      "description": "fleet_nix_gc_system_generations. THE NUMBER BEHIND THE INODE STORY: generations are what accumulate, and each one pins a closure the collector cannot remove. A monotonic climb means the age bound is not actually deleting anything -- which is the state the ported fleet's host was in when it hit 100% inodes with 19G free. Flat or sawtoothing is healthy.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fleet_nix_gc_system_generations",
+          "legendFormat": "{{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Store paths, and paths deleted per collection",
+      "description": "The total remaining (solid) against how many the last pass removed. A collection that consistently deletes nothing while the total climbs is the failure mode worth catching here; there is no alert on either series because nobody has measured what normal looks like on this fleet yet, and a threshold invented today would be noise until it was ignored.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "fleet_nix_gc_store_paths",
+          "legendFormat": "remaining -- {{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "fleet_nix_gc_store_paths_deleted",
+          "legendFormat": "deleted last run -- {{host}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "row",
+      "title": "The monitoring stack watching itself",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "panels": []
+    },
+    {
+      "id": 27,
+      "type": "stat",
+      "title": "Monitoring processes",
+      "description": "up{} for Prometheus, Alertmanager and Grafana, all three on monitoring-1. NOTHING WATCHES THIS HOST FROM OUTSIDE -- that is the standing weakness of a single monitoring node and it is not solved anywhere in this repository. What IS done is the daily MonitoringHeartbeat, which turns 'have I seen an alert?' (unanswerable) into 'have I seen today's heartbeat?' (answerable). IF THIS PANEL IS BLANK BECAUSE THE HOST IS OFF, NOTHING WILL TELL YOU: the absence of the heartbeat in Telegram is the only signal there is.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "up",
+                  "color": "green",
+                  "index": 1
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO DATA",
+                  "color": "red",
+                  "index": 2
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=~\"prometheus|alertmanager|grafana\"}",
+          "legendFormat": "{{job}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "Prometheus rule evaluation failures /s",
+      "description": "rate(prometheus_rule_evaluation_failures_total). A RULE THAT CANNOT BE EVALUATED CANNOT FIRE, and it fails quietly -- the alert it would have raised simply never appears, which is indistinguishable from a quiet fleet. `rule_group` in the series names the file. Alert: PrometheusRuleEvaluationFailing, 15m.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(prometheus_rule_evaluation_failures_total[10m])",
+          "legendFormat": "{{rule_group}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "Alertmanager notification failures /s",
+      "description": "rate(alertmanager_notifications_failed_total) by integration. Alerts being raised and not arriving: a revoked @kinowobot token, the bot removed from the chat, or a message Telegram rejected -- alertmanager.yaml sets parse_mode: \"\" precisely to rule the last of those out, so if it reappears, check whether that was changed. NOTE THE ORDER OF EVENTS: the alert about this has to travel the path it is reporting as broken, so it may not arrive either. The daily heartbeat is what covers that case. Alert: AlertmanagerNotificationsFailing, 15m.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(alertmanager_notifications_failed_total[15m])",
+          "legendFormat": "{{integration}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "text",
+      "title": "What this dashboard cannot tell you",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Read this before concluding the fleet is fine because everything above is green.**\n\n* **Nothing here watches the product.** The web tier (`kinowo`) and the scraping worker\n  (`kinowo-worker`) are still on Fly. Their metrics live behind the `fly-prometheus`\n  datasource, whose read-only tokens were revoked and cannot be reissued, so the dashboards\n  in the **Fly (no data without a token)** folder are quarantined there rather than mixed\n  into this one. A perfectly green fleet screen is compatible with the site being down.\n* **mongod is watched as a UNIT, not as a database.** There is no `mongodb_exporter` here,\n  so nothing can say whether the single replica-set member is **PRIMARY** (a member that has\n  stepped down accepts reads, refuses every write, and keeps its unit `active` throughout),\n  nor how much **oplog window** is left -- and the application's change streams depend on\n  that window. Both need an exporter and a monitoring user.\n* **k3s is watched as a UNIT, not as a cluster.** There is no `kube-state-metrics`, so node\n  conditions, pods, deployments and scheduling are entirely invisible. A running `k3s.service`\n  whose node is `NotReady` reads green here.\n* **This host cannot watch itself while it is off.** Prometheus, Alertmanager and Grafana all\n  run on monitoring-1. If it stops, this dashboard stops with it and no alert fires. The daily\n  Telegram heartbeat is the only mechanism that turns that silence into a signal, and its\n  ABSENCE is what you are watching for -- so a quiet channel is not the same as a quiet fleet."
+      }
+    }
+  ]
+}

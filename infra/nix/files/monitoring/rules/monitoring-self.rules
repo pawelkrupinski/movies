@@ -11,6 +11,15 @@
 # is the only rule that turns that into a positive signal -- it moves the question from "have I
 # seen an alert?" (unanswerable) to "have I seen today's heartbeat?" (answerable). A second
 # monitoring endpoint elsewhere would be the real fix and does not exist.
+#
+# POST-MIGRATION AUDIT (2026-08-29): EVERY RULE HERE KEPT. `FlyFederationDown` needs a word, because
+# it is the one rule in this directory that reads a Fly-shaped series and it was checked rather than
+# waved through: its expression is `up{job="fly"} == 0`, and when `fleet.prometheus.scrapeFly` is
+# false that job is not configured, so the series is ABSENT and the rule cannot fire. It is
+# correct-by-absence rather than dead -- it costs nothing while the Fly scrape is off and starts
+# working the moment somebody turns it on. That is exactly the behaviour a capability that is
+# switched off should have, and it is why the rule stays rather than being deleted alongside the
+# Fly panels that were quarantined.
 groups:
   - name: monitoring-self
     rules:
@@ -66,7 +75,7 @@ groups:
           description: >-
             THIS IS THE EXPERIMENTAL HALF OF THE FLY PATH and its failure does not mean the Fly
             apps are unwatched. The verified path is Grafana's `fly-prometheus` DATASOURCE, which
-            all 24 ported alert rules query and which does not go through this job at all. First
+            all 20 ported alert rules query and which does not go through this job at all. First
             check whether the endpoint serves federation at all -- if it does not, this job was
             never going to work and both it and this rule should be removed together rather than
             left red. If it does, the usual causes are an expired read token or the auth header
@@ -114,7 +123,7 @@ groups:
             either. The heartbeat above is what covers that case.
 
       # GRAFANA'S OWN ALERT EVALUATION IS NOT ALERTED ON HERE, and that is a gap rather than a
-      # decision that it does not matter -- Grafana evaluates all 24 of the ported kinowo rules, so
+      # decision that it does not matter -- Grafana evaluates all 20 of the ported kinowo rules, so
       # a Grafana that is up and failing to evaluate is a real monitoring outage. It is left out
       # because the exact name of Grafana's evaluation-failure series varies by version and nothing
       # here has checked it against the version in nixpkgs, and a rule written against a metric

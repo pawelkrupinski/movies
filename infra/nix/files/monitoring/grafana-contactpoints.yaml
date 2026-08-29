@@ -60,12 +60,29 @@ policies:
   # cannot be missing.
   - orgId: 1
     receiver: Telegram
-    # Grouped by app as well as alertname, carried from the Fly policy: a multi-rule incident on
-    # one machine (credit exhausted AND p95 high, which is the same event twice) arrives as one
+    # GROUPED BY `app` AS WELL AS `alertname`, carried from the Fly policy: a multi-rule incident on
+    # one Fly app (credit exhausted AND p95 high, which is the same event twice) arrives as one
     # message rather than a burst.
+    #
+    # `host` IS ADDED BESIDE IT AT THE POST-MIGRATION AUDIT, AND IT IS DEAD WEIGHT TODAY -- said
+    # plainly so nobody spends time working out what it does. THIS POLICY ROUTES ONLY
+    # GRAFANA-MANAGED RULES, and every one of those is a Fly rule carrying `app` and no `host`
+    # (alerting/alert-rules.yaml). The rules that carry `host` are Prometheus's, in
+    # nix/files/monitoring/rules/, and they are routed by ALERTMANAGER's own config, which never
+    # consults this file -- alertmanager.yaml groups them by `host` first, for exactly the reason
+    # given here.
+    #
+    # IT IS ADDED ANYWAY BECAUSE THE COST IS ZERO AND THE FAILURE IT PREVENTS IS QUIET. An alert
+    # with no `host` label groups on the empty value, so nothing changes for the twenty Fly rules.
+    # But the day somebody writes a Grafana rule against `local-prometheus` -- which is now the
+    # DEFAULT datasource, so that is the likely direction -- it will carry `host` and no `app`, and
+    # without this line every such alert from all three machines would collapse into one group and
+    # arrive as a single message that names one of them. That is the kind of grouping bug found
+    # during the incident it spoiled.
     group_by:
       - alertname
       - app
+      - host
     group_wait: 30s
     group_interval: 5m
     # Re-nag every four hours, matching the Alertmanager route in alertmanager.yaml so the fleet's

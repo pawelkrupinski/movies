@@ -1,0 +1,104 @@
+---
+# K3S, WATCHED FROM OUTSIDE THE CLUSTER BECAUSE THAT IS THE ONLY VANTAGE POINT THIS FLEET HAS.
+#
+# ------------------------------------------------------------------------------------------------
+# WHAT IS DELIBERATELY NOT IN THIS FILE, AND IT IS MOST OF WHAT YOU WOULD EXPECT
+# ------------------------------------------------------------------------------------------------
+#
+# THERE IS NO kube-state-metrics ON THIS FLEET, and no metrics-server or kubelet scrape either. So
+# nothing here can say:
+#
+#   * whether a node is `Ready` (that is `kube_node_status_condition`),
+#   * whether a Deployment has its replicas, or a Pod is CrashLoopBackOff,
+#   * anything at all about scheduling, evictions or resource requests.
+#
+# Those are the rules somebody will want first, and writing them anyway -- against metric names
+# nothing on this fleet produces -- would be strictly worse than leaving them out. A rule whose
+# series never exists does not error and does not fire: it sits in the rule list looking like
+# coverage, and the first time it is relied on is the first time anyone discovers it never could
+# have worked. The gap is named here instead, which is the honest version of the same information.
+#
+# THE FIX, WHEN IT IS WORTH IT: deploy kube-state-metrics into the cluster, expose it on the
+# private network, add it to `fleet.prometheus.nodeTargets` (or a job of its own), and write the
+# node-condition and workload rules against real series. That is a change to the cluster, not to
+# this file, and it is not worth doing while k3s-worker-1 runs nothing.
+#
+# ------------------------------------------------------------------------------------------------
+# WHAT CAN BE SAID FROM HERE, AND IT IS NOT NOTHING
+# ------------------------------------------------------------------------------------------------
+#
+# node_exporter's systemd collector runs on both machines and reports `k3s.service` -- NixOS names
+# the unit `k3s.service` for the server and the agent alike, which is why the two rules below are
+# separated by the `role` scrape label rather than by unit name. A dead k3s unit is the single
+# cause behind almost every "node NotReady" this fleet could plausibly have, so watching the unit
+# recovers most of the value of the node-condition rule that cannot be written.
+#
+# THE SEVERITIES ARE DELIBERATELY LOPSIDED, and that is a statement about what this cluster is FOR
+# today: the control plane on monitoring-1 is critical because losing it means no cluster at all
+# and no way to schedule the recovery; the agent on k3s-worker-1 is a warning because it currently
+# runs NOTHING -- k3s-worker-1 is idle capacity bought ahead of the workloads that will move onto
+# it. WHEN REAL WORK RUNS THERE, THE AGENT RULE BECOMES CRITICAL AND THIS PARAGRAPH IS WRONG.
+groups:
+  - name: k3s
+    rules:
+      - alert: K3sServerNotRunning
+        # SELECTED BY `role`, NOT BY HOSTNAME. `role="monitoring"` is a target label from the
+        # `node` scrape job (roles/prometheus.nix generates it from `fleet.prometheus.nodeTargets`),
+        # so this rule follows the control plane if it is ever rebuilt on a different machine.
+        # A hostname literal would keep pointing at the old box and go quiet.
+        expr: node_systemd_unit_state{name="k3s.service",state="active",role="monitoring"} == 0
+        # FIVE MINUTES. k3s restarts itself on a config change and takes tens of seconds to come
+        # back; five minutes is past that and still names a control plane that is genuinely gone
+        # within the hour.
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The k3s control plane is not running on {{ $labels.host }}"
+          description: >-
+            No API server: nothing can be scheduled, `kubectl` does not answer, and the agent on
+            k3s-worker-1 will go NotReady on its own once its lease expires. `journalctl -u k3s -n
+            200`. REMEMBER WHERE THIS PROCESS SITS IN THE QUEUE: k3s runs on the monitoring host
+            with `CPUWeight = 100` against Prometheus's 400 and Alertmanager's 300
+            (roles/k3s-server.nix says so on its own unit, roles/prometheus.nix on the others), so
+            a starved monitoring-1 sheds k3s FIRST, by design. If this fires alongside
+            `CpuBusySustained` or a memory alert on the same host, the CPU weighting worked and k3s
+            is the symptom rather than the cause.
+
+      - alert: K3sAgentNotRunning
+        expr: node_systemd_unit_state{name="k3s.service",state="active",role="k3s-worker"} == 0
+        # TEN MINUTES, longer than the server's, because nothing is waiting on this one today.
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The k3s agent is not running on {{ $labels.host }}"
+          description: >-
+            A WARNING ONLY BECAUSE THIS NODE IS IDLE. k3s-worker-1 is an 8-core cx43 bought ahead
+            of the workloads that will move onto it, and it currently runs none -- so an agent that
+            is down costs nothing today. The moment anything real is scheduled there, raise this to
+            critical and shorten the `for:`; leaving a warning on a node that serves traffic is how
+            an outage gets found by a user. Check that the control plane is up first (see
+            `K3sServerNotRunning`): an agent whose server is gone stops for a reason that is not
+            its own.
+
+      - alert: K3sUnitStateAbsent
+        # ONE `absent()` FOR BOTH, rather than one per host: the two rules above are comparisons
+        # and neither can fire without this series, so its disappearance is a single fact about
+        # this fleet's ability to see k3s at all. Which host lost it is the first thing
+        # `TargetDown` in monitoring-self.rules will already have said, if the cause is a host
+        # dropping out of scrape.
+        expr: absent(node_systemd_unit_state{name="k3s.service"})
+        # THIRTY MINUTES, matching the other `absent()` companions in this directory. Long enough
+        # to cover a reboot of both machines; a rule about a rule does not need to be quick.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting the state of any k3s unit"
+          description: >-
+            Both k3s alerts are comparisons and cannot fire without this series, so the cluster is
+            currently unwatched by anything at all -- and there is no kube-state-metrics on this
+            fleet to notice from the inside either (see this file's header). The likely causes are
+            node_exporter's systemd collector being off, or both k3s hosts having dropped out of
+            scrape. IT DOES NOT MEAN K3S IS RUNNING.

@@ -27,8 +27,19 @@ global:
   resolve_timeout: 15m
 
 route:
-  # GROUPED BY HOST FIRST. A machine in trouble usually trips several rules at once -- disk, inodes
-  # and a failed unit are one incident and should arrive as one message, not three.
+  # GROUPED BY HOST FIRST, AND THAT ORDERING IS THE WHOLE POINT ON A FLEET THIS SHAPE. A machine in
+  # trouble trips several rules at once -- a host that fills its disk produces
+  # FilesystemSpaceCritical, FilesystemInodesLow, SystemdUnitFailed and probably MongodNotRunning,
+  # which is ONE incident and should arrive as one message. On a Fly app the equivalent grouping key
+  # was `app`; here the unit of trouble is a machine, so it is `host`.
+  #
+  # WHAT IS NOT IN THE GROUPING KEY, deliberately: `severity`. Grouping by it would split one
+  # machine's incident into a critical message and a warning message, which is exactly the split
+  # that makes somebody chase two problems.
+  #
+  # ALERTS WITH NO `host` LABEL still group, on the empty value -- `absent()` companions and the
+  # heartbeat have no host, and they land together in one "fleet-wide" group, which is the right
+  # place for them: they are statements about the monitoring, not about a machine.
   group_by: ["host", "alertname"]
   group_wait: 30s
   group_interval: 5m
@@ -54,6 +65,43 @@ route:
       receiver: telegram-heartbeat
       group_wait: 0s
       repeat_interval: 24h
+
+    # CRITICALS DO NOT WAIT FOR THEIR FRIENDS. The root `group_wait` of 30s exists to let a
+    # multi-rule incident coalesce into one message; on a critical -- mongod down, a read-only
+    # filesystem, the WireGuard tunnel gone -- thirty seconds of tidiness is not worth thirty
+    # seconds of delay. `group_wait: 10s` still catches the common case where two criticals fire in
+    # the same evaluation cycle (`evaluation_interval` is 15s) without holding the first one back.
+    #
+    # STILL GROUPED BY HOST, and it inherits the root `group_by` rather than restating it: a route
+    # that omits `group_by` uses its parent's, and restating it here would be a second copy to keep
+    # in step.
+    #
+    # THE ONE-HOUR RE-NAG IS THE OTHER HALF. Four hours is a reasonable rhythm for "the disk is
+    # getting full"; for "the database is down" it means an alert can be missed and not repeat
+    # until after lunch. This fleet has one operator and no on-call rotation, so repetition is the
+    # only escalation mechanism there is.
+    - matchers:
+        - severity = "critical"
+      receiver: telegram
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # WARNINGS NAG MORE SLOWLY THAN THE ROOT DEFAULT. Almost everything added at the post-migration
+    # audit is a warning that describes a SLOW condition -- a disk filling over days, a reboot owed
+    # for a week, an auto-apply verdict waiting for a decision. Re-sending those every four hours
+    # is how a channel stops being read, and a channel that is not read is the failure mode this
+    # whole stack is trying to avoid. Twelve hours is roughly "morning and evening", which matches
+    # how quickly any of them actually need acting on.
+    #
+    # A LONGER `group_interval` TOO (15m against the root's 5m): when a warning is already firing
+    # for a host and a second one joins it, this is how long before the group is re-sent with the
+    # new member. Slower is fine for warnings and keeps a host that is degrading in several small
+    # ways from producing a message every five minutes.
+    - matchers:
+        - severity = "warning"
+      receiver: telegram
+      group_interval: 15m
+      repeat_interval: 12h
 
 receivers:
   - name: telegram
@@ -84,5 +132,74 @@ receivers:
           Monitoring heartbeat: Prometheus, Alertmanager and the Telegram path are all working.
           Its ABSENCE for more than a day is the alarm.
 
-inhibit_rules: []
+# ------------------------------------------------------------------------------------------------
+# INHIBITIONS. WHAT NOT TO SAY WHEN A BIGGER THING IS ALREADY BEING SAID.
+# ------------------------------------------------------------------------------------------------
+#
+# WHY A THREE-HOST FLEET NEEDS THESE AT ALL, when the list of alerts is short: because the alerts
+# are highly correlated BY HOST. One machine going away takes its node_exporter with it, and every
+# comparison rule reading that machine's series stops being able to fire -- but the `absent()`
+# companions this directory is full of DO fire, all of them, at once. A host that reboots for two
+# minutes can produce TargetDown plus four "nothing is publishing X" warnings, which is five
+# messages describing one event, and the four that are consequences bury the one that is the cause.
+#
+# HOW TO READ AN `equal:` CLAUSE, because getting it backwards is the usual mistake: the source and
+# target alerts must AGREE on every label named there. `equal: ["host"]` means an alert is silenced
+# only by a source firing on THE SAME host -- mongo-1 being down never silences anything about
+# monitoring-1.
+#
+# AND THE STANDING RISK IN ALL OF THIS: an inhibition can hide a real, unrelated alert that happens
+# to share a host with a firing critical. That is the trade being made deliberately -- on this fleet
+# the correlated case is far commoner than the coincidental one, and a message that arrives buried
+# in four others has already failed at being read.
+inhibit_rules:
+  # A HOST THAT CANNOT BE SCRAPED SILENCES EVERY OTHER ALERT ABOUT IT. `TargetDown` already says the
+  # machine is unreachable; the warnings that follow are all forms of "and therefore I cannot see
+  # anything about it", which is not news.
+  #
+  # NOTE WHAT THIS DOES NOT SILENCE: another host's alerts, and this fleet's `absent()` companions
+  # that carry no `host` label at all (they are fleet-wide statements, and a fleet-wide "nothing is
+  # publishing filesystem metrics" during a single host's outage is genuinely different news).
+  #
+  # `job = "node"` ON THE SOURCE SIDE IS LOAD-BEARING, TWICE OVER. `TargetDown` fires on `up == 0`
+  # for ANY job, including this stack's own prometheus/alertmanager/grafana targets -- and those
+  # carry no `host` label at all. Without this matcher, Grafana being down would count as a source
+  # whose `host` is empty, which would silence every OTHER host-less alert on this fleet: precisely
+  # the `absent()` companions that say "nothing is watching X any more". Restricting the source to
+  # the `node` job means only a MACHINE being unreachable inhibits anything, and a machine always
+  # has a real hostname to match on.
+  #
+  # `alertname != "TargetDown"` ON THE TARGET SIDE follows Alertmanager's own recommendation that
+  # source and target matchers should never overlap. Two hosts down would otherwise be a rule whose
+  # source and target both match, which Alertmanager handles by refusing to inhibit -- correct, but
+  # by accident rather than by design, and it is one upstream behaviour change away from silencing
+  # half an outage.
+  - source_matchers:
+      - alertname = "TargetDown"
+      - job = "node"
+    target_matchers:
+      - severity =~ "warning|critical"
+      - alertname != "TargetDown"
+    equal: ["host"]
+
+  # A CRITICAL SILENCES THE WARNING OF THE SAME NAME ON THE SAME HOST. Several rules in this
+  # directory come in warning/critical pairs over one series -- FilesystemSpaceLow and
+  # FilesystemSpaceCritical, the two memory rules, the two inode rules -- and when the critical is
+  # firing the warning is firing too, by construction. Two messages, one condition, and the warning
+  # is the less useful of them.
+  #
+  # `mountpoint` IS IN THE `equal:` LIST FOR THE FILESYSTEM PAIRS SPECIFICALLY. Without it a
+  # critical on /var/lib/mongodb would silence a warning on / of the same host, which is a different
+  # disk and a different problem. Alerts with no `mountpoint` label match each other on the empty
+  # value, so the memory pair still pairs up correctly.
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ["host", "mountpoint"]
+
+# NO MUTE INTERVALS. There is no maintenance window on this fleet -- deploys are continuous and
+# reboots are occasional and by hand -- so a time-of-day mute would only ever suppress a real alert
+# that happened to arrive at night. Silences set by hand in Alertmanager during a known change are
+# the right tool for that, and they expire on their own.
 mute_time_intervals: []
