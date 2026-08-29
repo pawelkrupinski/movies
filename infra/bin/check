@@ -45,6 +45,35 @@ else
   failed=1
 fi
 
+step "python + plist syntax"
+# THE DASHBOARD IS NOT COVERED BY ANY OTHER CHECK HERE -- it is plain Python outside the flake, so
+# `nix eval` never looks at it and a syntax error would only surface when launchd failed to start
+# it, which looks like a crash loop rather than a typo.
+#
+# The plist check earns its place separately: XML FORBIDS A DOUBLE HYPHEN INSIDE A COMMENT, and the
+# first version of that file used them as dashes in prose. launchctl rejects the whole file as
+# malformed, so the agent simply never runs -- and nothing else in this repository would have said
+# so.
+syntax_ok=1
+if [ -f version-dashboard/app.py ]; then
+  if python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' version-dashboard/app.py; then
+    echo "  ok  version-dashboard/app.py"
+  else
+    echo "  FAILED version-dashboard/app.py"
+    syntax_ok=0
+  fi
+fi
+for plist in version-dashboard/*.plist; do
+  [ -e "$plist" ] || continue
+  if python3 -c 'import plistlib,sys; plistlib.load(open(sys.argv[1],"rb"))' "$plist"; then
+    echo "  ok  $plist"
+  else
+    echo "  FAILED $plist (XML forbids -- inside a comment; that is the usual cause)"
+    syntax_ok=0
+  fi
+done
+((syntax_ok)) || failed=1
+
 for host in "${hosts[@]}"; do
   step "nix eval $host"
   if out="$(nix "${nix_flags[@]}" eval ".#nixosConfigurations.$host.config.system.build.toplevel.drvPath" 2>&1)"; then

@@ -2,16 +2,19 @@
 <!--
   Keeps the NixOS fleet dashboard running on http://127.0.0.1:8788/nixos.
 
-  MODELLED ON ~/bitcashier/version-dashboard/com.kinowo.version-dashboard.plist, with one
-  difference that matters: the PORT. That dashboard holds 8787 on this workstation, and two agents
-  racing for one port means whichever loses exits and launchd retries it for ever -- quietly, since
-  a bind failure looks like a crash. Different estate, different port.
+  Modelled on ~/bitcashier/version-dashboard/com.kinowo.version-dashboard.plist, with one
+  difference that matters: the PORT. That dashboard already holds 8787 on this workstation, and two
+  agents racing for one port means whichever loses exits and launchd retries it for ever, quietly,
+  because a bind failure looks exactly like a crash. Different estate, different port.
 
-  PATH IS SET EXPLICITLY because launchd does not read a login shell's profile. app.py shells out to
-  `nix` (for the flake roster), `git` (for "behind main") and `ssh` (to reach the fleet's Prometheus,
+  PATH IS SET EXPLICITLY because launchd does not read a login shell profile. app.py shells out to
+  `nix` (the flake roster), `git` (how far behind main) and `ssh` (to reach the fleet Prometheus,
   which binds a private address). Without /nix/var/nix/profiles/default/bin on PATH the roster query
-  fails and every row renders as "not reporting" -- a page that looks like a fleet-wide outage but
-  is really a missing binary.
+  fails and every row renders as "not reporting": a page that looks like a fleet-wide outage but is
+  really a missing binary.
+
+  NOTE ON THIS COMMENT: XML forbids a double hyphen inside a comment, so none appears here. An
+  earlier version used them as dashes and launchctl rejected the whole file as malformed.
 
   Install:
     cp infra/version-dashboard/com.kinowo.nixos-dashboard.plist ~/Library/LaunchAgents/
@@ -30,7 +33,7 @@
     <string>/Users/pawel/projects/movies/infra/version-dashboard/app.py</string>
   </array>
 
-  <!-- Runs from the dashboard's own directory; app.py resolves the flake as its parent, so a
+  <!-- Runs from the dashboard own directory; app.py resolves the flake as its parent, so a
        different cwd would make `nix eval` run against whatever tree launchd happened to start in. -->
   <key>WorkingDirectory</key>
   <string>/Users/pawel/projects/movies/infra/version-dashboard</string>
@@ -45,7 +48,7 @@
   <true/>
 
   <!-- The process is meant to be up whenever the laptop is. It holds no state, so restarting it
-       costs one cache rebuild. -->
+       costs exactly one cache rebuild. -->
   <key>KeepAlive</key>
   <true/>
 
