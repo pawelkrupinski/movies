@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import services.MongoConnection
 import services.movies.MongoMovieRepository
-import services.tasks.{EnqueueResult, EnrichTaskKeys, MongoTaskQueue, TaskType}
+import services.tasks.MongoTaskQueue
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -41,18 +41,8 @@ object CountryForceResolve {
 
     val rows = repo.findAll()
     println(s"${country.displayName} ($dbName): ${rows.size} rows · enqueuing force ResolveTmdb for each…")
-    var added = 0
-    var dup   = 0
-    rows.foreach { r =>
-      queue.enqueue(
-        TaskType.ResolveTmdb,
-        EnrichTaskKeys.resolveTmdbDedup(r.title, r.year),
-        EnrichTaskKeys.resolveTmdbPayload(r.title, r.year, force = true)) match {
-        case EnqueueResult.Added => added += 1
-        case _                   => dup += 1
-      }
-    }
-    println(s"done: $added enqueued, $dup already queued (dedup). The $dbName worker will drain them in ${country.language.toLanguageTag}.")
+    val counts = ForceResolveEnqueue.all(queue, rows)
+    println(s"done: ${counts.describe}. The $dbName worker will drain them in ${country.language.toLanguageTag}.")
     conn.close()
     sys.exit(0)
   }
