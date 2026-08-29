@@ -165,5 +165,135 @@ class Escaping(unittest.TestCase):
         self.assertIn("a&#x27;b", html_text)
 
 
+class BulkButton(unittest.TestCase):
+    """The fleet-wide "Bring all to latest… (N)" button."""
+
+    def test_no_button_when_nothing_is_staged_anywhere(self):
+        # The id also appears in the SCRIPT, which always ships; it is the BUTTON that must not.
+        self.assertNotIn("id=fleetbulkbtn", page(machine(), machine(name="monitoring-1")))
+
+    def test_the_count_is_the_number_of_machines_with_something_staged(self):
+        html_text = page(machine(name="mongo-1", actionable=True),
+                         machine(name="monitoring-1", actionable=True),
+                         machine(name="k3s-worker-1"))
+        self.assertIn("Bring all to latest&hellip; (2)</button>", html_text)
+
+    def test_the_count_can_never_disagree_with_the_buttons_below_it(self):
+        # BOTH READ THE SAME `actionable` FLAG. A second, independently-derived count is exactly
+        # how the header comes to promise a fleet needs three switches while the table offers two.
+        rows = [machine(name=f"h{i}", actionable=i % 2 == 0) for i in range(6)]
+        html_text = page(*rows)
+        self.assertIn("Bring all to latest&hellip; (3)</button>", html_text)
+        self.assertEqual(html_text.count("Bring to latest&hellip;</button>"), 3)
+
+    def test_the_bulk_run_has_a_console_of_its_own(self):
+        html_text = page(machine(actionable=True))
+        self.assertIn("<details id=fleetbulkcons", html_text)
+
+
+class PerMachineButton(unittest.TestCase):
+    def test_it_is_named_the_same_as_on_the_sibling_dashboard(self):
+        html_text = page(machine(actionable=True))
+        self.assertIn("Bring to latest&hellip;</button>", html_text)
+        # The words survive in the SECOND press's confirm() dialog, which is the reference's
+        # wording too; it is the BUTTON that must not still be called that.
+        self.assertNotIn(">Activate the staged closure", html_text)
+
+    def test_the_cell_carries_what_the_bulk_run_selects_on(self):
+        # `bringAllToLatest` picks its machines out of the DOM by these attributes; a row missing
+        # one is a machine the bulk run silently skips.
+        html_text = page(machine(actionable=True, public="1.2.3.4", env="prod"))
+        self.assertIn("data-machine='mongo-1'", html_text)
+        self.assertIn("data-address='1.2.3.4'", html_text)
+        self.assertIn("data-env='prod'", html_text)
+
+    def test_the_production_database_is_still_marked_dangerous(self):
+        html_text = page(machine(name="mongo-1", role="mongo", actionable=True))
+        self.assertIn("data-danger='1'", html_text)
+        self.assertIn("production database", html_text)
+
+    def test_an_ordinary_host_is_not(self):
+        self.assertIn("data-danger=''", page(machine(role="k3s-worker", actionable=True)))
+
+
+class OneJobPerMachine(unittest.TestCase):
+    """The concurrency rule the bulk run depends on: per machine, not fleet-wide.
+
+    A fleet-wide slot makes "bring all to latest" strictly serial, which is the one thing the bulk
+    button exists not to be."""
+
+    def setUp(self):
+        self.started = []
+        app._apply_jobs.clear()
+        app._apply_seq[0] = 0
+        self._worker = app._apply_worker
+        app._apply_worker = lambda *a, **k: self.started.append(a[0])
+        app._cache["data"] = {"rows": [
+            machine(name="mongo-1", role="mongo", public="1.1.1.1", actionable=True),
+            machine(name="monitoring-1", role="monitoring", public="2.2.2.2", actionable=True),
+        ]}
+
+    def tearDown(self):
+        app._apply_worker = self._worker
+        app._apply_jobs.clear()
+        app._cache["data"] = None
+
+    def test_two_machines_can_be_checked_at_the_same_time(self):
+        first, code_a = app.handle_fleet_apply({"machine": "mongo-1", "phase": "check"})
+        second, code_b = app.handle_fleet_apply({"machine": "monitoring-1", "phase": "check"})
+        self.assertEqual((code_a, code_b), (200, 200))
+        self.assertNotEqual(first["job"], second["job"])
+
+    def test_the_same_machine_cannot_be_checked_twice_at_once(self):
+        app.handle_fleet_apply({"machine": "mongo-1", "phase": "check"})
+        payload, code = app.handle_fleet_apply({"machine": "mongo-1", "phase": "check"})
+        self.assertEqual(code, 409)
+        self.assertIn("already running against mongo-1", payload["error"])
+
+    def test_a_finished_job_frees_its_machine(self):
+        first, _ = app.handle_fleet_apply({"machine": "mongo-1", "phase": "check"})
+        app._apply_jobs[first["job"]]["done"] = True
+        _, code = app.handle_fleet_apply({"machine": "mongo-1", "phase": "check"})
+        self.assertEqual(code, 200)
+
+    def test_a_bulk_run_still_cannot_switch_the_database_without_the_typed_name(self):
+        # THE GUARD THE BULK RUN MUST NOT BE A WAY AROUND. It posts the same endpoint as the single
+        # button, so the server-side check is what makes collecting the confirmation up front a
+        # courtesy rather than the only thing standing there.
+        closure = "/nix/store/" + "a" * 32 + "-nixos-system-mongo-1"
+        started, _ = app.handle_fleet_apply({"machine": "mongo-1", "phase": "check"})
+        app._apply_jobs[started["job"]].update(done=True, can_switch=closure)
+        payload, code = app.handle_fleet_apply(
+            {"machine": "mongo-1", "phase": "switch", "closure": closure})
+        self.assertEqual(code, 400)
+        self.assertIn("typed back as confirmation", payload["error"])
+        _, ok = app.handle_fleet_apply({"machine": "mongo-1", "phase": "switch",
+                                        "closure": closure, "confirm": "mongo-1"})
+        self.assertEqual(ok, 200)
+
+    def test_an_ordinary_machine_needs_no_typed_name(self):
+        closure = "/nix/store/" + "b" * 32 + "-nixos-system-monitoring-1"
+        started, _ = app.handle_fleet_apply({"machine": "monitoring-1", "phase": "check"})
+        app._apply_jobs[started["job"]].update(done=True, can_switch=closure)
+        _, code = app.handle_fleet_apply({"machine": "monitoring-1", "phase": "switch",
+                                          "closure": closure})
+        self.assertEqual(code, 200)
+
+
+class OneRowBuilder(unittest.TestCase):
+    """/fleet-apply/machine splices a row into a live table, so it must build it the same way."""
+
+    def test_the_endpoint_and_the_page_render_the_same_markup(self):
+        row = machine(actionable=True)
+        self.assertIn(app.machine_rows(row), page(row))
+
+    def test_an_unknown_machine_is_an_error_not_an_empty_row(self):
+        app._cache["data"] = {"rows": []}
+        try:
+            self.assertIn("error", app.fleet_machine_reading("nope"))
+        finally:
+            app._cache["data"] = None
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

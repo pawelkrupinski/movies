@@ -593,17 +593,20 @@ exit "$rc"
 _apply_jobs = {}
 _apply_lock = threading.Lock()
 _apply_seq = [0]
-# THE FLEET-WIDE SLOT: the id of the one job allowed to be running, or None.
+# ONE JOB PER MACHINE, which is the reference's rule and is now this one's too.
 #
-# ONE AT A TIME ACROSS THE WHOLE FLEET, which is stricter than the reference's per-machine rule,
-# and deliberately so. Two switches on ONE host would race `nix-env --set` on the same profile and
-# leave it pointing at whichever finished last, which is the unrecoverable-looking version of this
-# and the reason a lock has to exist at all. But this fleet is three hosts that depend on each
-# other -- monitoring-1 runs the k3s server that k3s-worker-1 joins, and mongo-1 is the database
-# both the worker pod and the Fly web tier talk to -- so two simultaneous switches on DIFFERENT
-# hosts still means an operator reading one console while something they cannot see restarts the
-# thing it depends on. A three-host fleet loses nothing by being serial.
-_apply_active = [None]
+# THE THING THAT MUST NOT HAPPEN IS TWO SWITCHES ON ONE HOST: they would race `nix-env --set` on
+# the same profile and leave it pointing at whichever finished last. That is a per-machine hazard
+# and a per-machine guard answers it exactly.
+#
+# It USED to be one job fleet-wide, argued from these three hosts depending on each other --
+# monitoring-1 runs the k3s server k3s-worker-1 joins, mongo-1 is the database both the worker pod
+# and the Fly web tier talk to. That argument was for a person clicking one console at a time; it
+# is not one a bulk run can honour, because a fleet-wide slot makes "bring all to latest" strictly
+# serial and the whole point of the bulk button is that the browser drives the same endpoints
+# several at a time. The dependency risk it was guarding against is real and is now handled where
+# it belongs: the bulk run STOPS TAKING NEW MACHINES the moment any check or switch fails, so a
+# host coming back wrong is never followed by another host being disturbed on top of it.
 
 
 def needs_confirmation(row):
@@ -651,7 +654,6 @@ def _apply_worker(job_id, argv, script, timeout):
         emit(f"!! could not start ssh: {type(exc).__name__}: {exc}")
         with _apply_lock:
             job["done"], job["exit"] = True, -1
-            _apply_active[0] = None
         return
 
     # A TIMER RATHER THAN subprocess.run(timeout=...), because the output is being read line by
@@ -690,55 +692,12 @@ def _apply_worker(job_id, argv, script, timeout):
         killer.cancel()
 
     with _apply_lock:
+        # MARKED DONE HERE AND NOWHERE ELSE, on every path out of the run rather than the happy one
+        # only. `done` is what releases this machine's slot, so a job left un-marked the first time
+        # ssh dies oddly is a machine no button works on again until the process is restarted --
+        # with nothing on screen explaining why.
         job["exit"] = proc.returncode
         job["done"] = True
-        result = job.get("result")
-        # RELEASED HERE AND NOWHERE ELSE, inside the same `finally`-shaped path that marks the job
-        # done. A slot released on a happy path only is a slot that stays taken for ever the first
-        # time ssh dies oddly, and then no button on the page works again until the process is
-        # restarted -- with nothing on screen explaining why.
-        _apply_active[0] = None
-
-    if result == "DONE":
-        threading.Thread(target=_rebuild_when_scraped,
-                         args=(job.get("private"), job.get("closure")), daemon=True).start()
-
-
-def _rebuild_when_scraped(address, closure, budget=240.0, step=15.0):
-    """Rebuild the page once Prometheus actually reports `closure` on `address`.
-
-    REBUILDING THE INSTANT THE SWITCH FINISHES REBUILDS IT WRONG. This page is rendered from
-    Prometheus, which scrapes on its own cadence, and the metric itself is written by the host's
-    activation script -- so the moment a switch completes is precisely the moment the metrics still
-    describe the closure that has just been replaced. An immediate rebuild would race the scrape,
-    lose, and then sit there for a full cache period being confidently out of date about the one
-    row the operator is watching.
-
-    So wait for something exact -- this address reporting this closure -- rather than guessing at
-    how long a scrape takes. It polls Prometheus directly rather than calling build(), because
-    build() also runs the `nix eval` roster query and nothing a switch does can change the roster.
-
-    Bounded, and it rebuilds either way when the budget runs out: a switch whose metric never
-    arrives is itself the most interesting thing on the page -- a host that activated something and
-    then stopped reporting -- and leaving the screen showing what it said beforehand hides exactly
-    that."""
-    want = (closure or "").rsplit("/", 1)[-1]
-    deadline = time.time() + budget
-    while address and want and time.time() < deadline:
-        time.sleep(step)
-        try:
-            series, err = prom_series()
-            if err:
-                continue      # a blip in the poll must not skip the rebuild below
-            entry = pick(index_by_host(series).get(address, []), "nixos_closure_info")
-            if label_of(entry, "closure") == want:
-                break
-        except Exception:  # noqa: BLE001
-            continue
-    try:
-        cached(force=True)
-    except Exception:  # noqa: BLE001 -- a failed rebuild must not kill this thread silently
-        pass
 
 
 def machine_row(name):
@@ -753,6 +712,42 @@ def machine_row(name):
         if row.get("name") == name:
             return row
     return None
+
+
+def fleet_machine_reading(name):
+    """GET /fleet-apply/machine -- re-read ONE machine from Prometheus and re-render its rows.
+
+    WHY THIS EXISTS RATHER THAN A PAGE RELOAD. After a switch the row on screen is wrong, and a
+    full rebuild costs a `nix eval` over the whole flake to correct one line of it. Worse, it would
+    usually still be wrong: the closure metric is written by the host's activation script, but
+    Prometheus scrapes on its own cadence, so a reload issued the instant a switch finishes shows
+    the OLD closure and looks like the switch did nothing.
+
+    So this reads the live series for that one address and reports what it found, INCLUDING when
+    what it found is still the old closure. The caller polls until it changes and can say which of
+    the two it is looking at -- a switch that has not been scraped yet is not the same as a switch
+    that did not take.
+
+    The ROSTER is not re-read: nothing a switch does can change what the flake declares, and the
+    `nix eval` that would answer it is the expensive half of a build."""
+    row = machine_row(name)
+    if not row:
+        return {"error": f"no machine called {name!r} on this page"}
+    address = row.get("private")
+    if not address:
+        return {"error": f"{name} has no private address, so Prometheus reports nothing for it"}
+    series, err = prom_series()
+    if err:
+        return {"error": err}
+    data = _cache["data"] or {}
+    fresh = read_machine(name, {"hostName": row.get("hostname", ""), "role": row.get("role", ""),
+                                "environment": row.get("env", ""), "privateAddress": address,
+                                "publicAddress": row.get("public", "")},
+                         index_by_host(series).get(address, []),
+                         data.get("head", ""), data.get("origin", ""))
+    return {"rows": machine_rows(fresh), "closure": fresh.get("closure", ""),
+            "store_hash": short_closure(fresh.get("closure", "")),
+            "state": fresh.get("state", "")}
 
 
 def handle_fleet_apply(body):
@@ -799,26 +794,23 @@ def handle_fleet_apply(body):
         return {"error": "phase must be 'check' or 'switch'"}, 400
 
     with _apply_lock:
-        # THE ONE-AT-A-TIME GUARD, and it is taken here -- in the same critical section that
+        # THE PER-MACHINE GUARD, and it is taken here -- in the same critical section that
         # registers the job -- rather than checked first and taken after. Two POSTs arriving
         # together (an impatient double-click is the ordinary case; ThreadingHTTPServer really does
         # run them concurrently) would both pass a separate check and both start.
-        busy = _apply_active[0]
-        if busy is not None:
-            other = _apply_jobs.get(busy, {})
-            return {"error": f"a {other.get('phase', 'job')} is already running against "
-                             f"{other.get('machine', 'another machine')}; only one action runs at "
-                             f"a time across the whole fleet"}, 409
+        running = next((j for j in _apply_jobs.values()
+                        if j["machine"] == name and not j["done"]), None)
+        if running is not None:
+            return {"error": f"a {running['phase']} is already running against {name}"}, 409
         _apply_seq[0] += 1
         job_id = f"j{_apply_seq[0]}"
         _apply_jobs[job_id] = {
             "machine": name, "phase": phase, "lines": [], "done": False, "exit": None,
             "can_switch": None, "result": None, "started": time.time(),
             # Both addresses are carried: the public one is what was ssh'd to, the private one is
-            # the key Prometheus reports under, and _rebuild_when_scraped needs the latter.
+            # the key Prometheus reports under, which /fleet-apply/machine reads back.
             "public": address, "private": row.get("private", ""), "closure": closure,
         }
-        _apply_active[0] = job_id
         _remember_job()
 
     threading.Thread(target=_apply_worker, args=(job_id, argv, script, timeout),
@@ -852,20 +844,6 @@ def fleet_apply_log(job_id, start):
         return {"lines": job["lines"][start:], "done": job["done"], "exit": job["exit"],
                 "can_switch": job["can_switch"], "result": job["result"],
                 "machine": job["machine"], "phase": job["phase"]}
-
-
-def fleet_apply_status():
-    """GET /fleet-apply/status -- what, if anything, is running right now.
-
-    Polled by every open tab, so that a second browser window does not present a live-looking
-    button for an action the server would refuse. Cheap on purpose: no ssh, no build, just the
-    slot."""
-    with _apply_lock:
-        busy = _apply_active[0]
-        job = _apply_jobs.get(busy) if busy else None
-    if not job:
-        return {"busy": False}
-    return {"busy": True, "job": busy, "machine": job["machine"], "phase": job["phase"]}
 
 
 STYLE = """
@@ -904,6 +882,15 @@ button:hover:not(:disabled) { border-color: #4a5568; }
 button:disabled { opacity: .45; cursor: default; }
 button.go { border-color: #7a3a12; background: #2e2411; color: #f5a623; }
 button.danger { border-color: #5b1d22; background: #2d1416; color: #ff9ea3; }
+/* The affirmative button, and the one the eye should land on. `.go` is the SECOND press -- the one
+   that actually switches -- so it stays the warmer colour: the two must not look interchangeable. */
+.applybtn { background: #1f6feb; color: #fff; border: 0; border-radius: 6px; padding: 5px 12px; }
+.applybtn:hover:not(:disabled) { background: #2c7cf0; }
+.applybtn:disabled { background: #2b323c; color: #7a8290; cursor: default; }
+.applybtn.go { background: #a1401f; }
+.applybtn.go:hover:not(:disabled) { background: #c04f27; }
+.fleetbulk { margin-bottom: 20px; }
+.fleetbulk .hint { max-width: 78ch; }
 .hint { color: #6e7681; font-size: 11px; margin-left: 8px; }
 .actionrow { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 tr.actions td { border-bottom: 1px solid #242832; padding-top: 0; }
@@ -1073,6 +1060,62 @@ def fmt_age(ts):
     return f"{d // 3600}h ago"
 
 
+def machine_rows(r):
+    """One machine's `<tr>`, plus the console row under it when it has something to activate.
+
+    ONE COPY OF THIS MARKUP, called both when the page is built and when /fleet-apply/machine
+    re-reads a single host after a switch. The row the browser splices in has to be the row the
+    page would have rendered -- a second near-identical builder is how a refreshed row quietly
+    stops matching its neighbours."""
+    sev = r["severity"]
+    if r["reporting"]:
+        # THE FULL STORE NAME ON HOVER, TWELVE CHARACTERS IN THE CELL. The hash is what an
+        # operator compares between two hosts, and it is the first twelve characters that
+        # settle it; the rest is the hostname and nixpkgs release the two columns beside it
+        # already say. Truncating without keeping the whole string reachable would make the one
+        # value you actually paste into a command unpasteable.
+        closure = (f"<td class='sv' title='{html.escape(r['closure'])}'>"
+                   f"{html.escape(short_closure(r['closure']))}")
+        if r["booted"] and r["booted"] != r["closure"]:
+            closure += ("<div class='sub'>booted "
+                        + html.escape(short_closure(r["booted"])) + "</div>")
+        closure += f"</td><td>{html.escape(r['nixpkgs'])}</td>"
+    else:
+        closure = "<td class=none>&mdash;</td><td class=none>&mdash;</td>"
+
+    # WHAT WAS THE `revision` COLUMN, folded in under the state badge. Its two loud parts --
+    # built dirty, and staged-but-not-activated -- are already badges here, so a column of its
+    # own was saying them twice; what is left is the SHA and its distance from main, which is a
+    # qualifier on the state rather than a state.
+    state = badge(sev, r["state"], r.get("state_key"),
+                  r["blocked_reason"] if r.get("state_key") == "blocked" else "")
+    if r.get("detail") and sev != "ok":
+        state += f"<span class='hint detail'>{html.escape(r['detail'])}</span>"
+    if r["reporting"]:
+        state += f"<span class=hint>{revision_line(r)}</span>"
+    else:
+        state += ("<span class=hint>what it runs is UNKNOWN, which is not the same as "
+                  "behind</span>")
+
+    env = r.get("env") or "?"
+    out = (
+        f"<tr class='{sev}'>"
+        f"<td class='name'>{html.escape(r['name'])}"
+        + (f"<div class='sub'>{html.escape(r['hostname'])}</div>"
+           if r.get("hostname") and r["hostname"] != r["name"] else "")
+        + "</td>"
+        f"<td>{html.escape(r['role'] or '?')} "
+        f"<span class=env style='background:{ENV_COLOR.get(env, '#5b6472')}'>"
+        f"{html.escape(env)}</span></td>"
+        f"<td class='mut'>{html.escape(r['private'] or '—')}</td>"
+        f"{closure}"
+        f"{auto_apply_cell(r)}"
+        f"<td>{state}</td></tr>")
+
+    return out + (action_row(r) if r.get("actionable") else "")
+
+
+
 def render(data):
     rows = data["rows"]
     n_ok = sum(1 for r in rows if r["severity"] == "ok")
@@ -1104,8 +1147,7 @@ def render(data):
     parts.append(
         "<div class=toolbar>"
         "<button id=refreshbtn onclick='refreshNow(this)'>Refresh</button>"
-        "<span id=refreshnote class=hint></span>"
-        "<span id=busynote class=hint></span></div>")
+        "<span id=refreshnote class=hint></span></div>")
 
     age = time.time() - data["built_at"]
     if age > STALE_GRACE:
@@ -1124,58 +1166,36 @@ def render(data):
         parts.append("<div class='err'>Publishing metrics but not declared in the flake: "
                      + ", ".join(html.escape(a) for a in data["undeclared"]) + "</div>")
 
+    # ONE BUTTON FOR THE WHOLE FLEET, built from the SAME `actionable` test as the per-machine
+    # buttons below -- so "N machine(s)" on this button and the count of "Bring to latest…" buttons
+    # in the table can never disagree. It exists because pressing the per-machine button once per
+    # host and watching each console to completion is the only way to bring a whole fleet current
+    # today, and that is exactly the kind of repetitive, low-judgment work the per-machine flow was
+    # built to make safe to automate: the browser calls the same two endpoints, in the same order,
+    # instead of a person clicking through them one at a time.
+    actionable = [r for r in rows if r.get("actionable")]
+    if actionable:
+        parts.append(
+            "<div class=fleetbulk>"
+            "<div class=applyrow>"
+            f"<button id=fleetbulkbtn class=applybtn onclick='bringAllToLatest(this)'>"
+            f"Bring all to latest&hellip; ({len(actionable)})</button>"
+            "<span class=hint>checks, then switches, every machine below with something staged "
+            "&mdash; one at a time, in the order shown. Stops at the first machine whose check or "
+            "switch does not exit 0; whatever was already switched before that stays switched."
+            "</span>"
+            "</div>"
+            "<details id=fleetbulkcons class='cons hidden'>"
+            "<summary>console</summary><pre class=out></pre><div class=consfoot></div>"
+            "</details>"
+            "</div>")
+
     parts.append("<table><tr>"
                  "<th>machine</th><th>role &middot; env</th><th>address</th><th>closure</th>"
                  "<th>nixpkgs</th><th>auto-apply</th><th>state</th></tr>")
 
     for r in rows:
-        sev = r["severity"]
-        if r["reporting"]:
-            # THE FULL STORE NAME ON HOVER, TWELVE CHARACTERS IN THE CELL. The hash is what an
-            # operator compares between two hosts, and it is the first twelve characters that
-            # settle it; the rest is the hostname and nixpkgs release the two columns beside it
-            # already say. Truncating without keeping the whole string reachable would make the one
-            # value you actually paste into a command unpasteable.
-            closure = (f"<td class='sv' title='{html.escape(r['closure'])}'>"
-                       f"{html.escape(short_closure(r['closure']))}")
-            if r["booted"] and r["booted"] != r["closure"]:
-                closure += ("<div class='sub'>booted "
-                            + html.escape(short_closure(r["booted"])) + "</div>")
-            closure += f"</td><td>{html.escape(r['nixpkgs'])}</td>"
-        else:
-            closure = "<td class=none>&mdash;</td><td class=none>&mdash;</td>"
-
-        # WHAT WAS THE `revision` COLUMN, folded in under the state badge. Its two loud parts --
-        # built dirty, and staged-but-not-activated -- are already badges here, so a column of its
-        # own was saying them twice; what is left is the SHA and its distance from main, which is a
-        # qualifier on the state rather than a state.
-        state = badge(sev, r["state"], r.get("state_key"),
-                      r["blocked_reason"] if r.get("state_key") == "blocked" else "")
-        if r.get("detail") and sev != "ok":
-            state += f"<span class='hint detail'>{html.escape(r['detail'])}</span>"
-        if r["reporting"]:
-            state += f"<span class=hint>{revision_line(r)}</span>"
-        else:
-            state += ("<span class=hint>what it runs is UNKNOWN, which is not the same as "
-                      "behind</span>")
-
-        env = r.get("env") or "?"
-        parts.append(
-            f"<tr class='{sev}'>"
-            f"<td class='name'>{html.escape(r['name'])}"
-            + (f"<div class='sub'>{html.escape(r['hostname'])}</div>"
-               if r.get("hostname") and r["hostname"] != r["name"] else "")
-            + "</td>"
-            f"<td>{html.escape(r['role'] or '?')} "
-            f"<span class=env style='background:{ENV_COLOR.get(env, '#5b6472')}'>"
-            f"{html.escape(env)}</span></td>"
-            f"<td class='mut'>{html.escape(r['private'] or '—')}</td>"
-            f"{closure}"
-            f"{auto_apply_cell(r)}"
-            f"<td>{state}</td></tr>")
-
-        if r.get("actionable"):
-            parts.append(action_row(r))
+        parts.append(machine_rows(r))
 
     parts.append("</table>")
     parts.append("<div class='sub'>The button activates the closure <b>CI already staged</b> on "
@@ -1199,27 +1219,30 @@ def action_row(r):
     -- a machine name reaching a script body through string interpolation is how an innocuous
     quote becomes a syntax error, or worse."""
     danger = needs_confirmation(r)
-    # The two buttons are the same element with different words. A production database that offered
-    # the same one-click affordance as the k3s worker would be telling the operator they are the
-    # same act, and they are not.
+    # THE SAME WORDS AS THE SIBLING DASHBOARD -- "Bring to latest…", not "Activate the staged
+    # closure…" -- because the two screens are read minutes apart and the same act must not be
+    # named twice. The production database keeps a hint of its own: the button offers the identical
+    # first step (a dry run that changes nothing), and what differs is the confirmation the SWITCH
+    # demands, which is where the difference belongs.
+    control = ("<button class='applybtn' onclick='fleetCheck(this)'>Bring to latest&hellip;"
+               "</button>")
     if danger:
-        control = (
-            "<button class='danger' onclick='fleetCheck(this)'>"
-            "Check what activating would restart…</button>"
+        control += (
             "<span class='hint'>&#9888; production database. Activating can restart mongod, and "
             "the Fly web tier's change streams stop with it — a dropped change stream does not "
             "reconnect by itself, so the site would serve stale showtimes until the app is "
             "restarted. Nothing changes until you confirm, and the confirmation is this "
             "machine's name typed out.</span>")
     else:
-        control = (
-            "<button onclick='fleetCheck(this)'>Activate the staged closure…</button>"
+        control += (
             "<span class='hint'>reads the pin off the host and shows what activating it would "
             "restart — it changes nothing until you confirm</span>")
 
     return (
         f"<tr class='actions {r['severity']}'><td colspan='{FLEET_COLUMNS}' class='actioncell' "
         f"data-machine='{html.escape(r['name'])}' "
+        f"data-address='{html.escape(r.get('public') or '')}' "
+        f"data-env='{html.escape(r.get('env') or '')}' "
         f"data-danger='{'1' if danger else ''}'>"
         f"<div class='actionrow'>{control}</div>"
         # `hidden` and closed to begin with: on a page where every host has something staged this
@@ -1238,10 +1261,13 @@ SCRIPT = r"""
 // switch did, so a refresh that comes due mid-job hands the decision back rather than taking it.
 let jobsRunning = 0;
 
-function writeLines(pre, lines){
+function writeLines(pre, lines, tag){
   for(const line of lines){
     const row = document.createElement('div');
-    row.textContent = line;
+    // THE TAG GOES ON THE TEXT, NOT IN A COLUMN. A bulk run has several machines writing into one
+    // console out of order, and a `[T2] ` prefix is the whole of what makes that readable. It is
+    // prepended AFTER the classification below, so a tagged '!! ' line is still styled as a fault.
+    row.textContent = (tag || '') + line;
     // Classified off the line's own prefix, which is why the shell scripts are so consistent about
     // '· ', '!! ' and '--- ': the server sends no markup and the browser invents no meaning.
     if(line.startsWith('!!')) row.className = 'bad';
@@ -1268,8 +1294,9 @@ async function fleetPost(body){
 
 // Polls one job's log until it ends. `from` is an offset so the server re-sends only what is new;
 // a switch printing thousands of lines would otherwise be re-serialised on every tick.
-async function followJob(job, pre, foot){
+async function followJob(job, pre, foot, tag){
   let from = 0, misses = 0;
+  const prefix = tag || '';
   for(;;){
     let d = null;
     try{
@@ -1282,21 +1309,140 @@ async function followJob(job, pre, foot){
     // and say exactly what is and is not known.
     if(d === null || d.error === 'no such job'){
       if(++misses < 12){
-        if(misses === 3) foot.textContent = 'lost contact with the dashboard — retrying…';
+        if(misses === 3) foot.textContent = prefix + 'lost contact with the dashboard — retrying…';
         await new Promise(done => setTimeout(done, 1000));
         continue;
       }
       writeLines(pre, ['!! lost contact with the dashboard, so this job can no longer be read.',
-                       '!! It may still be running on the host — check there before retrying.']);
+                       '!! It may still be running on the host — check there before retrying.'], tag);
       foot.textContent = '';
       return null;
     }
     misses = 0;
-    if(d.error){ writeLines(pre, ['!! '+d.error]); foot.textContent = ''; return null; }
-    if(d.lines && d.lines.length){ writeLines(pre, d.lines); from += d.lines.length; }
-    if(d.done){ foot.textContent = 'finished — exit '+d.exit; return d; }
+    if(d.error){ writeLines(pre, ['!! '+d.error], tag); foot.textContent = ''; return null; }
+    if(d.lines && d.lines.length){ writeLines(pre, d.lines, tag); from += d.lines.length; }
+    if(d.done){ foot.textContent = prefix + 'finished — exit '+d.exit; return d; }
     await new Promise(done => setTimeout(done, 600));
   }
+}
+
+// RE-COUNTED FROM THE LIVE DOM, not decremented by hand at each call site -- every caller that
+// retires a machine's button (a single switch, or one leg of a bulk run) just calls this rather
+// than tracking its own delta, and it can never drift from what the page actually shows. It uses
+// the SAME selector the bulk button's own handler uses, so the label and what pressing it would
+// act on cannot disagree.
+//
+// TEXT ONLY -- never `.disabled`. A bulk run's background row confirmations land while that same
+// run is still in flight on other threads, and bringAllToLatest already owns disabling the button
+// for the run's duration; toggling it here too would re-enable it mid-run the instant one
+// machine's confirmation arrived, letting a second run start on top of the first.
+function updateBulkButtonCount(){
+  const btn = document.getElementById('fleetbulkbtn');
+  if(!btn) return;
+  const n = actionableCells().length;
+  btn.innerHTML = 'Bring all to latest… ('+n+')';
+}
+
+// THE LIST IS EXACTLY THE "Bring to latest…" BUTTONS THE PAGE ALREADY RENDERED -- never a fresh
+// read of anything. `actionable` on the server is what decided each of them is worth offering
+// (something staged, and it differs from what is running), and that decision must not be re-made
+// here by different logic. The one dynamically-created button, 'Activate this closure now', lives
+// in a `.consfoot` rather than an `.actionrow`, so it is never picked up as a second machine.
+function actionableCells(){
+  return [...document.querySelectorAll('.actioncell')]
+    .filter(c => c.querySelector('.actionrow .applybtn') && (c.dataset.address || ''));
+}
+
+// A stand-in for a per-row `.consfoot` for a worker that has no row of its own to write status
+// into: everything assigned to `.textContent` is appended as one more line of the shared console
+// instead, already carrying whatever prefix the caller baked into the string. An empty assignment
+// (the pattern `foot.textContent = ''` uses to clear a real footer) writes nothing, since there is
+// no footer here to clear.
+function fakeFoot(pre){
+  return {
+    set textContent(v){ if(v) writeLines(pre, [v]); },
+    get textContent(){ return ''; }
+  };
+}
+
+// ANSWERS "DID IT LAND" BY ASKING THE CONSUMER (Prometheus) RATHER THAN THE PROCESS THAT RAN IT.
+// A switch can finish on the host at the exact moment this dashboard is briefly unreachable to the
+// browser -- a sleeping laptop, a tab losing focus, anything -- and followJob giving up on
+// /fleet-apply/log says nothing about whether switch-to-configuration succeeded. Used as the
+// fallback below so a few seconds of THIS PROCESS being unreachable cannot read as "the switch
+// failed" and halt every machine still queued behind it.
+async function closureMatches(name, closure){
+  const want = (closure||'').split('/').pop().slice(0, 12);
+  if(!want) return false;
+  try{
+    const r = await fetch('/fleet-apply/machine?machine='+encodeURIComponent(name));
+    const d = await r.json();
+    return !!(d && !d.error && d.store_hash && d.store_hash.indexOf(want) === 0);
+  }catch(err){ return false; }
+}
+
+// THE ROW IS WRONG THE MOMENT A SWITCH SUCCEEDS, and a reload would usually still show the old
+// closure: the metric is written by the host's activation script, but Prometheus scrapes on its
+// own cadence. So poll for the change, and where it has not arrived yet say THAT rather than
+// rendering a stale row silently.
+//
+// `report(text)` lets a caller redirect this narration instead of it always landing in this
+// machine's own (usually collapsed) console foot -- the bulk run uses it to keep the confirmation
+// quiet rather than fighting the shared console it is still writing later machines into.
+async function refreshMachineRow(cell, expected, report){
+  const name = cell.dataset.machine;
+  const tr = cell.closest('tr'), row = tr ? tr.previousElementSibling : null;
+  const say = report || (msg => {
+    const f = cell.querySelector('.consfoot');
+    if(f) f.textContent = msg;
+  });
+  const want = (expected||'').split('/').pop().slice(0, 12);
+  const deadline = Date.now() + 240000;
+  for(;;){
+    let d = null;
+    try{ d = await (await fetch('/fleet-apply/machine?machine='+encodeURIComponent(name))).json(); }
+    catch(err){ d = null; }
+    if(d && !d.error && d.store_hash && d.store_hash.indexOf(want) === 0){
+      const holder = document.createElement('table');
+      holder.innerHTML = d.rows;
+      const fresh = holder.querySelectorAll('tr');
+      if(fresh.length && row) row.replaceWith(fresh[0]);
+      // THE CONSOLE IS NOT REPLACED. It is what the operator is reading, and it is the only record
+      // of what the switch did; swapping the whole pair of rows would delete that at the exact
+      // moment it matters most. Only the button is retired -- left visible rather than removed, so
+      // the row does not silently reshape under a cursor.
+      const stale = cell.querySelector('.actionrow');
+      if(stale) stale.innerHTML = '<span class=hint>switched — reload the page to act on this '
+        + 'machine again</span>';
+      // ONE FEWER MACHINE NEEDS THIS NOW. The bulk button was rendered once at page-build time, so
+      // left alone it would go on reporting a fleet as needing three more switches after a run had
+      // already brought all three current.
+      updateBulkButtonCount();
+      say('switched, and the row above now reflects the closure it is running.');
+      return true;
+    }
+    if(Date.now() > deadline){
+      say('switched, but Prometheus has not reported the new closure within four minutes — the '
+        + 'row above may be stale. Check the host itself before switching it again.');
+      return false;
+    }
+    say('waiting for the next scrape to confirm the row above…');
+    await new Promise(done => setTimeout(done, 5000));
+  }
+}
+
+// THE TYPED CONFIRMATION FOR THE PRODUCTION DATABASE, asked in one place because it is asked from
+// two: a single switch, and the pre-flight of a bulk run. A confirm() is answered reflexively;
+// typing the machine's name is a deliberate act, and it is the same string the SERVER
+// independently requires -- this prompt is the courtesy, handle_fleet_apply is the guard.
+function typedConfirmation(cell, closure){
+  const name = cell.dataset.machine;
+  const typed = prompt('This is the PRODUCTION DATABASE.\n\n'
+    + 'Activating ' + (closure || 'the staged closure') + ' on ' + name + ' can restart mongod. '
+    + 'The Fly-hosted web tier holds change streams against it, and a dropped change stream does '
+    + 'not reconnect by itself, so the site can go on serving stale showtimes until the app is '
+    + 'restarted.\n\nType the machine name to confirm:');
+  return (typed || '').trim() === name ? name : null;
 }
 
 async function fleetCheck(btn){
@@ -1304,7 +1450,7 @@ async function fleetCheck(btn){
   const box = consoleOf(cell), pre = box.querySelector('.out'), foot = box.querySelector('.consfoot');
   pre.textContent = ''; foot.textContent = 'connecting…'; btn.disabled = true;
   // Disabled BEFORE the await, so a double-click cannot post twice. The server refuses the second
-  // one anyway (one job fleet-wide); this just keeps the page from showing an error for something
+  // one anyway (one job per machine); this just keeps the page from showing an error for something
   // the operator did not really mean to do.
   jobsRunning++;
   try{
@@ -1324,7 +1470,7 @@ async function fleetCheck(btn){
     // is the decision being delegated.
     foot.textContent = '';
     const go = document.createElement('button');
-    go.className = cell.dataset.danger ? 'danger' : 'go';
+    go.className = 'applybtn go';
     go.textContent = 'Activate this closure now';
     go.onclick = () => fleetSwitch(go, cell, result.can_switch);
     const note = document.createElement('span');
@@ -1339,16 +1485,10 @@ async function fleetCheck(btn){
 
 async function fleetSwitch(btn, cell, closure){
   const name = cell.dataset.machine;
+  let confirmation = '';
   if(cell.dataset.danger){
-    // A TYPED NAME, NOT A YES/NO. A confirm() is answered reflexively; typing the machine's name
-    // is a deliberate act, and it is the same string the server independently requires -- this
-    // prompt is the courtesy, handle_fleet_apply is the guard.
-    const typed = prompt('This is the PRODUCTION DATABASE.\n\n'
-      + 'Activating ' + closure + ' on ' + name + ' can restart mongod. The Fly-hosted web tier '
-      + 'holds change streams against it, and a dropped change stream does not reconnect by '
-      + 'itself, so the site can go on serving stale showtimes until the app is restarted.\n\n'
-      + 'Type the machine name to confirm:');
-    if((typed || '').trim() !== name) return;
+    confirmation = typedConfirmation(cell, closure);
+    if(!confirmation) return;
   }else if(!confirm('Activate the staged closure on ' + name + '?\n\n' + closure
       + '\n\nThis runs switch-to-configuration switch over ssh as root. Every unit the dry run '
       + 'listed above will be stopped, started, restarted or reloaded.')){
@@ -1361,17 +1501,14 @@ async function fleetSwitch(btn, cell, closure){
   jobsRunning++;
   try{
     const started = await fleetPost({machine: name, phase: 'switch', closure: closure,
-                                     confirm: name});
+                                     confirm: confirmation});
     if(started.error){ writeLines(pre, ['!! '+started.error]); foot.textContent = ''; return; }
     const result = await followJob(started.job, pre, foot);
     // THE VERDICT IS THE MARKER, NOT THE EXIT CODE. switch-to-configuration exits non-zero when
     // any single unit fails to come back, which is worth reading but is not the same statement as
     // "the closure was not activated" -- the script decides by re-reading /run/current-system.
     if(result && result.result === 'DONE'){
-      foot.textContent = 'activated. The table above still shows the previous closure until '
-        + 'Prometheus scrapes the host again; this page will reload itself once it has.';
-      cell.querySelector('.actionrow').innerHTML =
-        '<span class=hint>switched — reload the page to act on this machine again</span>';
+      await refreshMachineRow(cell, closure);
     }else if(result){
       foot.textContent = 'the switch did not complete — read the output above before retrying';
       btn.disabled = false;
@@ -1379,6 +1516,163 @@ async function fleetSwitch(btn, cell, closure){
   }finally{
     jobsRunning--;
   }
+}
+
+// SIX, THE REFERENCE'S NUMBER, and on a three-host fleet it is `min(6, 3)` -- so in practice this
+// runs every machine at once. It is left at the reference's value rather than tuned down to three
+// because the number that matters is the STOP rule below, not the width: nothing new is started
+// once anything fails.
+const FLEET_BULK_THREADS = 6;
+
+async function bringAllToLatest(btn){
+  const cells = actionableCells();
+  if(!cells.length){
+    alert('Nothing needs updating right now — no machine has a newer closure staged.');
+    return;
+  }
+  const names = cells.map(c => c.dataset.machine + (c.dataset.env ? ' ('+c.dataset.env+')' : ''));
+  const threads = Math.min(FLEET_BULK_THREADS, cells.length);
+  const danger = cells.filter(c => c.dataset.danger);
+  let msg = 'Bring '+cells.length+' machine(s) to latest, '+threads+' at a time:\n\n  '
+    + names.join('\n  ')
+    + '\n\nEach machine is checked, then switched if the check finds something staged. Once ANY '
+    + 'machine\'s check or switch fails to confirm success, no NEW machine is started — whatever '
+    + 'is already in flight on the other threads is left to finish, and whatever had already '
+    + 'switched stays switched.';
+  if(danger.length) msg += '\n\n⚠ '+danger.length+' of these is the PRODUCTION DATABASE, and '
+    + 'will ask for its name to be typed before this run starts.';
+  if(!confirm(msg)) return;
+
+  // THE TYPED CONFIRMATIONS ARE COLLECTED BEFORE THE RUN STARTS, not when each machine's turn
+  // comes. A prompt that appears twenty minutes into an unattended run is a prompt nobody is
+  // there to answer, and the run would sit on it holding a thread; asking up front means the whole
+  // run is authorised at the moment somebody is actually looking at it. Declining excludes THAT
+  // machine, rather than abandoning the run -- the other hosts still want bringing current.
+  const confirmations = new Map();
+  for(const c of danger){
+    const typed = typedConfirmation(c, '');
+    if(typed) confirmations.set(c.dataset.machine, typed);
+  }
+  const queue = cells.filter(c => !c.dataset.danger || confirmations.has(c.dataset.machine));
+  const declined = cells.filter(c => !queue.includes(c)).map(c => c.dataset.machine);
+  if(!queue.length){ alert('Nothing left to do — every machine was declined.'); return; }
+
+  btn.disabled = true;
+  const box = document.getElementById('fleetbulkcons');
+  box.classList.remove('hidden'); box.open = true;
+  const pre = box.querySelector('.out'), foot = box.querySelector('.consfoot');
+  pre.textContent = '';
+  if(declined.length) writeLines(pre, ['· skipping (confirmation declined): '+declined.join(', ')]);
+  // Counted the same way refreshNow already respects: a reload would destroy this very console
+  // mid-run, so the running total has to include this job for as long as it is in flight.
+  jobsRunning++;
+
+  // A SHARED QUEUE, DRAINED BY N WORKERS -- `.shift()` is synchronous and JS has no preemption, so
+  // nothing else runs between one worker reading the queue and mutating it and this needs no lock.
+  // `stopped` is the same kind of flag: once any worker sets it, every worker stops taking NEW
+  // machines off the queue on its next loop check, but nothing already mid-check or mid-switch is
+  // aborted -- an ssh job in flight finishes on its own rather than being cut off mid-activation.
+  const total = queue.length;
+  let switched = 0, done = 0, stopped = false;
+  const stoppedAt = [];
+
+  function reportProgress(){
+    foot.textContent = (stopped ? 'stopping — ' : '') + done+'/'+total+' done'
+      + (switched ? ', '+switched+' switched' : '')
+      + (queue.length && !stopped ? ', '+queue.length+' queued' : '');
+  }
+  reportProgress();
+
+  async function worker(label){
+    const tag = '['+label+'] ';
+    for(;;){
+      if(stopped) return;
+      const cell = queue.shift();
+      if(!cell) return;
+      const name = cell.dataset.machine;
+      writeLines(pre, ['', '=== '+name
+        + (cell.dataset.env ? ' ('+cell.dataset.env+')' : '')+' ==='], tag);
+
+      const startedCheck = await fleetPost({machine: name, phase: 'check'});
+      if(startedCheck.error){
+        writeLines(pre, ['!! '+startedCheck.error], tag);
+        stopped = true; stoppedAt.push(name); done++; reportProgress(); return;
+      }
+      const check = await followJob(startedCheck.job, pre, fakeFoot(pre), tag);
+      if(!check){
+        writeLines(pre, ['!! stopping: could not complete the check on '+name], tag);
+        stopped = true; stoppedAt.push(name); done++; reportProgress(); return;
+      }
+      if(check.exit !== 0){
+        writeLines(pre, ['!! stopping: check on '+name+' exited '+check.exit], tag);
+        stopped = true; stoppedAt.push(name); done++; reportProgress(); return;
+      }
+      if(!check.can_switch){
+        writeLines(pre, ['· nothing to activate on '+name+' — skipping'], tag);
+        done++; reportProgress(); continue;
+      }
+
+      writeLines(pre, ['', '--- activating '+name+' ---'], tag);
+      const startedSwitch = await fleetPost({machine: name, phase: 'switch',
+                                             closure: check.can_switch,
+                                             confirm: confirmations.get(name) || ''});
+      if(startedSwitch.error){
+        writeLines(pre, ['!! '+startedSwitch.error], tag);
+        stopped = true; stoppedAt.push(name); done++; reportProgress(); return;
+      }
+      const sw = await followJob(startedSwitch.job, pre, fakeFoot(pre), tag);
+      let landed = !!(sw && sw.exit === 0 && sw.result === 'DONE');
+      if(!landed && !sw){
+        // followJob gave up because THIS DASHBOARD stopped answering -- which says nothing about
+        // the host, and may have happened seconds either side of the switch finishing. Ask
+        // Prometheus, the actual consumer of what got activated, before reading a local hiccup as
+        // a failed switch and halting every machine still queued behind it.
+        writeLines(pre, ['!! lost contact with the dashboard mid-switch — checking whether '+name
+          + ' landed on the target closure anyway'], tag);
+        landed = await closureMatches(name, check.can_switch);
+        writeLines(pre, [landed
+          ? '· confirmed from Prometheus: '+name+' IS running the target closure — continuing'
+          : '!! Prometheus does not show it there (or could not be read)'], tag);
+      }
+      if(!landed){
+        writeLines(pre, [sw
+          ? '!! stopping: switch on '+name+' exited '+sw.exit
+            + (sw.result ? ' ('+sw.result+')' : '')
+          : '!! stopping: could not confirm the switch on '+name+' landed'], tag);
+        stopped = true; stoppedAt.push(name); done++; reportProgress(); return;
+      }
+      // THE SWITCH ITSELF ALREADY LANDED HERE -- either the ssh job exited 0 and its own readlink
+      // comparison said `now == staged`, or Prometheus just confirmed it directly. What is left is
+      // purely cosmetic: the table row still shows the old closure until the next scrape, which
+      // can be a minute away and would otherwise stall this thread. So it is NOT awaited -- the
+      // row updates itself in the background and this worker moves on. Its narration goes through
+      // a tagged writeLines rather than the shared foot, so an unawaited poll for one machine
+      // cannot clobber another thread's status line.
+      switched++;
+      writeLines(pre, ['· landed on the target closure — confirming the row in the background, '
+        + 'moving on'], tag);
+      jobsRunning++;
+      refreshMachineRow(cell, check.can_switch, m => {
+        if(m.indexOf('waiting for the next scrape') === -1) writeLines(pre, [m], tag);
+      }).finally(() => { jobsRunning--; });
+      done++; reportProgress();
+    }
+  }
+
+  try{
+    await Promise.all(Array.from({length: Math.min(threads, queue.length)},
+                                 (_, i) => worker('T'+(i+1))));
+  }finally{
+    jobsRunning--;
+  }
+  btn.disabled = false;
+  foot.textContent = stoppedAt.length
+    ? 'stopped after '+stoppedAt.join(', ')+' — '+switched+' machine(s) switched'
+      + (queue.length ? ', '+queue.length+' never started' : '') + '. Read the console above, fix '
+      + 'it, then reload and try again.'
+    : (switched
+      ? 'done — '+switched+' machine(s) switched.'
+      : 'done — nothing needed activating.');
 }
 
 async function refreshNow(btn){
@@ -1419,22 +1713,6 @@ async function refreshNow(btn){
 // declines while this tab has a job in flight, which the meta tag could not do.
 setInterval(() => { if(jobsRunning === 0) location.reload(); }, 30000);
 
-// A SECOND TAB MUST NOT OFFER A BUTTON THE SERVER WOULD REFUSE. The one-at-a-time slot is
-// fleet-wide and lives on the server, so every tab polls it and greys itself out; without this the
-// only way to discover somebody else is mid-switch is to press a button and read a 409.
-setInterval(async () => {
-  let d = null;
-  try{ d = await (await fetch('/fleet-apply/status')).json(); }catch(err){ return; }
-  const busy = d && d.busy;
-  const note = document.getElementById('busynote');
-  note.textContent = busy && jobsRunning === 0
-    ? 'a ' + d.phase + ' is running against ' + d.machine + ' — one action runs at a time'
-    : '';
-  // Only ever disables buttons this tab did not start: `jobsRunning` covers its own, and their
-  // own handlers already own their disabled state.
-  if(jobsRunning > 0) return;
-  for(const b of document.querySelectorAll('.actionrow button')) b.disabled = !!busy;
-}, 3000);
 """
 
 
@@ -1467,6 +1745,9 @@ class Handler(BaseHTTPRequestHandler):
             with _cache_lock:
                 body = json.dumps({"built_at": _cache["built_at"], "building": _cache["building"]})
             self._send(200, body, "application/json")
+        elif path == "/fleet-apply/machine":
+            self._send(200, json.dumps(fleet_machine_reading((args.get("machine") or [""])[0])),
+                       "application/json")
         elif path == "/fleet-apply/log":
             try:
                 start = max(0, int((args.get("from") or ["0"])[0]))
@@ -1474,8 +1755,6 @@ class Handler(BaseHTTPRequestHandler):
                 start = 0
             self._send(200, json.dumps(fleet_apply_log((args.get("job") or [""])[0], start)),
                        "application/json")
-        elif path == "/fleet-apply/status":
-            self._send(200, json.dumps(fleet_apply_status()), "application/json")
         elif path == "/healthz":
             self._send(200, "ok", "text/plain; charset=utf-8")
         else:

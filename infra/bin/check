@@ -87,6 +87,23 @@ if [ -f version-dashboard/test_app.py ]; then
   fi
 fi
 
+step "version-dashboard browser tests"
+# THE QUEUE IN bringAllToLatest IS NOT REACHABLE FROM PYTHON. Whether the bulk run really stops
+# taking new machines after a failure, and whether the production database's typed confirmation is
+# actually carried into the switch it authorises, are facts about a running browser -- so they are
+# checked in one. Skips itself when Playwright is not installed, which keeps this gate runnable
+# offline on a fork; the step then says so rather than passing silently.
+if [ -f version-dashboard/test_browser.js ] && command -v node >/dev/null 2>&1; then
+  if out="$(node version-dashboard/test_browser.js 2>&1)"; then
+    echo "$out" | tail -3 | sed 's/^/  /'
+  else
+    echo "$out" | tail -30 | sed 's/^/  /'
+    failed=1
+  fi
+else
+  echo "  skipped: no node on PATH"
+fi
+
 for host in "${hosts[@]}"; do
   step "nix eval $host"
   if out="$(nix "${nix_flags[@]}" eval ".#nixosConfigurations.$host.config.system.build.toplevel.drvPath" 2>&1)"; then
