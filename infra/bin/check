@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# THE GATE FOR infra/. Everything this tree can be verified for without touching a live machine.
+#
+# It is the closest thing this directory has to a test suite, and it is genuinely load-bearing
+# rather than ceremonial: a NixOS fleet's failure mode is that a mistake is invisible until
+# activation, ON the host, AFTER the closure has been built and copied. Every check below moves one
+# class of that failure earlier -- to a laptop, before anything is deployed.
+#
+#   terraform fmt      formatting, so a diff is about intent
+#   terraform validate provider schemas and references
+#   nix eval           EVERY host's toplevel derivation. This is the expensive one and the one that
+#                      matters: it type-checks the whole module tree, runs every `assertions` entry,
+#                      and proves each host would build. A module that references a missing option
+#                      or an unset secret fails here rather than at 03:00 on the auto-apply timer.
+#
+# It deliberately does NOT run `terraform plan` -- that needs a Hetzner token and network, and this
+# has to stay runnable offline in CI on a fork.
+set -uo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$here/.."
+
+nix_flags=(--extra-experimental-features 'nix-command flakes')
+hosts=(mongo-1 monitoring-1 k3s-worker-1)
+failed=0
+
+step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
+
+step "terraform fmt"
+if terraform fmt -check -recursive terraform; then
+  echo "  ok"
+else
+  echo "  FAILED -- run: terraform fmt -recursive infra/terraform"
+  failed=1
+fi
+
+step "terraform validate"
+# `-backend=false` so this needs no Terraform Cloud credentials: validate checks the configuration,
+# not the state, and requiring a login here would make the gate unrunnable in CI.
+if terraform -chdir=terraform init -backend=false -input=false >/dev/null 2>&1 &&
+  terraform -chdir=terraform validate; then
+  echo "  ok"
+else
+  echo "  FAILED"
+  failed=1
+fi
+
+for host in "${hosts[@]}"; do
+  step "nix eval $host"
+  if out="$(nix "${nix_flags[@]}" eval ".#nixosConfigurations.$host.config.system.build.toplevel.drvPath" 2>&1)"; then
+    echo "  ok  ${out##*/}"
+  else
+    echo "$out" | tail -20 | sed 's/^/  /'
+    failed=1
+  fi
+done
+
+if ((failed)); then
+  printf '\n\033[1;31minfra/bin/check: FAILED\033[0m\n'
+else
+  printf '\n\033[1;32minfra/bin/check: all green\033[0m\n'
+fi
+exit "$failed"

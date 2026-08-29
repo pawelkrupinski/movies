@@ -1,0 +1,73 @@
+# Grafana's contact point and notification policy, for nix/modules/roles/grafana.nix.
+#
+# VENDORED -- the only part of fly/grafana/provisioning/ that is copied rather than read in place,
+# because it is the only part that had to CHANGE. The alert rules and dashboards are read straight
+# out of the application repository; see that module's header.
+#
+# ================================================================================================
+# THE CHAT ID IS A QUOTED LITERAL. IT MUST NEVER BECOME ${VAR}. KEEP THE QUOTES.
+# ================================================================================================
+#
+# Grafana expands environment variables in provisioning files, and that expansion RE-TYPES a
+# numeric chat id as a YAML number no matter how it was quoted. Grafana's schema wants a string, so
+# it fails to unmarshal ("cannot unmarshal number into ... string") -- and it does not skip the
+# contact point and carry on, IT EXITS. Grafana never becomes healthy, which on the monitoring host
+# means no dashboards and no alert evaluation at all, from a change that looks like tidying a
+# hard-coded value into a variable.
+#
+# A chat id is not a secret (it is useless without the bot token), so there is nothing to protect
+# by making it a variable. The BOT TOKEN is the secret, it is non-numeric, expansion keeps it a
+# string, and it is a `$VAR` below -- delivered through an EnvironmentFile that sops-nix renders
+# into /run, so it never reaches the world-readable Nix store.
+#
+# NOTE the different spelling in alertmanager.yaml, where the same number is UNQUOTED because
+# Alertmanager's schema types it as an integer. Two schemas, two correct spellings. Do not
+# harmonise them.
+# ================================================================================================
+#
+# WHAT WAS DELIBERATELY DROPPED FROM THE FLY VERSION, so that its absence does not read as a
+# mistake: the three `WorkerThrottle*` webhook contact points and their routes. Those POST to
+# `kinowo-worker*.internal:9000/throttle` over Fly's 6PN to drive the workers' reaper backoff.
+# THIS HOST IS NOT ON 6PN -- only mongo-1 is a WireGuard peer (nix/modules/roles/wireguard-fly.nix)
+# -- so those webhooks would fail on every send and the workers would never be told to back off.
+#
+# THE CONSEQUENCE IS NOT SILENT, WHICH IS WHY THIS IS SAFE TO DO: with no route matching them, the
+# `worker-throttle` group's alerts fall through to the root policy and arrive on Telegram as
+# ordinary pages instead. Noisier, and visible. Restoring the webhooks means giving monitoring-1 a
+# 6PN peer of its own, at which point the blocks come back from the Fly file verbatim.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Telegram
+    receivers:
+      - uid: telegram-primary
+        type: telegram
+        settings:
+          # The secret half. Non-numeric, so expansion keeps it a string.
+          bottoken: '$TELEGRAM_BOT_TOKEN'
+          # The non-secret half. QUOTED LITERAL. Read the block at the top of this file before
+          # touching this line.
+          chatid: "1771340065"
+        # Send a follow-up when an alert clears, so that a quiet channel means "all good" rather
+        # than "did that ever recover?".
+        disableResolveMessage: false
+
+policies:
+  # THE ROOT POLICY, so no rule has to name a receiver itself. That matters more than it looks: a
+  # rule naming a contact point Grafana cannot find is rejected FATALLY at startup -- the whole
+  # provisioning pass fails and nothing listens. One receiver that everything falls through to
+  # cannot be missing.
+  - orgId: 1
+    receiver: Telegram
+    # Grouped by app as well as alertname, carried from the Fly policy: a multi-rule incident on
+    # one machine (credit exhausted AND p95 high, which is the same event twice) arrives as one
+    # message rather than a burst.
+    group_by:
+      - alertname
+      - app
+    group_wait: 30s
+    group_interval: 5m
+    # Re-nag every four hours, matching the Alertmanager route in alertmanager.yaml so the fleet's
+    # two alerting halves nag at one rhythm.
+    repeat_interval: 4h

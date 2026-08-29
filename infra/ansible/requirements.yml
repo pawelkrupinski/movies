@@ -1,0 +1,40 @@
+---
+# Pinned, and installed into infra/ansible/collections/ rather than taken from whatever the
+# controller happens to ship: what a run calls a pass must not change under us between two runs of
+# the same commit.
+#
+# Install with:  ansible-galaxy collection install -r requirements.yml
+# (ansible.cfg sets `collections_path = collections`, so that lands where the playbooks look.)
+collections:
+  # The dynamic inventory (inventory/hcloud.yml) and nothing else.
+  #
+  # SERVER LIFECYCLE STAYS IN TERRAFORM. No playbook here creates, resizes or destroys a server with
+  # `hetzner.hcloud.server` -- infra/terraform owns that, and roles/terraform_apply is how it is
+  # driven. Two things that both believe they own a machine is the failure this division exists to
+  # avoid. The playbooks DO call the Hetzner API directly (`ansible.builtin.uri`) for out-of-band
+  # ACTIONS -- enable_rescue, reset -- which are not state and which Terraform has no opinion about.
+  #
+  # 6.12.0 is the version bitcashier/infra runs and verified against a live project. Two warnings
+  # carried over from there, both measured rather than inferred:
+  #
+  #   * do NOT drop to a 5.x to silence a "does not support Ansible version" warning -- 5.4.0 cannot
+  #     parse the current API at all and dies with `'NoneType' object has no attribute 'name'`,
+  #     because Hetzner is phasing out the `datacenter` field the older plugin still expects.
+  #   * 7.0.0 exists and would probably run, but it is a MAJOR and the inventory plugin is the one
+  #     thing every playbook here depends on. Bump it in a change whose only subject is that.
+  - name: hetzner.hcloud
+    version: "6.12.0"
+
+  # ansible.posix.synchronize -- how roles/nixos_deploy gets the flake onto a target and how
+  # playbooks/migrate-mongo-from-fly.yml gets the dump archive onto mongo-1. It runs rsync on the
+  # CONTROLLER, so it needs no python on the far end (which a freshly converted NixOS host does not
+  # have) but it does need `rsync` in that host's systemPackages.
+  - name: ansible.posix
+    version: "2.2.2"
+
+# DELIBERATELY NOT HERE: community.general. bitcashier/infra pins it for `community.general.terraform`
+# and `community.general.puppet`. There is no Puppet anywhere in this estate, and
+# roles/terraform_apply drives Terraform through `ansible.builtin.command` on purpose -- it needs to
+# save a plan file, read it back as JSON, gate on its contents and then apply THAT ARTEFACT, and the
+# module's own plan/apply abstraction does not expose those as separate steps. One fewer collection
+# to pin, and the gate is readable as the sequence of terraform commands a person would type.

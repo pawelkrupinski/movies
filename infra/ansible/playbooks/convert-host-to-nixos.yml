@@ -1,0 +1,586 @@
+---
+# ###############################################################################################
+# THIS PLAYBOOK REPARTITIONS THE TARGET'S DISK. IT IS NOT REVERSIBLE.
+# ###############################################################################################
+#
+# It boots one Hetzner server into the RESCUE system, hard-resets it, and runs nixos-anywhere against
+# it -- which runs disko, which WIPES AND REPARTITIONS the root disk. There is no undo, Hetzner
+# offers no recovery from its side, and everything on that disk that is not declared in the flake is
+# gone.
+#
+#   set -a; . .env.local; set +a
+#   ansible-playbook playbooks/convert-host-to-nixos.yml \
+#     -e target=mongo-1 -e convert_role=mongo -e convert_confirmed=mongo-1
+#
+# WHY IT EXISTS. infra/terraform/modules/server/vars.tf records that every host here is bootstrapped
+# from a stock Ubuntu image and converted to NixOS in place, from rescue, by nixos-anywhere. That was
+# a prose procedure. Prose cannot be dry-run, cannot refuse, and cannot be diffed -- which is the
+# wrong shape for something whose steps include "wipe the disk".
+#
+# THERE IS A SECOND IMPLEMENTATION OF THIS PROCEDURE, infra/nix/bin/convert-host, and the two are
+# deliberately not merged. That script hard-codes the three server ids and public addresses in a
+# table, for a good reason it states itself: a name lookup that matches the WRONG server silently
+# wipes it. This playbook resolves the machine from the Hetzner API instead, and pays for that with
+# the four refusals below -- the role-group check, the typed confirmation, the volume check and the
+# protection check -- none of which the script has. Prefer the script for a first conversion of a
+# host that has never been in the inventory (a machine nobody can log into yet is not a host Ansible
+# can reach); prefer this for a RE-conversion of a host that is already in the fleet, which is the
+# case where "am I pointing at the right machine" is a live question. If one of them is ever deleted,
+# the guards are the part that has to survive.
+#
+# MODELLED ON bitcashier/infra, NOT COPIED FROM IT. That repository converts onto a prebuilt
+# `role=nixos-base` Hetzner SNAPSHOT (roles/nixos_base_image_convert + playbooks/migrate-*-to-nixos)
+# and only uses nixos-anywhere-from-rescue for bare metal it does not own the image for. This project
+# has no snapshot, no second Hetzner account to build one in, and no Linux nix builder -- so the
+# bare-metal path is the only path here, and it is nix/bin/convert-host's procedure driven from
+# Ansible instead of from bash. Every guard below is lifted from one of those two, and each one says
+# which failure it is there for.
+#
+# WHAT IT DELIBERATELY DOES NOT DO:
+#   * it does not deploy a configuration afterwards. nixos-anywhere installs the closure the flake
+#     describes; ongoing deploys are playbooks/deploy-nixos-host.yml. Keeping them apart is what lets
+#     a failed conversion be re-run without also re-running a deploy, and vice versa.
+#   * it does not decide that a host is ready to be converted. Draining mongo, stopping the k3s
+#     agent, telling the app to fail over -- those are service-specific and stay deliberate acts.
+#   * it does not touch Terraform. `image` is ForceNew and Hetzner keeps reporting the ORIGINAL image
+#     after a nixos-anywhere install (it never changes what Hetzner recorded, unlike a `rebuild`
+#     action), so the declaration stays true and no plan is provoked. That is a real difference from
+#     bitcashier's snapshot path, where forgetting to update the declared image left seven servers
+#     planning as DESTROY-AND-CREATE at once.
+
+- name: Convert one host to NixOS, in place, from the rescue system
+  hosts: "{{ target | default('no-such-host', true) }}"
+  gather_facts: false
+
+  # ONE HOST AT A TIME, NO EXCEPTIONS. `serial: 1` is not about load: `-e target=role_mongo` on a
+  # group would otherwise wipe every member of it in parallel, and the confirmation below is a single
+  # name, so it can only ever have been meant for one of them.
+  serial: 1
+
+  vars:
+    # THE PUBLIC ADDRESS, ALWAYS, AND THIS ONE IS NOT A LAPTOP-ROUTING WORKAROUND. The Hetzner rescue
+    # system boots with PUBLIC NETWORKING ONLY -- the private network is not configured there at all
+    # -- so a conversion driven over 10.20.0.x cannot work even from a controller inside the fleet.
+    # It is hard-set here rather than following `kinowo_connect_over` for that reason.
+    ansible_host: "{{ kinowo_public_ipv4 }}"
+    ansible_user: root
+
+    convert_flake_attribute: "{{ flake_attribute | default(nixos_flake_attribute_default, true) }}"
+
+    # Hetzner's rescue images. `linux64` is the 64-bit rescue system; nothing else here has been
+    # tried, and nixos-anywhere's kexec path expects a normal x86-64 Linux with a working network.
+    convert_rescue_type: linux64
+
+    hetzner_api: https://api.hetzner.cloud/v1
+    hetzner_auth:
+      Authorization: "Bearer {{ lookup('ansible.builtin.env', 'HETZNER_API_TOKEN') }}"
+
+  tasks:
+    # -------------------------------------------------------------------------------------------
+    # REFUSALS. Everything below this block is destructive; nothing above it touches the machine.
+    # -------------------------------------------------------------------------------------------
+
+    # THE ROLE GROUP MUST BE NAMED AND MUST MATCH. `-e target=` takes any pattern the inventory
+    # understands -- an address, a name, a group, `all` -- and there is nothing in that string that
+    # says WHAT the operator thought they were pointing at. Naming the role separately turns a typo
+    # into a refusal instead of into a wiped machine: `-e target=mongo-1 -e convert_role=k3s-worker`
+    # cannot proceed, and neither can `-e target=all`.
+    #
+    # NOTE THE SANITISATION. The label value is `k3s-worker` with a HYPHEN
+    # (infra/terraform/server.k3s-worker.tf); the inventory plugin turns that into the group
+    # `role_k3s_worker` with UNDERSCORES. Written without the replace, `groups['role_k3s-worker']` is
+    # not a missing group -- in Jinja it is a SUBTRACTION -- so the guard would fail for a reason
+    # that has nothing to do with the fleet.
+    - name: Name the role group this host is supposed to be in
+      ansible.builtin.assert:
+        that:
+          - convert_role is defined and convert_role | length > 0
+          - inventory_hostname in (groups[convert_role_group] | default([]))
+        fail_msg: >-
+          {{ inventory_hostname }} is not in {{ convert_role_group }}
+          (it holds: {{ groups[convert_role_group] | default([]) | join(', ') | default('nothing', true) }}).
+          Pass -e convert_role=<mongo|monitoring|k3s-worker> naming what you believe this machine is.
+          THIS PLAYBOOK WIPES THE DISK, so it will not proceed against a host whose role you have not
+          stated and which the Hetzner labels do not confirm.
+        quiet: true
+      vars:
+        convert_role_group: "role_{{ convert_role | default('') | replace('-', '_') }}"
+
+    # A TYPED CONFIRMATION, satisfiable from the command line so an unattended run does not hang on a
+    # prompt. The token is a BARE NAME and never a phrase: `-e key=value` splits on WHITESPACE into
+    # several pairs, so a quoted sentence arrives as its first word and would refuse a run that was
+    # correctly confirmed.
+    - name: This wipes a disk, so the machine must be confirmed by name
+      ansible.builtin.assert:
+        that:
+          - convert_confirmed | default('') == inventory_hostname
+        fail_msg: >-
+          NOT CONFIRMED, so nothing has been touched. This playbook boots {{ inventory_hostname }}
+          into rescue, hard-resets it, and lets disko REPARTITION ITS ROOT DISK. That is
+          irreversible and Hetzner has no recovery path for it. Re-run with
+          -e convert_confirmed={{ inventory_hostname }} when you mean it.
+        quiet: true
+
+    # THE HOST'S CONFIGURATION MUST EXIST BEFORE THE DISK IS TOUCHED, not be discovered missing after
+    # the rescue boot. `nix eval` reads a derivation path; it builds nothing, and on a Mac it cannot
+    # -- which is exactly why nixos-anywhere below is given `--build-on-remote`.
+    - name: The flake must already describe this host
+      ansible.builtin.command:
+        cmd: >-
+          nix eval --raw
+          {{ nixos_flake_dir }}#nixosConfigurations.{{ convert_flake_attribute }}.config.system.build.toplevel.drvPath
+      register: convert_eval
+      changed_when: false
+      delegate_to: localhost
+
+    - name: Read the server as Hetzner has it
+      ansible.builtin.uri:
+        url: "{{ hetzner_api }}/servers?name={{ inventory_hostname }}"
+        headers: "{{ hetzner_auth }}"
+        return_content: true
+      register: convert_server_lookup
+      delegate_to: localhost
+
+    - name: Exactly one server must answer to that name
+      ansible.builtin.assert:
+        that:
+          - convert_server_lookup.json.servers | length == 1
+        fail_msg: >-
+          {{ convert_server_lookup.json.servers | length }} Hetzner servers are named
+          {{ inventory_hostname }}. This playbook wipes a disk and must never guess which one.
+        quiet: true
+
+    - name: Name the machine, so nothing below re-derives it
+      # PINNED INTO FACTS ON PURPOSE. inventory/hcloud.yml filters `status: [running]`, and this
+      # machine LEAVES THE INVENTORY the moment it is reset into rescue. Anything below that
+      # re-derived the id or the address from `hostvars` would resolve to nothing halfway through,
+      # and the failure would name neither the variable nor the host.
+      ansible.builtin.set_fact:
+        convert_server_id: "{{ convert_server_lookup.json.servers[0].id }}"
+        convert_public_ip: "{{ convert_server_lookup.json.servers[0].public_net.ipv4.ip }}"
+        convert_volumes: "{{ convert_server_lookup.json.servers[0].volumes | default([]) }}"
+        convert_protection: "{{ convert_server_lookup.json.servers[0].protection }}"
+
+    # A VOLUME ATTACHED DURING AN INSTALL IS NOT SUPPOSED TO BE TOUCHED -- disko names only the root
+    # disk. This refuses anyway, for the reason bitcashier's nix/bin/convert-host detaches them
+    # rather than trusting the layout file: the guarantee that mongo-1's 80GB database volume cannot
+    # be reformatted should not rest on one line of one .nix file being right, in a procedure whose
+    # whole purpose is to repartition disks.
+    #
+    # THE VOLUME IS ALSO THE ROLLBACK. infra/terraform/server.mongo.tf gives it its own
+    # `delete_protection` precisely so that clearing the SERVER's protection to run a conversion
+    # cannot take the database's disk with it. Detaching it before this and re-attaching afterwards
+    # is a deliberate act by a person, and is the last line of defence for the only copy of the
+    # database that is not on Fly.
+    - name: Refuse to convert a host that still carries a data volume
+      ansible.builtin.assert:
+        that:
+          - convert_volumes | length == 0
+        fail_msg: >-
+          {{ inventory_hostname }} still carries volume(s) {{ convert_volumes }}. Detach them first,
+          deliberately, and satisfy yourself where they went -- `hcloud volume detach <id>`, or the
+          API. Re-attach after the install with automount OFF (the mount belongs to the flake's
+          `fileSystems` entry, keyed by /dev/disk/by-id/scsi-0HC_Volume_<id>; see
+          infra/terraform/modules/server/vars.tf on what happens when that half is forgotten).
+        quiet: true
+
+    # HETZNER REFUSES `enable_rescue` ON A REBUILD-PROTECTED SERVER. bitcashier's role clears the
+    # protection itself and restores it in an `always` block, because on that fleet protection is on
+    # by default and the machines are scarce server types that cannot be re-ordered.
+    #
+    # THIS REFUSES INSTEAD, and the difference is deliberate.
+    # infra/terraform/modules/server/vars.tf defaults `delete_protection` to false here precisely so
+    # that a conversion can run, and says to flip it to true per host ONCE CONVERTED. So a protected
+    # host in this estate is a host somebody has already converted and deliberately locked -- and
+    # silently unlocking it to wipe it again is the last thing this playbook should do on its own.
+    # Clearing it is one API call and one line of Terraform, made by a person who has read why it
+    # was set.
+    - name: Refuse to convert a host that is rebuild-protected
+      ansible.builtin.assert:
+        that:
+          - not convert_protection.rebuild
+          - not convert_protection.delete
+        fail_msg: >-
+          {{ inventory_hostname }} has Hetzner protection set (delete={{ convert_protection.delete }},
+          rebuild={{ convert_protection.rebuild }}). Hetzner refuses `enable_rescue` on a
+          rebuild-protected server, and NOTE that it also refuses to change one of the two alone --
+          the API answers `invalid_input`, "'delete' and 'rebuild' field required to be the same
+          value" -- so clearing rebuild protection necessarily makes the machine DELETABLE for the
+          length of the conversion. That is a window somebody should open on purpose and close
+          afterwards, not something this playbook does behind your back. On this estate protection is
+          off by default and is flipped on AFTER a host is converted
+          (infra/terraform/modules/server/vars.tf), so seeing it set here usually means this machine
+          has already been converted once.
+        quiet: true
+
+    # THE FIRMWARE QUESTION, ported from nix/bin/convert-host, where getting it wrong cost an entire
+    # install cycle. A host whose /sys/firmware/efi is absent MUST be configured for BIOS GRUB;
+    # systemd-boot never runs there and fails as a machine that installs perfectly and then never
+    # boots -- which, after the disk has been repartitioned, is the worst way to find out.
+    #
+    # Read from the LIVE machine before rescue, because rescue kexecs its own kernel and is not
+    # necessarily a witness to how the machine firmware-boots.
+    - name: Ask the live machine how it boots
+      ansible.builtin.command:
+        argv: "{{ ['ssh'] + (fleet_ssh_raw_options | trim).split() + ['root@' ~ convert_public_ip, '[ -d /sys/firmware/efi ] && echo UEFI || echo BIOS'] }}"
+      register: convert_firmware
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Ask the flake what bootloader it installs
+      # `--json` and not `--raw`: the value is a BOOLEAN, which `--raw` refuses to coerce. In
+      # bitcashier's shell version that failure was swallowed by an `|| echo unknown`, the answer
+      # matched no arm of the case, and the script refused every host it was ever pointed at -- while
+      # reporting a firmware mismatch, which is the one message that sends the reader to check the
+      # hardware. Written as its own task here so a failure is a failure.
+      ansible.builtin.command:
+        cmd: >-
+          nix eval --json
+          {{ nixos_flake_dir }}#nixosConfigurations.{{ convert_flake_attribute }}.config.boot.loader.grub.enable
+      register: convert_grub
+      changed_when: false
+      delegate_to: localhost
+
+    - name: The firmware and the bootloader must agree
+      ansible.builtin.assert:
+        that:
+          - (convert_firmware.stdout | trim) not in ['UEFI', 'BIOS']
+            or ((convert_firmware.stdout | trim) == 'BIOS') == (convert_grub.stdout | from_json | bool)
+        fail_msg: >-
+          {{ inventory_hostname }} reports firmware {{ convert_firmware.stdout | trim }} but
+          {{ convert_flake_attribute }} sets boot.loader.grub.enable =
+          {{ convert_grub.stdout | trim }}. That combination installs cleanly and then does not boot,
+          and by the time you find out the disk has been repartitioned. Fix the host's bootloader
+          configuration in the flake first.
+        success_msg: >-
+          firmware {{ convert_firmware.stdout | trim | default('UNREADABLE', true) }} agrees with
+          grub.enable={{ convert_grub.stdout | trim }}
+        quiet: true
+
+    # NOT BEING ABLE TO READ THE FIRMWARE IS NOT AGREEMENT. The assert above passes when the probe
+    # returned neither UEFI nor BIOS -- because a machine that is already down cannot answer, and
+    # refusing there would make a re-run after a half-finished conversion impossible. It is said out
+    # loud instead, because the failure it guards is silent and expensive.
+    - name: Say so when the firmware could not be read
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: could not read /sys/firmware/efi on {{ inventory_hostname }} (it may already be
+          down, or in rescue from an earlier attempt), so the firmware/bootloader agreement was NOT
+          checked. Verify by hand before letting this proceed: a UEFI machine configured for BIOS
+          GRUB installs cleanly and never boots.
+      when: (convert_firmware.stdout | trim) not in ['UEFI', 'BIOS']
+
+    # -------------------------------------------------------------------------------------------
+    # WHICH SSH KEY THE RESCUE SYSTEM WILL ACCEPT
+    # -------------------------------------------------------------------------------------------
+    #
+    # THE RESCUE SYSTEM AUTHORISES EXACTLY THE KEYS NAMED IN THE enable_rescue CALL, so naming the
+    # wrong one produces a machine that boots, answers on port 22, and refuses the install. Picking
+    # `ssh_keys[0]` -- whichever key the Hetzner API happens to list first -- is a coin flip; when
+    # bitcashier did that it picked another person's laptop key and nixos-anywhere spent its whole
+    # download budget before reaching "Permission denied (publickey,password)".
+    #
+    # So the key is MATCHED AGAINST ONE THIS OPERATOR ACTUALLY HOLDS: every ~/.ssh/*.pub is
+    # fingerprinted (MD5, which is the form the Hetzner API reports) and the first that appears in
+    # the project is used. If none does, this refuses rather than guessing -- an install that cannot
+    # log in is a wasted rescue boot at best, and at worst it is discovered after the disk is wiped.
+    - name: Fingerprint the operator's own public keys
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          for pub in "$HOME"/.ssh/*.pub; do
+            [ -e "$pub" ] || continue
+            ssh-keygen -l -E md5 -f "$pub" 2>/dev/null | awk '{print $2}' | sed 's/^MD5://'
+          done
+        executable: /bin/bash
+      register: convert_local_fingerprints
+      changed_when: false
+      delegate_to: localhost
+      when: convert_ssh_key_id is not defined
+
+    - name: Read the keys this Hetzner project holds
+      ansible.builtin.uri:
+        url: "{{ hetzner_api }}/ssh_keys"
+        headers: "{{ hetzner_auth }}"
+        return_content: true
+      register: convert_project_keys
+      delegate_to: localhost
+      when: convert_ssh_key_id is not defined
+
+    - name: Choose the key the rescue system will let this operator in with
+      # AN INLINE `if/else` AND NOT `| default(...)`. The two tasks above are skipped when
+      # `convert_ssh_key_id` is given, so `convert_local_fingerprints` is undefined on that path --
+      # and a filter's default ARGUMENT is evaluated eagerly, so `| default(<expression touching it>)`
+      # fails on exactly the branch it was meant to protect. Jinja's conditional expression evaluates
+      # only the branch it takes.
+      ansible.builtin.set_fact:
+        convert_rescue_key: >-
+          {{ convert_ssh_key_id if convert_ssh_key_id is defined
+             else (convert_project_keys.json.ssh_keys
+                   | selectattr('fingerprint', 'in', convert_local_fingerprints.stdout.splitlines())
+                   | list | first | default({})).get('id', '') }}
+        convert_rescue_key_name: >-
+          {{ 'named by -e convert_ssh_key_id' if convert_ssh_key_id is defined
+             else (convert_project_keys.json.ssh_keys
+                   | selectattr('fingerprint', 'in', convert_local_fingerprints.stdout.splitlines())
+                   | list | first | default({})).get('name', '') }}
+
+    - name: A key this operator holds must be in the project
+      ansible.builtin.assert:
+        that:
+          - convert_rescue_key | string | length > 0
+        fail_msg: >-
+          No key in this Hetzner project matches any ~/.ssh/*.pub on this machine, so the rescue
+          system would boot and then refuse you -- after the reset, with the machine down. Add your
+          public key to the project, or name one deliberately with -e convert_ssh_key_id=<id>
+          (`GET {{ hetzner_api }}/ssh_keys` lists them). Nothing has been touched.
+        success_msg: "rescue will authorise key {{ convert_rescue_key }} ({{ convert_rescue_key_name }})"
+        quiet: true
+
+    # -------------------------------------------------------------------------------------------
+    # FROM HERE DOWN THE MACHINE IS BEING TAKEN APART.
+    # -------------------------------------------------------------------------------------------
+
+    - name: Announce what is about to happen
+      ansible.builtin.debug:
+        msg:
+          - "CONVERTING {{ inventory_hostname }} (id {{ convert_server_id }}, {{ convert_public_ip }})"
+          - "flake:   {{ nixos_flake_dir }}#{{ convert_flake_attribute }}"
+          - "rescue:  {{ convert_rescue_type }}, key {{ convert_rescue_key }}"
+          - "THE ROOT DISK WILL BE REPARTITIONED. There is no undo."
+
+    - name: Put the machine into rescue mode
+      ansible.builtin.uri:
+        url: "{{ hetzner_api }}/servers/{{ convert_server_id }}/actions/enable_rescue"
+        method: POST
+        headers: "{{ hetzner_auth }}"
+        body_format: json
+        body:
+          type: "{{ convert_rescue_type }}"
+          # A LIST OF ONE, and it is the key proved above to be one this operator holds. Everything
+          # this playbook does after the reset depends on being able to log into rescue.
+          #
+          # THE WHOLE VALUE IS ONE TEMPLATE, which is what makes Ansible hand the API a JSON list of
+          # INTEGERS. Written as `["{{ ... }}"]` it would be a list of one STRING, and Hetzner answers
+          # `invalid_input` for that -- after the operator has already confirmed a disk wipe.
+          ssh_keys: "{{ [convert_rescue_key | int] }}"
+        status_code: [200, 201]
+      register: convert_rescue_call
+      delegate_to: localhost
+
+    # A REBOOT DOES NOT ENTER RESCUE RELIABLY; A RESET DOES. `enable_rescue` arms the NEXT boot only,
+    # and a graceful `reboot` asks the running OS to cooperate -- an Ubuntu host mid-shutdown can sit
+    # on a stopping unit for its full timeout, and a wedged one never goes at all. `reset` is the
+    # power button.
+    #
+    # NOTHING ON THAT DISK IS BEING PRESERVED, which is what makes a hard reset acceptable here and
+    # would not make it acceptable anywhere else. The refusal above guarantees no data volume is
+    # attached; the root filesystem is about to be repartitioned regardless.
+    - name: Hard-reset it into the rescue system
+      ansible.builtin.uri:
+        url: "{{ hetzner_api }}/servers/{{ convert_server_id }}/actions/reset"
+        method: POST
+        headers: "{{ hetzner_auth }}"
+        status_code: [200, 201]
+      register: convert_reset_call
+      delegate_to: localhost
+
+    # POLLED BY ACTION ID, NOT BY SERVER STATUS, and this is the mistake worth not repeating.
+    # `POST /servers/{id}/actions/{name}` is accepted ASYNCHRONOUSLY: it answers 201 with the action
+    # in `running` state, and the SERVER does not leave `running` for another second or two. So the
+    # obvious wait --
+    #
+    #     until: server.status == 'running'
+    #
+    # -- reads a status the machine has NOT YET LEFT, matches on its first attempt, and returns while
+    # the reset has not happened. bitcashier factors this into roles/hetzner_server_action for
+    # exactly that reason; it is written out here because this playbook is its only caller in this
+    # estate, and a role with one caller is a layer rather than an abstraction. Extract it at the
+    # second caller.
+    #
+    # `until` ON BOTH TERMINAL STATES, then assert on which one: polling for `success` alone spends
+    # the whole retry budget on an action that failed in its first second and then reports a timeout,
+    # which describes neither what happened nor what to do about it.
+    #
+    # ON THE CONTROLLER, and this one is load-bearing rather than tidy. If this ran on the target,
+    # ssh would die mid-wait, Ansible would mark the host UNREACHABLE -- and AN UNREACHABLE HOST
+    # SKIPS `always:` BLOCKS, which is how bitcashier once left a live production server with its
+    # delete protection cleared.
+    - name: Wait for the reset action to actually finish
+      ansible.builtin.uri:
+        url: "{{ hetzner_api }}/servers/{{ convert_server_id }}/actions/{{ convert_reset_call.json.action.id }}"
+        headers: "{{ hetzner_auth }}"
+      register: convert_reset_progress
+      until: (convert_reset_progress.json.action.status | default('')) in ['success', 'error']
+      retries: 30
+      delay: 10
+      delegate_to: localhost
+
+    - name: The reset must have succeeded, not merely finished
+      ansible.builtin.assert:
+        that:
+          - convert_reset_progress.json.action.status == 'success'
+        fail_msg: >-
+          Resetting {{ inventory_hostname }} into rescue finished as
+          "{{ convert_reset_progress.json.action.status }}". The machine is in an unknown state and
+          rescue mode is armed for its next boot; read
+          {{ hetzner_api }}/servers/{{ convert_server_id }}/actions before doing anything else.
+        quiet: true
+
+    # A MACHINE IN RESCUE HAS A DIFFERENT SSH HOST KEY FROM THE MACHINE THAT WAS THERE A MINUTE AGO,
+    # and so does the NixOS system that replaces it. Left in place, the controller's known_hosts entry
+    # makes every later step fail with REMOTE HOST IDENTIFICATION HAS CHANGED -- which reads as an
+    # attack rather than as the thing we just did on purpose.
+    #
+    # REMOVED EXPLICITLY RATHER THAN BY LOOSENING ansible.cfg. `host_key_checking = True` and
+    # `accept-new` between them accept a host never seen before and refuse one whose key CHANGED,
+    # which is the right pair for a fleet -- so the removal is a visible, deliberate step here (and
+    # again after the install, where the key changes a second time) instead of a policy that would
+    # also wave through a genuinely unexpected change on the other twenty-nine days.
+    - name: Forget the old host key for this address
+      ansible.builtin.command:
+        argv: [ssh-keygen, -R, "{{ convert_public_ip }}"]
+      changed_when: true
+      failed_when: false
+      delegate_to: localhost
+
+    # PORT 22 ANSWERING IS NOT THE CONDITION. What the install needs is a SESSION, and the two come up
+    # at different times and can disagree permanently -- a rescue system booted with the wrong key
+    # answers on 22 forever and never lets anyone in. So this waits for a command to RUN as root,
+    # which is exactly what nixos-anywhere is about to require.
+    - name: Wait for a root session in the rescue system
+      ansible.builtin.command:
+        # No extra -o here: `fleet_ssh_raw_options` already carries BatchMode, accept-new and a
+        # ConnectTimeout, and the stale key for this address was removed by the task above. Adding a
+        # second `-o StrictHostKeyChecking=...` would be inert anyway -- ssh takes the FIRST
+        # occurrence of an option, not the last, which is a good way to write a line that reads as a
+        # change and is not one.
+        argv: "{{ ['ssh'] + (fleet_ssh_raw_options | trim).split() + ['root@' ~ convert_public_ip, 'true'] }}"
+      register: convert_rescue_session
+      until: convert_rescue_session.rc == 0
+      retries: 60
+      delay: 10
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+
+    - name: The rescue system must let us in
+      ansible.builtin.assert:
+        that:
+          - convert_rescue_session.rc == 0
+        fail_msg: >-
+          No root session in the rescue system on {{ convert_public_ip }} after ten minutes. The
+          machine has been reset and is NOT running its old operating system -- but nothing has been
+          written to the disk yet, so it is recoverable: disable rescue
+          (`POST /servers/{{ convert_server_id }}/actions/disable_rescue`) and reset again to bring
+          the original system back. The usual cause is the rescue system authorising a key this
+          operator does not hold, which is what the check before the reset exists to prevent.
+        quiet: true
+
+    # -------------------------------------------------------------------------------------------
+    # THE INSTALL. This is where the disk is repartitioned.
+    # -------------------------------------------------------------------------------------------
+    #
+    # --build-on-remote BECAUSE THE CONTROLLER IS A MAC and cannot build a Linux system closure at
+    # all. It is also the right choice on a Linux controller: the alternative pushes a multi-GB
+    # closure over the operator's uplink instead of pulling it from a cache into a datacentre.
+    #
+    # FROM nixpkgs, NOT FROM THE UPSTREAM FLAKE. `nix run github:nix-community/nixos-anywhere`
+    # evaluates against its OWN nixpkgs, for which there is no aarch64-darwin binary cache -- so it
+    # starts BUILDING the tool (clang, ld64, llvm) on the operator's Mac while the rescue system sits
+    # idle. `nixpkgs#nixos-anywhere` is the same tool out of the cache everything else here comes
+    # from. The install itself is unaffected either way, because --build-on-remote means the SYSTEM is
+    # built on the target; this is only about the tool.
+    #
+    # StrictHostKeyChecking=no AND UserKnownHostsFile=/dev/null, only here: the host key changes
+    # underneath this command as the machine goes from rescue to the installed system, so an entry
+    # written mid-install is a lie by the time it is checked. It is scoped to this one invocation
+    # rather than set as policy.
+    - name: Install NixOS over the rescue system
+      ansible.builtin.command:
+        argv:
+          - nix
+          - shell
+          - nixpkgs#nixos-anywhere
+          - -c
+          - nixos-anywhere
+          - --flake
+          - "{{ nixos_flake_dir }}#{{ convert_flake_attribute }}"
+          - --build-on-remote
+          - --ssh-option
+          - StrictHostKeyChecking=no
+          - --ssh-option
+          - UserKnownHostsFile=/dev/null
+          - --target-host
+          - "root@{{ convert_public_ip }}"
+      register: convert_install
+      changed_when: true
+      delegate_to: localhost
+
+    # The installed system generated its own host key, which is neither the one from before the
+    # conversion nor rescue's. Third and last removal.
+    - name: Forget the rescue system's host key
+      ansible.builtin.command:
+        argv: [ssh-keygen, -R, "{{ convert_public_ip }}"]
+      changed_when: true
+      failed_when: false
+      delegate_to: localhost
+
+    - name: Wait for the installed system to answer ssh
+      ansible.builtin.wait_for:
+        host: "{{ convert_public_ip }}"
+        port: 22
+        state: started
+        timeout: 600
+      delegate_to: localhost
+
+    # `raw`, because the machine that just came up has no python unless its configuration put one in
+    # systemPackages -- and asserting that it is NixOS is the one thing that must work whether or not
+    # it did.
+    - name: Read what the machine is now running
+      ansible.builtin.raw: cat /etc/os-release
+      register: convert_new_os
+      changed_when: false
+      retries: 10
+      delay: 15
+      until: convert_new_os is succeeded
+
+    - name: It must actually be NixOS now
+      ansible.builtin.assert:
+        that:
+          - "'ID=nixos' in convert_new_os.stdout"
+        fail_msg: >-
+          {{ inventory_hostname }} came back but /etc/os-release does not say ID=nixos. The install
+          reported success, so read its output above before doing anything else -- do NOT re-run this
+          playbook on the assumption that it failed cleanly.
+        quiet: true
+
+    # THE HOST KEY IS REPORTED BECAUSE SOMETHING HAS TO BE SEALED TO IT. sops secrets for a NixOS host
+    # are encrypted to an age recipient DERIVED from its ssh host key, and this machine's key was
+    # generated minutes ago -- so every secret in infra/nix/secrets/ that this host reads has to be
+    # re-sealed before it can be deployed.
+    #
+    # REPORTED RATHER THAN DONE. Sealing needs an age identity nothing here holds and should not, and
+    # deploying before the re-seal does not fail cleanly -- it activates a host whose services start
+    # without their credentials, which for mongod means an open database rather than a dead one.
+    - name: Read the new host key its secrets must be sealed to
+      ansible.builtin.raw: cat /etc/ssh/ssh_host_ed25519_key.pub
+      register: convert_host_key
+      changed_when: false
+
+    - name: Report what was converted, and what is deliberately still outstanding
+      ansible.builtin.debug:
+        msg:
+          - "{{ inventory_hostname }} ({{ convert_public_ip }}) is now NixOS."
+          - "installed from: {{ nixos_flake_dir }}#{{ convert_flake_attribute }}"
+          - "new ssh host key: {{ convert_host_key.stdout | trim }}"
+          - "NOT DONE, on purpose:"
+          - "  1. re-seal infra/nix/secrets/ to this host's new age recipient (`ssh-to-age`),"
+          - "     then run playbooks/deploy-nixos-host.yml -e target={{ inventory_hostname }}."
+          - "  2. re-attach any data volume you detached, with automount OFF, and confirm the"
+          - "     flake's fileSystems entry names its /dev/disk/by-id/scsi-0HC_Volume_<id>."
+          - "     A missing entry does not fail -- the service writes to the ROOT disk and looks"
+          - "     perfectly healthy doing it."
+          - "  3. once you are satisfied, set delete_protection = true for this host in"
+          - "     infra/terraform and apply it through roles/terraform_apply."

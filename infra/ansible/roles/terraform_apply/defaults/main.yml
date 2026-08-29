@@ -1,0 +1,16 @@
+---
+# Address -> the single action expected for it, one of create / update / delete / replace.
+#
+# Written as a MAP rather than a list so that a plan proposing `replace` where `update` was intended
+# cannot pass: on this estate that distinction is the difference between renaming a server and
+# destroying the machine holding the database. There is no "any" value and no way to disable the
+# check on purpose -- see tasks/main.yml.
+terraform_expected_actions: {}
+
+terraform_plan_file: "/tmp/ansible-terraform-{{ terraform_plan_name | default('plan') }}.tfplan"
+
+# `terraform_lock_timeout` IS DELIBERATELY NOT DEFINED HERE. It lives in
+# inventory/group_vars/all.yml, because a group_vars entry silently OUTRANKS a role default -- so if
+# both existed, the copy that reads as authoritative would be the one deciding nothing. One
+# definition, in the one place every caller can see it, and an undefined-variable error if this role
+# is ever used against another inventory.

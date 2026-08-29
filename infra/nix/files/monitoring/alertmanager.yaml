@@ -1,0 +1,88 @@
+---
+# Alertmanager's configuration, installed at /etc/alertmanager/alertmanager.yaml by
+# nix/modules/roles/prometheus.nix. `@TELEGRAM_BOT_TOKEN_FILE@` is substituted at build time.
+#
+# EVERYTHING GOES TO TELEGRAM, to the same @kinowobot channel the application's own alerts and the
+# Grafana rules use. One channel is a deliberate choice for a one-operator fleet: a second
+# destination is a second thing to notice has stopped working.
+#
+# ------------------------------------------------------------------------------------------------
+# THE CHAT ID IS A NUMBER HERE AND A QUOTED STRING IN GRAFANA. THAT IS NOT AN INCONSISTENCY.
+# ------------------------------------------------------------------------------------------------
+#
+# Alertmanager's own schema types `chat_id` as an INTEGER, so it is unquoted below. Grafana's
+# provisioning schema types the same value as a STRING, and its environment expansion re-types a
+# numeric one to a number regardless of quoting -- which makes Grafana fail to unmarshal it and
+# exit before ever becoming healthy (see the header of nix/modules/roles/grafana.nix, and the
+# warning in grafana-contactpoints.yaml). Two schemas, two correct spellings of one number. Copying
+# either file's quoting into the other breaks it.
+#
+# THE BOT TOKEN IS READ FROM A FILE AT SEND TIME, never interpolated into this document: this file
+# is in the world-readable Nix store, and `bot_token_file` is the reason nothing secret is.
+
+global:
+  # How long a firing alert may go unseen before Alertmanager decides it has resolved on its own.
+  # Longer than the longest `for:` in the rule files, so a slow-moving alert is not resolved out
+  # from under itself between evaluations.
+  resolve_timeout: 15m
+
+route:
+  # GROUPED BY HOST FIRST. A machine in trouble usually trips several rules at once -- disk, inodes
+  # and a failed unit are one incident and should arrive as one message, not three.
+  group_by: ["host", "alertname"]
+  group_wait: 30s
+  group_interval: 5m
+  # Re-nag every four hours while an alert still holds. Matches the Grafana notification policy
+  # ported alongside it, so the two halves of this fleet's alerting nag at the same rhythm.
+  repeat_interval: 4h
+  receiver: telegram
+
+  routes:
+    # THE DEAD-MAN'S HANDLE. `MonitoringHeartbeat` (monitoring-self.rules) fires permanently and by
+    # design; this route delivers it once a day.
+    #
+    # WHAT IT BUYS: every other alert in this fleet is evidence that something is WRONG, and none
+    # of them is evidence that the notification path still WORKS. A revoked bot token, a bot
+    # removed from the channel, a broken egress route -- all of them present as silence, which is
+    # exactly what a healthy fleet also looks like. One message a day is the price of being able to
+    # tell those apart, and its ABSENCE is the signal, so it is worth as much as the message.
+    #
+    # `send_resolved` is off for this receiver: the heartbeat never resolves, and a "resolved"
+    # message for it would only ever mean Prometheus stopped evaluating.
+    - matchers:
+        - alertname = "MonitoringHeartbeat"
+      receiver: telegram-heartbeat
+      group_wait: 0s
+      repeat_interval: 24h
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token_file: "@TELEGRAM_BOT_TOKEN_FILE@"
+        # UNQUOTED, because Alertmanager types this as an integer. See the header.
+        chat_id: 1771340065
+        # PARSING TURNED OFF, DELIBERATELY. Alertmanager's default parse_mode is HTML, and Telegram
+        # rejects a message whose text contains anything it reads as a malformed tag -- a `<` from
+        # a PromQL threshold in an annotation is enough. The alert is then dropped at delivery with
+        # only a log line to say so, which is the worst possible place to lose one. Plain text
+        # cannot fail that way; the cost is that nothing can be bolded.
+        parse_mode: ""
+        send_resolved: true
+        message: |-
+          {{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Labels.alertname }}{{ if .Labels.host }} on {{ .Labels.host }}{{ end }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: telegram-heartbeat
+    telegram_configs:
+      - bot_token_file: "@TELEGRAM_BOT_TOKEN_FILE@"
+        chat_id: 1771340065
+        parse_mode: ""
+        send_resolved: false
+        message: |-
+          Monitoring heartbeat: Prometheus, Alertmanager and the Telegram path are all working.
+          Its ABSENCE for more than a day is the alarm.
+
+inhibit_rules: []
+mute_time_intervals: []

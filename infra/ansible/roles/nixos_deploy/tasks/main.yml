@@ -1,0 +1,384 @@
+---
+# Deploy one host's NixOS configuration from this repository: rsync the flake to the target and
+# `nixos-rebuild switch` there.
+#
+# PORTED FROM bitcashier/infra roles/nixos_deploy, guards and all. Every refusal below was written
+# there against a real failure on a real conversion; each one is kept because the mechanism that
+# produced it is a property of NixOS-over-ssh rather than of that fleet.
+#
+# WHY rsync AND NOT colmena, WHICH infra/flake.nix ALSO SHIPS. The hive there is the nicer tool and
+# is not being disparaged; the two answer different questions, and this one answers the question a
+# macOS controller can actually ask. `colmena apply` and `nixos-rebuild --target-host` both EVALUATE
+# LOCALLY, and a Darwin nix cannot evaluate a NixOS system closure without a Linux builder -- so on
+# this operator's machine they need one and this does not. rsync the source and let the far end both
+# evaluate and build: nothing Linux-shaped is evaluated here except the cheap `nix eval` below, which
+# reads a derivation PATH and builds nothing.
+#
+# bitcashier/infra reached the same conclusion from a different direction (a nixpkgs-schema mismatch
+# between its controller's nix and the flake's pinned input) and its nix/README.md records
+# "rsync + nixos-rebuild switch" as the workaround three conversions actually used. This role is
+# that, written down. Use colmena when there is a Linux builder to hand; this path keeps working
+# either way, which is why the deploy playbook drives it.
+#
+# WHY --exclude .git, AND IT IS NOT AN OPTIMISATION. In a git repository Nix evaluates the GIT TREE
+# and ignores untracked files -- so a flake copied WITH its .git would silently build without any
+# file that had not been committed, which during a migration is most of them. Copying without .git
+# makes it a plain directory, where every file present is seen. (infra/ is not itself a git root, so
+# there is usually nothing to exclude; the flag is kept so that stays true if it ever becomes one,
+# and because a worktree's .git is a FILE pointing back at the main checkout, which would copy as a
+# broken pointer.)
+#
+# WHY BUILD ON THE TARGET. The alternative pushes a multi-GB closure over the operator's uplink. The
+# cost is real on mongo-1, where a build competes with the database for two cores -- if that ever
+# matters, the answer is a Linux remote builder and `--build-host`, not evaluating on a Mac.
+
+- name: Refuse to deploy a configuration that was not named
+  ansible.builtin.assert:
+    that:
+      - nixos_deploy_flake_attribute is defined
+      - nixos_deploy_flake_attribute | string | length > 0
+    fail_msg: >-
+      nixos_deploy_flake_attribute is required -- the flake output to build, e.g. `mongo-1`.
+      Deploying the wrong host's configuration onto a machine is the failure this refusal exists
+      for, and on this fleet the two that would hurt are adjacent: monitoring-1's configuration on
+      mongo-1 would activate a Prometheus and no mongod, on the machine holding the only copy of the
+      database.
+    quiet: true
+
+- name: Refuse to deploy from a source tree that is not there
+  ansible.builtin.stat:
+    path: "{{ nixos_deploy_source }}/flake.nix"
+  register: nixos_deploy_source_flake
+  delegate_to: localhost
+
+- name: Assert the source tree carries a flake
+  ansible.builtin.assert:
+    that:
+      - nixos_deploy_source_flake.stat.exists
+    fail_msg: >-
+      No flake.nix under {{ nixos_deploy_source }} -- nothing to deploy. That path is derived from
+      where this playbook lives, so this usually means the playbook was invoked from outside the
+      repository rather than that the flake is missing.
+    quiet: true
+
+# REFUSE A TARGET THAT IS NOT NixOS. `nixos-rebuild` does not exist on the Ubuntu image these
+# machines are bootstrapped from, so without this the role would rsync a whole flake into /root and
+# then fail -- which is survivable, and is not the point. The point is that reaching this task on a
+# still-Ubuntu host means THE CONVERSION DID NOT HAPPEN and somebody is several steps further
+# through a cutover than they believe. Failing here says which step was actually missed.
+#
+# `raw`, NOT slurp, AND THE REASON IS THE WHOLE POINT OF THIS ROLE'S FIRST DEPLOY. A host freshly
+# installed by nixos-anywhere has NO PYTHON AT ALL until its configuration puts python3 in
+# systemPackages: nothing is on a NixOS PATH that is not declared. Every ordinary Ansible module
+# therefore fails on it with
+#
+#     /bin/sh: line 1: /usr/bin/python3: No such file or directory
+#
+# `raw` runs the command straight over ssh with no module and no interpreter, so it is the only
+# thing that works on a host in this state -- and the FIRST deploy is always to a host in this state.
+- name: Read what operating system the target is running
+  ansible.builtin.raw: cat /etc/os-release
+  register: nixos_deploy_os_release
+  changed_when: false
+
+- name: Refuse to deploy a NixOS closure to a host that is not NixOS
+  ansible.builtin.assert:
+    that:
+      - "'ID=nixos' in nixos_deploy_os_release.stdout"
+    fail_msg: >-
+      {{ inventory_hostname }} is not running NixOS, so `nixos-rebuild` is not there and this deploy
+      cannot work. Run playbooks/convert-host-to-nixos.yml against it first -- and read why the
+      previous attempt did not complete, rather than simply re-running this.
+    quiet: true
+
+# THE HOST CONFIGURATION MUST EXIST BEFORE THE COPY, not be discovered missing by a build on the
+# target twenty minutes later. `nix eval` on the controller is cheap -- it reads a derivation path,
+# it does not build anything -- and it catches a mistyped attribute, a host directory that was never
+# added, and an option with no value.
+- name: Evaluate the configuration on the controller before copying anything
+  ansible.builtin.command:
+    cmd: >-
+      nix eval --raw
+      {{ nixos_deploy_source }}#nixosConfigurations.{{ nixos_deploy_flake_attribute }}.config.system.build.toplevel.drvPath
+  register: nixos_deploy_eval
+  changed_when: false
+  delegate_to: localhost
+  when: nixos_deploy_evaluate_first | bool
+
+# ---------------------------------------------------------------------------------------------
+# EVERY DECLARED SOPS SECRET MUST BE IN THE HOST'S SECRETS FILE
+# ---------------------------------------------------------------------------------------------
+#
+# ASKED HERE BECAUSE `nix eval` ABOVE CANNOT ASK IT. Evaluation never opens the sops file, so a
+# configuration naming a key that is not in it evaluates perfectly, builds the entire system closure
+# on the target, and then fails at ACTIVATION -- `sops-install-secrets: manifest is not valid:
+# secret <name> ... is not valid: the key '<top>' cannot be found`. That is the worst possible
+# moment: the closure is built, the switch is under way, and on a cutover the old system is already
+# gone.
+#
+# IT DECRYPTS NOTHING AND NEEDS NO KEY. sops encrypts VALUES, not structure -- the key names are
+# plainly readable in the file -- so this runs anywhere, including where no age identity exists.
+#
+# THIS IS A SIMPLIFIED EQUIVALENT, NOT A PORT. bitcashier/infra does this with
+# `bin/check-sops-secrets-declared`, a 300-line python program that resolves `key = "..."` overrides,
+# walks nested paths properly with a YAML parser, and distinguishes "could not evaluate" from "no
+# secrets" as separate exit codes. That script is repo-specific and depends on pyyaml being present
+# on the controller. What is here instead:
+#
+#   * it compares only the TOP-LEVEL key of each secret name (`mongo/keyfile` -> `mongo`), because
+#     grep is not a YAML parser. A file containing `mongo:` with the wrong child underneath passes
+#     here and would be caught at activation, as before. That is a real narrowing and it is stated
+#     rather than hidden.
+#   * it ignores a secret that sets an explicit `key = ...` override, for the same reason.
+#   * it keeps the ONE property that made the original worth having: an evaluation that FAILS is
+#     refused, not treated as "no secrets declared". Folding "could not look" into "nothing wrong" is
+#     the single most repeated bug in guards of this shape.
+#
+# Widen it to the real thing the moment this fleet has a host with nested or overridden secret names
+# that this cannot see.
+- name: Ask the flake which sops secrets this configuration declares, and where they live
+  ansible.builtin.command:
+    # `c.sops or {}` -- Nix's attribute-selection default -- so a host that does not import the sops
+    # module at all answers `{}` rather than failing evaluation, which would be indistinguishable
+    # from a broken configuration.
+    #
+    # `toString` on defaultSopsFile yields the /nix/store path of the file AS THE FLAKE SEES IT,
+    # which is the copy that would actually be deployed. That is the right file to check and not
+    # merely a convenient one: reading infra/nix/secrets/<host>.yaml from the working tree would
+    # answer for a file the build may not be using.
+    argv:
+      - nix
+      - eval
+      - --json
+      - "{{ nixos_deploy_source }}#nixosConfigurations.{{ nixos_deploy_flake_attribute }}.config"
+      - --apply
+      - >-
+        c: { file = toString ((c.sops or {}).defaultSopsFile or "");
+             names = builtins.attrNames ((c.sops or {}).secrets or {}); }
+  register: nixos_deploy_sops_eval
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  when: nixos_deploy_assert_sops_secrets_declared | bool
+
+- name: An evaluation that could not answer is not an answer
+  ansible.builtin.assert:
+    that:
+      - nixos_deploy_sops_eval.rc == 0
+    fail_msg: >-
+      Could not read `sops.secrets` out of {{ nixos_deploy_flake_attribute }}, so whether its
+      declared secrets exist is UNKNOWN -- which is not the same as there being none, and must not
+      read as a pass. nix said: {{ nixos_deploy_sops_eval.stderr | default('') | trim }}
+    quiet: true
+  when: nixos_deploy_assert_sops_secrets_declared | bool
+
+- name: Check every declared secret against the file it is sealed in
+  when:
+    - nixos_deploy_assert_sops_secrets_declared | bool
+    - (nixos_deploy_sops_eval.stdout | from_json).names | length > 0
+  vars:
+    nixos_deploy_sops: "{{ nixos_deploy_sops_eval.stdout | from_json }}"
+  block:
+    - name: A host that declares secrets must name a file to read them from
+      ansible.builtin.assert:
+        that:
+          - nixos_deploy_sops.file | length > 0
+        fail_msg: >-
+          {{ nixos_deploy_flake_attribute }} declares
+          {{ nixos_deploy_sops.names | length }} sops secret(s) and no `sops.defaultSopsFile`.
+          Activation would fail on the target after the whole closure has been built.
+        quiet: true
+
+    - name: Read the secrets file, which is plaintext structure around encrypted values
+      ansible.builtin.slurp:
+        src: "{{ nixos_deploy_sops.file }}"
+      register: nixos_deploy_sops_file
+      delegate_to: localhost
+
+    - name: Every declared secret's top-level key must be in it
+      ansible.builtin.assert:
+        that:
+          - nixos_deploy_sops_missing | length == 0
+        fail_msg: |-
+          {{ nixos_deploy_flake_attribute }} declares sops secret(s) whose top-level key is not in
+          {{ nixos_deploy_sops.file }}:
+            {{ nixos_deploy_sops_missing | join(', ') }}
+          Present at the top level: {{ nixos_deploy_sops_present | join(', ') }}
+
+          Nothing has been copied or switched. sops-install-secrets would have refused this DURING
+          ACTIVATION, after building the entire system closure on the target -- which on a cutover is
+          after the old configuration is already gone.
+        success_msg: >-
+          all {{ nixos_deploy_sops.names | length }} declared secret(s) are present in
+          {{ nixos_deploy_sops.file | basename }}
+        quiet: true
+      vars:
+        # Top-level YAML keys: a line starting in column zero and ending in a colon. Crude on
+        # purpose -- see the block comment above for exactly how crude, and for what it therefore
+        # does not catch.
+        nixos_deploy_sops_present: >-
+          {{ (nixos_deploy_sops_file.content | b64decode).splitlines()
+             | map('regex_search', '^([A-Za-z0-9_.-]+):', '\1')
+             | reject('equalto', none) | map('first') | list | unique }}
+        nixos_deploy_sops_missing: >-
+          {{ nixos_deploy_sops.names | map('regex_replace', '/.*$', '') | list | unique
+             | difference(nixos_deploy_sops_present) }}
+
+- name: Copy the flake to the target
+  ansible.posix.synchronize:
+    src: "{{ nixos_deploy_source }}/"
+    dest: "{{ nixos_deploy_target_path }}/"
+    delete: true
+    rsync_opts:
+      # See the header for why .git is load-bearing rather than an optimisation.
+      - "--exclude=.git"
+      - "--exclude=result"
+      - "--exclude=.venv"
+      # PROVIDER AND COLLECTION CACHES, which live under this very tree: infra/terraform/.terraform
+      # holds hundreds of MB of provider binaries and infra/ansible/collections holds the galaxy
+      # install. None of it is tracked and none of it is wanted -- and Nix would copy the lot into
+      # the store as well, because a flake path with no .git is taken wholesale.
+      - "--exclude=.terraform"
+      - "--exclude=collections"
+
+# `raw` for the same reason as the OS read above: no python on a first deploy.
+#
+# FREE-FORM, NOT `cmd:`. `raw` takes its command as _raw_params; given a `cmd:` key instead it
+# receives NOTHING and what reaches the target is the literal string "None" -- `bash: line 1: None:
+# command not found`, rc 127. bitcashier hit exactly that on the failed-unit read below, where it
+# meant the guarantee this role advertises had never once been evaluated. Both tasks are written
+# free-form here for that reason; if you edit either, do not "tidy" it into a `cmd:` key.
+- name: Switch the target onto the new configuration
+  ansible.builtin.raw: >-
+    nixos-rebuild switch
+    --flake {{ nixos_deploy_target_path }}#{{ nixos_deploy_flake_attribute }}
+  register: nixos_deploy_switch
+  changed_when: "'Done. The new configuration is' in nixos_deploy_switch.stdout"
+
+# A SWITCH THAT LEFT UNITS FAILED IS NOT A SUCCESSFUL DEPLOY. `nixos-rebuild` exits 0 having
+# activated a configuration whose services then failed to start. On this fleet the three that matter
+# are mongod (the database does not come up and the web tier's change stream dies), the k3s server
+# (the cluster is headless and the agent's next heartbeat fails) and sshd itself -- which is not a
+# thing to discover by trying the next task.
+- name: Read the failed units after the switch
+  ansible.builtin.raw: systemctl --failed --no-legend --plain
+  register: nixos_deploy_failed_units
+  changed_when: false
+
+- name: Refuse to call the deploy finished while units are failed
+  ansible.builtin.assert:
+    that:
+      - nixos_deploy_failed_units.stdout | trim | length == 0
+    fail_msg: |-
+      The switch completed but these units are failed on {{ inventory_hostname }}:
+      {{ nixos_deploy_failed_units.stdout }}
+      A configuration that activates and leaves services down is not a deploy that worked. The
+      previous generation is still on the machine -- `nixos-rebuild switch --rollback` puts it back.
+    success_msg: "switched cleanly, no failed units"
+    quiet: true
+  when: nixos_deploy_assert_no_failed_units | bool
+
+# ---------------------------------------------------------------------------------------------
+# A FIREWALL RULE NAMING AN INTERFACE THAT DOES NOT EXIST
+# ---------------------------------------------------------------------------------------------
+#
+# `iptables` ACCEPTS such a rule. It installs without complaint, appears verbatim in `iptables -S`,
+# and never matches anything. There is no error at deploy time, nothing in the journal, no failed
+# unit, and the rule reads correctly to anybody who goes looking -- so the only symptom is the
+# traffic it was supposed to admit being silently dropped.
+#
+# PORTED, AND THIS FLEET IS THE EXACT SHAPE THAT PRODUCES IT. bitcashier found it converting a
+# gateway where Ubuntu had presented the public NIC as `eth0` and the NixOS image presented the same
+# card as `enp1s0`, while the private NIC kept its name on both -- so one of two interface names
+# survived the conversion and the other silently did not. Every host here is converted in place from
+# a stock Ubuntu image (infra/terraform/modules/server/vars.tf), and every host here has rules that
+# are only meaningful when scoped to the private interface: mongod's 27017, the k3s apiserver's 6443,
+# node_exporter's 9100. A rule that names the wrong interface for those does not fail closed in a
+# visible way -- it fails closed silently, which on 27017 is a database nobody can reach and on 9100
+# is monitoring that quietly stops.
+#
+# GENERIC ON PURPOSE. It reads the interface names out of the rules the machine ACTUALLY HAS rather
+# than out of any host's configuration, so it needs no per-host wiring and covers every rule from
+# every module -- including ones written after this. A host with no interface-scoped rules passes
+# trivially.
+#
+# `raw`, like the tasks above it, because a freshly converted host has no python.
+- name: Read every interface named by an installed firewall rule
+  # BOTH TOOLSETS, because which one is installed is decided by `networking.nftables.enable` in the
+  # flake and this role must not have an opinion about that. `iptables-save` covers the legacy path
+  # (and the nft-backed compat path); `nft list ruleset` covers a host that enables nftables
+  # natively, where `iifname "ens10"` is the spelling. rc is forced to 0 so that ONE tool being
+  # absent is not itself a failure -- the assert below is what decides whether the answer is usable.
+  ansible.builtin.raw: >-
+    { iptables-save 2>/dev/null | grep -oE '\s-[io] [A-Za-z0-9._@-]+' | awk '{print $2}';
+      nft list ruleset 2>/dev/null | grep -oE '(iifname|oifname) "[A-Za-z0-9._@-]+"'
+        | cut -d'"' -f2; } | sort -u; echo "TOOLS:$(command -v iptables-save nft | wc -l)"
+  register: nixos_deploy_rule_interfaces
+  changed_when: false
+  when: nixos_deploy_assert_named_interfaces_exist | bool
+
+- name: Read the interfaces this machine actually has
+  ansible.builtin.raw: >-
+    ip -o link show | cut -d' ' -f2 | tr -d ':' | cut -d'@' -f1 | sort -u
+  register: nixos_deploy_real_interfaces
+  changed_when: false
+  when: nixos_deploy_assert_named_interfaces_exist | bool
+
+# NOT BEING ABLE TO LOOK IS NOT A PASS. If neither iptables-save nor nft is on the target's PATH,
+# this guard has proved nothing and says so, rather than reporting the empty set as "no rules name a
+# missing interface". Turn it off per host with
+# `-e nixos_deploy_assert_named_interfaces_exist=false` if that is genuinely the right answer for a
+# machine with no firewall at all -- and write down next to it why.
+- name: This guard must have been able to read a ruleset at all
+  ansible.builtin.assert:
+    that:
+      - nixos_deploy_rule_interface_tools | int > 0
+    fail_msg: >-
+      Neither `iptables-save` nor `nft` is available on {{ inventory_hostname }}, so which interfaces
+      its firewall rules name could not be read. That is UNKNOWN, not clean. The switch itself
+      SUCCEEDED and the machine is running the new configuration -- this is the check afterwards
+      refusing to claim something it did not verify.
+    quiet: true
+  vars:
+    nixos_deploy_rule_interface_tools: >-
+      {{ ((nixos_deploy_rule_interfaces.stdout | default('')).splitlines()
+          | select('match', '^TOOLS:') | list | first | default('TOOLS:0')).split(':') | last }}
+  when: nixos_deploy_assert_named_interfaces_exist | bool
+
+- name: Refuse a deploy whose firewall rules name interfaces that do not exist
+  ansible.builtin.assert:
+    that:
+      - nixos_deploy_named_but_absent | length == 0
+    fail_msg: |-
+      These interfaces are named by firewall rules on this host and do not exist on it:
+        {{ nixos_deploy_named_but_absent | join(', ') }}
+      Present: {{ nixos_deploy_present_interfaces | join(', ') }}
+
+      iptables accepts such a rule and never matches it, so whatever that rule was meant to admit is
+      being dropped silently. This is almost always a name that changed with the OS -- these machines
+      are bootstrapped from Ubuntu and converted in place, and the public NIC is the one that
+      commonly renames.
+    success_msg: >-
+      every interface named by a firewall rule exists
+      ({{ nixos_deploy_present_interfaces | length }} present)
+    quiet: true
+  vars:
+    # `lo` is filtered from neither side; it exists on every host and is named by the loopback
+    # accept, so it cancels out. Empty lines are dropped because the reads yield none on a host with
+    # no interface-scoped rules and splitting would otherwise produce [''].
+    #
+    # SPLIT WITH .splitlines(), NOT split('\n'). These reads come back through `raw`, which is ssh,
+    # so the lines are terminated CRLF -- and `split('\n')` does not split them at all: the whole
+    # blob stays one element. bitcashier's copy of this guard refused a perfectly good deploy of its
+    # monitoring node on exactly that, claiming an interface was absent while listing it, CR and all,
+    # in its own "present" line.
+    # .splitlines() is immune to both halves of that: no backslash to survive YAML and Jinja, and it
+    # splits CRLF and LF alike.
+    nixos_deploy_present_interfaces: >-
+      {{ (nixos_deploy_real_interfaces.stdout | default('')).splitlines()
+         | map('trim') | reject('equalto', '') | list }}
+    nixos_deploy_named_but_absent: >-
+      {{ (nixos_deploy_rule_interfaces.stdout | default('')).splitlines()
+         | map('trim') | reject('equalto', '') | reject('match', '^TOOLS:') | list
+         | difference(nixos_deploy_present_interfaces) }}
+  when: nixos_deploy_assert_named_interfaces_exist | bool

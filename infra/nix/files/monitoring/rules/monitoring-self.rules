@@ -1,0 +1,124 @@
+---
+# THE MONITORING STACK WATCHING ITSELF.
+#
+# THE PROBLEM THIS FILE ADDRESSES is that every other rule in this directory assumes Prometheus is
+# scraping, Alertmanager is delivering and Grafana is evaluating. When one of those is untrue, the
+# fleet's alerts do not become wrong -- they become ABSENT, which is exactly what a healthy fleet
+# also looks like. Silence is the ambiguous signal, and this file is the attempt to make it less so.
+#
+# THE LIMIT OF THAT ATTEMPT, STATED HONESTLY: a single monitoring host cannot fully watch itself.
+# If this machine is off, nothing here fires, and nothing outside it notices. The heartbeat below
+# is the only rule that turns that into a positive signal -- it moves the question from "have I
+# seen an alert?" (unanswerable) to "have I seen today's heartbeat?" (answerable). A second
+# monitoring endpoint elsewhere would be the real fix and does not exist.
+groups:
+  - name: monitoring-self
+    rules:
+      # -------------------------------------------------------------------------------------------
+      # THE DEAD-MAN'S HANDLE. Fires permanently, on purpose.
+      #
+      # Alertmanager's route for it (alertmanager.yaml) delivers it once every 24 hours. What it
+      # proves, end to end, is: Prometheus is evaluating rules, Alertmanager is receiving them, the
+      # Telegram bot token is still valid, and the bot is still in the channel. NONE of those is
+      # proven by any other alert -- a revoked token or a bot removed from the group presents as
+      # silence, which is what a good day looks like too.
+      #
+      # ITS ABSENCE IS THE ALARM, so it costs a message a day and buys the ability to tell the two
+      # kinds of quiet apart. Do not "fix" this rule; it is not a bug that it is always firing.
+      # -------------------------------------------------------------------------------------------
+      - alert: MonitoringHeartbeat
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Monitoring heartbeat"
+          description: >-
+            Prometheus, Alertmanager and the Telegram delivery path are all working. If this stops
+            arriving daily, assume the alerting path is broken and check it directly -- do not
+            assume a quiet channel means a quiet fleet.
+
+      - alert: TargetDown
+        expr: up == 0
+        # TEN MINUTES. A node_exporter restarted by an activation is down for seconds; a machine
+        # rebooting is down for a minute or two. Ten minutes is past both and still names a
+        # genuinely unreachable host the same hour.
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}"
+          description: >-
+            Everything this fleet alerts on is a comparison against a series from this target, so
+            while it is down those alerts are not firing -- they are unable to fire. Note the
+            `job`: `node` is a machine, `prometheus`/`alertmanager`/`grafana` are this stack's own
+            processes on the monitoring host, and `fly` is the federation endpoint (see
+            FlyFederationDown below, which is deliberately separate).
+
+      - alert: FlyFederationDown
+        expr: up{job="fly"} == 0
+        # AN HOUR, because this one is not urgent and it is somebody else's API. It is a warning by
+        # design: nothing in this fleet's alerting depends on it.
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus cannot federate from Fly's managed Prometheus"
+          description: >-
+            THIS IS THE EXPERIMENTAL HALF OF THE FLY PATH and its failure does not mean the Fly
+            apps are unwatched. The verified path is Grafana's `fly-prometheus` DATASOURCE, which
+            all 24 ported alert rules query and which does not go through this job at all. First
+            check whether the endpoint serves federation at all -- if it does not, this job was
+            never going to work and both it and this rule should be removed together rather than
+            left red. If it does, the usual causes are an expired read token or the auth header
+            having been "corrected" from FlyV1 to Bearer, which 401s with "resolving organization".
+
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus is running with a configuration it failed to load"
+          description: >-
+            The process is serving the LAST GOOD config, so everything looks normal while the
+            change that was just deployed is not in effect -- including any new scrape target or
+            rule file. Check `journalctl -u prometheus` for the parse error. Note that on this host
+            a config change restarts the unit rather than reloading it (restartTriggers in
+            roles/prometheus.nix), so this firing means the restarted process rejected what
+            activation wrote.
+
+      - alert: PrometheusRuleEvaluationFailing
+        expr: rate(prometheus_rule_evaluation_failures_total[10m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus is failing to evaluate one or more rules"
+          description: >-
+            A rule that cannot be evaluated cannot fire, and it fails quietly -- the alert it would
+            have raised simply never appears. `rule_group` in the labels names the file.
+
+      - alert: AlertmanagerNotificationsFailing
+        expr: rate(alertmanager_notifications_failed_total[15m]) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager is failing to deliver notifications to {{ $labels.integration }}"
+          description: >-
+            Alerts are being raised and are not arriving. The likely causes are a revoked
+            @kinowobot token, the bot having been removed from the chat, or a message Telegram
+            rejected -- alertmanager.yaml sets `parse_mode: ""` precisely to rule the last of those
+            out, so if it reappears, check whether that was changed. NOTE THE ORDER OF EVENTS: this
+            alert has to travel the same path it is reporting as broken, so it may well not arrive
+            either. The heartbeat above is what covers that case.
+
+      # GRAFANA'S OWN ALERT EVALUATION IS NOT ALERTED ON HERE, and that is a gap rather than a
+      # decision that it does not matter -- Grafana evaluates all 24 of the ported kinowo rules, so
+      # a Grafana that is up and failing to evaluate is a real monitoring outage. It is left out
+      # because the exact name of Grafana's evaluation-failure series varies by version and nothing
+      # here has checked it against the version in nixpkgs, and a rule written against a metric
+      # name that does not exist is worse than no rule: it looks like coverage and can never fire.
+      # `TargetDown{job="grafana"}` above covers the coarse case (Grafana not answering at all).
+      # The fix is to read /metrics on the running instance once and write the rule from what is
+      # actually there.

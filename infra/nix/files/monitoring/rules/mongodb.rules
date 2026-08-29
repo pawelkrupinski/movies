@@ -1,0 +1,106 @@
+---
+# MONGOD AND ITS BACKUPS.
+#
+# WHAT WATCHES MONGOD HERE, AND WHAT DOES NOT. There is NO mongodb_exporter on this fleet: nothing
+# reports replication lag, connection counts, oplog window or query latency, and none of the alerts
+# below can say anything about them. That is a deliberate "not yet" rather than an oversight -- the
+# exporter needs a monitoring user, another process on the database box, and a set of thresholds
+# nobody here has measured. THE GAP WORTH KNOWING ABOUT is the oplog window: mongodb.nix pins
+# `oplogSizeMB` to protect the application's change-stream resume, and nothing in this file would
+# notice that window getting short under heavy write load. Adding the exporter is the way to fix
+# that; guessing a threshold without one is not.
+#
+# WHAT IS WATCHED INSTEAD is the two things that can be seen from outside the process: whether the
+# unit is running, and whether the backup that protects the data is still happening.
+#
+# EVERY RULE BELOW DEPENDS ON A node_exporter COLLECTOR BEING ENABLED, and this file cannot enforce
+# that -- `node_systemd_unit_state` needs the systemd collector, and the two `kinowo_*` series are
+# written into node_exporter's textfile directory by nix/modules/roles/mongodb.nix and
+# nix/modules/roles/wireguard-fly.nix. A collector that is off does not produce an error; it
+# produces silence, which is why each group carries an `absent()` companion.
+groups:
+  - name: mongodb
+    rules:
+      - alert: MongodNotRunning
+        expr: node_systemd_unit_state{name="mongodb.service",state="active"} == 0
+        # THREE MINUTES, NOT THIRTY SECONDS: an ordinary restart -- a config change, a deploy --
+        # takes mongod through inactive on the way back up, and paging for every one of those
+        # teaches everyone to ignore the alert that also fires when it does not come back.
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "mongod is not running on {{ $labels.host }}"
+          description: >-
+            The database is down. The web tier will keep serving its projected read model from
+            memory and its health checks will stay green, so THE SITE WILL LOOK FINE while it stops
+            updating and every write from the worker fails. Check `journalctl -u mongodb -n 200`;
+            the two failures worth ruling out first are the data volume not being mounted (the unit
+            has RequiresMountsFor, so it refuses to start rather than creating an empty database)
+            and the replica-set key file's permissions, which mongod checks at startup.
+
+      - alert: MongodUnitStateAbsent
+        expr: absent(node_systemd_unit_state{name="mongodb.service"})
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting the state of mongod's unit"
+          description: >-
+            `MongodNotRunning` above is a comparison and cannot fire without this series, so the
+            database is currently unwatched. Either node_exporter's systemd collector is off or the
+            mongo host has dropped out of scrape entirely (check `TargetDown`). It does NOT mean
+            mongod is running.
+
+      # -------------------------------------------------------------------------------------------
+      # THE BACKUP. Hetzner's server backups DO NOT COVER ATTACHED VOLUMES, so this timer is the
+      # only logical copy of the database that exists -- see the header of roles/mongodb.nix. A
+      # backup nobody checks is a backup that has already stopped.
+      # -------------------------------------------------------------------------------------------
+      - alert: MongodumpStale
+        expr: time() - kinowo_mongodump_last_success_timestamp_seconds > 36 * 3600
+        # NO `for:`. The expression already carries its own patience -- 36 hours against a nightly
+        # timer is one full missed run plus most of a day's grace, so a slow dump or a reboot at
+        # the wrong moment does not page.
+        labels:
+          severity: warning
+        annotations:
+          summary: "No successful mongodump for over 36 hours"
+          description: >-
+            The nightly dump has not completed since {{ $value | humanizeDuration }} ago. Check
+            `systemctl status mongodump` and `journalctl -u mongodump`. Remember what this covers
+            and what it does not: it is a logical copy on the SAME volume as the database, so it
+            protects against a bad migration or a dropped collection and not against losing the
+            volume. Off-box replication of these dumps is a known gap.
+
+      - alert: MongodumpMetricAbsent
+        expr: absent(kinowo_mongodump_last_success_timestamp_seconds)
+        # SIX HOURS, comfortably longer than a boot and shorter than the gap between two dumps: the
+        # series is written by the dump itself, so it is legitimately absent on a host that has
+        # never run one -- which is exactly the state a fresh build is in, and exactly the state
+        # somebody needs to be told about.
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is publishing mongodump's success timestamp"
+          description: >-
+            `MongodumpStale` cannot fire without this series, so the backup is unwatched. Either
+            the dump has never run on this host, or node_exporter is not reading the textfile
+            directory the dump writes to (`--collector.textfile.directory` must point at
+            fleet.mongodb.backup.textfileDirectory). AN ABSENT SERIES IS NOT A HEALTHY BACKUP.
+
+      - alert: MongodumpShrankSharply
+        # Half the size of the smallest dump in the last week. A database that legitimately loses
+        # half its content overnight is an incident in its own right; far more likely is a dump
+        # that failed part-way and still wrote a directory, or one taken against the wrong
+        # database. Either way it is the shape that makes a restore fail when it is needed.
+        expr: kinowo_mongodump_last_size_bytes < 0.5 * min_over_time(kinowo_mongodump_last_size_bytes[7d])
+        labels:
+          severity: warning
+        annotations:
+          summary: "The last mongodump is less than half the size of the smallest in the past week"
+          description: >-
+            A backup that is present but truncated is worse than a missing one, because it passes
+            every check that only asks whether a dump exists. Compare the directory listings under
+            fleet.mongodb.backup.directory before the next rotation removes the older copy.

@@ -1,0 +1,111 @@
+---
+# Prometheus's configuration, installed at /etc/prometheus/prometheus.yaml by
+# nix/modules/roles/prometheus.nix.
+#
+# `@LISTEN_ADDRESS@`, `@FLY_TOKEN_FILE@` and `@GRAFANA_PORT@` are substituted at build time from
+# that module's options, and the build FAILS if any `@TOKEN@` survives -- an unsubstituted
+# placeholder would otherwise reach Prometheus as a literal hostname, and a target that does not
+# resolve is simply "down", which reads as a machine problem rather than a rendering one.
+#
+# THE NODE TARGETS ARE NOT IN THIS FILE. They are generated into
+# /etc/prometheus/scrape.d/node-targets.yaml from `fleet.prometheus.nodeTargets`, so each machine's
+# address is read off its own host declaration rather than typed here twice.
+
+global:
+  # 15s, matching the `timeInterval` on both Prometheus datasources in roles/grafana.nix. A
+  # datasource that disagrees with this is not an error: it makes `rate()` over short windows
+  # return nothing at all, silently, on the panels that use it.
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+# EVERY FILE HERE MUST ALSO BE IN `ruleNames` IN roles/prometheus.nix, which is what installs it.
+# In this list and not that one, Prometheus refuses to start (loud). In that list and not this one,
+# the file is installed and read by nobody -- the alerts simply never fire, which is silent and is
+# the dangerous half.
+rule_files:
+  - "/etc/prometheus/rules/filesystem-capacity.rules"
+  - "/etc/prometheus/rules/mongodb.rules"
+  - "/etc/prometheus/rules/monitoring-self.rules"
+  - "/etc/prometheus/rules/wireguard-fly.rules"
+
+# GENERATED FROM AN OPTION, ALWAYS PRESENT even when the target list is empty (it then carries an
+# empty `scrape_configs`), so this never points at a path that does not exist.
+scrape_config_files:
+  - /etc/prometheus/scrape.d/node-targets.yaml
+
+scrape_configs:
+  # ---------------------------------------------------------------------------------------------
+  # THE STACK WATCHING ITSELF. Not vanity: `up{job="prometheus"}` is what makes an alert on a
+  # missing series meaningful, and monitoring-self.rules reads all three of these.
+  # ---------------------------------------------------------------------------------------------
+  - job_name: prometheus
+    static_configs:
+      - targets: ["@LISTEN_ADDRESS@:9090"]
+
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["@LISTEN_ADDRESS@:9093"]
+
+  # Grafana publishes its own alert-rule evaluation and notification counters. On this fleet
+  # Grafana evaluates ALL 24 of the ported kinowo alert rules, so a Grafana that is up but failing
+  # to evaluate is a monitoring outage that nothing else here would see.
+  - job_name: grafana
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["@LISTEN_ADDRESS@:@GRAFANA_PORT@"]
+
+  # ---------------------------------------------------------------------------------------------
+  # FLY'S MANAGED PROMETHEUS -- the only source of fly_instance_* / fly_edge_*, which are produced
+  # by Fly's own host agent and cannot be scraped from anywhere else. While the web and worker apps
+  # stay on Fly, this is the only view of them.
+  #
+  # THE AUTH HEADER IS `FlyV1`, NOT `Bearer`. `authorization.type` DEFAULTS TO `Bearer` when it is
+  # omitted, and a Bearer header against this endpoint returns 401 with "resolving organization" --
+  # verified. That error reads exactly like a revoked token, so the instinctive fix is to issue a
+  # new one, which behaves identically and buries the real cause under a credential change. The
+  # same value appears in roles/grafana.nix's datasource header; if one is ever "tidied up" to
+  # Bearer, so is the other.
+  #
+  # THIS JOB IS THE UNVERIFIED HALF OF THE FLY PATH, AND THAT IS STATED PLAINLY. What is PROVEN to
+  # work against api.fly.io is the QUERY API, which is what Grafana's datasource uses and what all
+  # 24 alert rules already run through. Whether this endpoint also serves Prometheus FEDERATION at
+  # /federate has not been checked here. If it does not, this job simply sits down, the
+  # `FlyFederationDown` rule in monitoring-self.rules says so by name, and nothing else is lost --
+  # the alerting on Fly metrics lives in Grafana, not here. Do not delete the job on that basis
+  # without also deleting that rule, or the fleet gains a permanently red target nobody intends to
+  # fix, which is how a target list stops being read.
+  #
+  # `honor_labels: true` because federation returns series with their ORIGINAL job/instance labels;
+  # without it Prometheus overwrites them with this job's own and every app becomes "fly".
+  - job_name: fly
+    scheme: https
+    metrics_path: /prometheus/personal/federate
+    # A MINUTE, NOT 15s. This is somebody else's API, reached over the internet, and the series
+    # behind it are themselves minutes behind real time -- scraping it four times as often would
+    # buy nothing and cost rate limit.
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    honor_labels: true
+    authorization:
+      type: FlyV1
+      credentials_file: "@FLY_TOKEN_FILE@"
+    params:
+      # NAMED SELECTORS, NOT `{__name__=~".+"}`. Federation with an open selector pulls the whole
+      # of Fly's series set for the org on every scrape -- expensive for them, expensive here, and
+      # most of it is already in Grafana's reach through the datasource. These are the families the
+      # ported alert rules actually read.
+      "match[]":
+        - '{__name__=~"fly_instance_.+"}'
+        - '{__name__=~"fly_edge_.+"}'
+        - '{__name__=~"fly_app_.+"}'
+    static_configs:
+      - targets: ["api.fly.io"]
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["@LISTEN_ADDRESS@:9093"]
+
+remote_read: []
+remote_write: []

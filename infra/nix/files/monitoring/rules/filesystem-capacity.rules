@@ -1,0 +1,121 @@
+---
+# DISK AND INODE CAPACITY, PORTED FROM THE bitcashier FLEET'S filesystem-capacity.rules.
+#
+# WHY IT IS WORTH PORTING RATHER THAN WRITING FRESH: that fleet had a control-plane host reach 100%
+# INODE exhaustion with 19G of bytes still free, and nothing fired -- it was found by hand. The
+# cause was accumulated NixOS system generations with nothing collecting the store, which is a
+# property of NixOS rather than of that fleet, so this fleet inherits the exposure the day it
+# boots. The mongo host is the one to watch: a database volume grows monotonically and cannot be
+# collected, so its bytes alert is a CAPACITY warning (grow the volume) rather than a cleanup one.
+#
+# INODES FIRST, AND THAT ORDERING IS THE POINT. A bytes-only alert -- the one everybody writes --
+# watches the whole of an inode exhaustion happen and stays silent. ENOSPC has two causes and
+# `df -h` shows one of them. At zero inodes a machine still routes traffic and answers health
+# checks while every process that tries to CREATE a file fails: it looks alive from outside and
+# cannot write a log line.
+#
+# WHY PROPORTIONS AND NOT FLOORS. A gigabyte free is roomy on a 40G root and nearly nothing on the
+# Mongo volume, so a byte floor is either noise on the small disks or blindness on the big ones.
+#
+# WHY tmpfs AND ramfs ARE EXCLUDED AND NOTHING ELSE IS. They are memory, not disk, and several sit
+# permanently at 0% free by construction -- systemd's 1MB `/run/credentials/*` mounts are full the
+# moment they exist. The filter is an EXCLUDE list rather than an allow-list of ext4/xfs on
+# purpose: a filesystem type nobody thought of must default to WATCHED and cost a false page, never
+# default to unwatched and cost a silent one.
+groups:
+  - name: filesystem-capacity
+    rules:
+      # -----------------------------------------------------------------------------------------
+      # INODES. The axis that actually bit the fleet this was ported from.
+      # -----------------------------------------------------------------------------------------
+      - alert: FilesystemInodesLow
+        expr: >-
+          node_filesystem_files_free{fstype!~"tmpfs|ramfs"}
+            / node_filesystem_files{fstype!~"tmpfs|ramfs"} < 0.20
+        # HALF AN HOUR, because inode counts move in steps rather than drifting: a deploy or a
+        # large unpack lands thousands at once. Long enough that a build which creates and removes
+        # a tree does not page; short enough to name a host days before it hits the wall.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fewer than 20% of the inodes on {{ $labels.mountpoint }} ({{ $labels.host }}) are free"
+          description: >-
+            This is not the same as running out of space and `df -h` will not show it. On a NixOS
+            host the usual cause is accumulated system generations and store paths: check
+            `df -i /` and `ls /nix/var/nix/profiles/ | grep -c system-`, then collect with
+            `nix-collect-garbage --delete-older-than 14d`. If that has already run, find the real
+            consumer with `for d in /var /root /tmp; do echo $d $(find $d -xdev | wc -l); done`.
+
+      - alert: FilesystemInodesCritical
+        expr: >-
+          node_filesystem_files_free{fstype!~"tmpfs|ramfs"}
+            / node_filesystem_files{fstype!~"tmpfs|ramfs"} < 0.08
+        # TEN MINUTES. Past here the remaining headroom is a single large deploy, and the repair
+        # gets HARDER rather than easier as it runs out -- see the description.
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fewer than 8% of the inodes on {{ $labels.mountpoint }} ({{ $labels.host }}) are free"
+          description: >-
+            ACT NOW. Past zero the host serves traffic while nothing on it can create a file, and
+            `nix-collect-garbage` cannot even take its own lock ("opening lock file ... No space
+            left on device") -- so the ordinary fix stops working at exactly the moment it is
+            needed. Break that deadlock by removing old generation SYMLINKS first, which needs no
+            lock: keep the ten most recent /nix/var/nix/profiles/system-*-link, clear the dangling
+            /nix/var/nix/gcroots/auto entries, then run nix-collect-garbage.
+
+      # -----------------------------------------------------------------------------------------
+      # BYTES. The ordinary axis, and still worth having -- it is simply not the one that bit.
+      # -----------------------------------------------------------------------------------------
+      - alert: FilesystemSpaceLow
+        expr: >-
+          node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs"} < 0.15
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 15% of {{ $labels.mountpoint }} ({{ $labels.host }}) is free"
+          description: >-
+            Note WHICH mountpoint. On `/` the usual cause is the nix store or an unrotated log. On
+            /var/lib/mongodb it is the data itself, which grows monotonically and cannot be
+            collected -- that one is a capacity decision (grow the volume) rather than a cleanup,
+            and it wants planning before the critical alert rather than after. On
+            /var/lib/mongodb-backups, check whether rotation is still working: the dump keeps the
+            most recent N by count, so a growing directory means dumps are landing and none are
+            being pruned. `du -xh --max-depth=2 <mount> | sort -h | tail -20` names the consumer.
+
+      - alert: FilesystemSpaceCritical
+        expr: >-
+          node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs"} < 0.07
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Less than 7% of {{ $labels.mountpoint }} ({{ $labels.host }}) is free"
+          description: >-
+            A full data volume stops the service that owns it: mongod refuses writes and cannot
+            grow its oplog, and on the monitoring host a full volume takes Prometheus AND Grafana's
+            database down together. Free space or grow the volume now.
+
+      # -----------------------------------------------------------------------------------------
+      # THE COMPANION, AND IT IS NOT DECORATION. Every rule above is a COMPARISON, and a comparison
+      # cannot fire when its series is gone -- so node_exporter dying, or its filesystem collector
+      # being turned off, would leave all four silent and indistinguishable from a fleet with room
+      # to spare. Fleet-wide rather than per host: one host dropping out of scrape is a different
+      # question, answered by `TargetDown` in monitoring-self.rules.
+      # -----------------------------------------------------------------------------------------
+      - alert: FilesystemMetricsAbsent
+        expr: absent(node_filesystem_files_free) or absent(node_filesystem_avail_bytes)
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No host is publishing filesystem metrics"
+          description: >-
+            None of the four capacity alerts can fire, so nothing is watching any disk or inode
+            table on this fleet. Either node_exporter's filesystem collector is disabled everywhere
+            or Prometheus has stopped scraping it. IT DOES NOT MEAN EVERY FILESYSTEM HAS ROOM.

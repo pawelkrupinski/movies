@@ -1,0 +1,192 @@
+---
+# How Ansible reaches this fleet, and the handful of fleet-wide facts the roles need. Everything here
+# is derived from the inventory or from the Terraform/nix tree where it can be, so that a rebuilt or
+# renumbered host does not leave a stale literal behind.
+#
+# THE FLEET IS THREE MACHINES (infra/terraform): mongo-1 and monitoring-1 in nbg1, k3s-worker-1 in
+# hel1, all on 10.20.0.0/24, all NixOS, all labelled `env=prod`. There is no second environment, no
+# Puppet, no Consul and no Vault -- so most of what bitcashier/infra keeps in this file has no
+# counterpart here and is absent rather than emptied out.
+
+# The operator's own account, for anything that is NOT a NixOS deploy or a conversion. Those two
+# connect as root and say so at their call sites: roles/nixos_deploy rsyncs into /root and runs
+# `nixos-rebuild` through `raw`, neither of which can escalate on a host with no python.
+#
+# SEPARATE FROM `ansible_user` ON PURPOSE even though they are equal today. A play that needs to land
+# as root sets `ansible_user`, and if anything were derived from that -- a ProxyJump, a home
+# directory -- it would follow it to root and fail somewhere unrelated.
+fleet_ssh_user: "{{ lookup('ansible.builtin.env', 'FLEET_SSH_USER') | default(lookup('ansible.builtin.env', 'USER'), true) }}"
+ansible_user: "{{ fleet_ssh_user }}"
+
+# WHICH PYTHON RUNS OUR MODULES ON EACH HOST, stated rather than guessed, because on this fleet the
+# honest answer for most of a host's life is "none".
+#
+# A NixOS host has NO /usr/bin/python3 and nothing called python3 on PATH unless it is in
+# `environment.systemPackages`. Every ordinary Ansible module against one then fails with
+#
+#     /bin/sh: line 1: /usr/bin/python3: No such file or directory
+#
+# which Ansible reports as "you probably need to set the interpreter" -- the same sentence it uses
+# for a module whose output would not parse, so the message sends the reader to the wrong place.
+#
+# The entry below is INERT on any host that does not have that path, and it is keyed off the PATH
+# rather than off an image label deliberately: Hetzner keeps reporting `ubuntu-26.04` as the image
+# for all three machines forever (infra/terraform/modules/server/vars.tf says why), so no API field
+# on this fleet can be trusted to say what a machine runs. The path can.
+#
+# IT REQUIRES python3 IN systemPackages. Without that the path does not exist, this line is skipped,
+# and modules fail again -- which is why roles/nixos_deploy and the conversion playbook use `raw`
+# for everything that must work on a host whose configuration has not been deployed yet. This list
+# makes the ORDINARY case pleasant; it is not what those two paths depend on.
+ansible_interpreter_python_fallback:
+  - /run/current-system/sw/bin/python3
+  # The bootstrap image is stock Ubuntu 26.04, which ships python3.14 and only python3.14. A host is
+  # only in this state between `terraform apply` and `convert-host-to-nixos.yml`, but that window is
+  # exactly when somebody wants to run an ad-hoc `ansible -m ping` to see whether it is alive.
+  - python3.14
+  # ansible-core's own last two entries, kept in place. Reaching them is now a SIGNAL rather than the
+  # normal case -- a host answering `/usr/bin/python3` is a host that matched nothing above -- and
+  # `interpreter_python = auto_silent` in ansible.cfg means that signal is not printed. Read it off
+  # the fleet with `ansible all -m ping -vvv` when something is behaving oddly.
+  - /usr/bin/python3
+  - python3
+
+# ---------------------------------------------------------------------------------------------
+# WHICH ADDRESS A PLAY TALKS TO
+# ---------------------------------------------------------------------------------------------
+#
+# inventory/hcloud.yml composes `ansible_host` from the PRIVATE address, ported from bitcashier. This
+# estate has no route to 10.20.0.0/24 from outside itself, so a play must say which address it wants
+# and every playbook in this directory does, in its own `vars:`:
+#
+#     ansible_host: "{{ (kinowo_connect_over == 'public') | ternary(kinowo_public_ipv4, hcloud_private_ipv4) }}"
+#
+# Play vars are the only precedence level that outranks an inventory plugin's `compose`, which is why
+# it is written there rather than here -- a group_vars entry for `ansible_host` would be silently
+# ignored, which is worse than not existing.
+#
+# `public` IS THE DEFAULT, AND THAT IS A STATEMENT ABOUT TODAY, NOT A PREFERENCE. Port 22 is open to
+# the world (infra/terraform/firewall.tf, deliberately, with key-only login as the bound) and there
+# is no bastion. The moment there is a route -- a WireGuard peer on the operator's machine, or a
+# controller inside the fleet -- set KINOWO_CONNECT_OVER=private and nothing else changes.
+kinowo_connect_over: "{{ lookup('ansible.builtin.env', 'KINOWO_CONNECT_OVER') | default('public', true) }}"
+
+# An optional bastion, in the shape bitcashier's `fleet_jump_host` has, so that the day this estate
+# grows one the change is this line and nothing else. EMPTY IS THE NORMAL CASE and produces no
+# ProxyJump at all -- which is why this is a plain default rather than bitcashier's `| mandatory`:
+# there, resolving to nothing meant no connection could be made and refusing was the only safe
+# answer; here, resolving to nothing is the supported configuration.
+kinowo_jump_host: "{{ lookup('ansible.builtin.env', 'KINOWO_JUMP_HOST') | default('', true) }}"
+
+# ServerAliveInterval, always: a `nixos-rebuild switch` is silent for minutes at a time while it
+# builds, and a NAT that drops an idle connection turns that into a deploy of unknown outcome.
+ansible_ssh_common_args: >-
+  {{ ('-o ProxyJump=' ~ fleet_ssh_user ~ '@' ~ kinowo_jump_host ~ ' ') if kinowo_jump_host | length > 0 else '' }}
+  -o ServerAliveInterval=15
+  -o ConnectionAttempts=3
+
+# WHAT A RAW `ssh` INSIDE A TASK MUST CARRY, stated once. `ansible_ssh_common_args` above governs the
+# connections Ansible itself makes; it does not reach an `ssh` written inside a command task, and the
+# conversion playbook has several -- probing the firmware, probing for a root session in rescue.
+#
+# Each omission is fatal in a run that is meant to be walked away from:
+#
+#   BatchMode=yes            no prompt, ever. A playbook run with a TTY attached leaves ssh free to
+#                            ask for a passphrase or a host key, and an unattended run then sits on
+#                            the question. With this it fails instead, which is a result.
+#   StrictHostKeyChecking    the pair to ansible.cfg's `host_key_checking = True`: accept a host
+#     =accept-new            never seen before, refuse one whose key has CHANGED. A conversion talks
+#                            to a rescue system that has never existed before, so refusing the
+#                            unknown would refuse the whole procedure.
+#   ConnectTimeout=15        a host that is not answering must say so rather than hold the play.
+fleet_ssh_raw_options: >-
+  {{ ('-J ' ~ fleet_ssh_user ~ '@' ~ kinowo_jump_host ~ ' ') if kinowo_jump_host | length > 0 else '' }}
+  -o BatchMode=yes
+  -o StrictHostKeyChecking=accept-new
+  -o ConnectTimeout=15
+
+# ---------------------------------------------------------------------------------------------
+# PATHS IN THIS REPOSITORY
+# ---------------------------------------------------------------------------------------------
+#
+# Resolved from where the playbook lives so that a run from any directory behaves the same, and so
+# that running from a git worktree operates on THAT worktree.
+#
+#   playbook_dir = <repo>/infra/ansible/playbooks
+#   infra_root   = <repo>/infra
+infra_root: "{{ playbook_dir | dirname | dirname }}"
+terraform_dir: "{{ infra_root }}/terraform"
+
+# The flake root -- infra/flake.nix, with `nixosConfigurations.mongo-1`, `.monitoring-1` and
+# `.k3s-worker-1`. This is what roles/nixos_deploy rsyncs and what nixos-anywhere is pointed at.
+nixos_flake_dir: "{{ infra_root }}"
+
+# HOW LONG TO WAIT FOR THE TERRAFORM STATE LOCK BEFORE GIVING UP, rather than failing the instant
+# somebody else holds it. The state lives in Terraform Cloud (organization `bitcashier`, workspace
+# `kinowo-infra`) and this repository is worked from several worktrees at once, so an unheld lock is
+# not something to count on. Without this Terraform fails immediately with `Error acquiring the state
+# lock ... workspace already locked`, which is not a reason to abandon a migration halfway.
+#
+# It lives HERE rather than as a role default because a group_vars entry silently OUTRANKS a role
+# default: if both existed, the copy that reads as authoritative would be the one deciding nothing.
+terraform_lock_timeout: 45m
+
+# ---------------------------------------------------------------------------------------------
+# FLEET FACTS
+# ---------------------------------------------------------------------------------------------
+
+# THE FLAKE ATTRIBUTE FOR A HOST IS ITS HETZNER SERVER NAME, and that is a fact about this estate
+# rather than a convenience: infra/terraform names the servers `mongo-1` / `monitoring-1` /
+# `k3s-worker-1` precisely so they line up with `nixosConfigurations.*` and with the directory names
+# under infra/nix/hosts/. The inventory's `inventory_hostname` IS that server name.
+#
+# It is still overridable per run (`-e flake_attribute=...`), because deploying one host's
+# configuration onto another machine is a real operation during a rebuild -- and it is the failure
+# roles/nixos_deploy's first refusal exists for, so it must be said out loud rather than defaulted
+# into.
+nixos_flake_attribute_default: "{{ inventory_hostname }}"
+
+# EXACTLY ONE MONGO HOST, OR SAY WHICH. Ported from bitcashier's `fleet_jump_host` refusal, and it
+# applies for the same reason it does there: `groups['role_mongo'] | first` over a DYNAMIC inventory
+# is whatever the Hetzner plugin happened to return this run, and nothing pins that order. Sorting
+# only makes the choice reproducible, never correct.
+#
+# The case this guards is not hypothetical for this estate. A mongo rebuild means briefly two
+# machines labelled `role=mongo` -- the incumbent holding the data and a replacement holding none --
+# and playbooks/migrate-mongo-from-fly.yml restores a database onto whichever this resolves to.
+#
+# ZERO is the other failure and it is quieter: inventory/hcloud.yml filters `status: [running]`, so a
+# host being reset into rescue LEAVES THE INVENTORY. `| first` of an empty list is undefined,
+# `hostvars[undefined]` is a templating error, and what an operator sees is a failure twenty tasks
+# later naming neither this variable nor the host.
+kinowo_mongo_hosts: "{{ groups['role_mongo'] | default([]) | sort }}"
+
+kinowo_mongo_host: >-
+  {{ (kinowo_mongo_hosts | first if kinowo_mongo_hosts | length == 1 else undef())
+     | mandatory('groups[role_mongo] holds ' ~ (kinowo_mongo_hosts | length) ~ ' host(s): ['
+                 ~ (kinowo_mongo_hosts | join(', ')) ~ ']. Exactly one is required.
+                  NONE means the mongo host is not `running` in Hetzner -- it is in rescue, or it is
+                  off -- since inventory/hcloud.yml filters on that. MORE THAN ONE means a
+                  replacement has been built alongside the incumbent, and which of them a database
+                  gets restored onto is not something inventory order may decide. Name it for the
+                  run with -e kinowo_mongo_host=<name>.') }}
+
+# The address mongo listens on. mongod binds the private interface only (there is no firewall rule
+# for 27017 in infra/terraform/firewall.tf because there does not need to be -- Hetzner Cloud
+# firewalls filter the PUBLIC interface only, and nothing on the public side listens), so this is the
+# only address that answers, and it is read out of the inventory rather than restated as 10.20.0.10.
+kinowo_mongo_private_address: "{{ hostvars[kinowo_mongo_host].hcloud_private_ipv4 }}"
+
+# THE FLY APPLICATION THE DATABASE IS MOVING OFF. Named once, because two things read it and both are
+# guards: playbooks/migrate-mongo-from-fly.yml opens a `flyctl proxy` to it, and the same playbook
+# asserts afterwards that the counts agree with it.
+#
+# THE FLY SIDE IS THE ROLLBACK AND STAYS RUNNING. Nothing in this repository stops, scales or deletes
+# it. When the cutover is judged good, that is a separate deliberate act by a person.
+kinowo_fly_mongo_app: kinowo-mongo
+
+# The application's own database name, which is what gets dumped and restored. It is read from the
+# environment because that is where the app itself reads it (repo-root .env.local, MONGODB_DB) and a
+# second copy here would be a second thing to keep in step -- with the failure mode that a migration
+# faithfully copies the wrong database and verifies it against itself.
+kinowo_mongo_database: "{{ lookup('ansible.builtin.env', 'MONGODB_DB') | default('kinowo', true) }}"

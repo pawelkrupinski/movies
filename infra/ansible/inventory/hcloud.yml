@@ -1,0 +1,90 @@
+---
+# The inventory is the Hetzner Cloud API, read at run time. There is deliberately no committed host
+# list here.
+#
+# A committed list is a list that can be stale at the exact moment it matters most -- during a
+# conversion, when a machine is in rescue and not itself, or during an expansion when a host was
+# created ten minutes ago. Reading the API each run means a playbook cannot act on a machine that no
+# longer exists, or miss one that just appeared.
+#
+# GROUPS COME FROM THE HETZNER LABELS TERRAFORM SETS, so `role_mongo`, `env_prod` and
+# `role_mongo:&env_prod` all work as target patterns with nothing maintaining them. That is the
+# whole point of `labels` in infra/terraform/modules/server/vars.tf being described there as "the
+# fleet's register": a host with no `role` label is a host no playbook can target, and a host
+# labelled wrongly is one that the wrong playbook can.
+plugin: hetzner.hcloud.hcloud
+
+# Read from the environment rather than written here. The name follows the repo-root .env.local
+# (HETZNER_API_TOKEN), NOT the HCLOUD_TOKEN that the Terraform provider and the hcloud CLI read.
+# roles/terraform_apply is where the two names are bridged, in one place.
+#
+# `ansible-inventory --graph` with this unset lists no hosts and does not say why, which reads as an
+# empty fleet. If a playbook reports "0 hosts matched", check this before checking the labels.
+token: "{{ lookup('ansible.builtin.env', 'HETZNER_API_TOKEN') }}"
+
+# Only servers that are running. A server in rescue, or mid-reset, is not a target for an ordinary
+# play -- and a playbook that waits for one to come back should wait on the API or on ssh, not on an
+# inventory refresh.
+#
+# NOTE WHAT THIS COSTS playbooks/convert-host-to-nixos.yml: the machine it converts DROPS OUT of the
+# inventory while it is being reset into rescue. That playbook therefore resolves the server's id
+# and public address from the API into facts BEFORE it touches anything, and never re-reads the
+# inventory mid-run. A guard that re-derives a host's address from `hostvars` after the reset would
+# silently resolve to nothing.
+status:
+  - running
+
+# `hcloud_labels`, not `labels`. A key that does not resolve is NOT an error here -- the plugin
+# simply creates no group -- so the failure mode is `--limit role_mongo` matching zero hosts and a
+# playbook reporting success having done nothing at all. Assert against `ansible-inventory --graph`
+# after changing anything in this block.
+#
+# NOTE THE SANITISATION: the label value `k3s-worker` (a HYPHEN, as written in
+# infra/terraform/server.k3s-worker.tf) produces the group `role_k3s_worker` (UNDERSCORES). The
+# plugin replaces characters that are invalid in a group name. Anything spelled `role_k3s-worker` is
+# silently a group that never exists -- and in Jinja it is not even a name, it is a subtraction.
+keyed_groups:
+  - key: hcloud_labels.role
+    prefix: role
+    separator: "_"
+  - key: hcloud_labels.env
+    prefix: env
+    separator: "_"
+
+# Restricts the inventory to servers attached to the fleet's private network, which is every server
+# this repository manages (see infra/terraform/network.tf). It does NOT change what ansible_host is
+# set to -- see `compose`. It is also what makes `hcloud_private_ipv4` populated at all.
+network: "kinowo"
+
+compose:
+  # PORTED VERBATIM FROM bitcashier/infra, INCLUDING THE VARIABLE NAME. The plugin's default
+  # ansible_host is the PUBLIC IPv4; setting this makes every play talk over 10.20.0.0/24 instead.
+  # The variable really is `hcloud_private_ipv4` -- a bare `private_ipv4` silently resolves to
+  # nothing and leaves ansible_host as the public address, which looks like it worked.
+  #
+  # WHAT IS DIFFERENT HERE, AND READ IT BEFORE RUNNING ANYTHING. bitcashier reaches its private
+  # range through a tailscale jump host that every connection is proxied over. THIS ESTATE HAS NO
+  # JUMP HOST: infra/terraform/firewall.tf opens port 22 to the world on purpose, and the operator
+  # administers these machines over their public addresses. So 10.20.0.0/24 is NOT routable from a
+  # laptop, and a play left on this default will hang until it times out.
+  #
+  # The private address is still the right DEFAULT, because it is the address the fleet talks to
+  # itself on and the one every future in-fleet controller would use. The escape hatch is per-play
+  # and explicit rather than a setting here: `kinowo_public_ipv4` below is exported alongside it, and
+  # a play overrides `ansible_host` with it in its own `vars:` (play vars outrank inventory host
+  # vars, which is the only precedence level that can beat a `compose` entry). Every playbook in
+  # this directory does exactly that, through `kinowo_connect_over`, and says so where it does it.
+  #
+  # To route the private range properly -- WireGuard from the operator's machine, or a bastion --
+  # set KINOWO_JUMP_HOST (see inventory/group_vars/all.yml) and leave `kinowo_connect_over` alone.
+  ansible_host: hcloud_private_ipv4
+
+  # The PUBLIC address, exported under a name of our own so that the two are never confused at a
+  # call site. Three things need it and none of them can use the private one:
+  #
+  #   * the Hetzner RESCUE system, which is booted with public networking only -- the private
+  #     network is not configured there at all, so a conversion driven over 10.20.0.x cannot work
+  #     even from inside the fleet;
+  #   * nixos-anywhere's --target-host, for the same reason;
+  #   * every play run from a laptop, until there is a route to the private range.
+  kinowo_public_ipv4: hcloud_ipv4

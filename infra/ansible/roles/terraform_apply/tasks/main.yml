@@ -1,0 +1,505 @@
+---
+# Rebase onto origin/main, plan the WHOLE configuration, prove the plan's blast radius is what was
+# asked for, re-plan scoped to exactly that, and apply THAT SAVED PLAN.
+#
+# PORTED FROM bitcashier/infra roles/terraform_apply. The shape is the valuable part and it is kept
+# intact; what changed is the environment it composes (one credential here, not seven), the paths,
+# and the committed-fleet-snapshot step at the end, which this estate has no counterpart for.
+#
+# WHY IT IS SHAPED LIKE THIS. bitcashier's near-miss: a hand-run plan intended to destroy one drained
+# machine came back `1 to add, 1 to change, 3 to destroy`, and among the extras was a storage box
+# holding backups marked for REPLACEMENT plus the deletion of a live production node. Neither was
+# intended and neither was implied by the edit; both came from environment variables that were absent
+# and had been given empty placeholder values, which Terraform read as real changes.
+#
+# Two things follow, and this role does both:
+#
+#   * A missing input must stop the run, never default to empty. An empty string is a VALUE to
+#     Terraform, and for a ForceNew attribute it is a destroy.
+#   * A plan must be checked against what was asked for before it is applied. `terraform apply` on a
+#     saved plan file is otherwise perfectly happy to do all of it.
+#
+# THE WHOLE CONFIGURATION IS PLANNED FIRST AND THE APPLY IS SCOPED SECOND, and those are two
+# different jobs. Planning everything is what makes collateral VISIBLE, and targeting would hide it;
+# applying everything makes a plan somebody else left pending into this run's problem.
+#
+# So the two claims are separated and both are enforced:
+#
+#   * The FULL plan must propose everything that was asked for, with the action that was asked for.
+#     Full visibility, no targeting.
+#   * Anything ELSE the full plan proposes must make nothing DISAPPEAR -- a create, an in-place
+#     update or a data read -- and is reported and left alone. A pending DELETE or REPLACE is not
+#     benign in the same way and stops the run outright.
+#   * The plan that is actually APPLIED is re-planned with `-target` and must reduce to exactly the
+#     expectation, with nothing added. The blast-radius gate is therefore enforced on the artefact
+#     that is applied rather than on a survey of the repository.
+#
+# WHAT THIS ESTATE PUTS AT STAKE, so the strictness reads as proportionate rather than inherited:
+# infra/terraform/primary_ips.tf holds six adopted Primary IPs whose `ignore_changes` block exists
+# because on this provider an UNASSIGN DESTROYS THE ADDRESS and Hetzner offers no reclaim path; and
+# mongo-1's 80GB volume is the only copy of the database that is not on Fly. A `replace` on either is
+# not recoverable by re-running anything.
+
+# ---------------------------------------------------------------------------------------------
+# A STALE CHECKOUT PROPOSES TO DESTROY WHATEVER IT HAS NOT HEARD ABOUT YET
+# ---------------------------------------------------------------------------------------------
+#
+# The mechanism is structural. Terraform state is SHARED -- one remote state in Terraform Cloud
+# (organization `bitcashier`, workspace `kinowo-infra`) -- while the configuration is whatever is in
+# the checkout the command was typed in. So the plan is computed by diffing everybody's state against
+# one person's files, and every commit missing from that checkout reads as an intention:
+#
+#   * a resource declared on origin/main but not here  -> it is in state, unclaimed -> DESTROY it
+#   * a resource retired on origin/main but still here -> it is claimed, not in state -> CREATE it
+#
+# Neither is distinguishable, in the plan, from something the operator meant. The expectation gate
+# below would catch it, but it is the LAST line of defence and it only speaks after a full plan has
+# been computed against live state. This gate is cheap, runs first, and names the repair.
+#
+# IT REBASES RATHER THAN TELLING YOU TO. This repository is worked by several agents in parallel;
+# telling a human to `git fetch && git rebase` and re-run loses the race whenever a peer pushes
+# during the play. Doing it immediately before measuring closes the window to the width of two tasks.
+#
+# IT ASKS "AM I MISSING ANYTHING", NOT "AM I ON MAIN". Feature branches and worktrees are the normal
+# way this repository is worked -- `HEAD..origin/main` counts only commits this checkout does not
+# have, so a branch rebased on origin/main passes while sitting a hundred commits ahead of it.
+#
+# AND A FETCH THAT COULD NOT RUN IS NOT AN UP-TO-DATE CHECKOUT. Every distinct way of failing to look
+# gets its own exit code and all of them refuse. There is no offline escape hatch and none is needed:
+# `terraform plan` cannot reach Terraform Cloud or the Hetzner API without a network either.
+- name: Bring this checkout onto origin/main before measuring it
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      root=$(git -C "{{ terraform_dir }}" rev-parse --show-toplevel 2>/dev/null) || exit 3
+      GIT_SSH_COMMAND="ssh -o ConnectTimeout=15 -o BatchMode=yes" \
+        git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 \
+            -C "${root}" fetch --quiet origin main 2>/dev/null || exit 4
+      if ! git -C "${root}" rebase --autostash origin/main >/dev/null 2>&1; then
+          # Leave no half-rebased tree behind for the next caller to trip over.
+          git -C "${root}" rebase --abort >/dev/null 2>&1
+          exit 6
+      fi
+      # AND NOW THE CASE THE ABORT ABOVE CANNOT REACH. `--autostash` restores the caller's
+      # uncommitted work AFTER the rebase has already succeeded, so a conflict while restoring it is
+      # not a failed rebase: git reports success, `rebase --abort` is never called, and the tree is
+      # left carrying `<<<<<<<` markers with the work safe in the stash. In a .tf file that surfaces
+      # minutes later, in an unrelated run, as "Argument or block definition required" -- which sends
+      # the reader to look at the wrong thing entirely.
+      if [ -n "$(git -C "${root}" ls-files --unmerged)" ]; then
+          exit 7
+      fi
+    executable: /bin/bash
+  register: terraform_checkout_rebase
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+
+- name: A rebase onto origin/main must have been possible
+  ansible.builtin.assert:
+    that:
+      # 3 and 4 are tolerated HERE and refused by the next gate, which reports them properly. This
+      # task only owns "the rebase itself went wrong"; "we could not look at all" is that gate's
+      # message to give, and giving it twice in different words helps nobody.
+      - terraform_checkout_rebase.rc in [0, 3, 4]
+    fail_msg: >-
+      {% if terraform_checkout_rebase.rc == 6 %}Rebasing this checkout onto origin/main CONFLICTED,
+      and the rebase has been aborted so the tree is as you left it. A conflict here means a peer has
+      changed something this run also changed -- resolve it by hand and decide what the configuration
+      should say; this role will not guess. Nothing has been applied.
+      {% elif terraform_checkout_rebase.rc == 7 %}The rebase onto origin/main SUCCEEDED, but
+      restoring your uncommitted changes on top of it CONFLICTED, so this checkout now has files with
+      conflict markers in them. Your work is not lost -- it is in the stash (`git stash list`, the
+      entry named `autostash`). Resolve the conflicted files, `git add` them, and re-run. Nothing has
+      been applied. This is checked separately because git reports the rebase itself as a success
+      here, so nothing else in this role would have noticed.
+      {% else %}Rebasing onto origin/main failed unexpectedly (exit
+      {{ terraform_checkout_rebase.rc }}). Nothing has been applied.{% endif %}
+    quiet: true
+
+- name: How far behind the shared branch this checkout is
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      root=$(git -C "{{ terraform_dir }}" rev-parse --show-toplevel 2>/dev/null) || exit 3
+      # BOUNDED WITHOUT ASSUMING `timeout`, WHICH macOS DOES NOT HAVE. The controller for this
+      # repository is a Mac; `timeout 60 git fetch` there is `command not found`, rc 127, and every
+      # apply would be refused with "could not establish currency" -- a guard that refuses everything
+      # is not a strict guard, it is a broken one, and the only thing it teaches is how to skip it.
+      # So the bound comes from git and ssh themselves, which are present by definition here, and
+      # `timeout` is used only where it exists.
+      fetch_cmd=(git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30
+                 -C "${root}" fetch --quiet origin main)
+      if command -v timeout >/dev/null 2>&1; then
+        fetch_cmd=(timeout 60 "${fetch_cmd[@]}")
+      elif command -v gtimeout >/dev/null 2>&1; then
+        fetch_cmd=(gtimeout 60 "${fetch_cmd[@]}")
+      fi
+      # BatchMode so a key needing a passphrase fails fast rather than blocking on a prompt no
+      # ansible task has a terminal to answer.
+      GIT_SSH_COMMAND="ssh -o ConnectTimeout=15 -o BatchMode=yes" \
+        "${fetch_cmd[@]}" 2>/dev/null || exit 4
+      git -C "${root}" rev-list --count HEAD..origin/main 2>/dev/null || exit 5
+    executable: /bin/bash
+  register: terraform_checkout_behind
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+
+- name: This checkout must not be missing anything that is already on origin/main
+  ansible.builtin.assert:
+    that:
+      - terraform_checkout_behind.rc == 0
+      - (terraform_checkout_behind.stdout | trim | int) == 0
+    fail_msg: >-
+      {% if terraform_checkout_behind.rc == 3 %}{{ terraform_dir }} is not inside a git checkout, so
+      how current its configuration is could not be established. That is not the same as it being
+      current, and this role will not apply against shared state without knowing.
+      {% elif terraform_checkout_behind.rc == 4 %}`git fetch origin main` failed or timed out, so
+      whether this checkout is current is UNKNOWN -- which is not the same as current. Fix the
+      network or the remote and run again; do not work around this by skipping the gate.
+      {% elif terraform_checkout_behind.rc != 0 %}Counting commits against origin/main failed (exit
+      {{ terraform_checkout_behind.rc }}), so this checkout's currency is UNKNOWN.
+      {% else %}This checkout is {{ terraform_checkout_behind.stdout | trim }} commit(s) behind
+      origin/main. Terraform state is shared and the configuration is local, so every one of those
+      commits is a resource this plan would propose to CREATE or DESTROY purely because this copy has
+      not heard of it -- indistinguishable, in the plan, from something you meant. Nothing has been
+      touched. Run `git fetch origin && git rebase origin/main` here and try again.{% endif %}
+    quiet: true
+
+- name: Refuse to run without an explicit expectation
+  ansible.builtin.assert:
+    that:
+      - terraform_expected_actions | length > 0
+    fail_msg: >-
+      terraform_apply was called with no terraform_expected_actions. There is deliberately no way to
+      apply without stating what the plan is allowed to do.
+    quiet: true
+
+# READ FROM THE ENVIRONMENT, NOT BY PARSING .env.local. Whoever invokes this has already done
+# `set -a; . .env.local`, and the SHELL is the thing that defines what that file means -- which
+# quoting to strip, which escapes to honour. bitcashier tried twice to reimplement that in Jinja and
+# each attempt produced a value Terraform treated as a real change; one of them proposed REPLACING a
+# storage box holding backups because a captured group came out as the literal two-character string
+# `\1`. The fix is to stop reimplementing the shell.
+#
+# THE NAMES DIFFER ON THE TWO SIDES AND THAT IS THE TRAP: the repo-root .env.local calls it
+# HETZNER_API_TOKEN, the hcloud provider reads HCLOUD_TOKEN (infra/terraform/provider.tf says so).
+# This is the one place the two are bridged. inventory/hcloud.yml reads the .env.local name directly
+# because the inventory plugin takes it as a parameter rather than from the environment.
+#
+# TERRAFORM CLOUD'S OWN CREDENTIAL IS DELIBERATELY NOT HERE. The `remote` backend authenticates from
+# ~/.terraform.d/credentials.tfrc.json, written by `terraform login`, or from
+# TF_TOKEN_app_terraform_io if the operator exports it -- either way it is already in the process
+# environment and is inherited. It is NOT listed below because the assertion that follows requires
+# every named variable to be non-empty, and an operator using `terraform login` has that file and no
+# such variable. A missing TFC credential fails loudly at `terraform init` with a message that names
+# the workspace, which is a good failure; an empty HCLOUD_TOKEN does not fail at all, which is why
+# that one is asserted.
+- name: Compose the Terraform environment
+  ansible.builtin.set_fact:
+    terraform_env:
+      HCLOUD_TOKEN: "{{ lookup('ansible.builtin.env', 'HETZNER_API_TOKEN') }}"
+  no_log: true
+
+- name: Every Terraform input must be present and non-empty
+  ansible.builtin.assert:
+    that:
+      - terraform_env[item] | length > 0
+    fail_msg: >-
+      {{ item }} is empty in the environment. Source the repo-root .env.local before running this
+      (`set -a; . .env.local; set +a`) -- a bare `ansible-playbook` inherits none of it. If the value
+      is missing from .env.local itself, supply the real one: do NOT placeholder it, because
+      Terraform reads an empty string as a real value, and on a ForceNew attribute that is a destroy.
+    quiet: true
+  loop: "{{ terraform_env.keys() | list }}"
+
+- name: terraform init
+  ansible.builtin.command:
+    cmd: "terraform init -input=false -lock-timeout={{ terraform_lock_timeout }}"
+    chdir: "{{ terraform_dir }}"
+  environment: "{{ terraform_env }}"
+  changed_when: false
+  delegate_to: localhost
+
+# -lock-timeout ON EVERY COMMAND THAT TAKES THE LOCK, so a concurrent run in another worktree makes
+# this one WAIT rather than fail. Without it Terraform gives up in under two seconds. Note this is
+# NOT `-lock=false`: the lock is still taken and still protects the state, the run is merely willing
+# to queue for it.
+- name: terraform plan, the whole configuration and nothing targeted
+  ansible.builtin.command:
+    cmd: >-
+      terraform plan -input=false -no-color -lock-timeout={{ terraform_lock_timeout }}
+      -out={{ terraform_plan_file }}.survey
+    chdir: "{{ terraform_dir }}"
+  environment: "{{ terraform_env }}"
+  changed_when: false
+  delegate_to: localhost
+
+- name: Read that plan back as JSON
+  ansible.builtin.command:
+    cmd: "terraform show -json {{ terraform_plan_file }}.survey"
+    chdir: "{{ terraform_dir }}"
+  environment: "{{ terraform_env }}"
+  register: terraform_plan_json
+  changed_when: false
+  delegate_to: localhost
+
+# Terraform expresses a replacement as the two actions ['delete', 'create'] (or ['create','delete']
+# for create_before_destroy). Both are collapsed to 'replace' so that an expectation can say the
+# word, and so that a plan which replaces where an update was expected fails rather than matching
+# some looser rule.
+#
+# AND TWO IN-PLACE UPDATES ARE COLLAPSED TO `detach`, BECAUSE TERRAFORM'S VERB LIES ABOUT THEM. The
+# gate below tolerates a pending `update` on the stated grounds that the resource "keeps running
+# exactly as it is". That is true of a label, a size or a firewall rule. It is false of the two
+# attributes that say WHICH MACHINE a resource is attached to, and both exist on this fleet:
+#
+#   * `server_id` on an `hcloud_volume` -- a mounted disk changing machines. Terraform reports
+#     `~ server_id = A -> B`; what the provider does is DETACH the volume from the machine using it
+#     and re-attach it elsewhere, with whatever is mounted on it still mounted. On this estate that
+#     volume is /var/lib/mongodb.
+#   * `assignee_id` on an `hcloud_primary_ip` -- a live host losing its public address. On this
+#     provider an unassign DESTROYS the address, which is the entire reason
+#     infra/terraform/primary_ips.tf exists.
+#
+# WRITTEN AS A RE-LABEL RATHER THAN AS A SECOND GATE, deliberately. `detach` is not a word Terraform
+# emits, so the allowlist below refuses it without being widened by one character -- the gate keeps
+# its single expression and its single failure path, and this file keeps ONE place that decides what
+# a pending change IS.
+#
+# THE COMPARISON IS `before` AGAINST `after`, NOT "is the attribute present". Terraform emits the full
+# object on both sides of every update, so an update to a volume's `size` carries `server_id`
+# unchanged in both -- keying on presence would refuse every volume edit and teach people to skip the
+# gate. `.get()` rather than `[]` so a provider that stops emitting the field is a non-match rather
+# than an undefined-variable error mid-apply.
+#
+# AN UNKNOWN VALUE IS NOT A DETACHMENT, and `after_unknown` is what tells them apart. Terraform emits
+# `after[attr] = null` for BOTH "this becomes null" and "this is not known yet". THIS FLEET HITS THAT
+# IMMEDIATELY: primary_ips.tf adopts six live addresses with `import` blocks and leaves `assignee_id`
+# Computed on purpose, so every one of those plans reads
+# `assignee_id = <id> -> (known after apply)` with `after_unknown.assignee_id = true`. Without this
+# line the very first apply against this configuration is refused as six detachments.
+#
+# IT DOES NOT WEAKEN THE GATE. Terraform only proposes what it KNOWS: a genuine detachment is a known
+# new value -- null, or a different id -- because something in the configuration asked for it, and
+# those still compare unequal and are still refused. An unknown is the opposite: it is Terraform
+# saying it is not managing this attribute and will find out afterwards. And the side-effect case
+# that WOULD move an address -- a server being rebuilt -- is a `replace`, which this branch never
+# looks at because it tests `actions == ['update']`.
+- name: Reduce the whole configuration's plan to address -> action
+  ansible.builtin.set_fact:
+    terraform_surveyed_actions: >-
+      {{
+        dict(
+          planned_changes | map(attribute='address')
+          | zip(
+              planned_changes | map(attribute='change.actions')
+              | map('sort') | map('join', '+')
+              | map('replace', 'create+delete', 'replace')
+            )
+        ) | combine(terraform_detaching_updates | from_json)
+      }}
+  vars:
+    # Plain Jinja rather than json_query: that filter needs the jmespath library, which ansible-core
+    # does not ship. One fewer dependency and one fewer thing to pin.
+    #
+    # The actions are SORTED before joining, so a replacement is 'create+delete' whichever order
+    # Terraform emits it in (create_before_destroy reverses it) and one rewrite covers both.
+    planned_changes: >-
+      {{ (terraform_plan_json.stdout | from_json).resource_changes
+         | rejectattr('change.actions', 'equalto', ['no-op']) | list }}
+
+    # The attributes that MOVE a resource off the machine using it, by resource type. Adding one is
+    # the whole cost of covering a new kind of detachment.
+    terraform_detach_attributes:
+      hcloud_volume: server_id
+      hcloud_primary_ip: assignee_id
+
+    # A `{% raw %}{% for %}{% endraw %}` rather than a chain of filters because the test is
+    # before-against-after on an attribute whose NAME varies by resource type, and no selectattr
+    # spelling expresses that. Emitted as JSON and parsed back so the result is a real mapping rather
+    # than a string.
+    terraform_detaching_updates: >-
+      {%- set detaching = {} -%}
+      {%- for change in planned_changes -%}
+        {%- set attribute = terraform_detach_attributes.get(change.type) -%}
+        {%- if attribute is not none and change.change.actions == ['update']
+               and not (change.change.after_unknown | default({}, true)).get(attribute)
+               and (change.change.before | default({}, true)).get(attribute)
+                   != (change.change.after | default({}, true)).get(attribute) -%}
+          {%- set _ = detaching.update({change.address: 'detach'}) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ detaching | to_json }}
+
+- name: Show what the whole configuration proposes
+  ansible.builtin.debug:
+    var: terraform_surveyed_actions
+
+# Compared one way round only: every address that was ASKED FOR must appear with the action asked
+# for. A plan that has lost one of them, or that proposes `replace` where `update` was intended, is
+# refused here -- and this half is read off an UNTARGETED plan of the entire configuration, which is
+# what makes it a claim about reality rather than about what targeting chose to look at.
+- name: The configuration must propose everything that was asked for
+  ansible.builtin.assert:
+    that:
+      - terraform_surveyed_actions | dict2items
+        | selectattr('key', 'in', terraform_expected_actions.keys() | list)
+        | items2dict == terraform_expected_actions
+    fail_msg: >-
+      The plan does not propose what this run asked for, so nothing will be applied.
+        asked for: {{ terraform_expected_actions }}
+        planned:   {{ terraform_surveyed_actions }}
+      Check for an absent credential before assuming the configuration is wrong: an empty TF_VAR is a
+      VALUE to Terraform, and on a ForceNew attribute it is a destroy.
+    success_msg: "The plan proposes all {{ terraform_expected_actions | length }} resource(s) this run asked for."
+    quiet: true
+
+- name: Anything else the configuration proposes, which this run did not ask for
+  ansible.builtin.set_fact:
+    terraform_unrelated_actions: >-
+      {{ terraform_surveyed_actions | dict2items
+         | rejectattr('key', 'in', terraform_expected_actions.keys() | list) | items2dict }}
+
+# PENDING WORK THAT MAKES NOTHING DISAPPEAR IS LEFT ALONE; A PENDING DELETE OR REPLACE STOPS THE RUN.
+# The asymmetry is the whole judgement here and it is not arbitrary. A create that nobody has applied
+# is a machine that does not exist, and declining to build it costs nothing and destroys nothing. An
+# in-place update is the same claim in the same direction: the resource keeps running exactly as it
+# is, and this run simply does not change it. A delete or a replace is the opposite: it is a machine,
+# a volume or an address that DOES exist and that something in the current inputs wants gone.
+#
+# THIS IS A SURVEY, NOT THE BOUND ON WHAT HAPPENS. The plan that is applied is re-planned below with
+# `-target` and then exact-matched, so what is tolerated here cannot enlarge the blast radius by one
+# resource. Tolerating a pending update therefore changes only whether an unrelated
+# committed-but-unapplied change is allowed to halt every apply, for everybody -- and in a repository
+# worked from several worktrees at once, pending work is the NORMAL state.
+#
+# IT IS AN ALLOWLIST, NOT A DENYLIST, and that is deliberate. `forget` -- Terraform's action for a
+# `removed` block -- drops a live machine out of the shared state without touching the machine, and a
+# rule spelled "not delete and not replace" would wave it through. An action word this file has never
+# heard of stops the run.
+- name: Nothing pending may destroy or replace a resource that exists
+  ansible.builtin.assert:
+    that:
+      - terraform_unrelated_actions | dict2items
+        | rejectattr('value', 'in', ['create', 'update', 'read']) | list | length == 0
+    fail_msg: >-
+      The configuration proposes destroying, replacing or detaching resources this run did not ask
+      for, and that is not something to apply around: {{ terraform_unrelated_actions | dict2items
+      | rejectattr('value', 'in', ['create', 'update', 'read']) | items2dict }}.
+      Nothing has been applied. An absent Terraform input is the first thing to check.
+      `detach` is this role's own word, not Terraform's: Terraform calls it an `update`, and it is the
+      one above that would move mongo-1's data volume off the machine using it, or take a live host's
+      public address away -- which on this provider DELETES that address. Correct the declaration to
+      name the machine the resource is ACTUALLY on; do not apply around it.
+    quiet: true
+
+- name: Say what is pending that this run will not apply
+  ansible.builtin.debug:
+    msg: >-
+      Pending in the configuration and deliberately NOT applied by this run:
+      {{ terraform_unrelated_actions }}. The apply below is targeted at
+      {{ terraform_expected_actions.keys() | list }} and can touch nothing else.
+  when: terraform_unrelated_actions | length > 0
+
+# RE-PLANNED WITH `-target`, and this is the plan that gets applied. The survey above is what makes
+# collateral visible; this is what bounds what can happen.
+#
+# `argv` rather than a command string because these addresses carry quoted map keys --
+# `hcloud_primary_ip.fleet["mongo_1_ipv4"]`, and every address in primary_ips.tf has that shape --
+# and handing that to a shell is a quoting bug waiting for the one run where it matters.
+- name: terraform plan again, scoped to exactly what was asked for
+  ansible.builtin.command:
+    argv: >-
+      {{ ['terraform', 'plan', '-input=false', '-no-color',
+          '-lock-timeout=' ~ terraform_lock_timeout, '-out=' ~ terraform_plan_file]
+         + (terraform_expected_actions.keys() | map('regex_replace', '^', '-target=') | list) }}
+    chdir: "{{ terraform_dir }}"
+  environment: "{{ terraform_env }}"
+  changed_when: false
+  delegate_to: localhost
+
+- name: Read the scoped plan back as JSON
+  ansible.builtin.command:
+    cmd: "terraform show -json {{ terraform_plan_file }}"
+    chdir: "{{ terraform_dir }}"
+  environment: "{{ terraform_env }}"
+  register: terraform_scoped_plan_json
+  changed_when: false
+  delegate_to: localhost
+
+- name: Reduce the scoped plan to address -> action
+  ansible.builtin.set_fact:
+    terraform_planned_actions: >-
+      {{
+        dict(
+          planned_changes | map(attribute='address')
+          | zip(
+              planned_changes | map(attribute='change.actions')
+              | map('sort') | map('join', '+')
+              | map('replace', 'create+delete', 'replace')
+            )
+        )
+      }}
+  vars:
+    planned_changes: >-
+      {{ (terraform_scoped_plan_json.stdout | from_json).resource_changes
+         | rejectattr('change.actions', 'equalto', ['no-op']) | list }}
+
+- name: Show what will actually be applied
+  ansible.builtin.debug:
+    var: terraform_planned_actions
+
+# EXACT EQUALITY, on the artefact that is applied. Targeting bounds what Terraform will CONSIDER, and
+# this is what proves the bound held -- a target pulls in whatever it depends on, so "I asked for
+# three things" and "three things will change" remain separate claims. On this configuration that is
+# not theoretical: every `module.<host>` target reaches `hcloud_network`, `hcloud_primary_ip` and the
+# firewall attachment through its arguments.
+- name: The plan being applied must be exactly what was asked for, and nothing else
+  ansible.builtin.assert:
+    that:
+      - terraform_planned_actions == terraform_expected_actions
+    fail_msg: >-
+      The scoped plan does not match the expectation and will NOT be applied.
+        expected: {{ terraform_expected_actions }}
+        planned:  {{ terraform_planned_actions }}
+      Targeting bounds what Terraform considers; anything extra here came in as a dependency of
+      something that was asked for, and is collateral all the same.
+    success_msg: "Applying exactly {{ terraform_expected_actions | length }} resource(s), as expected."
+    quiet: true
+
+- name: terraform apply (the saved plan, not a fresh one)
+  ansible.builtin.command:
+    cmd: >-
+      terraform apply -input=false -no-color -lock-timeout={{ terraform_lock_timeout }}
+      {{ terraform_plan_file }}
+    chdir: "{{ terraform_dir }}"
+  environment: "{{ terraform_env }}"
+  register: terraform_apply_result
+  changed_when: true
+  delegate_to: localhost
+
+- name: Discard the plan files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ terraform_plan_file }}"
+    - "{{ terraform_plan_file }}.survey"
+  delegate_to: localhost
+
+# DELIBERATELY NOT PORTED: bitcashier's final phase regenerates and gates on a COMMITTED FLEET
+# SNAPSHOT (puppet-src/inventory.yaml and nix/fleet/facts.json), because a dozen of its tools read
+# that snapshot rather than the live API and it silently drifted after eight relabelling runs.
+#
+# This estate has no such file and should not grow one: inventory/hcloud.yml reads the Hetzner API at
+# run time and is the only consumer of the fleet's shape. If a committed snapshot ever appears here,
+# regenerating it belongs in THIS role rather than in each caller -- hooking it into callers
+# individually is the hand-crafted version of the same fix, and it is exactly the shape that failed
+# there.
+#
+# Re-running this role is NOT claimed to be a no-op and should not be assumed to be one: it plans
+# afresh each time, so a second run over an applied change plans nothing and matches an expectation
+# of nothing, while a second run over a change somebody else has since made plans that instead. The
+# gate is what makes that safe, not idempotence.

@@ -1,0 +1,400 @@
+# Prometheus and Alertmanager -- this fleet's alarm, on the same box as its k3s control plane.
+#
+# WHAT IT WATCHES, AND WHAT WATCHES IT. Three node_exporters over the private network (mongo-1,
+# this host, k3s-worker-1) plus its own two processes, and -- separately and by a different
+# mechanism -- Fly's managed Prometheus, which is where every metric about the still-Fly-hosted
+# web and worker apps lives. NOTHING WATCHES THIS HOST FROM OUTSIDE. That is the standing weakness
+# of a single monitoring node and it is not solved here; what IS done is that Alertmanager's own
+# delivery path is exercised by a rule (see monitoring-self.rules), so a Telegram route that has
+# quietly stopped working is discovered by a heartbeat rather than by the first real incident.
+#
+# ------------------------------------------------------------------------------------------------
+# THE FLY AUTH HEADER IS `FlyV1`, NOT `Bearer`. THIS IS THE GOTCHA THAT COSTS AN AFTERNOON.
+# ------------------------------------------------------------------------------------------------
+#
+# Fly's managed Prometheus at https://api.fly.io/prometheus/personal authenticates with
+#
+#     Authorization: FlyV1 <token>
+#
+# A `Bearer <token>` header -- which is what every Prometheus example on the internet writes, and
+# what Prometheus's `authorization` block DEFAULTS TO when `type` is omitted -- returns 401 with
+# "resolving organization". Verified against the live endpoint. So the scrape config carries an
+# explicit `type: FlyV1`, and roles/grafana.nix carries the same value in a datasource header for
+# the same reason. If either is ever "cleaned up" to Bearer, the symptom is a 401 that reads like a
+# revoked token, and the first thing anybody does about a bad token is issue a new one -- which
+# does not help and buries the real cause under a credential change.
+#
+# ------------------------------------------------------------------------------------------------
+# WHY THIS PROCESS OUTRANKS ITS NEIGHBOUR
+# ------------------------------------------------------------------------------------------------
+#
+# monitoring-1 is a cx23 running Prometheus, Alertmanager, Grafana AND a k3s server. That is a
+# deliberate density decision for a small fleet, and it has one consequence worth being explicit
+# about: when the box is starved, the thing that must keep working is the thing that RECORDS the
+# starvation. A monitoring stack that stops scraping at the exact moment its neighbour goes wrong
+# leaves a hole in the history precisely where the evidence would have been, and "the graph just
+# stops" is the least useful shape an incident can have.
+#
+# So both units below carry `CPUWeight` well above the systemd default of 100, and an I/O class
+# above k3s's. k3s-server.nix states the other side of the same decision on its own unit, so that
+# neither file is the only place the ordering is written down. This is not a guarantee -- CPUWeight
+# is a proportional share under contention, not a reservation -- and it does nothing about memory
+# pressure, where the OOM killer takes the largest process regardless of weight.
+{ config, lib, pkgs, ... }:
+
+let
+  cfg = config.fleet.prometheus;
+
+  # SUBSTITUTE QUIETLY, THEN REFUSE ANY PLACEHOLDER THAT SURVIVED. Taken from the bitcashier
+  # prometheus role, including the reasoning for why the OUTPUT is checked rather than the input:
+  # asserting that a pattern was present in the source fails on files that legitimately contain
+  # none (most of the rule files name no address at all), whereas asserting that no `@TOKEN@`
+  # remains in the result catches both a placeholder that stopped matching and one somebody adds
+  # later and forgets to render. An unsubstituted `@LISTEN_ADDRESS@` would otherwise reach
+  # Prometheus as a literal hostname, and a scrape of a host that does not resolve is a target
+  # that is simply down -- which reads as a machine problem.
+  render = name: src: pkgs.runCommand name { } ''
+    substitute ${src} $out \
+      --replace-quiet '@LISTEN_ADDRESS@' '${cfg.listenAddress}' \
+      --replace-quiet '@FLY_TOKEN_FILE@' '${cfg.flyTokenFile}' \
+      --replace-quiet '@GRAFANA_PORT@' '${toString cfg.grafanaPort}' \
+      --replace-quiet '@TELEGRAM_BOT_TOKEN_FILE@' '${cfg.telegramBotTokenFile}'
+    if grep -nE '@[A-Z0-9_]+@' $out; then
+      echo "render: ${name} still carries an unsubstituted placeholder (above)." >&2
+      exit 1
+    fi
+  '';
+
+  # THE NODE TARGETS, GENERATED FROM AN OPTION RATHER THAN WRITTEN INTO THE YAML.
+  #
+  # Hetzner Cloud service discovery would be the other way to do this (it is what the bitcashier
+  # fleet uses, with an API token). Three machines do not justify it: SD buys you the machines you
+  # forgot to declare, and on a fleet this size the flake already knows all of them. What it WOULD
+  # buy is discovering a machine somebody created outside Terraform -- which on this fleet should
+  # not happen and, if it does, is a bigger problem than a missing scrape target.
+  #
+  # WRITTEN WITH toJSON BECAUSE JSON IS VALID YAML. Hand-rendering a YAML list out of an option is
+  # one indentation mistake away from a job Prometheus reads as something else, and this file is
+  # generated rather than reviewed by eye.
+  nodeTargetsYaml = builtins.toJSON {
+    scrape_configs = lib.optional (cfg.nodeTargets != [ ]) {
+      job_name = "node";
+      static_configs = map
+        (t: {
+          targets = [ "${t.address}:${toString t.port}" ];
+          labels = { inherit (t) host role; };
+        })
+        cfg.nodeTargets;
+    };
+  };
+
+  # A RULE FILE HAS TO BE IN TWO PLACES: this list, which INSTALLS it into /etc, and the
+  # `rule_files` list in files/monitoring/prometheus.yaml, which LOADS it. Present in one and
+  # absent from the other, it is either a file nothing reads (silent -- the alerts simply never
+  # fire) or a path Prometheus cannot find (loud -- it refuses to start). The silent half is the
+  # dangerous one; bitcashier guards it with a check script, which this repository does not have
+  # yet and should.
+  ruleNames = [ "filesystem-capacity" "mongodb" "monitoring-self" "wireguard-fly" ];
+in
+{
+  options.fleet.prometheus = {
+    enable = lib.mkEnableOption "Prometheus and Alertmanager";
+
+    package = lib.mkOption { type = lib.types.package; default = pkgs.prometheus; defaultText = "pkgs.prometheus"; };
+    alertmanagerPackage = lib.mkOption { type = lib.types.package; default = pkgs.prometheus-alertmanager; defaultText = "pkgs.prometheus-alertmanager"; };
+
+    listenAddress = lib.mkOption {
+      type = lib.types.str;
+      default = config.fleet.privateAddress;
+      defaultText = "config.fleet.privateAddress";
+      description = ''
+        THE PRIVATE ADDRESS, AND NEVER 0.0.0.0. Prometheus's own web UI has no authentication and
+        its query API can read every metric this fleet has; Alertmanager's API can silence every
+        alert. Both are reached over the private network or not at all.
+
+        Substituted into the vendored config as well as passed on the command line, so the two
+        cannot name different addresses -- the config scrapes Prometheus and Alertmanager by
+        literal address, and a disagreement would leave the alarm not watching itself.
+      '';
+    };
+
+    dataDir = lib.mkOption {
+      type = lib.types.str;
+      default = "/var/lib/monitoring/prometheus";
+      description = ''
+        On the monitoring volume, which is mounted at the PARENT (/var/lib/monitoring).
+
+        THE SAME HAZARD AS mongodb.nix's dbPath: with the volume absent this is an empty directory
+        on the root disk and Prometheus starts a new, empty TSDB in it perfectly happily. The unit
+        below carries `RequiresMountsFor` for that reason.
+      '';
+    };
+
+    alertmanagerDataDir = lib.mkOption {
+      type = lib.types.str;
+      default = "/var/lib/monitoring/alertmanager";
+      description = ''
+        Alertmanager's notification log and silences. On the volume as well -- losing it is not
+        catastrophic, but it means every silence somebody set during an incident evaporates on a
+        rebuild, which is exactly when they were relied on.
+      '';
+    };
+
+    retention = lib.mkOption {
+      type = lib.types.str;
+      default = "90d";
+      description = ''
+        HOW MUCH HISTORY, AS AN INTENT. Ninety days covers "is this worse than the same week last
+        quarter?", which is the question this fleet's seasonal traffic actually raises.
+
+        IT IS NOT WHAT BOUNDS THE DISK. See `retentionSize`: time-based retention says how old data
+        may be, not how large it may get, so a doubling of the target count or of series
+        cardinality silently doubles the volume used with this value unchanged. Both are set here
+        precisely because only one of them can be violated by adding a scrape target.
+      '';
+    };
+
+    retentionSize = lib.mkOption {
+      type = lib.types.str;
+      default = "20GB";
+      description = ''
+        THE HARD BOUND ON DISK, and the one of the two retention settings that cannot be undone by
+        somebody adding a job. When it bites, Prometheus drops the OLDEST blocks -- so the failure
+        mode is a shorter history, which is recoverable, rather than a full volume, which takes the
+        whole monitoring stack (and Grafana's sqlite beside it) down with it.
+
+        20GB IS A GUESS SIZED AGAINST A VOLUME NOBODY HAS MEASURED HERE. It must stay comfortably
+        under the monitoring volume's real size, with room for Grafana's database and the WAL --
+        the correct way to revise it is to read `prometheus_tsdb_storage_blocks_bytes` after a
+        month of real ingest, not to raise it because a graph looks short.
+      '';
+    };
+
+    grafanaPort = lib.mkOption {
+      type = lib.types.port;
+      default = 3000;
+      description = ''
+        Where Grafana serves, so that Prometheus can scrape ITS metrics -- Grafana publishes alert
+        rule evaluation and notification failures, which is the only way this stack notices that
+        its own alerting has stopped. Kept in step with `fleet.grafana.port` by the assertion below
+        rather than by two literals agreeing out of luck.
+      '';
+    };
+
+    flyTokenFile = lib.mkOption {
+      type = lib.types.str;
+      default = config.sops.secrets."prometheus/fly-token".path;
+      defaultText = ''config.sops.secrets."prometheus/fly-token".path'';
+      description = ''
+        Path to the Fly read-only org token (`fly tokens create readonly --org personal`), from
+        sops-nix. A PATH, not a value: the config file lives in the world-readable Nix store.
+      '';
+    };
+
+    telegramBotTokenFile = lib.mkOption {
+      type = lib.types.str;
+      default = config.sops.secrets."alertmanager/telegram-bot-token".path;
+      defaultText = ''config.sops.secrets."alertmanager/telegram-bot-token".path'';
+      description = "Path to the @kinowobot bot token, from sops-nix. Alertmanager reads it at send time.";
+    };
+
+    externalUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "http://alertmanager.kinowo.internal:9093";
+      description = ''
+        What the links inside a Telegram alert point at. A name that resolves only on the private
+        network, deliberately: the person clicking it is expected to be on the VPN, and publishing
+        a working public link to the thing that can silence every alert is not a convenience worth
+        having.
+      '';
+    };
+
+    nodeTargets = lib.mkOption {
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          address = lib.mkOption { type = lib.types.str; description = "Private address to scrape."; };
+          host = lib.mkOption { type = lib.types.str; description = "The `host` label -- the machine's own hostname."; };
+          role = lib.mkOption { type = lib.types.str; description = "The `role` label: mongodb, monitoring, k3s-worker."; };
+          port = lib.mkOption { type = lib.types.port; default = 9100; description = "node_exporter's port."; };
+        };
+      });
+      default = [ ];
+      description = ''
+        THE FLEET'S node_exporters.
+
+        THE ADDRESSES ARE NOT WRITTEN HERE AND SHOULD NOT BE. Each entry is expected to be read in
+        flake.nix off the target host's OWN `fleet.privateAddress`, so this list carries references
+        rather than literals and the two cannot drift. That is the bitcashier rule about address
+        literals, and it earns its keep on a cloud fleet for a specific reason: a provider will
+        eventually hand a decommissioned machine's address to the next one built, and a literal in
+        a manifest keeps pointing at it.
+
+        A MACHINE MISSING FROM THIS LIST IS SIMPLY NOT WATCHED, and nothing says so -- there is no
+        service discovery here to notice it (see `nodeTargetsYaml` for why not). The backstop is
+        that the list is short and lives beside the host declarations that produce it.
+      '';
+      example = lib.literalExpression ''
+        [{
+          address = self.nixosConfigurations.mongo-1.config.fleet.privateAddress;
+          host = "mongo-1";
+          role = "mongodb";
+        }]
+      '';
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = !config.fleet.grafana.enable || cfg.grafanaPort == config.fleet.grafana.port;
+        message = ''
+          fleet.prometheus.grafanaPort (${toString cfg.grafanaPort}) does not match
+          fleet.grafana.port (${toString config.fleet.grafana.port}). Prometheus would scrape a
+          closed port and the `grafana` target would sit down -- which is indistinguishable from
+          Grafana being down, on the one host where that distinction matters.
+        '';
+      }
+    ];
+
+    # OWNED BY THE PROCESS THAT READS THEM, 0400. Prometheus reads the Fly token itself at scrape
+    # time (`credentials_file`) and Alertmanager reads the bot token at send time
+    # (`bot_token_file`) -- neither is ever interpolated into a config file, so neither reaches the
+    # store, and a file the wrong process owns fails at the moment it is needed rather than at
+    # start.
+    sops.secrets."prometheus/fly-token" = { owner = "prometheus"; mode = "0400"; };
+    sops.secrets."alertmanager/telegram-bot-token" = { owner = "alertmanager"; mode = "0400"; };
+
+    users.users.prometheus = { isSystemUser = true; group = "prometheus"; description = "Prometheus"; };
+    users.groups.prometheus = { };
+    users.users.alertmanager = { isSystemUser = true; group = "alertmanager"; description = "Alertmanager"; };
+    users.groups.alertmanager = { };
+
+    # THE PATHS ARE /etc/prometheus AND /etc/alertmanager, not store paths, and that is a choice
+    # about the people reading them rather than about Nix. Every runbook and every alert annotation
+    # that says "check /etc/prometheus/rules" is read by somebody at an unsociable hour while the
+    # thing it describes is misbehaving; a store hash in that sentence would be correct and useless.
+    environment.etc = {
+      "prometheus/prometheus.yaml".source = render "prometheus.yaml" ../../files/monitoring/prometheus.yaml;
+      "alertmanager/alertmanager.yaml".source = render "alertmanager.yaml" ../../files/monitoring/alertmanager.yaml;
+      "prometheus/scrape.d/node-targets.yaml".text = nodeTargetsYaml;
+    } // lib.listToAttrs (map
+      (n: lib.nameValuePair "prometheus/rules/${n}.rules" {
+        source = render "${n}.rules" (../../files/monitoring/rules + "/${n}.rules");
+      })
+      ruleNames);
+
+    systemd.services.prometheus = {
+      description = "Prometheus";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      unitConfig.RequiresMountsFor = builtins.dirOf cfg.dataDir;
+
+      # WITHOUT THIS, A CONFIG CHANGE IS WRITTEN AND NEVER READ, and every signal says otherwise.
+      # These files are in `environment.etc`, so activation replaces them -- but the UNIT is
+      # unchanged, systemd restarts nothing, and Prometheus goes on serving the config it parsed at
+      # its last start while the closure hash advances and the host reports itself current. The
+      # bitcashier fleet measured exactly this: a scrape target correct on disk and absent from
+      # /api/v1/targets until a restart. A new alert rule that never loads is silent in precisely
+      # the way an unloaded rule file is.
+      #
+      # `restartTriggers` and not `reloadTriggers`: `--web.enable-lifecycle` is deliberately NOT set
+      # below, so POST /-/reload answers 404 and there is no reload path to use. A restart costs a
+      # few seconds of scrape gap and loses nothing -- the TSDB is on disk and the WAL is replayed.
+      restartTriggers = [
+        config.environment.etc."prometheus/prometheus.yaml".source
+        config.environment.etc."prometheus/scrape.d/node-targets.yaml".text
+      ] ++ map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;
+
+      serviceConfig = {
+        User = "prometheus";
+        Group = "prometheus";
+        Restart = "on-failure";
+        RestartSec = 5;
+        ExecStart = lib.concatStringsSep " " [
+          "${cfg.package}/bin/prometheus"
+          "--config.file=/etc/prometheus/prometheus.yaml"
+          "--storage.tsdb.path=${cfg.dataDir}"
+          "--storage.tsdb.retention.time=${cfg.retention}"
+          "--storage.tsdb.retention.size=${cfg.retentionSize}"
+          "--web.listen-address=${cfg.listenAddress}:9090"
+          # NOT --web.enable-admin-api, and not --web.enable-lifecycle. The first exposes
+          # POST /api/v1/admin/tsdb/delete_series -- a delete button on the only copy of this
+          # fleet's metric history, reachable by anything on the private network. The second
+          # exposes /-/quit beside the reload it would provide, and the restartTriggers above make
+          # reload unnecessary.
+        ];
+
+        # SEE THE HEADER. This is the process that has to still be recording when its neighbour
+        # starves the box. 400 against systemd's default of 100 and k3s's, which k3s-server.nix
+        # leaves at the default deliberately and says so.
+        CPUWeight = 400;
+        IOSchedulingClass = "best-effort";
+        # 0 is the highest best-effort priority. NOT the `realtime` class: that one can starve
+        # every other reader on the device, including the k3s control plane's etcd, and an alarm
+        # that wins by taking down what it is watching has not helped.
+        IOSchedulingPriority = 0;
+
+        # Prometheus checkpoints its head block on shutdown; killing it mid-checkpoint costs a WAL
+        # replay on the next start.
+        KillSignal = "SIGTERM";
+        TimeoutStopSec = 600;
+
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
+        ReadWritePaths = [ cfg.dataDir ];
+      };
+    };
+
+    systemd.services.alertmanager = {
+      description = "Alertmanager";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      unitConfig.RequiresMountsFor = builtins.dirOf cfg.alertmanagerDataDir;
+
+      # The same gap as Prometheus's, and it matters more here: this file decides where an alert is
+      # DELIVERED. A changed route or receiver that is written and never read means the page goes to
+      # the old place, or nowhere, while everything reports the change as applied.
+      restartTriggers = [ config.environment.etc."alertmanager/alertmanager.yaml".source ];
+
+      serviceConfig = {
+        User = "alertmanager";
+        Group = "alertmanager";
+        Restart = "on-failure";
+        RestartSec = 5;
+        ExecStart = lib.concatStringsSep " " [
+          "${cfg.alertmanagerPackage}/bin/alertmanager"
+          "--config.file=/etc/alertmanager/alertmanager.yaml"
+          "--storage.path=${cfg.alertmanagerDataDir}"
+          "--web.external-url=${cfg.externalUrl}"
+          "--web.listen-address=${cfg.listenAddress}:9093"
+          # NO --cluster.listen-address. A single Alertmanager needs no gossip, and leaving the
+          # cluster listener on its default would open a port that only exists to talk to peers
+          # this fleet does not have. If a second one is ever added, this line comes back and 9094
+          # goes into the firewall list below -- both, or neither: a clustered Alertmanager whose
+          # peers cannot reach each other sends every notification twice.
+        ];
+
+        # Above k3s, for the reason in the header. Slightly below Prometheus: if only one of the
+        # two can run, recording the incident is worth more than the notification about it, and the
+        # notification is retried while a scrape gap is permanent.
+        CPUWeight = 300;
+        IOSchedulingClass = "best-effort";
+        IOSchedulingPriority = 1;
+
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
+        ReadWritePaths = [ cfg.alertmanagerDataDir ];
+      };
+    };
+
+    # ONLY ON THE PRIVATE INTERFACE. Neither of these has any authentication -- see `listenAddress`.
+    # 9094 (the cluster port) is deliberately absent; see the ExecStart comment above.
+    networking.firewall.interfaces.${config.fleet.privateInterface}.allowedTCPPorts = [ 9090 9093 ];
+  };
+}

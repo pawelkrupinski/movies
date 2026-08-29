@@ -1,0 +1,72 @@
+# Which age recipients each secrets file is sealed to.
+#
+# WHY THIS FILE HAS TO EXIST. Without it `sops updatekeys` has nothing to act on, so there is no
+# supported way to re-seal a file when a host key changes -- and on this fleet a host key changes
+# every time `convert-host` runs, because nixos-anywhere repartitions the disk and the machine mints
+# a fresh ssh_host_ed25519_key on first boot. That is an ordinary event here, not a rare one: it is
+# how all three of these machines become NixOS in the first place.
+#
+# EVERY RULE NAMES TWO KINDS OF RECIPIENT and both are load-bearing:
+#
+#   the OPERATOR key
+#     A human's key, present in every file. Without it a file can be read only by the machine it was
+#     sealed for -- so a wiped machine takes its own secrets to the grave, and they have to be
+#     re-authored from source rather than re-sealed. bitcashier lost three control-plane files
+#     exactly that way.
+#
+#   the HOST key
+#     Derived from that host's SSH host key with `ssh-to-age`. It is what sops-nix uses at
+#     activation, on the host, with no operator present. IT CHANGES WHEN THE MACHINE IS WIPED, so a
+#     re-converted host needs `sops updatekeys` against its new recipient before its closure will
+#     activate -- and the symptom of forgetting is an activation failure on the host, after the
+#     closure has already been built and copied.
+#
+# THE SAME OPERATOR KEY AS bitcashier/infra, deliberately: it is the same human at the same
+# workstation, and a second key would mean a second thing to lose without making anything safer.
+# The two estates share nothing else -- separate Hetzner projects, separate Terraform workspace,
+# separate flake, separate host keys.
+#
+# The keys below are PUBLIC. Nothing secret belongs in this file.
+keys:
+  - &operator age1xk5y9cqtyphr3deefnnfkfpd47yh7se90waj0hwzgefgmqzqsq7q8dy8ca
+
+  # THE THREE HOST KEYS DO NOT EXIST YET and cannot: a host key is minted by the machine on its
+  # first boot as NixOS, so there is nothing to derive one from until `convert-host` has run against
+  # that host. Until then each rule below names the operator alone, which is enough to CREATE and
+  # edit a secrets file but NOT enough for the host to decrypt it -- so a deploy before this is
+  # filled in fails at activation, on the host, with sops-nix unable to find a key it can use.
+  #
+  # The step, per host, immediately after conversion:
+  #
+  #     ssh root@<host> cat /etc/ssh/ssh_host_ed25519_key.pub | nix run nixpkgs#ssh-to-age
+  #
+  # paste the result as the anchor below, add it to that host's `key_groups`, then
+  # `sops updatekeys nix/secrets/<host>.yaml`.
+  #
+  # - &mongo_1        age1...
+  # - &monitoring_1   age1...
+  # - &k3s_worker_1   age1...
+
+# ONE FILE PER HOST, keyed by path, and never a shared file. A shared secrets file would mean every
+# host could decrypt every other host's material -- so the k3s worker, which holds no cluster state
+# and is the most exposed of the three, would be able to read the database's credentials and the
+# Grafana bot token. Splitting by host makes the blast radius of one compromised machine that
+# machine.
+creation_rules:
+  - path_regex: nix/secrets/mongo-1\.yaml$
+    key_groups:
+      - age:
+          - *operator
+          # - *mongo_1
+
+  - path_regex: nix/secrets/monitoring-1\.yaml$
+    key_groups:
+      - age:
+          - *operator
+          # - *monitoring_1
+
+  - path_regex: nix/secrets/k3s-worker-1\.yaml$
+    key_groups:
+      - age:
+          - *operator
+          # - *k3s_worker_1

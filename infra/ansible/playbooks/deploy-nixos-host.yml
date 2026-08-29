@@ -1,0 +1,113 @@
+---
+# Deploy one NixOS host's configuration -- or a whole role group's -- from this repository.
+#
+#   set -a; . .env.local; set +a          # HETZNER_API_TOKEN, for the dynamic inventory
+#   ansible-playbook playbooks/deploy-nixos-host.yml -e target=mongo-1
+#   ansible-playbook playbooks/deploy-nixos-host.yml -e target=role_monitoring
+#   ansible-playbook playbooks/deploy-nixos-host.yml -e target=all
+#
+# ALL THE WORK IS roles/nixos_deploy'S -- rsync the flake to the target and `nixos-rebuild switch`
+# there, with an evaluation and a sops check on the controller first and a failed-unit check
+# afterwards. This playbook exists so that an ordinary redeploy -- a settings change, a package bump,
+# the second half of a staged cutover -- can be ASKED FOR on its own, instead of being typed out by
+# hand as `nixos-rebuild` over ssh, which is the form that skips every one of those checks.
+#
+# THE FLAKE ATTRIBUTE DEFAULTS TO THE HOST NAME, which is a fact about this estate rather than a
+# convenience: infra/terraform names the servers `mongo-1`, `monitoring-1`, `k3s-worker-1` precisely
+# so they line up with `nixosConfigurations.*`. That is what makes `-e target=role_monitoring` --
+# or `all` -- work at all, since each host then resolves its own attribute. Override it with
+# `-e flake_attribute=<name>` for the case it exists for: deploying one host's configuration onto
+# another machine during a rebuild. That is a deliberate act and has to be said out loud.
+#
+# IT DEPLOYS WHAT IS IN FRONT OF YOU, not what is on origin/main. `nixos_deploy_source` defaults to
+# the checkout this playbook lives in, so running it from a git worktree deploys that worktree --
+# which is the intent while iterating and a trap afterwards. What the machine ends up running is
+# whatever tree was copied; the git repository is the authority only to the extent that somebody
+# pushed first. (roles/terraform_apply is strict about this because Terraform state is SHARED and a
+# stale checkout proposes destroying what it has not heard of. A flake is not shared state -- the
+# worst a stale one does is deploy an old configuration to one machine, recoverably.)
+
+- name: Deploy a NixOS host
+  # `no-such-host` rather than `all` as the fallback, so a forgotten -e matches nothing and says so
+  # instead of switching every machine on the fleet.
+  hosts: "{{ target | default('no-such-host', true) }}"
+  gather_facts: false
+
+  vars:
+    # WHICH ADDRESS THIS PLAY TALKS TO. inventory/hcloud.yml composes `ansible_host` from the PRIVATE
+    # address (ported from bitcashier, and right for a controller inside the fleet); this estate has
+    # no route to 10.20.0.0/24 from a laptop, so the default is the public one. Play vars are the
+    # only precedence level that outranks an inventory plugin's `compose`, which is why this line is
+    # here and not in group_vars -- a group_vars entry for `ansible_host` is silently ignored.
+    #
+    # KINOWO_CONNECT_OVER=private flips it, unchanged, the day there is a route.
+    ansible_host: >-
+      {{ kinowo_public_ipv4 if kinowo_connect_over == 'public' else hcloud_private_ipv4 }}
+
+    # AS root, AND IT IS A CONNECTION USER RATHER THAN AN ESCALATION. roles/nixos_deploy rsyncs the
+    # flake into /root/nixcfg with no `become`, and runs `nixos-rebuild switch` through `raw` -- which
+    # takes no `become` either, because a first deploy has no python on the target to escalate with.
+    # So the account that connects has to BE root; being able to sudo to it is not enough, and the
+    # failure is an rsync that stops at `cannot stat destination "/root/nixcfg/": Permission denied`
+    # after the play has already passed every one of its own checks.
+    ansible_user: root
+
+  tasks:
+    - name: Name the flake output to deploy
+      ansible.builtin.assert:
+        that:
+          - deploy_flake_attribute | length > 0
+        fail_msg: >-
+          No flake attribute for {{ inventory_hostname }}. It defaults to the host's own name, so
+          reaching this means the inventory produced a host with no name -- pass
+          -e flake_attribute=<nixosConfigurations entry> explicitly. `nix flake show ../` lists them.
+        quiet: true
+      vars:
+        deploy_flake_attribute: "{{ flake_attribute | default(nixos_flake_attribute_default, true) }}"
+
+    # WHICH ACCOUNT CAN ACTUALLY LAND THE FLAKE, asked rather than assumed, and asked BEFORE anything
+    # is copied. A host that refuses root fails inside the role at the rsync, several checks in, with
+    # a permissions error that reads like a broken deploy rather than a policy difference.
+    #
+    # `argv`, NOT `cmd`. `cmd` is split on whitespace, so a folded scalar carrying
+    # `-o ProxyCommand=ssh -W %h:%p <jump>` reaches ssh as separate tokens and the OUTER ssh parses
+    # `-W %h:%p` as its own stdio-forward flag -- `Bad stdio forwarding specification '%h:%p'`,
+    # non-zero, on every host. A probe that can never succeed is worse than no probe: it does not
+    # fail, it just always gives the same wrong answer, and here that answer is "this host refuses
+    # root".
+    - name: Can this host be reached as root at all
+      ansible.builtin.command:
+        # `.split()` as a python method rather than a `split` filter: the filter is not in every
+        # ansible-core this might run on, and a folded scalar collapses to one space-separated line,
+        # so splitting on whitespace is exactly right here.
+        argv: "{{ ['ssh'] + (fleet_ssh_raw_options | trim).split() + ['root@' ~ ansible_host, 'true'] }}"
+      register: deploy_root_probe
+      changed_when: false
+      failed_when: false
+      delegate_to: localhost
+
+    # DELIBERATELY NOT PORTED: bitcashier's second path, which rsyncs into the operator's home and
+    # runs `sudo -n nixos-rebuild switch` for a host whose configuration manages root's ssh keys away.
+    # No host in this estate does that today -- all three are installed by nixos-anywhere with the
+    # operator's key in root's authorized_keys -- and a second code path that nothing exercises is a
+    # path that is broken when it is first needed. This refusal names the thing to port when a host
+    # here does start refusing root, which is the point at which it will have a caller.
+    - name: Refuse to deploy to a host that will not admit root
+      ansible.builtin.assert:
+        that:
+          - deploy_root_probe.rc == 0
+        fail_msg: >-
+          root@{{ ansible_host }} ({{ inventory_hostname }}) does not admit an ssh session, so
+          roles/nixos_deploy cannot copy the flake into /root or run `nixos-rebuild` there. Nothing
+          has been copied. If this host is meant to refuse root, port bitcashier/infra's
+          playbooks/deploy-nixos-host.yml "Deploy it as an admin who escalates" block -- rsync into
+          the operator's home and `sudo -n nixos-rebuild switch --flake ~/nixcfg#<attr>` -- rather
+          than loosening the host. ssh said:
+          {{ deploy_root_probe.stderr | default('') | trim }}
+        quiet: true
+
+    - name: Deploy it
+      ansible.builtin.include_role:
+        name: nixos_deploy
+      vars:
+        nixos_deploy_flake_attribute: "{{ flake_attribute | default(nixos_flake_attribute_default, true) }}"

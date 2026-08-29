@@ -1,0 +1,30 @@
+---
+# The tree to deploy FROM -- infra/, which is where flake.nix lives. Defaults to the checkout this
+# playbook is being run out of, so an ordinary run deploys what the operator has in front of them and
+# a run from a git worktree deploys that worktree.
+#
+# THAT IS THE INTENT DURING A CHANGE AND A TRAP AFTERWARDS: what the machine ends up running is
+# whatever tree was copied, and the git repository is the authority only to the extent that somebody
+# pushed first.
+nixos_deploy_source: "{{ nixos_flake_dir }}"
+
+# Where the flake lands on the target. /root because the switch runs as root and the tree is
+# throwaway -- the authority is the git repository, never this copy.
+nixos_deploy_target_path: /root/nixcfg
+
+# Evaluate on the controller before copying. Cheap, and it catches a mistyped attribute or an option
+# with no value before a build on the target has spent twenty minutes discovering it.
+nixos_deploy_evaluate_first: true
+
+# Check that every sops secret the configuration DECLARES is actually present in its secrets file.
+# See the task for what this replaces and why it is a hand-rolled check here.
+nixos_deploy_assert_sops_secrets_declared: true
+
+# Refuse to report success while any unit is failed. See the task for why: `nixos-rebuild` exits 0
+# having activated a configuration whose services then failed to start.
+nixos_deploy_assert_no_failed_units: true
+
+# Refuse to report success when a firewall rule names an interface the host does not have. See the
+# task for what that costs. ON BY DEFAULT: the check is two reads and a set difference, and the
+# failure it catches is invisible by construction.
+nixos_deploy_assert_named_interfaces_exist: true

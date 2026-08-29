@@ -1,0 +1,82 @@
+---
+# THE FLY TUNNEL -- the single path between the Fly-hosted applications and the database.
+#
+# WHY THIS FILE EXISTS AT ALL, and it is the reason nix/modules/roles/wireguard-fly.nix publishes a
+# metric rather than relying on anything built in: WIREGUARD IS SILENT BY DESIGN. There is no link
+# state to watch. `ip link` reports wg0 UP whether or not anything is on the other end, because the
+# interface is a virtual device that exists as soon as it is configured. A dead tunnel and an idle
+# one look identical from every angle except one -- the age of the last completed handshake.
+#
+# AND THE FAILURE IT GUARDS IS THE QUIET KIND. If this tunnel drops, the web tier keeps serving:
+# it answers from its projected read model in memory, health checks stay green, pages render. What
+# stops is UPDATING -- the change stream is gone and the worker's writes fail -- so the site
+# quietly serves an ageing corpus. Nothing else on either side of the tunnel changes state. These
+# rules are the only early warning there is.
+#
+# THE THREE STATES ARE KEPT APART DELIBERATELY, because they have different causes:
+#   * a handshake that has gone STALE  -- the path broke (Fly gateway moved, UDP flow lost, peer
+#     removed on Fly's side). The tunnel worked once.
+#   * a handshake that has NEVER happened (the metric is exactly 0) -- the configuration is wrong:
+#     a key mismatch, the wrong endpoint, or the peer was never created. It has never worked.
+#   * the metric being ABSENT -- nothing is watching the tunnel at all.
+# Collapsing them into one alert would send somebody to check the network when the answer is a
+# wrong key, or to re-run `fly wireguard create` when the peer is fine and the path is not.
+groups:
+  - name: wireguard-fly
+    rules:
+      - alert: WireguardFlyHandshakeStale
+        # `!= 0` EXCLUDES THE NEVER-HANDSHAKED CASE, which would otherwise satisfy this expression
+        # spectacularly (time() - 0 is 56 years) and hide the rule below it behind a wrong diagnosis.
+        expr: >-
+          kinowo_wireguard_latest_handshake_timestamp_seconds != 0
+            and time() - kinowo_wireguard_latest_handshake_timestamp_seconds > 300
+        # FIVE MINUTES IN THE EXPRESSION, and a short `for:` on top. WireGuard re-handshakes about
+        # every two minutes while traffic flows and the peer sends a keepalive every 25s, so five
+        # minutes of silence is already well outside normal. The `for:` guards against the metric
+        # being sampled at an unlucky moment rather than against the tunnel being briefly quiet.
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The Fly WireGuard tunnel on {{ $labels.host }} has not handshaked for over 5 minutes"
+          description: >-
+            The Fly-hosted apps have most likely lost their path to MongoDB. EXPECT THE SITE TO
+            LOOK HEALTHY -- the read tier serves from memory, so what you will see is content that
+            stops updating rather than an outage. Check `wg show wg0` on the host and
+            `fly wireguard list` for whether this peer still exists on Fly's side; a peer removed
+            there presents exactly like a network fault here. There is only one tunnel by design
+            (see the trade-off note in nix/modules/roles/wireguard-fly.nix); a second peer is the
+            mitigation if this keeps happening.
+
+      - alert: WireguardFlyNeverHandshaked
+        expr: kinowo_wireguard_latest_handshake_timestamp_seconds == 0
+        # TEN MINUTES, which is long enough to cover a boot and a first handshake and short enough
+        # that a build which was never going to work is caught the same morning.
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The Fly WireGuard peer on {{ $labels.host }} has never completed a handshake"
+          description: >-
+            This is a CONFIGURATION fault, not a path fault -- the tunnel has never worked, so
+            nothing about it has "broken". The usual causes, in order: the private key here does
+            not match the public key Fly holds for this peer (rotating one end alone does not
+            error, it just stops handshaking), the endpoint is wrong or the peer was deleted with
+            `fly wireguard remove`, or allowedIPs does not include Fly's fdaa::/48. Note that
+            mongod will have started anyway and will be listening on the tunnel address, because
+            net.ipv6.ip_nonlocal_bind is set deliberately -- a bound socket here is NOT evidence
+            that the tunnel works.
+
+      - alert: WireguardFlyMetricAbsent
+        expr: absent(kinowo_wireguard_latest_handshake_timestamp_seconds)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is publishing the Fly tunnel's handshake age"
+          description: >-
+            Both alerts above are comparisons and cannot fire without this series, so THE ONLY
+            SIGNAL THIS FLEET HAS about its one path to the database is gone. Check the
+            wireguard-fly-metrics timer on the mongo host, and that node_exporter's textfile
+            collector is reading the directory it writes to. An absent series is not a healthy
+            tunnel.

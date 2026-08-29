@@ -1,0 +1,268 @@
+# BUILD EVERY NixOS HOST'S CLOSURE ON MERGE, PUT IT ON THE HOST, AND ACTIVATE NOTHING.
+#
+# WHERE THIS FILE HAS TO LIVE. GitHub reads workflows from `.github/workflows/` AT THE REPOSITORY
+# ROOT and nowhere else -- which is why this one file sits outside `infra/` while everything else it
+# refers to sits inside it. Do not "tidy" it under infra/ alongside the flake: a workflow GitHub
+# cannot see fails in the worst available way, by being green in review and absent in fact.
+#
+# WHY THIS EXISTS. A NixOS host changes only when somebody deploys it. There is no convergence loop,
+# no agent, nothing that notices the machine has fallen behind main -- so "merged" and "deployed"
+# are different claims and NOTHING ON THE MACHINE DISTINGUISHES THEM. On the fleet this is ported
+# from, one change moved a service discovery list off three destroyed masters, reached every
+# self-converging host inside thirty minutes, and reached SIX OF TEN NixOS hosts not at all; they
+# looked healthy the whole time. Three hosts drift exactly as silently as ten.
+#
+# WHAT IT DOES NOT DO, AND THIS IS THE POINT. IT NEVER ACTIVATES. Nothing in this file runs
+# switch-to-configuration, touches the system profile, or restarts a unit, so a run cannot change
+# anything about a running machine except how much disk its store uses. Activation is taken either
+# by a person or, for changes that provably disturb nothing, by the host itself
+# (infra/nix/modules/fleet/auto-apply.nix) -- which decides LOCALLY, from the closure's contents.
+# CI gains no verb by staging.
+#
+# HOW THE OBVIOUS OBJECTION IS ANSWERED RATHER THAN OVERRIDDEN. The naive design gives CI a key that
+# can `sudo nixos-rebuild` on every host, which makes the least managed machine on the estate the
+# most privileged one -- and here that machine is a GitHub-hosted runner nobody owns. Three things
+# answer it, and ALL THREE are required:
+#
+#   * the ssh key is a FORCED COMMAND (infra/nix/files/nix-stage-endpoint.sh) with `restrict` -- no
+#     shell, no pty, no forwarding. It can receive a signed closure, pin it, and report what is
+#     running;
+#   * the account it authenticates as is NOT in `trusted-users`, so it cannot insert arbitrary store
+#     paths. What lets its paths in is that this job SIGNS them and the hosts list the public half;
+#   * it cannot activate, so a malicious closure it delivered would still need something else to
+#     start it.
+#
+# The residual risk is that a compromised runner stages a bad closure that auto-apply then decides
+# is inert and activates. That is a real narrowing of the boundary compared with a fleet where every
+# activation is a person, and it is the reason `neverDisturbUnits` in fleet/default.nix names sshd,
+# mongod and k3s: the classifier is what stands between a staged closure and a running service.
+#
+# HOW THIS DIFFERS FROM THE WORKFLOW IT WAS PORTED FROM, since the difference is most of the file:
+# THERE IS NO SELF-HOSTED RUNNER HERE. That repository builds on a `[self-hosted, builder]` box that
+# lives inside the private network, has a persistent /nix volume, and reaches hosts over 10.0.0.0/8.
+# This repository has none, so every job below runs on `ubuntu-latest` with `cachix/install-nix-
+# action`, and closures are copied over each host's PUBLIC address. Three consequences worth knowing
+# rather than discovering:
+#
+#   * NO PERSISTENT STORE. Each run starts from an empty /nix and fetches everything not in
+#     cache.nixos.org, so a first run after a nixpkgs bump is slow and a run after a fleet-module
+#     edit is fast. If this becomes the bottleneck, the fix is a binary cache (Cachix or an S3
+#     bucket), not a bigger runner -- the work is fetching, not compiling.
+#   * THE DEPLOY KEY IS USABLE FROM THE PUBLIC INTERNET, because port 22 is open at the Hetzner edge
+#     by explicit decision (infra/terraform/firewall.tf). Everything above about what the key can do
+#     still holds; what changes is that it must exist for nothing else and must be rotated rather
+#     than reused if this repository's secrets are ever exposed.
+#   * NO PROVER JOBS. The ported workflow runs a `prove-*` harness beside every check, on the
+#     principle that a gate nobody has watched fail may be failing to fail. None of those harnesses
+#     are ported yet -- in particular `prove-nixos-auto-apply`, which is what keeps the classifier
+#     in infra/nix/files/nixos-auto-apply.py honest. THAT IS THE LARGEST GAP IN THIS PIPELINE and it
+#     is not a red build: a classifier that has stopped recognising "would restart the following
+#     units" does not fail, it ACTIVATES.
+name: Stage NixOS closures
+
+# PATHS, NOT PATHS-IGNORE, AND THIS INVERTS THE PORTED FILE'S DELIBERATE CHOICE -- so it is worth
+# saying why rather than letting it read as a copy that drifted.
+#
+# That workflow argues, correctly, that a filter naming what SHOULD run is a filter that silently
+# stops covering something: add a directory the closures read from and nobody notices until a host
+# is a month behind. It therefore names only what provably cannot affect a closure.
+#
+# That shape does not survive here. This repository is a Scala application with an `infra/` tree
+# bolted on; the overwhelming majority of commits touch `web/`, `worker/`, `common/`, `ios/` or
+# `android/` and cannot possibly change a NixOS closure. A `paths-ignore` list would have to
+# enumerate the entire application and would be wrong the first time a module was added.
+#
+# THE RISK THE PORTED FILE NAMES IS REAL AND IS ACCEPTED KNOWINGLY: if a host configuration ever
+# reads a file from outside `infra/nix/`, a change to that file will not trigger this job and the
+# fleet will silently stop tracking it. Two things bound that. `workflow_dispatch` below is the
+# manual path, and `nixos_staged_pending` / `nixos_auto_apply_last_verdict_timestamp_seconds`
+# (infra/nix/modules/fleet/observability.nix) are published continuously by every host, so a fleet
+# that has stopped receiving closures is VISIBLE rather than merely wrong. If a host config does
+# start reading from the application tree, add that path here in the same commit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/nix/**'
+      - 'infra/flake.nix'
+      - 'infra/flake.lock'
+      - '.github/workflows/nix-stage-closures.yaml'
+  workflow_dispatch:
+  # PULL REQUESTS, FOR THE EVALUATE JOB ONLY -- see the `if:` on `stage`, which is what keeps a PR
+  # from reaching the fleet. It is here because otherwise NOTHING would instantiate a NixOS
+  # configuration before a merge: the first thing to try a host config would be the staging job,
+  # AFTER it landed, and a host file that does not evaluate would turn main un-buildable for that
+  # machine with every check green.
+  pull_request:
+    paths:
+      - 'infra/nix/**'
+      - 'infra/flake.nix'
+      - 'infra/flake.lock'
+      - '.github/workflows/nix-stage-closures.yaml'
+
+# NEVER CANCELLED MID-RUN. A cancelled deploy is one that copied some hosts and not others, which is
+# a worse state than not having started -- and `cancel-in-progress: true` would do exactly that
+# every time two commits land close together.
+#
+# PER-REF, so main's staging runs serialise against each other (which is the property worth having)
+# while a pull request only ever queues behind itself.
+concurrency:
+  group: nix-stage-closures-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # EVERY HOST MUST STILL EVALUATE, and this is the only job that runs on a pull request.
+  #
+  # It is cheap -- evaluation does not build anything -- and it catches the class of error that is
+  # otherwise invisible until after a merge: a host file referencing an option that does not exist,
+  # a `fleet.autoApply.attribute` left unset (which the assertion in auto-apply.nix is written to
+  # catch by NAME rather than by the module system's unhelpful "was accessed but has no value
+  # defined"), or a module that does not parse.
+  evaluate:
+    name: nix-evaluate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # PINNED BY MAJOR VERSION. An action that resolves to a moving target is a third party who can
+      # change what runs against this repository's deploy secrets without a commit here -- and this
+      # job's sibling below holds exactly those secrets.
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Every host in the flake evaluates
+        working-directory: infra
+        run: |
+          set -uo pipefail
+
+          # THE ROSTER IS THE FLAKE, never a list in this file -- the same rule
+          # bin/stage-nixos-closures follows and for the same reason: a hand-kept list of hosts
+          # silently stops matching the fleet, which is the failure the whole mechanism exists to
+          # end.
+          hosts="$(nix eval --json '.#nixosConfigurations' --apply builtins.attrNames \
+                   | tr -d '[]"' | tr ',' ' ')"
+          if [ -z "${hosts// /}" ]; then
+            echo "::error title=Nothing was evaluated::This flake declares no nixosConfigurations, which is NOT the same as every host being fine."
+            exit 1
+          fi
+
+          overall=0
+          for host in ${hosts}; do
+            echo "::group::${host}"
+            # `drvPath` INSTANTIATES WITHOUT BUILDING. It forces the whole module system --
+            # assertions included -- which is what makes this catch a broken host file, while
+            # costing no compilation at all.
+            if nix eval --raw ".#nixosConfigurations.${host}.config.system.build.toplevel.drvPath"; then
+              echo ""
+              echo "  ${host}: evaluates"
+            else
+              echo "::error title=A host does not evaluate::${host} -- main will not build for it, so bin/stage-nixos-closures cannot stage it and the host cannot self-heal."
+              overall=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "${overall}"
+
+  stage:
+    name: nix-stage
+    runs-on: ubuntu-latest
+    # NEVER FROM A PULL REQUEST, AND NEVER FROM A BRANCH, and this needs a guard of its own rather
+    # than relying on the trigger list. On a host running fleet.autoApply, STAGING IS THE TRIGGER:
+    # writing the pin starts the applier within about a second. So a PR that staged would be a PR
+    # that could cause an ACTIVATION on the fleet.
+    #
+    # `workflow_dispatch` is kept deliberately -- it is the manual path for a change the `paths:`
+    # filter above did not match -- and the ref check applies to BOTH arms, which is a tightening
+    # rather than a restatement: a dispatch can be run against any branch, and this job would
+    # otherwise have built and copied closures from it with the real signing and ssh keys.
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && github.ref == 'refs/heads/main'
+    # STAGING WAITS FOR EVALUATION. While nothing activated on its own, staging was harmless
+    # whatever a check said -- a copied closure nobody switches to is inert. It is no longer inert.
+    needs: evaluate
+    steps:
+      # FULL HISTORY, not the default shallow clone. `system.configurationRevision` is read from the
+      # flake's own `self.rev` (infra/nix/modules/fleet/deploy-staging.nix), which is what stamps
+      # each closure with the commit it was built from -- and a shallow clone can leave nix unable
+      # to resolve that revision, which silently turns every host's `revision` label into the
+      # "tree was not a git checkout" sentinel.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build, sign, copy and pin -- activating nothing
+        working-directory: infra
+        env:
+          NIX_STAGE_SIGNING_KEY: ${{ secrets.NIX_STAGE_SIGNING_KEY }}
+          NIX_STAGE_SSH_KEY: ${{ secrets.NIX_STAGE_SSH_KEY }}
+        run: |
+          set -uo pipefail
+
+          # EACH PREREQUISITE IS REPORTED AS ITSELF. "there is no signing key" and "a host refused
+          # the key" are different problems with different owners, and a single generic failure
+          # would send somebody to read the wrong logs.
+          if [ -z "${NIX_STAGE_SIGNING_KEY}" ]; then
+            echo "::error title=No signing key::secrets.NIX_STAGE_SIGNING_KEY is unset, so closures could not be signed -- and the hosts accept this job's paths ONLY because they are signed, since the deploy account is deliberately not a trusted nix user. Nothing was staged."
+            exit 1
+          fi
+          if [ -z "${NIX_STAGE_SSH_KEY}" ]; then
+            echo "::error title=No deploy key::secrets.NIX_STAGE_SSH_KEY is unset, so no host could be reached. Nothing was staged."
+            exit 1
+          fi
+
+          # THE SECRETS BECOME FILES, WITH MODES, AND ARE REMOVED ON EVERY EXIT PATH. A private key
+          # passed as an environment variable to a child process is visible in that process's
+          # environment; OpenSSH additionally REFUSES a private key whose mode is group- or
+          # world-readable, and the refusal reads as "Permission denied (publickey)" -- which looks
+          # like the host rejecting the key rather than ssh declining to offer it.
+          workspace="$(mktemp -d "${RUNNER_TEMP:-/tmp}/nix-stage.XXXXXX")"
+          chmod 700 "${workspace}"
+          cleanup() { rm -rf "${workspace}"; }
+          trap cleanup EXIT
+
+          printf '%s\n' "${NIX_STAGE_SIGNING_KEY}" > "${workspace}/signing.key"
+          chmod 600 "${workspace}/signing.key"
+
+          # THE SSH KEY GOES WHERE A PLAIN `ssh` LOOKS FOR IT, rather than being passed as an
+          # option, and that is load-bearing: `nix copy --to ssh://...` spawns its OWN ssh, so a key
+          # named only on this script's command lines would be found by the tool's direct calls and
+          # not by the copy -- which is the one step that matters.
+          mkdir -p ~/.ssh
+          printf '%s\n' "${NIX_STAGE_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          # NIX_SSHOPTS is what `nix copy` passes to its own ssh. It must AGREE with the options
+          # bin/stage-nixos-closures uses for its direct calls -- otherwise the tool's "is this host
+          # already current" probe succeeds under one set of rules and the copy fails under another,
+          # which reads as an unreachable host that answered a moment ago.
+          export NIX_SSHOPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+          export NIX_SIGNING_KEY_FILE="${workspace}/signing.key"
+
+          # THE TOOL IS THE POLICY, not this file. Everything about which hosts are covered, what
+          # counts as a failure, and what an operator is told to run next lives in
+          # bin/stage-nixos-closures, so that the same behaviour is available from a laptop and so
+          # that this workflow cannot quietly diverge from it.
+          python3 bin/stage-nixos-closures
+          status=$?
+          case "${status}" in
+            0) ;;
+            2) echo "::error title=Nothing was staged::bin/stage-nixos-closures exited 2 -- it could not read the flake or found no hosts, which is NOT the same as every host being up to date." ;;
+            *) echo "::error title=A host could not be staged::bin/stage-nixos-closures exited ${status}. A host that could not be reached has NOT got the closure, and what it would run is unknown. Scroll up for which." ;;
+          esac
+          exit "${status}"
+
+      # BELT AND BRACES ON THE KEY. The `trap` above removes the workspace, but the ssh key was
+      # written outside it (see why, above) and a job that fails between the two commands would
+      # otherwise leave it on a runner that is destroyed anyway. `if: always()` because the case
+      # this covers is the failing one.
+      - name: Remove the deploy key
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519

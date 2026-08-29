@@ -1,0 +1,331 @@
+#!/usr/bin/env python3
+"""Build each NixOS host's closure once and put it ON the host, WITHOUT activating it.
+
+PORTED from bitcashier's bin/stage-nixos-closures. The mechanism is unchanged; the transport is
+not, and that is the one difference worth reading before anything else here.
+
+  THERE (self-hosted runner, INSIDE the private network): closures were copied to
+  `fleet.privateAddress` over 10.0.0.0/8, which is unreachable from the internet, so the ssh path
+  itself was a boundary.
+
+  HERE (`ubuntu-latest`, GitHub's shared infrastructure): there is no machine inside 10.20.0.0/24
+  that can build anything, so closures are copied over each host's PUBLIC address -- see
+  `fleet.publicAddress` in nix/modules/fleet/default.nix. As of writing those are
+  mongo-1 2.28.56.140, monitoring-1 2.28.52.210, k3s-worker-1 204.168.140.213, pinned in
+  infra/terraform/primary_ips.tf. THEY ARE NOT WRITTEN DOWN IN THIS FILE -- see the note on
+  `address_of` for why a roster here would be worse than reading them from the flake.
+
+  WHAT THAT CHANGES ABOUT THE SECURITY ARGUMENT: nothing, and that is the point of the design. The
+  key is a forced command (nix/files/nix-stage-endpoint.sh) with `restrict`; the account is not in
+  `trusted-users`; every path is SIGNED here and accepted only because the host lists the public
+  half. None of those depend on where the client sits. What DOES change is exposure: port 22 is
+  open to the world at the Hetzner edge by explicit decision (infra/terraform/firewall.tf), so this
+  key is usable from anywhere it leaks to, and it must be a key that exists for nothing else.
+
+WHAT THIS IS AND IS NOT. It builds, copies and pins. It never runs `switch-to-configuration`, never
+touches the system profile, and never restarts a unit -- so running it can change nothing about a
+running machine except how much disk its nix store uses. Activation stays a deliberate act, taken
+either by a person or by nix/modules/fleet/auto-apply.nix, which decides LOCALLY, from the
+closure's own contents, whether the change would disturb anything.
+
+WHAT IT BUYS. Two things that are worth having separately.
+
+  * ACTIVATION BECOMES INSTANT AND OFFLINE. The expensive, failure-prone half of a deploy is the
+    build. With the closure already in the host's store, `switch-to-configuration` is a symlink swap
+    and some systemd calls -- and the thing activated is the exact closure CI built and the checks
+    ran against, rather than one rebuilt later from a tree somebody hopes matches. On a cx23 with
+    2 vCPU that difference is minutes, and on mongo-1 it is minutes during which the machine is
+    compiling instead of serving.
+  * DRIFT BECOMES VISIBLE AND CHEAP TO CLOSE. "Merged" and "deployed" are different claims on a
+    NixOS fleet and nothing on the machine distinguishes them. This makes the second one true by
+    default and, when it cannot, says which host and why.
+
+THE GC ROOT IS NOT OPTIONAL. A copied path that nothing refers to is garbage, and
+nix/modules/fleet/nix-gc.nix collects nightly -- so a staged closure would silently stop being
+staged, and the next merge would re-copy the same gigabyte over the public internet. Each host gets
+/var/lib/nixdeploy/staged-system pointing at what was staged for it, replaced on each run, and kept
+from the collector by the indirect root /nix/var/nix/gcroots/auto/nixdeploy-staged.
+
+THIS MUST RUN ON x86_64-linux. Evaluating these configurations works anywhere -- a Mac reads them
+fine -- but a host closure is x86_64-linux derivations and there is no builder for those on a
+developer laptop, so `nix build` there fails after a long download. That is why this is a CI job
+rather than something to run before pushing.
+
+  bin/stage-nixos-closures                 # every host this flake declares
+  bin/stage-nixos-closures mongo-1         # named configurations only
+  SSH_USER=pawel bin/stage-nixos-closures  # as a person, over a normal login
+
+Exit 0 every host has its declared closure staged, 1 at least one could not be staged, 2 nothing
+was established at all -- an unreadable flake, or no host named. A host that could not be reached
+is a FAILURE, never a quiet success: a closure nobody could copy is not a closure that is there.
+
+NOTE ON TRUST, AND IT IS THE OPPOSITE OF THE OBVIOUS FIX. A remote daemon accepts an unsigned store
+path only from a user in its `trusted-users`, and the copy otherwise fails with "cannot add path ...
+because it lacks a signature". The tempting repairs are to add this account to `trusted-users` or to
+pass `--no-check-sigs`; both would mean the host accepts whatever this account sends it, which for a
+store path is arbitrary code that something will later run. So neither is done.
+nix/modules/fleet/default.nix deliberately sets `trusted-users = [ "root" "@wheel" ]` -- CI is NOT in
+it -- and every path is SIGNED here with `nix store sign --recursive` before it is copied. What the
+host trusts is the key in `fleet.deployStaging.trustedPublicKeys`, not the account that happens to be
+connected, which is why losing the ssh key costs a rotation rather than a fleet.
+"""
+import concurrent.futures
+import json
+import os
+import subprocess
+import sys
+import time
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# `accept-new` IS A TRUST-ON-FIRST-USE DECISION AND IT IS WEAKER HERE THAN WHERE THIS CAME FROM.
+# On a runner inside the private network, first contact could not be intercepted by anything
+# outside it. On GitHub's shared infrastructure, over the public internet, a first connection to a
+# host whose key this runner has never seen is accepted on faith. THE EXPOSURE IS BOUNDED BY WHAT
+# THE KEY CAN DO: an impostor learns the store path of a closure (derivable from this repository by
+# anyone who can read it) and receives a signed closure it could have fetched from cache.nixos.org
+# anyway. It cannot obtain a shell, a secret, or anything about the real host.
+#
+# It is still the weakest link in this path, and the fix is known rather than clever: pin the three
+# host keys into a known_hosts file generated from terraform and pass `-o UserKnownHostsFile` with
+# `StrictHostKeyChecking=yes`. That is worth doing the first time these machines are rebuilt, since
+# a rebuild is also when the keys change and when a stale pin would be indistinguishable from an
+# attack. Stated as a risk; nothing has gone wrong.
+SSH_OPTIONS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+               "-o", "StrictHostKeyChecking=accept-new"]
+
+# EVERY HOST THIS FLAKE DECLARES IS COVERED, AND THE LIST IS NEVER WRITTEN DOWN HERE.
+# `nixosConfigurations` is the enumeration, so a machine minted tomorrow is staged the first time
+# this runs after its host file lands -- nobody has to remember to add it, because there is no list
+# to add it to. That is the difference between this and a coverage table: a hand-kept roster of
+# hosts is a thing that silently stops matching the fleet, which is the failure this whole mechanism
+# exists to end.
+#
+# EMPTY TODAY, AND KEPT ANYWAY. bitcashier's copy of this set holds two entries and both of them
+# turned that job RED on the merge that introduced them: a host-agnostic installer image (`base`)
+# and a pre-seeded agent snapshot, neither of which describes a machine, so there was nowhere to
+# copy them TO -- every real host staged and the run still exited 1. This flake declares three real
+# machines and nothing else. The moment somebody adds an installer image, a `*-install` variant or
+# a builder-only configuration, IT GOES HERE BY NAME rather than being inferred from a missing
+# address: "this configuration describes no machine" and "this host's address could not be
+# evaluated" are different claims, and reading the second as the first is how a real host goes
+# quietly unstaged.
+NOT_A_MACHINE: set = set()
+
+
+def run(argv, **kwargs):
+    result = subprocess.run(argv, cwd=REPO, capture_output=True, text=True, **kwargs)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip().splitlines()
+        return None, detail[-1] if detail else f"exit {result.returncode}"
+    return result.stdout.strip(), None
+
+
+def target(address):
+    # `nixdeploy` by default: the account whose key is a forced command that can receive a signed
+    # closure and pin it, and can do nothing else. SSH_USER overrides it for an admin staging by
+    # hand from a Linux box, who reaches a normal shell instead.
+    user = os.environ.get("SSH_USER", "nixdeploy").strip()
+    return f"{user}@{address}" if user else address
+
+
+def admin_target(address):
+    """Who a PERSON activates as -- never `nixdeploy`.
+
+    The staging account cannot do it, by design and twice over: its key carries
+    `command="<endpoint>",restrict`, so anything else a human sends arrives as
+    $SSH_ORIGINAL_COMMAND and is refused, and it has no sudo. So the instruction printed below has
+    to name a real login, not the account this tool otherwise talks to.
+    """
+    user = os.environ.get("SSH_USER", "").strip()
+    return f"{user}@{address}" if user else f"<your-login>@{address}"
+
+
+def endpoint(address, request):
+    """Ask the restricted endpoint for something. It reads the request, it does not run it."""
+    return run(["ssh"] + SSH_OPTIONS + [target(address), request])
+
+
+def sign(path):
+    """Sign the closure so an UNTRUSTED account's copy is accepted.
+
+    This is what replaces putting the deploy identity in `trusted-users`, and it is the whole
+    security argument of this mechanism: a trusted user can insert any path, whereas a signature
+    only vouches for paths CI actually built. Absent a key we do not sign and do not pretend to --
+    the copy then fails on the host with a missing-signature error, which is the correct and
+    legible outcome rather than a silent fallback to an unsigned push.
+    """
+    key = os.environ.get("NIX_SIGNING_KEY_FILE", "").strip()
+    if not key:
+        return None
+    return run(["nix", "store", "sign", "--key-file", key, "--recursive", path])[1]
+
+
+def configurations():
+    out, error = run(["nix", "eval", "--json", ".#nixosConfigurations",
+                      "--apply", "builtins.attrNames"])
+    if error:
+        return None, error
+    return [n for n in json.loads(out) if n not in NOT_A_MACHINE], None
+
+
+def address_of(name):
+    """Where to reach this host, READ FROM THE FLAKE rather than from a table in this file.
+
+    `fleet.publicAddress` is the attribute, and the whole reason it exists (see its option
+    documentation) is that CI here is outside the private network. Reading it rather than hardcoding
+    the three IPs is not tidiness: an address written in two places is an address that will
+    disagree with itself the first time a primary IP is replaced, and the failure that produces is
+    an ssh timeout against a machine that is running perfectly -- which reads as "the host is down"
+    for as long as it takes somebody to compare this file with terraform.
+
+    AN EMPTY VALUE IS A FAILURE, NOT A SKIP. A host that declares no public address cannot be
+    staged from here, and saying so loudly is the point: the alternative is a machine that quietly
+    stops tracking main while every run stays green.
+    """
+    address, error = run(["nix", "eval", "--raw",
+                          f".#nixosConfigurations.{name}.config.fleet.publicAddress"])
+    if error:
+        return None, error
+    if not address:
+        return None, ("fleet.publicAddress is empty, so there is no address to copy a closure to. "
+                      "Set it in this host's file from infra/terraform/primary_ips.tf.")
+    return address, None
+
+
+def stage(name):
+    # PER-STEP TIMING, kept from the port. It exists because raising concurrency on the fleet this
+    # came from bought almost nothing (105s -> 95s across 29 hosts) instead of the speedup a
+    # CPU-bound job would show -- which only makes sense if the SLOWEST host's own SEQUENTIAL chain
+    # sets the floor. Here that chain crosses the public internet twice per host instead of a LAN,
+    # so the copy step is expected to dominate far more than it did there, and this is what will
+    # say so rather than leaving it to be guessed.
+    timings = {}
+
+    def timed(label, fn):
+        start = time.monotonic()
+        result = fn()
+        timings[label] = time.monotonic() - start
+        return result
+
+    address, error = timed("eval", lambda: address_of(name))
+    if error:
+        return name, None, "unreachable-by-declaration", error, timings
+
+    # --no-link so this leaves nothing in the working tree; the GC root on the HOST is what keeps
+    # the closure alive, and a result symlink here would only keep it alive on a runner that is
+    # destroyed minutes later.
+    path, error = timed("build", lambda: run(["nix", "build", "--no-link", "--print-out-paths",
+                        f".#nixosConfigurations.{name}.config.system.build.toplevel"]))
+    if error:
+        return name, address, "build failed", error, timings
+
+    running, error = timed("check-current", lambda: endpoint(address, "current"))
+    if error:
+        return name, address, "unreachable", error, timings
+
+    error = timed("sign", lambda: sign(path))
+    if error:
+        return name, address, "signing failed", error, timings
+
+    _, error = timed("copy", lambda: run(["nix", "copy", "--to", f"ssh://{target(address)}", path]))
+    if error:
+        return name, address, "copy failed", error, timings
+
+    # Pinned through the same restricted endpoint, which writes an indirect GC root inside its own
+    # directory. Without this the copied closure is unreferenced and the next collection deletes it
+    # -- the host would stop being staged with nothing saying so. Writing the pin is ALSO what
+    # triggers auto-apply's path unit, so this is the step that makes a merge reach a host.
+    _, error = timed("pin", lambda: endpoint(address, f"pin {path}"))
+    if error:
+        return name, address, "pin failed", error, timings
+
+    return name, address, ("already running" if running == path else "staged"), path, timings
+
+
+def main():
+    wanted = sys.argv[1:]
+    names, error = configurations()
+    if error:
+        print(f"could not read this flake's hosts, so NOTHING was staged: {error}")
+        return 2
+    if wanted:
+        unknown = [n for n in wanted if n not in names]
+        if unknown:
+            print(f"no such configuration: {', '.join(unknown)}")
+            return 2
+        names = wanted
+    if not names:
+        print("this flake declares no host configurations, so nothing was staged")
+        return 2
+
+    print(f"staging {len(names)} host closure(s) -- building, copying, pinning; activating nothing")
+    if not wanted:
+        # Say what the coverage IS, so a reader can check it against the fleet rather than trust it.
+        excluded = ", ".join(sorted(NOT_A_MACHINE)) or "nothing"
+        print(f"  covering every host this flake declares ({', '.join(sorted(names))}); "
+              f"excluded by name: {excluded}")
+
+    # FOUR WORKERS AGAINST THREE HOSTS -- i.e. all of them at once, with the number left where the
+    # port had it rather than tuned down to `len(names)`. The work is network-bound and the hosts
+    # are independent, so the only cost of a spare worker is a thread that never gets a task, and
+    # the only cost of tuning it to today's fleet size is that a fourth host silently serialises.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        results = sorted(pool.map(stage, names))
+
+    pending, failed = [], []
+    for name, address, state, detail, timings in results:
+        # WHICH STEP, printed on every line and not just on failures, because the question this
+        # exists to answer is "which step is slow on a host that SUCCEEDED".
+        breakdown = " ".join(f"{step}={duration:.1f}s" for step, duration in timings.items())
+        total = sum(timings.values())
+        if state == "staged":
+            pending.append((name, address, detail))
+            print(f"  STAGED       {name:<22} {address}  total={total:.1f}s  {breakdown}")
+        elif state == "already running":
+            print(f"  CURRENT      {name:<22} {address}  (nothing to activate)  total={total:.1f}s  {breakdown}")
+        else:
+            failed.append((name, state, detail))
+            print(f"  FAILED       {name:<22} {address or '?'}  {state}: {detail}  total={total:.1f}s  {breakdown}")
+
+    if pending:
+        print(f"\n{len(pending)} host(s) have a newer closure staged and NOT activated. Nothing on "
+              f"them has changed. To activate one, when you mean to:")
+        for name, address, path in pending:
+            # BOTH HALVES, AND THE FIRST IS THE ONE THAT IS EASY TO LEAVE OUT.
+            # `switch-to-configuration` activates the closure and installs the bootloader, but it
+            # does NOT move the system profile. Two things follow, and the second is the expensive
+            # one:
+            #
+            #   * `nixos-rebuild list-generations` and `--rollback` still describe the OLD one, so
+            #     the rollback an operator reaches for in an incident takes them somewhere else
+            #     entirely -- and this switch records no generation of its own to return to.
+            #   * the bootloader installer builds the boot menu FROM that profile. So the running
+            #     system is the new one while the DEFAULT BOOT ENTRY still points at the old
+            #     generation -- the host is correct until it reboots and then silently is not.
+            #
+            # This is what `nixos-rebuild switch` does around the same call, and what
+            # nix/files/nixos-auto-apply.py's `activate()` does in the same order and for the same
+            # reason.
+            print(f"  ssh {admin_target(address)} \\")
+            print(f"    'sudo nix-env --profile /nix/var/nix/profiles/system --set {path} && \\")
+            print(f"     sudo {path}/bin/switch-to-configuration switch'")
+        print("\nThat needs no build and no tree on the host -- the closure is already there. See "
+              "what it would do first with `dry-activate` in place of `switch`, which is safe to "
+              "run on its own and changes nothing (the profile line is not needed to look).")
+        print("NOT as `nixdeploy`: that key is a forced command that can only receive and pin a "
+              "closure, and the account has no sudo. Use your own login.")
+        print("\nOn a host running `fleet.autoApply`, none of this is needed for a change that "
+              "disturbs nothing -- it activates itself within about a second of the pin being "
+              "written, and what is listed above is what it declined to do unattended.")
+    if failed:
+        print(f"\n{len(failed)} host(s) could not be staged, so what they would run is not "
+              f"prepared and not known.")
+        return 1
+    if not pending:
+        print("\nevery host is already running the closure this tree declares.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

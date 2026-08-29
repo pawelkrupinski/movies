@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake.
+#
+# THIS REPARTITIONS THE TARGET'S ROOT DISK AND IS IRREVERSIBLE. Everything on /dev/sda is destroyed;
+# an attached Hetzner Volume is NOT touched (disko only owns the disks its layout names -- see
+# nix/hosts/*/disko.nix), which is precisely why mongo-1's database lives on one.
+#
+# HOW IT WORKS, and why it is not bitcashier's route. bitcashier re-images onto a prebuilt
+# `role=nixos-base` snapshot and then rebuilds; that snapshot lives in its Hetzner project and this
+# project has none, and building one needs a Linux nix builder this estate does not have. So this
+# takes bitcashier's OTHER path, the one its RUNBOOK-borg-ovh-1-nixos.md uses for bare metal: boot
+# the machine into Hetzner's rescue system and let nixos-anywhere install over it. The rescue system
+# is a live Linux with our SSH key already injected by the API, which is the only foothold needed --
+# and it is the reason this works on a host we have NEVER been able to log into, which is the state
+# all three of these machines were in (they were created without the operator's key).
+#
+# It is safe to re-run. A second conversion is simply another install.
+#
+#   infra/nix/bin/convert-host mongo-1 --yes
+set -euo pipefail
+
+host="${1:-}"
+confirm="${2:-}"
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+flake_dir="$(cd "$here/../.." && pwd)"
+repo_root="$(cd "$flake_dir/.." && pwd)"
+
+# The server ids are written here rather than looked up by name because the lookup and the
+# destruction would then share a failure: a typo that matches no server is an error, but a typo that
+# matches the WRONG server silently wipes it. An explicit table cannot resolve to a machine nobody
+# named.
+declare -A SERVER_ID=(
+  [mongo-1]=163926647
+  [monitoring-1]=163926648
+  [k3s-worker-1]=163926716
+)
+
+declare -A PUBLIC_IP=(
+  [mongo-1]=2.28.56.140
+  [monitoring-1]=2.28.52.210
+  [k3s-worker-1]=204.168.140.213
+)
+
+if [[ -z "$host" || -z "${SERVER_ID[$host]:-}" ]]; then
+  echo "usage: convert-host <mongo-1|monitoring-1|k3s-worker-1> --yes" >&2
+  exit 1
+fi
+
+if [[ "$confirm" != "--yes" ]]; then
+  cat >&2 <<MSG
+convert-host: refusing to run without --yes.
+
+  This will REPARTITION /dev/sda on $host (${PUBLIC_IP[$host]}, Hetzner server ${SERVER_ID[$host]})
+  and install NixOS over whatever is there. It is irreversible.
+
+  Attached Hetzner Volumes are not touched.
+MSG
+  exit 1
+fi
+
+token="$(grep -E '^HETZNER_API_TOKEN=' "$repo_root/.env.local" | head -1 | cut -d= -f2- | tr -d '"'"'"' \r')"
+id="${SERVER_ID[$host]}"
+ip="${PUBLIC_IP[$host]}"
+
+api() {
+  curl -fsS -H "Authorization: Bearer $token" -H "Content-Type: application/json" "$@"
+}
+
+# The operator SSH key, by Hetzner key id. Injected into the rescue system -- NOT into the installed
+# system, which gets its keys from nix/modules/fleet/accounts.nix like every other setting.
+echo "==> enabling rescue on $host ($id)"
+api -X POST -d '{"type":"linux64","ssh_keys":[118066985]}' \
+  "https://api.hetzner.cloud/v1/servers/$id/actions/enable_rescue" >/dev/null
+
+# A HARD RESET, not a graceful reboot: the point is to land in rescue, and a machine that declines
+# to shut down cleanly would otherwise sit in the old system indefinitely. There is nothing on these
+# disks to lose -- that is the premise of the whole script.
+echo "==> resetting $host into rescue"
+api -X POST "https://api.hetzner.cloud/v1/servers/$id/actions/reset" >/dev/null
+
+echo "==> waiting for the rescue system on $ip"
+# The host key CHANGES when the machine boots into rescue, and changes again when it boots into the
+# installed NixOS. Pinning it would mean two known-hosts edits per conversion, so this deliberately
+# does not verify it -- the exposure is one SSH session to a machine we are about to overwrite
+# entirely, on a connection whose only payload is a public flake.
+ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
+for _ in $(seq 1 60); do
+  if ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" 'test -d /root && grep -qi rescue /etc/motd 2>/dev/null || true' 2>/dev/null; then
+    break
+  fi
+  sleep 5
+done
+
+echo "==> installing NixOS on $host from $flake_dir#$host"
+# --build-on-target because the operator's machine is aarch64-darwin and cannot produce an
+# x86_64-linux closure at all. The rescue system has enough disk and RAM to do it.
+nix run nixpkgs#nixos-anywhere -- \
+  --flake "$flake_dir#$host" \
+  --build-on-remote \
+  "root@$ip"
+
+cat <<MSG
+
+==> $host converted.
+
+Two things are NOT done yet and the host cannot decrypt its secrets until both are:
+
+  1. Derive the new host age key -- the machine minted a fresh SSH host key on this boot, so the
+     old recipient (if any) is now worthless:
+
+       ssh root@$ip cat /etc/ssh/ssh_host_ed25519_key.pub | nix run nixpkgs#ssh-to-age
+
+  2. Add it to infra/.sops.yaml under the $host anchor, then:
+
+       sops updatekeys infra/nix/secrets/$host.yaml
+
+Then deploy for real:  colmena apply --on $host
+MSG

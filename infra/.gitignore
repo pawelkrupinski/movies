@@ -1,0 +1,15 @@
+# Provider binaries and the local backend scratch dir. `.terraform.lock.hcl` IS committed (it pins
+# provider versions and their checksums, which is the point); everything else under .terraform/ is a
+# ~40MB download that `terraform init` reproduces exactly.
+terraform/.terraform/
+
+# `terraform plan -out` artefacts. roles/terraform_apply writes one so that the plan reviewed is
+# the plan applied -- it is a binary snapshot of intended changes and has no business in git.
+terraform/*.tfplan
+
+# State never lands here at all: the backend is Terraform Cloud (organisation `bitcashier`,
+# workspace `kinowo-infra`). These two lines are belt-and-braces against a stray
+# `terraform init -migrate-state` or a local-backend experiment, because a committed state file
+# leaks every attribute the providers read back -- and on this fleet that includes secrets.
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
