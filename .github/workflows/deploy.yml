@@ -242,11 +242,23 @@ jobs:
                       bin: web
                       builder: kinowo
                       enabled: false
+                    # MOVED TO KUBERNETES 2026-08-29, and this leg is disabled rather than deleted.
+                    #
+                    # The PL worker now runs as a pod on k3s (infra/kubernetes/worker/), deployed by
+                    # .github/workflows/build-worker-image.yaml. Its Fly machine is STOPPED, not
+                    # destroyed, so `flyctl deploy` here would not merely be redundant -- it would
+                    # START the machine again, and two workers would both hold change streams on
+                    # mongo-1 and both re-project the read model. Leaving this `true` makes the next
+                    # push to main silently undo the migration.
+                    #
+                    # Kept as an entry so the rollback is flipping one word: set it back to `true`,
+                    # scale the k8s deployment to 0, and the Fly app comes back with its secrets and
+                    # config intact. Delete the entry only once the Fly app itself is retired.
                     - app: kinowo-worker
                       toml: fly.worker.toml
                       bin: worker
                       builder: kinowo-worker
-                      enabled: true
+                      enabled: false
                     # UK worker — same `worker` binary + artifact, split off
                     # kinowo-worker so the full-UK scrape load gets its own 2x
                     # machine (KINOWO_COUNTRIES=uk → the kinowo_uk db).

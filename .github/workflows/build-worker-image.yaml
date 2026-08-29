@@ -89,3 +89,52 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/movies-worker:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    # SEPARATE JOB, `needs: build`, so a failed build cannot deploy and a failed deploy is
+    # distinguishable from a failed build in the run list -- the two have completely different
+    # fixes.
+    needs: build
+    runs-on: ubuntu-latest
+
+    # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image without
+    # putting it on production; separating that is the difference between "let me see if it
+    # compiles" and a deploy.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    # ONE DEPLOY AT A TIME, AND DO NOT CANCEL A RUNNING ONE. `cancel-in-progress` is right for the
+    # build (a superseded image is wasted work) and wrong here: killing a job mid-`rollout status`
+    # leaves the Deployment patched and nobody watching whether the new pod came up.
+    concurrency:
+      group: deploy-worker-k8s
+      cancel-in-progress: false
+
+    steps:
+      - name: Roll the new image onto k3s
+        # NO kubectl, NO kubeconfig, NO cluster credential in CI AT ALL. The whole interaction is
+        # one ssh command whose payload is an image reference, against a key pinned to a forced
+        # command on monitoring-1 (infra/nix/modules/roles/k8s-deploy.nix). That endpoint validates
+        # the reference against one allowed repository, patches one container in one Deployment, and
+        # waits for the rollout.
+        #
+        # The reason is that k3s writes exactly ONE credential and it is cluster-admin. Giving that
+        # to a GitHub runner would trade a worker rollout for every Secret in the cluster.
+        env:
+          DEPLOY_KEY: ${{ secrets.K8S_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/k8sdeploy
+          chmod 600 ~/.ssh/k8sdeploy
+
+          # accept-new, not `no`: the host key is pinned on first use within this ephemeral runner
+          # and the connection is to a fixed address that terraform/primary_ips.tf keeps stable. A
+          # known_hosts file checked into the repo would be one more thing to rotate by hand after
+          # every `convert-host`, which regenerates the host key.
+          ssh -i ~/.ssh/k8sdeploy \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=accept-new \
+              -o ConnectTimeout=15 \
+              k8sdeploy@2.28.52.210 \
+              "ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}"

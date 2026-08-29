@@ -11,6 +11,7 @@ in
   imports = [
     ./disko.nix
     ../../modules/roles/public-proxy.nix
+    ../../modules/roles/k8s-deploy.nix
     ../../modules/roles/prometheus.nix
     ../../modules/roles/grafana.nix
     ../../modules/roles/k3s-server.nix
@@ -123,6 +124,16 @@ in
   };
 
   fleet.firewall.monitoring = true;
+  # HOW CI ROLLS THE WORKER OUT. A key pinned to a forced command that accepts one validated image
+  # reference and updates one container -- see roles/k8s-deploy.nix for why CI is not simply given a
+  # kubeconfig (k3s writes exactly one, and it is cluster-admin).
+  #
+  # The public half is here; the private half is a GitHub Actions secret and is in .env.local.
+  fleet.k8sDeploy = {
+    enable = true;
+    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIg+/1urv1bMUdFd3yRyrb6SgrOz5f7cjJdM7H4sDUuQ k8sdeploy@kinowo-ci";
+  };
+
   fleet.firewall.k3sServer = true;
 
   sops.defaultSopsFile = ../../secrets/monitoring-1.yaml;
