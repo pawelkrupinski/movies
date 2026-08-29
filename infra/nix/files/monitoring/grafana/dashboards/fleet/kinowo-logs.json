@@ -1,0 +1,151 @@
+{
+  "uid": "kinowo-logs",
+  "title": "Kinowo \u2014 logs (all three hosts)",
+  "description": "Every host's systemd journal, shipped by Vector into VictoriaLogs on monitoring-1, plus container logs from /var/log/pods on the k3s node (containerd does not use the journal). Retention is bounded by disk, not time: 10GiB on the monitoring volume, so how far back this reaches depends on how noisy the fleet has been. If a panel is empty, check Vector on the host before you doubt the query -- the shipper drops rather than blocks when VictoriaLogs is down, which keeps a log outage from wedging the host but does lose those lines.",
+  "tags": [
+    "kinowo",
+    "logs"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "host",
+        "type": "custom",
+        "query": "mongo-1,monitoring-1,k3s-worker-1",
+        "options": [
+          {
+            "text": "mongo-1",
+            "value": "mongo-1",
+            "selected": true
+          },
+          {
+            "text": "monitoring-1",
+            "value": "monitoring-1",
+            "selected": false
+          },
+          {
+            "text": "k3s-worker-1",
+            "value": "k3s-worker-1",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "mongo-1",
+          "value": "mongo-1"
+        },
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "logs",
+      "title": "Errors and warnings \u2014 whole fleet",
+      "description": "The first thing to look at. Priority <= 4 is err/crit/alert/emerg plus warning, across all three hosts at once, so a fault that moved between machines is still one list.",
+      "id": 1,
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "_msg:* AND (priority:<=4 OR _msg:~\"(?i)\\\\b(error|fatal|panic|traceback)\\\\b\")",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          }
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Everything from $host",
+      "description": "Unfiltered journal for one machine. Use this once the panel above has told you which.",
+      "id": 2,
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "host:$host",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          }
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "The application worker (k3s pod logs)",
+      "description": "The worker's own output. It runs as a pod, so these arrive from /var/log/pods on k3s-worker-1 rather than from the journal -- which is why they are a separate panel and not a unit filter.",
+      "id": 3,
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 10
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "_msg:* AND host:k3s-worker-1 AND _msg:~\"(?i)(kinowo|services\\\\.|scrape|enrich)\"",
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -82,11 +82,10 @@
 # ------------------------------------------------------------------------------------------------
 #
 # The Fly instance runs a VictoriaMetrics sidecar that scrapes the apps' /metrics endpoints
-# DIRECTLY over Fly 6PN every 15s, wired as the `app-metrics-live` datasource, because the same
-# series read back from Fly's managed Prometheus run 15-25 minutes behind. THIS HOST HAS NO PATH TO
-# THOSE ENDPOINTS: only mongo-1 is a 6PN peer (roles/wireguard-fly.nix), and monitoring-1 is not.
-# So `app-metrics-live` is provisioned here pointing at the LOCAL Prometheus -- see the datasource
-# block below for why it is provisioned at all rather than dropped.
+# DIRECTLY over Fly 6PN, which is how the web tier is monitored now that Fly's managed Prometheus
+# is unreachable. THIS HOST HOLDS ITS OWN 6PN PEER (roles/wireguard-fly.nix on monitoring-1), so the
+# `kinowo-web` scrape job reads the app's /metrics at `kinowo.internal:9000` directly. The
+# `app-metrics-live` datasource that used to stand in for that gap is gone -- the gap is closed.
 #
 # THE CONSEQUENCE IS A WHOLE FOLDER OF EMPTY DASHBOARDS, and the post-migration audit's answer to it
 # is quarantine rather than deletion: the three Fly dashboards live in their own Grafana folder,
@@ -278,6 +277,10 @@ in
           # delete the datasource declared below it -- the delete happens first, then the create.
           deleteDatasources = [
             { name = "Fly Prometheus"; orgId = 1; }
+            # REMOVED 2026-08-29, and listed here rather than merely deleted so Grafana drops it
+            # from instances that already provisioned it -- a datasource left behind stays queryable
+            # and keeps a stale uid resolvable, which is how a "working" panel ends up reading
+            # nothing.
             { name = "App Metrics (live)"; orgId = 1; }
           ];
 
@@ -288,6 +291,12 @@ in
               # agent and cannot be scraped from anywhere else. Every one of the alert rules read
               # out of fly/grafana/provisioning/alerting/alert-rules.yaml queries this uid, so the
               # uid is a CONTRACT with that file, not a name.
+              # KEPT THOUGH NOTHING QUERIES IT. Its token is revoked and no dashboard references
+              # it any more -- the apps are scraped directly over this host's 6PN peer, which is
+              # better data than Fly's proxy view ever was. It stays as the declared path back: if a
+              # read-only Fly token is ever minted, `fleet.prometheus.scrapeFly = true` plus this
+              # entry is the whole of turning Fly's own view back on. An unreferenced datasource
+              # costs nothing; rediscovering how to re-enable it costs an afternoon.
               name = "Fly Prometheus";
               uid = "fly-prometheus";
               orgId = 1;
@@ -389,39 +398,6 @@ in
               };
             }
 
-            {
-              # A COMPATIBILITY ENTRY, AND THE MOST DEBATABLE LINE IN THIS FILE. Read the header
-              # first.
-              #
-              # On Fly, `app-metrics-live` is a VictoriaMetrics sidecar scraping the apps over 6PN.
-              # There is no such thing on this host. But the uid is a QUERY SURFACE: 92 panel
-              # targets across the three ported dashboards name it, and a uid that resolves to
-              # nothing does not degrade -- every one of those panels renders "Datasource
-              # app-metrics-live was not found", which makes the dashboards unreadable rather than
-              # empty.
-              #
-              # So it is provisioned, pointing at the local Prometheus, and WHAT THAT BUYS IS
-              # HONESTY ABOUT THE GAP RATHER THAN THE DATA: those panels will show "No data" until
-              # this Prometheus actually scrapes the apps' /metrics endpoints, which needs a 6PN
-              # path from THIS host -- a second `fly wireguard create` peer, exactly as
-              # roles/wireguard-fly.nix does for mongo-1 -- or the apps moving here. That is a
-              # known, named gap and it is not fixed in this change.
-              #
-              # THE OTHER OPTION WAS TO REWRITE THE DASHBOARDS' uid REFERENCES -- 92 edits across
-              # the three vendored files. That would make the copy permanently divergent from the
-              # original it is supposed to be a copy OF, so `diff -r` stops being the check that
-              # the vendoring is honest, and it would be wrong on the Fly side, which is still
-              # running and is the rollback. A datasource entry costs nothing and keeps both true.
-              name = "App Metrics (live)";
-              uid = "app-metrics-live";
-              orgId = 1;
-              type = "prometheus";
-              access = "proxy";
-              url = "http://10.20.0.11:9090";
-              isDefault = false;
-              editable = false;
-              jsonData = { httpMethod = "POST"; prometheusType = "Prometheus"; timeInterval = "15s"; };
-            }
           ];
         };
 
@@ -429,32 +405,31 @@ in
           apiVersion = 1;
 
           # ------------------------------------------------------------------------------------
-          # TWO PROVIDERS AND TWO FOLDERS, WHICH IS THE POST-MIGRATION CHANGE. THE FLY PROVISIONING
-          # HAD ONE OF EACH.
+          # TWO PROVIDERS AND TWO FOLDERS: THE FLEET'S OWN HEALTH, AND THE APPLICATION'S.
           # ------------------------------------------------------------------------------------
           #
-          # THE PROBLEM IT SOLVES. Three of the four dashboards here read `fly-prometheus` (no
-          # working token) or `app-metrics-live` (no 6PN path from this host), so every panel on
-          # them renders "No data" and will keep doing so until somebody mints a credential this
-          # estate cannot currently mint. One dashboard -- kinowo-fleet -- reads the local
-          # Prometheus and works.
+          # THIS SPLIT USED TO BE A QUARANTINE and is not one any more, which is worth saying
+          # because the shape has not changed while the reason entirely has.
           #
-          # IN ONE FOLDER, THOSE FOUR ARE INDISTINGUISHABLE AT A GLANCE, and that is not a cosmetic
-          # complaint. A person opening Grafana during an incident does not know which pages are
-          # supposed to be empty; a screen of "No data" reads as "the monitoring is broken", which
-          # sends them to debug Prometheus rather than the fault they came for. Worse, a folder
-          # where most pages are permanently empty is a folder people stop opening -- the same
-          # argument roles/prometheus.nix makes for why `scrapeFly` is OFF rather than configured
-          # with a dead credential, applied to dashboards instead of scrape targets.
+          # It was introduced when three of four dashboards read datasources that could not work --
+          # `fly-prometheus` (token revoked, unmintable) and a stand-in for a 6PN path this host did
+          # not have -- so those pages rendered nothing. The argument was that a folder of
+          # permanently-empty pages reads as "the monitoring is broken" to somebody opening Grafana
+          # mid-incident, and is a folder people stop opening.
           #
-          # SO: WORKING PAGES IN ONE FOLDER, QUARANTINED ONES IN ANOTHER, with the folder name
-          # itself carrying the reason. Each quarantined dashboard also opens with a banner panel
-          # explaining what it needs, and is retitled so the quarantine survives a search that
-          # bypasses the folder.
+          # BOTH CAUSES ARE GONE. monitoring-1 now holds its own 6PN peer, so the web tier's own
+          # /metrics is scraped directly -- richer than the Fly proxy view it replaces, and with a
+          # credential this fleet holds. The worker is scraped from k3s. Both dashboards were
+          # rebuilt on those series and every query was verified returning data.
           #
-          # NOT DELETED, and that decision is worth restating here because two folders look like a
-          # step towards deleting one of them: the apps those dashboards watch ARE STILL RUNNING on
-          # Fly. Every panel is still correct. They start working again the day there is a token.
+          # WHAT THE SPLIT MEANS NOW is simply subject: `Kinowo Fleet` is about the three machines
+          # (hosts, disks, closures, auto-apply), `Application` is about the software running on
+          # them (queue depth, projection cost, request rate, JVM). A reader with a symptom knows
+          # which to open, which is a better reason to have two folders than the one it replaced.
+          #
+          # filmowo-overview.json was DELETED in the same change rather than moved: it watches a
+          # different application, which nothing on this fleet scrapes, so unlike these two it could
+          # not be rebuilt on real data. It is one `git revert` away if that app is ever scraped.
           providers = [
             {
               # THE ONE THAT WORKS. Everything in it queries `local-prometheus` and needs no
@@ -463,7 +438,20 @@ in
               orgId = 1;
               folder = "Kinowo Fleet";
               type = "file";
-              disableDeletion = true;
+              # FALSE, SO PROVISIONING PRUNES. It was true, and the effect was that a dashboard
+              # deleted from this repository stayed in Grafana for ever -- which makes the repo the
+              # source of truth for dashboards that EXIST and not for dashboards that should not.
+              # Found when filmowo-overview.json was removed and went on being served.
+              #
+              # The risk this trades against is real but smaller: with deletion enabled, a
+              # provisioning pass that somehow sees an empty directory would remove the dashboards.
+              # That is bounded -- they are files in git, restored by the next deploy -- whereas a
+              # stale dashboard nobody can delete without touching the box is unbounded drift, and
+              # it is exactly the kind that shows wrong numbers with total confidence.
+              #
+              # `allowUiUpdates` stays false: the file is the source, and a UI edit that is silently
+              # reverted on the next pass is more confusing than one that is refused.
+              disableDeletion = false;
               allowUiUpdates = false;
               updateIntervalSeconds = 60;
               options.path = "${grafanaProvisioning}/dashboards/fleet";
@@ -490,7 +478,20 @@ in
               # file in fly/grafana/provisioning/dashboards IS the source and a UI edit would be
               # silently reverted on the next provisioning pass -- which is the confusing outcome.
               # Making it refuse the edit is kinder than letting it be made and lost.
-              disableDeletion = true;
+              # FALSE, SO PROVISIONING PRUNES. It was true, and the effect was that a dashboard
+              # deleted from this repository stayed in Grafana for ever -- which makes the repo the
+              # source of truth for dashboards that EXIST and not for dashboards that should not.
+              # Found when filmowo-overview.json was removed and went on being served.
+              #
+              # The risk this trades against is real but smaller: with deletion enabled, a
+              # provisioning pass that somehow sees an empty directory would remove the dashboards.
+              # That is bounded -- they are files in git, restored by the next deploy -- whereas a
+              # stale dashboard nobody can delete without touching the box is unbounded drift, and
+              # it is exactly the kind that shows wrong numbers with total confidence.
+              #
+              # `allowUiUpdates` stays false: the file is the source, and a UI edit that is silently
+              # reverted on the next pass is more confusing than one that is refused.
+              disableDeletion = false;
               allowUiUpdates = false;
               updateIntervalSeconds = 60;
               options.path = "${grafanaProvisioning}/dashboards/apps";
