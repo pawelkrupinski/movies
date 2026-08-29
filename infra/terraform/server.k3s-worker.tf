@@ -10,6 +10,16 @@
 # NOTHING IS SCHEDULED ON IT YET. It joins the cluster and sits idle, which is the intended state
 # until there is a workload to put on it.
 module "k3s_worker_1" {
+  # PROTECTED NOW THAT IT IS CONVERTED. The module defaults this to FALSE, unlike bitcashier's,
+  # because Hetzner's rebuild protection also refuses `enable_rescue` -- and rescue is how NixOS gets
+  # onto these machines. That default is right for a host being built; it is wrong for one that is
+  # serving, and leaving it is how a `terraform destroy` typo or a bad `-target` takes a live host.
+  #
+  # THE COST IS DELIBERATE FRICTION: re-running `convert-host` against this machine now requires
+  # setting this back to false and applying first. That is a second look before repartitioning a
+  # host that is in service, which is the point.
+  delete_protection = true
+
   source = "./modules/server"
 
   name        = "k3s-worker-1"

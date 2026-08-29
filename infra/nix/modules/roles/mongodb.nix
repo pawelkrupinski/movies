@@ -468,6 +468,21 @@ in
       directory = lib.mkOption {
         type = lib.types.str;
         default = "/var/lib/mongodb-backups";
+      # THE ROOT DISK, NOT THE DATA VOLUME, AND THAT IS THE WHOLE POINT OF THE TIMER.
+      #
+      # Hetzner's server backups cover the root disk and EXCLUDE attached volumes. mongod's data
+      # lives on a volume, so it is outside them -- which is why this timer exists at all. Writing
+      # the dump here puts it inside the nightly server backup, so the chain is:
+      #
+      #   mongod data       -> /var/lib/mongodb          volume, NOT in Hetzner's backups
+      #   nightly mongodump -> /var/lib/mongodb-backups  root disk, IS in Hetzner's backups
+      #
+      # Moving this onto the volume "to keep database things together" would quietly break that:
+      # the dump would then share a failure domain with the thing it is a copy of, and nothing off
+      # this host would hold either. If you move it, mongo-1 needs a different off-host path first.
+      #
+      # It also means mongo-1 must keep `backups = true` in terraform/server.mongo.tf. Verified
+      # enabled (window 22-02) on 2026-08-29.
         description = ''
           ON THE DATA VOLUME'S HOST, AND THAT IS STATED SO NOBODY MISTAKES IT FOR OFF-SITE. See the
           module header: this survives a bad migration, not a lost volume.
