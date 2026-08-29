@@ -148,10 +148,12 @@ in
 
   fleet.firewall.mongo = true;
 
-  # THE TUNNEL THE APPLICATION ACTUALLY ARRIVES ON, and the reason mongod is never exposed
-  # publicly. mongo-1 joins Fly's 6PN as a peer, so `kinowo`, `kinowo-worker` and the rest keep
-  # reaching their database over Fly's private network exactly as they do today -- only the HOST in
-  # MONGODB_URI changes.
+  # A TUNNEL THE APPLICATION NO LONGER ARRIVES ON, kept for the moment rather than removed.
+  # It was the point of this peer: while the apps ran on Fly they reached mongod over 6PN, and only
+  # the HOST in MONGODB_URI changed when the database moved here. Since the worker and web tiers
+  # both moved to k3s (2026-08-29) every client reaches 10.20.0.10 directly over the Hetzner private
+  # network, so nothing that runs today depends on this. mongod is still never exposed publicly --
+  # that part was never about the tunnel, it is the firewall.
   #
   # THESE VALUES CAME FROM `fly wireguard create personal arn kinowo-mongo-1`, 2026-08-29, and the
   # peer is named there so it can be found and revoked. `arn` because that is where the web and

@@ -28,8 +28,12 @@
 # WHAT WAS DELIBERATELY DROPPED FROM THE FLY VERSION, so that its absence does not read as a
 # mistake: the three `WorkerThrottle*` webhook contact points and their routes. Those POST to
 # `kinowo-worker*.internal:9000/throttle` over Fly's 6PN to drive the workers' reaper backoff.
-# THIS HOST IS NOT ON 6PN -- only mongo-1 is a WireGuard peer (nix/modules/roles/wireguard-fly.nix)
-# -- so those webhooks would fail on every send and the workers would never be told to back off.
+# THERE ARE NO WORKERS ON 6PN TO REACH ANY MORE -- since 2026-08-29 all three run as pods on k3s,
+# so `kinowo-worker*.internal` resolves to nothing and those webhooks would fail on every send,
+# leaving the workers never told to back off. (This host DOES hold a WireGuard peer, contrary to
+# what this note used to say -- monitoring-1 and mongo-1 both declare `fleet.wireguardFly`. The
+# peer is simply not a route to anything that still runs on Fly.) Restoring the throttle path means
+# pointing these webhooks at the pods' NodePorts on 10.20.0.12, not at 6PN.
 #
 # THE CONSEQUENCE IS NOT SILENT, WHICH IS WHY THIS IS SAFE TO DO: with no route matching them, the
 # `worker-throttle` group's alerts fall through to the root policy and arrive on Telegram as

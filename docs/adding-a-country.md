@@ -64,30 +64,29 @@ Decodo residential proxy (`KINOWO_PROXY_*`, `isp.decodo.com:10001`), the same pr
 the prod worker uses. Persist the dataset into the repo (`data/<country>/`) as the
 loader's input.
 
-## 3. Worker (`kinowo-worker-<cc>`)
+## 3. Worker (`worker-<cc>`)
 
-The worker is split **per country** — each machine watches only its own db's change
-stream (a per-country split halves per-machine cost; same-db replicas don't — see
-`fly.worker.toml`). A large roster on the shared `kinowo-worker` will OOM/throttle.
+The worker is split **per country** — each pod watches only its own db's change
+stream, because `KINOWO_COUNTRIES` also selects the database. A large roster folded
+into a sibling's pod will OOM or throttle it.
 
-1. **`fly.worker.<cc>.toml`** — clone `fly.worker.de.toml`: `app =
-   'kinowo-worker-<cc>'`, `KINOWO_COUNTRIES = '<cc>'`, its own `worker_heapdumps`
-   volume, `primary_region = 'arn'` (Mongo colocation), shared-cpu-2x/1gb (re-size
-   for a big roster). Drop `<cc>` from the sibling worker's `KINOWO_COUNTRIES`.
-2. **Provision BEFORE the first deploy** (or it crash-loops — the fresh app boots
-   with no `MONGODB_URI`, the required-Mongo probe hits the stale `127.0.0.1` URI,
-   and `MongoConnection.init` refuses to start):
-   - `flyctl apps create kinowo-worker-<cc> --org personal`
-   - `flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker-<cc>`
-   - Secrets: copy **`MONGODB_URI` from the running `kinowo-worker`** (the real
-     Mongo-host URI — a Fly 6PN WireGuard address since the 2026-08-29 move off
-     `kinowo-mongo` — NOT the local `.env.local` `127.0.0.1` one, which is only
-     the near end of an ssh tunnel),
-     piped so the value never prints; the env-agnostic ones (TMDB/ZYTE/SENTRY/
-     TELEGRAM_*/`KINOWO_PROXY_*`/OMDB) from `.env.local`. `flyctl secrets
-     import` reads `KEY=VALUE` from stdin.
-3. Add a matrix leg to `.github/workflows/deploy.yml` (the no-op guard is keyed on
-   `bin=worker` + `matrix.toml`, so each worker app tracks its own toml).
+1. **`infra/kubernetes/worker/overlays/<cc>/`** — clone `overlays/de/`. The overlay
+   carries only what genuinely differs: `KINOWO_COUNTRIES = "<cc>"`, the two
+   scrape-rate levers, the JVM heap, and a fixed `nodePort` (30900/30901/30902 are
+   taken; take the next free one). Everything else comes from `../../base`. Drop
+   `<cc>` from any sibling's `KINOWO_COUNTRIES`.
+2. **Nothing to provision** — the country reuses the existing `kinowo/worker-secrets`
+   and `kinowo/ghcr-pull`. `MONGODB_URI` is the shared one pointing at
+   `10.20.0.10` over the Hetzner private network, and **`MONGODB_DB` is never set**:
+   `Country.mongoDb` derives the database from the country, so setting it would pin
+   every country to one corpus.
+3. **Add its scrape target** to `infra/nix/files/monitoring/scrape-kinowo-apps.yaml`
+   (`10.20.0.12:<nodePort>`, labelled `country: <cc>`), and its Deployment name to
+   `fleet.k8sDeploy.targets` in `infra/nix/modules/roles/k8s-deploy.nix` so CI can
+   roll it.
+4. **Create and roll it**: `infra/kubernetes/apply.sh worker <cc>`, then let the next
+   push to main pin the image. There is no `deploy.yml` matrix leg — every Fly leg is
+   `enabled: false` and adding one would deploy a second copy.
 
 ## 4. Web frontend (`<cc>.showtimes.cc`)
 
