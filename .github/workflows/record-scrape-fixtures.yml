@@ -10,11 +10,17 @@
 # to obtain something a single collection read produces.
 #
 # Fetching the corpus INSIDE a leg is what every convergence failure traced back
-# to: prod Mongo has no public IP, so the only route is a `flyctl proxy`, and the
-# leg met pages large enough to overflow the Mongo driver's completion chain, a
-# proxy that exited mid-run, a proxy that wedged while holding its port, and a
-# driver that noticed neither for 30s at a time. Recording out of band leaves the
-# legs reading local files.
+# to: prod Mongo is not reachable from a runner without a hop, and the leg met pages
+# large enough to overflow the Mongo driver's completion chain, a proxy that exited
+# mid-run, a proxy that wedged while holding its port, and a driver that noticed
+# neither for 30s at a time. Recording out of band leaves the legs reading local
+# files.
+#
+# The hop is no longer `flyctl proxy --app kinowo-mongo`: prod Mongo lives on the
+# Hetzner host mongo-1 and that Fly app is stopped. It is now an ssh key pinned to a
+# forced command there, which is the narrowest route in that a driver-side read can
+# use — infra/nix/modules/roles/mongo-ci-read.nix argues the case, and
+# scripts/ci/wait-for-mongo-tunnel.sh holds this end of it.
 #
 # It also pins the corpus. Prod drifts under a running test — the same Polish
 # corpus measured 7,044, then 7,055, then 7,063 listings inside an hour as venues
@@ -81,22 +87,28 @@ jobs:
             # `findAll` discards an incomplete keyset scan — a fixture is
             # AUTHORITATIVE, and a truncated one already slipped through once at 236
             # of 281 Polish venues.
-            # Opened LAST, immediately before the step that uses it. flyctl proxies
-            # wedge while idle (see wait-for-mongo-tunnel.sh), and establishing it before
-            # a JDK install and a possibly-cold sbt compile left it rotting for 5-10
+            # Opened LAST, immediately before the step that uses it. A tunnel wedges
+            # while idle (see wait-for-mongo-tunnel.sh), and establishing it before a
+            # JDK install and a possibly-cold sbt compile left it rotting for 5-10
             # minutes before anything touched it.
-            - uses: superfly/flyctl-actions/setup-flyctl@master
+            #
+            # THE CONNECTION STRING IS NOT A SECRET OF THIS WORKFLOW. The step asks
+            # mongo-1's forced-command endpoint for the read-only credential and exports
+            # KINOWO_CONVERGENCE_SCRAPES_URI itself, so the only thing GitHub holds is an
+            # ssh key that can do exactly two read-only things — and rotating the
+            # database password is a sops edit on one host rather than a repository
+            # secret nobody remembers exists.
             - name: Tunnel to prod Mongo
-              run: scripts/ci/wait-for-mongo-tunnel.sh 27018 kinowo-mongo
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018
               env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+                  MONGO_CI_SSH_KEY:      ${{ secrets.MONGO_CI_SSH_KEY }}
+                  MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
 
             - name: Record ${{ matrix.country }}'s corpus
               run: sbt "worker/Test/runMain scripts.RecordCorpusFixture ${{ matrix.code }}"
               env:
-                  KINOWO_COUNTRY:                 ${{ matrix.code }}
-                  KINOWO_COUNTRIES:               ${{ matrix.code }}
-                  KINOWO_CONVERGENCE_SCRAPES_URI: ${{ secrets.CONVERGENCE_MONGODB_URI }}
+                  KINOWO_COUNTRY:   ${{ matrix.code }}
+                  KINOWO_COUNTRIES: ${{ matrix.code }}
 
             - name: Pack
               run: |

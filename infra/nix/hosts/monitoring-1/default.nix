@@ -12,6 +12,7 @@ in
     ./disko.nix
     ../../modules/roles/public-proxy.nix
     ../../modules/roles/k8s-deploy.nix
+    ../../modules/roles/wireguard-fly.nix
     ../../modules/roles/prometheus.nix
     ../../modules/roles/grafana.nix
     ../../modules/roles/k3s-server.nix
@@ -121,6 +122,30 @@ in
     enable = true;
     clusterInit = true;
     schedulable = false;
+  };
+
+  # A SECOND PEER INTO FLY'S 6PN, AND IT IS HOW THE WEB TIER GETS MONITORED AT ALL.
+  #
+  # THE PROBLEM IT SOLVES. `kinowo` and its `/metrics` still run on Fly, and the obvious way to see
+  # them -- Fly's managed Prometheus -- is unavailable: both read-only tokens for it are revoked, and
+  # the only remaining Fly token is org-wide and deploy-capable, which must not sit on the host that
+  # also runs the k3s control plane. So `fleet.prometheus.scrapeFly` is off and the Fly panels have
+  # no data.
+  #
+  # THE WAY ROUND IT NEEDS NO FLY TOKEN AT ALL. The app publishes its own `/metrics` on port 9000
+  # over Fly's private network, so a peer on 6PN can scrape it DIRECTLY -- richer than Fly's
+  # host-level gauges, and it cannot be revoked out from under us. The credential is a WireGuard key
+  # this fleet holds, not a token somebody else issues.
+  #
+  # SEPARATE PEER FROM mongo-1's, deliberately: `fly wireguard create` mints one keypair per peer,
+  # and sharing one across two hosts would mean two machines using one identity -- so revoking
+  # either means revoking both, and Fly's peer list would name a machine rather than a role.
+  fleet.wireguardFly = {
+    enable = true;
+    address = "fdaa:74:b6b5:a7b:35c:20a7:c070:5c02/120";
+    peerPublicKey = "tyYPi0DmwNDs3YEhnm4CeNy5I9m2QSsdry4H46Zfr3M=";
+    peerEndpoint = "arn1.gateway.6pn.dev:51820";
+    allowedIPs = [ "fdaa:74:b6b5::/48" ];
   };
 
   fleet.firewall.monitoring = true;

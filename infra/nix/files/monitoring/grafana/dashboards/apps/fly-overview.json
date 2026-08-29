@@ -1,11 +1,11 @@
 {
   "uid": "fly-overview",
-  "title": "Fly — kinowo health (quarantined: needs a Fly token)",
+  "title": "Kinowo — application health (worker on k3s · web on Fly)",
   "tags": [
-    "fly",
     "kinowo",
-    "needs-fly-token",
-    "quarantined"
+    "application",
+    "k3s",
+    "fly"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -52,7 +52,7 @@
         "type": "query",
         "datasource": {
           "type": "prometheus",
-          "uid": "app-metrics-live"
+          "uid": "local-prometheus"
         },
         "definition": "label_values(kinowo_worker_throttled, country)",
         "query": {
@@ -69,262 +69,65 @@
         "refresh": 2,
         "sort": 1,
         "hide": 0
-      },
-      {
-        "name": "worker_host_app",
-        "label": "Worker app (derived)",
-        "type": "query",
-        "description": "Not a dropdown — the worker Fly app names belonging to $country, resolved from the country-labelled kinowo_worker_throttled. Exists solely so the memory panels' fly_instance_* (host) series can be narrowed to the selected country: those live on the fly-prometheus datasource, which carries no country label, so no on(app) join can reach them. Derived, so re-splitting countries across Fly apps needs no dashboard edit.",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "app-metrics-live"
-        },
-        "definition": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)",
-        "query": {
-          "query": "label_values(kinowo_worker_throttled{country=~\"$country\"}, app)",
-          "refId": "worker_host_app"
-        },
-        "current": {
-          "text": "All",
-          "value": "$__all",
-          "selected": true
-        },
-        "includeAll": true,
-        "multi": true,
-        "refresh": 2,
-        "sort": 1,
-        "hide": 2
-      },
-      {
-        "name": "web_host_app",
-        "label": "Web app (derived)",
-        "type": "query",
-        "description": "The web mirror of $worker_host_app, resolved from kinowo_web_movies_served. Same reason: it narrows the host-free series on the web memory panel to the selected country.",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "app-metrics-live"
-        },
-        "definition": "label_values(kinowo_web_movies_served{country=~\"$country\"}, app)",
-        "query": {
-          "query": "label_values(kinowo_web_movies_served{country=~\"$country\"}, app)",
-          "refId": "web_host_app"
-        },
-        "current": {
-          "text": "All",
-          "value": "$__all",
-          "selected": true
-        },
-        "includeAll": true,
-        "multi": true,
-        "refresh": 2,
-        "sort": 1,
-        "hide": 2
       }
     ]
   },
   "panels": [
     {
-      "id": 9000,
+      "id": 9001,
       "type": "text",
-      "title": "Read this before believing anything below",
+      "title": "What this page can no longer show you",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
       "gridPos": {
-        "h": 11,
+        "h": 9,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "options": {
         "mode": "markdown",
-        "content": "# ⚠ QUARANTINED — this dashboard has no data source that works today\n\n**Nothing on this page is broken. Nothing on it is connected either.** Every panel below reads one\nof two datasources, and neither can reach anything from monitoring-1:\n\n* **`fly-prometheus`** — Fly's managed Prometheus, the *only* source of `fly_instance_*`,\n  `fly_edge_*` and `fly_app_*`, which are produced by Fly's own host agent and cannot be scraped\n  from anywhere else. Both read-only Fly tokens were **revoked**, and the org token this estate\n  still has **cannot mint a replacement** (`createLimitedAccessToken Not authorized`). An org-wide\n  token must not live on this host: monitoring-1 also runs the k3s control plane, so anything that\n  compromised a workload there would gain the ability to **deploy to Fly**, where the production\n  web tier still runs. Scraping some gauges is not worth that.\n* **`app-metrics-live`** — on Fly this was a VictoriaMetrics sidecar scraping the apps' `/metrics`\n  endpoints directly over 6PN every 15s, because the same series read back from Fly's managed\n  Prometheus run **15–25 minutes behind**. There is no such sidecar here. The datasource is still\n  provisioned, pointing at the local Prometheus, purely so these panels render *\"No data\"* instead\n  of *\"Datasource app-metrics-live was not found\"* — which would make the page unreadable rather\n  than empty.\n\n**Why this dashboard still exists.** The apps it watches are still running: `kinowo` (web) and\n`kinowo-worker` are both still on Fly. Every panel is correct and will start working again the day\nthere is a credential — deleting them would be throwing away working instrumentation to tidy up a\ncredential problem. They live in this folder rather than beside the fleet dashboards so that a\nscreen full of *No data* is somewhere you go **on purpose**, not something you trip over while\nlooking at the machines.\n\n**To bring it back.**\n\n1. Mint a genuinely read-only token from an account that may: `fly tokens create readonly --org personal`.\n2. Put it in `nix/secrets/monitoring-1.yaml` as `grafana/fly-token` (and `prometheus/fly-token` if\n   you also want the federation scrape), then set `fleet.prometheus.scrapeFly = true`.\n3. Re-read the note above `Serving app down` in `alert-rules.yaml`: its `noDataState` and\n   `execErrState` were flipped to `OK` because the dead datasource turned them into a permanent\n   page, and they must go **back to `Alerting`** in the same edit as the new token.\n\nThe `app-metrics-live` panels need something different and larger: a **Fly 6PN peer for\nmonitoring-1**, exactly as `roles/wireguard-fly.nix` builds one for mongo-1, so the local Prometheus\ncan scrape the apps directly. That is a known, named gap and it is not fixed.\n\n**For the machines, use the “Kinowo Fleet — Hetzner hosts” dashboard**, which queries the local\nPrometheus only and needs no credential at all.\n"
+        "content": "The application is one thing on two platforms. **The worker runs on k3s** (`k3s-worker-1`, 10.20.0.12) and **the web tier is still on Fly**, reached through the WireGuard peer. Both are scraped by the fleet's own Prometheus, straight off each app's `/metrics`, so nothing here depends on a Fly credential. Where a panel plots both, the legend says which tier and which platform.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **HTTP request rate and latency for the web tier.** These came from `fly_app_http_response_time_seconds`, measured by the Fly *proxy*, not by the app. The app exports no request histogram of its own, so there is currently NO latency signal for the web tier at any percentile. This is the single biggest hole; closing it needs an HTTP metric added to the application.\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. The worker left that world entirely — a k3s pod on a dedicated 8-core box has no credit bucket — and the web tier's credit is only visible from inside Fly's managed Prometheus.\n* **Host memory-available and volume disk for the web tier.** Same reason. For the worker these facts now come from node_exporter and live on the fleet dashboard, linked above; the heap panel below carries a host-free line so the common case needs no second tab.\n\n**Read host CPU and host memory as the HOST, not as the worker.** `k3s-worker-1` also runs the k3s agent, so its node_exporter numbers are always above the worker's own. Where a question is about the worker specifically, the panels below use the JVM's own process metrics."
       }
     },
     {
-      "id": 9,
-      "title": "CPU load by app — %core (busy = work it does; steal = host throttling). Watch step-ups against Deploys.",
-      "description": "Every app is shared-cpu-1x, so 100 = one full core. '<app> busy' is the work it does (user+system+io); '<app> steal' is CPU the host withheld because demand crossed the shared-CPU credit — near-zero historically, it only appears when busy saturates the core. A step-up that lines up with a purple Deploy marker means that release added load. FLEET-WIDE: shows every country's instances at once and is NOT filtered by the Country dropdown — fly_instance_* carries no country label, so scoping is by app name. The matcher app=~\"kinowo.*|showtimes-.*\" follows the naming convention (PL web = kinowo, other web = showtimes-<cc>, workers = kinowo-worker[-<cc>]), so a new country appears here the moment it deploys, with no dashboard edit. filmowo has its own dashboard, schowek is separate.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fly-prometheus"
-      },
+      "id": 100,
+      "type": "row",
+      "title": "Is it alive?",
+      "collapsed": false,
+      "panels": [],
       "gridPos": {
-        "h": 9,
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 11
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 15
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/ steal$/"
-            },
-            "properties": [
-              {
-                "id": "custom.fillOpacity",
-                "value": 0
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    8,
-                    4
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-.*\",mode!~\"idle|steal\"}[5m]))",
-          "legendFormat": "{{app}} busy"
-        },
-        {
-          "refId": "B",
-          "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-.*\",mode=\"steal\"}[5m]))",
-          "legendFormat": "{{app}} steal"
-        }
-      ]
+        "y": 9
+      }
     },
     {
-      "id": 1,
-      "title": "CPU credit balance (serving apps — alarm < 500)",
-      "description": "Shared-cpu-1x credit left per app. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'CPU credit exhausted' alert.",
+      "id": 7,
+      "title": "Both tiers — is the process answering /metrics?",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "fly-prometheus"
+        "uid": "local-prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 6,
+        "w": 24,
         "x": 0,
-        "y": 20
+        "y": 10
       },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "min by (app) (fly_instance_cpu_balance{app=~\"kinowo.*|showtimes-.*\"})",
-          "legendFormat": "{{app}}"
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "title": "CPU throttled (rate, fraction of wall-clock)",
-      "description": "Fraction of wall-clock the host held the app off-CPU once credit ran out. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'CPU throttled' and 'Worker CPU starved' alerts.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fly-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 20
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by (app) (rate(fly_instance_cpu_throttle{app=~\"kinowo.*|showtimes-.*\"}[5m]))",
-          "legendFormat": "{{app}}"
-        }
-      ]
-    },
-    {
-      "id": 3,
-      "title": "CPU steal %",
-      "description": "Steal as a share of that app's total CPU time — the same signal as the dashed lines on the top panel, normalised. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'CPU steal high' alert.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fly-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 28
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (app) (rate(fly_instance_cpu{mode=\"steal\",app=~\"kinowo.*|showtimes-.*\"}[5m])) / sum by (app) (rate(fly_instance_cpu{app=~\"kinowo.*|showtimes-.*\"}[5m]))",
-          "legendFormat": "{{app}}"
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "title": "Memory available % (alarm < 8%)",
-      "description": "Host memory still available, as a fraction of total — the pre-OOM warning. Every country's instances, NOT filtered by the Country dropdown (fly_instance_* has no country label). Drives the 'Memory pressure (pre-OOM)' alert. For the worker's JVM-side breakdown (heap vs non-heap vs -Xmx) see the 'Worker — JVM heap & host free memory' panel below.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fly-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 28
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
           "min": 0,
           "max": 1,
           "custom": {
             "spanNulls": 300000,
             "drawStyle": "line",
-            "fillOpacity": 10
+            "fillOpacity": 20,
+            "lineInterpolation": "stepAfter"
           }
         },
         "overrides": []
@@ -332,59 +135,11 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "min by (app) (fly_instance_memory_mem_available{app=~\"kinowo.*|showtimes-.*\"} / fly_instance_memory_mem_total{app=~\"kinowo.*|showtimes-.*\"})",
-          "legendFormat": "{{app}}"
+          "expr": "up{job=~\"kinowo-web|kinowo-worker\"}",
+          "legendFormat": "{{tier}} ({{platform}})"
         }
-      ]
-    },
-    {
-      "id": 5,
-      "title": "HTTP latency — web (s)",
-      "description": "Fly edge-measured response time for the WEB apps only (app=~\"kinowo|showtimes-.*\" — no workers, they serve no HTTP). One line per percentile PER APP, so every country's web instance is plotted: kinowo = PL, showtimes-<cc> = the rest. NOT filtered by the Country dropdown (fly_app_* has no country label).",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fly-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 36
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "histogram_quantile(0.99, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))",
-          "legendFormat": "p99 {{app}}"
-        },
-        {
-          "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))",
-          "legendFormat": "p95 {{app}}"
-        },
-        {
-          "refId": "C",
-          "expr": "histogram_quantile(0.75, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))",
-          "legendFormat": "p75 {{app}}"
-        },
-        {
-          "refId": "D",
-          "expr": "histogram_quantile(0.50, sum by (le, app) (rate(fly_app_http_response_time_seconds_bucket{app=~\"kinowo|showtimes-.*\"}[5m])))",
-          "legendFormat": "p50 {{app}}"
-        }
-      ]
+      ],
+      "description": "1 = Prometheus scraped that tier's own /metrics endpoint on the last try. The two tiers are reached completely differently and fail differently: the worker is a k3s NodePort on the private network (10.20.0.12:30900), so a 0 there really is the worker being down or wedged; the web tier is still on Fly and is reached through the WireGuard peer into Fly's 6PN, so a 0 there can equally mean the TUNNEL dropped while the app is serving users perfectly well. Before declaring a web outage, check the WireGuard handshake age on the fleet dashboard and load the site."
     },
     {
       "id": 8,
@@ -392,13 +147,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 36
+        "x": 0,
+        "y": 16
       },
       "fieldConfig": {
         "defaults": {
@@ -424,28 +179,27 @@
       ]
     },
     {
-      "id": 7,
-      "title": "Instance up",
+      "id": 9,
+      "title": "Both tiers — CPU burned by the JVM process (centi-cores)",
+      "description": "100 = one full core of actual JVM CPU, from each app's own process exporter — not the host's. This is the honest number for the worker now: it shares k3s-worker-1 with the k3s agent itself, so host CPU on the fleet dashboard is always higher than the worker's and cannot be read as the worker's load. The worker's baseline is a low hum with daytime humps that are read-model projection (broken out below); a sustained flat-topped plateau is the shape to worry about. The web tier serves requests, so its line tracks traffic. Step-ups that line up with a purple Deploy marker mean that release added load.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "fly-prometheus"
+        "uid": "local-prometheus"
       },
       "gridPos": {
-        "h": 6,
+        "h": 9,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 24
       },
       "fieldConfig": {
         "defaults": {
-          "min": 0,
-          "max": 1,
+          "unit": "percent",
           "custom": {
             "spanNulls": 300000,
             "drawStyle": "line",
-            "fillOpacity": 20,
-            "lineInterpolation": "stepAfter"
+            "fillOpacity": 15
           }
         },
         "overrides": []
@@ -453,10 +207,321 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by (app) (fly_instance_up{app=~\"kinowo.*|showtimes-.*\"})",
-          "legendFormat": "{{app}}"
+          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-worker\"}[5m]) * 100",
+          "legendFormat": "worker (k3s)"
+        },
+        {
+          "refId": "B",
+          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-web\"}[5m]) * 100",
+          "legendFormat": "web (Fly)"
         }
       ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "What the two tiers are serving — web (Fly) against the collection behind it (worker, k3s)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      }
+    },
+    {
+      "id": 33,
+      "title": "kinowo — films served per city (all future showings)",
+      "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 34
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_web_movies_served{country=~\"$country\",scope=\"all\"}",
+          "legendFormat": "{{city}}"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "kinowo — films served per city (showing tomorrow)",
+      "description": "Distinct films each /:city/ page shows for tomorrow (≥1 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_web_movies_served{country=~\"$country\",scope=\"tomorrow\"}",
+          "legendFormat": "{{city}}"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "kinowo — films the movies collection would serve per city (all future)",
+      "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by — exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus — a stuck projection or a malformed/pruned web_movies row. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_movies_served{country=~\"$country\",scope=\"all\"}",
+          "legendFormat": "{{city}}"
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "title": "kinowo — films the movies collection would serve per city (showing tomorrow)",
+      "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_movies_served{country=~\"$country\",scope=\"tomorrow\"}",
+          "legendFormat": "{{city}}"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "title": "kinowo — total upcoming showtimes served (all cities)",
+      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(kinowo_worker_showtimes{country=~\"$country\"})",
+          "legendFormat": "total showtimes"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "title": "kinowo — upcoming showtimes served per city",
+      "description": "Per-city breakdown of the panel to the left: individual upcoming showtimes (single dated slots) the source `movies` collection would serve on each /:city/ page, from kinowo_worker_showtimes{city} (worker-side, projected from `movies`, sampled every 5 min, upcoming-only, readyToProject-gated). Every slot belongs to exactly one city, so these series sum to the total panel. A single city's showtime volume cratering while its film count holds is a venue that lost screens/sessions. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_showtimes{country=~\"$country\"}",
+          "legendFormat": "{{city}}"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "Worker — movies corpus coverage (records, ids, ratings)",
+      "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_corpus_movies{country=~\"$country\"}",
+          "legendFormat": "{{subset}}"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "title": "Worker — corpus census: passes that could not read the whole corpus (per hour)",
+      "description": "READ THIS BEFORE READING ANY CENSUS PANEL ABOVE. The corpus census (one paged scan every 5 min feeding kinowo_worker_corpus_movies, kinowo_worker_movies_served and kinowo_worker_showtimes) publishes NOTHING when a batch read fails mid-scan — a partial count is fewer rows READ, not a smaller corpus, and as a gauge value the two are identical. So those gauges hold their last complete values and a read fault looks like a flat, plausible, perfectly healthy line. This counter is the only thing that tells the two apart: above zero, every census panel on this dashboard is STALE and its flatness means nothing. Named for the 2026-07-27 outage, where a `Missing field: sourceData` decode bug failed every batch and the censuses published total=0 for ~50 min while the corpus sat intact at 943 films — the panels then read as a corpus collapse; today they would read as calm. Pairs with the kinowo-corpus-census-stuck alert.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 69
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 25
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (country) (rate(kinowo_worker_corpus_scan_incomplete_total{country=~\"$country\"}[$__rate_interval])) * 3600",
+          "legendFormat": "{{country}}"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "type": "row",
+      "title": "Upstream reachability — what the scrape is getting back",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      }
     },
     {
       "id": 10,
@@ -465,13 +530,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 50
+        "y": 78
       },
       "fieldConfig": {
         "defaults": {
@@ -505,13 +570,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 50
+        "y": 78
       },
       "fieldConfig": {
         "defaults": {
@@ -539,19 +604,32 @@
       ]
     },
     {
+      "id": 103,
+      "type": "row",
+      "title": "The pipeline — deferred work on the worker (k3s)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 86
+      }
+    },
+    {
       "id": 20,
       "title": "Worker — task flow (per min): enqueued → started → fully worked",
       "description": "The deferred-work pipeline on kinowo-worker, from worker /metrics. enqueued = new tasks added to the queue (dedup collapses excluded); started = tasks claimed by a worker; fully worked (done) = handlers that did real work (excludes 'skipped' freshness no-ops). In steady state the three track; started ≫ done means lots of skipped/rescheduled, done ≪ enqueued means a growing backlog.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 87
       },
       "fieldConfig": {
         "defaults": {
@@ -590,13 +668,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 66
+        "y": 95
       },
       "fieldConfig": {
         "defaults": {
@@ -628,13 +706,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 66
+        "y": 95
       },
       "fieldConfig": {
         "defaults": {
@@ -666,13 +744,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 66
+        "y": 95
       },
       "fieldConfig": {
         "defaults": {
@@ -704,13 +782,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 74
+        "y": 103
       },
       "fieldConfig": {
         "defaults": {
@@ -755,13 +833,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 82
+        "y": 111
       },
       "fieldConfig": {
         "defaults": {
@@ -796,17 +874,17 @@
     {
       "id": 24,
       "title": "Worker — queue depth",
-      "description": "Live size of the durable task queue: waiting (claimable) + worked_on (leased by a worker right now), from worker /metrics. worked_on tracks pool utilization against pool size (the worker runs poolSize workers, one task each). A climbing 'waiting' is a backlog the pool isn't draining — the thing to correlate with the worker CPU-credit/steal panels above.",
+      "description": "Live size of the durable task queue: waiting (claimable) + worked_on (leased by a worker right now), from worker /metrics. worked_on tracks pool utilization against pool size (the worker runs poolSize workers, one task each). A climbing 'waiting' is a backlog the pool isn't draining — correlate it with the worker CPU panel at the top: a backlog with flat CPU means the pool is blocked on upstreams, a backlog with pegged CPU means it is genuinely saturated.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 82
+        "y": 111
       },
       "fieldConfig": {
         "defaults": {
@@ -871,17 +949,17 @@
     {
       "id": 25,
       "title": "Worker — waiting tasks by type",
-      "description": "Current backlog broken down by task type (sampled from the bounded active snapshot). Shows WHICH work is piling up — e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source.",
+      "description": "Current backlog broken down by task type (sampled from the bounded active snapshot). Shows WHICH work is piling up — e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source. An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 90
+        "y": 119
       },
       "fieldConfig": {
         "defaults": {
@@ -909,17 +987,17 @@
     {
       "id": 26,
       "title": "Worker — oldest waiting task age by type (s)",
-      "description": "Head-of-line latency: how long the oldest still-waiting task of each type has sat in the queue. A steadily climbing line is starvation — that type's work isn't being picked up (no handler, perpetual backoff, or the pool saturated by another type).",
+      "description": "Head-of-line latency: how long the oldest still-waiting task of each type has sat in the queue. A steadily climbing line is starvation — that type's work isn't being picked up (no handler, perpetual backoff, or the pool saturated by another type). An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 90
+        "y": 119
       },
       "fieldConfig": {
         "defaults": {
@@ -948,13 +1026,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 98
+        "y": 127
       },
       "fieldConfig": {
         "defaults": {
@@ -983,13 +1061,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 107
+        "y": 136
       },
       "fieldConfig": {
         "defaults": {
@@ -1018,13 +1096,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 116
+        "y": 145
       },
       "fieldConfig": {
         "defaults": {
@@ -1050,19 +1128,32 @@
       ]
     },
     {
+      "id": 104,
+      "type": "row",
+      "title": "Corpus movement — merges, change stream, read model",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 154
+      }
+    },
+    {
       "id": 32,
       "title": "Worker — movie-row merges by reason & splits (per min)",
       "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse — rows a title-rule change un-merged, counted as new rows spawned (a 1→N split = N−1), each born fresh and re-resolving; normalize-rebuild merges are the re-merge half of a rebuild, splits the un-merge half.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 125
+        "y": 155
       },
       "fieldConfig": {
         "defaults": {
@@ -1093,194 +1184,19 @@
       ]
     },
     {
-      "id": 33,
-      "title": "kinowo — films served per city (all future showings)",
-      "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 133
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "kinowo_web_movies_served{country=~\"$country\",scope=\"all\"}",
-          "legendFormat": "{{city}}"
-        }
-      ]
-    },
-    {
-      "id": 34,
-      "title": "kinowo — films served per city (showing tomorrow)",
-      "description": "Distinct films each /:city/ page shows for tomorrow (≥1 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 133
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "kinowo_web_movies_served{country=~\"$country\",scope=\"tomorrow\"}",
-          "legendFormat": "{{city}}"
-        }
-      ]
-    },
-    {
-      "id": 37,
-      "title": "kinowo — films the movies collection would serve per city (all future)",
-      "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by — exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus — a stuck projection or a malformed/pruned web_movies row. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 142
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "kinowo_worker_movies_served{country=~\"$country\",scope=\"all\"}",
-          "legendFormat": "{{city}}"
-        }
-      ]
-    },
-    {
-      "id": 38,
-      "title": "kinowo — films the movies collection would serve per city (showing tomorrow)",
-      "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 142
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "kinowo_worker_movies_served{country=~\"$country\",scope=\"tomorrow\"}",
-          "legendFormat": "{{city}}"
-        }
-      ]
-    },
-    {
-      "id": 36,
-      "title": "Worker — movies corpus coverage (records, ids, ratings)",
-      "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 24,
-        "x": 0,
-        "y": 151
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "kinowo_worker_corpus_movies{country=~\"$country\"}",
-          "legendFormat": "{{subset}}"
-        }
-      ]
-    },
-    {
       "id": 39,
       "title": "Worker — movies change-stream events (per min, by op)",
       "description": "Change events the shared cursor consumes from the movies collection, by operation. rate() is the change-stream volume the cache + read-model projector reproject from.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 160
+        "y": 163
       },
       "fieldConfig": {
         "defaults": {
@@ -1309,13 +1225,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 160
+        "y": 163
       },
       "fieldConfig": {
         "defaults": {
@@ -1338,124 +1254,19 @@
       ]
     },
     {
-      "id": 41,
-      "title": "kinowo — total upcoming showtimes served (all cities)",
-      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 168
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 10
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(kinowo_worker_showtimes{country=~\"$country\"})",
-          "legendFormat": "total showtimes"
-        }
-      ]
-    },
-    {
-      "id": 42,
-      "title": "kinowo — upcoming showtimes served per city",
-      "description": "Per-city breakdown of the panel to the left: individual upcoming showtimes (single dated slots) the source `movies` collection would serve on each /:city/ page, from kinowo_worker_showtimes{city} (worker-side, projected from `movies`, sampled every 5 min, upcoming-only, readyToProject-gated). Every slot belongs to exactly one city, so these series sum to the total panel. A single city's showtime volume cratering while its film count holds is a venue that lost screens/sessions. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 168
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "kinowo_worker_showtimes{country=~\"$country\"}",
-          "legendFormat": "{{city}}"
-        }
-      ]
-    },
-    {
-      "id": 50,
-      "title": "Worker — corpus census: passes that could not read the whole corpus (per hour)",
-      "description": "READ THIS BEFORE READING ANY CENSUS PANEL ABOVE. The corpus census (one paged scan every 5 min feeding kinowo_worker_corpus_movies, kinowo_worker_movies_served and kinowo_worker_showtimes) publishes NOTHING when a batch read fails mid-scan — a partial count is fewer rows READ, not a smaller corpus, and as a gauge value the two are identical. So those gauges hold their last complete values and a read fault looks like a flat, plausible, perfectly healthy line. This counter is the only thing that tells the two apart: above zero, every census panel on this dashboard is STALE and its flatness means nothing. Named for the 2026-07-27 outage, where a `Missing field: sourceData` decode bug failed every batch and the censuses published total=0 for ~50 min while the corpus sat intact at 943 films — the panels then read as a corpus collapse; today they would read as calm. Pairs with the kinowo-corpus-census-stuck alert.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "app-metrics-live"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 176
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 25
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (country) (rate(kinowo_worker_corpus_scan_incomplete_total{country=~\"$country\"}[$__rate_interval])) * 3600",
-          "legendFormat": "{{country}}"
-        }
-      ]
-    },
-    {
       "id": 51,
       "title": "Worker — read-model prunes: films removed & sweeps that removed something (per min)",
       "description": "The DELETION side of the read model, which the size gauges above cannot show: they tell you the corpus is smaller, never which mechanism shrank it. films-pruned = derived documents removed during reconcile because their source row vanished or was re-keyed (kinowo_worker_readmodel_films_pruned — the event that can briefly 404 a film deep-link until the new key propagates; pair with the merges/splits panel for the re-key cause). prune sweeps that removed something = kinowo_worker_readmodel_reconcile_sweeps{did_work=\"true\"}, the cheap id-only orphan prune actually finding orphans — deletes and re-keys the change stream cannot deliver. A burst here under a flat film count is the shape a slot/showtime loss makes now that slots live in movie_slots and the read model is projected from them.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 176
+        "x": 0,
+        "y": 171
       },
       "fieldConfig": {
         "defaults": {
@@ -1489,13 +1300,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 184
+        "x": 12,
+        "y": 171
       },
       "fieldConfig": {
         "defaults": {
@@ -1524,13 +1335,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 184
+        "x": 0,
+        "y": 179
       },
       "fieldConfig": {
         "defaults": {
@@ -1553,19 +1364,32 @@
       ]
     },
     {
+      "id": 105,
+      "type": "row",
+      "title": "Enrichment coverage — ratings and cinema freshness",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 187
+      }
+    },
+    {
       "id": 55,
       "title": "Worker — ratings never attempted: resolved films with no first run, by site",
       "description": "The other half of the rating-coverage panel above. That one counts films that HAVE a rating; this counts TMDB-resolved films a site is eligible for whose first fetch has never happened at all — no freshness stamp, no attempt, from kinowo_worker_rating_resolved_not_run{site}. The distinction matters because the two failure modes look identical on a coverage gauge: a site that runs and finds nothing leaves the same hole as a site that never runs. A backlog that drains after each enrichment pass is normal incubation; one that sits flat and non-zero is a source that has stopped being enqueued (starved by the enqueue cap, or dropped by RatingSources eligibility for this country — Filmweb is Poland-only, so its absence outside PL is by design, not a stall).",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 192
+        "y": 188
       },
       "fieldConfig": {
         "defaults": {
@@ -1594,13 +1418,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 192
+        "y": 188
       },
       "fieldConfig": {
         "defaults": {
@@ -1629,13 +1453,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 200
+        "y": 196
       },
       "fieldConfig": {
         "defaults": {
@@ -1665,17 +1489,17 @@
     {
       "id": 58,
       "title": "Worker — oldest cinema scrape: how stale the worst cinema is, by country (h)",
-      "description": "Hours since the LEAST recently scraped cinema in each country last scraped successfully, from kinowo_worker_cinema_scrape_oldest_age_seconds. This is the roster's worst case, not its average: the HTTP-outcome panels count the scrapes that happened and can look perfectly clean while one venue has been dark for two days, because a cinema nobody scrapes contributes no samples to anything else. Healthy is a SAWTOOTH riding just under that country's scrape window — 1h for pl, 7h for uk, 10h for de (KINOWO_SCRAPE_FRESHNESS_MINUTES, set per worker app) — as cinemas fall due, get scraped, and the maximum resets. A line climbing in a straight diagonal past the window is the failure: the ScrapeReaper is not draining its backlog (CPU-credit throttle, chunked-scrape starvation) or one cinema throws on every attempt — a failed scrape deliberately does NOT mark freshness, so it stays stale and its age keeps climbing. Cinemas that have never scraped at all carry no age and are counted on the panel to the right, not folded in here.",
+      "description": "Hours since the LEAST recently scraped cinema in each country last scraped successfully, from kinowo_worker_cinema_scrape_oldest_age_seconds. This is the roster's worst case, not its average: the HTTP-outcome panels count the scrapes that happened and can look perfectly clean while one venue has been dark for two days, because a cinema nobody scrapes contributes no samples to anything else. Healthy is a SAWTOOTH riding just under that country's scrape window — 1h for pl, 7h for uk, 10h for de (KINOWO_SCRAPE_FRESHNESS_MINUTES, set per worker app) — as cinemas fall due, get scraped, and the maximum resets. A line climbing in a straight diagonal past the window is the failure: the ScrapeReaper is not draining its backlog (chunked-scrape starvation, or the pool blocked on a slow upstream) or one cinema throws on every attempt — a failed scrape deliberately does NOT mark freshness, so it stays stale and its age keeps climbing. Cinemas that have never scraped at all carry no age and are counted on the panel to the right, not folded in here.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 208
+        "y": 204
       },
       "fieldConfig": {
         "defaults": {
@@ -1704,13 +1528,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 208
+        "y": 204
       },
       "fieldConfig": {
         "defaults": {
@@ -1739,13 +1563,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 216
+        "y": 212
       },
       "fieldConfig": {
         "defaults": {
@@ -1774,13 +1598,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 216
+        "y": 212
       },
       "fieldConfig": {
         "defaults": {
@@ -1803,315 +1627,82 @@
       ]
     },
     {
-      "id": 43,
-      "title": "Worker — JVM heap & host free memory (vs -Xmx)",
-      "description": "kinowo-worker heap detail + how much RAM the machine has left, scaled to the heap band (RSS and the 1GB machine-total line are omitted so this reads at ~0-320MB). JVM heap / old-gen / non-heap are the worker's own exports (app-metrics-live), scoped to $country by an `and on(app)` data join; host FREE is a Fly host metric (fly-prometheus, ~15-25min lag), scoped to $country through the hidden $worker_host_app variable — fly_instance_* carries no country label and sits on a different datasource, so a data join cannot reach it and the derived app list is the only way to narrow it. Old gen (tenured) rides ~205MB of the ~309MB max heap (-Xmx320m), i.e. ~90% full at rest — so a whole-corpus read-model reprojection's transient allocation tips it into a SerialGC full-GC thrash (VM Thread ~0.6 core) that drains CPU credit to the floor (seen 2026-07-03 20:40). 'Host free' is the machine's remaining RAM: hovering ~200MB, it leaves little room to raise -Xmx on this box. Its twin to the right is the same view of the WEB app.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
-      },
+      "id": 106,
+      "type": "row",
+      "title": "Runtime — JVM memory and CPU on both tiers",
+      "collapsed": false,
+      "panels": [],
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 224
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "lineWidth": 1
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Host free"
-            },
-            "properties": [
-              {
-                "id": "custom.lineWidth",
-                "value": 3
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 8
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Heap cap (-Xmx)"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    8,
-                    6
-                  ]
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "semi-dark-gray"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "targets": [
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "fly-prometheus"
-          },
-          "expr": "fly_instance_memory_mem_available{app=~\"$worker_host_app\"}",
-          "legendFormat": "Host free — {{app}}"
-        },
-        {
-          "refId": "D",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "sum(jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"})",
-          "legendFormat": "Heap used"
-        },
-        {
-          "refId": "E",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "jvm_memory_pool_used_bytes{pool=\"Tenured Gen\"} and on(app) kinowo_worker_throttled{country=~\"$country\"}",
-          "legendFormat": "Old gen (tenured)"
-        },
-        {
-          "refId": "F",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "sum(jvm_memory_used_bytes{area=\"nonheap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"})",
-          "legendFormat": "Non-heap"
-        },
-        {
-          "refId": "G",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "jvm_memory_max_bytes{area=\"heap\"} and on(app) kinowo_worker_throttled{country=~\"$country\"}",
-          "legendFormat": "Heap cap (-Xmx)"
-        }
-      ]
+        "y": 220
+      }
     },
     {
-      "id": 44,
-      "title": "Web — JVM heap & host free memory (vs -Xmx)",
-      "description": "The WEB app's heap, read exactly like the worker panel to its left. The web JVM's own jvm_* exports carry no country label (one process per country, so the app label already implies it) — they are scoped to $country by intersecting with kinowo_web_movies_served{country}, the same `and on(app)` data join the worker panel uses against kinowo_worker_throttled. Host FREE is narrowed to $country through the hidden $web_host_app variable, the mirror of the worker panel's $worker_host_app — fly_instance_* has no country label, so that derived app list is what scopes it. Different tuning from the worker, so read the shape differently: web runs G1 at -Xmx384m (fly.toml JAVA_OPTS), so 'Old gen (G1)' sawtooths as concurrent cycles reclaim rather than sitting pinned ~90% full, and a rising floor across cycles — not a single spike — is the leak signal.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "datasource",
-        "uid": "-- Mixed --"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 224
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "lineWidth": 1
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Host free"
-            },
-            "properties": [
-              {
-                "id": "custom.lineWidth",
-                "value": 3
-              },
-              {
-                "id": "custom.fillOpacity",
-                "value": 8
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Heap cap (-Xmx)"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    8,
-                    6
-                  ]
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "semi-dark-gray"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "targets": [
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "fly-prometheus"
-          },
-          "expr": "fly_instance_memory_mem_available{app=~\"$web_host_app\"}",
-          "legendFormat": "Host free — {{app}}"
-        },
-        {
-          "refId": "D",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "sum(jvm_memory_used_bytes{area=\"heap\"} and on(app) kinowo_web_movies_served{country=~\"$country\"})",
-          "legendFormat": "Heap used"
-        },
-        {
-          "refId": "E",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "sum(jvm_memory_pool_used_bytes{pool=\"G1 Old Gen\"} and on(app) kinowo_web_movies_served{country=~\"$country\"})",
-          "legendFormat": "Old gen (G1)"
-        },
-        {
-          "refId": "F",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "sum(jvm_memory_used_bytes{area=\"nonheap\"} and on(app) kinowo_web_movies_served{country=~\"$country\"})",
-          "legendFormat": "Non-heap"
-        },
-        {
-          "refId": "G",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "max(jvm_memory_max_bytes{area=\"heap\"} and on(app) kinowo_web_movies_served{country=~\"$country\"})",
-          "legendFormat": "Heap cap (-Xmx)"
-        }
-      ]
-    },
-    {
-      "id": 45,
-      "title": "kinowo-worker CPU vs credit-earn breakeven (centi-cores) — sustained ABOVE the line drains credit",
-      "description": "Worker CPU in centi-cores (100 = 1 core). 'java (fresh)' is the JVM's own process CPU from the app-metrics sidecar (~15s fresh, leading); 'host busy (authoritative)' is sum(rate(fly_instance_cpu{mode!=idle|steal})) — what Fly actually bills credit against (~15-25min lagged). The dashed breakeven line (~13cc) is the shared-cpu-2x credit EARN rate (empirical): while CPU sits ABOVE it the credit bucket drains, below it refills. Dead-flat CPU pinned above the line with no dips = a spin (the JDK-NIO2 epoll wedge) OR a structural overload — a reboot re-grant just re-drains; a bursty CPU that dips well under the line rebuilds credit. Pair with 'CPU credit balance'.",
+      "id": 43,
+      "title": "Worker (k3s) — JVM heap against -Xmx, and RAM left on the host",
+      "description": "The worker runs SerialGC, so 'Old gen (tenured)' sitting near the -Xmx cap at rest is the danger sign: a whole-corpus reprojection's transient allocation then tips it into full-GC thrash, and the VM thread eats a core. 'Host free' is k3s-worker-1's remaining RAM — read it as the ceiling on raising -Xmx, NOT as the worker's own footprint, because the k3s agent and every other pod on that node share it. RSS and native memory (the other half of the story, and the half that caused the old OOM restarts) are on the worker-diagnostics dashboard.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 9,
-        "w": 24,
+        "w": 12,
         "x": 0,
-        "y": 241
+        "y": 221
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "bytes",
+          "min": 0,
           "custom": {
             "spanNulls": 300000,
             "drawStyle": "line",
-            "fillOpacity": 12,
-            "lineWidth": 2,
-            "axisLabel": "centi-cores (100 = 1 core)"
+            "fillOpacity": 0,
+            "lineWidth": 1
           }
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "breakeven ~13cc (drains above)"
+              "options": "Host free"
             },
             "properties": [
               {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
-                }
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    10,
-                    6
-                  ]
-                }
+                "id": "custom.lineWidth",
+                "value": 3
               },
               {
                 "id": "custom.fillOpacity",
-                "value": 0
+                "value": 8
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "host busy (cc, authoritative — lagged)"
+              "options": "Heap cap (-Xmx)"
             },
             "properties": [
-              {
-                "id": "custom.fillOpacity",
-                "value": 0
-              },
               {
                 "id": "custom.lineStyle",
                 "value": {
                   "fill": "dash",
                   "dash": [
-                    4,
-                    4
+                    8,
+                    6
                   ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
                 }
               }
             ]
@@ -2121,47 +1712,127 @@
       "targets": [
         {
           "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "rate(process_cpu_seconds_total[5m])*100 and on(app) kinowo_worker_throttled{country=~\"$country\"}",
-          "legendFormat": "java (cc, fresh)"
+          "expr": "node_memory_MemAvailable_bytes{host=\"k3s-worker-1\"}",
+          "legendFormat": "Host free"
         },
         {
           "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "fly-prometheus"
-          },
-          "expr": "sum by (app) (rate(fly_instance_cpu{app=~\"kinowo-worker.*\",mode!~\"idle|steal\"}[5m]))",
-          "legendFormat": "host busy — {{app}} (authoritative, lagged)"
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",area=\"heap\"}",
+          "legendFormat": "Heap used"
         },
         {
           "refId": "C",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "app-metrics-live"
-          },
-          "expr": "vector(13)",
-          "legendFormat": "breakeven ~13cc (drains above)"
+          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",pool=\"Tenured Gen\"}",
+          "legendFormat": "Old gen (tenured)"
+        },
+        {
+          "refId": "D",
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",area=\"nonheap\"}",
+          "legendFormat": "Non-heap"
+        },
+        {
+          "refId": "E",
+          "expr": "jvm_memory_max_bytes{job=\"kinowo-worker\",area=\"heap\"}",
+          "legendFormat": "Heap cap (-Xmx)"
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "title": "Web (Fly) — JVM heap against -Xmx, and process RSS",
+      "description": "The web tier's heap, read like the worker panel to its left, except it runs G1 rather than SerialGC so a full old gen is far less alarming. RSS stands in for the host-free line the worker panel has: Fly's host metrics are gone with the managed Prometheus, so the only way to judge how close this process is to its machine's memory limit is its own resident set. RSS climbing well past heap+non-heap means native growth, not a leak the heap graph can show.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 221
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Heap cap (-Xmx)"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-web\",area=\"heap\"}",
+          "legendFormat": "Heap used"
+        },
+        {
+          "refId": "B",
+          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-web\",pool=\"G1 Old Gen\"}",
+          "legendFormat": "Old gen (G1)"
+        },
+        {
+          "refId": "C",
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-web\",area=\"nonheap\"}",
+          "legendFormat": "Non-heap"
+        },
+        {
+          "refId": "D",
+          "expr": "process_resident_memory_bytes{job=\"kinowo-web\"}",
+          "legendFormat": "RSS"
+        },
+        {
+          "refId": "E",
+          "expr": "jvm_memory_max_bytes{job=\"kinowo-web\",area=\"heap\"}",
+          "legendFormat": "Heap cap (-Xmx)"
         }
       ]
     },
     {
       "id": 46,
       "title": "kinowo-worker CPU drivers — projection vs JIT vs other (stacked = total CPU)",
-      "description": "STACKED-AREA breakdown of the worker's process CPU (centi-cores). The three areas sum to total CPU, so at a glance you see how much of the daytime load is READ-MODEL PROJECTION vs JIT vs everything else. projection (red) = rate(kinowo_worker_readmodel_project_cpu_seconds_total)*100 — the THREAD CPU burned inside ReadModelProjection.projectAll (the 2026-07 credit-floor driver: synopsisByCity re-projecting festival/wide-release films on every screenings change, cut hard by synopsis memoization). It reads thread CPU, NOT wall-clock, on purpose: wall-clock summed across concurrent projections can exceed the second it is measured in, and steal on a throttled box inflates it further — the old wall-clock version read 45.9cc against an 18.0cc process total on kinowo-worker-uk (2026-07-28), i.e. it claimed projection burned more CPU than the whole process had, and it was least trustworthy exactly when read to diagnose a throttle. Wall-clock still drives the duration percentiles and the heatmap below, where LATENCY is the question. JIT (purple) = rate(jvm_compilation_time_seconds_total)*100 — boot warm-up (transient). other (grey) = process CPU − projection − JIT — scrape/enrich parsing + Mongo I/O + GC. The dashed 'process CPU total' overlay is a NON-stacked sanity line: the three areas should sum to it, and since the projection series became real CPU they genuinely can. The ~13cc line is the CPU-credit earn/burn breakeven. NOTE the load is DAY-shaped for PL/DE (~30cc daytime, ~5cc overnight — schedules static → no screenings changes → no projection); UK is FLAT around the clock because its chunked scrape never idles, which is why UK credit never refills. Per-second trigger/output rates are in the companion panel below (different unit — can't stack with cc).",
+      "description": "STACKED breakdown of the worker's process CPU (centi-cores): the three areas sum to total, so you can see at a glance how much of a daytime hump is READ-MODEL PROJECTION versus JIT versus everything else. Projection dominating is normal and self-limiting; 'other' dominating for a long stretch is GC or scrape work and worth chasing. The dashed total is drawn over the stack as a check that the three parts really do account for the CPU.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 250
+        "y": 230
       },
       "fieldConfig": {
         "defaults": {
@@ -2280,23 +1951,23 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum without(country)(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m])*100)",
-          "legendFormat": "projection (cc)"
+          "expr": "sum(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m]) * 100)",
+          "legendFormat": "read-model projection"
         },
         {
           "refId": "B",
-          "expr": "rate(jvm_compilation_time_seconds_total[5m])*100 and on(app) kinowo_worker_throttled{country=~\"$country\"}",
-          "legendFormat": "JIT (cc)"
+          "expr": "sum(rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\"}[5m]) * 100)",
+          "legendFormat": "JIT compilation"
         },
         {
           "refId": "C",
-          "expr": "clamp_min( (rate(process_cpu_seconds_total[5m])*100) - sum without(country)(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m])*100) - (rate(jvm_compilation_time_seconds_total[5m])*100), 0 ) and on(app) kinowo_worker_throttled{country=~\"$country\"}",
-          "legendFormat": "other: scrape + Mongo I/O + GC (cc)"
+          "expr": "clamp_min( sum(rate(process_cpu_seconds_total{job=\"kinowo-worker\"}[5m]) * 100) - sum(rate(kinowo_worker_readmodel_project_cpu_seconds_total{country=~\"$country\"}[5m]) * 100) - sum(rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\"}[5m]) * 100), 0 )",
+          "legendFormat": "other (GC, scrape, idle poll)"
         },
         {
           "refId": "D",
-          "expr": "rate(process_cpu_seconds_total[5m])*100 and on(app) kinowo_worker_throttled{country=~\"$country\"}",
-          "legendFormat": "process CPU total (cc)"
+          "expr": "sum(rate(process_cpu_seconds_total{job=\"kinowo-worker\"}[5m]) * 100)",
+          "legendFormat": "total process CPU"
         }
       ]
     },
@@ -2307,13 +1978,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 259
+        "y": 239
       },
       "fieldConfig": {
         "defaults": {
@@ -2357,13 +2028,13 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 266
+        "y": 246
       },
       "fieldConfig": {
         "defaults": {
@@ -2432,13 +2103,13 @@
       "type": "heatmap",
       "datasource": {
         "type": "prometheus",
-        "uid": "app-metrics-live"
+        "uid": "local-prometheus"
       },
       "gridPos": {
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 275
+        "y": 255
       },
       "options": {
         "calculate": false,
@@ -2474,125 +2145,22 @@
           "legendFormat": "{{le}}"
         }
       ]
-    },
-    {
-      "id": 60,
-      "title": "Volume disk used % — machines with a volume",
-      "description": "Percent of each Fly volume consumed. Percent (not bytes) is the comparable view because the volumes differ in size — mongo's is 3GB, the rest 1GB — so a raw-bytes line would make the small ones look permanently healthy. Thresholds at 80/90% are headroom warnings, not the fill alarm: kinowo-disk-fill-projected watches the SLOPE (predict_linear over 6h) and will fire long before a slow leak reaches this line. Read this panel for 'how much room is left right now', that alert for 'is it trending to zero'. Volume-backed machines only: kinowo-mongo (/data/db), kinowo-grafana (/var/lib/grafana) and the three workers (/data). Deliberately NOT scoped to $country — mongo and grafana are shared infrastructure, so country-scoping would hide the two that matter most. /.fly-upper-layer, the ephemeral container root every machine reports, is excluded by name rather than by listing the three mounts, so a newly-provisioned volume appears here without a dashboard edit.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fly-prometheus"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 0,
-        "y": 284
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "min": 0,
-          "max": 100,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 8,
-            "lineWidth": 2
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 80
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "100 * (1 - fly_instance_filesystem_blocks_avail{mount!=\"/.fly-upper-layer\"} / fly_instance_filesystem_blocks{mount!=\"/.fly-upper-layer\"})",
-          "legendFormat": "{{app}} {{mount}}"
-        }
-      ]
-    },
-    {
-      "id": 61,
-      "title": "Volume free space — machines with a volume",
-      "description": "Absolute bytes still free on each volume — the companion to the percent panel on its left, and the one to read when deciding whether a volume needs extending, since what runs out is gigabytes, not percent. mongo's /data/db carries a 990MB-capped oplog that ring-buffers at its cap, so its line sits flat rather than climbing; a sustained DECLINE there is real growth, not the oplog. Same scope as the panel on its left: volume-backed machines only, not scoped to $country.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "fly-prometheus"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 284
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "bytes",
-          "min": 0,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "lineWidth": 2
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "min"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "asc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "fly_instance_filesystem_blocks_avail{mount!=\"/.fly-upper-layer\"} * fly_instance_filesystem_block_size{mount!=\"/.fly-upper-layer\"}",
-          "legendFormat": "{{app}} {{mount}}"
-        }
-      ]
     }
   ],
-  "description": "QUARANTINED after the 2026-08-29 migration off Fly. Every panel reads `fly-prometheus` (no working token) or `app-metrics-live` (no 6PN path from monitoring-1), so the whole page renders No data. Kept, not deleted: the apps it watches are still running on Fly and it starts working again the day there is a credential. The first panel explains how. For the Hetzner machines, use \"Kinowo Fleet — Hetzner hosts\"."
+  "description": "One screen for the whole application, across the two platforms it now runs on: the scraping worker on k3s and the web tier still on Fly. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible — most importantly, the web tier has no HTTP latency signal at all any more.",
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Host-level view of these machines",
+      "tags": [
+        "fleet"
+      ],
+      "asDropdown": false,
+      "targetBlank": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tooltip": "CPU, memory, disk and systemd state per Hetzner host — including k3s-worker-1, which runs the worker pod. Host numbers include k3s itself, so they are not the worker's own."
+    }
+  ]
 }

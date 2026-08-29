@@ -39,11 +39,25 @@ rule_files:
   - "/etc/prometheus/rules/wireguard-fly.rules"
 
 # EVERY JOB THAT IS NOT UNCONDITIONAL LIVES IN scrape.d, AND THIS IS ONE GLOB OVER ALL OF THEM.
-# Two files land there today:
+# Five files land there today:
 #
 #   node-targets.yaml  generated from `fleet.prometheus.nodeTargets`, always written -- with an
 #                      empty `scrape_configs` if the list is empty, so the glob never matches a
 #                      half-written file.
+#   mongodb-targets.yaml
+#                      the `mongodb` job, from `fleet.prometheus.mongodbExporterTargets`. Written
+#                      the same way and for the same reason. It carries its OWN scrape interval and
+#                      timeout, wider than the global ones below -- see the generator's comment in
+#                      roles/prometheus.nix for why a 10s timeout against a live mongod turns a
+#                      busy database into a target that reads as a dead one.
+#   kube-state-metrics-targets.yaml
+#                      the `kube-state-metrics` job, from
+#                      `fleet.prometheus.kubeStateMetricsTargets`. Scraped over a NodePort on the
+#                      private subnet, because Prometheus runs outside the cluster and holds no
+#                      Kubernetes credential -- deliberately. The trade is written out in
+#                      infra/kubernetes/kube-state-metrics/.
+#   kinowo-apps.yaml   the application's own jobs -- the worker on k3s and the web tier on Fly.
+#                      Installed unconditionally; it needs no credential anyone can revoke.
 #   scrape-fly.yaml    written only when `fleet.prometheus.scrapeFly` is true. See the long note in
 #                      roles/prometheus.nix: the job needs a Fly token, the only one available is
 #                      org-wide, and an org-wide Fly token must not sit on the host that also runs

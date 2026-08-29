@@ -1,27 +1,35 @@
 ---
-# K3S, WATCHED FROM OUTSIDE THE CLUSTER BECAUSE THAT IS THE ONLY VANTAGE POINT THIS FLEET HAS.
+# K3S, WATCHED FROM TWO PLACES THAT FAIL INDEPENDENTLY.
 #
 # ------------------------------------------------------------------------------------------------
-# WHAT IS DELIBERATELY NOT IN THIS FILE, AND IT IS MOST OF WHAT YOU WOULD EXPECT
+# THE TWO VANTAGE POINTS, AND WHY THE FILE IS IN TWO GROUPS
 # ------------------------------------------------------------------------------------------------
 #
-# THERE IS NO kube-state-metrics ON THIS FLEET, and no metrics-server or kubelet scrape either. So
-# nothing here can say:
+#   `k3s`                 node_exporter's systemd collector, scraped over the private network from
+#                         OUTSIDE the cluster. It sees one thing -- whether `k3s.service` is
+#                         running -- and it keeps seeing it when the cluster itself is unusable.
+#   `kube-state-metrics`  kube-state-metrics, running IN the cluster and scraped over a NodePort
+#                         (infra/kubernetes/kube-state-metrics/). It turns the state of Kubernetes
+#                         OBJECTS into metrics: node conditions, Deployment replica counts, pod
+#                         waiting reasons, container termination reasons.
 #
-#   * whether a node is `Ready` (that is `kube_node_status_condition`),
-#   * whether a Deployment has its replicas, or a Pod is CrashLoopBackOff,
-#   * anything at all about scheduling, evictions or resource requests.
+# THE SECOND GROUP IS NEW. This file previously said at length that kube-state-metrics did not
+# exist here and that writing node-condition or workload rules against metric names nothing
+# produced would be strictly worse than leaving them out -- a rule whose series never exists does
+# not error and does not fire, it sits in the rule list looking like coverage. That reasoning has
+# not changed; what changed is that the series exist now.
 #
-# Those are the rules somebody will want first, and writing them anyway -- against metric names
-# nothing on this fleet produces -- would be strictly worse than leaving them out. A rule whose
-# series never exists does not error and does not fire: it sits in the rule list looking like
-# coverage, and the first time it is relied on is the first time anyone discovers it never could
-# have worked. The gap is named here instead, which is the honest version of the same information.
+# WHAT MAKES THEM ORDER-DEPENDENT RATHER THAN REDUNDANT. kube-state-metrics learns everything from
+# the apiserver, so when the control plane is gone it goes quiet -- and quiet is not an alert.
+# `K3sServerNotRunning` in the first group is what covers that, from a machine outside the cluster,
+# and it is why the systemd rules are not superseded by the richer ones below. Read the `k3s` group
+# first when both fire: a node reported NotReady by an apiserver that is itself failing is a
+# symptom.
 #
-# THE FIX, WHEN IT IS WORTH IT: deploy kube-state-metrics into the cluster, expose it on the
-# private network, add it to `fleet.prometheus.nodeTargets` (or a job of its own), and write the
-# node-condition and workload rules against real series. That is a change to the cluster, not to
-# this file, and it is not worth doing while k3s-worker-1 runs nothing.
+# STILL NOT COVERED, so its absence does not read as an oversight: there is no metrics-server and
+# no kubelet or cAdvisor scrape, so nothing here knows actual CPU or memory USE per pod --
+# `kube_pod_container_resource_requests` is what was ASKED for, not what is consumed. The host-level
+# view in host-health.rules covers the machine; attributing pressure to a pod does not.
 #
 # ------------------------------------------------------------------------------------------------
 # WHAT CAN BE SAID FROM HERE, AND IT IS NOT NOTHING
@@ -97,8 +105,152 @@ groups:
         annotations:
           summary: "Nothing is reporting the state of any k3s unit"
           description: >-
-            Both k3s alerts are comparisons and cannot fire without this series, so the cluster is
-            currently unwatched by anything at all -- and there is no kube-state-metrics on this
-            fleet to notice from the inside either (see this file's header). The likely causes are
-            node_exporter's systemd collector being off, or both k3s hosts having dropped out of
-            scrape. IT DOES NOT MEAN K3S IS RUNNING.
+            Both k3s alerts are comparisons and cannot fire without this series, so the only view
+            of k3s that survives the control plane being gone has itself gone. kube-state-metrics
+            does NOT cover this: it learns everything from the apiserver, so it goes quiet in
+            exactly the case these two rules exist for. The likely causes are node_exporter's
+            systemd collector being off, or both k3s hosts having dropped out of scrape.
+            IT DOES NOT MEAN K3S IS RUNNING.
+
+  # ------------------------------------------------------------------------------------------------
+  # THE OBJECT-STATE GROUP. Everything here needs kube-state-metrics to be running IN the cluster
+  # and reachable on its NodePort; see infra/kubernetes/kube-state-metrics/deployment.yaml for the
+  # exposure decision and what it costs.
+  #
+  # THESE SERIES CARRY NO `host` OR `role` LABEL, deliberately, and the scrape job is configured
+  # that way on purpose (see `kubeStateMetricsYaml` in roles/prometheus.nix): the address scraped is
+  # whichever node answers the NodePort, while the DATA describes the whole cluster. Use the series'
+  # own `node`, `namespace`, `pod` and `container` labels; a `host` label here would be true of the
+  # connection and false of everything it carried.
+  #
+  # THE METRIC NAMES ARE kube-state-metrics v2.14.0's, pinned in the Deployment. They are stable
+  # across 2.x but not guaranteed across a major bump, and a renamed series is SILENT -- hence the
+  # `absent()` companion at the end of this group, which is the one rule here that catches a wrong
+  # name, a failed RBAC grant and a dead exporter alike.
+  # ------------------------------------------------------------------------------------------------
+  - name: kube-state-metrics
+    rules:
+      - alert: K3sNodeNotReady
+        # `== 0` ON THE `status="true"` SERIES, NOT `== 1` ON `status="false"`. kube-state-metrics
+        # publishes three series per condition -- true, false and unknown -- and a node whose
+        # kubelet has stopped reporting sits at `unknown`, not `false`. Asserting on the true series
+        # covers both bad states and any third one a future version invents.
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        # TEN MINUTES. The node lease expires after about 40 seconds and the controller marks a node
+        # NotReady shortly after, so this is well past a transient blip -- and past an agent restart
+        # during a deploy, which is the common cause of a brief NotReady on this fleet. It is
+        # deliberately longer than `K3sServerNotRunning`'s five: when the control plane goes, every
+        # node goes NotReady as a consequence, and the cause should page first.
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kubernetes node {{ $labels.node }} is not Ready"
+          description: >-
+            CHECK `K3sServerNotRunning` AND `K3sAgentNotRunning` FIRST. This rule reads the
+            apiserver's opinion; those two read the machines directly, and a node that is NotReady
+            because its k3s unit is dead is one fact reported twice. A node NotReady with both of
+            those silent is the interesting case -- the unit is running and the kubelet is failing
+            its own checks, for which `journalctl -u k3s -n 200` on that node is the first command.
+            SEVERITY IS A WARNING BECAUSE OF WHAT IS SCHEDULED HERE TODAY, matching
+            `K3sAgentNotRunning`'s reasoning in the group above; if that rule is ever raised to
+            critical, raise this one in the same commit.
+
+      - alert: K3sDeploymentReplicasMissing
+        # SPEC MINUS READY, NOT `available`. `available` counts pods past their minReadySeconds,
+        # which for a Deployment with no readiness probe is a weaker statement than `ready`.
+        expr: >-
+          kube_deployment_spec_replicas - kube_deployment_status_replicas_ready > 0
+        # FIFTEEN MINUTES, and it is the `for:` that makes this rule usable rather than the
+        # expression. Every ordinary deploy passes through this state: a `Recreate` strategy (which
+        # is what kinowo/worker-pl uses) is briefly at zero ready by design, and an image pull from
+        # a private GHCR on a cold node is minutes on its own. Fifteen minutes is past all of that
+        # and still names a rollout that is genuinely stuck within the hour. A GUESS, sized off the
+        # slowest normal case rather than measured.
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $value }} replica(s) short"
+          description: >-
+            A rollout that has not converged. `kubectl -n {{ $labels.namespace }} describe
+            deployment {{ $labels.deployment }}` and then `describe pod` on the pending replica; the
+            three causes worth ruling out in order are an image that cannot be pulled (the
+            `ghcr-pull` secret is a read:packages token created out of band and is not in git -- see
+            infra/kubernetes/worker/README.md), a PersistentVolumeClaim that cannot bind, and a pod
+            that cannot be scheduled at all. THAT LAST ONE IS A REAL CONSTRAINT ON THIS CLUSTER, not
+            a hypothetical: monitoring-1 is tainted NoSchedule as the control plane, so there is one
+            schedulable node, and a pod holding a local-path PVC cannot move off it.
+
+      - alert: K3sPodCrashLooping
+        expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1
+        # TEN MINUTES. The kubelet's backoff reaches its five-minute cap after about six restarts,
+        # so ten minutes means the container has failed repeatedly rather than once badly. Shorter
+        # than that and this fires during the ordinary first-boot failure of a misconfigured deploy,
+        # which the person deploying is already watching.
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} is in CrashLoopBackOff"
+          description: >-
+            The container starts, exits, and is restarted with increasing backoff. `kubectl -n
+            {{ $labels.namespace }} logs {{ $labels.pod }} -c {{ $labels.container }} --previous` is
+            the command that shows WHY -- the current logs are from the attempt that has not failed
+            yet. IF THIS IS THE WORKER, note that its own startup path is slow by design (a generous
+            startupProbe covers a Mongo hydrate that can take minutes) and that
+            `-XX:+ExitOnOutOfMemoryError` is set, so a heap problem presents as a clean exit and a
+            restart loop rather than as an OOM kill. Check `K3sContainerOOMKilled` below to tell the
+            two apart.
+
+      - alert: K3sContainerOOMKilled
+        # TWO CONDITIONS, AND THE SECOND ONE IS WHAT MAKES THIS RULE HONEST.
+        # `kube_pod_container_status_last_terminated_reason` describes the LAST termination
+        # whenever it happened, so on its own it would go on firing for days about a single kill
+        # that has already been dealt with. Gating it on a restart within the same window means it
+        # fires about a kill that is HAPPENING, not one that once did.
+        expr: >-
+          kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+            and on (namespace, pod, container)
+              rate(kube_pod_container_status_restarts_total[15m]) > 0
+        # FIVE MINUTES, short because this is already a statement about something that has happened
+        # rather than a threshold being approached. The 15m rate window above is where the patience
+        # lives.
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} was OOMKilled"
+          description: >-
+            THE CGROUP LIMIT KILLED IT, WHICH IS NOT THE SAME AS THE NODE RUNNING OUT OF MEMORY --
+            k3s-worker-1 has 16GB and one workload. Check the container's `resources.limits.memory`
+            first; the limit is the number that decided this. FOR A JVM CONTAINER, an OOM kill means
+            the process grew past its limit in NATIVE memory rather than heap, because
+            `-XX:+ExitOnOutOfMemoryError` makes a heap exhaustion a clean exit instead -- so look at
+            metaspace, direct buffers and thread stacks, not `-Xmx`. If the host itself is under
+            memory pressure, `MemoryAvailableLow` in host-health.rules will be firing alongside
+            this and it is the one to read first.
+
+      - alert: KubeStateMetricsSeriesAbsent
+        # ONE COMPANION FOR THE WHOLE GROUP, on the series that cannot legitimately be missing: this
+        # cluster always has at least one node, so `kube_node_info` is absent only if
+        # kube-state-metrics is not being scraped, is not permitted to list nodes, or has renamed
+        # the series. The workload series are NOT usable for this -- `kube_deployment_spec_replicas`
+        # is legitimately absent on a cluster with no Deployments, so an `absent()` on it would fire
+        # on an empty cluster and teach everyone to ignore it.
+        expr: absent(kube_node_info)
+        # THIRTY MINUTES, matching every other `absent()` companion in this directory.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting Kubernetes object state"
+          description: >-
+            Every rule in this group is a comparison and none of them can fire without
+            kube-state-metrics, so the cluster's workloads are currently unwatched -- node
+            conditions, replica counts, crash loops and OOM kills all included. If `TargetDown`
+            is silent alongside this, the exporter IS answering and the problem is inside it:
+            either the ClusterRole in infra/kubernetes/kube-state-metrics/rbac.yaml no longer grants
+            `nodes`, or the `--resources=` list in the Deployment stopped naming them, or the image
+            was bumped across a rename. Those two files are written to agree with each other and
+            nothing enforces it. IT DOES NOT MEAN THE CLUSTER IS HEALTHY.

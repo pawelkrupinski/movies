@@ -209,10 +209,16 @@ in
   config = lib.mkIf cfg.enable {
     assertions = [
       {
-        assertion = !config.fleet.mongodb.enable || cfg.mongoPort == config.fleet.mongodb.port;
+        # `or false` / `or cfg.mongoPort`, NOT a plain attribute read. On a host that does not
+        # import roles/mongodb.nix the option does not merely evaluate false -- `fleet.mongodb` does
+        # not EXIST, and reading it fails the whole configuration with "attribute 'mongodb'
+        # missing". The comment above always said this role stays usable on a host with no database;
+        # it only became true when monitoring-1 imported it (2026-08-29) and did not evaluate.
+        assertion = !(config.fleet.mongodb.enable or false)
+          || cfg.mongoPort == (config.fleet.mongodb.port or cfg.mongoPort);
         message = ''
           fleet.wireguardFly.mongoPort (${toString cfg.mongoPort}) does not match
-          fleet.mongodb.port (${toString config.fleet.mongodb.port}). The tunnel would then be open
+          fleet.mongodb.port (${toString (config.fleet.mongodb.port or cfg.mongoPort)}). The tunnel would then be open
           on a port nothing listens on, and mongod would be listening on a port the tunnel drops --
           which reads as a Fly networking fault rather than as a one-line disagreement here.
         '';
@@ -279,7 +285,7 @@ in
     # the same transaction, so that the common case needs no retry -- but it must not be gated on
     # it: `requires` would mean a failed tunnel keeps the database from starting at all, which is
     # the coupling the sysctl above exists to break.
-    systemd.services.mongodb = lib.mkIf config.fleet.mongodb.enable {
+    systemd.services.mongodb = lib.mkIf (config.fleet.mongodb.enable or false) {
       after = [ "wireguard-${cfg.interface}.service" ];
     };
 

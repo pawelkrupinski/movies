@@ -1,0 +1,75 @@
+# THE APPLICATION'S OWN METRICS -- the worker on k3s, and the web tier still on Fly.
+#
+# These are NOT node_exporter numbers. They are what the JVM and the application publish about
+# themselves: heap, GC, task-queue depth, scrape pacing, enrichment counters. Host health says the
+# machine is alive; this says the software is doing its job.
+#
+# WHY THIS FILE EXISTS SEPARATELY from prometheus.yaml: it is installed unconditionally into
+# scrape.d, which prometheus.yaml globs. Keeping the app jobs out of the main file means a change to
+# what the application exposes does not touch the file that also defines the fleet's own monitoring.
+
+# THE WORKER, on k3s, reached by NodePort.
+#
+# 10.20.0.12:30900, NOT a pod IP and NOT a Service name. Prometheus runs OUTSIDE the cluster with no
+# Kubernetes credentials -- deliberately, since the only credential k3s issues is cluster-admin -- so
+# it can neither discover pods nor resolve cluster DNS. A pod IP would work today and go stale on the
+# next rollout, reading as "worker down" every time the worker is deployed. The NodePort is the one
+# address that survives a restart. See infra/kubernetes/worker/deployment.yaml.
+
+# A MAPPING WITH `scrape_configs:`, NOT A BARE LIST. A file named by `scrape_config_files` is
+# parsed as a fragment of the main config, so it must carry the key -- a top-level sequence fails
+# with `cannot unmarshal !!seq into config.ScrapeConfigs` and PROMETHEUS REFUSES TO START, taking
+# the fleet's monitoring down rather than skipping the file. Hit on 2026-08-29.
+scrape_configs:
+  - job_name: kinowo-worker
+    metrics_path: /metrics
+    # 30s, not 15s. These are counters and gauges about batch work measured in minutes; twice the
+    # resolution would double the series volume on a 4GB box for no question it would answer sooner.
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["10.20.0.12:30900"]
+        labels:
+          app: kinowo-worker
+          country: pl
+          tier: worker
+          platform: k3s
+
+  # THE WEB TIER, still on Fly, scraped over this host's 6PN WireGuard peer.
+  #
+  # THIS IS THE WAY ROUND THE REVOKED FLY TOKEN, and it is better than the thing it replaces. Fly's
+  # managed Prometheus needs a token nobody can currently mint, and publishes Fly's host-level view.
+  # The app publishes its OWN metrics on 9000 over the private network, so a peer on 6PN reads them
+  # directly -- richer data, and a credential this fleet holds rather than one somebody else issues.
+  #
+  # DNS-BASED DISCOVERY, NOT A LITERAL ADDRESS. A Fly machine's 6PN address changes on every deploy,
+  # so a hardcoded fdaa: literal would break at the next release and look like the app going down.
+  # `kinowo.internal` is Fly's own DNS name for all instances of the app; systemd-resolved on this
+  # host forwards `.internal` to Fly's resolver (see roles/prometheus.nix). AAAA because 6PN is
+  # IPv6-only.
+  - job_name: kinowo-web
+    metrics_path: /metrics
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    dns_sd_configs:
+      - names: ["kinowo.internal"]
+        type: AAAA
+        port: 9000
+        # A minute is plenty: the address changes on deploy, not continuously, and a shorter refresh
+        # just asks Fly's resolver more often.
+        refresh_interval: 60s
+    relabel_configs:
+      # The discovered target is a bare fdaa: address, which is unreadable in a panel legend and
+      # changes on every deploy -- so pin a stable `instance` and keep the address only in `address`.
+      - source_labels: [__address__]
+        target_label: address
+      - target_label: instance
+        replacement: kinowo-web
+      - target_label: app
+        replacement: kinowo
+      - target_label: country
+        replacement: pl
+      - target_label: tier
+        replacement: web
+      - target_label: platform
+        replacement: fly

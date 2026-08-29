@@ -30,6 +30,13 @@
 # manual step at build, and `verify-mongodb` (not written yet) is where the check that it happened
 # belongs.
 #
+# WHAT WATCHES THIS IS A SEPARATE ROLE, AND IT IS NOT OPTIONAL COLOUR. Nothing in this file can be
+# asked whether mongod is PRIMARY or how much oplog window is left -- both come out of
+# `replSetGetStatus` and `serverStatus`, which need a Mongo connection. roles/mongodb-exporter.nix
+# is that connection, and it is what makes the silent failure described above (a member that is
+# `active` and refuses writes, while the read tier serves stale content and looks healthy) into
+# something an alert can see. A mongo-1 built without it has a database nothing is really watching.
+#
 # ------------------------------------------------------------------------------------------------
 # HETZNER'S SERVER BACKUPS DO NOT COVER ATTACHED VOLUMES. THAT IS WHY THE TIMER BELOW EXISTS.
 # ------------------------------------------------------------------------------------------------
@@ -790,6 +797,10 @@ in
     #
     # THE TUNNEL'S SIDE IS OPENED ELSEWHERE: roles/wireguard-fly.nix opens this port on wg0,
     # because every option in `fleet.firewall` is scoped to `fleet.privateInterface`.
+    #
+    # AND SO IS THE EXPORTER'S. roles/mongodb-exporter.nix appends 9216 to
+    # `fleet.firewall.privateTCPPorts` from its own file, for the same reason: a role states the
+    # port it needs, and firewall.nix decides what that means.
     #
     # NOTE THAT THE BIND LIST IS NOT A SUBSTITUTE FOR EITHER. Binding decides what this process
     # listens on; the firewall decides what the kernel delivers. The assertion above is what makes

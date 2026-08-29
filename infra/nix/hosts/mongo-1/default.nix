@@ -19,7 +19,9 @@ in
 {
   imports = [
     ./disko.nix
+    ../../modules/roles/mongo-ci-read.nix
     ../../modules/roles/mongodb.nix
+    ../../modules/roles/mongodb-exporter.nix
     ../../modules/roles/wireguard-fly.nix
 
     # See the note on the same import in hosts/monitoring-1: this belongs in
@@ -72,6 +74,23 @@ in
     enable = true;
     replSetName = "rs0";
 
+    # 4GB, RAISED BACK FROM 1GB ON 2026-08-29 AFTER MEASURING THE RESULT.
+    #
+    # The 1GB was chosen while the volume was being shrunk to 5GB, where 4GB of oplog would have
+    # been most of the disk. Hetzner then refused anything under 10GB, so the volume is 10GB with
+    # ~8.5GB free -- and the reason for the smaller oplog stopped existing without anybody noticing.
+    #
+    # WHAT THE SMALLER OPLOG ACTUALLY COST, which is the point: the measured resume window was 2.9
+    # HOURS. That is the longest a change-stream consumer can be disconnected and still resume from
+    # its token; past it the worker falls back to a full re-read of the corpus. A worker outage of
+    # one afternoon would have crossed it. The MongodOplogWindowShort alert fired on this the moment
+    # the exporter came up, which is the alert doing exactly what it was written for.
+    #
+    # 4GB restores roughly a twelve-hour window at the current write rate. Still bounded by a
+    # measurement of one moment rather than a study; `db.getReplicationInfo().timeDiff` under normal
+    # load is how to revise it, and the volume has room if it needs to grow again.
+    oplogSizeMB = 4096;
+
     # Matches what `rs.initiate` was given by hand during the migration, so the declarative
     # initiator agrees with the set that already exists and stays a no-op against it.
     replSetMemberHost = "10.20.0.10:27017";
@@ -86,9 +105,47 @@ in
     bindAddresses = [ "127.0.0.1" "10.20.0.10" "fdaa:74:b6b5:a7b:35c:d566:7af5:7502" ];
   };
 
+  # WHAT ASKS mongod HOW IT IS, as opposed to whether it is running.
+  #
+  # Until this existed, everything alerting on the database read one series --
+  # `node_systemd_unit_state{name="mongodb.service"}` -- which cannot see the failure this host is
+  # most exposed to. A member that steps down keeps its unit `active` and refuses every write, and
+  # the Fly-hosted web tier goes on serving its projected read model from memory while its change
+  # streams are dead. The exporter is what turns that into an alert; see roles/mongodb-exporter.nix
+  # for the trade, and mongodb.rules for the rules it makes possible.
+  #
+  # IT NEEDS TWO THINGS THAT ARE NOT IN THIS REPOSITORY and it fails loudly without either: the
+  # Mongo user `kinowo_monitor` with `clusterMonitor` on admin, created by hand once (the exact
+  # `db.createUser` is in the role's `username` description), and its password sealed into
+  # nix/secrets/mongo-1.yaml as `mongodb/exporter-password`. Missing either, the unit runs and
+  # publishes `mongodb_up 0`, which mongodb.rules alerts on.
+  #
+  # The defaults are right for this host: it binds `fleet.privateAddress` (10.20.0.10) on 9216 and
+  # connects to mongod over loopback, so the credential never crosses a wire.
+  fleet.mongodbExporter.enable = true;
+
   # Opens 27017 on the PRIVATE interface only. The Fly apps do not arrive that way -- they come down
-  # the WireGuard tunnel below -- so this is for Prometheus's mongod scrape and for an operator on
-  # monitoring-1, not for the application.
+  # the WireGuard tunnel below -- so this is for an operator on monitoring-1, not for the
+  # application.
+  #
+  # NOTE THAT PROMETHEUS DOES NOT USE THIS PORT. It scrapes 9216, which roles/mongodb-exporter.nix
+  # appends to `fleet.firewall.privateTCPPorts` itself -- so the two ports this host opens on the
+  # private NIC come from two different places, and only one of them is visible in this file.
+  # THE NIGHTLY FIXTURE RECORDING'S WAY IN, and the only reason a GitHub runner can reach this
+  # database at all now that `flyctl proxy --app kinowo-mongo` dials a stopped machine. It grants
+  # one thing: a byte pipe to mongod on loopback, plus the read-only user's password. See
+  # modules/roles/mongo-ci-read.nix for why that is narrower than the `ssh -L` a laptop uses
+  # (scripts/local-mirror/prod-tunnel.sh) and why an operator key was not an option.
+  #
+  # THE KEY IS NOT SET YET, so this is inert -- no account, no decrypted secret, nothing listening
+  # differently. Paste the PUBLIC half of the CI keypair here (the private half becomes the
+  # MONGO_CI_SSH_KEY repository secret) and the endpoint exists on the next deploy; the same shape
+  # hosts/monitoring-1 uses for `fleet.k8sDeploy.authorizedKey`.
+  fleet.mongoCiRead = {
+    enable = true;
+    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZAmY3cDz1SCSvIWh4dIYFxNXNjofJAiDYlE2UMxKoa mongo-ci-read@kinowo-ci";
+  };
+
   fleet.firewall.mongo = true;
 
   # THE TUNNEL THE APPLICATION ACTUALLY ARRIVES ON, and the reason mongod is never exposed

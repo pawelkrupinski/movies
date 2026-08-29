@@ -1,9 +1,11 @@
 # Prometheus and Alertmanager -- this fleet's alarm, on the same box as its k3s control plane.
 #
 # WHAT IT WATCHES, AND WHAT WATCHES IT. Three node_exporters over the private network (mongo-1,
-# this host, k3s-worker-1) plus its own two processes, and -- separately and by a different
-# mechanism -- Fly's managed Prometheus, which is where every metric about the still-Fly-hosted
-# web and worker apps lives. NOTHING WATCHES THIS HOST FROM OUTSIDE. That is the standing weakness
+# this host, k3s-worker-1); two exporters that speak for something the host cannot -- mongodb_exporter
+# on mongo-1 for what mongod thinks it is, and kube-state-metrics through a NodePort for what the
+# k3s cluster thinks it is; its own three processes; and -- separately and by a different mechanism
+# -- Fly's managed Prometheus, which is where every metric about the still-Fly-hosted web and
+# worker apps lives. NOTHING WATCHES THIS HOST FROM OUTSIDE. That is the standing weakness
 # of a single monitoring node and it is not solved here; what IS done is that Alertmanager's own
 # delivery path is exercised by a rule (see monitoring-self.rules), so a Telegram route that has
 # quietly stopped working is discovered by a heartbeat rather than by the first real incident.
@@ -85,6 +87,51 @@ let
           labels = { inherit (t) host role; };
         })
         cfg.nodeTargets;
+    };
+  };
+
+  # THE TWO EXPORTERS THAT ARE NOT node_exporter, EACH IN ITS OWN scrape.d FILE.
+  #
+  # WRITTEN LIKE `nodeTargetsYaml` ABOVE -- toJSON, one job per file, `lib.optional` so an empty
+  # list produces an empty `scrape_configs` rather than a half-written document the glob would
+  # still match. The alternative was two more `@PLACEHOLDER@` jobs inside
+  # files/monitoring/prometheus.yaml; this way "not deployed" is an empty list rather than a job
+  # pointed at nothing, which is the same reasoning the `scrapeFly` option gives at length.
+  #
+  # WHY EACH GETS A JOB OF ITS OWN RATHER THAN JOINING THE `node` JOB: the `node` job's targets all
+  # speak the same metric namespace and share `TargetDown`'s "job is a machine" reading. These two
+  # do not -- one describes a database process and one describes a whole Kubernetes cluster -- and
+  # a rule that says `job="node"` should keep meaning "a machine in this fleet".
+  mongodbTargetsYaml = builtins.toJSON {
+    scrape_configs = lib.optional (cfg.mongodbExporterTargets != [ ]) {
+      job_name = "mongodb";
+      # THIRTY SECONDS AND A TWENTY-SECOND TIMEOUT, against the global 15s/10s. Every scrape of
+      # this exporter runs `getDiagnosticData` and `replSetGetStatus` against a live mongod on a
+      # 2-core box that is also serving the application. Under the global 10s timeout a busy
+      # moment turns the target red, `TargetDown` pages, and the page reads as "the database is
+      # unreachable" when the database was merely busy. Nothing this exporter publishes changes
+      # meaningfully inside thirty seconds.
+      scrape_interval = "30s";
+      scrape_timeout = "20s";
+      static_configs = map
+        (t: {
+          targets = [ "${t.address}:${toString t.port}" ];
+          labels = { inherit (t) host role; };
+        })
+        cfg.mongodbExporterTargets;
+    };
+  };
+
+  kubeStateMetricsYaml = builtins.toJSON {
+    scrape_configs = lib.optional (cfg.kubeStateMetricsTargets != [ ]) {
+      job_name = "kube-state-metrics";
+      # NO `host` OR `role` LABEL, DELIBERATELY, AND IT IS THE ONE INTERESTING THING ABOUT THIS JOB.
+      # The address scraped is a NodePort on whichever node answers, but the SERIES describe the
+      # whole cluster -- every node, every pod, wherever it runs. A `host` label here would be
+      # true of the scrape and false of the data, and the first rule written against it would
+      # quietly be about the wrong machine. The series carry their own `node`, `namespace` and
+      # `pod` labels; use those.
+      static_configs = map (t: { targets = [ t ]; }) cfg.kubeStateMetricsTargets;
     };
   };
 
@@ -296,9 +343,102 @@ in
         }]
       '';
     };
+
+    # ---------------------------------------------------------------------------------------------
+    # THE TWO DEFAULTS BELOW ARE ADDRESS LITERALS, WHICH THIS FLEET OTHERWISE REFUSES TO WRITE.
+    # ---------------------------------------------------------------------------------------------
+    #
+    # `nodeTargets` above spends a paragraph on why an address belongs to the host that owns it and
+    # should be read off `fleet.privateAddress` in flake.nix rather than typed twice -- a cloud
+    # provider eventually hands a decommissioned machine's address to the next one built, and a
+    # literal keeps pointing at it.
+    #
+    # THESE TWO CARRY LITERALS ANYWAY, and it is the same compromise `fleet.logs.serverAddress`
+    # makes in hosts/mongo-1: the reference form needs an edit to flake.nix (or to
+    # hosts/monitoring-1), which the change that added these could not make. The defaults are
+    # therefore a WORKING configuration rather than a correct one, and the fix is one override:
+    #
+    #     fleet.prometheus.mongodbExporterTargets = [{
+    #       address = self.nixosConfigurations.mongo-1.config.fleet.privateAddress;
+    #       host = "mongo-1";
+    #       role = "mongodb";
+    #     }];
+    #     fleet.prometheus.kubeStateMetricsTargets = [
+    #       "${self.nixosConfigurations.k3s-worker-1.config.fleet.privateAddress}:30080"
+    #     ];
+    #
+    # Until then, a machine that moves has to be found in two files, and the symptom of missing one
+    # is a target that sits down and reads as a dead exporter.
+
+    mongodbExporterTargets = lib.mkOption {
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          address = lib.mkOption { type = lib.types.str; description = "Private address of the host running mongodb_exporter."; };
+          host = lib.mkOption { type = lib.types.str; description = "The `host` label -- the machine's own hostname."; };
+          role = lib.mkOption { type = lib.types.str; description = "The `role` label, matching the same machine's entry in `nodeTargets`."; };
+          port = lib.mkOption {
+            type = lib.types.port;
+            default = 9216;
+            description = ''
+              mongodb_exporter's port ON THE TARGET HOST, which is `fleet.mongodbExporter.port`
+              over there and not here -- so this is a plain default rather than a reference, the
+              same shape as `nodeTargets`'s 9100.
+            '';
+          };
+        };
+      });
+      default = [{ address = "10.20.0.10"; host = "mongo-1"; role = "mongodb"; }];
+      description = ''
+        Where mongodb_exporter runs. See roles/mongodb-exporter.nix for why it exists at all: it is
+        the only thing on this fleet that can tell a mongod which is `active` and refusing writes
+        from one which is `active` and healthy, and the application's change streams depend on the
+        difference.
+
+        EMPTY MEANS NO JOB, NOT A BROKEN ONE -- the scrape.d file is written with an empty
+        `scrape_configs`, so turning the exporter off does not leave a target sitting red for ever.
+        It does leave mongodb.rules' exporter-based alerts unable to fire, which is why each of
+        them has an `absent()` companion.
+      '';
+    };
+
+    kubeStateMetricsTargets = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "10.20.0.12:30080" ];
+      description = ''
+        `address:port` of kube-state-metrics, reached through a NodePort on the private subnet.
+
+        A BARE `address:port` RATHER THAN A SUBMODULE, because there are no useful target labels to
+        attach: kube-state-metrics describes the whole cluster, so labelling the job with the host
+        that happens to answer the scrape would produce series whose `host` label is true of the
+        connection and false of the data. See `kubeStateMetricsYaml` above.
+
+        WHY A NodePort AND NOT SERVICE DISCOVERY. Prometheus runs OUTSIDE the cluster on
+        monitoring-1 and holds no kubeconfig, which is deliberate -- `kubernetes_sd_configs` would
+        mean giving the monitoring stack a credential that can read every object in the cluster
+        (Secrets included) in exchange for discovering one endpoint that never moves. The trade is
+        in infra/kubernetes/kube-state-metrics/, in full, including what a NodePort costs.
+
+        THE PORT IS FIXED AT 30080 AND MUST AGREE WITH THE Service MANIFEST. Nothing here can check
+        that; a disagreement is a target that sits down.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
+    # RESOLVE `.internal` THROUGH FLY'S DNS, which is what makes the `kinowo-web` job possible.
+    #
+    # Prometheus's `dns_sd_configs` uses the SYSTEM resolver, so `kinowo.internal` only means
+    # anything if this host knows to ask Fly. fdaa:74:b6b5::3 is the resolver Fly hands every 6PN
+    # peer, reachable only through the WireGuard tunnel in roles/wireguard-fly.nix -- so this and
+    # that role stand or fall together.
+    #
+    # SCOPED TO THE `internal` DOMAIN ONLY (`~internal`), never as a global resolver. Sending all of
+    # this host's DNS through Fly would make every lookup on the box depend on a tunnel to a third
+    # party, and the failure would look like the whole machine losing the network.
+    services.resolved.enable = true;
+    services.resolved.domains = [ "~internal" ];
+    networking.nameservers = lib.mkForce [ "fdaa:74:b6b5::3" "1.1.1.1" "9.9.9.9" ];
+
     # CREATE THE DIRECTORIES ON THE VOLUME. Neither service does this for itself and `StateDirectory=`
     # cannot help: it creates /var/lib/<name>, whereas these live at a NESTED path on a SEPARATE
     # MOUNT, which systemd will not create on the unit's behalf.
@@ -349,6 +489,15 @@ in
       "prometheus/prometheus.yaml".source = render "prometheus.yaml" ../../files/monitoring/prometheus.yaml;
       "alertmanager/alertmanager.yaml".source = render "alertmanager.yaml" ../../files/monitoring/alertmanager.yaml;
       "prometheus/scrape.d/node-targets.yaml".text = nodeTargetsYaml;
+      "prometheus/scrape.d/mongodb-targets.yaml".text = mongodbTargetsYaml;
+      "prometheus/scrape.d/kube-state-metrics-targets.yaml".text = kubeStateMetricsYaml;
+
+      # THE APPLICATION'S OWN METRICS, always installed -- unlike scrape-fly.yaml below, these need
+      # no credential anyone can revoke. The worker is reached by NodePort over the private subnet;
+      # the web tier by this host's 6PN peer, which is why `resolved` is configured for `.internal`
+      # further down.
+      "prometheus/scrape.d/kinowo-apps.yaml".source =
+        render "kinowo-apps.yaml" ../../files/monitoring/scrape-kinowo-apps.yaml;
     } // lib.optionalAttrs cfg.scrapeFly {
       # ONLY WHEN `scrapeFly` IS TRUE. prometheus.yaml globs this directory, so "off" is the file
       # not existing rather than a job configured with a credential that does not work -- which
@@ -383,6 +532,9 @@ in
       restartTriggers = [
         config.environment.etc."prometheus/prometheus.yaml".source
         config.environment.etc."prometheus/scrape.d/node-targets.yaml".text
+        config.environment.etc."prometheus/scrape.d/mongodb-targets.yaml".text
+        config.environment.etc."prometheus/scrape.d/kube-state-metrics-targets.yaml".text
+        config.environment.etc."prometheus/scrape.d/kinowo-apps.yaml".source
       ]
       # Turning scrapeFly on or off changes a file Prometheus reads but not the unit, which is the
       # exact "written and never read" case the note above describes.

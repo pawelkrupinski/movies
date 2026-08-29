@@ -21,26 +21,32 @@
 #
 # `honor_labels: true` because federation returns series with their ORIGINAL job/instance labels;
 # without it Prometheus overwrites them with this job's own and every app becomes "fly".
-- job_name: fly
-  scheme: https
-  metrics_path: /prometheus/personal/federate
-  # A MINUTE, NOT 15s. This is somebody else's API, reached over the internet, and the series
-  # behind it are themselves minutes behind real time -- scraping it four times as often would
-  # buy nothing and cost rate limit.
-  scrape_interval: 60s
-  scrape_timeout: 30s
-  honor_labels: true
-  authorization:
-    type: FlyV1
-    credentials_file: "@FLY_TOKEN_FILE@"
-  params:
-    # NAMED SELECTORS, NOT `{__name__=~".+"}`. Federation with an open selector pulls the whole
-    # of Fly's series set for the org on every scrape -- expensive for them, expensive here, and
-    # most of it is already in Grafana's reach through the datasource. These are the families the
-    # ported alert rules actually read.
-    "match[]":
-      - '{__name__=~"fly_instance_.+"}'
-      - '{__name__=~"fly_edge_.+"}'
-      - '{__name__=~"fly_app_.+"}'
-  static_configs:
-    - targets: ["api.fly.io"]
+
+# A MAPPING WITH `scrape_configs:`, NOT A BARE LIST. A file named by `scrape_config_files` is
+# parsed as a fragment of the main config, so it must carry the key -- a top-level sequence fails
+# with `cannot unmarshal !!seq into config.ScrapeConfigs` and PROMETHEUS REFUSES TO START, taking
+# the fleet's monitoring down rather than skipping the file. Hit on 2026-08-29.
+scrape_configs:
+  - job_name: fly
+    scheme: https
+    metrics_path: /prometheus/personal/federate
+    # A MINUTE, NOT 15s. This is somebody else's API, reached over the internet, and the series
+    # behind it are themselves minutes behind real time -- scraping it four times as often would
+    # buy nothing and cost rate limit.
+    scrape_interval: 60s
+    scrape_timeout: 30s
+    honor_labels: true
+    authorization:
+      type: FlyV1
+      credentials_file: "@FLY_TOKEN_FILE@"
+    params:
+      # NAMED SELECTORS, NOT `{__name__=~".+"}`. Federation with an open selector pulls the whole
+      # of Fly's series set for the org on every scrape -- expensive for them, expensive here, and
+      # most of it is already in Grafana's reach through the datasource. These are the families the
+      # ported alert rules actually read.
+      "match[]":
+        - '{__name__=~"fly_instance_.+"}'
+        - '{__name__=~"fly_edge_.+"}'
+        - '{__name__=~"fly_app_.+"}'
+    static_configs:
+      - targets: ["api.fly.io"]

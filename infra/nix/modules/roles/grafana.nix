@@ -23,7 +23,7 @@
 #      no-data handling, for the same permanent-firing reason. Every deletion leaves a tombstone
 #      comment in place of the rule, and every group carries a written verdict for each of its
 #      surviving rules. Twenty rules remain, not twenty-four.
-#   2. THE DASHBOARDS ARE SPLIT INTO TWO DIRECTORIES, dashboards/fleet and dashboards/fly, and
+#   2. THE DASHBOARDS ARE SPLIT INTO TWO DIRECTORIES, dashboards/fleet and dashboards/apps, and
 #      provisioned into two Grafana folders by two providers (below). See the note on those
 #      providers for why quarantine beats a mixed folder.
 #   3. EACH FLY DASHBOARD GAINED A BANNER PANEL AND A RETITLE saying it is quarantined, why, and
@@ -352,6 +352,18 @@ in
               # WireGuard handshake age, the deploy state, and this stack watching itself.
               # Everything in nix/files/monitoring/rules/ is queried through here, and so is every
               # panel of dashboards/fleet/kinowo-fleet.json.
+              # THE PRIVATE ADDRESS, NOT LOOPBACK, EVEN THOUGH PROMETHEUS IS ON THIS SAME HOST.
+              #
+              # Every service on this fleet binds `fleet.privateAddress` ONLY -- that is the
+              # convention, and Prometheus follows it, so NOTHING listens on 127.0.0.1:9090. A
+              # loopback URL here does not fail loudly: Grafana loads, the datasource saves, the
+              # dashboards import, and every panel renders "No data" while Prometheus is perfectly
+              # healthy and holding all the series. It answers 502 on the datasource proxy and
+              # nowhere else.
+              #
+              # This was wrong for both Prometheus datasources AND for VictoriaLogs, found on
+              # 2026-08-29 only by querying the proxy directly. If a panel is empty, check this
+              # before you check the metric name.
               name = "Prometheus (Hetzner)";
               uid = "local-prometheus";
               orgId = 1;
@@ -361,7 +373,7 @@ in
               # so this query never needs to touch a wire -- and it keeps working if the private
               # address changes. Not `localhost`, which can resolve to ::1 and produce a
               # connection-refused against a service listening on IPv4 only.
-              url = "http://127.0.0.1:9090";
+              url = "http://10.20.0.11:9090";
               # THE DEFAULT, as of the post-migration audit. It is the only datasource on this
               # instance that answers, it is where every rule this fleet actually evaluates lives,
               # and it needs no credential -- so an unqualified query, a new panel or anything
@@ -405,7 +417,7 @@ in
               orgId = 1;
               type = "prometheus";
               access = "proxy";
-              url = "http://127.0.0.1:9090";
+              url = "http://10.20.0.11:9090";
               isDefault = false;
               editable = false;
               jsonData = { httpMethod = "POST"; prometheusType = "Prometheus"; timeInterval = "15s"; };
@@ -461,9 +473,17 @@ in
               # THE QUARANTINE. The folder NAME is the label -- it is what somebody sees in the
               # dashboard list before they open anything, which is the only place the warning can
               # arrive early enough to be useful.
-              name = "kinowo-fly";
+              name = "kinowo-apps";
               orgId = 1;
-              folder = "Fly (no data without a token)";
+              # RENAMED FROM "Fly (no data without a token)" ON 2026-08-29, because both halves of that name
+              # stopped being true. These dashboards no longer read Fly's managed Prometheus: the worker
+              # is on k3s and scraped by NodePort, and the web tier -- still on Fly -- is scraped
+              # directly over a 6PN WireGuard peer. Every query in them was verified returning data.
+              #
+              # The directory moved from dashboards/fly to dashboards/apps for the same reason: it
+              # holds the APPLICATION's dashboards, and where each tier runs is now a label on the
+              # series (`platform`), not a fact about the folder.
+              folder = "Application";
               type = "file";
               # BOTH FALSE, WHICH IS A CHANGE FROM THE FLY PROVISIONING (it allows UI updates and
               # deletion). There, the dashboards were the only copy anyone could edit; here the
@@ -473,7 +493,7 @@ in
               disableDeletion = true;
               allowUiUpdates = false;
               updateIntervalSeconds = 60;
-              options.path = "${grafanaProvisioning}/dashboards/fly";
+              options.path = "${grafanaProvisioning}/dashboards/apps";
             }
           ];
         };

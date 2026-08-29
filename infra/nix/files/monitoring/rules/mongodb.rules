@@ -1,14 +1,19 @@
 ---
-# MONGOD AND ITS BACKUPS.
+# MONGOD, ITS REPLICA SET, AND ITS BACKUPS.
 #
-# WHAT WATCHES MONGOD HERE, AND WHAT DOES NOT. There is NO mongodb_exporter on this fleet: nothing
-# reports replication lag, connection counts, oplog window or query latency, and none of the alerts
-# below can say anything about them. That is a deliberate "not yet" rather than an oversight -- the
-# exporter needs a monitoring user, another process on the database box, and a set of thresholds
-# nobody here has measured. THE GAP WORTH KNOWING ABOUT is the oplog window: mongodb.nix pins
-# `oplogSizeMB` to protect the application's change-stream resume, and nothing in this file would
-# notice that window getting short under heavy write load. Adding the exporter is the way to fix
-# that; guessing a threshold without one is not.
+# WHAT WATCHES MONGOD HERE, AND FROM WHERE. Two vantage points, and the file is in two groups
+# because they fail independently:
+#
+#   `mongodb`           node_exporter's systemd collector plus the textfile the backup timer
+#                       writes. Outside the process: is the unit running, did the dump run.
+#   `mongodb-exporter`  mongodb_exporter on mongo-1 (infra/nix/modules/roles/mongodb-exporter.nix),
+#                       authenticated as `kinowo_monitor` and asking mongod itself. Inside the
+#                       process: replica-set member state, oplog window, connections, asserts.
+#
+# THE SECOND GROUP IS NEW AND CLOSES THE GAP THE FIRST ONE COULD NOT. `node_systemd_unit_state`
+# answers exactly one question -- has mongod exited -- and mongod's worst state does not involve
+# exiting: a member that has stepped down, or that cannot see its own replica-set configuration,
+# stays `active`, answers reads, and refuses every write. `MongodNotRunning` is silent throughout.
 #
 # WHAT IS WATCHED INSTEAD is the two things that can be seen from outside the process: whether the
 # unit is running, and whether the backup that protects the data is still happening.
@@ -24,23 +29,34 @@
 # permanently -- an always-on critical about a machine that no longer exists. This rule watches the
 # real database on mongo-1 and is the only "is the database up" alert this fleet has.
 #
-# THE EXPORTER GAP, RESTATED WITH THE SPECIFIC QUESTIONS IT LEAVES UNANSWERED, because "we have no
-# mongodb_exporter" is easy to read past. Nothing on this fleet can currently tell you:
+# WHAT IS STILL NOT COVERED, so its absence does not read as an oversight:
 #
-#   * WHETHER THE SINGLE MEMBER IS PRIMARY. A replica-set member that has stepped down to SECONDARY
-#     accepts reads and refuses every write, and the unit is `active` throughout -- so
-#     `MongodNotRunning` stays silent and the worker's writes fail while the site keeps serving.
-#     This is the same silent shape as a dropped WireGuard tunnel, and it is not covered.
-#   * HOW MUCH OPLOG WINDOW IS LEFT. roles/mongodb.nix pins `oplogSizeMB` specifically to protect
-#     the application's change-stream resume; a burst of writes can consume that window in less
-#     time than the resume token needs, at which point the web tier's change stream dies and
-#     silently stops updating. Nothing here would notice.
-#   * Connection counts, replication lag, query latency, lock contention.
+#   * REPLICATION LAG, WHICH IS TRIVIALLY ZERO. `rs0` has one member (roles/mongodb.nix argues for
+#     why: one member is enough for an oplog, and more members would be about availability this
+#     fleet has not bought). A member cannot lag behind itself, so a lag rule here would be a
+#     series pinned at 0 that can never fire -- coverage in the rule list and nothing in reality.
+#     IT BECOMES REAL THE DAY A SECOND MEMBER IS ADDED, and that is the commit to write it in.
+#   * QUERY LATENCY AND LOCK CONTENTION. The exporter can report both, but only through the
+#     per-collection collectors that roles/mongodb-exporter.nix deliberately leaves off for
+#     cardinality reasons, and nobody here has a threshold for them that is not invented. The
+#     number a real incident bites at is the number to write here.
 #
-# THE FIX IS AN EXPORTER, NOT A CLEVERER RULE. Those numbers come out of `replSetGetStatus` and
-# `serverStatus`, which need a Mongo connection and a monitoring user. Guessing at them from
-# outside the process -- inferring PRIMARY from a port being open, say -- would produce an alert
-# that is wrong in exactly the cases it exists for.
+# ------------------------------------------------------------------------------------------------
+# THE METRIC NAMES BELOW WERE NOT READ OFF A RUNNING EXPORTER. CHECK THEM ONCE, ON FIRST DEPLOY.
+# ------------------------------------------------------------------------------------------------
+#
+# They are written against Percona's mongodb_exporter running with `--compatible-mode`, which is
+# what roles/mongodb-exporter.nix passes and which is the flag that produces the older
+# `mongodb_mongod_replset_*` family. They have not been verified against this fleet's own
+# /metrics -- so the FIRST thing to do after the exporter is deployed is
+#
+#     curl -s 10.20.0.10:9216/metrics | grep -E 'replset_my_state|oplog_|ss_connections|ss_asserts'
+#
+# and correct anything that differs. A RULE AGAINST A SERIES THAT DOES NOT EXIST DOES NOT ERROR AND
+# DOES NOT FIRE -- it sits in the rule list looking like coverage. That is the exact failure
+# k3s.rules' header is written against, and the `absent()` companion beside each rule below is what
+# turns it back into an alert: if a name here is wrong, the companion fires within half an hour and
+# says so.
 #
 # EVERY RULE BELOW DEPENDS ON A node_exporter COLLECTOR BEING ENABLED, and this file cannot enforce
 # that -- `node_systemd_unit_state` needs the systemd collector, and the two `kinowo_*` series are
@@ -133,3 +149,214 @@ groups:
             A backup that is present but truncated is worse than a missing one, because it passes
             every check that only asks whether a dump exists. Compare the directory listings under
             fleet.mongodb.backup.directory before the next rotation removes the older copy.
+
+  # ------------------------------------------------------------------------------------------------
+  # THE EXPORTER'S GROUP. Everything here needs mongodb_exporter on mongo-1 to be running AND
+  # authenticated; see this file's header for how the names were arrived at and why each rule has an
+  # `absent()` companion.
+  #
+  # THE `host` AND `role` LABELS come from the `mongodb` scrape job in
+  # /etc/prometheus/scrape.d/mongodb-targets.yaml, which roles/prometheus.nix generates from
+  # `fleet.prometheus.mongodbExporterTargets` -- the same mechanism, and the same caveat, as the
+  # `node` job's labels described in host-health.rules.
+  #
+  # NOTE WHAT IS NOT WRITTEN HERE: "the exporter is unreachable". `TargetDown` in
+  # monitoring-self.rules already fires on `up == 0` for ANY job and names the job and instance, so
+  # a second copy scoped to this one would page twice for one event. What IS written is the case
+  # `TargetDown` cannot see -- an exporter that is answering perfectly well and cannot get an answer
+  # out of mongod.
+  # ------------------------------------------------------------------------------------------------
+  - name: mongodb-exporter
+    rules:
+      - alert: MongodExporterCannotReachMongod
+        expr: mongodb_up == 0
+        # THREE MINUTES, matching `MongodNotRunning`'s, and for the same reason: an ordinary mongod
+        # restart takes the connection with it, and paging for every deploy teaches everyone to
+        # ignore the alert that also fires when it does not come back.
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "mongodb_exporter cannot reach mongod on {{ $labels.host }}"
+          description: >-
+            The exporter is running and answering scrapes; the DATABASE is what it cannot talk to.
+            THIS IS NOT THE SAME ALERT AS `MongodNotRunning` and the difference is the point: if
+            that one is silent, mongod's unit is `active` and the failure is between the exporter
+            and the server. Three things produce that, in the order worth checking -- the
+            `kinowo_monitor` user does not exist or its password in nix/secrets/mongo-1.yaml
+            (`mongodb/exporter-password`) does not match, mongod has been restarted into
+            `fleet.mongodb.bootstrapMode` (auth off, loopback only), or mongod is alive but wedged
+            and answering nothing. `journalctl -u mongodb-exporter -n 50` names which.
+
+      # -------------------------------------------------------------------------------------------
+      # THE HEADLINE RULE, AND THE REASON THE EXPORTER EXISTS AT ALL.
+      #
+      # Member states: 1 PRIMARY, 2 SECONDARY, 0 STARTUP, 3 RECOVERING, 5 STARTUP2, 6 UNKNOWN,
+      # 8 DOWN, 9 ROLLBACK, 10 REMOVED. On a ONE-MEMBER set the only healthy value is 1, so this is
+      # written as `!= 1` rather than as a list of bad states -- a new state code added by a future
+      # server version is then covered by default, which is the safe direction.
+      # -------------------------------------------------------------------------------------------
+      - alert: MongodNotPrimary
+        expr: mongodb_mongod_replset_my_state != 1
+        # TWO MINUTES, SHORTER THAN `MongodNotRunning`'s THREE, and deliberately so. A restart passes
+        # through STARTUP2 and RECOVERING on the way to PRIMARY, so some patience is required -- but
+        # every second spent here is a second of writes failing while the site looks healthy, which
+        # is worse than a second of mongod being visibly down. Two minutes clears an ordinary
+        # restart on this dataset and not much more.
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "mongod on {{ $labels.host }} is not PRIMARY (state {{ $value }})"
+          description: >-
+            THE DATABASE IS UP AND REFUSING WRITES. `rs0` has one member, so there is nothing to
+            fail over to and no election that can fix this: reads succeed, every write fails, and
+            CHANGE STREAMS -- which the web tier's whole live-update path depends on -- cannot be
+            opened. The Fly-hosted read tier will keep serving its projected read model out of
+            memory and keep passing its health checks, so NOTHING WILL LOOK BROKEN while the
+            showtimes age. State 0/3/5 is a member still starting or recovering and may clear on its
+            own; 6, 8 or 10 usually means mongod cannot see the replica-set configuration it is
+            registered in, which on this host means the member host in that config
+            (`fleet.mongodb.replSetMemberHost`, 10.20.0.10:27017) is not an address mongod is
+            bound to. `mongosh --eval 'rs.status()'` on the box is the first command.
+
+      - alert: MongodReplsetStateAbsent
+        expr: absent(mongodb_mongod_replset_my_state)
+        # THIRTY MINUTES, matching every other `absent()` companion in this directory. A rule about
+        # a rule does not need to be quick.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting mongod's replica-set member state"
+          description: >-
+            `MongodNotPrimary` above is a comparison and cannot fire without this series, so the
+            single failure this exporter was deployed to catch is currently uncovered. THE MOST
+            LIKELY CAUSE IS NOT AN OUTAGE, it is a name: this series exists only because
+            roles/mongodb-exporter.nix passes `--compatible-mode`, and it is one of the names this
+            file's header says to verify against a live /metrics on first deploy. Check the flag and
+            the spelling before looking for a fault. If the exporter itself were down, `TargetDown`
+            would have said so first.
+
+      # -------------------------------------------------------------------------------------------
+      # THE OPLOG WINDOW -- the change-stream resume budget, and the number roles/mongodb.nix pins
+      # `oplogSizeMB` to protect.
+      #
+      # WHAT IT MEANS HERE, because "oplog" alone undersells it. A change-stream consumer that is
+      # disconnected for longer than this window cannot resume from its stored token: it gets
+      # ChangeStreamHistoryLost and falls back to a full re-read, which is this application's
+      # expensive path and the one the resume token exists to avoid. So this is not a "database
+      # health" number, it is HOW LONG A WORKER OUTAGE THIS FLEET SURVIVES GRACEFULLY.
+      #
+      # THE WINDOW IS TIME, NOT SIZE, and that is why it is worth alerting on at all. The oplog is
+      # 1GB -- cut from 4GB when the volume was sized at Hetzner's 10GB minimum -- so the window is
+      # whatever 1GB of writes happens to be, which shrinks the moment write volume rises. A size
+      # alert would say nothing; a time alert says the thing that matters.
+      # -------------------------------------------------------------------------------------------
+      - alert: MongodOplogWindowShort
+        expr: >-
+          mongodb_mongod_replset_oplog_head_timestamp
+            - mongodb_mongod_replset_oplog_tail_timestamp < 4 * 3600
+        # FOUR HOURS IS A GUESS AND IT HAS NOT BEEN MEASURED. The reasoning: the window has to
+        # comfortably outlast the longest planned interruption to a change-stream consumer, and the
+        # longest one this fleet has is a worker redeploy or a mongo-1 reboot -- minutes. Four hours
+        # is two orders of magnitude above that, which leaves room for an unplanned outage nobody is
+        # awake for, and is low enough that on a 1GB oplog against a ~70MB database it should never
+        # be approached in normal operation. IF IT FIRES IN THE FIRST MONTH, the write rate is
+        # higher than that assumption and the number to compare against is
+        # `db.getReplicationInfo().timeDiff` under normal load -- not this threshold lowered until
+        # it stops firing.
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The oplog window on {{ $labels.host }} is down to {{ $value | humanizeDuration }}"
+          description: >-
+            This is the RESUME BUDGET for the application's change streams, not a disk warning.
+            While it is this short, any consumer offline for longer than the window comes back to
+            ChangeStreamHistoryLost and a full re-read. It shrinks for one of two reasons and they
+            need opposite responses: a burst of writes (transient -- check whether the worker is
+            backfilling), or a sustained rise in write rate (structural -- the oplog is now too
+            small for the workload). THE FIX FOR THE SECOND IS NOT FREE: `oplogSizeMB` was cut from
+            4096 to 1024 because the data volume is 5GB, so growing the window means growing the
+            Hetzner volume first (it grows in place; see terraform/server.mongo.tf).
+
+      - alert: MongodOplogWindowMetricAbsent
+        expr: absent(mongodb_mongod_replset_oplog_head_timestamp)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting the oplog window on mongo-1"
+          description: >-
+            `MongodOplogWindowShort` is a comparison and cannot fire without this series. As with
+            the replica-set state above, suspect the METRIC NAME first -- these are
+            `--compatible-mode` names this file's header says to verify once against a live
+            /metrics. The other candidate is the `kinowo_monitor` user having been created without
+            `clusterMonitor`: the oplog is measured out of `local.oplog.rs`, and `clusterMonitor` is
+            what grants read on `local`. A user with a narrower role authenticates and scrapes
+            perfectly well, and simply publishes fewer series.
+
+      # -------------------------------------------------------------------------------------------
+      # CONNECTIONS. mongod's ceiling here is not a config value in roles/mongodb.nix -- it is
+      # derived from `LimitNOFILE` (64000 on this unit), so the "available" figure is the honest
+      # denominator and a hard-coded one would be wrong the first time that limit changes.
+      # -------------------------------------------------------------------------------------------
+      - alert: MongodConnectionsSaturated
+        expr: >-
+          sum by (host) (mongodb_ss_connections{conn_type="current"})
+            / sum by (host) (mongodb_ss_connections{conn_type=~"current|available"}) > 0.8
+        # 80% IS A GUESS, and a soft one. Reasoning: connection exhaustion is not gradual -- past
+        # the ceiling mongod refuses new connections outright, and every client on this fleet
+        # (the worker, the web tier, the dump timer) treats that as a hard failure. 80% is far
+        # enough below to leave time to act and high enough that ordinary pool growth does not
+        # reach it, since the pools involved are tens of connections against a ceiling in the tens
+        # of thousands. IF THIS EVER FIRES it is far more likely to be a connection LEAK in a
+        # client than legitimate load.
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "mongod on {{ $labels.host }} is using {{ $value | humanizePercentage }} of its connection ceiling"
+          description: >-
+            The ceiling comes from `LimitNOFILE` on the mongodb unit (64000), not from a MongoDB
+            setting, so raising it is a change to roles/mongodb.nix. Before doing that, find out who
+            is holding them: `db.currentOp(true)` and `db.serverStatus().connections` name the
+            clients. A pool that grows without bound is a client bug, and raising the ceiling for it
+            postpones the same failure at greater cost.
+
+      - alert: MongodAssertionsRising
+        # `rollovers` EXCLUDED DELIBERATELY: it counts the assert counters wrapping, not a fault.
+        expr: sum by (host) (rate(mongodb_ss_asserts{assert_type!="rollovers"}[15m])) > 1
+        # ONE PER SECOND, SUSTAINED FOR FIFTEEN MINUTES, IS A GUESS -- and, like `MemoryStallHigh` in
+        # host-health.rules, it is a floor above the noise rather than a tuned number. A healthy
+        # mongod sits at approximately zero here; `user` asserts are individual malformed or
+        # unauthorised operations and a handful is ordinary, so the threshold is set where "a
+        # handful" becomes "something is doing this constantly".
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "mongod on {{ $labels.host }} is raising {{ $value }} assertions/s"
+          description: >-
+            ASSERTIONS ARE A LEADING INDICATOR, NOT AN OUTAGE, which is why this is a warning. Check
+            `assert_type` on the series before deciding anything: `user` means clients are sending
+            operations mongod rejects (a bad query, a failed authentication -- often a deploy that
+            changed a credential), `warning` and `msg` are internal and are worth reading
+            /var/log/mongodb/mongod.log for, and a sustained `regular` count is the one that
+            suggests the server itself is unhappy.
+
+      - alert: MongodServerStatusSeriesAbsent
+        expr: absent(mongodb_ss_connections)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nothing is reporting mongod's serverStatus counters"
+          description: >-
+            `MongodConnectionsSaturated` and `MongodAssertionsRising` are both comparisons against
+            this collector's output and neither can fire without it. This one series stands in for
+            the whole `diagnosticdata` collector: if it is absent, `--collector.diagnosticdata` has
+            been dropped from the exporter's ExecStart, the metric names have moved, or the
+            `kinowo_monitor` user lost the role that lets it run `serverStatus`. IT DOES NOT MEAN
+            THE DATABASE IS HEALTHY.
