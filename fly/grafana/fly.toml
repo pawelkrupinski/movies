@@ -23,10 +23,23 @@ primary_region = 'arn'
 [http_service]
   internal_port = 3000
   force_https = true
-  # Keep one machine up so alert evaluation never pauses on a cold-start.
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
+  # STOOD DOWN 2026-08-29. This app is superseded by Grafana on monitoring-1 (Hetzner), which runs
+  # the same provisioning from infra/nix/modules/roles/grafana.nix and is fed by a Prometheus that
+  # scrapes the fleet directly. Keeping both would mean two Grafanas evaluating the same alert rules
+  # against the same data and both messaging the same Telegram chat.
+  #
+  # NOT DESTROYED, DELIBERATELY. The app, its secrets and its 1GB volume are all still here, so
+  # rolling back is `flyctl deploy --remote-only -a kinowo-grafana` after reverting these three
+  # lines. Everything it serves is config-as-code in this directory; what the volume holds that the
+  # repo does not is alert state and silences, which are worth keeping until the Hetzner stack has
+  # been trusted for a while.
+  #
+  # ALL THREE LINES HAVE TO CHANGE TOGETHER. `min_machines_running = 1` alone makes Fly restart a
+  # stopped machine within about a minute -- observed today -- and `auto_start_machines = true`
+  # makes any stray HTTP request wake it. Stopping the machine without these is not a stop.
+  auto_stop_machines = true
+  auto_start_machines = false
+  min_machines_running = 0
 
 [[vm]]
   # Grafana + unified alerting + the VictoriaMetrics direct-scrape sidecar. VM is
