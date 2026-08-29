@@ -98,7 +98,12 @@ object FixtureServerMain {
       }
     }
 
-    // The bare `/` landing (city-selection screen), same as production.
+    // The bare `/` landing (city-selection screen). Production serves TWO screens
+    // here — a country picker when the request Host is the bare showtimes.cc apex,
+    // the city picker otherwise (see LandingController) — and this harness only
+    // ever renders the second, because its routes are keyed on the path alone and
+    // have no request to read a Host off. The apex branch is covered where the
+    // decision actually lives, in controllers.LandingApexSpec.
     val landingHtml: String = views.html.landing(City.all).body
 
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
