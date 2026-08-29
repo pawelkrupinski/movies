@@ -90,9 +90,13 @@ in
       # using it and an issuance here could fail for reasons that have nothing to do with this fleet.
       "grafana.kinowo.net".upstream = "10.20.0.11:3000";
 
-      # KEPT, AS A REDIRECT, because it is what every existing bookmark and every alert notification
-      # sent before this change points at. It costs one more certificate and removes a dead link.
-      "grafana.2-28-52-210.sslip.io".redirectTo = "grafana.kinowo.net";
+      # KEPT SERVING, not redirected, and deliberately so. It is what every existing bookmark and
+      # every alert notification sent before this change points at, and making it a redirect would
+      # couple THIS host's only public service to a DNS record that may not have propagated yet --
+      # if grafana.kinowo.net does not resolve, a redirect takes Grafana away, and the monitoring
+      # box is exactly the thing you need reachable when something is wrong. Turn it into a
+      # `redirectTo` once the new name has been answering for a while.
+      "grafana.2-28-52-210.sslip.io".upstream = "10.20.0.11:3000";
     };
   };
 
