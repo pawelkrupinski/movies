@@ -66,6 +66,31 @@ class FacebookDataDeletionController(
     }
   }
 
+  /** `GET /facebook/data-deletion` — the human-readable deletion instructions,
+   *  served on the SAME path as the POST callback above.
+   *
+   *  Meta's dashboard has two data-deletion fields: a callback it POSTs a
+   *  `signed_request` to, and an "instructions URL" it FETCHES and refuses to
+   *  save unless it answers. A POST-only route gave a bare 404 to the second and
+   *  to anyone pasting the URL into a browser, which reads as a broken deployment
+   *  rather than as the wrong verb. Answering both verbs on one path means either
+   *  field can take the same URL.
+   *
+   *  Unlike [[callback]] this does NOT depend on `FACEBOOK_APP_SECRET`: it
+   *  discloses nothing and Meta fetches it while reviewing an app that may not be
+   *  fully configured yet, so a 503 here would block the review it exists for.
+   *
+   *  Language comes from the LINK (`?lang=`) with the deployment's own as the
+   *  fallback, exactly as [[LegalController.privacy]] does — the reviewer reading
+   *  it is rarely in the country whose deployment answers. */
+  def instructions(lang: Option[String]): Action[AnyContent] = Action {
+    val language = lang.map(_.trim.toLowerCase)
+      .filter(_.nonEmpty)
+      .getOrElse(models.Country.fromEnv.language.getLanguage)
+    Ok(if (language == "pl") views.html.facebookDataDeletionInstructions()
+       else views.html.facebookDataDeletionInstructionsEn())
+  }
+
   def status(code: String): Action[AnyContent] = Action {
     if (models.Country.fromEnv.language.getLanguage == "pl") Ok(views.html.facebookDataDeletion(code))
     else Ok(views.html.facebookDataDeletionEn(code))

@@ -156,6 +156,10 @@ GET     /polityka-prywatnosci       controllers.LegalController.privacyLegacyPat
 # the GET page below. `nocsrf` because Facebook posts a form body without our
 # CSRF token — the signed_request's HMAC is the authenticity check instead.
 + nocsrf
+# GET on the same path as the callback below: Meta's "instructions URL" field
+# fetches it, and so does anyone who pastes the callback URL into a browser. A
+# POST-only path answered both with a 404 that looked like a broken deploy.
+GET     /facebook/data-deletion          controllers.FacebookDataDeletionController.instructions(lang: Option[String] ?= None)
 POST    /facebook/data-deletion          controllers.FacebookDataDeletionController.callback()
 GET     /facebook/data-deletion/status   controllers.FacebookDataDeletionController.status(code: String)
 

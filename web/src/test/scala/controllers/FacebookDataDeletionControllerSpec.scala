@@ -36,6 +36,38 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
     stateRepository.upsert(UserState("alice@example.com", Set("Conclave"), Set.empty, Instant.now()))
   }
 
+  // ── GET on the callback URL ────────────────────────────────────────────────
+  // Meta's dashboard has TWO data-deletion fields — a callback URL it POSTs a
+  // signed_request to, and an "instructions URL" it FETCHES and rejects unless it
+  // answers. The callback is POST-only, so pasting it into either field (or into a
+  // browser) used to give a bare 404, which reads as a broken deployment rather
+  // than as the wrong verb. The same path now answers GET with the instructions.
+
+  "GET on the data-deletion URL" should "serve human-readable deletion instructions, not a 404" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.instructions(None).apply(FakeRequest("GET", "/facebook/data-deletion"))
+    status(result) shouldBe OK
+    contentAsString(result) should include ("privacy-policy")
+  }
+
+  it should "honour ?lang= so Meta's reviewer can be pointed at English" in {
+    val (ctl, _, _) = fixture()
+    val english = contentAsString(ctl.instructions(Some("en")).apply(FakeRequest("GET", "/facebook/data-deletion?lang=en")))
+    english should include ("""<html lang="en"""")
+    english.toLowerCase should include ("delete")
+
+    val polish = contentAsString(ctl.instructions(Some("pl")).apply(FakeRequest("GET", "/facebook/data-deletion?lang=pl")))
+    polish should include ("""<html lang="pl"""")
+  }
+
+  it should "still serve instructions when FACEBOOK_APP_SECRET is absent" in {
+    // The POST callback 503s without the secret, deliberately. The instructions
+    // page carries nothing secret and must not inherit that: Meta fetches it while
+    // reviewing an app that is not yet fully configured.
+    val (ctl, _, _) = fixture(appSecret = None)
+    status(ctl.instructions(None).apply(FakeRequest("GET", "/facebook/data-deletion"))) shouldBe OK
+  }
+
   private def callbackRequest(signedRequest: String) =
     FakeRequest("POST", "/facebook/data-deletion").withFormUrlEncodedBody("signed_request" -> signedRequest)
 
