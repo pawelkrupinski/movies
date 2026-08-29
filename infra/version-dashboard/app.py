@@ -403,8 +403,19 @@ def build():
 
     # Anything publishing metrics that the flake does not declare. On a three-host fleet this should
     # always be empty; if it is not, something is scraping a machine nobody owns.
+    #
+    # ONLY MEANINGFUL IF THE ROSTER ACTUALLY LOADED. A failed `nix eval` returns an EMPTY roster, and
+    # "not declared" is computed against it -- so every healthy host in the fleet is reported as
+    # undeclared, which reads as a serious finding and is pure noise. Seen for real when the flake
+    # directory moved out from under a running process: the page announced all three machines as
+    # rogue while the only fault was a stale working directory.
+    #
+    # The rule is that a check whose input failed must report NOTHING, not the answer it would have
+    # given with no input. The roster error is already shown on its own.
     declared = {d.get("privateAddress") for d in roster.values()}
-    undeclared = sorted(a for a in by_addr if a not in declared)
+    undeclared = (
+        [] if roster_err else sorted(a for a in by_addr if a not in declared)
+    )
 
     return {
         "built_at": started,
@@ -923,9 +934,14 @@ def render(data):
         # did. The auto-reload moved into JS below, where it can decline while a job is running.
         f"<style>{STYLE}</style></head><body>",
         "<h1>kinowo — NixOS fleet</h1>",
-        f"<div class='sub'>{len(rows)} declared host(s): "
-        f"{n_ok} current, {n_warn} needing attention, {n_alarm} not reporting"
-        f" &middot; built in {data['took']:.1f}s, {fmt_age(data['built_at'])}</div>",
+        # "0 declared hosts" reads as an empty fleet rather than a broken query, which is the
+        # opposite of what a failed roster means. Say which it is.
+        "<div class='sub'>"
+        + ("<strong>roster unavailable</strong> — these counts are not a picture of the fleet"
+           if not rows
+           else f"{len(rows)} declared host(s): {n_ok} current, "
+                f"{n_warn} needing attention, {n_alarm} not reporting")
+        + f" &middot; built in {data['took']:.1f}s, {fmt_age(data['built_at'])}</div>",
     ]
 
     # THE WAY TO GET A CURRENT PAGE WITHOUT WAITING FOR THE TIMER. Ported from the reference: a
