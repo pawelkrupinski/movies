@@ -89,7 +89,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "The application is one thing on two platforms. **Three workers run on k3s** \u2014 `worker-pl`, `worker-de` and `worker-uk`, each its own deployment on `k3s-worker-1` (10.20.0.12) \u2014 and **the web tier is still on Fly**, reached through the WireGuard peer. Both are scraped by the fleet's own Prometheus, straight off each app's `/metrics`, so nothing here depends on a Fly credential.\n\n**Use the Country variable.** Every worker panel is scoped by it and carries the country in its legend, so All compares the three side by side and a single value isolates one. **The web tier serves Poland only**, so the four web-sourced panels (films served per city, residential proxy, empty venues) are deliberately *not* country-filtered \u2014 they would go blank on `de` or `uk` and say nothing true.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. The workers left that world entirely \u2014 a k3s pod on a dedicated 8-core box has no credit bucket \u2014 and the web tier's credit is only visible from inside Fly's managed Prometheus.\n* **Fly edge/proxy request counts and per-region edge latency.** These came from `fly_edge_*`, measured at Fly's edge. The app's own HTTP metrics below replace the *app-side* view of the same question, but the edge view (TLS handshakes, per-PoP breakdown, requests rejected before reaching the app) has no substitute.\n* **Host memory-available and volume disk for the web tier.** Same reason. For the workers these facts now come from node_exporter and live on the fleet dashboard, linked above; the heap panel below carries a host-free line so the common case needs no second tab.\n\n**Web HTTP is now the app's own.** `kinowo_web_http_requests_total` and `kinowo_web_http_request_duration_seconds` are exported by the application, so request rate, error share and latency percentiles are back \u2014 measured at the app, not at Fly's proxy.\n\n**Read host CPU and host memory as the HOST, not as a worker.** `k3s-worker-1` runs the k3s agent and all three worker pods, so its node_exporter numbers are always above any one worker's. Where a question is about a worker specifically, the panels below use that JVM's own process metrics."
+        "content": "The application is one thing on two platforms. **Three workers run on k3s** \u2014 `worker-pl`, `worker-de` and `worker-uk`, each its own deployment on `k3s-worker-1` (10.20.0.12) \u2014 and **the web tier is still on Fly**, reached through the WireGuard peer. Both are scraped by the fleet's own Prometheus, straight off each app's `/metrics`, so nothing here depends on a Fly credential.\n\n**Use the Country variable.** Every worker panel is scoped by it and carries the country in its legend, so All compares the three side by side and a single value isolates one. **The web tier serves Poland only**, so the four web-sourced panels (films served per city, residential proxy, empty venues) are deliberately *not* country-filtered \u2014 they would go blank on `de` or `uk` and say nothing true.\n\n**Panels that used to be here and are gone, because the data no longer exists anywhere:**\n\n* **CPU credit balance, CPU throttling, CPU steal.** Properties of Fly's shared-cpu-1x billing. The workers left that world entirely \u2014 a k3s pod on a dedicated 8-core box has no credit bucket \u2014 and the web tier's credit is only visible from inside Fly's managed Prometheus.\n* **Fly edge/proxy request counts and per-region edge latency.** These came from `fly_edge_*`, measured at Fly's edge. The app's own HTTP metrics below replace the *app-side* view of the same question, but the edge view (TLS handshakes, per-PoP breakdown, requests rejected before reaching the app) has no substitute.\n\n**What the app now measures about itself.** `kinowo_web_http_requests_total` and `kinowo_web_http_request_duration_seconds` bring back request rate, error share and latency percentiles \u2014 measured at the app rather than at Fly's proxy. `kinowo_web_host_memory_*` and `kinowo_web_host_disk_*` bring back the machine's free RAM and free disk, read by the process straight from its own kernel rather than from Fly's host agent. Both replace series that died with the managed-Prometheus token, and neither needs a Fly credential.\n\n**Read host CPU and host memory as the HOST, not as a worker.** `k3s-worker-1` runs the k3s agent and all three worker pods, so its node_exporter numbers are always above any one worker's. Where a question is about a worker specifically, the panels below use that JVM's own process metrics."
       }
     },
     {
@@ -2011,7 +2011,7 @@
     {
       "id": 44,
       "title": "Web (Fly) \u2014 JVM heap against -Xmx, and process RSS",
-      "description": "The web tier's heap, read like the worker panel to its left, except it runs G1 rather than SerialGC so a full old gen is far less alarming. RSS stands in for the host-free line the worker panel has: Fly's host metrics are gone with the managed Prometheus, so the only way to judge how close this process is to its machine's memory limit is its own resident set. RSS climbing well past heap+non-heap means native growth, not a leak the heap graph can show.",
+      "description": "The web tier's heap, read like the worker panel to its left, except it runs G1 rather than SerialGC so a full old gen is far less alarming. RSS is this process's own footprint; how close the MACHINE is to full is the panel below, which reads /proc/meminfo directly now that Fly's host metrics are gone. RSS climbing well past heap+non-heap means native growth, not a leak the heap graph can show.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2111,6 +2111,165 @@
       ]
     },
     {
+      "id": 9007,
+      "title": "Web (Fly) \u2014 RAM left on the machine, outside the JVM",
+      "description": "MemAvailable from the web machine's own /proc/meminfo \u2014 the kernel's estimate of what a new allocation could actually get, so it counts reclaimable page cache rather than collapsing to near-zero the way MemFree does on a healthy box. This is the line the heap panel beside it cannot draw: heap and RSS say what this process holds, never what is left over for the page cache, a heap dump, or the next request's native allocation. It is also the tell for a failure this app has already had \u2014 a 384m heap OOM-crash-looped at a smaller VM size, and the machine's available memory is what went first. Replaces Fly's fly_instance_memory_mem_available, which died with the managed-Prometheus token; the total is the Firecracker VM's configured size, so read the pair as a fraction.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 230
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Machine total"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_web_host_memory_available_bytes{job=\"kinowo-web\"}",
+          "legendFormat": "Available",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_web_host_memory_total_bytes{job=\"kinowo-web\"}",
+          "legendFormat": "Machine total",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "process_resident_memory_bytes{job=\"kinowo-web\"}",
+          "legendFormat": "This process (RSS)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9008,
+      "title": "Web (Fly) \u2014 free space on the machine's root filesystem",
+      "description": "The web app mounts no volume (there is no [mounts] block in fly.toml), so the only disk it can fill is the machine's own overlay: request logs, JVM temp files, and a heap dump if one is ever written \u2014 which on a 384m heap arrives as most of a gigabyte at once. Flat is the healthy shape; a staircase down means something is writing and never rotating. Replaces the fly_volume_* family. It is named disk rather than volume because if a volume is ever mounted this panel keeps reading the ROOT filesystem and will need a second series.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 230
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Filesystem size"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_web_host_disk_free_bytes{job=\"kinowo-web\"}",
+          "legendFormat": "Free",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_web_host_disk_total_bytes{job=\"kinowo-web\"}",
+          "legendFormat": "Filesystem size",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
       "id": 46,
       "title": "kinowo-worker CPU drivers \u2014 projection vs JIT vs other (stacked = total CPU)",
       "description": "STACKED breakdown of the worker's process CPU (centi-cores): the three areas sum to total, so you can see at a glance how much of a daytime hump is READ-MODEL PROJECTION versus JIT versus everything else. Projection dominating is normal and self-limiting; 'other' dominating for a long stretch is GC or scrape work and worth chasing. The dashed total is drawn over the stack as a check that the three parts really do account for the CPU.",
@@ -2123,7 +2282,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 230
+        "y": 239
       },
       "fieldConfig": {
         "defaults": {
@@ -2291,7 +2450,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 239
+        "y": 248
       },
       "fieldConfig": {
         "defaults": {
@@ -2357,7 +2516,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 246
+        "y": 255
       },
       "fieldConfig": {
         "defaults": {
@@ -2448,7 +2607,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 255
+        "y": 264
       },
       "options": {
         "calculate": false,
@@ -2495,7 +2654,7 @@
       "id": 9002,
       "gridPos": {
         "x": 0,
-        "y": 264,
+        "y": 273,
         "w": 24,
         "h": 1
       },
@@ -2513,7 +2672,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 265,
+        "y": 274,
         "w": 12,
         "h": 9
       },
@@ -2568,7 +2727,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 265,
+        "y": 274,
         "w": 12,
         "h": 9
       },
@@ -2633,7 +2792,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 274,
+        "y": 283,
         "w": 12,
         "h": 9
       },
@@ -2706,7 +2865,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 274,
+        "y": 283,
         "w": 12,
         "h": 9
       },

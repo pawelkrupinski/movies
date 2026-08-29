@@ -23,10 +23,11 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  * may be registered only once per registry.
  *
  * The registry is the PROCESS-WIDE one, not a JVM-only one: [[WebHttpMetrics]]
- * registers `kinowo_web_http_*` on it too, so [[render]] emits both and the
- * `/metrics` body keeps its single shape. Anything else that needs a Prometheus
- * metric on the web side belongs here as well — a second registry would need a
- * second thing appended to the endpoint for no gain.
+ * registers `kinowo_web_http_*` on it and [[WebHostMetrics]] registers
+ * `kinowo_web_host_*`, so [[render]] emits all of them and the `/metrics` body
+ * keeps its single shape. Anything else that needs a Prometheus metric on the
+ * web side belongs here as well — a second registry would need a second thing
+ * appended to the endpoint for no gain.
  */
 class WebJvmMetrics {
 

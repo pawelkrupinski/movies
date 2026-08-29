@@ -28,10 +28,13 @@ import services.metrics.WebJvmMetrics
  * carries the standard `jvm_*` / `process_*` resource collectors, matching what
  * the worker already exports (so the Fly-health dashboard can chart the web
  * JVM's heap against its `-Xmx384m` rather than inferring it from the machine's
- * free RAM), and the `kinowo_web_http_*` request rate / latency families that
- * [[modules.HttpMetricsFilter]] records. The latter replace the dead
- * `fly_app_http_*` proxy series, whose managed-Prometheus tokens are revoked —
- * they are now the tier's ONLY request-rate, error-rate and latency signal.
+ * free RAM); the `kinowo_web_http_*` request rate / latency families that
+ * [[modules.HttpMetricsFilter]] records; and the `kinowo_web_host_*` gauges
+ * ([[services.metrics.WebHostMetrics]]) reporting the machine's free RAM and
+ * free disk. All three replace series that died with Fly's managed-Prometheus
+ * token — `fly_app_http_*`, `fly_instance_memory_*`, `fly_volume_*` — and are
+ * now the tier's ONLY signal for request rate, latency, and how close the box
+ * is to full.
  */
 class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, movieMetrics: WebMovieMetrics,
   jvmMetrics: WebJvmMetrics, country: String = Country.default.code) extends AbstractController(cc) {

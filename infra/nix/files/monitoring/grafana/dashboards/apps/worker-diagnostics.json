@@ -74,25 +74,6 @@
   },
   "panels": [
     {
-      "id": 9001,
-      "type": "text",
-      "title": "What this dashboard is for, and what it lost",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "A worker's insides. Come here when the overview says something is wrong with a worker and you need to know **why** \u2014 a memory climb, a GC storm, a cache that stopped hitting, an upstream returning errors.\n\n**There are three workers**, one per country: `worker-pl`, `worker-de` and `worker-uk`, each a separate k3s Deployment on `k3s-worker-1`. Every panel below is filtered by the **Country** variable and names the country in its legend. Set it to a single country to read one JVM; set it to All to compare the three \u2014 which is how you tell \"the worker is leaking\" from \"the *uk* worker is leaking\". Each panel reads that pod's own `/metrics`, scraped directly by the fleet Prometheus, so the numbers are the JVM's own and need no Fly credential.\n\n**One panel is gone:**\n\n* **Fly CPU-credit balance vs throttle floor.** There is no credit bucket outside Fly's shared-cpu plans. The workers' CPU is now bounded by a real node's cores, and the CPU breakdown panel is the whole story.\n\n**The cgroup ceiling is back.** It was previously dropped because kube-state-metrics was down; that target is now up, so the RSS panel draws each pod's real `resources.limits.memory` from `kube_pod_container_resource_limits`. The limits are not uniform \u2014 `de` is given more headroom than `pl` and `uk` \u2014 which is exactly why the line is per-country.\n\n**Careful with host numbers.** `k3s-worker-1` runs the k3s agent alongside all three pods, so the host CPU and host memory on the fleet dashboard are always above any one worker's. Every panel here is process-scoped precisely so you are never reading k3s's overhead, or a sibling worker, as this worker's behaviour."
-      }
-    },
-    {
       "id": 5,
       "title": "Uptime (hours) \u2014 drops mark restarts",
       "description": "(now \u2212 process_start_time)/3600. Every drop to ~0 is a restart of the worker process. A regular cadence is the tell for an OOM cycle rather than a deploy \u2014 deploys are irregular and carry a purple Deploy marker. The worker is a k3s pod now, so the reason lives in `kubectl -n <ns> describe pod` (look for OOMKilled) and `kubectl logs --previous`, not in `flyctl machine status`.",
@@ -105,7 +86,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 0
       },
       "fieldConfig": {
         "defaults": {
@@ -143,7 +124,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 8
+        "y": 0
       },
       "fieldConfig": {
         "defaults": {
@@ -199,7 +180,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 8
       },
       "fieldConfig": {
         "defaults": {
@@ -256,7 +237,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 8
       },
       "fieldConfig": {
         "defaults": {
@@ -312,7 +293,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 16
       },
       "fieldConfig": {
         "defaults": {
@@ -350,7 +331,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 33
+        "y": 25
       },
       "fieldConfig": {
         "defaults": {
@@ -388,7 +369,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 25
       },
       "fieldConfig": {
         "defaults": {
@@ -436,7 +417,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 41
+        "y": 33
       },
       "fieldConfig": {
         "defaults": {
@@ -483,7 +464,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 41
+        "y": 33
       },
       "fieldConfig": {
         "defaults": {
@@ -521,7 +502,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 49
+        "y": 41
       },
       "fieldConfig": {
         "defaults": {
@@ -561,7 +542,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 49
+        "y": 41
       },
       "fieldConfig": {
         "defaults": {
@@ -600,7 +581,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 57
+        "y": 49
       },
       "fieldConfig": {
         "defaults": {
@@ -640,7 +621,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 57
+        "y": 49
       },
       "targets": [
         {
@@ -691,7 +672,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 65
+        "y": 57
       },
       "fieldConfig": {
         "defaults": {
@@ -775,7 +756,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 73
+        "y": 65
       },
       "fieldConfig": {
         "defaults": {

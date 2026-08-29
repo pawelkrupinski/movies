@@ -6,7 +6,7 @@ import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
 import services.fallback.{FallbackStore, MongoFallbackStore}
-import services.metrics.{WebHttpMetrics, WebJvmMetrics}
+import services.metrics.{WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
 import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
@@ -280,6 +280,14 @@ trait Wiring {
   // /metrics body with no new endpoint. Replaces the dead Fly-proxy panels
   // (`fly_app_http_*`); see WebHttpMetrics for the cardinality rules.
   lazy val webHttpMetrics = new WebHttpMetrics(webJvmMetrics.registry, metricsCountry.code)
+  // The MACHINE's free RAM and free disk, read from the process's own kernel.
+  // Same registry again, same reason — and same cause: Fly's host metrics
+  // (`fly_instance_memory_*`, `fly_volume_*`) died with the managed-Prometheus
+  // token, and nothing else scrapes the web tier's host.
+  // NOT lazy: nothing reads this object again — registering its callback gauges
+  // on the registry IS its whole job — so a `lazy val` would never be forced and
+  // the panels would stay as blank as they were with Fly's metrics gone.
+  private val webHostMetrics = new WebHostMetrics(webJvmMetrics.registry, metricsCountry.code)
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics, webJvmMetrics, metricsCountry.code)
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).

@@ -60,8 +60,13 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  Empty on purpose — see the class comment. */
   private val UnchartedOnPurpose: Map[String, String] = Map.empty
 
-  /** Families the web app renders by hand (`controllers.MetricsController`), not
-   *  through a registry this module can enumerate. */
+  /** Families the web app exports that this module cannot enumerate — the ones
+   *  `controllers.MetricsController` renders by hand, plus the ones registered on
+   *  the web's own Prometheus registry, which lives in a module the worker does
+   *  not depend on. Listed by name here so the coverage guarantee still reaches
+   *  them; their NAMES are guarded on the web side (`MetricsControllerSpec`,
+   *  `WebMovieMetricsSpec`, `HttpMetricsFilterSpec`, `WebHostMetricsSpec`) and
+   *  what's guarded here is that a dashboard draws them. */
   private val WebExportedFamilies = Seq(
     "kinowo_web_movies_served",
     // Added 2026-08-29 with the HTTP filter. These two are the web tier's replacement for Fly's
@@ -69,6 +74,13 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // they measure the application's own work rather than the edge in front of it.
     "kinowo_web_http_requests_total",
     "kinowo_web_http_request_duration_seconds",
+    // Added 2026-08-29 alongside them: the web MACHINE's free RAM and free disk, read by the
+    // process from its own kernel. Same cause -- fly_instance_memory_* and fly_volume_* died with
+    // the Fly Prometheus token, and nothing scrapes the Fly host at all.
+    "kinowo_web_host_memory_available_bytes",
+    "kinowo_web_host_memory_total_bytes",
+    "kinowo_web_host_disk_free_bytes",
+    "kinowo_web_host_disk_total_bytes",
     "kinowo_uptime_recent_successes",
     "kinowo_uptime_recent_failures",
     "kinowo_uptime_recent_zeroes"
