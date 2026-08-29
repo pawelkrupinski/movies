@@ -89,7 +89,23 @@ let
 
     net = {
       port = cfg.port;
-      bindIp = lib.concatStringsSep "," cfg.bindAddresses;
+      # BOOTSTRAP MODE DROPS THE FLY TUNNEL ADDRESS AND KEEPS THE REST. With `authorization` off the
+      # bind list IS the security boundary, so the window that removes authentication also removes
+      # the one route that reaches outside this fleet: the application cannot see an unauthenticated
+      # database at any point.
+      #
+      # IT CANNOT BE LOOPBACK-ONLY, WHICH WAS THE FIRST ATTEMPT AND DID NOT WORK. The replica-set
+      # member is configured as `replSetMemberHost` (10.20.0.10 here), and a member that cannot bind
+      # the address it is registered under does not recognise itself in the configuration: mongod
+      # answers `InvalidReplicaSetConfig`, never becomes primary, and therefore accepts no writes --
+      # so the restore the mode exists for cannot run at all.
+      #
+      # What remains reachable is the Hetzner private subnet, which contains only monitoring-1 and
+      # k3s-worker-1. That is the honest cost of the window.
+      bindIp =
+        if cfg.bootstrapMode
+        then lib.concatStringsSep "," (lib.filter (a: !lib.hasInfix ":" a) cfg.bindAddresses)
+        else lib.concatStringsSep "," cfg.bindAddresses;
 
       # REQUIRED THE MOMENT AN IPv6 ADDRESS APPEARS IN `bindIp`, AND ITS ABSENCE IS NOT A WARNING.
       # mongod is IPv4-only unless told otherwise; asked to bind `fdaa:...` without this it fails
@@ -103,13 +119,17 @@ let
       # has changed across major versions and this file is also the answer to "what authentication
       # does this database actually use?" -- a question that should not require starting the
       # server to answer.
-      authorization = "enabled";
+      authorization = if cfg.bootstrapMode then "disabled" else "enabled";
 
       # INTERNAL CLUSTER AUTHENTICATION, WHICH A SINGLE-NODE REPLICA SET STILL REQUIRES. mongod
       # refuses to start with authorization enabled and a replSetName set unless internal member
       # auth is configured -- there is no "it's only one member" exemption. The keyFile is
       # therefore not optional plumbing for a future second member; it is a startup precondition
       # today. It must be 0400 and owned by the mongod user or mongod rejects it on permissions.
+      # OMITTED IN BOOTSTRAP MODE, and it has to be: a keyFile switches authorization on by
+      # implication, so leaving it set would silently defeat `authorization = "disabled"` above and
+      # the restore would fail with an authentication error that pointed at nothing.
+    } // lib.optionalAttrs (!cfg.bootstrapMode) {
       keyFile = cfg.keyFile;
     };
 
@@ -265,6 +285,53 @@ in
         Path to the replica-set key file, from sops-nix. A PATH, NEVER A VALUE -- it is a shared
         secret that authenticates a member into the set, and a value here would be written into the
         world-readable Nix store by the config generator above.
+      '';
+    };
+
+    bootstrapMode = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        A DELIBERATE, TEMPORARY HOLE FOR RESTORING A DUMP THAT CONTAINS THE USERS THEMSELVES.
+
+        When true, mongod runs with `authorization` OFF, no keyFile, and bound to 127.0.0.1 ONLY --
+        not the private address, not the WireGuard tunnel. It is narrower than normal operation in
+        every respect except authentication.
+
+        WHY IT HAS TO EXIST. Migrating from the Fly instance means restoring `admin.system.users`,
+        because that is the only way to carry credentials across exactly -- and one of the four
+        accounts (`convergence_ci`, used by the convergence CI job) has a password that exists
+        nowhere this repository can read. Recreating users by hand would silently drop it. But a
+        restore cannot write admin.system.users while authenticated as a user defined in it, and the
+        localhost exception permits creating the first user and nothing else. So the only honest
+        path is a window with auth off.
+
+        WHY LOOPBACK-ONLY MATTERS MORE THAN THE AUTH FLAG. With auth off, the bind list IS the
+        security boundary. Dropping to 127.0.0.1 means the only way to reach the database during the
+        window is an SSH session on the host itself -- strictly narrower than the authenticated
+        configuration, which is reachable from the private network and from Fly.
+
+        IT IS NOT A MODE TO LEAVE ON. It is set for one deploy, the restore is run, and it is turned
+        off in the next -- and because it also unbinds the addresses the application uses, a host
+        left in it cannot serve traffic at all. That is intentional: the failure of forgetting is
+        loud and immediate rather than silent and permanent.
+      '';
+    };
+
+    replSetMemberHost = lib.mkOption {
+      type = lib.types.str;
+      default = "127.0.0.1:27017";
+      description = ''
+        The `host` this node records for itself in the replica-set configuration.
+
+        THE PRIVATE ADDRESS, NOT THE WireGuard ONE, on this fleet. A member has to be able to reach
+        itself to hold an election, so naming the tunnel address would make the DATABASE depend on
+        the tunnel: a Fly-side network problem would stop mongod being primary rather than merely
+        stop Fly reaching it. The application connects with `directConnection=true`, which bypasses
+        replica-set discovery altogether, so no client ever resolves this value.
+
+        CHANGING IT AFTER INITIATION DOES NOTHING. The initiator below only ever runs on a set that
+        has never been initiated; moving a live member is `rs.reconfig`, by hand, deliberately.
       '';
     };
 
@@ -517,7 +584,12 @@ in
 
     # mongosh on the box. An operator asking the database what it thinks -- "is this actually a
     # replica set?", "what is the oplog window?" -- should not need to build a shell first.
-    environment.systemPackages = [ cfg.package cfg.toolsPackage ];
+    # `pkgs.mongosh` IS SEPARATE FROM BOTH OF THE OTHERS AND HAD TO BE ADDED. `mongodb-ce` ships
+    # mongod and mongos; `mongodb-tools` ships mongodump/mongorestore/mongostat. Neither ships a
+    # shell -- the comment above promised one for two commits while `mongosh: command not found`
+    # was the actual answer on the box, discovered at the first thing an operator would do
+    # (rs.initiate during the migration).
+    environment.systemPackages = [ cfg.package cfg.toolsPackage pkgs.mongosh ];
 
     systemd.tmpfiles.rules = [
       "d ${builtins.dirOf cfg.logPath} 0750 mongodb mongodb -"
@@ -542,6 +614,69 @@ in
       # every publisher on the host at once, and a second `d` rule for the same path from a role
       # would be a second opinion about its mode that only one of them can win.
     ];
+
+    # INITIATE THE REPLICA SET, ONCE, IF IT HAS NEVER BEEN INITIATED.
+    #
+    # This existed as a command an operator typed during the migration, which is the wrong place for
+    # it: a rebuilt or replaced mongo-1 would come up with `authorization: enabled`, a replSetName,
+    # and no set -- mongod running, accepting nothing, and change streams (which the web tier's
+    # whole live-update path depends on) simply absent. That is a failure whose cause is a sentence
+    # in a runbook nobody is reading at the time.
+    #
+    # STRICTLY IDEMPOTENT AND DELIBERATELY TIMID. It initiates only on the exact `NotYetInitialized`
+    # code; ANY other outcome, including an already-initialised set, is a no-op success. It must
+    # never reconfigure or re-initiate an existing set -- `rs.initiate` against a live set with data
+    # is how a replica set loses its history -- so moving a member stays a manual `rs.reconfig`.
+    #
+    # It runs over LOOPBACK and relies on the localhost exception, which is what allows this at all
+    # before any user exists.
+    # NOT DURING A BOOTSTRAP RESTORE. Initiating a set while a dump of that set's own oplog and
+    # users is being written into it is a race with nothing to gain: the restore brings the set
+    # configuration it needs, and this unit runs on the deploy that turns bootstrap mode back off.
+    systemd.services.mongodb-init-replicaset = lib.mkIf (!cfg.bootstrapMode) {
+      description = "Initiate the MongoDB replica set if it has never been initiated";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "mongodb.service" ];
+      requires = [ "mongodb.service" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        User = "mongodb";
+      };
+
+      script = ''
+        # mongod accepts connections a little after systemd calls the unit started, so wait rather
+        # than racing it; a failure here would otherwise be a startup-ordering coin toss.
+        for _ in $(seq 1 60); do
+          if ${pkgs.mongosh}/bin/mongosh --host 127.0.0.1 --port ${toString cfg.port} \
+               --quiet --eval 'db.adminCommand({ping: 1})' > /dev/null 2>&1; then
+            break
+          fi
+          sleep 2
+        done
+
+        ${pkgs.mongosh}/bin/mongosh --host 127.0.0.1 --port ${toString cfg.port} --quiet --eval '
+          try {
+            const st = rs.status();
+            print("replica set " + st.set + " already initialised (" + st.members.length + " member(s)); doing nothing");
+          } catch (e) {
+            if (e.codeName === "NotYetInitialized") {
+              const r = rs.initiate({
+                _id: "${cfg.replSetName}",
+                members: [ { _id: 0, host: "${cfg.replSetMemberHost}" } ]
+              });
+              print("rs.initiate -> ok=" + r.ok);
+            } else {
+              // NOT a failure. An authenticated set answers rs.status() with Unauthorized, which is
+              // proof it is initialised -- exiting non-zero there would leave a permanently red unit
+              // on a perfectly healthy database.
+              print("rs.status() said " + e.codeName + "; assuming initialised and doing nothing");
+            }
+          }
+        '
+      '';
+    };
 
     systemd.services.mongodb = {
       description = "MongoDB (kinowo)";

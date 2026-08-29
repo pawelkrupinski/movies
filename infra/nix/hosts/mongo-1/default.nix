@@ -66,6 +66,10 @@ in
   fleet.mongodb = {
     enable = true;
     replSetName = "rs0";
+
+    # Matches what `rs.initiate` was given by hand during the migration, so the declarative
+    # initiator agrees with the set that already exists and stays a no-op against it.
+    replSetMemberHost = "10.20.0.10:27017";
     wiredTigerCacheSizeGB = 1.0;
 
     # 127.0.0.1 for the local mongodump timer, the private address for anything on this fleet, and
