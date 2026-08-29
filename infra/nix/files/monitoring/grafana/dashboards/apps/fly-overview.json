@@ -1676,7 +1676,7 @@
     {
       "id": 57,
       "title": "Worker \u2014 first rating attempt: delay from TMDB resolution, p50 / p95 by site (min)",
-      "description": "For the attempts that DID happen, how long after a film resolved on TMDB its first fetch of each rating site ran (kinowo_worker_rating_first_attempt_delay_seconds, in minutes). Ratings are not enqueued the instant a film resolves \u2014 the EnrichmentReaper picks them up on its own cadence \u2014 so this is that first-pass latency, and a step up in p95 means the reaper is falling behind its intake rather than failing. Read it WITH the two panels above, never alone: this histogram is blind by construction to a site that never attempts anything, and the healthiest-looking flat line here can sit directly above a backlog that never drains.",
+      "description": "For the attempts that DID happen, how long after a film resolved on TMDB its first fetch of each rating site ran (kinowo_worker_rating_first_attempt_delay_seconds, in minutes). Ratings are not enqueued the instant a film resolves \u2014 the EnrichmentReaper picks them up on its own cadence \u2014 so this is that first-pass latency, and a step up in p95 means the reaper is falling behind its intake rather than failing. Read it WITH the two panels above, never alone: this histogram is blind by construction to a site that never attempts anything, and the healthiest-looking flat line here can sit directly above a backlog that never drains. \u00b7 A FLAT ZERO LINE MEANS NO OBSERVATIONS IN THE WINDOW, NOT A ZERO DELAY. histogram_quantile over a histogram nothing has incremented returns NaN, and Grafana draws a NaN-only series as \"No data\" -- indistinguishable from a broken panel. NOTE THE `>= 0` IS LOAD-BEARING and not tidying: `or` only fills in where the left side has NO SERIES, and the NaN series exist, so the fallback never fired without it. The comparison drops NaN (NaN >= 0 is false), which empties the left side and lets `or` supply the zero.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1703,7 +1703,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket{country=~\"$country\"}[$__rate_interval]))) / 60",
+          "expr": "((histogram_quantile(0.5, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket{country=~\"$country\"}[$__rate_interval]))) / 60) >= 0) or (sum by (site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_count{country=~\"$country\"}[$__rate_interval])) * 0)",
           "legendFormat": "p50 {{site}}",
           "datasource": {
             "type": "prometheus",
@@ -1712,7 +1712,7 @@
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket{country=~\"$country\"}[$__rate_interval]))) / 60",
+          "expr": "((histogram_quantile(0.95, sum by (le, site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_bucket{country=~\"$country\"}[$__rate_interval]))) / 60) >= 0) or (sum by (site) (rate(kinowo_worker_rating_first_attempt_delay_seconds_count{country=~\"$country\"}[$__rate_interval])) * 0)",
           "legendFormat": "p95 {{site}}",
           "datasource": {
             "type": "prometheus",
@@ -2438,7 +2438,7 @@
     {
       "id": 49,
       "title": "projection duration heatmap \u2014 bright band high = expensive-film spikes",
-      "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half).",
+      "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half). \u00b7 EXPECT THIS TO BE EMPTY MOST OF THE TIME, and that is not a fault. It is a rate over readmodel_project_duration_seconds_bucket, and that histogram's _count has sat at 1 since boot on all three workers -- the projector is event-driven and rarely fires. An all-zero heatmap draws as blank. If you want to know whether the read model is moving at all, readmodel_writes_total is the counter that actually increments.",
       "type": "heatmap",
       "datasource": {
         "type": "prometheus",

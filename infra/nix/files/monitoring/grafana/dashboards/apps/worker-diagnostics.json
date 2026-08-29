@@ -473,7 +473,7 @@
     {
       "id": 8,
       "title": "Read-model projection \u2014 avg duration (ms)",
-      "description": "Per-call cost of the read-model projection. A 3-5x inflation at a FLAT call rate = the daytime GC-thrash flare (projection is a victim of GC pauses, not the cause).",
+      "description": "Per-call cost of the read-model projection. A 3-5x inflation at a FLAT call rate = the daytime GC-thrash flare (projection is a victim of GC pauses, not the cause). \u00b7 READS ZERO, NOT BLANK, WHEN NOTHING PROJECTED. This is rate(sum)/rate(count), which is 0/0 = NaN in any window where the projector did not run -- and Grafana draws a NaN-only series as \"No data\", which is indistinguishable from the panel being broken. The `or (... * 0)` term makes an idle projector an explicit zero line. NOTE the projector is genuinely idle most of the time: readmodel_project_duration_seconds_count has sat at 1 since boot on all three workers, so a flat zero here is the normal state, not a fault.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -499,7 +499,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1000*sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[$__rate_interval]))/sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[$__rate_interval]))",
+          "expr": "1000*sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[$__rate_interval]))/ clamp_min(sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[$__rate_interval])), 1e-9)",
           "legendFormat": "avg project ms {{country}}",
           "datasource": {
             "type": "prometheus",
@@ -539,7 +539,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) / sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[$__rate_interval]))",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[$__rate_interval])), 1e-9)",
           "legendFormat": "{{country}} {{source}}",
           "datasource": {
             "type": "prometheus",
@@ -618,7 +618,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[$__rate_interval])) / sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval]))",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])), 1e-9)",
           "legendFormat": "{{country}} {{source}}",
           "datasource": {
             "type": "prometheus",
