@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # One-way sync of the admin-curated `titleRules` collection from PROD (kinowo,
-# over the `flyctl proxy ... --app kinowo-mongo` tunnel) into the local dev DB
+# over the ssh tunnel prod-tunnel.sh opens to the Mongo host) into the local dev DB
 # (kinowo_local on :28017). One-shot, on-demand — title rules change rarely.
 #
 # Why this is needed: `titleRules` is the live rule set TitleNormalizer runs,
@@ -22,6 +22,7 @@
 # Reads from .env.local (line-by-line, NOT sourced — the Mongo URIs contain
 # `&`/`?`):
 #   MONGODB_URI       prod tunnel = sync SOURCE (required)
+#   KINOWO_MONGO_SSH  ssh target for the prod tunnel (optional; see prod-tunnel.sh)
 #   MONGODB_DB        prod db name (default: kinowo)
 #   LOCAL_MONGO_URI   sync TARGET (default: mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true)
 #   LOCAL_MONGO_DB    local db name (default: kinowo_local)   # matches reset-corpus.sh
@@ -56,21 +57,17 @@ DST="$(envval LOCAL_MONGO_URI)"; DST="${DST:-mongodb://127.0.0.1:${LOCAL_MIRROR_
 DST_DB="$(envval LOCAL_MONGO_DB)"; DST_DB="${DST_DB:-kinowo_local}"
 [ -n "$SRC" ] || { echo "[title-rules] set MONGODB_URI in .env.local (prod tunnel = sync source)" >&2; exit 1; }
 
-# ── ensure the prod tunnel (source), starting our OWN flyctl proxy only when
+# ── ensure the prod tunnel (source), starting our OWN ssh forward only when
 # nothing already serves :27017 — never fighting a tunnel someone else owns
-# (sbt run's, or a manual one). cleanup kills only ours. (Same shape as mirror.sh.)
-PROXY_PID=""
-ensure_tunnel() {
-  nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0
-  echo "[title-rules] no tunnel on :27017 — starting flyctl proxy --app kinowo-mongo"
-  flyctl proxy 27017:27017 --app kinowo-mongo >/dev/null 2>&1 &
-  PROXY_PID=$!
-  for _ in $(seq 1 30); do nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0; sleep 1; done
-  return 1
-}
+# (sbt run's, or a manual one). cleanup kills only ours. Shared with mirror.sh
+# and sync-enrichment-cache.sh so prod moving hosts is one edit, not four.
+TUNNEL_TAG="title-rules"
+TUNNEL_PROBE_URI="$SRC"
+PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
+. "$HERE/prod-tunnel.sh"
 TMP=""
 cleanup() {
-  [ -n "$PROXY_PID" ] && kill "$PROXY_PID" 2>/dev/null || true
+  close_prod_tunnel
   [ -n "$TMP" ] && rm -rf "$TMP" || true
 }
 trap cleanup EXIT INT TERM
@@ -82,7 +79,7 @@ ensure_local_mongo() {
   "$HERE/start-local-mongo.sh"
 }
 
-ensure_tunnel       || { echo "[title-rules] prod tunnel unavailable — is 'flyctl auth login' done?" >&2; exit 1; }
+ensure_prod_tunnel  || { echo "[title-rules] prod Mongo unreachable — can you 'ssh' to the mongo host? (see prod-tunnel.sh)" >&2; exit 1; }
 [ -n "$DRY" ] || ensure_local_mongo
 
 # ── dump the one collection from prod ───────────────────────────────────────
@@ -100,7 +97,7 @@ N="$(bsondump --quiet "$BSON" 2>/dev/null | grep -c '^{' || true)"
 echo "[title-rules] prod has ${N} title-rule records"
 if [ "${N:-0}" -lt "$MIN_RULES" ]; then
   echo "[title-rules] only ${N} records (< ${MIN_RULES}) — refusing to overwrite local ${DST_DB}.${COLL}." >&2
-  echo "[title-rules] Is MONGODB_URI / the Fly tunnel pointed at the seeded prod kinowo db?" >&2
+  echo "[title-rules] Is MONGODB_URI / the prod tunnel pointed at the seeded prod kinowo db?" >&2
   exit 3
 fi
 

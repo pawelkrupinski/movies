@@ -324,7 +324,7 @@ lazy val root = (project in file("."))
 //     process-env > -D > .env.local, so this beats .env.local's prod URI.
 //
 // Override via env: KINOWO_LOCAL_MONGO_URI, KINOWO_LOCAL_MONGO_DB, KINOWO_FIXTURE_DIR.
-// Uses the native brew Mongo on port 28017 (NOT 27017 — that's the `flyctl proxy`
+// Uses the native brew Mongo on port 28017 (NOT 27017 — that's the prod ssh-tunnel
 // to prod Mongo; this stack must never touch prod): the same single-node-replica-
 // set instance scripts/local-mirror/start-local-mongo.sh sets up and the /debug
 // mirror + scripts/reset-corpus.sh --local share. `ensureLocalMongo` runs that

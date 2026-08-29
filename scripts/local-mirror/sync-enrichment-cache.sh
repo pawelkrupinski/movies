@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # One-way sync of the country convergence ENRICHMENT CACHE from PROD
-# (`convergence_test`, over the `flyctl proxy ... --app kinowo-mongo` tunnel)
+# (`convergence_test`, over the ssh tunnel prod-tunnel.sh opens to the Mongo host)
 # into the local dev Mongo (:28017). One-shot, on-demand.
 #
 # Why this exists: the convergence suite replays a country's real repertoire and
@@ -30,6 +30,7 @@
 # Reads from .env.local (line-by-line, NOT sourced — the Mongo URIs contain
 # `&`/`?`):
 #   MONGO_ROOT_URI    prod tunnel = sync SOURCE (falls back to MONGODB_URI)
+#   KINOWO_MONGO_SSH  ssh target for the prod tunnel (optional; see prod-tunnel.sh)
 #   LOCAL_MONGO_URI   sync TARGET (default: mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true)
 #
 # Usage:  scripts/local-mirror/sync-enrichment-cache.sh [--dry-run] [country…]
@@ -62,20 +63,16 @@ SRC="$(envval MONGO_ROOT_URI)"; [ -n "$SRC" ] || SRC="$(envval MONGODB_URI)"
 DST="$(envval LOCAL_MONGO_URI)"; DST="${DST:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
 [ -n "$SRC" ] || { echo "[enrich-cache] set MONGO_ROOT_URI (or MONGODB_URI) in .env.local" >&2; exit 1; }
 
-# ── ensure the prod tunnel (source), starting our OWN flyctl proxy only when
+# ── ensure the prod tunnel (source), starting our OWN ssh forward only when
 # nothing already serves :27017 — never fighting a tunnel someone else owns.
-PROXY_PID=""
-ensure_tunnel() {
-  nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0
-  echo "[enrich-cache] no tunnel on :27017 — starting flyctl proxy --app kinowo-mongo"
-  flyctl proxy 27017:27017 --app kinowo-mongo >/dev/null 2>&1 &
-  PROXY_PID=$!
-  for _ in $(seq 1 30); do nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0; sleep 1; done
-  return 1
-}
+# Shared with mirror.sh and sync-title-rules.sh so prod moving hosts is one edit.
+TUNNEL_TAG="enrich-cache"
+TUNNEL_PROBE_URI="$SRC"
+PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
+. "$HERE/prod-tunnel.sh"
 TMP=""
 cleanup() {
-  [ -n "$PROXY_PID" ] && kill "$PROXY_PID" 2>/dev/null || true
+  close_prod_tunnel
   [ -n "$TMP" ] && rm -rf "$TMP" || true
 }
 trap cleanup EXIT INT TERM
@@ -86,7 +83,7 @@ ensure_local_mongo() {
   "$HERE/start-local-mongo.sh"
 }
 
-ensure_tunnel || { echo "[enrich-cache] prod tunnel unavailable — is 'flyctl auth login' done?" >&2; exit 1; }
+ensure_prod_tunnel || { echo "[enrich-cache] prod Mongo unreachable — can you 'ssh' to the mongo host? (see prod-tunnel.sh)" >&2; exit 1; }
 [ -n "$DRY" ] || ensure_local_mongo
 
 TMP="$(mktemp -d)"

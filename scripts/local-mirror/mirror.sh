@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Keep a local mirror of prod's /debug data in sync, continuously, so the dev
-# `/debug` pages read from a fast LAN Mongo instead of over the prod `flyctl`
+# `/debug` pages read from a fast LAN Mongo instead of over the prod ssh
 # tunnel — where the corpus scan takes 30–60s (intermittently stranding the
 # table empty at findAll's 60s timeout) and every per-row read pays a ~110ms
 # round-trip. Steps, per mirrored database:
@@ -62,6 +62,13 @@ load_endpoints() {
   case "$SRCZ" in *\?*) join="&" ;; *) join="?" ;; esac
   case "$SRCZ" in *compressors=*) ;; *) SRCZ="$SRCZ${join}compressors=zlib"; join="&" ;; esac
   case "$SRCZ" in *serverSelectionTimeoutMS=*) ;; *) SRCZ="$SRCZ${join}serverSelectionTimeoutMS=10000" ;; esac
+
+  # What prod-tunnel.sh health-checks the tunnel with. It has to be an
+  # AUTHENTICATED ping, not a TCP probe: the port answering says nothing about
+  # whether anything is behind it (see prod_tunnel_answers). Also tell it where
+  # .env.local is, so the ssh target can be overridden there.
+  TUNNEL_PROBE_URI="$SRC"
+  PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
 }
 
 # ── Keep our own log from growing without bound ──────────────────────────────
@@ -85,25 +92,17 @@ rotate_log() {
 
 # ── Resilience helpers ───────────────────────────────────────────────────────
 # Ensure the prod tunnel (sync source) is reachable, starting — and keeping
-# alive — our OWN `flyctl proxy` whenever nothing already serves :27017 (an
-# `sbt run` proxy, or a manual one). We only touch a proxy WE started, so we
-# never fight a tunnel someone else owns; `cleanup` kills ours on exit. This is
-# what makes the daemon survive a dropped/hung tunnel: the next cycle restarts it.
-PROXY_PID=""
-ensure_tunnel() {
-  nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0      # already served (ours or theirs)
-  if [ -n "$PROXY_PID" ]; then                            # ours died or hung — replace it
-    echo "[mirror] tunnel down — restarting flyctl proxy"
-    kill "$PROXY_PID" 2>/dev/null || true; PROXY_PID=""
-  else
-    echo "[mirror] no tunnel on :27017 — starting flyctl proxy"
-  fi
-  flyctl proxy 27017:27017 --app kinowo-mongo >/dev/null 2>&1 &
-  PROXY_PID=$!
-  for _ in $(seq 1 30); do nc -z -w2 127.0.0.1 27017 2>/dev/null && return 0; sleep 1; done
-  return 1
-}
-cleanup() { [ -n "$PROXY_PID" ] && kill "$PROXY_PID" 2>/dev/null || true; }
+# alive — our OWN ssh forward whenever nothing already serves :27017 (an
+# `sbt run` tunnel, or a manual one). We only touch a tunnel WE started, so we
+# never fight one someone else owns; `cleanup` kills ours on exit. This is what
+# makes the daemon survive a dropped/hung tunnel: the next cycle restarts it.
+# How that tunnel is opened — and why it is ssh to mongo-1 rather than the
+# `flyctl proxy` this used to run — lives in prod-tunnel.sh, shared with the
+# other prod-sourced scripts so there is exactly one place to repoint.
+TUNNEL_TAG="mirror"
+. "$HERE/prod-tunnel.sh"
+ensure_tunnel() { ensure_prod_tunnel; }
+cleanup() { close_prod_tunnel; }
 trap cleanup EXIT INT TERM
 
 # Ensure the local mirror Mongo (native, brew-managed) is reachable on :28017,

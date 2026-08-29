@@ -168,7 +168,7 @@ class MongoConnection(
           case Failure(exception) =>
             val isLocalUri = connectionString.contains("127.0.0.1") || connectionString.contains("localhost")
             val hint = if (isLocalUri)
-              " (local URI — start the tunnel with `flyctl proxy 27017:27017 --app kinowo-mongo` and restart, or uncomment the Atlas fallback in .env.local)"
+              " (local URI — start the tunnel with `ssh -N -L 27017:127.0.0.1:27017 root@2.28.56.140` and restart, or uncomment the Atlas fallback in .env.local)"
             else ""
             // A REACHABILITY failure must not abort boot, even when `required`. Refusing
             // to start means Play never binds port 9000, so Fly's health check can never
@@ -358,7 +358,7 @@ object MongoConnection extends Logging {
 
   /** Driver settings for a connection string. Wire compression (zlib — built into
    *  the JDK, no dependency) is forced ONLY when the host is loopback: the slow
-   *  links are the local `flyctl proxy` tunnel and a loopback read-mirror, where
+   *  links are the local ssh tunnel to the prod Mongo host and a loopback read-mirror, where
    *  transfer bytes dominate. Measured there: zlib shrinks the whole-`movies` pull
    *  ~6.6x (4.4MB → 0.65MB), a ~36s tunnel hydrate → ~5s.
    *
@@ -409,7 +409,7 @@ object MongoConnection extends Logging {
   }
 
   /** True when every host in the connection string is loopback — i.e. this is the
-   *  slow local `flyctl proxy` tunnel or a loopback mirror, not a direct 6PN link.
+   *  slow local ssh tunnel or a loopback mirror, not a direct 6PN link.
    *  Wire compression earns its CPU only on such a link (see `clientSettings`). */
   private[services] def isLoopbackLink(cs: ConnectionString): Boolean = {
     val hosts = Option(cs.getHosts).map(_.asScala.toList).getOrElse(Nil)

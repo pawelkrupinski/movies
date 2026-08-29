@@ -60,7 +60,20 @@ starts reading a collection the sync doesn't carry.
    MONGODB_MOVIES_MIRROR_URI=mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true
    ```
 
-3. **Start the mirror + sync** — either in a terminal (`scripts/local-mirror/mirror.sh`)
+3. **Check you can reach prod Mongo over ssh.** The tunnel is an ssh local
+   forward, opened by `scripts/local-mirror/prod-tunnel.sh` — the single
+   definition every prod-sourced local script shares. It must work
+   NON-INTERACTIVELY, because launchd has no terminal to answer a passphrase
+   prompt with:
+
+   ```
+   ssh -o BatchMode=yes root@2.28.56.140 true      # must exit 0, silently
+   ```
+
+   Override the target with `KINOWO_MONGO_SSH=<user>@<host>` in `.env.local`
+   (or in the environment) if the database is moved or a rescue host stands in.
+
+4. **Start the mirror + sync** — either in a terminal (`scripts/local-mirror/mirror.sh`)
    or, better, as a login service (next section). It brings up the native Mongo
    via `start-local-mongo.sh` (writing a replica-set config to
    `$(brew --prefix)/etc/mongod.conf` and `rs.initiate()`-ing once), discovers
@@ -70,7 +83,7 @@ starts reading a collection the sync doesn't carry.
    `Unauthorized` for these credentials) and mongosh is single-threaded, so N
    databases means N children rather than one loop.
 
-4. **Run the web app** (`sbt run`) and open `/debug` — it now reads the mirror.
+5. **Run the web app** (`sbt run`) and open `/debug` — it now reads the mirror.
 
 When `MONGODB_MOVIES_MIRROR_URI` is unset, the app reads `movies` from prod
 exactly as before, so the mirror is opt-in and prod is never affected.
@@ -88,7 +101,7 @@ scripts/local-mirror/service.sh uninstall   # stop + remove the agent
 ```
 
 The agent runs `mirror.sh`, a self-healing daemon: it brings up its **own**
-`flyctl proxy` tunnel when nothing already serves `:27017` (and uses an existing
+ssh tunnel when nothing already serves `:27017` (and uses an existing
 one — e.g. `sbt run`'s — when there is, never fighting it), re-ensures the native
 Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty **or
 has drifted** (below), and reconnects the tunnel / change stream on every drop.
@@ -98,7 +111,8 @@ login (it's a `brew services` agent). Logs:
 `~/Library/Logs/kinowo-local-mirror.log`, trimmed to its last 2000 lines
 whenever it passes 8MB (in place — launchd holds an append fd on it, so renaming
 would strand the agent writing to the old inode). Prereqs:
-`MONGODB_MOVIES_MIRROR_URI` set (above) and `flyctl auth login` done.
+`MONGODB_MOVIES_MIRROR_URI` set (above) and non-interactive ssh to the Mongo
+host working.
 
 ## Running the web + worker stack locally (`kinowo_local`)
 
@@ -164,6 +178,52 @@ mongosh --nodb --quiet --file scripts/local-mirror/staleness-rule.js \
                        --file scripts/local-mirror/staleness-rule-spec.js
 ```
 
+### How the tunnel reaches prod — and why a TCP probe isn't enough
+
+Prod Mongo used to be the Fly app `kinowo-mongo`, reached with
+`flyctl proxy 27017:27017`. On **2026-08-29** it moved to the Hetzner host
+`mongo-1`, and the Fly machine is now **stopped**. `mongod` there listens on
+`127.0.0.1`, on `10.20.0.10` (a private Hetzner subnet no laptop can route to)
+and on a Fly 6PN WireGuard address (how the deployed apps reach it) — so from a
+laptop the only way in is ssh, and the only far-side address that answers inside
+that session is the loopback one:
+
+```
+ssh -N -L 27017:127.0.0.1:27017 root@2.28.56.140
+```
+
+That is a **drop-in** for what `flyctl proxy` published on the same port, which
+is why nothing downstream changed: `seed.js`, `tail.js`, `staleness.js`,
+`mongodump`, `mongorestore` and the app's own `MONGODB_URI` all still dial
+`127.0.0.1:27017`. Dumping on `mongo-1` and streaming the result back would not
+work here anyway — the mirror's steady state is `tail.js` holding a **change
+stream** open for days, which is a live cursor, not a dump.
+
+All of it lives in **`prod-tunnel.sh`**, sourced by `mirror.sh`,
+`sync-title-rules.sh`, `sync-enrichment-cache.sh` and `../reset-corpus.sh`.
+Before, those four carried four copies of the same `nc -z || flyctl proxy`
+block, and a move like this had to find every one of them — the copy that got
+missed would go on dialling a stopped machine and fail like a network blip
+rather than a wrong destination.
+
+**The health check is an authenticated `ping`, not `nc -z`.** That is the
+lesson the cutover taught: a `flyctl proxy` left running from before the move
+kept *accepting* connections on `:27017` while the machine behind it was
+stopped, so every supervision cycle read "tunnel healthy" and every change
+stream then died with `ECONNRESET` — 420 in a row in the log, with nothing
+naming the tunnel as the cause. A liveness check a dead backend passes is worse
+than none, because it routes the failure somewhere it can't be diagnosed. When
+the port is held by a process that isn't ours and prod doesn't answer through
+it, the scripts say so and stop rather than killing a tunnel that may be
+someone's `sbt run` — the fix is `pkill -f 'flyctl proxy 27017'`.
+
+The tunnel is also `ExitOnForwardFailure=yes` (ssh otherwise holds a session
+open with *no* forward when the local bind fails, which reads as live and fails
+later), `BatchMode=yes` (launchd has nobody to answer a passphrase prompt) and
+`ServerAliveInterval=15` (a slept laptop leaves a half-open session that
+neither errors nor carries data). Only a tunnel the script *started* is ever
+killed, and it is killed on every exit path — no strays.
+
 ### Recovery paths are the daemon — so they're tested
 
 `mirror.sh` runs under `set -euo pipefail` with each database's `supervise_db`
@@ -178,6 +238,10 @@ asserted against stubs — no Mongo, no tunnel:
 ```
 scripts/local-mirror/mirror-resilience-spec.sh
 ```
+
+It covers the tunnel too: that a dead backend does not read as healthy, that a
+tunnel held by another process is never adopted or killed, and that the ssh
+target defaults to `mongo-1` and is overridable.
 
 `mirror.sh` is sourceable for that spec: everything below the
 `[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is
@@ -197,7 +261,7 @@ scripts/local-mirror/sync-title-rules.sh --dry-run  # dump + count only, change 
 ```
 
 One-shot and on-demand (title rules change rarely) — re-run after admin edits.
-It `mongodump`s the one collection from prod over the tunnel, guards on the
+It `mongodump`s the one collection from prod over the same ssh tunnel, guards on the
 record count (≥10, same floor as `scripts.DumpTitleRules`), then
 `mongorestore --drop`s it into `kinowo_local` — a true one-way mirror, so a rule
 deleted in prod also disappears locally. The local web+worker watch
@@ -210,6 +274,12 @@ and `LOCAL_MONGO_URI`/`LOCAL_MONGO_DB` (default `kinowo_local`) from `.env.local
 > the `GeneratedTitleRules.scala` test mirror via
 > `.github/workflows/sync-title-rules.yml`), and `scripts.ApplyExtraTitleRules`
 > (code→prod-DB, proposing new rules).
+
+> **CI still tunnels via Fly.** `.github/workflows/record-scrape-fixtures.yml`
+> (through `scripts/ci/wait-for-mongo-tunnel.sh`) opens a `flyctl proxy --app
+> kinowo-mongo` to reach prod Mongo, and the 2026-08-29 move stranded it.
+> Repointing CI needs an ssh deploy key in GitHub secrets — a separate decision
+> from this local repoint, which needs no new secret at all.
 
 ## Teardown
 
@@ -225,7 +295,7 @@ Then remove `MONGODB_MOVIES_MIRROR_URI` from `.env.local`. To wipe the data,
 
 | Port  | What                                                              |
 |-------|-------------------------------------------------------------------|
-| 27017 | prod tunnel (`flyctl proxy`) — everything except `/debug` reads, and the sync **source** |
+| 27017 | prod tunnel (`ssh -N -L 27017:127.0.0.1:27017`) — everything except `/debug` reads, and the sync **source** |
 | 28017 | native local Mongo — `/debug` mirror reads + the sync **target**, and the web+worker `kinowo_local` |
 
 Override the Mongo port with `LOCAL_MIRROR_PORT` (and match it in

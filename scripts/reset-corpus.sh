@@ -7,7 +7,8 @@
 #
 # Two targets:
 #   (default)   PROD  — kinowo (web) + kinowo-worker (worker) on Fly, prod Mongo
-#                       over the `flyctl proxy ... --app kinowo-mongo` tunnel. The
+#                       over the ssh tunnel scripts/local-mirror/prod-tunnel.sh
+#                       opens to the Hetzner Mongo host. The
 #                       Fly machines are stopped FIRST so the worker can't race a
 #                       half-finished scrape into a collection we're dropping, and
 #                       restarted only after the wipe lands.
@@ -49,7 +50,6 @@ ROOT="$(cd "$HERE/.." && pwd)"
 
 WEB_APP="kinowo"
 WORKER_APP="kinowo-worker"
-MONGO_APP="kinowo-mongo"
 COLLECTIONS=(detailCache freshness movies pending_movies tasks web_movies web_screenings)
 
 MODE="prod"
@@ -122,22 +122,22 @@ start_app() {
 }
 
 # --- tunnel to prod Mongo (prod only), torn down on any exit ----------------
-PROXY_PID=""
-cleanup() {
-  [ -n "$PROXY_PID" ] && kill "$PROXY_PID" 2>/dev/null || true
-}
+# The web + worker are still Fly apps (stop_app/start_app above), but the
+# DATABASE is not: it moved to the Hetzner host mongo-1 on 2026-08-29, so the
+# tunnel is an ssh forward. See scripts/local-mirror/prod-tunnel.sh, the single
+# definition every prod-sourced local script shares.
+TUNNEL_TAG="reset"
+TUNNEL_PROBE_URI="$URI"
+PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
+. "$HERE/local-mirror/prod-tunnel.sh"
+cleanup() { close_prod_tunnel; }
 trap cleanup EXIT
 
 open_tunnel() {
-  echo "[reset] opening Mongo tunnel ($MONGO_APP)..."
-  flyctl proxy 27017:27017 --app "$MONGO_APP" >/dev/null 2>&1 &
-  PROXY_PID=$!
-  for _ in $(seq 1 30); do  # wait up to ~30s for the tunnel to answer a ping
-    if mongosh "$URI" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then return 0; fi
-    sleep 1
-  done
-  echo "[reset] prod Mongo not reachable via the tunnel" >&2
-  exit 1
+  # Fatal, unlike the mirror daemon's retry: this script is about to DROP
+  # collections, and doing that against the wrong (or no) database is not a
+  # thing to keep retrying into.
+  ensure_prod_tunnel || { echo "[reset] prod Mongo not reachable via the tunnel" >&2; exit 1; }
 }
 
 require_local_mongo() {
@@ -178,8 +178,8 @@ fi
 # Local resets preserve the admin-curated titleRules (deliberately not in
 # COLLECTIONS), but a fresh kinowo_local has none and falls back to the frozen
 # TitleRuleDefaults — so re-pull prod's live set with the one-way sync (it opens
-# its OWN read-only flyctl tunnel to prod; prod is never written). Non-fatal: a
-# failed sync (offline / no flyctl auth) must not fail the corpus reset.
+# its OWN read-only tunnel to prod; prod is never written). Non-fatal: a
+# failed sync (offline / no ssh access) must not fail the corpus reset.
 if [ "$MODE" = "local" ]; then
   if [ -n "$DRY" ]; then
     echo "[reset] [dry-run] would sync admin-curated titleRules prod → '$DB' (scripts/local-mirror/sync-title-rules.sh)"

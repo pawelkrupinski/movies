@@ -80,7 +80,9 @@ stream (a per-country split halves per-machine cost; same-db replicas don't — 
    - `flyctl apps create kinowo-worker-<cc> --org personal`
    - `flyctl volume create worker_heapdumps --size 1 --region arn --app kinowo-worker-<cc>`
    - Secrets: copy **`MONGODB_URI` from the running `kinowo-worker`** (the real
-     `kinowo-mongo.internal` URI, NOT the local `.env.local` `127.0.0.1` one),
+     Mongo-host URI — a Fly 6PN WireGuard address since the 2026-08-29 move off
+     `kinowo-mongo` — NOT the local `.env.local` `127.0.0.1` one, which is only
+     the near end of an ssh tunnel),
      piped so the value never prints; the env-agnostic ones (TMDB/ZYTE/SENTRY/
      TELEGRAM_*/`KINOWO_PROXY_*`/OMDB) from `.env.local`. `flyctl secrets
      import` reads `KEY=VALUE` from stdin.

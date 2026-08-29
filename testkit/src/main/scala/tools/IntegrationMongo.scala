@@ -6,7 +6,7 @@ package tools
  * The integration specs write sentinel rows into `movies` / `tasks` / … and purge
  * them in `afterAll`. They resolve their target through `Env`, which falls back to
  * `.env.local` — where `MONGODB_URI` points at `127.0.0.1:27017`, i.e. PROD via
- * `flyctl proxy -a kinowo-mongo`. So `sbt itAll` with a tunnel open silently wrote
+ * an ssh tunnel to the prod Mongo host. So `sbt itAll` with a tunnel open silently wrote
  * sentinels into the production corpus, and a run killed before `afterAll` stranded
  * them there. That is not hypothetical — prod still carried "Dotted (1902)" rows,
  * and `MovieRepositoryIntegrationSpec` + `ci.yml` both grew purge code for them.
@@ -55,7 +55,7 @@ object IntegrationMongo {
            |
            |These specs write and delete sentinel rows. Against prod that strands data —
            |it already has ("Dotted (1902)"). `.env.local` points MONGODB_URI at the
-           |prod tunnel, so this fires whenever `flyctl proxy 27017 -a kinowo-mongo` is up.
+           |prod tunnel, so this fires whenever an ssh forward onto :27017 is up.
            |
            |Run against a throwaway instead:
            |  scripts/local-mirror/start-local-mongo.sh

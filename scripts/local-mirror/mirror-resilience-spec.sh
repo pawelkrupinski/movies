@@ -104,5 +104,75 @@ sourced_cleanly() {
 check "sourcing defines the functions without reading .env.local or starting anything" \
   sourced_cleanly
 
+# ── The prod tunnel: reaching the RIGHT host, and knowing when it isn't ──────
+# prod-tunnel.sh is the single definition of how a laptop reaches prod Mongo,
+# shared by mirror.sh, the two sync scripts and reset-corpus.sh. Stubbed the
+# same way as above — no ssh, no Mongo, no prod.
+echo "[spec] prod tunnel"
+
+# THE CUTOVER BUG. When prod moved off Fly onto mongo-1 (2026-08-29) the
+# `flyctl proxy` from before the move kept accepting connections on :27017 while
+# the machine behind it was stopped. The old check was `nc -z 127.0.0.1 27017`,
+# which that proxy passed, so every cycle declared the tunnel healthy and every
+# change stream then died with ECONNRESET — 420 in a row in the log, with
+# nothing anywhere naming the tunnel as the cause. A liveness check a dead
+# backend passes routes the failure somewhere it cannot be diagnosed.
+a_dead_backend_is_not_healthy() {
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/prod-tunnel.sh"
+    TUNNEL_PROBE_URI="mongodb://u:p@127.0.0.1:27017/x?serverSelectionTimeoutMS=10000"
+    nc()      { return 0; }        # the port accepts — the stale proxy's whole trick
+    mongosh() { return 1; }        # …but nothing behind it answers
+    ssh()     { touch "$SPY_SSH"; return 0; }
+    prod_tunnel_answers && return 1                 # must NOT read as healthy
+    ensure_prod_tunnel 2>/dev/null && return 1      # must NOT claim success
+    # And it must not have tried to bind over a port someone else holds.
+    [ -f "$SPY_SSH" ] && return 1
+    return 0
+  )
+}
+SPY_SSH="$(mktemp -t kinowo-tunnel-spy)"; rm -f "$SPY_SSH"
+check "a tunnel whose backend is dead does not read as healthy" a_dead_backend_is_not_healthy
+rm -f "$SPY_SSH"
+
+# We may only ever kill a tunnel WE started. The port being held by someone
+# else's forward (an sbt run, a manual one) is a reason to stop and say so, not
+# to reach for their pid — and on exit there must be nothing of ours to strand.
+close_only_touches_our_own() {
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/prod-tunnel.sh"
+    TUNNEL_PROBE_URI="mongodb://u:p@127.0.0.1:27017/x"
+    nc()      { return 0; }
+    mongosh() { return 1; }
+    ensure_prod_tunnel >/dev/null 2>&1
+    [ -z "$PROD_TUNNEL_PID" ] || return 1     # never adopted a pid that isn't ours
+    close_prod_tunnel                          # and closing is a no-op, not a stray kill
+  )
+}
+check "a tunnel held by another process is never adopted or killed" close_only_touches_our_own
+
+# Where the tunnel points is configuration, and the default has to be the host
+# prod actually lives on — a default still naming the Fly app would send every
+# one of these scripts to a stopped machine.
+target_precedence_and_default() {
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/prod-tunnel.sh"
+    local envfile; envfile="$(mktemp -t kinowo-tunnel-env)"
+    echo "KINOWO_MONGO_SSH=root@from-env-file" > "$envfile"
+
+    PROD_TUNNEL_ENV_FILE="" KINOWO_MONGO_SSH="" \
+      [ "$(PROD_TUNNEL_ENV_FILE="" prod_tunnel_target)" = "root@2.28.56.140" ] || { rm -f "$envfile"; return 1; }
+    [ "$(PROD_TUNNEL_ENV_FILE="$envfile" prod_tunnel_target)" = "root@from-env-file" ] || { rm -f "$envfile"; return 1; }
+    [ "$(PROD_TUNNEL_ENV_FILE="$envfile" KINOWO_MONGO_SSH="root@override" prod_tunnel_target)" = "root@override" ] \
+      || { rm -f "$envfile"; return 1; }
+    rm -f "$envfile"
+  )
+}
+check "the ssh target defaults to mongo-1 and is overridable by env then .env.local" \
+  target_precedence_and_default
+
 if [ "$failures" -gt 0 ]; then echo "[spec] $failures failure(s)"; exit 1; fi
 echo "[spec] all cases pass"
