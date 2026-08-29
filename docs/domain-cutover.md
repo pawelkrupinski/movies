@@ -52,6 +52,12 @@ ordering — several of the steps below are only safe in one sequence.
    So expect the first `Build web image (GHCR)` run's deploy job to fail. That is
    the documented cost of bootstrapping, not a fault.
 
+   ⚠️ **Check the new GHCR package's visibility after that first build.** A package GitHub
+   Actions creates for the first time is **private**, while `movies-worker` is public. The
+   cluster's `ghcr-pull` secret is a read:packages PAT for the same account, so a private
+   package *should* pull — but if the pods sit in `ImagePullBackOff` with a 403, that is the
+   difference, and the fix is to make `movies-web` public like its sibling.
+
 4. **Let the closure activate** (`systemctl start nixos-auto-apply` on each host
    to skip the poll), which brings up Caddy's vhosts and teaches the deploy
    endpoint about `movies-web`.
