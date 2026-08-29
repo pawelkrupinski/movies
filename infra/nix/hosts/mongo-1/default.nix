@@ -14,7 +14,7 @@ let
   #
   # The guard against it is the missing `nofail` below, not this comment: without it the mount is a
   # hard boot dependency, so a wrong id fails loudly at boot instead of quietly at runtime.
-  volumeDevice = "/dev/disk/by-id/scsi-0HC_Volume_106735108";
+  volumeDevice = "/dev/disk/by-id/scsi-0HC_Volume_106735228";
 in
 {
   imports = [

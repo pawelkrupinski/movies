@@ -208,22 +208,27 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.mongodb-7_0;
-      defaultText = "pkgs.mongodb-7_0";
+      default = pkgs.mongodb-ce;
+      defaultText = "pkgs.mongodb-ce";
       description = ''
         THE SERVER. Named as an option and not taken implicitly because a MongoDB MAJOR VERSION IS A
         ONE-WAY DOOR: the server upgrades the data files on first start and an older binary will not
         read them back. A rollback of this host's closure is therefore NOT a rollback of the
         database, which is the one place where NixOS's usual "switch back to the last generation"
-        answer does not hold. Pin it, move it deliberately, and take a dump first.
+        answer does not hold.
 
-        7.0 SPECIFICALLY, BECAUSE THAT IS WHAT WE ARE MIGRATING FROM. The Fly instance this host
-        replaces runs 7.0.39 (checked 2026-08-29), and nixpkgs carries 7.0.40 -- a patch-level
-        match. `pkgs.mongodb-ce` was the obvious-looking default and is 8.2.11: restoring a logical
-        dump into it would probably work, but it would silently make the very first act of this
-        migration a two-major-version upgrade, on the one host whose data cannot be rebuilt, with
-        the Fly rollback then pointing at an OLDER server than the data had been through. Move the
-        version deliberately, in its own change, once the migration itself is proven.
+        LATEST (mongodb-ce, 8.2.11) BY DECISION, migrating from the Fly instance's 7.0.39. This is
+        the cheap moment to make that jump and the migration is the right vehicle for it: the move
+        is a LOGICAL one -- mongodump on the old server, mongorestore into this one -- so 8.2 builds
+        its own data files from BSON rather than upgrading 7.0's in place. That is the supported
+        path across major versions, and it skips the 7.0 -> 8.0 -> 8.2 in-place ladder entirely.
+        Doing it later, once this host holds the live database, would mean exactly that ladder.
+
+        WHAT IT COSTS, and it is the reason this was pinned to 7.0 until asked otherwise: the Fly
+        rollback now points at an OLDER server (7.0.39) than the data has passed through. Rolling
+        back is still safe, because the Fly instance keeps its own untouched data files and is never
+        written to by this migration -- but it is a rollback to the OLD DATA, not to the new data on
+        an old server. Anything written here after cutover does not exist over there.
       '';
     };
 
@@ -275,15 +280,24 @@ in
 
     oplogSizeMB = lib.mkOption {
       type = lib.types.int;
-      default = 4096;
+      default = 1024;
       description = ''
-        4 GB. NOT a tuning number taken from anywhere -- it is a deliberate over-provision of the
-        change-stream resume window on a volume where four gigabytes is cheap, chosen so that a
-        worker outage measured in hours still resumes from its token rather than falling back to a
-        full re-read. The right way to revise it is to measure the real window
-        (`db.getReplicationInfo().timeDiff`) under normal write load and compare it against the
-        longest outage this fleet actually has; until somebody does that, this is a guess made in
-        the safe direction and labelled as one.
+        1 GB, AND THE NUMBER IS SET BY THE DISK RATHER THAN BY THE WORKLOAD. It was 4096 -- a
+        deliberate over-provision of the change-stream resume window, on the assumption of a volume
+        where four gigabytes is cheap. The volume is 5GB, so four of them is not cheap, it is most
+        of the disk.
+
+        WHAT THE OPLOG BUYS, so the trade is legible: it is the window a disconnected change-stream
+        consumer can resume from with its token. Past the end of it, the worker cannot resume and
+        falls back to a full re-read -- which is not data loss, but is this application's expensive
+        path. A smaller oplog is a SHORTER OUTAGE THIS SURVIVES GRACEFULLY: hours at 4GB, and
+        proportionally less here.
+
+        1GB is still very large next to a 70MB database, so the real window will be long. But it is
+        now bounded by a guess rather than measured. The way to revise it is
+        `db.getReplicationInfo().timeDiff` under normal write load, compared against the longest
+        worker outage worth surviving -- and if that argues for more, the volume grows first (a
+        Hetzner volume grows in place; see terraform/server.mongo.tf).
       '';
     };
 

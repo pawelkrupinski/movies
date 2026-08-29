@@ -36,43 +36,40 @@ module "mongo_1" {
   # it never shrinks back). And it survives the host: a `convert-host` re-run, a server-type change,
   # or a rebuild onto a fresh image all repartition the root disk, and the database is not on it.
   #
-  # 80GB, AND THAT IS KNOWN TO BE ~1100x THE LIVE DATA. Measured against the running Fly database on
-  # 2026-08-29, AFTER this volume had already been created: dataSize 0.07GB, storageSize 0.05GB,
-  # indexSize 0.01GB, 90,522 documents, mongod 7.0.39. The 80 was a guess made on the assumption
-  # that a year-old database must be large. It is not.
+  # 10GB, WHICH IS HETZNER'S MINIMUM AND ~140x THE LIVE DATA. 5GB was asked for and is not
+  # available: the API refuses anything outside 10-10240GB with `invalid input in field 'size':
+  # Must be between 10 and 10240`, and it refuses it at CREATE time, after Terraform has already
+  # destroyed the volume it was replacing. So 10 is the floor, not a preference.
   #
-  # WHAT WOULD ACTUALLY SIZE IT is not the data at all: the 4GB oplog the replica set needs (see
-  # `oplogSizeMB` in roles/mongodb.nix), the seven rotating mongodumps the backup timer keeps, and
-  # WiredTiger's headroom to checkpoint before it can free anything. 20GB covers all of that with
-  # room to spare.
+  # Measured against the running Fly database on 2026-08-29:
+  # dataSize 0.07GB, storageSize 0.05GB, indexSize 0.01GB, 90,522 documents. This volume was
+  # created at 80GB on the assumption that a year-old database must be large; it is not, and 80GB
+  # was about EUR 4.60 a month to store nothing.
   #
-  # IT IS LEFT AT 80 DELIBERATELY RATHER THAN QUIETLY CORRECTED, because correcting it is not an
-  # edit -- it is a destroy-and-create of the database's disk across two applies (see below), and
-  # that is a decision to take on purpose rather than fold into an unrelated change. The standing
-  # cost of not doing it is roughly EUR 3.40 a month. Do it while the volume is still empty or not
-  # at all; once the migration has run, the same correction means moving live data.
+  # THE OPLOG IS WHAT THIS NUMBER ACTUALLY CONSTRAINS, not the data. roles/mongodb.nix carried a 4GB
+  # oplog -- most of this disk -- and was cut to 1GB in the same change. That is a real trade and it
+  # is recorded there: the oplog is the window a disconnected change-stream consumer can resume
+  # from, so a smaller one means a shorter worker outage survivable without a full re-read. At a
+  # 70MB database 1GB is still a long window, but it is now bounded by a guess, not a measurement.
   #
-  # THE PROVIDER WILL NOT WARN YOU ABOUT ANY OF THAT. A shrink PLANS as an ordinary in-place update
-  # -- `~ size = 80 -> 20`, `0 to add, 1 to change, 0 to destroy` -- and only Hetzner's API refuses
-  # it, mid-apply, with `volume size is too small (invalid_input): size needs to be larger than
-  # current volume size`. Observed on this exact volume on 2026-08-29.
-  #
-  # So do not leave a smaller number here in the hope a future apply picks it up: it never will, and
-  # a config that plans a change it can never make is worse than an oversized disk, because a
-  # permanently dirty plan is where real drift goes to hide.
-  #
+  # Remaining budget at 5GB: ~1GB oplog, ~0.1GB data, the rotating mongodumps the backup timer
+  # keeps, and WiredTiger's headroom to checkpoint before it can free anything. GROWING IS THE EASY
+  # DIRECTION (in place, one apply), so starting small is the cheap mistake to make.
+
   # `mount_point` set, so Hetzner's automount is OFF and the mount is declared in
   # infra/nix/hosts/mongo-1/default.nix against /dev/disk/by-id/scsi-0HC_Volume_<id>. SETTING IT
   # HERE MOUNTS NOTHING -- if that `fileSystems` entry is missing, mongod silently writes the
   # production database to the root disk instead and looks perfectly healthy doing it.
   volumes = {
     mongo-data = {
-      size        = 80
+      size        = 10
       location    = "nbg1"
       mount_point = "/var/lib/mongodb"
 
       # Independently protected, so that clearing the SERVER's delete_protection to re-run a
-      # conversion cannot take the database's disk with it.
+      # conversion cannot take the database's disk with it. It was briefly false to let the
+      # 80GB -> 5GB shrink through, since a protected volume cannot be destroyed and a shrink is a
+      # destroy-and-create.
       delete_protection = true
     }
   }
