@@ -223,20 +223,13 @@ in
     # roles/prometheus.nix saying why it was where it was.
     systemd.services.k3s.serviceConfig.CPUWeight = 100;
 
-    # ON THE PRIVATE INTERFACE ONLY. NOTHING OPENS 6443 TO THE PUBLIC INTERFACE: `kubectl` from a
-    # laptop reaches this cluster over the same VPN as everything else private here.
-    networking.firewall.interfaces.${config.fleet.privateInterface} = {
-      allowedTCPPorts = [
-        6443 # the Kubernetes API
-        2379 # etcd client
-        2380 # etcd peer
-        10250 # kubelet -- the API server scrapes it for logs and `exec`
-      ];
-      # FLANNEL'S VXLAN. Required, not optional, while the backend is VXLAN (see above): with this
-      # closed the cluster comes up and every cross-node pod connection is silently black-holed,
-      # which is the single worst failure this module can produce.
-      allowedUDPPorts = [ 8472 ];
-    };
+    # NO FIREWALL RULES HERE. `fleet.firewall.k3sServer = true;` in the host file opens 6443,
+    # 10250, 8472/udp and 51820/udp on the private interface; modules/fleet/firewall.nix holds the
+    # numbers and the reasoning for each, including why 8472 being UDP is the one that silently
+    # breaks cross-node pod traffic when it is missed.
+    #
+    # NOTHING ANYWHERE OPENS 6443 PUBLICLY, and that is worth restating from this end: `kubectl`
+    # from a laptop reaches this cluster over the same ssh path as everything else private here.
 
     # kubectl on the host, so an operator on the machine can ask it what it thinks. `k3s kubectl`
     # works without this; having the real binary means a runbook reads the same here as anywhere.

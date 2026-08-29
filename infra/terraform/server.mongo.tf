@@ -31,21 +31,40 @@ module "mongo_1" {
   }
 
   # A SEPARATE VOLUME FOR THE DATABASE, not the 40GB root disk, for two reasons that both bite
-  # later rather than now. It can be grown without touching the machine (Hetzner resizes a volume
-  # in place; a server's root disk can only grow by resizing the whole server type, and `keep_disk`
-  # means it never shrinks back). And it survives the host: a `convert-host` re-run, a server-type
-  # change, or a rebuild onto a fresh image all repartition the root disk, and the database is not
-  # on it.
+  # later rather than now. It can be grown without touching the machine (Hetzner resizes a volume in
+  # place; a server's root disk only grows by resizing the whole server type, and `keep_disk` means
+  # it never shrinks back). And it survives the host: a `convert-host` re-run, a server-type change,
+  # or a rebuild onto a fresh image all repartition the root disk, and the database is not on it.
   #
-  # 80GB against a Fly volume that has been sized for this workload for a year. It is deliberately
-  # not tight -- WiredTiger wants headroom for compaction and the checkpoint it writes before it can
-  # free anything, and this fleet has already learned what a full Mongo disk does (it crashes
-  # mongod, and the crash is not the expensive part; the resize under pressure is).
+  # 80GB, AND THAT IS KNOWN TO BE ~1100x THE LIVE DATA. Measured against the running Fly database on
+  # 2026-08-29, AFTER this volume had already been created: dataSize 0.07GB, storageSize 0.05GB,
+  # indexSize 0.01GB, 90,522 documents, mongod 7.0.39. The 80 was a guess made on the assumption
+  # that a year-old database must be large. It is not.
+  #
+  # WHAT WOULD ACTUALLY SIZE IT is not the data at all: the 4GB oplog the replica set needs (see
+  # `oplogSizeMB` in roles/mongodb.nix), the seven rotating mongodumps the backup timer keeps, and
+  # WiredTiger's headroom to checkpoint before it can free anything. 20GB covers all of that with
+  # room to spare.
+  #
+  # IT IS LEFT AT 80 DELIBERATELY RATHER THAN QUIETLY CORRECTED, because correcting it is not an
+  # edit -- it is a destroy-and-create of the database's disk across two applies (see below), and
+  # that is a decision to take on purpose rather than fold into an unrelated change. The standing
+  # cost of not doing it is roughly EUR 3.40 a month. Do it while the volume is still empty or not
+  # at all; once the migration has run, the same correction means moving live data.
+  #
+  # THE PROVIDER WILL NOT WARN YOU ABOUT ANY OF THAT. A shrink PLANS as an ordinary in-place update
+  # -- `~ size = 80 -> 20`, `0 to add, 1 to change, 0 to destroy` -- and only Hetzner's API refuses
+  # it, mid-apply, with `volume size is too small (invalid_input): size needs to be larger than
+  # current volume size`. Observed on this exact volume on 2026-08-29.
+  #
+  # So do not leave a smaller number here in the hope a future apply picks it up: it never will, and
+  # a config that plans a change it can never make is worse than an oversized disk, because a
+  # permanently dirty plan is where real drift goes to hide.
   #
   # `mount_point` set, so Hetzner's automount is OFF and the mount is declared in
   # infra/nix/hosts/mongo-1/default.nix against /dev/disk/by-id/scsi-0HC_Volume_<id>. SETTING IT
-  # HERE MOUNTS NOTHING -- if that `fileSystems` entry is missing, mongod silently writes to the
-  # root disk instead and looks perfectly healthy doing it.
+  # HERE MOUNTS NOTHING -- if that `fileSystems` entry is missing, mongod silently writes the
+  # production database to the root disk instead and looks perfectly healthy doing it.
   volumes = {
     mongo-data = {
       size        = 80

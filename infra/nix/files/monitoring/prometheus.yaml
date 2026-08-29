@@ -3,8 +3,10 @@
 # nix/modules/roles/prometheus.nix.
 #
 # `@LISTEN_ADDRESS@`, `@FLY_TOKEN_FILE@` and `@GRAFANA_PORT@` are substituted at build time from
-# that module's options, and the build FAILS if any `@TOKEN@` survives -- an unsubstituted
-# placeholder would otherwise reach Prometheus as a literal hostname, and a target that does not
+# that module's options, and the build FAILS if any at-sign placeholder survives the substitution
+# (the guard greps the OUTPUT for one, so this sentence deliberately does not spell the pattern out
+# -- writing it here literally would trip the guard on this very file). An unsubstituted
+# placeholder would reach Prometheus as a literal hostname, and a target that does not
 # resolve is simply "down", which reads as a machine problem rather than a rendering one.
 #
 # THE NODE TARGETS ARE NOT IN THIS FILE. They are generated into

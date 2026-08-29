@@ -14,6 +14,13 @@
 # checks while every process that tries to CREATE a file fails: it looks alive from outside and
 # cannot write a log line.
 #
+# WHY `mountpoint!="/nix/store"` -- and this one is inherited as a MEASUREMENT rather than a guess:
+# on the fleet this was ported from, every NixOS host reports `/` and `/nix/store` as two series
+# with IDENTICAL values, because /nix/store is a bind mount of the root filesystem. Without the
+# exclusion every alert here fires TWICE for one filesystem, and the duplicate reads as two
+# machines in trouble rather than one. Worth re-checking on this fleet the first time one of these
+# fires; the exclusion costs nothing if the bind mount is ever gone.
+#
 # WHY PROPORTIONS AND NOT FLOORS. A gigabyte free is roomy on a 40G root and nearly nothing on the
 # Mongo volume, so a byte floor is either noise on the small disks or blindness on the big ones.
 #
@@ -30,8 +37,8 @@ groups:
       # -----------------------------------------------------------------------------------------
       - alert: FilesystemInodesLow
         expr: >-
-          node_filesystem_files_free{fstype!~"tmpfs|ramfs"}
-            / node_filesystem_files{fstype!~"tmpfs|ramfs"} < 0.20
+          node_filesystem_files_free{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}
+            / node_filesystem_files{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"} < 0.20
         # HALF AN HOUR, because inode counts move in steps rather than drifting: a deploy or a
         # large unpack lands thousands at once. Long enough that a build which creates and removes
         # a tree does not page; short enough to name a host days before it hits the wall.
@@ -49,8 +56,8 @@ groups:
 
       - alert: FilesystemInodesCritical
         expr: >-
-          node_filesystem_files_free{fstype!~"tmpfs|ramfs"}
-            / node_filesystem_files{fstype!~"tmpfs|ramfs"} < 0.08
+          node_filesystem_files_free{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}
+            / node_filesystem_files{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"} < 0.08
         # TEN MINUTES. Past here the remaining headroom is a single large deploy, and the repair
         # gets HARDER rather than easier as it runs out -- see the description.
         for: 10m
@@ -71,8 +78,8 @@ groups:
       # -----------------------------------------------------------------------------------------
       - alert: FilesystemSpaceLow
         expr: >-
-          node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs"}
-            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs"} < 0.15
+          node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"} < 0.15
         for: 30m
         labels:
           severity: warning
@@ -89,8 +96,8 @@ groups:
 
       - alert: FilesystemSpaceCritical
         expr: >-
-          node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs"}
-            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs"} < 0.07
+          node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"} < 0.07
         for: 10m
         labels:
           severity: critical

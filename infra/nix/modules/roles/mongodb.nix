@@ -167,14 +167,29 @@ let
       | ${pkgs.coreutils}/bin/head -n "-${toString cfg.backup.keep}" \
       | ${pkgs.findutils}/bin/xargs -r ${pkgs.coreutils}/bin/rm -rf --
 
-    # PUBLISH THE FACT THAT IT WORKED, so that "the backup timer stopped" is an alert rather than a
-    # discovery. Written to node_exporter's textfile directory; nix/files/monitoring/rules/
-    # mongodb.rules alerts on the age of this timestamp, AND on the series being absent -- because
-    # a stale-timestamp alert cannot fire if the timestamp stops being published at all.
-    #
-    # Written to a temporary file and renamed: node_exporter reads this directory on every scrape,
-    # and a half-written .prom is a parse error that discards the whole file.
-    size_bytes="$(${pkgs.coreutils}/bin/du -sb "$target" | ${pkgs.coreutils}/bin/cut -f1)"
+  '';
+
+  # PUBLISHING THE RESULT IS A SEPARATE SCRIPT BECAUSE IT RUNS AS A DIFFERENT USER. The dump runs as
+  # `mongodb`; the textfile directory is created root-owned 0755 by
+  # modules/fleet/observability.nix and shared by every publisher on the host, so `mongodb` cannot
+  # create a file in it. The unit below runs this through `ExecStartPost=+`, systemd's prefix for
+  # "with full privileges, ignoring User=", which is the narrow way across that boundary. BOTH
+  # ALTERNATIVES ARE WORSE: opening the shared directory to a group opens it for every publisher,
+  # and running the whole dump as root gives a backup job more than it needs for the sake of two
+  # lines of metrics.
+  #
+  # ExecStartPost RUNS ONLY IF ExecStart SUCCEEDED, which is the point -- the timestamp means "a
+  # dump completed", not "the unit ran". mongodb.rules alerts on the age of it AND on its absence,
+  # because a stale-timestamp alert cannot fire if the timestamp stops being published at all.
+  publishDumpMetrics = pkgs.writeShellScript "kinowo-mongodump-metrics" ''
+    set -euo pipefail
+
+    latest="$(${pkgs.coreutils}/bin/ls -1d ${cfg.backup.directory}/*/ | ${pkgs.coreutils}/bin/sort | ${pkgs.coreutils}/bin/tail -n1)"
+    size_bytes="$(${pkgs.coreutils}/bin/du -sb "$latest" | ${pkgs.coreutils}/bin/cut -f1)"
+
+    # Written to a temporary file and RENAMED, never written in place: node_exporter reads this
+    # directory on every scrape, and a half-written .prom is a parse error that discards the WHOLE
+    # file -- so an in-place write would occasionally blank every other publisher's metrics too.
     tmp="${cfg.backup.textfileDirectory}/mongodump.prom.$$"
     {
       echo "# HELP kinowo_mongodump_last_success_timestamp_seconds Unix time of the last mongodump that completed."
@@ -193,14 +208,22 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.mongodb-ce;
-      defaultText = "pkgs.mongodb-ce";
+      default = pkgs.mongodb-7_0;
+      defaultText = "pkgs.mongodb-7_0";
       description = ''
         THE SERVER. Named as an option and not taken implicitly because a MongoDB MAJOR VERSION IS A
         ONE-WAY DOOR: the server upgrades the data files on first start and an older binary will not
         read them back. A rollback of this host's closure is therefore NOT a rollback of the
         database, which is the one place where NixOS's usual "switch back to the last generation"
         answer does not hold. Pin it, move it deliberately, and take a dump first.
+
+        7.0 SPECIFICALLY, BECAUSE THAT IS WHAT WE ARE MIGRATING FROM. The Fly instance this host
+        replaces runs 7.0.39 (checked 2026-08-29), and nixpkgs carries 7.0.40 -- a patch-level
+        match. `pkgs.mongodb-ce` was the obvious-looking default and is 8.2.11: restoring a logical
+        dump into it would probably work, but it would silently make the very first act of this
+        migration a two-major-version upgrade, on the one host whose data cannot be rebuilt, with
+        the Fly rollback then pointing at an OLDER server than the data had been through. Move the
+        version deliberately, in its own change, once the migration itself is proven.
       '';
     };
 
@@ -388,21 +411,33 @@ in
 
       textfileDirectory = lib.mkOption {
         type = lib.types.str;
-        default = "/var/lib/node_exporter/textfile";
+        default = config.fleet.observability.textfileDirectory;
+        defaultText = "config.fleet.observability.textfileDirectory";
         description = ''
           Where the dump publishes its success timestamp for node_exporter to pick up.
 
-          THIS ROLE CANNOT ENFORCE THAT node_exporter IS ACTUALLY READING IT. The directory is only
-          scraped if node_exporter runs with `--collector.textfile.directory` pointing here, which
-          is the host's node_exporter configuration and not this file. If the two disagree the
-          metric is written and read by nobody -- which is why mongodb.rules alerts on the series
-          being ABSENT as well as on it being stale.
+          READ FROM THE FLEET OPTION RATHER THAN RESTATED, which is what makes the metric actually
+          reach Prometheus: modules/fleet/observability.nix creates this directory AND passes it to
+          node_exporter as `--collector.textfile.directory`, so the writer and the reader cannot
+          disagree. A literal path here would be one rename away from a file written every night
+          and read by nobody -- silent, which is why mongodb.rules alerts on the series being
+          ABSENT as well as on it being stale.
         '';
       };
     };
   };
 
   config = lib.mkIf cfg.enable {
+    # MongoDB IS UNFREE (SSPL) AND NIXPKGS REFUSES IT BY DEFAULT. Allowed by PREDICATE, matching only
+    # the mongodb package this role actually uses, rather than by the blanket
+    # `nixpkgs.config.allowUnfree = true` that would be one character shorter: a blanket flag makes
+    # every future unfree dependency arrive silently, and on a fleet whose hosts are rebuilt
+    # automatically every 30 minutes the point of the refusal is that somebody had to type the name.
+    #
+    # Scoped to this role, so it applies on mongo-1 and to no other host.
+    nixpkgs.config.allowUnfreePredicate = pkg:
+      builtins.elem (lib.getName pkg) [ "mongodb" "mongodb-ce" ];
+
     assertions = [
       {
         assertion = cfg.replSetName != "";
@@ -473,8 +508,9 @@ in
     systemd.tmpfiles.rules = [
       "d ${builtins.dirOf cfg.logPath} 0750 mongodb mongodb -"
       "d ${cfg.backup.directory} 0700 mongodb mongodb -"
-      # 0755 rather than 0700: node_exporter runs as its own user and has to READ this.
-      "d ${cfg.backup.textfileDirectory} 0755 mongodb mongodb -"
+      # NOTHING HERE CREATES THE TEXTFILE DIRECTORY. modules/fleet/observability.nix owns it for
+      # every publisher on the host at once, and a second `d` rule for the same path from a role
+      # would be a second opinion about its mode that only one of them can win.
     ];
 
     systemd.services.mongodb = {
@@ -549,6 +585,8 @@ in
         User = "mongodb";
         Group = "mongodb";
         ExecStart = mongodumpScript;
+        # `+` -- run this one as root, ignoring User= above. See publishDumpMetrics's own comment.
+        ExecStartPost = "+${publishDumpMetrics}";
         # A dump that runs into the working day is worse than one that did not run: it competes
         # with live traffic for the same disk. Two hours is generous for this corpus; if it is ever
         # hit, the answer is to look at why, not to raise it.
@@ -577,13 +615,20 @@ in
       };
     };
 
-    # THE FIREWALL, WHICH IS THE SECOND HALF OF `bindAddresses` AND NOT A DUPLICATE OF IT.
+    # THE FIREWALL IS NOT WRITTEN HERE, AND THAT IS THIS FLEET'S CONVENTION RATHER THAN AN OMISSION.
     #
-    # Binding decides what the process listens on; this decides what the kernel delivers. Both are
-    # stated because either one alone is one careless edit away from being the only thing left --
-    # and this is the port that must never be reachable from the internet.
+    # `fleet.firewall.mongo = true;` in the host file opens 27017 on the private interface, and
+    # modules/fleet/firewall.nix is where every port this fleet opens is listed together -- its own
+    # header argues, correctly, that a port number in a host file is unreviewable while a named
+    # intent is not. A role opening the port as well would be a second, invisible source of the
+    # same rule.
     #
-    # The tunnel's own port is opened in wireguard-fly.nix, alongside the interface it belongs to.
-    networking.firewall.interfaces.${config.fleet.privateInterface}.allowedTCPPorts = [ cfg.port ];
+    # THE TUNNEL'S SIDE IS OPENED ELSEWHERE: roles/wireguard-fly.nix opens this port on wg0,
+    # because every option in `fleet.firewall` is scoped to `fleet.privateInterface`.
+    #
+    # NOTE THAT THE BIND LIST IS NOT A SUBSTITUTE FOR EITHER. Binding decides what this process
+    # listens on; the firewall decides what the kernel delivers. The assertion above is what makes
+    # the first impossible to get wrong, and firewall.nix's own comment on `fleet.firewall.mongo`
+    # says the rule is what survives a mongod misconfigured to bind 0.0.0.0.
   };
 }

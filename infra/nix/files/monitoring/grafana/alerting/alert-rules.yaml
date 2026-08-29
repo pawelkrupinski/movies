@@ -1,0 +1,1301 @@
+# VENDORED from fly/grafana/provisioning/alerting/alert-rules.yaml -- a COPY, not the original.
+#
+# WHY A COPY AT ALL, when the original is in this same repository. The flake root is infra/, not the
+# repository root (see infra/flake.nix's header for why: rooting it at the top would drag ~18k
+# tracked files of a Scala application into the store on every evaluation). A Nix path that reaches
+# outside the flake root does not exist in pure evaluation, so the Grafana role cannot read
+# ../fly/... however much it would prefer to. Vendoring that drifts is a real cost; a flake that
+# cannot evaluate is a worse one.
+#
+# THE COST, STATED PLAINLY SO NOBODY IS SURPRISED BY IT: the Fly instance is being KEPT as the
+# rollback, so during the migration these rules exist twice and a fix applied to one is not applied
+# to the other. A rule fixed on the Fly side during an incident -- which is exactly when rules get
+# fixed -- will not be here. infra/flake.nix names `infra/bin/sync-grafana-provisioning` as the
+# thing that keeps this copy honest; THAT SCRIPT DOES NOT EXIST YET, so today the answer is a
+# `diff -r` before believing either copy. It should exist, and CI should run it.
+#
+# THIS IS AN UNEDITED COPY apart from this header. The datasource uid `fly-prometheus` in every
+# rule below is a CONTRACT with roles/grafana.nix, which provisions a datasource under exactly that
+# uid; renaming either silently empties every rule that queries it.
+#
+# sha256 of the source at the time of copying: 791dff7f24500ca8649e5825a56b5e608c5a391504bd231196013bdde28c4a9b
+#
+apiVersion: 1
+
+# Alert rules wired to the Fly managed Prometheus. Every expression below was
+# validated against the live endpoint (org `personal`) before being committed —
+# metric names and label shapes are real, not copied from docs (the docs'
+# `fly_instance_exit_oom` does NOT exist in this org; Fly's own email covers the
+# OOM kill, and rule "memory-pressure" below catches the pre-OOM condition).
+#
+# Each rule maps to a real past incident:
+#   - cpu-credit-exhausted / cpu-throttled  -> 2026-06-07 web 93% steal (shared
+#     vCPU credit exhaustion after the 5->19 city + zlib deploy)
+#   - memory-pressure                       -> 2026-06-06 Mongo OOM cascade
+#   - serving-app-down / http-5xx-high      -> the 502/503 web outage
+#   - http-p95-high                         -> "percentiles suddenly increasing"
+#
+# noDataState is OK for traffic/credit metrics (a quiet hobby app legitimately
+# has no HTTP series for minutes), EXCEPT serving-app-down where missing data IS
+# the alarm.
+groups:
+  - orgId: 1
+    name: fly-resources
+    folder: Fly Alerts
+    interval: 1m
+    rules:
+      # ---- CPU credit exhaustion (the 93%-steal root cause) -----------------
+      # Shared-cpu credit balance collapsing toward 0 on a serving app means it
+      # is about to run at baseline only = the latency/steal incident. Worker is
+      # excluded: it runs credit-starved by design (continuous scrape).
+      - uid: kinowo-cpu-credit-exhausted
+        title: CPU credit exhausted (serving app)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.app }} shared-CPU credit balance is near zero'
+          description: 'fly_instance_cpu_balance < 500 for 10m on {{ $labels.app }} ({{ $labels.instance }}). The machine is throttled to baseline CPU — this is the shape of the 2026-06-07 web 93%-steal incident. Check what deploy preceded it (deploy annotations on the dashboard).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'min by (app, instance) (fly_instance_cpu_balance{app=~"kinowo|kinowo-mongo|showtimes-.*"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [500] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- CPU actively throttled ------------------------------------------
+      - uid: kinowo-cpu-throttled
+        title: CPU throttled (serving app)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} is being CPU-throttled'
+          description: 'rate(fly_instance_cpu_throttle) > 0.2 (throttled >20% of wall-clock) for 10m on {{ $labels.app }}. Serving latency will suffer.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo|kinowo-mongo|showtimes-.*"}[5m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.2] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- CPU steal (host contention, secondary signal) -------------------
+      - uid: kinowo-cpu-steal-high
+        title: CPU steal high
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} CPU steal > 25%'
+          description: 'The hypervisor is stealing >25% of CPU from {{ $labels.app }} for 10m — noisy-neighbour or our own overcommit. Heap was fine in the 2026-06-07 incident; steal was the tell.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (app) (rate(fly_instance_cpu{mode="steal",app!="schowek"}[5m])) / sum by (app) (rate(fly_instance_cpu{app!="schowek"}[5m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.25] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Worker CPU starvation (sustained throttle, NOT the chronic low balance) -
+      # The worker runs credit-starved by design, so the credit-balance alert above
+      # excludes it (it would false-fire constantly). But sustained THROTTLE — actual
+      # CPU denial, ~0 in normal low-balance operation — means the worker can't keep
+      # up: a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots are
+      # pinning it at baseline long enough to fall behind. 15m window so the expected
+      # ~90s reboot blip (post boot-stagger fix) doesn't page; the 2026-06-12 episode
+      # was 28m of >75% steal with throttle pinned high — this would have caught it.
+      # WARM-JVM GUARD (`and on(app,instance) uptime > 1h`). A cold JVM legitimately
+      # burns CPU re-JITing the whole scrape/parse surface, and a machine replaced by a
+      # deploy starts at ~0 credit, so it is throttled to baseline for roughly an hour
+      # while it warms. That flare is a KNOWN, self-limiting, harmless pattern (CPU-only,
+      # 0 uncommon traps, bucket recovers — see reference_worker_jit_churn_c2), NOT a
+      # starved worker. Without the guard this rule fired for ~31%% of a 24h window on
+      # kinowo-worker and on every deploy for all three, which is noise that trains you to
+      # ignore it. What IS actionable is sustained throttling on a JVM that has finished
+      # warming, which is exactly what survives the guard.
+      #
+      # Deliberately NOT a fix for the underlying restart cadence, which IS a real gap.
+      # Measured from the persistent /data/logs/worker.log (2026-07-18): "Worker starting"
+      # outnumbers "received shutdown signal" EVERY day — 07-14 had 5 boots, 0 shutdown
+      # signals and 1 commit, i.e. 5 restarts with no deploy at all; 07-13 7, 07-15 6,
+      # 07-17 7. So kinowo-worker takes ~5-7 UNGRACEFUL restarts on a quiet day, and no
+      # rule catches them: crash-looping needs >4/HOUR and this is ~0.3/hour.
+      # (An earlier note here compared 7d restart averages across the three workers. That
+      # was WRONG — -de/-uk had only 13.7/16.7 HOURS of series in that window vs pl's 158,
+      # so the comparison measured metric availability, not restarts. Over a window where
+      # all three have data the counts are comparable.)
+      # Cause narrowed by ELIMINATION, not yet proven: not OOM (0 OutOfMemory markers in
+      # worker-stderr.log, newest heap dump predates the index-only fix), not a JVM crash
+      # (0 hs_err files), not the LivenessWatchdog (it has never logged "heartbeat stale"),
+      # not a graceful drain. That leaves an external kill. To PROVE it, read the machine
+      # event exit_code right after an ungraceful restart, BEFORE a deploy replaces the
+      # machine and wipes its event history: flyctl machine status <id> -a kinowo-worker.
+      - uid: kinowo-worker-cpu-starved
+        title: Worker CPU starved (sustained throttle)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} is CPU-throttled for 15m+ (falling behind)'
+          description: 'rate(fly_instance_cpu_throttle) > 0.2 on {{ $labels.app }}, on a JVM already up >1h (see the warm-JVM guard below) (throttled >20% of wall-clock) for 15m — the worker is starved past its baseline. Likely a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots. Check recent worker deploys/restarts and the queue depth (web queue-monitor page); if it recurs without a deploy, the fix is a bigger [[vm]] (more shared-CPU credit), not scheduling. Short reboot blips (~90s) are expected and sit below this 15m window.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo-worker.*"}[5m])) and on (app, instance) ((time() - max by (app, instance) (process_start_time_seconds{app=~"kinowo-worker.*"})) > 3600)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.2] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Worker crash-looping (restarts far above the normal cadence) -----
+      # The worker restarts a few times a day BY DESIGN — a JVM-internal non-heap
+      # OOM (exit_code=3, ExitOnOutOfMemoryError) every ~5-6h; flyd restarts it in
+      # 2s and credit recovers, so the baseline (~0.5 restarts/h) is not an
+      # incident (see reference_worker_native_oom_and_disk). But a BURST — a bad
+      # deploy, a boot failure, or the OOM cadence collapsing — is a crash loop.
+      # >4 restarts in 1h clears the baseline with wide margin. `changes()` on the
+      # ever-increasing process_start_time counts boots in the window.
+      - uid: kinowo-worker-crash-looping
+        title: Worker crash-looping
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} restarted > 4 times in the last hour'
+          description: 'changes(process_start_time_seconds[1h]) > 4 on {{ $labels.app }} — the worker is restarting far above its normal ~5-6h cadence. Check the `flyctl machine status <id>` event log for the exit reason (exit_code=3 = ExitOnOutOfMemoryError native OOM; 126/127 = bad launcher; 1 = boot failure), recent worker deploys, and the "Kinowo — Worker Diagnostics" dashboard (native memory + RSS climb). See reference_worker_native_oom_and_disk.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (changes(process_start_time_seconds{app=~"kinowo-worker.*"}[1h]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [4] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Memory pressure (pre-OOM, the Mongo-cascade precursor) -----------
+      - uid: kinowo-memory-pressure
+        title: Memory pressure (pre-OOM)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} has < 8% memory available'
+          description: 'fly_instance_memory_mem_available/total < 0.08 for 15m on {{ $labels.app }} ({{ $labels.instance }}). This is the runway to an OOM kill — the 2026-06-06 Mongo OOM cascaded into a web outage. Fly also emails on the actual kill.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'min by (app, instance) (fly_instance_memory_mem_available{app!="schowek"} / fly_instance_memory_mem_total{app!="schowek"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [0.08] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Disk space low (the 2026-06-10 Mongo disk-full crash) -----------
+      # A persistent Fly volume filling up. The 2026-06-10 outage was the
+      # kinowo-mongo /data/db volume at ~92% full: mongod's FTDC thread could no
+      # longer write metrics.interim.temp, aborted (SIGABRT, exit 134), and the
+      # crash-loop took web down with it (the blocking boot dependency). This
+      # was only visible via `df` on the box — nothing alerted on it. Covers
+      # every attached data volume (Mongo /data/db, Grafana's own /var/lib/
+      # grafana); the web app has no persistent volume so it never produces a
+      # series here. fraction-used = 1 - blocks_avail/blocks, which counts the
+      # root-reserved blocks as used and so reads a touch higher than `df` Use%
+      # — conservative on purpose. The Mongo volume sits ~50% at steady state
+      # (the 990MB oplog cap + journal + tiny dataset on a 3GB volume), so 80%
+      # is genuine headroom-gone with days of runway, not noise.
+      - uid: kinowo-disk-space-low
+        title: Disk space low (persistent volume)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.app }} volume {{ $labels.mount }} is > 80% full'
+          description: 'fly_instance_filesystem on {{ $labels.app }} ({{ $labels.instance }}) mount {{ $labels.mount }} is > 80% used for 15m. A full data volume is what crashed kinowo-mongo on 2026-06-10 (FTDC write failure -> SIGABRT -> web cascade). Extend the volume (`flyctl volumes extend <id> --size N -a {{ $labels.app }}`, then stop/start the machine) or prune /data/db.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance, mount) (1 - fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"} / fly_instance_filesystem_blocks{mount=~"/data/db|/var/lib/grafana"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.8] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Disk fill PROJECTION (lead-time before disk-space-low fires) -----
+      # predict_linear on free blocks: at the current trend, will the volume hit
+      # 0 free within 7 days? This is the *ahead-of-time* warning the 80% rule
+      # above can't give — it catches a slow leak (oplog/journal growth, a
+      # runaway collection) days before it actually fills. Validated:
+      # predict_linear is supported on Fly's VictoriaMetrics backend. 6h lookback
+      # (not 24h) so a one-off volume *resize* ages out of the window within 6h;
+      # during that window the regression only ever projects MORE space, so it
+      # cannot false-fire. for:2h smooths WiredTiger checkpoint-burst variance —
+      # to project to 0 within 7d the volume must lose ~12MB/h sustained, which
+      # noise never holds. Steady state trends flat (oplog ring-buffers at its
+      # 990MB cap), so any sustained negative projection is a real leak.
+      - uid: kinowo-disk-fill-projected
+        title: Disk projected to fill within 7 days
+        condition: C
+        for: 2h
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} volume {{ $labels.mount }} is on track to fill within 7 days'
+          description: 'predict_linear over the last 6h projects {{ $labels.app }} ({{ $labels.instance }}) mount {{ $labels.mount }} running OUT of free space within 7 days at the current growth rate — the early warning before kinowo-disk-space-low. Find what is growing (`du -sh /data/db/* | sort -rh` on the box) and extend the volume or prune before it crashes mongod.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'min by (app, instance, mount) (predict_linear(fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"}[6h], 7*24*3600))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [0] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Memory PSI pressure (earliest pre-OOM lead indicator) -----------
+      # Linux PSI "some" = % of wall-clock any task stalled waiting on memory. It
+      # rises BEFORE mem_available collapses and well before the OOM kill, so it
+      # leads the memory-pressure rule above (which watches the <8% avail floor).
+      # The 2026-06-06 cascade was an OOM; this is the earliest tap on that
+      # runway. Healthy idle boxes sit flat at 0, so a sustained avg60 > 5% is a
+      # real, building squeeze. Covers the SPOF mongo + the web app.
+      - uid: kinowo-memory-pressure-psi
+        title: Memory pressure building (PSI)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} under sustained memory pressure (PSI)'
+          description: 'fly_instance_memory_pressure_some (avg60) > 5% for 5m on {{ $labels.app }} ({{ $labels.instance }}) — tasks are stalling on memory allocation. This LEADS the mem-available collapse and the OOM kill that cascaded to a web outage on 2026-06-06. Check RSS/cache and consider a memory bump before it trips memory-pressure / OOMs.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max by (app, instance) (fly_instance_memory_pressure_some{app=~"kinowo|kinowo-mongo|showtimes-.*", pressure_duration="avg60"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+  - orgId: 1
+    name: fly-serving
+    folder: Fly Alerts
+    interval: 1m
+    rules:
+      # ---- Mongo down (the root cause of the web cascade) ------------------
+      # serving-down below watches kinowo (web) — but web only falls over BECAUSE
+      # mongo did (blocking boot dependency); both the 2026-06-06 OOM and the
+      # 2026-06-10 disk-full outages started at mongo. Alerting on mongo directly
+      # names the root cause instead of inferring it from a downstream web
+      # outage. Missing data IS the alarm (machine gone/wedged), as in
+      # serving-down. This is the rule that pages you the moment the DB drops.
+      - uid: kinowo-mongo-down
+        title: Mongo down
+        condition: C
+        for: 3m
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: 'kinowo-mongo is down or not reporting'
+          description: 'fly_instance_up{app="kinowo-mongo"} is 0 or absent for 3m — the database is unreachable, which blocks web boot and cascades to a full outage. Check `fly status -a kinowo-mongo` and the machine logs (OOM? disk full? FTDC SIGABRT?).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max (fly_instance_up{app="kinowo-mongo"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- HTTP 5xx rate ---------------------------------------------------
+      - uid: kinowo-http-5xx-high
+        title: HTTP 5xx rate high
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.app }} serving > 5% 5xx'
+          description: 'Over 5% of responses are 5xx for 5m on {{ $labels.app }} — the shape of the boot-crash-loop / Mongo-blocked-bind outage. Cross-check the latest deploy marker.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (app) (rate(fly_app_http_responses_count{status=~"5..",app!="schowek"}[5m])) / sum by (app) (rate(fly_app_http_responses_count{app!="schowek"}[5m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.05] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- HTTP p95 latency ------------------------------------------------
+      - uid: kinowo-http-p95-high
+        title: HTTP p95 latency high
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.app }} p95 latency > 2s'
+          description: 'p95 response time > 2s for 10m on {{ $labels.app }} ("percentiles suddenly increasing"). Often the first visible symptom of CPU-credit exhaustion before it trips the credit alarm.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket{app!="schowek"}[5m])))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [2] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Serving app down ------------------------------------------------
+      # The ONLY rule where missing data is the alarm: if kinowo stops reporting
+      # fly_instance_up (machine gone / wedged), or reports 0, page after 3m.
+      - uid: kinowo-serving-down
+        title: Serving app down
+        condition: C
+        for: 3m
+        noDataState: Alerting
+        execErrState: Alerting
+        labels:
+          severity: critical
+        annotations:
+          summary: 'kinowo (web) is down or not reporting'
+          description: 'fly_instance_up{app="kinowo"} is 0 or absent for 3m — the user-facing app is unreachable. Check `fly status -a kinowo` and Mongo (a Mongo hiccup blocks web boot).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max (fly_instance_up{app="kinowo"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- UK serving app down ---------------------------------------------
+      # The showtimes-uk web app (KINOWO_COUNTRY=uk, London) is the UK-facing
+      # sibling of `kinowo`. A separate rule (not a broadened app=~ matcher on the
+      # rule above) so each app gets its own clean attribution and its own Telegram
+      # thread (the policy groups by alertname+app).
+      #
+      # ⚠️ `noDataState`/`execErrState` are OK here, NOT Alerting like the `kinowo`
+      # rule above — the ONE line that differs, and the reason is the whole story.
+      # showtimes-uk was stopped on 2026-08-02 to cut hosting cost, so
+      # `fly_instance_up{app="showtimes-uk"}` is now permanently ABSENT: the
+      # expected state, not an alarm. On Alerting, absence + `for: 3m` + the policy's
+      # 4h repeat_interval is a critical Telegram page every 4 hours, forever.
+      #
+      # The rule is kept rather than deleted so the UK's monitoring survives the
+      # shutdown intact and restoring is a one-word edit. What it still catches:
+      # a machine that is UP and reporting `fly_instance_up == 0`. What it no
+      # longer catches while the app is down: the app vanishing — which is
+      # precisely the state we put it in deliberately.
+      #
+      # ON RESTORE: set both back to `Alerting`, so absence is the alarm again for
+      # an app that is once more supposed to be running. See docs/restoring-a-country.md.
+      - uid: showtimes-uk-serving-down
+        title: UK serving app down
+        condition: C
+        for: 3m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: 'showtimes-uk (UK web) is down or not reporting'
+          description: 'fly_instance_up{app="showtimes-uk"} is 0 for 3m — the UK user-facing app is unreachable. Check `fly status -a showtimes-uk` and Mongo (a Mongo hiccup blocks web boot; UK reads the same cluster, db kinowo_uk). While the UK deployment is stopped this rule is deliberately silent on absence — see the noDataState note above.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max (fly_instance_up{app="showtimes-uk"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # The fleet rules that reach these apps by `app=~` regex (CPU credit,
+      # throttle, memory PSI, worker starvation/crash-loop/credit) were LEFT
+      # UNTOUCHED by the shutdown: every one is already `noDataState: OK`, so a
+      # stopped machine drops out of them silently, and the regexes stay
+      # country-blind — which is what GrafanaCountryBlindAppMatcherSpec requires
+      # while the fly.*.toml files are still checked in. Same for every dashboard
+      # panel: the de/uk series simply render empty until those apps report again.
+
+  # ── App uptime (the in-app /uptime health, via the web /metrics scrape) ───────
+  # These watch the SAME data the public /uptime page shows — the Mongo
+  # `uptimeBuckets` health that Fly's host metrics can't see — exposed as
+  # Prometheus gauges by web's MetricsController (kinowo_uptime_recent_* over a
+  # 30-min window) and scraped via the [[metrics]] block in fly.toml.
+  - orgId: 1
+    name: app-uptime
+    folder: Fly Alerts
+    interval: 1m
+    rules:
+      # ---- Residential (Decodo) proxy failing -----------------------------
+      # The proxy egress for the Cloudflare-blocked cinemas (Multikino, biletyna)
+      # sits behind a Zyte/direct fallback, so when it dies EVERY cinema bar stays
+      # green and only the "Residential proxy" /uptime row goes red — a silent
+      # failure nobody watches while the Zyte bill (~$25/mo vs the proxy's ~$2)
+      # quietly returns. This is exactly the 2026-06-16 incident (Decodo's per-IP
+      # "Limit: 3" concurrent-auth cap rolled everything to Zyte for hours,
+      # unnoticed). Alert on the recent failure RATIO: failures /
+      # (failures+successes) over the last 30 min. clamp_min keeps an idle/low-
+      # volume window from dividing by zero; an absent series (proxy disabled, no
+      # KINOWO_PROXY_* secrets) yields no data → no alarm. Warning, not critical:
+      # scraping never breaks (the fallback serves), it's a cost + capability
+      # regression, so 15m of sustained majority-failure is the right trip.
+      - uid: kinowo-residential-proxy-failing
+        title: Residential proxy failing (falling back to Zyte)
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: 'The Decodo residential proxy is mostly failing — cinema scrapes are falling back to Zyte'
+          description: 'Over half of the residential-proxy fetches in the last 30 min failed (kinowo_uptime_recent_failures vs _recent_successes for service "Residential proxy"). Scraping still works via the Zyte/direct fallback so no cinema is down — but the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use. Check the "Residential proxy" row on https://kinowo.fly.dev/uptime for the error text (per-IP "Limit: 3" auth cap, 401/407, or a burned IP), and the Decodo dashboard. See reference_decodo_isp_proxy.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum(kinowo_uptime_recent_failures{service="Residential proxy"}) / clamp_min(sum(kinowo_uptime_recent_failures{service="Residential proxy"}) + sum(kinowo_uptime_recent_successes{service="Residential proxy"}), 1)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- An enrichment source is refusing us --------------------------------
+      # 2026-07-30: IMDb's GraphQL CDN started 403-ing every request that didn't
+      # name a client. Ratings stopped refreshing in all three countries for ~47
+      # hours and nothing paged, even though every piece of detection already
+      # existed — HttpOutcome splits 403 into its own series precisely so "a host
+      # refusing us" is legible, and MonitoringHttpFetch already counted it as an
+      # IMDb failure, so /uptime showed the source 100% failed for two days. The
+      # gap was that no rule read any of it.
+      #
+      # Same shape as the residential-proxy rule above, and for the same reason:
+      # a source dying is SILENT. Ratings are best-effort, so nothing 5xxs, no
+      # page goes blank, and the stored ratings simply freeze at their last value
+      # — the failure is invisible except as a badge that quietly stops moving.
+      #
+      # Grouped `by (service, country)` because one dead source among five reads
+      # as roughly a fifth of enrichment traffic failing when summed fleet-wide,
+      # which trips nothing; per source it is unmissable and the alert names the
+      # source that died. Ratio rather than a raw count because the Metacritic /
+      # RT / Filmweb resolvers probe candidate slugs that 404 by design, so a
+      # failure count is never zero — only failures/(failures+successes)
+      # distinguishes routine probe misses from a wholesale refusal. clamp_min
+      # keeps an idle window from dividing by zero; an absent series (a country
+      # not exporting yet) yields no data → no alarm.
+      #
+      # Warning, not critical, and a slow 30m trip: no user-facing page breaks,
+      # ratings are retried forever, and a brief upstream wobble (Cloudflare
+      # challenging a probe burst) must not page. 30m of a source majority-
+      # failing is still ~94x faster than the 47h this took to notice by eye.
+      - uid: kinowo-enrichment-source-failing
+        title: Enrichment source failing (ratings stopped refreshing)
+        condition: C
+        for: 30m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: 'An enrichment source is mostly failing — its ratings have stopped refreshing'
+          description: 'Over half of the fetches to one enrichment source (IMDb / TMDB / Filmweb / Metacritic / Rotten Tomatoes) failed in the last 30 min — kinowo_uptime_recent_failures vs _recent_successes, per service. Nothing user-facing is down: stored ratings keep serving, they just freeze at their last value, which is why this class of outage goes unnoticed (IMDb 2026-07-30, ~47h). Check the source''s row on https://kinowo.fly.dev/uptime for the error text. A 403 across the board is the upstream refusing our requests wholesale — usually a new header/auth requirement rather than a ban; the IMDb case was fixed by naming ourselves via RealHttpFetch.HostPolicies headers.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) / clamp_min(sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) + sum by (service, country) (kinowo_uptime_recent_successes{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}), 1)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Per-city served-film count swung suddenly (either direction) -----
+      # The web exposes kinowo_web_movies_served{city,scope} — distinct films
+      # served per /:city/ page, sampled every minute from the real serving path
+      # (all future showings / showing tomorrow). This rule fires when a city's
+      # count deviates from its own trailing 1h average by >50% AND by >=4 films
+      # — in EITHER direction (abs()). The relative test catches the shape of a
+      # read-model outage (a malformed web_movies row empties the corpus → a city
+      # craters to 0); the absolute >=4 floor suppresses the noise of tiny-town
+      # cities where +-2 films is a normal day-to-day swing. It's inherently a
+      # TRANSITION ping (the 1h baseline catches up within ~an hour, so it
+      # self-resolves); the city-empty rule below is the companion that keeps
+      # paging while a city stays dark.
+      - uid: kinowo-movies-served-swing
+        title: Films served per city swung suddenly
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.city }} ({{ $labels.scope }}) film count swung sharply vs its 1h average'
+          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" is >50% and >=4 films off its trailing 1h average — a sudden jump or drop in what the web is serving. A drop is the read-model-outage shape (a malformed web_movies row empties the corpus, every city craters); a jump can be a scrape/projection anomaly. Check https://kinowo.fly.dev/{{ $labels.city }}/ and the "films served per city" dashboard panel.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: '(abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) / clamp_min(avg_over_time(kinowo_web_movies_served[1h]), 1)) and (abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) >= 4)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- A city that WAS serving films dropped to zero (sustained) --------
+      # The defensive floor under the swing rule above (which self-resolves once
+      # its 1h baseline decays). Fires when a city's all-scope count is 0 now AND
+      # averaged >=4 over the last 6h — i.e. it was genuinely serving films and
+      # went dark, NOT a tiny city that is simply empty by nature (those never
+      # satisfy the 6h>=4 guard, so they don't page). The 6h baseline keeps this
+      # firing for hours while the city stays at 0 — that's the read-model-outage
+      # signal the swing alert can't hold. Resolves (noData → OK) the moment the
+      # city serves a film again.
+      - uid: kinowo-movies-served-city-empty
+        title: City serving zero films (was active)
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 6h)'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite a >=4 film average over the last 6h — the city went dark. The likely cause is a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage). Check web logs for "findAllMovies failed" / "Missing field", and https://kinowo.fly.dev/{{ $labels.city }}/.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: '(kinowo_web_movies_served{scope="all"} == 0) and (avg_over_time(kinowo_web_movies_served{scope="all"}[6h] offset 10m) >= 4)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- A country's SLOT VOLUME collapsed (films flat, showtimes gone) ---
+      # The two rules above count distinct FILMS, and are structurally blind to
+      # a chain dropping every evening slot of every film it carries: the card
+      # stays, the schedule empties, neither rule moves. kinowo_worker_showtimes
+      # is the volume complement — upcoming single dated slots the source corpus
+      # would serve, per country and city, sampled through the real projection
+      # path. This rule is what makes that panel page.
+      #
+      # 2026-07-27: the UK fell 152,315 -> ~40,000 upcoming slots in six hours
+      # (London 22,066 -> 9,956) while its film count ROSE over the same window,
+      # 1,271 -> 1,559 rows (corpus_movies{subset="total"} — note the other
+      # subsets overlap it, so summing them over-counts the corpus ~6x). Slots at
+      # a 24h low with films at a high is the whole signal: the loss cannot be a
+      # scrape outage, because a dead cinema takes its films with it. The
+      # sibling countries stayed put throughout (PL ~900 films / ~36k slots flat;
+      # DE refilled to 1,198 / ~59k and HELD), so it is not a fleet-wide effect
+      # either. The swing rule above was live and silent
+      # the whole time, because its baseline is avg_over_time(...[1h]) — over a
+      # multi-hour bleed the reference falls with the metric and the ratio never
+      # trips. The fix is a baseline LONGER than the incident.
+      #
+      # max_over_time (not avg) is the baseline on purpose: a restart walks the
+      # gauge up from a cold scan, so the series carries low samples that are not
+      # losses. The peak of the window is therefore the trustworthy sample, and an
+      # averaged baseline would be dragged down by exactly that noise.
+      #
+      # WHAT THIS RULE CAN NO LONGER SEE: a truncated corpus pass. It used to
+      # publish what it had read, so a read fault dragged the gauge down and this
+      # ratio with it. WorkerShowtimesMetrics.publish() now gates on scanComplete
+      # and publishes NOTHING on a partial pass, so the gauge FREEZES at its last
+      # complete value — and a frozen numerator over a frozen max_over_time
+      # denominator is a flat 1.0 that never trips. That failure mode moved to
+      # kinowo-corpus-census-stuck below; the two rules are complements, not
+      # overlaps, and neither covers the other's shape.
+      #
+      # Per country, never fleet-wide: the UK's 63% loss was only a 27% dent in
+      # sum(kinowo_worker_showtimes) because PL and DE were healthy. Backtested
+      # over the 7 days to 2026-07-27 (~1,000 country-samples, including the DE
+      # scrape starvation and the PL/DE overnight refills): the ratio never went
+      # below 0.6 for any healthy country (DE floor 0.707, PL floor 0.796) and
+      # went below only for the UK, only during the incident (floor 0.09) — so
+      # 0.6 has real margin on both sides. `for: 30m` rides out the re-climb
+      # after a worker restart, which walks the gauge back up from a cold scan.
+      - uid: kinowo-showtime-volume-collapsed
+        title: Showtime volume collapsed (country)
+        condition: C
+        for: 30m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.country }} is serving under 60% of its 6h peak showtime volume'
+          description: 'sum by (country) (kinowo_worker_showtimes) for "{{ $labels.country }}" has been below 60% of its own 6h peak for 30m — upcoming showtimes are disappearing without whole films disappearing with them, so the film-count alerts stay green. Check the "total upcoming showtimes served" panel on the Fly-health dashboard scoped to this country, compare kinowo_worker_corpus_movies (flat corpus + falling slots = the slots are being lost in projection/storage, not in scraping), and check the worker''s removal audit for scrape-prune / reproject-trim bursts. See project_uk_slot_volume_collapse.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (country) (kinowo_worker_showtimes) / clamp_min(max_over_time(sum by (country) (kinowo_worker_showtimes)[6h:10m]), 1)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [0.6] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- A country's corpus census stopped reading (gauges frozen) --------
+      # Every census gauge on the Fly-health dashboard — kinowo_worker_corpus_movies,
+      # kinowo_worker_movies_served, kinowo_worker_showtimes — comes from ONE paged
+      # scan of `movies` every 5 min, and each of them now SKIPS its publish when
+      # that scan could not read every row. That is the right call for the gauges
+      # (a partial count is fewer rows read, not a smaller corpus, and 2026-07-27's
+      # `Missing field: sourceData` decode bug published total=0 for ~50 min while
+      # the corpus sat intact at 943 films) — but it means a total read failure now
+      # renders as three flat, plausible, entirely stale lines and pages nobody:
+      # the swing/floor rules see no swing, and the collapse rule above sees a
+      # frozen ratio of 1.0. This counter is the only remaining evidence, so it is
+      # the only thing that can carry the alert.
+      #
+      # Any incomplete pass at all is worth a page: the scan is read-only and
+      # keyset-paged over a collection the worker reads constantly, so a batch that
+      # fails is a real fault (decode, connection, timeout), not routine noise. The
+      # counter is materialized at 0 per country from boot, so `increase` has a
+      # baseline to move off immediately rather than only once it has gone wrong.
+      # `for: 10m` over a 30m window means two consecutive failed 5-min passes, not
+      # one — a single transient miss self-heals on the next tick and the gauges
+      # were only one sample stale.
+      - uid: kinowo-corpus-census-stuck
+        title: Corpus census stuck (country)
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.country }} corpus census cannot read the whole collection — its census gauges are frozen'
+          description: 'kinowo_worker_corpus_scan_incomplete_total is rising for "{{ $labels.country }}": the 5-minute corpus scan is failing to read every row, so kinowo_worker_corpus_movies / _movies_served / _showtimes have STOPPED publishing and are showing their last complete values. Treat every census panel on the Fly-health dashboard as stale until this clears — including the ones the showtime-collapse and films-served alerts read, which cannot fire on a frozen gauge. Check the worker logs for `worker-corpus-scan: corpus scan incomplete` and for the decode/read error underneath it (2026-07-27 was a required-field decode bug failing every batch; see reference_failed_read_is_not_data).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 1800, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'sum by (country) (increase(kinowo_worker_corpus_scan_incomplete_total[30m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [1] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+  # ---- Worker CPU-credit throttle CONTROL (drives the worker's /throttle) -----
+  # NOT a page. The worker runs credit-starved by design; this rule is the
+  # external "credit logic" for its self-heal backoff. When kinowo-worker's
+  # shared-CPU credit balance drops below ~5k (its 2x cap is ~8k) the rule FIRES →
+  # the WorkerThrottle webhook POSTs http://kinowo-worker.internal:9000/throttle →
+  # ExternalThrottleGate flips on → all reapers (scrape/ratings/detail/tmdb) back
+  # off enqueue → the pool idles → credit rebuilds → balance climbs back above 5k →
+  # the alert RESOLVES → webhook (status=resolved) → reapers resume. The threshold
+  # lives HERE, outside the worker (it only receives firing/resolved). 30s eval over
+  # a 2-min AVERAGE of the balance + `for: 1m` so a single spurious low/zero scrape
+  # sample (fly_instance_cpu_balance is occasionally noisy) can't trip the backoff —
+  # it was firing while the dashboard balance sat well above 6k because the old rule
+  # read ONE instantaneous sample with `for: 0`. Routed to WorkerThrottle (NOT
+  # Telegram) by the `notify: worker-throttle` label. noData/execErr = OK (never
+  # throttle on a missing/erroring balance — fail-safe).
+  - orgId: 1
+    name: worker-throttle
+    folder: Fly Alerts
+    interval: 30s
+    rules:
+      - uid: kinowo-worker-credit-low
+        title: Worker credit low (drive backoff)
+        condition: C
+        for: 1m
+        # VALUE hysteresis (see the threshold's evaluator + unloadEvaluator below):
+        # FIRE only when credit drops under 6000, RECOVER (resolve) only once it
+        # climbs back over 12000. The 6k→12k band is scaled to the shared-cpu-4x
+        # ceiling (~19k; on 2x it was 2.5k/5k for the ~8k cap). The wide band keeps
+        # the worker backed off long enough for the idle pool to rebuild a real
+        # buffer before resuming — otherwise it resumed the instant credit touched
+        # the trip line and a rating sweep right after drained it to the floor
+        # (measured on 2x: 4922→1 as ratings burst to 118/min). At 4x credit rarely
+        # dips into this band at all, so it's mostly a deep safety net — which is why
+        # a fire here is far more likely a noisy sample than a real drain, hence the
+        # 2-min avg + `for: 1m` debounce on the query below. (A top-level
+        # `keep_firing_for` is silently ignored by file provisioning — the API
+        # showed keepFiringFor=None — so the hysteresis lives in the threshold's
+        # unloadEvaluator, which IS honoured.)
+        noDataState: OK
+        execErrState: OK
+        labels:
+          notify: worker-throttle
+        annotations:
+          summary: '{{ $labels.app }} shared-CPU credit < 6k — backing off its reapers until it rebuilds past 12k'
+          description: 'fly_instance_cpu_balance for {{ $labels.app }} dropped below 6000; the WorkerThrottle webhook for that app tells the worker to throttle all reapers and HOLDS until credit climbs back over 12000 (the recovery threshold), so the idle pool builds a buffer before resuming. Band scaled to the 4x ~19k cap. By design — not an incident.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              # 2-min trailing average, not the raw instantaneous gauge: one spurious
+              # low/zero scrape (the gauge is occasionally noisy) gets diluted by the
+              # ~3 healthy ~19k samples around it, so it never alone pulls the mean
+              # under 6k. Window (120s) < relativeTimeRange.from (300s), so it's fully
+              # covered. Single venue still evaluated instantly at eval time.
+              expr: 'min by (app, instance) (avg_over_time(fly_instance_cpu_balance{app=~"kinowo-worker.*"}[2m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: lt, params: [6000] }
+                  # Recovery threshold (hysteresis): once firing, stay firing until
+                  # the balance climbs back OVER 12000 — not the moment it re-crosses
+                  # the 6000 trip line. Scaled to the 4x ~19k cap.
+                  unloadEvaluator: { type: gt, params: [12000] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Worker throttle NOTIFICATION (Telegram on start / end) -----------------
+      # A human heads-up, separate from the control gate above. Fires to Telegram
+      # whenever the worker is ACTUALLY backing off — the kinowo_worker_throttled
+      # gauge = 1, set from the live composite signal, so it covers BOTH the external
+      # credit gate AND the in-process scrape-duration backstop (not just credit).
+      # `for: 2m` so a brief EWMA blip doesn't message; firing = "throttling started",
+      # resolved = "ended" (the Telegram contact point sends both). NO `notify` label,
+      # so it falls through to the default Telegram receiver, not the /throttle webhook.
+      - uid: kinowo-worker-throttled
+        title: Worker throttling
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: OK
+        annotations:
+          summary: 'kinowo-worker is throttling — reapers backing off to let CPU credit rebuild'
+          description: 'kinowo_worker_throttled = 1 for 2m: the worker is backing off all reapers (the credit gate or the scrape-duration backstop tripped). Expected under load on shared CPU; this resolves when it returns to full enqueue.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max(kinowo_worker_throttled{app="kinowo-worker"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Task-queue head-of-line starvation ------------------------------------
+      # The EARLIEST symptom of a throttle/backlog spiral. During the 2026-06-23
+      # episode the oldest waiting task aged to ~29min while credit drained for two
+      # HOURS before anyone looked — this gauge crossing 10min would have paged at
+      # ~04:00, long before the floor at 05:00. `for: 5m` so a brief reaper pause
+      # doesn't message. Human Telegram heads-up (no `notify` label → default
+      # receiver), not the /throttle control webhook.
+      - uid: kinowo-worker-task-age-high
+        title: Worker task queue head-of-line age high
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: OK
+        annotations:
+          summary: 'kinowo-worker oldest waiting task > 10min — the queue is not draining'
+          description: 'kinowo_worker_queue_oldest_waiting_age_seconds > 600 for 5m: the head of the task queue has been waiting over ten minutes, so the worker pool is not keeping up (a CPU-credit throttle spiral, a wedged reaper, or a slow-host backlog). The earliest signal of the sustained-throttle failure mode.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max(kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [600] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C
+
+      # ---- Task-queue backlog depth ----------------------------------------------
+      # Backs up the age signal with a volume one: a large WAITING set that isn't
+      # draining. Normal steady state is ~0 (work is claimed near-instantly); the
+      # spiral piled 286→568. `for: 10m` rides out the brief post-boot flush (the
+      # 568 blip cleared in ~4min) and only fires on a genuinely stuck backlog.
+      - uid: kinowo-worker-queue-backlog
+        title: Worker task queue backlog high
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: OK
+        annotations:
+          summary: 'kinowo-worker waiting task backlog > 150 for 10min — pool not keeping up'
+          description: 'kinowo_worker_queue_depth{state="waiting"} > 150 for 10m: the waiting task set has stayed large, so the worker pool is not draining it (throttle spiral or a stuck reaper). Pairs with kinowo-worker-task-age-high.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: fly-prometheus
+            model:
+              datasource: { type: prometheus, uid: fly-prometheus }
+              editorMode: code
+              expr: 'max(kinowo_worker_queue_depth{app="kinowo-worker", state="waiting"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              conditions:
+                - type: query
+                  evaluator: { type: gt, params: [150] }
+                  operator: { type: and }
+                  query: { params: [] }
+                  reducer: { type: last, params: [] }
+              refId: C

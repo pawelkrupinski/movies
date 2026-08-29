@@ -182,12 +182,16 @@ in
 
     textfileDirectory = lib.mkOption {
       type = lib.types.str;
-      default = "/var/lib/node_exporter/textfile";
+      default = config.fleet.observability.textfileDirectory;
+      defaultText = "config.fleet.observability.textfileDirectory";
       description = ''
-        Where the handshake metric is published for node_exporter to pick up. Same directory and
-        the same caveat as `fleet.mongodb.backup.textfileDirectory`: this role cannot enforce that
-        node_exporter is reading it, which is why the rule file alerts on the series being absent
-        as well as on its value.
+        Where the handshake metric is published for node_exporter to pick up.
+
+        READ FROM THE FLEET OPTION, not restated: modules/fleet/observability.nix both creates this
+        directory and passes it to node_exporter as `--collector.textfile.directory`, so writer and
+        reader cannot drift apart. The rule file still alerts on the series being ABSENT, because
+        the timer failing is a different fault from the directory being wrong and both end as
+        silence.
       '';
     };
 
@@ -279,11 +283,6 @@ in
       after = [ "wireguard-${cfg.interface}.service" ];
     };
 
-    systemd.tmpfiles.rules = [
-      # 0755: node_exporter runs as its own user and has to read what is written here.
-      "d ${cfg.textfileDirectory} 0755 root root -"
-    ];
-
     systemd.services.wireguard-fly-metrics = {
       description = "Publish Fly WireGuard handshake age for node_exporter";
       serviceConfig = {
@@ -313,12 +312,25 @@ in
       };
     };
 
-    # THE DATABASE PORT, ON THE TUNNEL, AND NOWHERE ELSE THIS FILE TOUCHES.
+    # THE DATABASE PORT, ON THE TUNNEL. THE ONE FIREWALL RULE ANY ROLE IN THIS TREE WRITES DIRECTLY,
+    # and the exception is narrow rather than a lapse: every option in `fleet.firewall` is scoped to
+    # `fleet.privateInterface`, and wg0 is not that interface. The objection its header raises
+    # against a role naming an interface does not apply either -- the name here is this role's own
+    # `interface` option, the same value that created the device, so the two cannot disagree.
     #
-    # This is the whole of what Fly is granted on this machine. Note what is NOT here: no UDP port
-    # opened to the public interface (this peer only ever initiates -- see the `listenPort` note
-    # above), and nothing forwarded. This host is an ENDPOINT on 6PN, not a gateway into the
-    # Hetzner private network: a compromised Fly app reaches mongod and stops there.
+    # This is the WHOLE of what Fly is granted on this machine. Nothing is forwarded: this host is
+    # an ENDPOINT on 6PN, not a gateway into the Hetzner private network, so a compromised Fly app
+    # reaches mongod and stops there.
+    #
+    # A DISAGREEMENT WORTH RESOLVING RATHER THAN INHERITING: modules/fleet/firewall.nix opens
+    # 51820/udp INBOUND on all three hosts, with a comment that "Fly DIALS IN from its gateway
+    # rather than us dialling out". THIS ROLE IS BUILT THE OTHER WAY ROUND -- `fly wireguard create`
+    # hands back a peer configuration with an Endpoint, so this side initiates, which is why no
+    # `listenPort` is set above and why the keepalive matters. If this side initiates, that inbound
+    # opening is inert here (nothing listens on 51820) and harmless. If Fly really must dial in,
+    # then this role needs a FIXED `listenPort` and that rule is what carries it -- one of the two
+    # files is wrong, and finding out which is a five-minute check with `wg show` after the first
+    # handshake, not a thing to leave as two comments that disagree.
     networking.firewall.interfaces.${cfg.interface}.allowedTCPPorts = [ cfg.mongoPort ];
 
     # THE MTU IS LEFT AT WIREGUARD'S DEFAULT (1420), which is right for a 1500-byte path and is a

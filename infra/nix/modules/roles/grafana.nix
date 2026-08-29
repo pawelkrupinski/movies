@@ -1,31 +1,36 @@
 # Grafana, provisioned as code -- the port of the `kinowo-grafana` Fly app.
 #
 # ------------------------------------------------------------------------------------------------
-# WHERE THE PROVISIONING COMES FROM, AND WHY MOST OF IT IS NOT COPIED
+# WHERE THE PROVISIONING COMES FROM, AND WHY IT IS VENDORED RATHER THAN READ IN PLACE
 # ------------------------------------------------------------------------------------------------
 #
-# The alert rules and the dashboards are read STRAIGHT OUT of `fly/grafana/provisioning/` -- the
-# same files the Fly machine serves today, in the same repository as this one. Not vendored, not
-# transcribed. That is the bitcashier practice inverted: over there the Grafana content lives in a
-# Puppet tree and is read from it so that one copy serves two fleets; here it lives in the
-# application repository and is read from it so that one copy serves the Fly instance and this one
-# through the whole of the migration, however long that takes.
+# The alert rules and the dashboards ARE the Fly instance's -- fly/grafana/provisioning/ -- copied
+# into nix/files/monitoring/grafana/. Not transcribed, not rewritten: copied, and the dashboards
+# byte for byte.
 #
-# The alternative was to copy 1,279 lines of alert rules and 3,569 lines of dashboard JSON into
-# nix/files/. A transcription error in an alert rule is INVISIBLE -- a threshold that is wrong does
-# not fail, it stays quiet -- and two copies of an alert file drift the first time somebody fixes a
-# rule on the Fly side during an incident. Read it once.
+# COPIED RATHER THAN REFERENCED BECAUSE OF THE FLAKE ROOT, which is infra/ and not the repository
+# root (infra/flake.nix's header sets out why: rooting it at the top drags ~18k tracked files of a
+# Scala application into the store on every evaluation). A Nix path outside the flake root does not
+# exist under pure evaluation, so reading `../fly/grafana/...` from here is not an option, however
+# much this file would prefer one copy over two. bitcashier's equivalent role DOES read its
+# Grafana content in place, out of a Puppet tree, because its flake is rooted at the repository
+# root -- that is the one structural difference between the two fleets, and it is why this file
+# and that one differ on the one point they otherwise agree about.
 #
-# THESE PATHS REACH OUT OF infra/ INTO fly/, WHICH REQUIRES THE FLAKE ROOT TO BE THE REPOSITORY
-# ROOT rather than `infra/`. That is exactly what bitcashier's flake.nix says about its own root and
-# for exactly this reason. IF THE FLAKE IS ROOTED AT infra/ THESE PATHS DO NOT EXIST IN THE CLOSURE
-# AND THE BUILD FAILS -- loudly, at evaluation, naming the path. The fix is to move the flake root,
-# not to copy the files across; copying is how the drift starts.
+# WHAT THE COPY COSTS, so nobody is surprised by it: the Fly instance is KEPT as the rollback, so
+# these files exist twice for the length of the migration and a rule fixed on the Fly side -- which
+# is when rules get fixed -- is not fixed here. infra/flake.nix names
+# `infra/bin/sync-grafana-provisioning` as what keeps the copy honest; THAT SCRIPT DOES NOT EXIST
+# YET, so today the answer is `diff -r` before trusting either copy. It should exist, and CI should
+# run it.
 #
-# WHAT IS VENDORED, AND ONLY THIS: the contact points and notification policy
-# (nix/files/monitoring/grafana-contactpoints.yaml). They had to change -- the Fly copy carries the
-# worker-throttle webhooks and a different chat id -- so they are a separate file with its own
-# reasoning written into it.
+# TRANSCRIBING WAS NEVER THE ALTERNATIVE. A wrong threshold in an alert rule does not fail, it goes
+# quiet -- indistinguishable from a good night -- so 1,279 lines of rules retyped by hand is a set
+# of alerts that is 95% right, which is worse than none because it is trusted.
+#
+# THE CONTACT POINTS AND THE NOTIFICATION POLICY ARE DIFFERENT: they are vendored because they had
+# to CHANGE (a different chat id, and the worker-throttle webhooks dropped), so they live in
+# nix/files/monitoring/grafana-contactpoints.yaml with their own reasoning written into them.
 #
 # ------------------------------------------------------------------------------------------------
 # THE TWO GOTCHAS THAT MUST SURVIVE THIS PORT. BOTH ARE VERIFIED, BOTH COST A DEBUGGING SESSION.
@@ -68,14 +73,13 @@
 let
   cfg = config.fleet.grafana;
 
-  # THE APPLICATION REPOSITORY'S OWN PROVISIONING, read by Nix. See the header: this reaches out of
-  # infra/ and that is deliberate.
+  # THE VENDORED COPY of fly/grafana/provisioning. See the header for why it is a copy.
   #
-  # THESE FILES ARE SHIPPED BY NIX AND NOT BY FLY, and the path is the only thing that says so.
-  # Editing one and running `fly deploy` changes nothing on this host; it takes a
-  # `nixos-rebuild switch`. During the migration BOTH are true of the same file, which is the
-  # awkward part of sharing it and still better than two copies that disagree.
-  flyProvisioning = ../../../../fly/grafana/provisioning;
+  # THESE FILES ARE SHIPPED BY NIX, NOT BY FLY, and nothing about the path says so. Editing the
+  # copy and running `fly deploy` changes nothing on this host; editing the ORIGINAL and running
+  # `nixos-rebuild switch` changes nothing either. During the migration both files exist and each
+  # is deployed by a different tool -- which is the trap this comment exists to name.
+  grafanaProvisioning = ../../files/monitoring/grafana;
 in
 {
   options.fleet.grafana = {
@@ -305,9 +309,11 @@ in
               # roles/wireguard-fly.nix does for mongo-1 -- or the apps moving here. That is a
               # known, named gap and it is not fixed in this change.
               #
-              # THE OTHER OPTION WAS TO REWRITE THE DASHBOARDS' uid REFERENCES, which is 92 edits in
-              # a file shared with the still-live Fly instance, where they would then be wrong. Not
-              # while both run.
+              # THE OTHER OPTION WAS TO REWRITE THE DASHBOARDS' uid REFERENCES -- 92 edits across
+              # the three vendored files. That would make the copy permanently divergent from the
+              # original it is supposed to be a copy OF, so `diff -r` stops being the check that
+              # the vendoring is honest, and it would be wrong on the Fly side, which is still
+              # running and is the rollback. A datasource entry costs nothing and keeps both true.
               name = "App Metrics (live)";
               uid = "app-metrics-live";
               orgId = 1;
@@ -336,16 +342,17 @@ in
             disableDeletion = true;
             allowUiUpdates = false;
             updateIntervalSeconds = 60;
-            options.path = "${flyProvisioning}/dashboards";
+            options.path = "${grafanaProvisioning}/dashboards";
           }];
         };
 
         alerting = {
           # THE 24 ALERT RULES, in four groups (fly-resources, fly-serving, app-uptime,
-          # worker-throttle), read from the application repository. Every expression in them was
-          # validated against the live Fly endpoint when it was written, and every one queries the
-          # `fly-prometheus` uid above -- which is why that uid is not renamed here.
-          rules.path = "${flyProvisioning}/alerting/alert-rules.yaml";
+          # worker-throttle). Every expression in them was validated against the live Fly endpoint
+          # when it was written, and every one queries the `fly-prometheus` uid above -- which is
+          # why that uid is carried across unrenamed. Renaming it here would empty all 24 rules
+          # without any of them failing.
+          rules.path = "${grafanaProvisioning}/alerting/alert-rules.yaml";
 
           # THE CONTACT POINT AND THE NOTIFICATION POLICY, vendored because they had to change.
           # Both live in one file: a route naming a receiver that was never written is FATAL at
@@ -364,8 +371,10 @@ in
       CPUWeight = 200;
     };
 
-    # PRIVATE INTERFACE ONLY. See `listenAddress` -- this instance holds a token for the whole Fly
-    # organisation.
-    networking.firewall.interfaces.${config.fleet.privateInterface}.allowedTCPPorts = [ cfg.port ];
+    # NO FIREWALL RULE HERE. `fleet.firewall.monitoring = true;` in the host file opens 3000 on the
+    # private interface, alongside Prometheus's and Alertmanager's ports; modules/fleet/firewall.nix
+    # holds the whole list, and its comment on that option is candid that a human's web UI on a
+    # network no human's laptop is on means reaching it through an ssh tunnel -- which is the price
+    # of keeping a login page with its own user database off the public internet.
   };
 }

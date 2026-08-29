@@ -149,14 +149,11 @@ in
       "net.bridge.bridge-nf-call-iptables" = 1;
     };
 
-    networking.firewall.interfaces.${config.fleet.privateInterface} = {
-      # 10250 is the kubelet, which the API server scrapes for logs and `exec`. An agent serves no
-      # API and holds no etcd, so it opens neither of those ports.
-      allowedTCPPorts = [ 10250 ];
-      # FLANNEL'S VXLAN, required while the cluster's backend is VXLAN (chosen on the server). With
-      # this closed the node joins and every cross-node pod connection is silently black-holed.
-      allowedUDPPorts = [ 8472 ];
-    };
+    # NO FIREWALL RULES HERE. `fleet.firewall.k3sAgent = true;` in the host file opens the kubelet
+    # (10250) and flannel's VXLAN (8472/udp) on the private interface. See modules/fleet/
+    # firewall.nix, whose comment on that option spells out the VXLAN failure: pods come up, the
+    # node reports Ready, and traffic between pods on DIFFERENT nodes silently goes nowhere -- which
+    # with one server and one worker is exactly the traffic this cluster exists to carry.
 
     # NO NodePort RANGE IS OPENED, and no Consul registration exists to open one for. bitcashier's
     # agent role registers each declared NodePort into Consul so its HAProxy edges can reach a

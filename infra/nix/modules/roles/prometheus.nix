@@ -215,7 +215,17 @@ in
           address = lib.mkOption { type = lib.types.str; description = "Private address to scrape."; };
           host = lib.mkOption { type = lib.types.str; description = "The `host` label -- the machine's own hostname."; };
           role = lib.mkOption { type = lib.types.str; description = "The `role` label: mongodb, monitoring, k3s-worker."; };
-          port = lib.mkOption { type = lib.types.port; default = 9100; description = "node_exporter's port."; };
+          port = lib.mkOption {
+            type = lib.types.port;
+            default = 9100;
+            description = ''
+              node_exporter's port ON THE TARGET HOST -- which is `fleet.nodeExporterPort` over
+              there, not here, so it is a plain default rather than a reference. 9100 is what
+              modules/fleet/default.nix defaults that option to; if a host ever overrides it, this
+              entry has to say so, and the symptom of forgetting is one machine sitting down while
+              the other two are green.
+            '';
+          };
         };
       });
       default = [ ];
@@ -393,8 +403,13 @@ in
       };
     };
 
-    # ONLY ON THE PRIVATE INTERFACE. Neither of these has any authentication -- see `listenAddress`.
-    # 9094 (the cluster port) is deliberately absent; see the ExecStart comment above.
-    networking.firewall.interfaces.${config.fleet.privateInterface}.allowedTCPPorts = [ 9090 9093 ];
+    # NO FIREWALL RULES HERE, BY THIS FLEET'S CONVENTION. `fleet.firewall.monitoring = true;` in the
+    # host file opens 9090, 9093 and 3000 on the private interface, and
+    # modules/fleet/firewall.nix keeps every port this fleet opens in one readable list. A role
+    # that opened its own would be a second, invisible source of the same rule.
+    #
+    # WHAT IS DELIBERATELY NOT IN THAT LIST is 9094, Alertmanager's cluster port -- there is one
+    # Alertmanager and it is not started with a cluster listener (see the ExecStart above). If a
+    # second one is ever added, the flag and the port move together.
   };
 }

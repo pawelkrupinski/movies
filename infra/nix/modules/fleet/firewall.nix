@@ -43,7 +43,7 @@ in
     # can be read as one ruleset.
     #
     # Every one of these opens on the PRIVATE interface only. There is no option here that opens a
-    # service publicly, deliberately: the public surface of this fleet is 22, icmp and 51820, it is
+    # service publicly, deliberately: the public surface of this fleet is 22 and icmp, it is
     # written out below, and widening it should require editing THIS file rather than setting a
     # flag in a host file.
 
@@ -149,22 +149,23 @@ in
     # `allowedTCPPorts` cannot stop matching. What narrows port 22 is key-only authentication
     # (fleet/default.nix), not a source address this estate does not have a stable set of.
     #
-    # These three agree, deliberately and independently, with the three rules in
-    # infra/terraform/firewall.tf. If you add a fourth there, add it here and say why in both.
+    # These agree, deliberately and independently, with the rules in infra/terraform/firewall.tf.
+    # If you add one there, add it here and say why in both.
     allowedTCPPorts = [
       22 # ssh -- the only administrative path onto any of these machines
     ];
 
-    allowedUDPPorts = [
-      # WIREGUARD, for mongo-1's tunnel into Fly's 6PN, and open on ALL THREE hosts rather than on
-      # mongo-1 alone. That mirrors the edge firewall, which is attached per server and would need
-      # a second firewall resource and a second attachment list to narrow -- and the two ends
-      # agreeing matters more than the two hosts where the port is inert. Nothing listens on 51820
-      # on monitoring-1 or k3s-worker-1, so there is nothing behind the open port there.
-      #
-      # Fly DIALS IN from its gateway rather than us dialling out, which is why it must be inbound.
-      51820
-    ];
+    # EMPTY, AND THAT IS THE WHOLE POINT. It briefly carried 51820 for mongo-1's tunnel into Fly's
+    # 6PN, on the assumption that Fly dials in. It does not: `fly wireguard create` hands back a peer
+    # configuration naming Fly's gateway as the `Endpoint`, so THIS side initiates, and
+    # roles/wireguard-fly.nix sets no `listenPort` precisely so the source port stays ephemeral.
+    # Return traffic therefore belongs to an already-established flow, which conntrack passes without
+    # any rule naming it -- so the port opened nothing except a listener for the internet to find.
+    #
+    # IF THE DIRECTION EVER REVERSES it comes back here AND in terraform/firewall.tf, in ONE change,
+    # alongside the `listenPort` that would make it meaningful. Split across two commits the tunnel
+    # simply never establishes, and the symptom is a database the Fly apps cannot reach.
+    allowedUDPPorts = [ ];
 
     # ICMP is admitted by `networking.firewall.allowPing`, which nixpkgs defaults to TRUE, and it is
     # left at that default rather than restated. Said out loud only because the edge firewall names

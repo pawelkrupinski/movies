@@ -31,20 +31,20 @@ resource "hcloud_firewall" "fleet" {
     source_ips = ["0.0.0.0/0", "::/0"]
   }
 
-  # WireGuard, for mongo-1's tunnel into Fly's 6PN. UDP, and the port is the one `fly wireguard
-  # create` hands out; Fly dials in from its gateway rather than us dialling out, so this has to be
-  # open inbound.
+  # NO INBOUND WireGuard RULE, and the absence is deliberate rather than an omission.
   #
-  # It is opened on the whole fleet rather than on mongo-1 alone because a Hetzner firewall is
-  # attached per SERVER, not per rule -- a mongo-only rule would need a second firewall resource and
-  # a second attachment list to maintain. Nothing listens on 51820 on the other two hosts, so the
-  # open port is inert there.
-  rule {
-    direction  = "in"
-    protocol   = "udp"
-    port       = "51820"
-    source_ips = ["0.0.0.0/0", "::/0"]
-  }
+  # mongo-1 does join Fly's 6PN over WireGuard, but it is the side that DIALS OUT: `fly wireguard
+  # create` hands back a peer configuration carrying Fly's gateway as the `Endpoint`, so the tunnel
+  # is established from here outwards and the return traffic arrives on the ephemeral source port
+  # of an already-established flow -- which a stateful firewall passes without any rule naming it.
+  # Opening 51820 inbound would therefore grant nothing except a listener for the whole internet to
+  # find. See infra/nix/modules/roles/wireguard-fly.nix, which sets no `listenPort` for exactly this
+  # reason, and relies on `persistentKeepalive` to hold the flow open through NAT.
+  #
+  # IF THE DIRECTION EVER REVERSES -- Fly dialling in, which would mean a fixed `listenPort` on this
+  # side -- then this is the rule that has to come back, and it must land in the same change as that
+  # `listenPort`. Split across two commits, the tunnel simply never establishes and the symptom is a
+  # database the Fly apps cannot reach.
 
   # THE PRIVATE NETWORK IS NOT COVERED BY THIS FIREWALL AT ALL and that is worth being explicit
   # about, because it is the thing that makes every rule above readable as the complete public
