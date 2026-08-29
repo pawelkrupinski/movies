@@ -376,6 +376,26 @@
     # in a host file, and LOWERING it takes `lib.mkForce` and is therefore visible in review. That
     # asymmetry is the right direction of travel for the only list here whose failure mode is an
     # outage rather than an inconvenience.
+    # WITHOUT THIS, AUTO-APPLY NEVER ACTIVATES ANYTHING, AND IT LOOKS HEALTHY WHILE NOT DOING SO.
+    #
+    # `dbus-broker.service.d/overrides.conf` differs between ANY two closures on this fleet -- it
+    # carries an X-Restart-Triggers value derived from the system closure, so it changes whenever
+    # anything else does. With both allow-lists empty (default deny) that one unit made every pass
+    # answer `blocked: units_would_change`, on all three hosts, for every commit. The timer ran, the
+    # verdict was published, the metric said "blocked" rather than "failed" -- so nothing was red,
+    # and the fleet would simply have stopped tracking main for ever.
+    #
+    # A RELOAD, NOT A RESTART, WHICH IS WHY IT IS ON THIS LIST AND NOT THE OTHER ONE. Every
+    # `nixos-rebuild switch` run against these hosts on 2026-08-29 reported exactly
+    # "reloading the following units: dbus-broker.service" and left zero failed units behind, across
+    # more than a dozen deploys. dbus-broker re-reads its configuration in place; existing
+    # connections are not dropped.
+    #
+    # IT IS ONE NAMED UNIT, NOT `[ "*" ]`. bitcashier arrived at the wildcard; that is a much larger
+    # claim -- that no unit on the host is worth pausing for -- and nothing here has earned it. The
+    # evidence above covers dbus-broker and dbus-broker alone.
+    fleet.autoApply.reloadableUnits = [ "dbus-broker.service" ];
+
     fleet.autoApply.neverDisturbUnits = [
       # THE RULE THESE FOLLOW: a unit may be restarted unattended UNLESS a restart is visible to
       # somebody outside this fleet, or unless losing it removes our own way back in. Everything
