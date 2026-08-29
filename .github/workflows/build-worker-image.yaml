@@ -1,0 +1,91 @@
+# Build the worker image and push it to GitHub Container Registry, for the k3s deployment.
+#
+# WHY A SECOND IMAGE WHEN deploy.yml ALREADY BUILDS ONE. That one is pushed to registry.fly.io by
+# `flyctl deploy --build-only`, and a Fly registry pull needs a Fly credential inside the cluster.
+# The only Fly token this estate currently has is org-wide and deploy-capable, and putting that on
+# the box that also runs the k3s control plane is the same objection that keeps the Fly Prometheus
+# scrape switched off. GHCR needs no new secret at all: the built-in GITHUB_TOKEN can push with
+# `packages: write`, and the cluster pulls with a read:packages token.
+#
+# THE TWO IMAGES ARE BUILT FROM THE SAME Dockerfile AND THE SAME `sbt worker/stage` OUTPUT, so they
+# are the same artifact reached by two routes. When the worker no longer runs on Fly, deploy.yml's
+# worker leg goes and this becomes the only one.
+name: Build worker image (GHCR)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - 'common/**'
+      - 'build.sbt'
+      - 'project/**'
+      - 'Dockerfile'
+      - '.github/workflows/build-worker-image.yaml'
+  workflow_dispatch:
+
+concurrency:
+  # One build per ref. Two racing builds would push two tags for the same commit and the later
+  # `latest` would be whichever finished last, not whichever is newer.
+  group: build-worker-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # The whole reason this needs no new credential.
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: sbt
+
+      - uses: sbt/setup-sbt@v1
+
+      - name: Stage the worker distribution
+        # `worker/stage` only, not `web/stage` -- this workflow builds one image and staging the web
+        # app as well would roughly double the sbt time for an artifact nothing here consumes.
+        run: sbt "worker/stage"
+
+      - name: Place the staged distribution where the Dockerfile expects it
+        # The Dockerfile's context is whitelisted down to `stage/` alone (see .dockerignore), which
+        # is why this copy exists rather than the Dockerfile reaching into target/universal/stage:
+        # .dockerignore cannot reliably re-include a deep path whose parents are excluded by `*`.
+        run: rm -rf stage && cp -r worker/target/universal/stage stage
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # amd64 ONLY. The cluster is Hetzner x86_64; adding arm64 would double the build for a
+          # platform nothing here runs, and the emulated leg is the slow one.
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            BIN=worker
+            COMMIT_SHA=${{ github.sha }}
+          # BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes back on
+          # the exact build that was deployed; `latest` exists only so a hand-applied manifest
+          # resolves to something. Never deploy `latest` -- a pod that restarts under it can come
+          # back on a different build with nothing recording which.
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/movies-worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
