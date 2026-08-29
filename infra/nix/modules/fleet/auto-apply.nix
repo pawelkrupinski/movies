@@ -354,7 +354,17 @@ in
           # Nix lock to the switch that is installing or updating it. EVERY HOST HITS THAT ON ITS
           # FIRST ADOPTION of this module, and it resolves itself by the next tick. See
           # LockContended in nixos-auto-apply.py.
-          SuccessExitStatus = [ 0 1 3 ];
+          # 0 current, 1 pending, 3 lock-contended, 4 never-staged. Everything else -- i.e. a
+          # genuine "I cannot tell what this host should be running" -- fails the unit loudly.
+          #
+          # 4 IS HERE BECAUSE OF THE FIRST DEPLOY TO EVERY NEW HOST. A machine that CI has not yet
+          # staged to has no pin to read, which is a true and entirely expected state between
+          # `convert-host` and the first run of the staging workflow. Left as a failure it made
+          # `nixos-rebuild switch` return non-zero on a switch that had completely succeeded
+          # (k3s-worker-1, 2026-08-29), which teaches an operator to disbelieve the exit code. The
+          # verdict is still published to the textfile either way, so the alert rule remains the
+          # thing that notices a host STUCK there.
+          SuccessExitStatus = [ 0 1 3 4 ];
         };
       };
 

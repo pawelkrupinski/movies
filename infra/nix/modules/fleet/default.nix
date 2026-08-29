@@ -105,10 +105,19 @@
 
     privateInterface = lib.mkOption {
       type = lib.types.str;
-      default = "ens10";
+      default = "enp7s0";
       description = ''
-        The NIC carrying `privateAddress`. `ens10` is what Hetzner Cloud presents the second,
-        network-attached card as on every server in this project.
+        The NIC carrying `privateAddress`. `enp7s0` is what these hosts actually present the second,
+        network-attached card as -- read off k3s-worker-1 on 2026-08-29, running NixOS 26.05 with
+        kernel 6.18.
+
+        IT WAS `ens10` UNTIL THAT WAS CHECKED, AND THE COMMENT BELOW IS WHY THAT MATTERED. Every
+        private rule on the first converted host was installed against an interface that does not
+        exist: `iptables -S` listed `-A nixos-fw -i ens10 --dport 9100 -j nixos-fw-accept` and read
+        perfectly, while the default policy quietly dropped every Prometheus scrape and every k3s
+        join. Nothing failed; it simply did not work. Older Hetzner images do present ens3/ens10,
+        which is where the wrong value came from -- so do not assume either name, CHECK
+        (`ip -brief addr`), and note that ./firewall.nix now installs a unit that checks for you.
 
         NAMED HERE RATHER THAN IN EACH RULE, and the reason is a trap bitcashier paid for twice:
         iptables ACCEPTS a rule naming an interface that does not exist. It installs, it reads
@@ -120,7 +129,7 @@
 
     publicInterface = lib.mkOption {
       type = lib.types.str;
-      default = "ens3";
+      default = "enp1s0";
       description = ''
         The NIC carrying the public address. Recorded for completeness and for the same
         rename-safety reason as `privateInterface`; note that ./firewall.nix deliberately scopes

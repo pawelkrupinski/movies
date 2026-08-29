@@ -121,6 +121,19 @@ EXIT_UNDETERMINED = 2
 # A unit's own installing switch racing this pass's dry-activate for the same Nix lock. Distinct
 # from EXIT_UNDETERMINED because systemd must NOT mark the unit failed for it -- see LockContended.
 EXIT_LOCK_CONTENDED = 3
+# A host CI has never staged to. Distinct from EXIT_UNDETERMINED, and NOT a failure, because it is
+# the ordinary state of a freshly converted machine rather than an anomaly: every host spends the
+# window between `convert-host` and its first staged closure here. Exit 2 for it made the unit fail
+# during activation, which made `nixos-rebuild switch` itself return non-zero -- so the FIRST deploy
+# to any new host reported failure while having succeeded completely. Observed on k3s-worker-1,
+# 2026-08-29, immediately after its conversion.
+#
+# The signal is not lost by this: the verdict is still `undetermined`/`never_staged`, it is still
+# published to the textfile so `nixos_auto_apply_*` carries it, and the alert rule that watches for
+# a host stuck here is what should complain -- after it has persisted, not the instant the machine
+# is born. A red systemd unit on every new host is an alarm nobody can act on and everybody learns
+# to ignore.
+EXIT_NEVER_STAGED = 4
 
 # Components of the boot chain that a switch cannot bring into use on its own. `systemd` is here
 # and is not in nixpkgs' allowReboot list; see the module header for why this script is stricter.
@@ -875,6 +888,9 @@ def main() -> int:
 
     if verdict.state == "undetermined" and verdict.reason == "lock_contended":
         return EXIT_LOCK_CONTENDED
+
+    if verdict.state == "undetermined" and verdict.reason == "never_staged":
+        return EXIT_NEVER_STAGED
 
     return {
         "up_to_date": EXIT_CURRENT,

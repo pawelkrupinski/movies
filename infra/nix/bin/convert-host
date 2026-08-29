@@ -99,6 +99,19 @@ nix run nixpkgs#nixos-anywhere -- \
   --build-on-remote \
   "root@$ip"
 
+# THE HOST KEY HAS JUST CHANGED, and every later tool checks it strictly. nixos-anywhere minted a
+# fresh ssh_host_ed25519_key on first boot, so the entry left in known_hosts by the rescue system --
+# or by the Ubuntu host before it -- now looks exactly like a man-in-the-middle attack. It stops the
+# very next step: `nixos-rebuild --target-host` fails with "REMOTE HOST IDENTIFICATION HAS CHANGED"
+# and "failed to start SSH connection", which reads like a network fault rather than a stale record.
+#
+# Forgetting the old entry and re-learning the new one here is safe in a way a blind re-TOFU
+# elsewhere would not be: we have just installed this machine ourselves, seconds ago, over a
+# connection whose only payload was a public flake.
+echo "==> refreshing the host key for $ip (it changed during the install)"
+ssh-keygen -R "$ip" >/dev/null 2>&1 || true
+ssh-keyscan -t ed25519 "$ip" 2>/dev/null >> "$HOME/.ssh/known_hosts" || true
+
 cat <<MSG
 
 ==> $host converted.

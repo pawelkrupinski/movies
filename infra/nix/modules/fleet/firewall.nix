@@ -25,7 +25,7 @@
 # is exactly that routed path. k3s-worker-1 is idle today, so nothing here turns forwarding on and
 # nothing here needs to; this note is so that the person who first schedules a workload knows the
 # shape of the failure before they meet it.
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.fleet.firewall;
@@ -132,6 +132,52 @@ in
       default = [ ];
       description = "Extra UDP ports a host or role opens on the private interface.";
     };
+  };
+
+  # THE UNIT THAT TURNS THIS MODULE'S ONE SILENT FAILURE INTO A LOUD ONE.
+  #
+  # Everything below is scoped to `fleet.privateInterface`, and iptables ACCEPTS a rule naming an
+  # interface that does not exist -- it installs, it reads back correctly in `iptables -S`, and it
+  # never matches. So a wrong name here does not open the wrong thing, it opens NOTHING, and the
+  # symptoms surface far away: Prometheus reporting a target down, k3s workers never joining, each
+  # of which sends you looking at Prometheus and k3s.
+  #
+  # That is not hypothetical and it is why this exists. The default was `ens10`, inherited from
+  # older Hetzner images; k3s-worker-1 came up on 2026-08-29 with `enp7s0`, and every private rule
+  # on it was installed against a NIC that was not there.
+  #
+  # A FAILED UNIT RATHER THAN A FAILED ACTIVATION, deliberately. Refusing to activate would be the
+  # louder choice and the wrong one: it would brick the deploy path on a host whose interface got
+  # renamed by a kernel bump, leaving no way in to fix it except the Hetzner console. A red unit is
+  # visible in `systemctl --failed`, in the fleet's node_exporter textfile, and to the deploy check
+  # in ansible/roles/nixos_deploy -- while the machine stays reachable.
+  config.systemd.services.fleet-firewall-interface-check = {
+    description = "Verify the firewall's private interface actually exists";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" "firewall.service" ];
+    wants = [ "network-online.target" ];
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+
+    script = ''
+      iface=${config.fleet.privateInterface}
+
+      if ${pkgs.iproute2}/bin/ip link show "$iface" > /dev/null 2>&1; then
+        echo "fleet-firewall-interface-check: private interface $iface is present"
+        exit 0
+      fi
+
+      echo "fleet-firewall-interface-check: FIREWALL IS OPEN ON NOTHING." >&2
+      echo "  fleet.privateInterface is '$iface', which does not exist on this host." >&2
+      echo "  Every private-interface rule is installed against it and therefore never matches," >&2
+      echo "  so Prometheus scrapes and k3s traffic are being dropped by the default policy." >&2
+      echo "  Interfaces actually present:" >&2
+      ${pkgs.iproute2}/bin/ip -brief addr show >&2
+      exit 1
+    '';
   };
 
   config.networking.firewall = {
