@@ -175,7 +175,22 @@ in
       '';
     };
 
+    # GRAFANA'S STATE GOES ON THE VOLUME, not the root disk where nixpkgs defaults it
+    # (/var/lib/grafana). Almost everything Grafana holds here is provisioned as code and therefore
+    # disposable -- datasources, dashboards, alert rules, the contact point -- but its sqlite is
+    # also where ALERT STATE, SILENCES and ANNOTATIONS live, and those are not in the repository.
+    # Losing them means every firing alert re-notifying and every silence lifting at once, which is
+    # a bad thing to discover during the incident that caused the rebuild.
+    #
+    # It also makes terraform/server.monitoring.tf true: that block says the volume carries
+    # "Prometheus TSDB and Grafana's sqlite", and until this line it carried only the first.
+    systemd.tmpfiles.rules = [
+      "d /var/lib/monitoring/grafana 0700 grafana grafana -"
+    ];
+
     services.grafana = {
+      dataDir = "/var/lib/monitoring/grafana";
+
       enable = true;
 
       settings = {

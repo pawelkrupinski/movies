@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------------------------------------
+# FLY'S MANAGED PROMETHEUS -- the only source of fly_instance_* / fly_edge_*, which are produced
+# by Fly's own host agent and cannot be scraped from anywhere else. While the web and worker apps
+# stay on Fly, this is the only view of them.
+#
+# THE AUTH HEADER IS `FlyV1`, NOT `Bearer`. `authorization.type` DEFAULTS TO `Bearer` when it is
+# omitted, and a Bearer header against this endpoint returns 401 with "resolving organization" --
+# verified. That error reads exactly like a revoked token, so the instinctive fix is to issue a
+# new one, which behaves identically and buries the real cause under a credential change. The
+# same value appears in roles/grafana.nix's datasource header; if one is ever "tidied up" to
+# Bearer, so is the other.
+#
+# THIS JOB IS THE UNVERIFIED HALF OF THE FLY PATH, AND THAT IS STATED PLAINLY. What is PROVEN to
+# work against api.fly.io is the QUERY API, which is what Grafana's datasource uses and what all
+# 24 alert rules already run through. Whether this endpoint also serves Prometheus FEDERATION at
+# /federate has not been checked here. If it does not, this job simply sits down, the
+# `FlyFederationDown` rule in monitoring-self.rules says so by name, and nothing else is lost --
+# the alerting on Fly metrics lives in Grafana, not here. Do not delete the job on that basis
+# without also deleting that rule, or the fleet gains a permanently red target nobody intends to
+# fix, which is how a target list stops being read.
+#
+# `honor_labels: true` because federation returns series with their ORIGINAL job/instance labels;
+# without it Prometheus overwrites them with this job's own and every app becomes "fly".
+- job_name: fly
+  scheme: https
+  metrics_path: /prometheus/personal/federate
+  # A MINUTE, NOT 15s. This is somebody else's API, reached over the internet, and the series
+  # behind it are themselves minutes behind real time -- scraping it four times as often would
+  # buy nothing and cost rate limit.
+  scrape_interval: 60s
+  scrape_timeout: 30s
+  honor_labels: true
+  authorization:
+    type: FlyV1
+    credentials_file: "@FLY_TOKEN_FILE@"
+  params:
+    # NAMED SELECTORS, NOT `{__name__=~".+"}`. Federation with an open selector pulls the whole
+    # of Fly's series set for the org on every scrape -- expensive for them, expensive here, and
+    # most of it is already in Grafana's reach through the datasource. These are the families the
+    # ported alert rules actually read.
+    "match[]":
+      - '{__name__=~"fly_instance_.+"}'
+      - '{__name__=~"fly_edge_.+"}'
+      - '{__name__=~"fly_app_.+"}'
+  static_configs:
+    - targets: ["api.fly.io"]

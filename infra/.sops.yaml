@@ -44,7 +44,11 @@ keys:
   # `sops updatekeys nix/secrets/<host>.yaml`.
   #
   # - &mongo_1        age1...
-  # - &monitoring_1   age1...
+  # Derived on 2026-08-29 from the host key monitoring-1 minted on its first boot after
+  # `convert-host`. This is the file on the fleet whose recipient list matters most: it holds the
+  # Grafana and Alertmanager Telegram bot tokens, the Fly Prometheus token, and the k3s cluster
+  # token that k3s-worker-1 also carries.
+  - &monitoring_1 age1gzk07n7anpg2nxdlfm5waledsu6xvhmg0s93tcr3474mlcx5jufsuxjpg8
 
   # Derived on 2026-08-29 with ssh-to-age from the ssh_host_ed25519_key k3s-worker-1 minted on its
   # first boot after `convert-host`. NOTE this is NOT a key the machine had as an Ubuntu host: the
@@ -68,7 +72,7 @@ creation_rules:
     key_groups:
       - age:
           - *operator
-          # - *monitoring_1
+          - *monitoring_1
 
   - path_regex: nix/secrets/k3s-worker-1\.yaml$
     key_groups:

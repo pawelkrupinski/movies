@@ -181,6 +181,31 @@ in
       '';
     };
 
+    scrapeFly = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Whether to scrape Fly's managed Prometheus for fly_instance_* / fly_edge_* / fly_app_*.
+
+        DEFAULT FALSE, AND THAT IS A CREDENTIAL DECISION RATHER THAN A FEATURE ONE. The job needs a
+        Fly token, and the only token available to this estate on 2026-08-29 was an ORG-WIDE one --
+        the two read-only tokens previously in .env.local have been revoked and both answer 401,
+        and the org token cannot mint a replacement (`createLimitedAccessToken Not authorized`).
+
+        AN ORG-WIDE FLY TOKEN MUST NOT LIVE ON THIS HOST. monitoring-1 also carries the k3s control
+        plane, so anything that compromises a workload there would gain the ability to DEPLOY to
+        Fly -- where the production web tier still runs. Scraping some gauges is not worth that.
+
+        Turning it on: mint a genuinely read-only token from an account that may
+        (`fly tokens create readonly --org personal`), put it in nix/secrets/monitoring-1.yaml as
+        `prometheus/fly-token`, and set this true.
+
+        LEFT OFF RATHER THAN LEFT FAILING, deliberately. A job with a dead token is a target that
+        sits red for ever, and a dashboard with a permanently red target is one where nobody looks
+        at red any more.
+      '';
+    };
+
     flyTokenFile = lib.mkOption {
       type = lib.types.str;
       default = config.sops.secrets."prometheus/fly-token".path;
@@ -254,6 +279,23 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # CREATE THE DIRECTORIES ON THE VOLUME. Neither service does this for itself and `StateDirectory=`
+    # cannot help: it creates /var/lib/<name>, whereas these live at a NESTED path on a SEPARATE
+    # MOUNT, which systemd will not create on the unit's behalf.
+    #
+    # WITHOUT THESE, PROMETHEUS DOES NOT FAIL IN A WAY THAT NAMES THE PROBLEM. Its sandbox tries to
+    # bind-mount a directory that is not there and the unit dies at `status=226/NAMESPACE` with
+    # "Failed to set up mount namespacing", which reads as a systemd hardening fault rather than a
+    # missing folder. Hit on monitoring-1's first deploy, 2026-08-29, on a freshly formatted volume
+    # whose only content was lost+found.
+    #
+    # 0700 and owned by the service user: the TSDB and the alert silences are not readable by
+    # anything else on the box, which on this host includes a k3s control plane and whatever it runs.
+    systemd.tmpfiles.rules = [
+      "d ${cfg.dataDir} 0700 prometheus prometheus -"
+      "d ${cfg.alertmanagerDataDir} 0700 alertmanager alertmanager -"
+    ];
+
     assertions = [
       {
         assertion = !config.fleet.grafana.enable || cfg.grafanaPort == config.fleet.grafana.port;
@@ -287,6 +329,13 @@ in
       "prometheus/prometheus.yaml".source = render "prometheus.yaml" ../../files/monitoring/prometheus.yaml;
       "alertmanager/alertmanager.yaml".source = render "alertmanager.yaml" ../../files/monitoring/alertmanager.yaml;
       "prometheus/scrape.d/node-targets.yaml".text = nodeTargetsYaml;
+    } // lib.optionalAttrs cfg.scrapeFly {
+      # ONLY WHEN `scrapeFly` IS TRUE. prometheus.yaml globs this directory, so "off" is the file
+      # not existing rather than a job configured with a credential that does not work -- which
+      # would be a target sitting red for ever. See the option's own note for why the default is
+      # false, and what to do about it.
+      "prometheus/scrape.d/scrape-fly.yaml".source =
+        render "scrape-fly.yaml" ../../files/monitoring/scrape-fly.yaml;
     } // lib.listToAttrs (map
       (n: lib.nameValuePair "prometheus/rules/${n}.rules" {
         source = render "${n}.rules" (../../files/monitoring/rules + "/${n}.rules");
@@ -314,7 +363,12 @@ in
       restartTriggers = [
         config.environment.etc."prometheus/prometheus.yaml".source
         config.environment.etc."prometheus/scrape.d/node-targets.yaml".text
-      ] ++ map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;
+      ]
+      # Turning scrapeFly on or off changes a file Prometheus reads but not the unit, which is the
+      # exact "written and never read" case the note above describes.
+      ++ lib.optional cfg.scrapeFly
+        config.environment.etc."prometheus/scrape.d/scrape-fly.yaml".source
+      ++ map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;
 
       serviceConfig = {
         User = "prometheus";
