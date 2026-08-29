@@ -44,17 +44,26 @@ let
 
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
-    echo "k8s-deploy: rolling ${cfg.deployment} in ${cfg.namespace} onto $image"
+    echo "k8s-deploy: rolling ${lib.concatStringsSep ", " cfg.deployments} in ${cfg.namespace} onto $image"
 
-    ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} set image \
-      deployment/${cfg.deployment} ${cfg.container}="$image"
+    for deployment in ${lib.concatStringsSep " " cfg.deployments}; do
+      ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} set image \
+        "deployment/$deployment" ${cfg.container}="$image"
+    done
 
     # WAIT, AND LET THE EXIT CODE MEAN SOMETHING. Without this the ssh call returns the moment the
     # Deployment is patched, so CI goes green while the new pod is still pulling -- and an image
     # that crash-loops reports as a successful deploy. The timeout is what turns "never became
     # ready" into a failure rather than a hang.
-    ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} rollout status \
-      deployment/${cfg.deployment} --timeout=${cfg.rolloutTimeout}
+    # WAIT ON EACH IN TURN, and let the exit code mean something. Without this the ssh call returns
+    # the moment the Deployments are patched, so CI goes green while the pods are still pulling --
+    # and an image that crash-loops reports as a successful deploy. `set -e` stops at the first
+    # failure, leaving the rest on their previous image rather than rolling a known-bad build out
+    # across all three countries.
+    for deployment in ${lib.concatStringsSep " " cfg.deployments}; do
+      ${pkgs.k3s}/bin/k3s kubectl -n ${cfg.namespace} rollout status \
+        "deployment/$deployment" --timeout=${cfg.rolloutTimeout}
+    done
   '';
 in
 {
@@ -71,7 +80,22 @@ in
     };
 
     namespace = lib.mkOption { type = lib.types.str; default = "kinowo"; };
-    deployment = lib.mkOption { type = lib.types.str; default = "worker-pl"; };
+    deployments = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "worker-pl" "worker-de" "worker-uk" ];
+      description = ''
+        EVERY Deployment this image is rolled onto, in one invocation.
+
+        THE THREE COUNTRY WORKERS RUN THE SAME IMAGE and differ only in KINOWO_COUNTRIES, so there
+        is no version of "deploy" that sensibly updates one and leaves the others behind on an older
+        build. Rolling all three from one command also keeps the endpoint's INPUT a single image
+        reference: adding a target parameter would mean a second thing to validate, and a way for
+        CI to update two of three and report success.
+
+        The order is the order they roll in. If one fails, the script stops -- the remaining
+        deployments stay on the previous image, which is a coherent state to be left in.
+      '';
+    };
     container = lib.mkOption { type = lib.types.str; default = "worker"; };
 
     allowedImageRepository = lib.mkOption {

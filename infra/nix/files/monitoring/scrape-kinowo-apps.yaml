@@ -27,13 +27,21 @@ scrape_configs:
     # resolution would double the series volume on a 4GB box for no question it would answer sooner.
     scrape_interval: 30s
     scrape_timeout: 10s
+    # ONE TARGET PER COUNTRY. Each is its own Kubernetes Deployment with its own NodePort, because
+    # `KINOWO_COUNTRIES` also selects the DATABASE -- so these are three separate corpora, not three
+    # replicas of one, and any panel that aggregates them without keeping the `country` label is
+    # adding three different fleets together.
+    #
+    # DE AND UK RUN BUT NOTHING SERVES THEIR DATA. Country.webUrl is None for both (undeployed since
+    # 2026-08-02), so these workers keep those corpora fresh while the web tier stays Poland-only.
+    # That is deliberate, and it is why a DE or UK worker with no readers is not by itself a fault.
     static_configs:
       - targets: ["10.20.0.12:30900"]
-        labels:
-          app: kinowo-worker
-          country: pl
-          tier: worker
-          platform: k3s
+        labels: { app: kinowo-worker, country: pl, tier: worker, platform: k3s }
+      - targets: ["10.20.0.12:30901"]
+        labels: { app: kinowo-worker, country: de, tier: worker, platform: k3s }
+      - targets: ["10.20.0.12:30902"]
+        labels: { app: kinowo-worker, country: uk, tier: worker, platform: k3s }
 
   # THE WEB TIER, still on Fly, scraped over this host's 6PN WireGuard peer.
   #
