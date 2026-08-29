@@ -146,7 +146,7 @@ def run(argv, cwd=None, timeout=30):
 # --------------------------------------------------------------------------------------------
 
 def flake_machines():
-    """Every host the flake declares, with the addresses and role it declares for them.
+    """Every host the flake declares, with the addresses, role and environment it declares.
 
     THE FLAKE IS THE ROSTER, NOT PROMETHEUS, and the direction matters. Deriving the list from what
     is currently reporting would make a host that has died disappear from the page entirely -- the
@@ -162,6 +162,7 @@ def flake_machines():
         " privateAddress = c.config.fleet.privateAddress;"
         " publicAddress = c.config.fleet.publicAddress;"
         " role = c.config.fleet.role;"
+        " environment = c.config.fleet.environment;"
         "}) cfgs",
     ], cwd=INFRA_DIR, timeout=NIX_TIMEOUT)
     if not ok:
@@ -286,7 +287,13 @@ def read_machine(name, decl, series_list, head, origin):
     """Join one host's declaration with what it is publishing, and decide how alarming it is."""
     row = {
         "name": name,
+        # The flake's attribute name and the host's own `networking.hostName` are the same string
+        # on all three machines today, so the second line under the name is rendered only when they
+        # DIVERGE -- which is the only time it says anything. The reference shows it unconditionally
+        # because there they always differ (a Hetzner id under a human name).
+        "hostname": decl.get("hostName", ""),
         "role": decl.get("role", ""),
+        "env": decl.get("environment", ""),
         "private": decl.get("privateAddress", ""),
         "public": decl.get("publicAddress", ""),
         "reporting": bool(series_list),
@@ -296,9 +303,11 @@ def read_machine(name, decl, series_list, head, origin):
         # A DECLARED HOST THAT SAYS NOTHING. Not the same as "unreachable" -- we never tried to
         # reach it. Either its node_exporter is down, its textfile collector is empty, or Prometheus
         # is not scraping it. All three are worth waking up for, and none of them are "fine".
-        row.update(state="not reporting", severity="alarm", detail="publishes no nixos_* metrics",
+        row.update(state="not reporting", state_key="notreporting", severity="alarm",
+                   detail="publishes no nixos_* metrics",
                    closure="", booted="", nixpkgs="", revision="", staged_revision="",
                    auto_apply="", blocked_reason="", last_verdict=0,
+                   apply_covered=False, excluded_reason="",
                    # NO BUTTON ON A SILENT HOST. Not because acting would be unsafe -- the check
                    # phase would read the host directly and find out the truth -- but because
                    # nothing here knows whether it has anything staged, and an offer to "activate
@@ -321,6 +330,10 @@ def read_machine(name, decl, series_list, head, origin):
     row["staged_revision"] = label_of(staged_rev, "revision")
     row["auto_apply"] = label_of(info, "state")
     row["blocked_reason"] = label_of(info, "reason")
+    # EXCLUDED-ON-PURPOSE AND NEVER-WIRED-UP ARE THE SAME ABSENCE to anything counting metrics, and
+    # they want opposite responses -- which is exactly why `excludedBecause` publishes a reason.
+    row["excluded_reason"] = label_of(pick(series_list, "nixos_auto_apply_excluded"), "reason")
+    row["apply_covered"] = info is not None
     row["detail"] = label_of(info, "detail")
     row["last_verdict"] = value_of(pick(series_list, "nixos_auto_apply_last_verdict_timestamp_seconds"), 0)
 
@@ -364,19 +377,20 @@ def read_machine(name, decl, series_list, head, origin):
     ) and bool(row["public"])
 
     if reboot_required or reboot_owed:
-        row["state"] = "reboot owed"
+        row["state"], row["state_key"] = "reboot owed", "reboot"
         row["severity"] = "warn"
     elif blocked:
         row["state"] = f"blocked: {row['blocked_reason'] or 'unknown'}"
+        row["state_key"] = "blocked"
         row["severity"] = "warn"
     elif staged_pending:
-        row["state"] = "staged, not activated"
+        row["state"], row["state_key"] = "staged, not activated", "staged"
         row["severity"] = "warn"
     elif row["dirty"]:
-        row["state"] = "built dirty"
+        row["state"], row["state_key"] = "built dirty", "dirty"
         row["severity"] = "warn"
     else:
-        row["state"] = "current"
+        row["state"], row["state_key"] = "current", "current"
         row["severity"] = "ok"
 
     return row
@@ -905,7 +919,147 @@ details.cons summary { cursor: pointer; color: #7d8590; font-size: 11px; }
 .out .cmd { color: #6e7681; }
 .consfoot { color: #9aa4b2; font-size: 11px; margin-top: 6px; }
 .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+
+/* The cell furniture the fleet table is built from, ported from the reference so that the two
+   dashboards read as one screen rather than two takes on it. */
+td .sub { color: #6e7681; font-size: 11px; margin: 3px 0 0; }
+/* `.hint` is indented where it trails a button in the toolbar; inside a cell it is a line of its
+   own and the indent would only make the column look ragged. */
+td .hint { margin-left: 0; display: block; }
+td.none { color: #4a525e; }
+/* Brighter than the muted columns, but NOT bold: `.name` is the machine, and a store hash set in
+   the same weight competes with it for the eye that is scanning down the first column. */
+td.sv { color: #d4d9e1; }
+.sha { color: #8ab4f8; font-weight: 600; }
+.env { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+       letter-spacing: .5px; padding: 1px 8px; border-radius: 999px; color: #0b0d10; }
+/* A HOVERABLE EXPLANATION HAS TO LOOK HOVERABLE, or it is one nobody finds. The dotted underline
+   is the long-standing convention for exactly this and costs no layout. */
+.help { cursor: help; text-decoration: underline dotted rgba(255,255,255,.28);
+        text-underline-offset: 3px; }
+.badge.help { text-decoration: none; border-bottom: 1px dashed currentColor; }
 """
+
+
+# The env pill's colour, keyed on the value `fleet.environment` actually carries. Anything
+# unrecognised gets the neutral grey rather than one of the three meaningful colours: inventing a
+# classification nobody declared is worse than declining to colour it.
+ENV_COLOR = {"prod": "#e5484d", "production": "#e5484d",
+             "sandbox": "#f5a623",
+             "dev": "#30a46c", "development": "#30a46c",
+             "global": "#5b6472", "infra": "#5b6472"}
+
+
+# WHAT EACH BADGE MEANS, ON HOVER. These are not decoration: every one of them is a state an
+# operator has to tell apart from a neighbouring state that wants the OPPOSITE response --
+# "not reporting" from "behind", "excluded" from "not covered", "dirty" from "staged". The word on
+# the badge cannot carry that, and a legend nobody scrolls to is a legend nobody reads.
+BADGE_MEANINGS = {
+    "current": "This machine is running the newest closure anything has given it: what CI staged "
+               "here is what is running. Whether that closure is origin/main is a separate "
+               "question — the revision under this badge is what answers it.",
+    "staged": "CI has already built and copied a newer closure onto this machine, and nothing has "
+              "switched to it. The change is here, one command away — this is the state the "
+              "button below acts on.",
+    "reboot": "The pending change replaces the kernel, initrd, kernel modules or systemd, which "
+              "activating cannot bring into use. Nothing on this fleet ever reboots a host "
+              "unattended; that stays a window somebody schedules.",
+    "blocked": "Auto-apply classified the staged change and refused to take it unattended, because "
+               "activating it would stop, start, restart or reload a unit this host has not "
+               "declared acceptable. That refusal is the design, not a fault.",
+    "dirty": "Built from a checkout with uncommitted changes on top of a real commit, so it is "
+             "reproducible from nothing in the repository. The commit it names is only the "
+             "committed part of what is running.",
+    "notreporting": "This machine publishes no nixos_* metric, so what it is running is UNKNOWN. "
+                    "That is not the same as being out of date, and it wants the opposite repair: "
+                    "find out why nobody can ask it.",
+    "apply_on": "Auto-apply is enabled here and reaching a verdict. When CI stages a closure whose "
+                "activation would disturb nothing this host has ruled out, it is taken unattended "
+                "within the timer's period.",
+    "apply_dry": "Auto-apply runs here in dry-run: it classifies every staged closure and never "
+                 "switches. A change reaches this host only when a person takes it.",
+    "apply_blocked": "Auto-apply is enabled and is refusing this particular change — see the state "
+                     "column for which check stopped it. It will keep refusing until somebody "
+                     "activates it or the change stops touching units.",
+    "apply_undetermined": "Auto-apply's last pass could not measure anything, so it is not "
+                          "refusing the change — it never got as far as classifying it.",
+    "apply_excluded": "Auto-apply is deliberately off on this host, with a written reason. "
+                      "Excluded-on-purpose and never-wired-up are the same absence to a monitoring "
+                      "system, which is why the reason is published.",
+    "apply_notcovered": "This host publishes no auto-apply metric at all, so nothing is watching "
+                        "whether it ever activates what it is given.",
+}
+
+
+def badge(kind, text, meaning_key=None, extra=""):
+    """One badge, with its meaning on hover.
+
+    `title` rather than a styled popover on purpose: this is a dense table, and a positioned
+    tooltip either clips against it or has to escape it, whereas the browser's own never does."""
+    meaning = BADGE_MEANINGS.get(meaning_key or "", "")
+    if extra:
+        meaning = f"{extra} {meaning}".strip()
+    title = f" title='{html.escape(meaning)}'" if meaning else ""
+    helper = " help" if meaning else ""
+    return f"<span class='badge {kind}{helper}'{title}>{html.escape(text)}</span>"
+
+
+def auto_apply_cell(r):
+    """The auto-apply column: whether anything is taking staged closures on this host by itself.
+
+    ITS STATES ARE KEPT DISTINCT FOR THE REASON `excludedBecause` EXISTS AT ALL -- a host left out
+    ON PURPOSE and a host nobody has wired up are the same absence to a monitoring system and want
+    opposite responses. The applier's own verdict (`up_to_date` / `applied`) is deliberately NOT
+    the badge: both mean the same thing here -- it is on and it reached a verdict -- and the state
+    column beside it already says which. The raw verdict stays on the hover so nothing is lost."""
+    if not r["reporting"]:
+        return "<td class=none>&mdash;</td>"
+    if r.get("excluded_reason"):
+        reason = r["excluded_reason"]
+        return (f"<td>{badge('warn', 'excluded', 'apply_excluded', f'Reason given: {reason}')}"
+                f"<span class=hint>{html.escape(reason)}</span></td>")
+    if not r.get("apply_covered"):
+        return (f"<td>{badge('alarm', 'not covered', 'apply_notcovered')}"
+                f"<span class=hint>publishes no auto-apply metric</span></td>")
+    state, reason = r.get("auto_apply") or "", r.get("blocked_reason") or ""
+    if state == "blocked" and reason == "dry_run":
+        cell = badge("warn", "dry-run", "apply_dry")
+    elif state == "blocked":
+        cell = badge("warn", "on, blocked", "apply_blocked")
+    elif state == "undetermined":
+        cell = badge("warn", "on, undetermined", "apply_undetermined")
+    else:
+        cell = badge("ok", "on", "apply_on", f"Last verdict: {state or 'unknown'}.")
+    age = fmt_age(r.get("last_verdict"))
+    return f"<td>{cell}<span class=hint>last pass {html.escape(age)}</span></td>"
+
+
+def revision_line(r):
+    """The commit this host's closure was built from, and how far that is from main.
+
+    A LINE UNDER THE STATE RATHER THAN A COLUMN. It is the qualifier the `current` badge needs and
+    cannot carry: "current" means only that nothing newer has been GIVEN to this machine, which is
+    a different claim from being on origin/main -- a fleet whose staging run failed can be current
+    everywhere and behind everywhere at the same time."""
+    if not r["revision_short"]:
+        # NOT THE SAME AS "on main". A closure built from a tree with no git revision to stamp
+        # matches no commit at all, so the distance is unmeasurable rather than zero.
+        return "built from no known commit, so its distance from main is unmeasurable"
+    line = f"<span class=sha>{html.escape(r['revision_short'])}</span>"
+    behind = r.get("behind")
+    if behind:
+        line += f" {behind} behind main"
+    elif behind == 0:
+        line += " on main"
+    else:
+        line += " — distance from main unknown"
+    if r["staged_short"] and r["staged_short"] != r["revision_short"]:
+        line += f", staged <span class=sha>{html.escape(r['staged_short'])}</span>"
+    return line
+
+
+# The console row spans the table, so it has to be told how wide the table is.
+FLEET_COLUMNS = 7
 
 
 def fmt_age(ts):
@@ -971,44 +1125,54 @@ def render(data):
                      + ", ".join(html.escape(a) for a in data["undeclared"]) + "</div>")
 
     parts.append("<table><tr>"
-                 "<th>machine</th><th>role</th><th>address</th><th>closure</th><th>nixpkgs</th>"
-                 "<th>revision</th><th>auto-apply</th><th>state</th></tr>")
+                 "<th>machine</th><th>role &middot; env</th><th>address</th><th>closure</th>"
+                 "<th>nixpkgs</th><th>auto-apply</th><th>state</th></tr>")
 
     for r in rows:
         sev = r["severity"]
         if r["reporting"]:
-            rev = f"<code>{html.escape(r['revision_short'])}</code>"
-            if r["dirty"]:
-                rev += " <span class='badge warn'>dirty</span>"
-            behind = r.get("behind")
-            if behind:
-                rev += f" <span class='mut'>{behind} behind</span>"
-            elif behind == 0 and not r["dirty"]:
-                rev += " <span class='mut'>on main</span>"
-            if r["staged_short"] and r["staged_short"] != r["revision_short"]:
-                rev += f"<br><span class='mut'>staged {html.escape(r['staged_short'])}</span>"
-            closure = f"<code>{html.escape(short_closure(r['closure']))}</code>"
+            # THE FULL STORE NAME ON HOVER, TWELVE CHARACTERS IN THE CELL. The hash is what an
+            # operator compares between two hosts, and it is the first twelve characters that
+            # settle it; the rest is the hostname and nixpkgs release the two columns beside it
+            # already say. Truncating without keeping the whole string reachable would make the one
+            # value you actually paste into a command unpasteable.
+            closure = (f"<td class='sv' title='{html.escape(r['closure'])}'>"
+                       f"{html.escape(short_closure(r['closure']))}")
             if r["booted"] and r["booted"] != r["closure"]:
-                closure += "<br><span class='mut'>booted " + \
-                           html.escape(short_closure(r["booted"])) + "</span>"
-            auto = f"{html.escape(r['auto_apply'] or '—')}<br>" \
-                   f"<span class='mut'>{fmt_age(r['last_verdict'])}</span>"
+                closure += ("<div class='sub'>booted "
+                            + html.escape(short_closure(r["booted"])) + "</div>")
+            closure += f"</td><td>{html.escape(r['nixpkgs'])}</td>"
         else:
-            rev = closure = auto = "<span class='mut'>—</span>"
+            closure = "<td class=none>&mdash;</td><td class=none>&mdash;</td>"
 
+        # WHAT WAS THE `revision` COLUMN, folded in under the state badge. Its two loud parts --
+        # built dirty, and staged-but-not-activated -- are already badges here, so a column of its
+        # own was saying them twice; what is left is the SHA and its distance from main, which is a
+        # qualifier on the state rather than a state.
+        state = badge(sev, r["state"], r.get("state_key"),
+                      r["blocked_reason"] if r.get("state_key") == "blocked" else "")
+        if r.get("detail") and sev != "ok":
+            state += f"<span class='hint detail'>{html.escape(r['detail'])}</span>"
+        if r["reporting"]:
+            state += f"<span class=hint>{revision_line(r)}</span>"
+        else:
+            state += ("<span class=hint>what it runs is UNKNOWN, which is not the same as "
+                      "behind</span>")
+
+        env = r.get("env") or "?"
         parts.append(
             f"<tr class='{sev}'>"
-            f"<td class='name'>{html.escape(r['name'])}</td>"
-            f"<td class='mut'>{html.escape(r['role'])}</td>"
-            f"<td class='mut'>{html.escape(r['private'])}</td>"
-            f"<td>{closure}</td>"
-            f"<td class='mut'>{html.escape(r['nixpkgs'])}</td>"
-            f"<td>{rev}</td>"
-            f"<td>{auto}</td>"
-            f"<td><span class='badge {sev}'>{html.escape(r['state'])}</span>"
-            + (f"<div class='detail'>{html.escape(r.get('detail') or '')}</div>"
-               if r.get("detail") and sev != "ok" else "")
-            + "</td></tr>")
+            f"<td class='name'>{html.escape(r['name'])}"
+            + (f"<div class='sub'>{html.escape(r['hostname'])}</div>"
+               if r.get("hostname") and r["hostname"] != r["name"] else "")
+            + "</td>"
+            f"<td>{html.escape(r['role'] or '?')} "
+            f"<span class=env style='background:{ENV_COLOR.get(env, '#5b6472')}'>"
+            f"{html.escape(env)}</span></td>"
+            f"<td class='mut'>{html.escape(r['private'] or '—')}</td>"
+            f"{closure}"
+            f"{auto_apply_cell(r)}"
+            f"<td>{state}</td></tr>")
 
         if r.get("actionable"):
             parts.append(action_row(r))
@@ -1026,9 +1190,9 @@ def render(data):
 def action_row(r):
     """The row under a machine that carries its button and the console the button writes into.
 
-    A SECOND `<tr>` RATHER THAN A NINTH COLUMN, which is how the reference does it and for the same
-    reason: the console needs the full width of the table, and a column sized for a log would
-    squeeze the eight columns that are the actual point of the page down to nothing on every row,
+    A SECOND `<tr>` RATHER THAN AN EIGHTH COLUMN, which is how the reference does it and for the
+    same reason: the console needs the full width of the table, and a column sized for a log would
+    squeeze the seven columns that are the actual point of the page down to nothing on every row,
     including the ones with no button at all.
 
     `data-*` attributes carry what the JS needs, so nothing is templated into a JS string literal
@@ -1054,7 +1218,7 @@ def action_row(r):
             "restart — it changes nothing until you confirm</span>")
 
     return (
-        f"<tr class='actions {r['severity']}'><td colspan='8' class='actioncell' "
+        f"<tr class='actions {r['severity']}'><td colspan='{FLEET_COLUMNS}' class='actioncell' "
         f"data-machine='{html.escape(r['name'])}' "
         f"data-danger='{'1' if danger else ''}'>"
         f"<div class='actionrow'>{control}</div>"

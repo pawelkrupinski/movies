@@ -74,6 +74,19 @@ for plist in version-dashboard/*.plist; do
 done
 ((syntax_ok)) || failed=1
 
+step "version-dashboard render tests"
+# THE RENDER IS THE PART THAT CAN BE WRONG WITHOUT CRASHING. `ast.parse` above proves the file
+# loads; these prove the table still says what an operator reads it for -- which columns exist, and
+# that a machine nobody can reach is not rendered as one that is merely behind.
+if [ -f version-dashboard/test_app.py ]; then
+  if out="$(python3 version-dashboard/test_app.py 2>&1)"; then
+    echo "  ok  $(echo "$out" | grep -c '\.\.\. ok') test(s)"
+  else
+    echo "$out" | tail -25 | sed 's/^/  /'
+    failed=1
+  fi
+fi
+
 for host in "${hosts[@]}"; do
   step "nix eval $host"
   if out="$(nix "${nix_flags[@]}" eval ".#nixosConfigurations.$host.config.system.build.toplevel.drvPath" 2>&1)"; then
