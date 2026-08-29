@@ -78,14 +78,44 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
 object ChangeStreamResumeToken {
   private val TokenSaveThrottleMs = 5000L
 
-  /** The one error where KEEPING the token loops: a too-old / invalidated token (oplog
-   *  window exceeded → `ChangeStreamHistoryLost`). Clearing it makes the next open start
-   *  fresh + the backstop resyncs the gap. */
+  /** The errors where KEEPING the token loops for ever — resuming from it can only fail
+   *  again, so the next open must start fresh and let the backstop resync the gap.
+   *
+   *  Two shapes, and the second one cost a full outage:
+   *
+   *   - `ChangeStreamHistoryLost` (286) — the token fell out of the oplog window.
+   *   - `InvalidResumeToken` (260) *"Attempting to resume a change stream using 'resumeAfter'
+   *     is not allowed from an invalidate notification"* — a collection drop INVALIDATES the
+   *     cursor, and the invalidate event's own token is the last thing `advance` saw, so the
+   *     saved position is one the server will never accept. This one carries NO error label,
+   *     which is why the integration test that drops the collection is the thing that found
+   *     it: with only the label + 280 handled, the reopen loop below just retried it for ever.
+   *   - Anything the driver labels `NonResumableChangeStreamError`, in practice
+   *     `ChangeStreamFatalError` (280) *"cannot resume stream; the resume token was not
+   *     found"*. That is what a token from BEFORE a collection drop/restore becomes: the
+   *     2026-08-29 Mongo migration dump-and-restored every collection, so all three
+   *     workers booted holding a token that pointed into the pre-restore oplog. This
+   *     predicate matched neither the code nor the message, so the token was KEPT, every
+   *     open failed the same way, and the movies + screenings change streams were dead
+   *     from boot on every country — the read model took zero projections and only
+   *     prune deletes, and the site quietly served a shrinking, frozen corpus.
+   *
+   *  Matched on the driver's error LABEL first because that is the canonical signal (it
+   *  covers codes we have not seen yet); the codes and message text are belt-and-braces
+   *  for drivers/servers that report one but not the other. */
   def isInvalid(e: Throwable): Boolean = e match {
     case m: com.mongodb.MongoException =>
-      m.getCode == 286 /* ChangeStreamHistoryLost */ ||
-        Option(m.getMessage).exists(s => s.contains("ChangeStreamHistoryLost") ||
-          s.toLowerCase.contains("resume of change stream was not possible"))
+      m.hasErrorLabel("NonResumableChangeStreamError") ||
+        m.getCode == 286 /* ChangeStreamHistoryLost */ ||
+        m.getCode == 280 /* ChangeStreamFatalError */ ||
+        m.getCode == 260 /* InvalidResumeToken */ ||
+        Option(m.getMessage).exists { s =>
+          val lower = s.toLowerCase
+          s.contains("ChangeStreamHistoryLost") || s.contains("NonResumableChangeStreamError") ||
+            lower.contains("resume of change stream was not possible") ||
+            lower.contains("resume token was not found") ||
+            lower.contains("not allowed from an invalidate notification")
+        }
     case _ => false
   }
 }

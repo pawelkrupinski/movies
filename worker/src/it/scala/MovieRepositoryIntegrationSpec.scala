@@ -39,7 +39,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
-    "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024"
+    "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024", "tt0000025"
   )
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -354,6 +354,65 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       Seq("A", "B", "C").foreach(s => repo1.delete(s"__integration-test-resume-${s}__", Some(1909)))
       clearToken()
       repo1.close(); client.close()
+    }
+  }
+
+  // THE MIGRATION SHAPE — the one that took the read model down on 2026-08-29. A Mongo
+  // dump-and-restore DROPS every collection, so a token persisted before the restore is
+  // unusable: resuming from it replays into the drop (which invalidates the cursor), and
+  // resuming from the invalidate token itself gets `ChangeStreamFatalError` (280) "cannot
+  // resume stream; the resume token was not found". Both halves of the recovery are under
+  // test here — recognising that the token must be discarded, and REOPENING the cursor
+  // afterwards, which nothing used to do once the boot registrations were spent. Without
+  // either, repo2's stream stays dead and D is never delivered: all three workers ran for
+  // hours taking zero read-model projections and only prune deletes.
+  it should "recover the change stream when a collection drop invalidated the persisted token" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    def clearToken(): Unit = Await.ready(
+      db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), 10.seconds)
+    clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
+
+    val repo1   = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
+    val idA     = StoredMovieRecord.idFor("__integration-test-dropped-A__", Some(1911), titleNormalizer)
+    val gotA    = new CountDownLatch(1)
+    val handle1 = repo1.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == idA) gotA.countDown(), _ => ())
+    handle1 should not be empty
+    var writer: Thread = null
+    try {
+      Thread.sleep(1500) // let the stream establish before the write
+      repo1.upsert("__integration-test-dropped-A__", Some(1911), MovieRecord(imdbId = Some("tt0000025")))
+      gotA.await(15, TimeUnit.SECONDS) shouldBe true
+      handle1.foreach(_.close()) // token now persisted at "just after A"
+      repo1.close()
+
+      // The restore: drop the watched collection out from under the saved token.
+      Await.ready(db.getCollection(services.movies.MovieRepository.Collection).drop().toFuture(), 15.seconds)
+
+      val repo2 = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
+      val idD   = StoredMovieRecord.idFor("__integration-test-dropped-D__", Some(1911), titleNormalizer)
+      val gotD  = new CountDownLatch(1)
+      val handle2 = repo2.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == idD) gotD.countDown(), _ => ())
+      // Keep writing D while the cursor works its way through invalidate → clear → reopen,
+      // so the assertion is "the stream came back", not "it came back within one write".
+      writer = new Thread(() => try while (!Thread.currentThread().isInterrupted) {
+        repo2.upsert("__integration-test-dropped-D__", Some(1911), MovieRecord(imdbId = Some("tt0000025")))
+        Thread.sleep(2000)
+      } catch { case _: InterruptedException => () }) // the finally-interrupt is how this thread ends
+      writer.setDaemon(true)
+      try {
+        writer.start()
+        gotD.await(45, TimeUnit.SECONDS) shouldBe true
+      } finally { handle2.foreach(_.close()); repo2.close() }
+    } finally {
+      Option(writer).foreach(_.interrupt())
+      val cleanup = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
+      try Seq("A", "D").foreach(s => cleanup.delete(s"__integration-test-dropped-${s}__", Some(1911)))
+      finally cleanup.close()
+      clearToken()
+      client.close()
     }
   }
 

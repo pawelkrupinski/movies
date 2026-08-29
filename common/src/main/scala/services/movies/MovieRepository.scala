@@ -948,10 +948,10 @@ class MongoMovieRepository(
    *  `onUpsert`. A DELETE has no `fullDocument`, so we surface its `documentKey._id`
    *  to `onDelete` instead (what the cache's periodic backstop used to be the
    *  only path for, and what the /debug live view needs so a merged-away row
-   *  disappears). The driver auto-resumes across transient blips; a terminal
-   *  error just logs. Requires a replica set (a single-node RS counts); on a
-   *  standalone Mongo the stream errors out and the caller falls back to its
-   *  backstop. */
+   *  disappears). The driver auto-resumes across transient blips; a TERMINAL
+   *  error is reopened on a backoff by [[ChangeStreamReopen]]. Requires a replica
+   *  set (a single-node RS counts); on a standalone Mongo the stream errors out
+   *  and the caller falls back to its backstop. */
   // ONE shared change-stream cursor feeds every registered listener through this
   // fan-out, rather than a cursor per caller. The worker attaches two consumers
   // (MovieCache + ReadModelProjector); a cursor-per-caller decoded every write
@@ -978,6 +978,14 @@ class MongoMovieRepository(
   // [[ChangeStreamResumeToken]]; the `screenings` stream persists its own sibling token.
   private val resumeToken = new ChangeStreamResumeToken("movies", database, persistResumeToken)
 
+  // A change stream's onError is TERMINAL — nothing brings the cursor back on its own, and
+  // `ensureWatching` only runs on REGISTRATION, which the worker does twice at boot and never
+  // again. Without this driver one terminal error killed the worker's stream until the process
+  // restarted (see [[ChangeStreamReopen]] for the outage that proved it). Skips the reopen once
+  // the last listener has detached, so an idle repository stays idle.
+  private val changeReopen = ChangeStreamReopen.onDaemonScheduler("MovieRepository",
+    () => if (!movieChanges.isEmpty) coll.foreach(ensureWatching))
+
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: String => Unit
@@ -989,9 +997,10 @@ class MongoMovieRepository(
 
   /** Start the single shared cursor if it isn't already running. Each event is
    *  decoded once and fanned out to every listener; a delete (no post-image) is
-   *  surfaced by `_id`. Terminal errors clear the subscription so a later
-   *  registration can re-open, and existing listeners fall back to their
-   *  periodic backstop (cache rehydrate / projector reconcile) meanwhile. */
+   *  surfaced by `_id`. A terminal error clears the subscription and schedules a
+   *  reopen on a backoff (a later registration re-opens too), and existing listeners
+   *  fall back to their periodic backstop (cache rehydrate / projector reconcile)
+   *  meanwhile. */
   private def ensureWatching(c: MongoCollection[StoredMovieDto]): Unit = changeLock.synchronized {
     if (changeSub.get() == null) {
       // Resume from the last persisted token if we have one (a restart / prior terminal
@@ -1002,6 +1011,7 @@ class MongoMovieRepository(
         .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
           override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); s.request(Long.MaxValue) }
           override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit = {
+            changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
             recordChangeMetrics(change)
             // Advance the resume position BEFORE fanning out, so a consumer signal (a
             // downstream latch / write) can never observe an event before the token moves.
@@ -1036,8 +1046,9 @@ class MongoMovieRepository(
               logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — a reopen resumes from the " +
                 "persisted token; the backstop covers the meantime.")
             changeSub.set(null)
+            changeReopen.failed()
           }
-          override def onComplete(): Unit = changeSub.set(null)
+          override def onComplete(): Unit = { changeSub.set(null); changeReopen.failed() }
         })
       logger.info(s"MongoMovieRepository: watching change stream (shared by all listeners)" +
         s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
@@ -1082,7 +1093,9 @@ class MongoMovieRepository(
     }
   }.recover { case exception => logger.warn(s"change-stream metrics failed: ${exception.getMessage}") }.getOrElse(())
 
-  def close(): Unit = { resumeToken.save(force = true); changeApply.shutdown(); clientOpt.foreach(_.close()) }
+  def close(): Unit = {
+    changeReopen.close(); resumeToken.save(force = true); changeApply.shutdown(); clientOpt.foreach(_.close())
+  }
 
   /** Index `(title, year)` so [[delete]]'s `$or(_id, title+year)` filter resolves
    *  by index union instead of a full collection scan. The stored documents no longer

@@ -426,40 +426,50 @@ class MongoScreeningsRepository(
    *  + stitches the film. Requires a replica set (like the movies stream). */
   override def watch(onChange: String => Unit): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()
-    // Resume from the last persisted token (a restart / prior terminal error) so showtime
-    // changes that landed while down are replayed; else open at "now".
-    val resumeFrom = resumeToken.load()
-    val base       = c.watch()
-    resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
-      .subscribe(new Observer[ChangeStreamDocument[StoredScreeningsDto]] {
-        override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
-        override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
-          // Advance the resume position BEFORE ringing onChange, so a re-stitch can never
-          // observe the change before the token moves past it.
-          resumeToken.advance(change.getResumeToken)
-          val filmId = Option(change.getFullDocument).map(_.filmId).orElse(
-            Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-              .map(v => if (v.isString) v.asString.getValue else v.toString)
-              .map(_.takeWhile(_ != IdSep))) // delete carries no post-image — split the _id
-          filmId.foreach(fid => try onChange(fid)
-            catch { case e: Throwable => logger.warn(s"screenings watch onChange($fid) failed: ${e.getMessage}") })
-          resumeToken.save(force = false) // time-throttled, fire-and-forget
-        }
-        override def onError(e: Throwable): Unit = {
-          if (ChangeStreamResumeToken.isInvalid(e)) {
-            logger.warn(s"screenings change stream: resume token invalid (${e.getMessage}) — clearing it; " +
-              "the next open starts fresh and the backstop resyncs the gap.")
-            resumeToken.clear()
-          } else
-            logger.warn(s"screenings change stream ended (${e.getMessage}) — a reopen resumes from the " +
-              "persisted token; the backstop covers the meantime.")
-          subRef.set(null)
-        }
-        override def onComplete(): Unit = subRef.set(null)
-      })
-    logger.info(s"MongoScreeningsRepository: watching screenings change stream" +
-      s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
+    // A terminal error is the END of a cursor — the driver never brings it back, and unlike
+    // the movies stream there is not even a later registration to re-open this one. Without
+    // this driver a single blip left every showtime change unseen until the process restarted.
+    def open(): Unit = {
+      // Resume from the last persisted token (a restart / prior terminal error) so showtime
+      // changes that landed while down are replayed; else open at "now".
+      val resumeFrom = resumeToken.load()
+      val base       = c.watch()
+      resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
+        .subscribe(new Observer[ChangeStreamDocument[StoredScreeningsDto]] {
+          override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
+          override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
+            reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
+            // Advance the resume position BEFORE ringing onChange, so a re-stitch can never
+            // observe the change before the token moves past it.
+            resumeToken.advance(change.getResumeToken)
+            val filmId = Option(change.getFullDocument).map(_.filmId).orElse(
+              Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+                .map(v => if (v.isString) v.asString.getValue else v.toString)
+                .map(_.takeWhile(_ != IdSep))) // delete carries no post-image — split the _id
+            filmId.foreach(fid => try onChange(fid)
+              catch { case e: Throwable => logger.warn(s"screenings watch onChange($fid) failed: ${e.getMessage}") })
+            resumeToken.save(force = false) // time-throttled, fire-and-forget
+          }
+          override def onError(e: Throwable): Unit = {
+            if (ChangeStreamResumeToken.isInvalid(e)) {
+              logger.warn(s"screenings change stream: resume token invalid (${e.getMessage}) — clearing it; " +
+                "the next open starts fresh and the backstop resyncs the gap.")
+              resumeToken.clear()
+            } else
+              logger.warn(s"screenings change stream ended (${e.getMessage}) — a reopen resumes from the " +
+                "persisted token; the backstop covers the meantime.")
+            subRef.set(null)
+            reopen.failed()
+          }
+          override def onComplete(): Unit = { subRef.set(null); reopen.failed() }
+        })
+      logger.info(s"MongoScreeningsRepository: watching screenings change stream" +
+        s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
+    }
+    lazy val reopen: ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler("screenings", () => open())
+    open()
     new AutoCloseable { override def close(): Unit = {
+      reopen.close()
       resumeToken.save(force = true) // final position synchronously so the next process resumes here
       Option(subRef.get()).foreach(_.unsubscribe())
     } }
