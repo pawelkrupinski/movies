@@ -83,7 +83,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     val us   = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedStates)._1
     val body = contentAsString(us.sitemap(req("/sitemap.xml")))
     body should include("<loc>https://kinowo.net/us/los-angeles/</loc>")
-    body should include("<loc>https://kinowo.net/us/san-francisco/</loc>")
+    body should include("<loc>https://kinowo.net/us/san-francisco-bay-area/</loc>")
     // The state is how a metro is FOUND, never a page of its own.
     body should not include "/us/california/"
     // A district is a filter inside a metro, never a URL of its own.

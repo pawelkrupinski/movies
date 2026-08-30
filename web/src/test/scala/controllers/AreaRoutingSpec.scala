@@ -26,7 +26,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   private def place(slug: String): City = City.all.find(_.slug == slug).getOrElse(fail(s"no city '$slug'"))
 
   private val losAngeles   = place("los-angeles")
-  private val sanFrancisco = place("san-francisco")
+  private val sanFrancisco = place("san-francisco-bay-area")
 
   private val laCinema: Cinema = losAngeles.cinemas.head
   private val sfCinema: Cinema = sanFrancisco.cinemas.head
@@ -102,7 +102,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   it should "offer the other metros grouped by their state in the city switcher" in {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include ("""<optgroup label="California">""")
-    html should include ("""<option value="san-francisco">San Francisco</option>""")
+    html should include ("""<option value="san-francisco-bay-area">San Francisco Bay Area</option>""")
     // Two of the 457 are both called "Philadelphia" — a flat list offers them as
     // two identical options, which is why the US switcher is grouped at all.
     html should include ("""<optgroup label="Pennsylvania">""")

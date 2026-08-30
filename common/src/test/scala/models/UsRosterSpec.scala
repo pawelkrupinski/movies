@@ -46,19 +46,32 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     val la = city("los-angeles").cinemaDisplayNames
     la should contain("Chinese Theatre Hollywood")
     la should not contain "Castro Theatre"          // San Francisco
-    city("san-francisco").cinemaDisplayNames should contain("Castro Theatre")
+    city("san-francisco-bay-area").cinemaDisplayNames should contain("Castro Theatre")
   }
 
   "A state" should "be a grouping over its metros, not a city" in {
     City.bySlug("california") shouldBe None
     City.bySlug("texas") shouldBe None
     val california = group("California")
-    california.cities.map(_.labels.nominative).take(2) shouldBe Seq("Los Angeles", "San Francisco")
+    california.cities.map(_.labels.nominative).take(2) shouldBe Seq("Los Angeles", "San Francisco Bay Area")
     california.cities should have size 21
     california.cities.flatMap(_.cinemas) should have size 486
     // Biggest metro first — the one most of the state's visitors want.
     val sizes = california.cities.map(_.cinemas.size)
     sizes shouldBe sizes.sorted.reverse
+  }
+
+  "A metro named for a city it is really the region around" should "be called the region, and answer at the region's own URL" in {
+    // The Bay is the one such metro (`UsRoster.MetroDisplayNames`): its regions
+    // are the East Bay, the South Bay, the North Bay, the Peninsula and a San
+    // Francisco that is the city proper, so a metro also called "San Francisco"
+    // both shadowed one of its own regions and filed San Jose and Oakland under
+    // a city they are not in. The URL follows the name: the metro answers at
+    // `/san-francisco-bay-area/`, and its share card is named to match.
+    val bay = city("san-francisco-bay-area")
+    bay.labels.nominative shouldBe "San Francisco Bay Area"
+    bay.slug shouldBe "san-francisco-bay-area"
+    bay.areas.map(_.area.label) should contain allOf ("East Bay", "South Bay", "San Francisco")
   }
 
   it should "partition the country's cities, with none dropped or shared" in {
@@ -99,7 +112,7 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave a name nobody else wants exactly as it reads" in {
-    Seq("los-angeles", "san-francisco", "chicago", "seattle", "denver", "new-york")
+    Seq("los-angeles", "san-francisco-bay-area", "chicago", "seattle", "denver", "new-york")
       .foreach(s => withClue(s"$s: ")(City.bySlug(s) should not be None))
   }
 
@@ -145,6 +158,6 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
 
   "Every other metro" should "stay one flat list" in {
     City.usCities.filter(_.isSplit).map(_.slug) should contain theSameElementsAs
-      Seq("los-angeles", "new-york", "san-francisco", "dallas-fort-worth", "chicago")
+      Seq("los-angeles", "new-york", "san-francisco-bay-area", "dallas-fort-worth", "chicago")
   }
 }

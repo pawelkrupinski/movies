@@ -28,7 +28,7 @@ class UsMetroSubAreasSpec extends AnyFlatSpec with Matchers {
       .getOrElse(fail(s"'$metroSlug' has no '$label' district"))
 
   private val subDivided =
-    Seq("los-angeles", "new-york", "san-francisco", "dallas-fort-worth", "chicago")
+    Seq("los-angeles", "new-york", "san-francisco-bay-area", "dallas-fort-worth", "chicago")
 
   "Sub-division" should "reach exactly the metros at or past 75 venues" in {
     City.usCities.filter(_.isSplit).map(_.slug) should contain theSameElementsAs subDivided
@@ -158,26 +158,26 @@ class UsMetroSubAreasSpec extends AnyFlatSpec with Matchers {
   // if San Jose were a neighbourhood of San Francisco, which no resident would
   // say. The Bay's own five regions are what a local names instead.
   "San Francisco" should "read as the city, the East Bay, the South Bay, the North Bay and the Peninsula" in {
-    districts("san-francisco") shouldBe Seq(
+    districts("san-francisco-bay-area") shouldBe Seq(
       "East Bay" -> 34, "San Francisco" -> 16, "South Bay" -> 14, "North Bay" -> 9,
       "Peninsula" -> 6,
     )
     // San Jose is its own region, never folded in with San Francisco.
-    district("san-francisco", "San Francisco").cinemaDisplayNames should
+    district("san-francisco-bay-area", "San Francisco").cinemaDisplayNames should
       contain allOf ("Castro Theatre", "Roxie Theatre", "AMC Metreon 16 San Francisco")
-    district("san-francisco", "San Francisco").cinemaDisplayNames should
+    district("san-francisco-bay-area", "San Francisco").cinemaDisplayNames should
       not contain "Cinemark San Jose Oakridge 20"
-    district("san-francisco", "South Bay").cinemaDisplayNames should
+    district("san-francisco-bay-area", "South Bay").cinemaDisplayNames should
       contain("Cinemark San Jose Oakridge 20")
     // Alameda and Contra Costa, from Richmond down to Fremont and out to Brentwood.
-    district("san-francisco", "East Bay").cinemaDisplayNames should
+    district("san-francisco-bay-area", "East Bay").cinemaDisplayNames should
       contain allOf ("Grand Lake Theatre Oakland", "Berkeley Art Museum & Pacific Film Archive")
     // Marin and Solano, across the Golden Gate.
-    district("san-francisco", "North Bay").cinemaDisplayNames should
+    district("san-francisco-bay-area", "North Bay").cinemaDisplayNames should
       contain("Smith Rafael Film Center")
     // Flicks files the Stanford and the Aquarius under East Palo Alto; both are
     // in Palo Alto, which is also the name a local uses — and the Peninsula.
-    district("san-francisco", "Peninsula").cinemaDisplayNames should
+    district("san-francisco-bay-area", "Peninsula").cinemaDisplayNames should
       contain allOf ("Stanford Palo Alto", "Landmark Aquarius")
   }
 

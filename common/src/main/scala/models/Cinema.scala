@@ -1608,6 +1608,22 @@ object UsRoster {
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
       Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
 
+  /** Metros whose Flicks label is the anchor CITY where the place is really the
+   *  whole region around it. The renamed label carries the URL with it — the
+   *  slug is folded from the name shown, so this metro is `/san-francisco-bay-area/`.
+   *
+   *  Only the Bay qualifies today. Its districts fold into East Bay / South Bay
+   *  / North Bay / Peninsula and a `San Francisco` that is the city proper (see
+   *  `SUB_AREA_REGIONS` in `data/us/scripts/cluster_metros.py`), which left a
+   *  metro and one of its own five regions sharing a name — and asserted a
+   *  containment no resident would say, San Jose and Oakland filed under San
+   *  Francisco. New York and Los Angeles are not here: each really is the city
+   *  its region is named for, however far the metro reaches past it.
+   */
+  private val MetroDisplayNames = Map(
+    "San Francisco" -> "San Francisco Bay Area",
+  )
+
   /** Below this many venues a state is ONE place rather than a list of metros.
    *  Its metros are real, but a state short enough to read at a glance is not
    *  worth breaking into pages of six cinemas each — and the state is then a
@@ -1660,7 +1676,11 @@ object UsRoster {
       val districtOf = state.venues.map(v => (v.cinema: Cinema) -> v.district).toMap
       byMetro.map { metro =>
         val (lat, lon) = state.metroCentres(metro.area.label)
-        UsPlace(state.slug, state.name, metro.area.label, metro.area.slug, lat, lon, state.zoneId,
+        // A renamed metro re-folds its slug from the name shown, so label and
+        // URL never disagree; `CinemaArea(label)` is the same fold, so every
+        // un-renamed metro keeps the slug it already had.
+        val area = MetroDisplayNames.get(metro.area.label).fold(metro.area)(CinemaArea(_))
+        UsPlace(state.slug, state.name, area.label, area.slug, lat, lon, state.zoneId,
                 metro.cinemas, UsMetroSubAreas.districts(metro.cinemas.map(c => (c, districtOf(c)))))
       }
     }

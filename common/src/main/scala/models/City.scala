@@ -975,6 +975,25 @@ object City {
     places.map(p => if (keepsBareSlug(p)) p.preferredSlug else Slugify.stable(s"${p.label} ${p.stateName}"))
   }
 
+  /** Slugs a city USED to answer at, and the one it answers at now.
+   *
+   *  A city slug is published — the sitemap, whatever a search engine indexed,
+   *  the `city` cookie of everyone who has visited, the share card named after
+   *  it — so renaming one is a redirect, not an edit. `modules.RenamedCityRedirectFilter`
+   *  301s every path under the old slug to the same path under the new one.
+   *
+   *  An entry stays FOREVER: the cost is one map lookup per request, and the
+   *  links it serves are the ones nobody can go back and fix.
+   *
+   *  - `san-francisco` → `san-francisco-bay-area` (2026-08-30). The metro is
+   *    the whole Bay and its own regions include a San Francisco that is the
+   *    city proper, so the old name both shadowed a region and filed San Jose
+   *    and Oakland under a city they are not in. See `UsRoster.MetroDisplayNames`.
+   */
+  val renamedSlugs: Map[String, String] = Map(
+    "san-francisco" -> "san-francisco-bay-area",
+  )
+
   /** The US picker's grouping: one entry per state or territory, in roster
    *  order, holding the metros cut out of it (or the state itself, where it is
    *  small enough to be one place). */

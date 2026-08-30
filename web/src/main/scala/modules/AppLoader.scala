@@ -173,6 +173,8 @@ class AppComponents(context: Context)
 
   // ── Router + filters ──────────────────────────────────────────────────────
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
+  lazy val renamedCityRedirectFilter: RenamedCityRedirectFilter =
+    new RenamedCityRedirectFilter(models.Country.fromEnv.mountPath)(using materializer)
   lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics)(using executionContext)
   // Metrics FIRST (outermost) so the latency it records is the whole chain —
   // including gzip of a multi-MB body — and so a request rejected by Play's own
@@ -184,8 +186,11 @@ class AppComponents(context: Context)
   // mobile-load win. The filter is a no-op for
   // clients that don't send `Accept-Encoding: gzip` and skips already-
   // compressed payloads (images), so it only ever helps.
+  // The renamed-city 301 sits INSIDE the metrics filter (so the redirect is
+  // counted like any other response) but ahead of the router, since its whole
+  // job is to answer a path the router would 404.
   override def httpFilters: Seq[EssentialFilter] =
-    (httpMetricsFilter +: super.httpFilters) :+ corsFilter :+ cspFilter :+ gzipFilter
+    (httpMetricsFilter +: super.httpFilters) :+ renamedCityRedirectFilter :+ corsFilter :+ cspFilter :+ gzipFilter
 
   // Replace Play's default error handler with the truncation-tolerant
   // variant so `EntityStreamException` from client-side body cutoffs
