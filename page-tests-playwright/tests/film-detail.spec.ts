@@ -189,7 +189,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
   // "the first ten" must mean ten a visitor can actually use, not slots 1-10 of
   // a list they have mostly switched off.
   test('the cinema-link row shows only cinemas that are filtered in', async ({ page }) => {
-    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+    await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
 
     const off = (await page.locator('.cinema-link[data-cinema]')
       .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema))).slice(0, 4);
