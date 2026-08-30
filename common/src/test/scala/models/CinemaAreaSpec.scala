@@ -132,20 +132,35 @@ class CinemaAreaSpec extends AnyFlatSpec with Matchers {
     London.isSplit shouldBe true
   }
 
-  // ── The metro chooser gate (City.MinCinemasForAreaChooser) ──────────────────
+  // ── The metro chooser gate (City.hasAreaChooser) ────────────────────────────
 
-  "A split city past the venue threshold" should "offer a metro chooser" in {
-    val california = state("california")
-    california.cinemas.size should be >= City.MinCinemasForAreaChooser
-    california.hasAreaChooser shouldBe true
+  "Every split US state" should "offer a metro chooser, not just the biggest ones" in {
+    val splitStates = Country.UnitedStates.cities.filter(_.isSplit)
+    // The whole point of dropping the old venue threshold: 46 states are split,
+    // and every one of them is a list of metros rather than a city.
+    splitStates.size should be > 20
+    splitStates.foreach(s => withClue(s"${s.slug}: ")(s.hasAreaChooser shouldBe true))
+    state("california").hasAreaChooser shouldBe true
+    // A small split state — the case the 150-venue threshold used to exclude.
+    splitStates.minBy(_.cinemas.size).hasAreaChooser shouldBe true
   }
 
-  "London" should "stay a single listing — split, but nowhere near the threshold" in {
-    // The screen the chooser is modelled on, deliberately NOT a target: 133
-    // venues render as one page perfectly well.
+  "A flat US state" should "keep serving its own listing" in {
+    Country.UnitedStates.cities.filterNot(_.isSplit)
+      .foreach(s => withClue(s"${s.slug}: ")(s.hasAreaChooser shouldBe false))
+  }
+
+  "London" should "stay a single listing — split, but not a state" in {
+    // The screen the chooser is modelled on, deliberately NOT a target. It is
+    // the heaviest page in the fleet and STILL stays one page: a product
+    // decision, not a size one (see City.hasAreaChooser's doc).
     London.isSplit shouldBe true
-    London.cinemas.size should be < City.MinCinemasForAreaChooser
     London.hasAreaChooser shouldBe false
+  }
+
+  "No city outside the US" should "ever offer a chooser, however it is split" in {
+    City.allModelled.filter(_.country != Country.UnitedStates)
+      .foreach(c => withClue(s"${c.slug}: ")(c.hasAreaChooser shouldBe false))
   }
 
   "A flat city" should "never offer a chooser however many venues it holds" in {

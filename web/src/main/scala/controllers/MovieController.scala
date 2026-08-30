@@ -458,6 +458,25 @@ class MovieController( cc: ControllerComponents,
   private def cityCookie(city: City): Cookie =
     Cookie("city", city.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false)
 
+  // The metro chosen inside a chooser city, remembered exactly as `cityCookie`
+  // remembers the city — same lifetime, same path, same JS-readability — so
+  // `/{city}/` can bounce a returning visitor to their metro's films rather
+  // than asking again. Keyed PER CITY (`area_california`, `area_texas`): the
+  // metros are a different set in every state, so one shared "area" cookie
+  // would either mean nothing in the next state or, worse, be misread there.
+  private def areaCookieName(city: City): String = s"area_${city.slug}"
+
+  private def areaCookie(city: City, area: models.CinemaAreaGroup): Cookie =
+    Cookie(areaCookieName(city), area.area.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false)
+
+  /** The metro this visitor last chose in `city`, if it is still one of its
+   *  areas. `areaBySlug` is what makes a stale cookie harmless: the US roster is
+   *  regenerated periodically and metro slugs move with it, so a year-old cookie
+   *  can name an area that no longer exists — that resolves to `None` and the
+   *  visitor gets the chooser, not a 404 on a URL they never typed. */
+  private def rememberedArea(city: City, request: RequestHeader): Option[models.CinemaAreaGroup] =
+    request.cookies.get(areaCookieName(city)).map(_.value).flatMap(city.areaBySlug)
+
   // Render the main "Filmy" listing — repertoire view, full corpus,
   // OG meta derived from `?…` filter parameters. Shared between `/` and
   // `/filmy` (no parameters) so both URLs are interchangeable; `/filmy`
@@ -466,14 +485,17 @@ class MovieController( cc: ControllerComponents,
   private def renderIndex(city: City, request: RequestHeader, area: Option[models.CinemaAreaGroup] = None): Result = {
     implicit val c: City = city
     val user = currentUser(request)
+    // The metro ride-along: rendering an area page IS the choice being made, so
+    // the cookie is written here rather than at some separate "pick" endpoint.
+    val jar  = cityCookie(city) +: area.map(areaCookie(city, _)).toSeq
     if (cacheablePlainPage(request, user)) {
       // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
       // (and its data-prep) never runs either. The gzip cache is keyed on the
       // request PATH, so `/{city}/` and `/{city}/{area}/` never share a blob.
       conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderIndexHtml(city, request, user, area).body)
-        .withCookies(cityCookie(city))
+        .withCookies(jar*)
     } else {
-      Ok(renderIndexHtml(city, request, user, area)).withCookies(cityCookie(city))
+      Ok(renderIndexHtml(city, request, user, area)).withCookies(jar*)
     }
   }
 
@@ -508,17 +530,39 @@ class MovieController( cc: ControllerComponents,
       // a single collapsible section wrapping everything: chrome with no choice
       // in it. `None` leaves the city's own grouping in place.
       cinemaAreas     = area.map(_ => Seq.empty[models.CinemaAreaGroup]),
+      // Names the metro in the navbar, as a link back to the chooser — the way
+      // out of a pick the `area_{city}` cookie otherwise makes permanent.
+      area            = area,
     )
   }
 
   private def areaPath(city: City, area: Option[models.CinemaAreaGroup]): String =
     area.fold(s"/${city.slug}/")(g => s"/${city.slug}/${g.area.slug}/")
 
-  /** `/{city}/` — the city's listing, EXCEPT for a city big enough to need a
-   *  metro chooser first (see [[City.hasAreaChooser]]), where the listing lives
-   *  one level down at `/{city}/{area}/` and this serves the picker. */
+  /** `/{city}/` — the city's listing, EXCEPT for a city that needs a metro
+   *  chooser first (see [[City.hasAreaChooser]]), where the listing lives one
+   *  level down at `/{city}/{area}/`.
+   *
+   *  A chooser city answers one of two ways. A visitor who has already picked a
+   *  metro here is REDIRECTED to it — the chooser is a question, and asking it
+   *  every visit is the bug this fixes; it is the same bounce `/` already does
+   *  with the `city` cookie (`LandingController.index`), one level down.
+   *  Everyone else gets the picker.
+   *
+   *  `?areas` forces the picker regardless, which is how a choice gets changed:
+   *  the scoped page links back here with that flag (see `_navbar`'s change-area
+   *  link), and without it the link would bounce straight back to the page it
+   *  was clicked on. It also keeps the shared gzip cache honest — that cache is
+   *  keyed on the request PATH and skipped entirely for any query string
+   *  ([[cacheablePlainPage]]), so the flagged variant never shares a blob with
+   *  the bare path. */
   private def indexOrChooser(city: City, request: RequestHeader): Result =
-    if (city.hasAreaChooser) renderAreaChooser(city, request) else renderIndex(city, request)
+    if (!city.hasAreaChooser) renderIndex(city, request)
+    else if (request.queryString.contains(AreaChooserHref.ForceParam)) renderAreaChooser(city, request)
+    else rememberedArea(city, request) match {
+      case Some(group) => Redirect(areaPath(city, Some(group))).withCookies(cityCookie(city))
+      case None        => renderAreaChooser(city, request)
+    }
 
   /** The metro pick screen. Modelled on the city-selection landing (same dark
    *  card list, same type-to-filter box) so choosing a metro feels like the step
@@ -526,8 +570,8 @@ class MovieController( cc: ControllerComponents,
    *
    *  Sets the `city` cookie like any other city page: the visitor HAS chosen
    *  California, so the bare `/` should bounce them back here rather than to the
-   *  country-wide city list. The metro itself is not remembered — it is one tap
-   *  away and guessing it wrong would strand them on the wrong coast. */
+   *  country-wide city list. The metro is remembered one step later, when a row
+   *  on this screen is actually followed — see [[renderIndex]]. */
   private def renderAreaChooser(city: City, request: RequestHeader): Result = {
     val user = currentUser(request)
     val html = views.html.areas(city, PageMeta.origin(request)).body

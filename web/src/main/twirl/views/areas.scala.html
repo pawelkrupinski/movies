@@ -1,7 +1,9 @@
 @(city: models.City, origin: String)(implicit messages: play.api.i18n.Messages)
 @*
-   Metro PICK SCREEN, served at `/{city}/` for a city big enough to need one
-   (`City.hasAreaChooser` — California's 486 venues render an 18.9 MB page).
+   Metro PICK SCREEN, served at `/{city}/` for a split US state, whose "city" is
+   a whole state and so is not yet a place anyone has chosen (`City.hasAreaChooser`).
+   Shown on a first visit and whenever the navbar's change-area link asks for it
+   (`?areas`); in between, `/{city}/` bounces straight to the remembered metro.
    Each row is one `City.areas` group, in the order the model already puts them
    in: biggest metro first, "Other areas" last. Picking one lands on
    `/{city}/{area}/`, the ordinary repertoire view scoped to that area.

@@ -80,7 +80,7 @@ object FilterDescription {
    *  Metro names are DATA (one per Flicks region), so there is no declined form
    *  to read — the Polish branch names the area rather than inflecting it. In
    *  practice it is unreachable: only the UK and US rosters carry areas, and
-   *  only cities past [[models.City.MinCinemasForAreaChooser]] have area pages.
+   *  only US states have area pages ([[models.City.hasAreaChooser]]).
    *  It exists so the two languages stay side by side like everywhere else here. */
   def areaHeading(area: models.CinemaArea, city: City): String =
     if (isPolish(city)) s"Repertuar kin — ${area.label}"

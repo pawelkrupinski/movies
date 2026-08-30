@@ -81,6 +81,8 @@ areas.htmlTitle={0} — choose an area
 areas.ogDescription=Cinema listings across {0} — pick your area for today''s showtimes, with IMDb, Rotten Tomatoes and Metacritic ratings.
 areas.chooseArea=Choose an area
 areas.allCities=All cities
+# Navbar link on an area page, back to the chooser.
+areas.change=Change area
 # {0} = number of cinemas in the area.
 areas.cinemaCount={0,choice,1#1 cinema|1<{0} cinemas}
 

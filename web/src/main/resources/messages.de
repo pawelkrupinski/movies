@@ -81,6 +81,8 @@ areas.htmlTitle={0} — Region wählen
 areas.ogDescription=Kinoprogramm in {0} — wähle deine Region für die heutigen Spielzeiten, mit IMDb-, Rotten-Tomatoes- und Metacritic-Bewertungen.
 areas.chooseArea=Wähle eine Region
 areas.allCities=Alle Städte
+# Navbar link on an area page, back to the chooser.
+areas.change=Region ändern
 # {0} = number of cinemas in the area.
 areas.cinemaCount={0,choice,1#1 Kino|1<{0} Kinos}
 

@@ -1,4 +1,4 @@
-@(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
+@(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], area: Option[models.CinemaAreaGroup] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Navbar layout:
      - Logo + tab links (Debug, dev-only)                       — left
@@ -10,6 +10,20 @@
 
    The cinema picker lives inside the Filtry panel — one source of truth for
    "what's filtering this page".
+
+   `area` is set ONLY on an area-scoped listing (`/{city}/{area}/`, a US state's
+   metro). It renders the metro's name as a link back to the chooser, which is
+   the only way to change a pick the `area_{city}` cookie now remembers — the
+   bare `/{city}/` would bounce straight back here, so the link carries the
+   `?areas` flag (`controllers.AreaChooserHref`). Styled inline rather than from
+   `_sharedStyles` because it renders on US area pages alone: shared CSS would
+   ship — and re-snapshot — on every page in every country to no effect.
+
+   Its block is GLUED to the `}` of the Debug link's `@@if` with no gap between
+   them, and carries no comment of its own, for the same reason: Twirl emits the
+   template text BETWEEN two blocks whatever those blocks evaluate to, so a
+   newline there would shift `expected-*.html` for every city in every country
+   over a link none of them render.
 *@
 <nav class="navbar px-4 py-3 d-flex align-items-center">
   <div class="d-flex align-items-center gap-3 navbar-logo">
@@ -17,6 +31,12 @@
     <div class="d-flex gap-1 align-items-center">
       @if(devMode) {
         <a href="/debug" class="nav-tab nav-tab-debug">Debug</a>
+      }@area.map { g =>
+        <a id="change-area" href="@controllers.AreaChooserHref(city)" title="@messages("areas.change")"
+           style="display:inline-flex; align-items:baseline; gap:.4rem; white-space:nowrap; text-decoration:none; color:#c9c9ec; background:#1a1a3a; border:1px solid #3a3a6e; border-radius:999px; padding:.15rem .65rem; font-size:.85rem">
+          <span style="font-weight:600">@g.area.label</span>
+          <span style="color:#9a9ac0">@messages("areas.change")</span>
+        </a>
       }
     </div>
   </div>

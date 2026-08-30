@@ -3,20 +3,24 @@ package controllers
 import models.{City, Cinema, CinemaAreaGroup, Country, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.mvc.Cookie
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
 import java.time.LocalDateTime
 
 /**
- * The metro level: `/{city}/` is a PICK SCREEN for a city big enough to need
- * one (California lists 486 venues in one 18.9 MB page), and the films move one
- * level down to `/{city}/{area}/`.
+ * The metro level: `/{city}/` is a PICK SCREEN for a split US state — the one
+ * country whose "city" is a whole state, so `/california/` names nowhere anybody
+ * chose — and the films move one level down to `/{city}/{area}/`. The pick is
+ * then REMEMBERED (`area_{city}`), so the screen is asked once rather than every
+ * visit; the navbar's change-area link (`?areas`) is the way back to it.
  *
- * Everything here is about the three ways this can go wrong: a city that should
- * NOT get a chooser quietly getting one (London), an area page leaking films
- * from the rest of the state, and an unknown area answering 200 with the
- * unfiltered city listing instead of 404.
+ * Everything here is about the ways this can go wrong: a city that should NOT
+ * get a chooser quietly getting one (London), an area page leaking films from
+ * the rest of the state, an unknown area answering 200 with the unfiltered city
+ * listing instead of 404, and a remembered metro either sticking where it
+ * shouldn't (another state) or 404ing once the roster re-slugs it away.
  */
 class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
@@ -64,6 +68,10 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
   private def req(path: String) =
     FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "us.showtimes.cc")
+
+  /** The same request, carrying the metro a previous visit remembered. */
+  private def reqRemembering(path: String, citySlug: String, areaSlug: String) =
+    req(path).withCookies(Cookie(s"area_$citySlug", areaSlug))
 
   // ── The chooser screen ──────────────────────────────────────────────────────
 
@@ -165,6 +173,93 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     status(us.area("poznan", "los-angeles")(req("/poznan/los-angeles/")))     shouldBe NOT_FOUND
   }
 
+  // ── Every split state, not just the enormous ones ───────────────────────────
+
+  "Every split US state" should "serve the chooser, whatever its venue count" in {
+    val us = usController()
+    // Texas is split and enormous; the smallest split state is neither — both
+    // are lists of metros, which is the thing the chooser exists for.
+    val split = Country.UnitedStates.cities.filter(_.isSplit)
+    Seq(state("texas"), split.minBy(_.cinemas.size)).foreach { s =>
+      withClue(s"${s.slug}: ") {
+        val html = contentAsString(us.index(s.slug)(req(s"/${s.slug}/")))
+        html should include("Choose an area")
+        html should include(s"""href="/${s.slug}/${s.areas.head.area.slug}/"""")
+      }
+    }
+  }
+
+  "A flat state" should "still serve its own listing, with no chooser" in {
+    val html = contentAsString(usController().index("alaska")(req("/alaska/")))
+    html should not include "Choose an area"
+  }
+
+  // ── Remembering the chosen metro ────────────────────────────────────────────
+
+  /** The chooser is a question, and a question asked twice is a bug. Picking a
+   *  metro remembers it in `area_{citySlug}`, the per-city sibling of the `city`
+   *  cookie the city pick already sets. */
+  "Picking a metro" should "remember it, keyed on the state" in {
+    val res = usController().area("california", "los-angeles")(req("/california/los-angeles/"))
+    cookies(res).get("area_california").map(_.value) shouldBe Some("los-angeles")
+  }
+
+  "A returning visitor" should "land straight on the remembered metro's films" in {
+    val res = usController().index("california")(reqRemembering("/california/", "california", "los-angeles"))
+    status(res) shouldBe SEE_OTHER
+    redirectLocation(res) shouldBe Some("/california/los-angeles/")
+  }
+
+  it should "be sent on from /{city}/filmy too, so it isn't a back door to the chooser" in {
+    val res = usController().browse("california", None, None, None, None)(
+      reqRemembering("/california/filmy", "california", "los-angeles"))
+    redirectLocation(res) shouldBe Some("/california/los-angeles/")
+  }
+
+  it should "still get the chooser when the change-area link asks for it" in {
+    val res = usController().index("california")(reqRemembering("/california/?areas", "california", "los-angeles"))
+    status(res) shouldBe OK
+    contentAsString(res) should include("Choose an area")
+  }
+
+  "The scoped listing" should "offer a visible way back to the chooser" in {
+    val html = contentAsString(usController().area("california", "los-angeles")(req("/california/los-angeles/")))
+    html should include("""href="/california/?areas"""")
+    html should include("Change area")
+  }
+
+  /** End to end from the bare `/`: the `city` cookie bounces to the state
+   *  (`LandingController`, unchanged), the `area_{city}` cookie bounces on to
+   *  the metro. Two hops, one decision each, so the metro rule lives in exactly
+   *  one place. */
+  "The bare /" should "reach the remembered metro's films, chooser included nowhere" in {
+    val landing = new LandingController(play.api.test.Helpers.stubControllerComponents())(
+      using testsupport.TestMessages.forLang("en"))
+    val hop1 = landing.index()(req("/")
+      .withCookies(Cookie("city", "california"), Cookie("area_california", "los-angeles")))
+    redirectLocation(hop1) shouldBe Some("/california/")
+
+    val hop2 = usController().index("california")(req("/california/")
+      .withCookies(Cookie("city", "california"), Cookie("area_california", "los-angeles")))
+    redirectLocation(hop2) shouldBe Some("/california/los-angeles/")
+  }
+
+  /** The memory is per STATE: California's metro says nothing about Texas. */
+  "A remembered California metro" should "not skip Texas's chooser" in {
+    val res = usController().index("texas")(reqRemembering("/texas/", "california", "los-angeles"))
+    status(res) shouldBe OK
+    contentAsString(res) should include("Choose an area")
+  }
+
+  /** The roster is regenerated periodically and metro slugs move with it, so a
+   *  year-old cookie can name an area that no longer exists. That degrades to
+   *  the chooser — never a 404, and never an error. */
+  "A remembered metro that no longer exists" should "fall back to the chooser" in {
+    val res = usController().index("california")(reqRemembering("/california/", "california", "atlantis"))
+    status(res) shouldBe OK
+    contentAsString(res) should include("Choose an area")
+  }
+
   // ── What must NOT change ────────────────────────────────────────────────────
 
   /** London is split (five compass areas) but reads fine as one page, and it is
@@ -176,6 +271,11 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     contentAsString(res) should not include "Choose an area"
     status(uk.area("london", "central")(req("/london/central/"))) shouldBe NOT_FOUND
+    // And a stray area cookie can't bounce it anywhere either: London has no
+    // area URLs to be bounced TO.
+    val remembered = uk.index("london")(reqRemembering("/london/", "london", "central"))
+    status(remembered) shouldBe OK
+    contentAsString(remembered) should not include "Choose an area"
   }
 
   "A flat city" should "be untouched — its index is still its listing" in {
@@ -208,7 +308,8 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   /** `/{city}/filmy` with no filter axis is the main listing — it must follow
-   *  the chooser rather than staying a back door to the 18.9 MB page. */
+   *  the chooser rather than staying a back door to the state-wide page (18.9 MB
+   *  of it, in California's case). */
   "/california/filmy with no filter axis" should "serve the chooser too" in {
     val res = usController().browse("california", None, None, None, None)(req("/california/filmy"))
     status(res) shouldBe OK

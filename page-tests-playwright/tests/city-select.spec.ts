@@ -61,11 +61,12 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   });
 });
 
-// A city too big to render in one page (`City.hasAreaChooser` — California
-// lists 486 venues) puts a metro PICK SCREEN at `/{city}/` and moves its films
-// down to `/{city}/{area}/`. Flat cities and split-but-small ones (London) are
-// untouched and still land straight on their repertoire.
-test.describe('metro chooser (/{city}/ for a huge split city)', { tag: '@agnostic' }, () => {
+// A US state (`City.hasAreaChooser`) puts a metro PICK SCREEN at `/{city}/` and
+// moves its films down to `/{city}/{area}/` — its "city" is a whole state, so
+// `/california/` is not a place anyone has chosen yet. Flat states and every
+// city outside the US (London included, split though it is) are untouched and
+// still land straight on their repertoire.
+test.describe('metro chooser (/{city}/ for a split US state)', { tag: '@agnostic' }, () => {
   test('picking California lands on the area chooser, not a listing', async ({ page }) => {
     await page.goto('/');
     await page.locator('.city-list a', { hasText: 'California' }).click();
@@ -98,6 +99,27 @@ test.describe('metro chooser (/{city}/ for a huge split city)', { tag: '@agnosti
     // AreaRoutingSpec is where the scoping of actual films is asserted.)
     await expect(page.locator('#view-root')).toHaveCount(1);
     await expect(page.locator('.area-list')).toHaveCount(0);
+  });
+
+  // The pick is remembered (`area_{city}` cookie), so `/california/` stops
+  // asking — which makes this link the ONLY way back to the chooser. It carries
+  // `?areas` for exactly that reason: a bare `/california/` would bounce a
+  // returning visitor straight back to the metro they are trying to leave.
+  test('the metro page links back to the chooser, and the link reaches it', async ({ page }) => {
+    await page.goto('/california/los-angeles/');
+    const change = page.locator('#change-area');
+    await expect(change).toBeVisible();
+    await expect(change).toContainText('Los Angeles');
+    await expect(change).toHaveAttribute('href', '/california/?areas');
+
+    await change.click();
+    await page.waitForURL((u) => new URL(u).pathname === '/california/');
+    await expect(page.locator('.area-list a')).toHaveCount(21);
+  });
+
+  test('a listing that is not area-scoped shows no change-area link', async ({ page }) => {
+    await page.goto('/poznan/');
+    await expect(page.locator('#change-area')).toHaveCount(0);
   });
 
   test('London is split too, but keeps its single listing', async ({ page }) => {

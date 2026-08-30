@@ -88,6 +88,8 @@ areas.htmlTitle={0} — wybierz obszar
 areas.ogDescription=Repertuar kin — {0}. Wybierz obszar i sprawdź dzisiejsze seanse, z ocenami IMDb, RT i Filmweb.
 areas.chooseArea=Wybierz obszar
 areas.allCities=Wszystkie miasta
+# Navbar link on an area page, back to the chooser.
+areas.change=Zmień obszar
 # {0} = number of cinemas in the area.
 areas.cinemaCount={0,choice,1#1 kino|2#{0} kina|5#{0} kin}
 

@@ -3,7 +3,9 @@
 @* `cinemaAreas` overrides the collapsible groups the cinema filter offers: `None`
    (the default) means the city's own `areas`, an area-scoped page passes `Some(Nil)`.
    See `_sharedJsConfig`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", cinemaAreas: Option[Seq[models.CinemaAreaGroup]] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
+@* `area` is the metro this page is scoped to, on an area page only. It puts the
+   change-area link in the navbar — see `_navbar`. *@
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", cinemaAreas: Option[Seq[models.CinemaAreaGroup]] = None, area: Option[models.CinemaAreaGroup] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -28,7 +30,7 @@
 </head>
 <body>
 
-@_navbar("films", devMode, currentUser, oauthProviders)
+@_navbar("films", devMode, currentUser, oauthProviders, area)
 @_loginModal(oauthProviders)
 @_hiddenModal()
 

@@ -72,12 +72,34 @@ sealed abstract class City(
   /** Whether this city is split into [[areas]] (vs. a flat cinema list). */
   def isSplit: Boolean = areas.nonEmpty
   /** Whether `/{slug}/` serves a metro CHOOSER rather than the city's own
-   *  listing — split, and past [[City.MinCinemasForAreaChooser]] venues. The
-   *  films then live one level down, at `/{slug}/{areaSlug}/`.
+   *  listing. The films then live one level down, at `/{slug}/{areaSlug}/`.
    *
-   *  Deliberately narrower than [[isSplit]]: London is split too, and stays one
-   *  page. See the threshold's own doc for why. */
-  def hasAreaChooser: Boolean = isSplit && cinemas.sizeIs >= City.MinCinemasForAreaChooser
+   *  The rule is US + [[isSplit]], and both halves are load-bearing.
+   *
+   *  US, because in the United States a "city" here is a whole STATE — the only
+   *  country whose [[City]] is a region rather than a place, so its `/{slug}/`
+   *  is the only one where a visitor has not actually chosen anywhere yet.
+   *  "Films in California" is not a screen anybody wants; "films in Los Angeles"
+   *  is. That is a difference in what the URL MEANS, which is why it beats the
+   *  venue count this used to test (`MinCinemasForAreaChooser = 150`).
+   *
+   *  Not that count, because it read as a page-weight rule and was not one.
+   *  LONDON is split too (five compass areas) and stays ONE page deliberately —
+   *  and it is emphatically not exempt on size: measured live on 2026-08-30 it
+   *  serves 1.13 MB gzipped / 15.0 MB raw in 1.9s, the HEAVIEST page in the
+   *  fleet, heavier than the California listing this whole feature exists to
+   *  break up. By weight alone London would be the FIRST city to catch. It stays
+   *  one page anyway, because the UK is a live country whose visitors open
+   *  `/london/` and get films, and an extra tap was not wanted there. (They are
+   *  offered the compass areas once already, through the first-visit picker in
+   *  `shared.js`, which remembers the choice.)
+   *
+   *  So do NOT re-gate this on venue count to "catch London too" — that reverses
+   *  a product decision, and `AreaRoutingSpec` fails on purpose if you do.
+   *
+   *  [[isSplit]], because the nine flat states (Alaska, Hawaii, DC, …) have no
+   *  areas to choose between: their listing IS the page. */
+  def hasAreaChooser: Boolean = isSplit && country == Country.UnitedStates
   /** Resolve one of this city's [[areas]] by its stable slug — the `/{city}/{area}/`
    *  path segment. `None` for an unknown slug (and for every flat city), which is
    *  what turns a mistyped area URL into a 404 rather than a silent fall-through
@@ -871,35 +893,6 @@ final class UsRegion(slug: String, labels: CityLabels, lat: Double, lon: Double,
 }
 
 object City {
-
-  /** How many venues a SPLIT city needs before `/{slug}/` stops rendering its
-   *  own listing and becomes a metro chooser instead (see [[City.hasAreaChooser]]).
-   *
-   *  The cost being dodged is PAGE WEIGHT, not group count. California lists 486
-   *  venues and renders one 18.9 MB page (1.06 MB gzipped) — against Poznań's
-   *  173 KB and Alaska's 27 KB — which is not a page a phone loads.
-   *
-   *  150 sits just above LONDON (133 venues), and that exclusion is a PRODUCT
-   *  DECISION rather than a consequence of the number — which matters, because
-   *  the obvious reading of it is wrong. London is NOT light: measured live on
-   *  2026-08-30 it serves 1.13 MB gzipped / 15.0 MB raw in 1.9s, making it the
-   *  HEAVIEST page in the fleet, heavier than the California listing this whole
-   *  feature exists to break up. By page weight alone London would be the first
-   *  city to catch, not the one left out.
-   *
-   *  It stays one page anyway, deliberately: the UK is a live country whose
-   *  visitors open `/london/` and get films, and an extra tap was not wanted
-   *  there. (They are already offered the compass areas once, through the
-   *  first-visit picker in `shared.js`, which remembers the choice.)
-   *
-   *  So do not "fix" this by lowering the threshold to catch London — that
-   *  reverses a decision, and `AreaRoutingSpec` fails on purpose if you do.
-   *  Everything the threshold does catch is a US state whose listing is
-   *  genuinely unusable.
-   *
-   *  One number, one edit: raise it to narrow the set of chooser cities, lower
-   *  it to widen it. Nothing else keys off "big". */
-  val MinCinemasForAreaChooser: Int = 150
 
   /** Poland's cities — the authoritative list for [[Country.Poland]]. [[all]] is
    *  the union across every [[Country]], so a new country contributes its own

@@ -77,8 +77,8 @@ object FixtureServerMain {
       views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
         currentUser = anon, oauthProviders = noOauth, renderedAt = now).body
     }
-    // A city big enough to need one serves a metro CHOOSER at `/{city}/`, with
-    // its films one level down at `/{city}/{area}/` — mirroring
+    // A split US state serves a metro CHOOSER at `/{city}/`, with its films one
+    // level down at `/{city}/{area}/` — mirroring
     // `MovieController.indexOrChooser` / `area`. The fixture corpus is Poznań's,
     // so a US state's area pages render empty; what the browser suites exercise
     // here is the routing + the picker itself.
@@ -87,7 +87,7 @@ object FixtureServerMain {
       implicit val ci: City = c
       views.html.repertoire(service.areaSchedules(g, c, now), g.cinemaDisplayNames, g.cinemaPillMap,
         devMode = false, currentUser = anon, oauthProviders = noOauth, renderedAt = now,
-        cinemaAreas = Some(Seq.empty)).body
+        cinemaAreas = Some(Seq.empty), area = Some(g)).body
     }
     def filmyPageFor(c: City): String = {
       implicit val ci: City = c
