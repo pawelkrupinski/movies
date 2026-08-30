@@ -2,7 +2,7 @@ package services.movies
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import models.{Helios, MovieRecord, Source, SourceData}
+import models.{Helios, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -29,7 +29,17 @@ import org.scalatest.matchers.should.Matchers
  */
 class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
 
-  private val cinemaSlot = SourceData()
+  // A REAL cinema slot names the film — that is what a scrape writes, and the row's
+  // very KEY is derived from it. The bare `SourceData()` this used to be is a HUSK, and
+  // the guard now tells the two apart, so a fake that could not express the difference
+  // could not test it. Takes the title so each row keeps the identity its test expects.
+  private def cinemaSlot(title: String) = SourceData(title = Some(title))
+  /** A slot that kept its key and lost everything in it — no title, no showtimes. */
+  private val huskSlot   = SourceData()
+  /** A husk that is nonetheless still SHOWING: showtimes, no title. Prod holds one
+   *  (`najswietszeserce|2025`), and it must survive. */
+  private val untitledButShowing =
+    SourceData(showtimes = Seq(Showtime(java.time.LocalDateTime.now.plusDays(1), bookingUrl = None)))
 
   private def mkRecord(imdbId: String, cinemas: Map[models.Cinema, SourceData]): MovieRecord =
     MovieRecord(
@@ -71,7 +81,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   }
 
   "removeUnscreened" should "delete rows whose cinemaShowings map is empty" in {
-    val withCinema    = mkRecord("tt1", Map(Helios -> cinemaSlot))
+    val withCinema    = mkRecord("tt1", Map(Helios -> cinemaSlot("With")))
     val withoutCinema = mkRecord("tt2", Map.empty)
     val (repository, _) = splitRepository(Seq(
       ("With",    Some(2026), withCinema),
@@ -93,8 +103,8 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
 
   it should "be idempotent — no-op when every row has at least one cinema slot" in {
     val (repository, _) = splitRepository(Seq(
-      ("Drama",   Some(2026), mkRecord("tt1", Map(Helios -> cinemaSlot))),
-      ("Erupcja", Some(2026), mkRecord("tt2", Map(Helios -> cinemaSlot)))
+      ("Drama",   Some(2026), mkRecord("tt1", Map(Helios -> cinemaSlot("Drama")))),
+      ("Erupcja", Some(2026), mkRecord("tt2", Map(Helios -> cinemaSlot("Erupcja"))))
     ))
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val cleanup = new UnscreenedCleanup(cache, repository)
@@ -102,6 +112,33 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     cleanup.removeUnscreened()                 shouldBe 0
     cleanup.removeUnscreened()                 shouldBe 0  // second pass: still no-op
     repository.deletes                               shouldBe empty
+  }
+
+  /** The husk. Prod holds 146 rows whose every cinema slot lost its title, and the old
+   *  "a cinema-keyed slot exists" test never nominated one of them — so they sat there
+   *  serving an id-derived display title, and 92 of them kept `EnrichmentReaper` busy
+   *  refreshing ratings for a film nobody screens. */
+  it should "delete a row whose cinema slot kept its key but lost its title and showtimes" in {
+    val husk = mkRecord("tt9", Map(Helios -> huskSlot))
+    val (repository, _) = splitRepository(Seq(("Husk", Some(2025), husk)))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    cache.put(cache.keyOf("Husk", Some(2025)), husk)
+
+    new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 1
+    cache.get(cache.keyOf("Husk", Some(2025))) shouldBe empty
+  }
+
+  /** …but a slot can lose its title and still be SHOWING the film, and that row is alive.
+   *  Convicting on the missing title alone would delete a film playing tonight — the exact
+   *  failure this class exists to prevent, just reached from a new direction. */
+  it should "KEEP an untitled slot that still carries showtimes" in {
+    val showing = mkRecord("tt10", Map(Helios -> untitledButShowing))
+    val (repository, _) = splitRepository(Seq(("Showing", Some(2025), showing)))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    cache.put(cache.keyOf("Showing", Some(2025)), showing)
+
+    new UnscreenedCleanup(cache, repository).removeUnscreened() shouldBe 0
+    cache.get(cache.keyOf("Showing", Some(2025))) should not be empty
   }
 
   it should "count rows correctly when called on an empty cache" in {
@@ -117,7 +154,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // makes the two views disagree.
     val (repository, slots) = splitRepository(Seq(("Filipinana", Some(2026), mkRecord("tt9", Map.empty))))
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    slots.upsertSlot(filmId("Filipinana", Some(2026)), Helios.displayName, cinemaSlot)
+    slots.upsertSlot(filmId("Filipinana", Some(2026)), Helios.displayName, cinemaSlot("Filipinana"))
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 
@@ -134,7 +171,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // the guard has to read the union, which is what every serving reader already reads.
     val (repository, _) = splitRepository(Seq(("Clarissa", Some(2026), mkRecord("tt8", Map.empty))))
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-    repository.putEmbeddedOutOfBand("Clarissa", Some(2026), mkRecord("tt8", Map(Helios -> cinemaSlot)))
+    repository.putEmbeddedOutOfBand("Clarissa", Some(2026), mkRecord("tt8", Map(Helios -> cinemaSlot("Clarissa"))))
 
     val removed = new UnscreenedCleanup(cache, repository).removeUnscreened()
 

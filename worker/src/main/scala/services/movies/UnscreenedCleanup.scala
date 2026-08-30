@@ -1,5 +1,6 @@
 package services.movies
 
+import models.SourceData
 import play.api.Logging
 import services.Stoppable
 import tools.DaemonExecutors
@@ -74,7 +75,7 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
    *  dies only when THAT reports no cinemas either, on a read that actually
    *  succeeded. See the class doc for why. */
   def removeUnscreened(): Int = {
-    val candidates = cache.entries.collect { case (k, e) if e.cinemaData.isEmpty => k }
+    val candidates = cache.entries.collect { case (k, e) if !e.cinemaData.values.exists(alive) => k }
     val checked    = candidates.map(key => key -> repository.findByIdChecked(idOf(key)))
 
     // An ABSENT row (`None`, read fine) is nothing to keep and nothing to lose: the cache
@@ -100,7 +101,31 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
    *  nominated on, so the two witnesses answer the same question of different stores
    *  rather than two questions of one. */
   private def holdsCinemas(row: Option[StoredMovieRecord]): Boolean =
-    row.exists(_.record.cinemaData.nonEmpty)
+    row.exists(_.record.cinemaData.values.exists(alive))
+
+  /** Is this cinema slot evidence that a cinema still HAS this film, or is it a husk?
+   *
+   *  "A cinema-keyed slot exists" was the old test, and it is too weak: a slot can
+   *  survive its listing and keep the key while losing everything in it. Prod holds 146
+   *  rows whose every cinema slot carries no title at all — the row's display title then
+   *  falls back to its `_id` (`web_movies` really does serve one reading
+   *  "Klapskinokobietjakzyczebyniezwariowac") — and not one of them was ever nominated,
+   *  because the husk counted as a cinema. 92 of them still hold a tmdbId, so
+   *  `EnrichmentReaper` keeps refreshing their ratings forever.
+   *
+   *  A TITLE is the evidence a cinema named the film. SHOWTIMES are the evidence one is
+   *  showing it, and either alone is enough to keep the row: two of those 146 are
+   *  genuinely playing tonight under a slot that carries showtimes but no title
+   *  (`najswietszeserce|2025`), and convicting on the missing title alone would have
+   *  deleted a live film — the very failure this class exists to prevent.
+   *
+   *  `showtimesCount` is why one predicate can serve BOTH witnesses. The cache-resident
+   *  view has been through `ShowtimesDigest.stripForCache`, which empties `showtimes` and
+   *  records the count it replaced — so the nominating side can still tell a slot that
+   *  HAD showtimes from one that never did, and asks the same question of its own store
+   *  that the repository asks of the durable one. */
+  private def alive(slot: SourceData): Boolean =
+    slot.title.exists(_.trim.nonEmpty) || slot.showtimes.nonEmpty || slot.showtimesCount.exists(_ > 0)
 
   /** The `_id` the delete would cascade against — the same formula
    *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by, so the
