@@ -1,6 +1,6 @@
 package services.readmodel
 
-import models.{CityScreening, ResolvedMovie}
+import models.{City, CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
 import tools.{DaemonExecutors, Env}
@@ -42,7 +42,22 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
 
   def movie(id: String): Option[ResolvedMovie] = Option(movies.get(id))
   def allMovies(): Seq[ResolvedMovie]           = movies.values.asScala.toSeq
-  def screeningsForCity(citySlug: String): Seq[CityScreening] =
+  def screeningsForCity(citySlug: String): Seq[CityScreening] = {
+    val current = bucket(citySlug)
+    // A city that changed slug still has most of its rows projected under the
+    // OLD one (see `City.formerSlugs`), and would otherwise serve almost nothing
+    // until every one of its films had been projected again. Rows under the
+    // current slug WIN — they are the freshly projected ones — and the former
+    // bucket only fills the venues that have not caught up yet.
+    val former = City.formerSlugs(citySlug).flatMap(bucket)
+    if (former.isEmpty) current
+    else {
+      val projected = current.map(s => (s.filmId, s.cinema)).toSet
+      current ++ former.filterNot(s => projected((s.filmId, s.cinema)))
+    }
+  }
+
+  private def bucket(citySlug: String): Seq[CityScreening] =
     Option(byCity.get(citySlug)).map(_.values.asScala.toSeq).getOrElse(Seq.empty)
   /** Every cached screening across all cities — the read cache's full
    *  `web_screenings` view, used by the dev `/debug/readmodel` dump. */

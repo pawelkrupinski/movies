@@ -994,6 +994,19 @@ object City {
     "san-francisco" -> "san-francisco-bay-area",
   )
 
+  /** The slugs a city used to answer at, given the one it answers at now.
+   *
+   *  The read model is PROJECTED under the slug — a `CityScreening`'s `_id` is
+   *  `filmId|city|cinema` — so the instant a slug changes, every already-projected
+   *  row for that city is filed under a name nothing asks for, and stays that way
+   *  until each film is projected again (up to a whole scrape cadence: 14h in the
+   *  US). `WebReadModel` reads the former slugs alongside the current one so the
+   *  city keeps serving across that window. */
+  def formerSlugs(current: String): Seq[String] = formerSlugsByCurrent.getOrElse(current, Nil)
+
+  private lazy val formerSlugsByCurrent: Map[String, Seq[String]] =
+    renamedSlugs.groupMap(_._2)(_._1).view.mapValues(_.toSeq).toMap
+
   /** The US picker's grouping: one entry per state or territory, in roster
    *  order, holding the metros cut out of it (or the state itself, where it is
    *  small enough to be one place). */

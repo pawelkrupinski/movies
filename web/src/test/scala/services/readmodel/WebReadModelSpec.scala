@@ -41,6 +41,51 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     new WebReadModel(new InMemoryReadModelRepository).allScreenings() shouldBe empty
   }
 
+  // ── A renamed city keeps serving while the projection catches up ────────────
+  //
+  // `CityScreening._id` is `filmId|city|cinema` and `city` is the SLUG, so the
+  // moment a city's slug changes every row already projected for it is filed
+  // under a name nothing asks for. The rows are rewritten one film at a time as
+  // each is projected again — a whole scrape cadence, 14h in the US — and
+  // without this the city serves a near-empty page for that entire window. It
+  // is what `/san-francisco/` → `/san-francisco-bay-area/` did: 6 films where
+  // the metro has ~200.
+
+  "A city that changed slug" should "serve the rows still projected under its former slug" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("dune|2021"))
+    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("s1")
+  }
+
+  it should "prefer the freshly projected row over the stale one for the same venue" in {
+    // Mid-catch-up both exist: same film, same cinema, one row per slug. The
+    // venue must appear ONCE, and with the row projected under the live slug.
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("dune|2021"))
+    repository.upsertScreening(CityScreening("old", "dune|2021", "san-francisco", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("new", "dune|2021", "san-francisco-bay-area", "Roxie", None, Nil))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("new")
+  }
+
+  it should "leave a city that never changed slug reading only its own bucket" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("dune|2021"))
+    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    rm.screeningsForCity("los-angeles") shouldBe empty
+    // And the retired slug itself still resolves, for anything reaching it directly.
+    rm.screeningsForCity("san-francisco").map(_._id) shouldBe Seq("s1")
+  }
+
   // ── Backstop: cheap drift check, not an unconditional full reload ────────────
 
   private def started(repository: InMemoryReadModelRepository): WebReadModel = {
