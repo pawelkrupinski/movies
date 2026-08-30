@@ -52,15 +52,25 @@ class PlanController(
   movieControllerService: MovieControllerService,
   userRepository:               services.users.UserRepository,
   oauthProviders:         Set[String],
-  environment:            Mode
+  environment:            Mode,
+  // The country this deployment serves — the scope `/plan` resolves its city
+  // against, exactly as `MovieController.withCity` does. Defaulted from the
+  // environment so the wiring stays a one-liner.
+  servingCountry:         Country = Country.fromEnv
 )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
 
   private def currentUser(request: RequestHeader): Option[models.User] =
     request.session.get("userId").flatMap(userRepository.findById)
 
+  /** Resolved the same way every other city-scoped page is: against THIS
+   *  deployment's country, not the global `City.all`. Berlin is a real city, so
+   *  a bare `City.bySlug` resolved it on the Polish host too and served an empty
+   *  plan for it — the "successful nothing-on-today" answer that is
+   *  indistinguishable from a genuine one, and that stranded a cross-country
+   *  deep link in the iOS app (see `MovieController.withCity`). */
   def plan(city: String): Action[AnyContent] = Action { request =>
-    City.bySlug(city) match {
-      case None => NotFound(s"Nieznane miasto: $city")
+    City.bySlug(city).filter(servingCountry.cities.contains) match {
+      case None => NotFound(messages("error.unknownCity", city))
       case Some(c) =>
         implicit val ci: City = c
         val user      = currentUser(request)

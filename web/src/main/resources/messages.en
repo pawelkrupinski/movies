@@ -101,3 +101,6 @@ back.repertoire=Listings
 
 # ── First-run swipe hint ────────────────────────────────────────────────────
 hint.swipe=Swipe to change day
+
+# ── Errors ──────────────────────────────────────────────────────────────────
+error.unknownCity=Unknown city: {0}

@@ -438,7 +438,7 @@ class MovieController( cc: ControllerComponents,
   private def withCity(slug: String)(f: City => Result): Result =
     City.bySlug(slug).filter(servingCountry.cities.contains) match {
       case Some(c) => f(c)
-      case None    => NotFound(s"Nieznane miasto: $slug")
+      case None    => NotFound(messages("error.unknownCity", slug))
     }
 
   // Persist the viewed city so the bare `/` landing can bounce a returning
