@@ -148,8 +148,21 @@ object MovieCodecs {
 
     override def decode(r: BsonReader, c: DecoderContext): SourceData = {
       val document = org.bson.codecs.BsonDocumentCodec().decode(r, c)
+      // Every slot string is interned as it is decoded. This is the boundary that
+      // matters for resident memory: `rehydrate` reads the WHOLE corpus back
+      // through here at boot, so a value repeated across N cinema slots would
+      // otherwise arrive as N freshly-allocated copies. `MovieCache.buildCinemaSlot`
+      // interns the same fields, but only on a re-SCRAPE — and the write-through
+      // guard skips an unchanged slot, so a stable slot would keep its un-interned
+      // decoded strings indefinitely. Measured live 2026-08-30: a worker restarted
+      // onto a rehydrated corpus held 75.4 MB of `[B` against 57.0 MB in the 12h-old
+      // process it replaced, which had slowly re-interned itself via re-scrapes.
+      // Only these two helpers are pooled, which is exactly the low-cardinality
+      // vocabulary (cast 19.9x repeated, title 19.3x, genres 813x, …);
+      // `Showtime.bookingUrl` decodes on the `showtimes` path below and stays out,
+      // being per-screening and only 1.6x duplicated.
       def optStr(key: String): Option[String] =
-        if (document.containsKey(key) && document.get(key).isString) Some(document.getString(key).getValue)
+        if (document.containsKey(key) && document.get(key).isString) Some(StringPool.canonical(document.getString(key).getValue))
         else None
       def optInt(key: String): Option[Int] =
         if (document.containsKey(key) && document.get(key).isInt32) Some(document.getInt32(key).getValue)
@@ -158,11 +171,12 @@ object MovieCodecs {
         if (!document.containsKey(key) || document.get(key).isNull) Seq.empty
         else if (document.get(key).isString) {
           val stringValue = document.getString(key).getValue
-          if (stringValue.isEmpty) Seq.empty else stringValue.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+          if (stringValue.isEmpty) Seq.empty
+          else StringPool.canonicalAll(stringValue.split(",").map(_.trim).filter(_.nonEmpty).toSeq)
         }
         else if (document.get(key).isArray) {
           val array = document.getArray(key)
-          (0 until array.size()).map(i => array.get(i).asString().getValue).toSeq
+          StringPool.canonicalAll((0 until array.size()).map(i => array.get(i).asString().getValue).toSeq)
         }
         else Seq.empty
       def showtimes: Seq[Showtime] =
