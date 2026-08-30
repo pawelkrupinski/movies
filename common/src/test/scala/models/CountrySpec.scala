@@ -310,6 +310,54 @@ class CountrySpec extends AnyFlatSpec with Matchers {
       Country.resolvedDbName shouldBe Country.fromEnv.mongoDb
   }
 
+  /** The `users` + `userStates` collections are the ONE thing four country
+   *  deployments must agree on: a person is not per country. `MONGODB_USERS_DB`
+   *  names the database holding them, and the fallback is what keeps the change
+   *  a no-op everywhere it is not set. */
+  "Country.usersDbNameFrom" should "send the user collections to MONGODB_USERS_DB when it names one" in {
+    Country.usersDbNameFrom(Some("kinowo_users"), "kinowo_uk") shouldBe "kinowo_users"
+    Country.usersDbNameFrom(Some("kinowo_users"), "kinowo_de") shouldBe "kinowo_users"
+  }
+
+  it should "give every country the SAME users database, whatever its own is" in {
+    val dbs = Country.all.map(c => Country.usersDbNameFrom(Some("kinowo_users"), c.mongoDb))
+    dbs.distinct shouldBe List("kinowo_users")
+  }
+
+  it should "leave them in the deployment's own database when it is unset" in {
+    Country.usersDbNameFrom(None, "kinowo_uk") shouldBe "kinowo_uk"
+    Country.usersDbNameFrom(None, "kinowo")    shouldBe "kinowo"
+  }
+
+  // Blank is how the setting gets switched OFF in a ConfigMap — the key stays,
+  // the value empties. Treating it as a database literally called "" would defer
+  // the failure to the first query instead of never happening at all.
+  it should "treat a blank or whitespace-only value as unset" in {
+    Country.usersDbNameFrom(Some(""),    "kinowo_de") shouldBe "kinowo_de"
+    Country.usersDbNameFrom(Some("   "), "kinowo_de") shouldBe "kinowo_de"
+  }
+
+  it should "trim a value that arrived with stray whitespace" in {
+    Country.usersDbNameFrom(Some(" kinowo_users "), "kinowo_de") shouldBe "kinowo_users"
+  }
+
+  "Country.usersDbName" should "read MONGODB_USERS_DB from the environment" in {
+    if (tools.Env.get("MONGODB_USERS_DB").isEmpty) {
+      val prev = System.getProperty("MONGODB_USERS_DB")
+      try {
+        System.setProperty("MONGODB_USERS_DB", "kinowo_users_probe")
+        Country.usersDbName shouldBe "kinowo_users_probe"
+      } finally {
+        if (prev == null) System.clearProperty("MONGODB_USERS_DB") else System.setProperty("MONGODB_USERS_DB", prev)
+      }
+    }
+  }
+
+  it should "fall back to this deployment's own database when it is unset" in {
+    if (tools.Env.get("MONGODB_USERS_DB").isEmpty)
+      Country.usersDbName shouldBe Country.resolvedDbName
+  }
+
   /** The two deployments name their country through DIFFERENT env vars — web
    *  `KINOWO_COUNTRY=de`, each worker `KINOWO_COUNTRIES=de` — so anything
    *  process-global that must be country-correct has to read both. Reading only
