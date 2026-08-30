@@ -36,8 +36,26 @@ package services.cinemas.us
  *     404 for the site root and for the catalogue query alike. There is nothing
  *     to map venues against while the site is down; worth re-probing later,
  *     because if it returns it is a wiring change and not a client.
- *   - Harkins Theatres (31) — reachable (200), unlike the two above. Not taken to
- *     a conclusion in this pass; it is the strongest remaining candidate.
+ *   - Harkins Theatres (31) — reachable (200), unlike the two above, but its
+ *     showtimes source could not be confirmed (probed to a conclusion
+ *     2026-08-30). `www.harkins.com` is a client-rendered Next.js SPA: the
+ *     home/listing pages carry no embedded showtimes data (no `ld+json`, no
+ *     hydration payload), and the apparent showtimes route
+ *     `/theatres/<slug>/<date>` 404s even for today's own date — it is
+ *     populated by a client-side fetch this worker never triggers. A real
+ *     backend WAS found at `www.harkins.com/api/webservice/theatres` (200,
+ *     JSON theatre roster with numeric ids), but it answers geo-filtered to a
+ *     handful of nearby theatres with no path found to the other 29, and it
+ *     carries no showtimes/movies-by-date field or sibling endpoint. Tracing
+ *     the real showtimes call through the site's own JS bundle was the next
+ *     step, but the shared chunk that would have named it 403'd on two
+ *     independent probes (repeatable, not the single-request blip the other
+ *     chunks showed) — the stop condition this reconnaissance is bound by.
+ *     Un-located is not the same as measured-shorter, but the practical
+ *     result is identical: there is no plain-HTTP path to Harkins' programme,
+ *     so it stays on flicks.us like Marcus and Studio Movie Grill. Revisit
+ *     only with a browser-rendering probe (outside this reconnaissance's
+ *     plain-HTTP approach) to capture the live XHR the SPA makes.
  *   - Studio Movie Grill (18) — `www.studiomoviegrill.com` answers 403 the same
  *     way Marcus does.
  *
