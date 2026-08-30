@@ -115,9 +115,31 @@ object Country {
     val cities: Seq[City] = City.germanCities
   }
 
+  /** The United States — an English-language country on its own `kinowo_us`
+   *  database, sourced from `www.flicks.us`: the same Flicks platform the UK runs
+   *  on, reached through the same [[services.cinemas.common.FlicksClient]] on the
+   *  `UnitedStates` market. No Filmweb (Polish-only).
+   *
+   *  Its roster is the reason the worker is split per country rather than folded
+   *  into a sibling's: ~4,200 venues across 55 states and territories, six times
+   *  the UK's corpus, which is a scrape-VOLUME problem before it is anything else.
+   *  Its cadence is derived from that (see the US worker overlay) rather than
+   *  copied from the UK's. */
+  case object UnitedStates extends Country(
+    code           = "us",
+    displayName    = "United States",
+    language       = Locale.forLanguageTag("en-US"),
+    mongoDb        = "kinowo_us",
+    filmwebEnabled = false,
+    webUrl         = Some("https://us.showtimes.cc"),
+    brandName      = "Showtimes",
+  ) {
+    val cities: Seq[City] = City.usCities
+  }
+
   /** Every country the codebase knows about. A worker iterates this; a web
    *  deployment picks one via [[fromEnv]]. */
-  val all: Seq[Country] = Seq(Poland, UnitedKingdom, Germany)
+  val all: Seq[Country] = Seq(Poland, UnitedKingdom, Germany, UnitedStates)
 
   /** The fallback country when `KINOWO_COUNTRY` is unset — keeps single-country
    *  (Poland-only) deployments and tests working with no new env var. */
@@ -125,7 +147,7 @@ object Country {
 
   /** The countries a user can SWITCH to from the web navbar: those with a real
    *  deployment host ([[Country.webUrl]] defined), in [[all]] order (Poland,
-   *  UK, Germany). The country `<select>` renders only when this holds more than
+   *  UK, Germany, US). The country `<select>` renders only when this holds more than
    *  one entry. */
   val switchable: Seq[Country] = all.filter(_.webUrl.isDefined)
 

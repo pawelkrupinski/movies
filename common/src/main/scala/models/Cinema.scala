@@ -1,5 +1,7 @@
 package models
 
+import java.time.ZoneId
+
 sealed abstract class Cinema(val displayName: String, val pillName: String) extends Source {
   /** Stable kebab-case id for per-cinema title rules (`TitleNormalizer.cinemaClean`).
    *  Derived from the case-object name so a shared portal client (Bilety24,
@@ -1534,6 +1536,53 @@ object GermanRoster {
 }
 
 
+// ── United States (Flicks) — data-driven from the full roster ────────────────
+// `UsRosterData` (generated from data/us/venues.json) carries 55 states and
+// territories / ~4,200 cinemas. Same shape as `GermanCinema`: each venue is
+// built ONCE in `UsRoster` and reused everywhere, so one `Source` instance
+// serves the region, `Cinema.byCity` and the scrape catalog, and identity
+// equality holds like the hand-authored `case object` cinemas.
+final class UsCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
+
+/** Materialises the generated US roster into `UsRegion` cities + `UsCinema`
+ *  venues, once. Exposes the regions for `City.usCities`, the by-display-name
+ *  grouping for `Cinema.byCity`, and each cinema's Flicks slug for the scrape
+ *  catalog — the US counterpart of [[GermanRoster]]. */
+object UsRoster {
+  /** Display names already spoken for, which a generated US venue may NOT reuse.
+   *
+   *  Same hazard [[GermanRoster.claimedElsewhere]] guards, and it now has to look
+   *  wider: `displayName` is the wire key every per-cinema slot is stored under and
+   *  `Source.byDisplayName` is a plain `toMap`, so a US venue colliding with a
+   *  Polish, UK **or German** one silently rebinds the loser's stored showtimes to
+   *  the winner. The generator already de-duplicates WITHIN the US roster (it
+   *  qualifies a repeated title with its town, then its state, and refuses to emit
+   *  an unresolved collision); this catches the cross-country case, which the
+   *  generator cannot see. `SourceWireKeySpec` fails on any that slips through.
+   *
+   *  Reads `GermanRoster.byCity` rather than `GermanRosterData` so the comparison is
+   *  against the names actually built — German venues are themselves qualified on
+   *  collision, and it is the qualified name that ends up on the wire. */
+  private def claimedElsewhere: Set[String] =
+    (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
+      Seq(CinemaCityChain, CineworldChain)).map(_.displayName).toSet
+
+  private val built: Seq[(UsRegion, Seq[(UsCinema, String)])] =
+    UsRosterData.regions.map { case (slug, name, lat, lon, zone, cinemas) =>
+      val venues = cinemas.map { case (disp, pill, flicksSlug) =>
+        val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
+        (new UsCinema(unique, pill), flicksSlug)
+      }
+      (new UsRegion(slug, CityLabels(name, name, name), lat, lon, ZoneId.of(zone), venues.map(_._1)),
+        venues)
+    }
+  val regions: Seq[UsRegion]                = built.map(_._1)
+  val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, v) => r.labels.nominative -> v.map(_._1) }
+  /** Each US venue's Flicks `/cinema/<slug>/` id — what the scrape catalog binds
+   *  to a `FlicksClient` on the `FlicksMarket.UnitedStates` market. */
+  val flicksSlugByCinema: Map[Cinema, String] = built.flatMap(_._2).toMap
+}
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -1892,7 +1941,8 @@ object Cinema {
 
   /** LAZY, along with everything derived from it, and that is load-bearing rather than a
    *  micro-optimisation. `GermanRoster` reads `Cinema.polishAndUk` while building itself,
-   *  so `Cinema` and `GermanRoster` initialise each other. Forcing the German roster from
+   *  and `UsRoster` reads `polishAndUk` AND `GermanRoster.byCity`, so `Cinema` and both
+   *  rosters initialise each other. Forcing the German roster from
    *  a strict field here made the outcome depend on which object the JVM happened to touch
    *  first: enter through `Cinema` and `polishAndUk` is assigned in time, enter through
    *  `GermanRoster` and it reads a null, dying with `ExceptionInInitializerError`. That is
@@ -1901,7 +1951,9 @@ object Cinema {
    *  roster means entering through `GermanRoster` completes `Cinema`'s own fields without
    *  re-entering the roster, so either entry point works. */
   lazy val byCity: Seq[(String, Seq[Cinema])] =
-    polishAndUk ++ GermanRoster.byCity  // Germany: the full 158-region roster (data-driven)
+    polishAndUk ++
+      GermanRoster.byCity ++  // Germany: the full 158-region roster (data-driven)
+      UsRoster.byCity        // USA: 55 states/territories (data-driven)
 
   lazy val all: Seq[Cinema] = byCity.flatMap(_._2)
 

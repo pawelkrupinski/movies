@@ -1484,6 +1484,18 @@ class CinemaScraperCatalog(
       region.slug -> region.cinemas.map(c => filmstarts(models.GermanRoster.theaterIdByCinema(c), c))
     }.toMap
 
+  // ── United States (Flicks) ───────────────────────────────────────────────
+  // Data-driven from the full UsRoster (55 states/territories / ~4,200 cinemas):
+  // one Flicks scraper per cinema on the US market, keyed by the state slug that
+  // City.slug uses. Each cinema's flicks.us slug comes from
+  // UsRoster.flicksSlugByCinema. Same client and same residential egress as the
+  // UK — only the market differs, which is what keeps the two markets' pace gates
+  // and 429 back-offs independent (see FlicksMarket).
+  private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
+    models.UsRoster.regions.map { region =>
+      region.slug -> region.cinemas.map(c => flicksUs(models.UsRoster.flicksSlugByCinema(c), c))
+    }.toMap
+
   private val baseByCity: Map[String, Seq[CinemaScraper]] = Map(
     "poznan"     -> poznanScrapers,
     "wroclaw"    -> wroclawScrapers,
@@ -1607,6 +1619,7 @@ class CinemaScraperCatalog(
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
   ) ++ germanBaseByCity  // Germany: the full 158-region roster (data-driven)
+    ++ usBaseByCity     // USA: 55 states/territories (data-driven)
 
   /** Per-city scrapers plus any Filmweb-catchment venues for that city. */
   val byCity: Map[String, Seq[CinemaScraper]] =

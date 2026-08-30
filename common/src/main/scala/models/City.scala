@@ -839,6 +839,21 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
   val cinemas: Seq[Cinema] = cinemas0
 }
 
+/** A US state or territory — the data-driven `City` subtype. The full roster
+ *  (55 regions / ~4,200 cinemas) is generated into `UsRosterData` and
+ *  materialised by [[UsRoster]]. Instances are built ONCE there, so identity
+ *  equality holds just like the hand-authored `case object` cities.
+ *
+ *  Unlike [[GermanRegion]] the zone is a CONSTRUCTOR parameter rather than a
+ *  constant: the US spans six of them, so `Europe/Berlin`'s one-size answer has
+ *  no US equivalent. Each region carries its state's predominant zone (see
+ *  `data/us/scripts/states.py` for the handful of states that straddle two). */
+final class UsRegion(slug: String, labels: CityLabels, lat: Double, lon: Double,
+                      zoneId: ZoneId, cinemas0: Seq[Cinema])
+  extends City(slug, labels, lat, lon, zoneId) {
+  val cinemas: Seq[Cinema] = cinemas0
+}
+
 object City {
   /** Poland's cities — the authoritative list for [[Country.Poland]]. [[all]] is
    *  the union across every [[Country]], so a new country contributes its own
@@ -877,6 +892,14 @@ object City {
    *  [[GermanRegion]] / `GermanRoster`), rather than hand-authored case objects. */
   private[models] val germanCities: Seq[City] = GermanRoster.regions
 
+  /** The United States' cities — the authoritative list for
+   *  [[Country.UnitedStates]]. One region per state/territory rather than one per
+   *  Flicks metro: Flicks lists 577 US metros, which is far past the ~200 a city
+   *  picker stays usable at (Germany ships 158), and a state is the unit a US
+   *  visitor recognises. Metro detail is not lost — each venue keeps its Flicks
+   *  region, and a large state can be split into `areas` the way London is. */
+  private[models] val usCities: Seq[City] = UsRoster.regions
+
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse
    *  lookups. A single-country web deployment scopes to `country.cities`.
@@ -887,14 +910,14 @@ object City {
    *  make the two objects' static initialisers wait on each other and deadlock
    *  when loaded on parallel threads. Keep the dependency one-directional:
    *  `Country → City`. A new country adds its list to this concatenation. */
-  val all: Seq[City] = polishCities ++ ukCities ++ germanCities
+  val all: Seq[City] = polishCities ++ ukCities ++ germanCities ++ usCities
 
   /** Every modelled city across all countries — including cities that are
    *  declared in code but currently disabled, so absent from the live [[all]]
    *  (e.g. the UK cities filtered out by [[activeUkCities]]). [[all]] is the
    *  LIVE roster that web serves and the worker scrapes; this is the FULL roster
    *  used only by coverage/partition checks that must also see disabled cities. */
-  val allModelled: Seq[City] = polishCities ++ allUkCities ++ germanCities
+  val allModelled: Seq[City] = polishCities ++ allUkCities ++ germanCities ++ usCities
 
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 

@@ -13,7 +13,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class CountrySpec extends AnyFlatSpec with Matchers {
 
-  "Country.byCode" should "resolve pl/uk/de case-insensitively and reject unknown codes" in {
+  "Country.byCode" should "resolve pl/uk/de/us case-insensitively and reject unknown codes" in {
     Country.byCode("pl") shouldBe Some(Country.Poland)
     Country.byCode("PL") shouldBe Some(Country.Poland)
     Country.byCode("  pl ") shouldBe Some(Country.Poland)
@@ -21,15 +21,17 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.byCode("UK") shouldBe Some(Country.UnitedKingdom)
     Country.byCode("de") shouldBe Some(Country.Germany)
     Country.byCode("DE") shouldBe Some(Country.Germany)
+    Country.byCode("us") shouldBe Some(Country.UnitedStates)
+    Country.byCode("US") shouldBe Some(Country.UnitedStates)
     Country.byCode("xx") shouldBe None
     Country.byCode("") shouldBe None
   }
 
-  "A KINOWO_COUNTRIES-style code list" should "resolve 'pl,uk,de' to all three countries, in order" in {
-    // The exact contract fly.worker.toml's KINOWO_COUNTRIES='pl,uk,de' depends on
+  "A KINOWO_COUNTRIES-style code list" should "resolve 'pl,uk,de,us' to all four countries, in order" in {
+    // The exact contract each worker's KINOWO_COUNTRIES depends on
     // (WorkerMain.resolveCountries splits on comma and maps each via byCode).
-    "pl,uk,de".split(",").toList.flatMap(c => Country.byCode(c.trim)) shouldBe
-      List(Country.Poland, Country.UnitedKingdom, Country.Germany)
+    "pl,uk,de,us".split(",").toList.flatMap(c => Country.byCode(c.trim)) shouldBe
+      List(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates)
   }
 
   "Country.UnitedKingdom" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
@@ -68,6 +70,55 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1529
   }
 
+  "Country.UnitedStates" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
+    Country.UnitedStates.code shouldBe "us"
+    Country.UnitedStates.mongoDb shouldBe "kinowo_us"
+    Country.UnitedStates.filmwebEnabled shouldBe false
+    Country.UnitedStates.language.toLanguageTag shouldBe "en-US"
+    Country.UnitedStates.brandName shouldBe "Showtimes"   // "Kinowo" is Polish-only
+    Country.UnitedStates.cities shouldBe City.usCities
+  }
+
+  "Country.UnitedStates.cities" should "be one region per state or territory, not one per Flicks metro" in {
+    // Flicks lists 577 US metros — far past the ~200 a city picker stays usable at
+    // (Germany ships 158, the UK 79) — so the roster groups by state/territory
+    // instead, which is also the unit a US visitor recognises. If this number ever
+    // jumps to the hundreds, someone has regenerated the roster grouped by metro.
+    Country.UnitedStates.cities should have size 55
+    Country.UnitedStates.cities.map(_.slug) should contain allOf (
+      "california", "texas", "new-york", "district-of-columbia", "puerto-rico")
+    // Every region carries venues, and the roster totals 5,031 — ~6x the UK's
+    // corpus, the fact that drives the US worker's 840-minute cadence rather than
+    // the UK's 420 (a ~10h sweep has to fit inside its own cadence).
+    all(Country.UnitedStates.cities.map(_.cinemas.size)) should be > 0
+    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5031
+  }
+
+  "US regions" should "carry their own time zone rather than one national default" in {
+    // Unlike Germany (one Europe/Berlin for every region), the US spans six zones,
+    // so UsRegion takes the zone per region. A single national default would put
+    // California's day boundary three hours early.
+    def zoneOf(slug: String) =
+      Country.UnitedStates.cities.find(_.slug == slug).get.zoneId.getId
+    zoneOf("california") shouldBe "America/Los_Angeles"
+    zoneOf("new-york")   shouldBe "America/New_York"
+    zoneOf("texas")      shouldBe "America/Chicago"
+    zoneOf("hawaii")     shouldBe "Pacific/Honolulu"
+    zoneOf("arizona")    shouldBe "America/Phoenix"   // no DST, deliberately its own
+  }
+
+  "Every modelled cinema display name" should "be globally unique across all four countries" in {
+    // displayName is the WIRE KEY every per-cinema slot is stored under
+    // (`movie_slots`, `screenings`, the embedded `sourceData` map) and
+    // `Source.byDisplayName` is a plain `toMap` — so two venues sharing a name
+    // silently collapse to whichever is built LAST, and the loser's stored slots
+    // read back as the WINNER's. Adding ~4,250 US venues is far and away the
+    // largest chance this repo has had to introduce such a collision.
+    val names = City.allModelled.flatMap(_.cinemas).map(_.displayName)
+    val dupes = names.groupBy(identity).collect { case (n, xs) if xs.sizeIs > 1 => n }
+    dupes shouldBe empty
+  }
+
   // Four venues were DELISTED by Filmstarts: every scrape got HTTP 404 for
   // `/kinoprogramm/kino/<id>/`, burning retries on every cycle and showing users a
   // cinema that no longer exists. Checked 2026-07-31 against Filmstarts' own
@@ -104,8 +155,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "Country.Poland.cities" should "be exactly today's Polish city list; City.all is the union across countries" in {
     Country.Poland.cities shouldBe City.polishCities
-    // City.all is the concatenation of every country's list (PL + UK + DE).
-    City.all should contain theSameElementsAs (City.polishCities ++ City.ukCities ++ City.germanCities)
+    // City.all is the concatenation of every country's list (PL + UK + DE + US).
+    City.all should contain theSameElementsAs
+      (City.polishCities ++ City.ukCities ++ City.germanCities ++ City.usCities)
     Country.all.flatMap(_.cities) should contain theSameElementsAs City.all
   }
 
@@ -114,6 +166,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Warszawa.country shouldBe Country.Poland
     London.country shouldBe Country.UnitedKingdom
     City.bySlug("berlin").get.country shouldBe Country.Germany
+    City.bySlug("california").get.country shouldBe Country.UnitedStates
     // Every city belongs to exactly the country whose list contains it.
     City.all.foreach(c => Country.of(c).cities should contain(c))
   }
@@ -133,11 +186,16 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "Country.switchable" should "list every deployed country (webUrl defined), Poland first" in {
     // The navbar country <select> iterates this, in this order.
-    Country.switchable shouldBe Seq(Country.Poland, Country.UnitedKingdom, Country.Germany)
+    Country.switchable shouldBe
+      Seq(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates)
     Country.Poland.webUrl shouldBe Some("https://kinowo.net")
     Country.UnitedKingdom.webUrl shouldBe Some("https://uk.showtimes.cc")
     Country.Germany.webUrl shouldBe Some("https://de.showtimes.cc")
-    Country.switchable should contain (Country.Germany)
+    Country.UnitedStates.webUrl shouldBe Some("https://us.showtimes.cc")
+    // Being switchable is the ONE flag that adds a country to the navbar
+    // <select>, the debug ?country= switcher and the /api/catalog mobile
+    // endpoint — all three iterate this, so nothing else enumerates them.
+    Country.switchable should contain (Country.UnitedStates)
     // Every switchable country carries a host (no trailing slash) and a label.
     Country.switchable.foreach { c =>
       c.webUrl.get should (startWith("https://") and not endWith "/")
