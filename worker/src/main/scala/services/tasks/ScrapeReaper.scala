@@ -19,9 +19,12 @@ import scala.util.Try
  * the shared [[DueWindow]] — its phase-window boundary has passed since the last
  * successful scrape, or it has never been scraped. The window's period is the
  * freshness setting (`KINOWO_SCRAPE_FRESHNESS_MINUTES`, default 60min) — set per
- * country in that worker app's fly toml, so the rate is NOT uniform across the
- * fleet: DE runs 120min against its ~1,529-cinema roster while PL and UK stay
- * hourly (see `WorkerScrapeCadenceConfigSpec`). Each cinema's boundary sits at a
+ * country in that worker's k3s overlay, so the rate is NOT uniform across the
+ * fleet: each country's value is sized so its PACED sweep fits inside it, which
+ * on a chunked country with a big roster is many times PL's hour. The overlays
+ * hold the live values and `WorkerScrapeCadenceConfigSpec` asserts the sweep
+ * still fits each one — read them there, not from a number in this comment, which
+ * is how the figures quoted here went stale before. Each cinema's boundary sits at a
  * deterministic phase offset hashed from its key, so a country's cinemas spread
  * evenly across the period instead of all falling due together and scraping in a
  * lockstep wave. Enqueue is deduped by the queue, so a

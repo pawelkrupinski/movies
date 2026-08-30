@@ -36,7 +36,9 @@ import scala.concurrent.duration._
  * never happened is not data — see the failed-read-is-not-data convention.
  *
  * In steady state the age gauge rides just under the country's scrape window
- * (`KINOWO_SCRAPE_FRESHNESS_MINUTES`, 60min for PL/UK, 180min for DE) in a
+ * (`KINOWO_SCRAPE_FRESHNESS_MINUTES`, set per country in that worker's k3s
+ * overlay — the values are NOT uniform, each is sized so that country's paced
+ * sweep fits inside it, so read them off the overlays rather than from here) in a
  * sawtooth: cinemas fall due, get scraped, and the maximum resets. A line that
  * climbs past the window in a straight diagonal means the reaper is not draining
  * the backlog — the credit-throttle spiral, a chunked-scrape starvation, or a
