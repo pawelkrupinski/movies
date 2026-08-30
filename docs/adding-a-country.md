@@ -217,7 +217,7 @@ into a sibling's pod will OOM or throttle it.
    `fleet.k8sDeploy.targets` in `infra/nix/modules/roles/k8s-deploy.nix` so CI can
    roll it.
 4. **Create and roll it**: `infra/kubernetes/apply.sh worker <cc>`, then let the next
-   push to main pin the image. There is no `deploy.yml` matrix leg — every Fly leg is
+   push to main pin the image. There is no `main.yml` matrix leg — every Fly leg is
    `enabled: false` and adding one would deploy a second copy.
 
 ## 4. Web frontend (`<cc>.showtimes.cc`)
@@ -421,7 +421,7 @@ Play-installed build auto-verifies (see `web/src/main/resources/wellknown/README
 **The live stack is the fleet's own**, on `monitoring-1`: Prometheus + Grafana at
 `grafana.kinowo.net`, configured under `infra/nix/files/monitoring/`. The
 `fly/grafana/` tree is the RETIRED Grafana-on-Fly stack (`kinowo-grafana` is scaled
-to zero, and the deploy annotation step in `deploy.yml` carries the scar of pointing
+to zero, and the deploy annotation step in `main.yml` carries the scar of pointing
 at it) — but it is still committed and still read by the `Grafana*Spec`s under
 `worker/src/test/scala/deploy/`, so keeping it consistent is a CI obligation rather
 than a production one. Do both:

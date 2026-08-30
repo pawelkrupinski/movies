@@ -724,7 +724,7 @@ groups:
           severity: critical
         annotations:
           summary: 'kinowo (web, Fly) is down or not reporting'
-          description: 'DORMANT since the web tier moved to k3s on 2026-08-29 — `fly_instance_up{app="kinowo"}` is permanently absent and this rule cannot fire. `kinowo-web-serving-down` above is what watches the live tier. Kept only for the documented Fly rollback (deploy.yml matrix `enabled: true` + `flyctl scale count 1`); retire it with the Fly app.'
+          description: 'DORMANT since the web tier moved to k3s on 2026-08-29 — `fly_instance_up{app="kinowo"}` is permanently absent and this rule cannot fire. `kinowo-web-serving-down` above is what watches the live tier. Kept only for the documented Fly rollback (main.yml matrix `enabled: true` + `flyctl scale count 1`); retire it with the Fly app.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }

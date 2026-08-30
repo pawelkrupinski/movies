@@ -25,7 +25,7 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
 
   private val workflows = Seq(
     ".github/workflows/ci.yml",
-    ".github/workflows/deploy.yml",
+    ".github/workflows/main.yml",
     ".github/actions/run-page-test/action.yml",
   )
 

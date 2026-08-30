@@ -2,7 +2,7 @@
 # continuous cinema scrape + the enrichment cascade, writing through MovieCache
 # to the shared Mongo; the `kinowo` serving app picks those writes up via the
 # Mongo change stream. Deployed from the SAME Dockerfile as `kinowo` with
-# `--build-arg BIN=worker` (see .github/workflows/deploy.yml).
+# `--build-arg BIN=worker` (see .github/workflows/main.yml).
 app = 'kinowo-worker'
 # Same region as `kinowo` + the self-hosted Mongo (`fly/mongo`) so writes run
 # on Fly's private network at ~1 ms RTT instead of a cross-region hop.

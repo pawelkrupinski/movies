@@ -3,13 +3,15 @@ name: CI
 # The full build + test pipeline, factored out as a reusable workflow so it
 # has exactly ONE definition. Two callers consume it:
 #
-#   - deploy.yml      — push to main: run this, then deploy to Fly.
+#   - main.yml        — push to main: run this, then build the images and
+#                       deploy them.
 #   - branch-ci.yml   — pull_request: run this alone (no deploy) so every
 #                       branch (e.g. the Scala Steward dependency-bump PRs)
 #                       is confirmed to compile + pass the same gates main does.
 #
-# Everything below is identical to what gated deploy before the split — the
-# only thing that lives in deploy.yml now is the deploy job itself.
+# Everything below is identical to what gated deploy before the split — what
+# lives in main.yml is the shipping half: the Fly deploy matrix and the
+# per-tier GHCR build + k3s rollout jobs, all of which `needs: ci`.
 on:
     workflow_call:
 
@@ -17,13 +19,14 @@ on:
 #
 #   test (unit + eslint + stage) ─┐
 #   integration-test ─────────────┤
-#   e2e × 3 shards ───────────────┤  (all independent; deploy.yml's deploy job
-#   mobile-local-server (iOS+And) ┤   `needs` this whole workflow)
+#   e2e × 3 shards ───────────────┤  (all independent; every shipping job in
+#   mobile-local-server (iOS+And) ┤   main.yml `needs` this whole workflow)
 #   page-tests × 13 ──────────────┘
 #
 # RUNNER BUDGET — 19 here, and it must stay there. GitHub Free allows 20
-# concurrent jobs ACROSS THE ACCOUNT, and on a push to main deploy.yml adds a
-# 20th (`build-image`, which runs alongside these rather than after them). Every
+# concurrent jobs ACROSS THE ACCOUNT, and on a push to main `main.yml` adds a
+# 20th (`build-image`, which runs alongside these rather than after them; its
+# other jobs all `needs: ci`, so they take slots these have given back). Every
 # job over that budget queues, and a queued job is pure added wall-clock: it
 # starts when something else finishes. So a new job here has to take its slot
 # from an existing one — that is why ReScrapeIdempotencySpec gave up its e2e
@@ -132,11 +135,11 @@ jobs:
             # dists costs anything.
             #
             # The dists used to be UPLOADED here for the deploy job to download.
-            # Nothing downloads them now: deploy.yml stages its own copy in
+            # Nothing downloads them now: main.yml stages its own copy in
             # `build-image`, which runs alongside this job rather than after it,
             # so the container build is off the post-CI critical path. What
             # staging still buys is the guard below, and on a PR run
-            # (branch-ci.yml never reaches deploy.yml) this is the only place a
+            # (branch-ci.yml never reaches main.yml) this is the only place a
             # dist that stopped linking, or a reappearing Scaladoc tree, is
             # caught at all.
             - run: sbt "web/stage" "worker/stage"

@@ -18,8 +18,17 @@ import org.scalatest.matchers.should.Matchers
  *
  * So the budget is a fixed 20, and a new job has to take its slot from an
  * existing one rather than be added. Both files that contribute count: ci.yml's
- * jobs and deploy.yml's `build-image` all start at t=0. (The deploy matrix does
+ * jobs and main.yml's `build-image` all start at t=0. (The deploy matrix does
  * not — it `needs: ci`, so ci's jobs have released their slots by then.)
+ *
+ * A NEEDS-LESS JOB IS THE ONLY KIND THAT COSTS ANYTHING HERE, and that is what
+ * made folding `build-web-image.yaml` / `build-worker-image.yaml` into main.yml
+ * a budget question rather than a formality. As separate workflows their build
+ * jobs also started at t=0 — they just did it in files this spec never read, so
+ * a push touching both tiers really started 22 jobs against an allowance of 20
+ * and nothing said so. Folded in and hung off `needs: ci`, they take slots ci
+ * has already given back, and the number this spec locks becomes true rather
+ * than merely unchecked. That is why the last test below exists.
  */
 class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
 
@@ -27,7 +36,7 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   private val Allowance = 20
 
   private lazy val ciYml     = RepoFile.read(".github/workflows/ci.yml")
-  private lazy val deployYml = RepoFile.read(".github/workflows/deploy.yml")
+  private lazy val mainYml = RepoFile.read(".github/workflows/main.yml")
 
   /** Job name → its YAML block, for every job in a workflow file. */
   private def jobs(yml: String): Map[String, String] = {
@@ -63,17 +72,17 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
 
   private lazy val ciRunners = jobs(ciYml).values.map(runners).sum
 
-  // deploy.yml's own jobs that start immediately — i.e. no `needs:` at all. `ci`
+  // main.yml's own jobs that start immediately — i.e. no `needs:` at all. `ci`
   // is the reusable-workflow call itself and contributes no runner of its own;
   // its jobs are counted above.
   private lazy val deployRunnersAtStart =
-    jobs(deployYml).view
+    jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (_, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => runners(block) }
       .sum
 
   "a push to main" should "start no more jobs at once than GitHub Free allows to run at once" in {
-    withClue(s"ci.yml=$ciRunners + deploy.yml(no-needs)=$deployRunnersAtStart: ") {
+    withClue(s"ci.yml=$ciRunners + main.yml(no-needs)=$deployRunnersAtStart: ") {
       ciRunners + deployRunnersAtStart should be <= Allowance
     }
   }
@@ -86,13 +95,13 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
    * where the freed runner should go.
    */
   it should "use the whole allowance, not leave a runner idle" in {
-    withClue(s"ci.yml=$ciRunners + deploy.yml(no-needs)=$deployRunnersAtStart: ") {
+    withClue(s"ci.yml=$ciRunners + main.yml(no-needs)=$deployRunnersAtStart: ") {
       ciRunners + deployRunnersAtStart shouldBe Allowance
     }
   }
 
   /**
-   * `build-image` is the one deploy.yml job that runs alongside ci rather than
+   * `build-image` is the one main.yml job that runs alongside ci rather than
    * after it, and it is deliberate: the container build needs the sources, not a
    * green test run, so building it concurrently takes the image build off the
    * post-CI tail. If it ever grew a `needs:`, it would slide back onto the
@@ -100,8 +109,24 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
    * not expecting.
    */
   it should "build the deploy image alongside the tests, not after them" in {
-    val buildImage = RepoFile.block(deployYml, "build-image")
+    val buildImage = RepoFile.block(mainYml, "build-image")
     buildImage should not include "needs:"
     buildImage should include("--build-only")
+  }
+
+  /**
+   * …and it must stay the ONLY one. The GHCR build jobs that ship the k3s tiers
+   * arrived here from two workflows that started them at t=0, which is a slot
+   * apiece that neither this budget nor ci.yml's 19 has room for. Hanging them
+   * off `needs: ci` is what keeps the number above honest; dropping the `needs:`
+   * to make a deploy land four minutes sooner would silently push a push to main
+   * to 22 jobs, and the two that queue would be whichever GitHub felt like.
+   */
+  it should "hang every other main.yml job off ci rather than starting it at t=0" in {
+    val atStart = jobs(mainYml).view
+      .filterKeys(_ != "ci")
+      .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
+      .toSet
+    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("build-image"))
   }
 }

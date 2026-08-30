@@ -138,7 +138,7 @@ Mongo is self-hosted on Fly too — `kinowo-mongo` app, same region,
 `fly/mongo/`.
 
 Every push to `main` deploys both legs via GitHub Actions
-(`.github/workflows/deploy.yml`): it `sbt "web/stage" "worker/stage"`s
+(`.github/workflows/main.yml`): it `sbt "web/stage" "worker/stage"`s
 each app, then `flyctl deploy --build-arg BIN=<bin>` per app. To deploy
 one app by hand after staging it:
 

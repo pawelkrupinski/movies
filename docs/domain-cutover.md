@@ -73,7 +73,7 @@ ordering — several of the steps below are only safe in one sequence.
    ssh -i <k8sdeploy key> k8sdeploy@2.28.52.210 ghcr.io/pawelkrupinski/movies-web:<sha>
    ```
 
-7. **Retire the Fly web apps.** Every leg in `.github/workflows/deploy.yml` is
+7. **Retire the Fly web apps.** Every leg in `.github/workflows/main.yml` is
    already `enabled: false`, which stops future deploys but does not stop the
    running machines. `flyctl scale count 0 -a kinowo` (and `showtimes-uk` /
    `showtimes-de`, already at zero). Scale to zero rather than `machines stop`:

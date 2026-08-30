@@ -22,8 +22,8 @@ import pl.kinowo.net.KinowoApi
  * those snapshots only catch *client* drift; they go stale silently when the
  * server's JSON changes. Running against the live render closes that loop — a
  * `MovieController.apiRepertoire` shape change that breaks the Android decoder
- * fails CI on the same PR that introduced it (the `android-local-server` job in
- * deploy.yml boots the server and exports [KINOWO_LOCAL_URL]).
+ * fails CI on the same PR that introduced it (the `mobile-local-server` job in
+ * ci.yml boots the server and exports [KINOWO_LOCAL_URL]).
  *
  * Skipping when `KINOWO_LOCAL_URL` is unset is the correct default: a plain
  * `./gradlew testDebugUnitTest` (android.yml) shouldn't require sbt running, so

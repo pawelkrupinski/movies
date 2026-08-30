@@ -22,7 +22,7 @@
 name: Country convergence
 
 on:
-    # Dispatched by `Deploy to Fly.io` — not on push. Its `kick-convergence` job
+    # Dispatched by `Main` — not on push. Its `kick-convergence` job
     # hangs off the same `needs: ci` the deploy matrix does, so these legs start
     # alongside the flyctl legs rather than behind them.
     #

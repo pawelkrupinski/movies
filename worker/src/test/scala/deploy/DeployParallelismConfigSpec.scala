@@ -23,12 +23,12 @@ import org.scalatest.matchers.should.Matchers
  * Tests run with the repo root as CWD, so the workflow path resolves directly.
  */
 class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
-  private lazy val deployYml = RepoFile.read(".github/workflows/deploy.yml")
+  private lazy val mainYml = RepoFile.read(".github/workflows/main.yml")
 
-  private def job(name: String): String = RepoFile.block(deployYml, name)
+  private def job(name: String): String = RepoFile.block(mainYml, name)
 
   "the deploy workflow" should "not bucket a whole tier into one concurrency group (GitHub cancels the 3rd app)" in {
-    deployYml should not include "fly-deploy-${{ matrix.bin }}"
+    mainYml should not include "fly-deploy-${{ matrix.bin }}"
   }
 
   it should "dispatch the country convergence suite" in {

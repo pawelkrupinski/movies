@@ -23,9 +23,9 @@ import org.scalatest.matchers.should.Matchers
  * Plus the hash agreement below, which is the subtle one.
  */
 class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
-  private lazy val deployYml  = RepoFile.read(".github/workflows/deploy.yml")
-  private lazy val deployJob  = RepoFile.block(deployYml, "deploy")
-  private lazy val buildImage = RepoFile.block(deployYml, "build-image")
+  private lazy val mainYml    = RepoFile.read(".github/workflows/main.yml")
+  private lazy val deployJob  = RepoFile.block(mainYml, "deploy")
+  private lazy val buildImage = RepoFile.block(mainYml, "build-image")
 
   "the deploy leg" should "release a pre-built image rather than build one" in {
     deployJob should include("-i registry.fly.io/${{ matrix.builder }}:${{ github.sha }}")
@@ -62,7 +62,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * user-visible tier shipped rather than when the last of six legs stopped.
    */
   it should "mark the deploy from the web leg rather than a job of its own" in {
-    deployYml should not include "annotate:"
+    mainYml should not include "annotate:"
     deployJob should include("Mark deploy in Grafana")
     deployJob should include("matrix.app == 'kinowo'")
   }

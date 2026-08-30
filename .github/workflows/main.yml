@@ -1,4 +1,4 @@
-name: Deploy to Fly.io
+name: Main
 
 on:
     push:
@@ -19,7 +19,18 @@ on:
 # account and a push wants all 20 (see the RUNNER BUDGET note in ci.yml),
 # so two overlapping pushes would otherwise halve each other.
 #
-# The deploy JOB has NO concurrency group of its own, deliberately: GitHub
+# WHAT THAT COSTS NOW THAT THE k3s DEPLOYS LIVE HERE, stated rather than left to
+# be rediscovered: a superseding push cancels an in-flight `deploy-web` /
+# `deploy-worker` too, and no job-level `cancel-in-progress: false` can refuse a
+# workflow-level cancellation. It cancels the ssh call that is WATCHING the
+# rollout, not the rollout: the forced command on monitoring-1 has already run
+# `kubectl set image`, and the k8s controller finishes replacing the pods with
+# or without a watcher (infra/nix/modules/roles/k8s-deploy.nix). What is lost is
+# the "did it come up?" answer, and the newer run is on its way with a newer
+# image anyway. Do not trade the cancellation away to recover it — the runner
+# budget above depends on it.
+#
+# The Fly deploy JOB has NO concurrency group of its own, deliberately: GitHub
 # keeps one running plus one pending per group, so a group covering a tier
 # CANCELS the third app rather than queueing it, and apps silently stopped
 # deploying for days. DeployParallelismConfigSpec is there to stop one
@@ -30,10 +41,17 @@ concurrency:
 
 # Pipeline shape:
 #
-#   ci (reusable workflow — lint, test, integration, ios/android    ┌─► deploy (6 apps)
-#       local-server, page-tests) ───────────────────────────────── ┤
-#   build-image (stage + push both images) ──────────────────────── ┤
-#                                                                   └─► kick-convergence
+#                                                             ┌─► deploy (6 Fly apps, all disabled)
+#   ci (reusable workflow — lint, test, integration,          ├─► kick-convergence
+#       ios/android local-server, page-tests) ─────────────── ─┼─► build-web ──► deploy-web
+#   build-image (stage + push both Fly images) ───────────────┘   (k3s)         (k3s)
+#                                                             └─► build-worker ──► deploy-worker
+#
+# ONE WORKFLOW, because there used to be three: this file plus
+# `build-web-image.yaml` and `build-worker-image.yaml`, which built the GHCR
+# images the k3s cluster actually serves. They are folded in below; what had to
+# survive the fold is their DIFFERENT `on.push.paths` filters, which is why the
+# tiers are now gated per JOB — see the note over `build-web`.
 #
 # The whole build+test pipeline lives in ci.yml as a `workflow_call`
 # reusable workflow so it has exactly one definition; branch-ci.yml
@@ -76,7 +94,8 @@ jobs:
     # unreleased image in the registry costs nothing but builder time.
     # NOTHING RELEASES THESE IMAGES ANY MORE, and that is worth stating rather than leaving to be
     # rediscovered: every leg of the `deploy` matrix below is now `enabled: false`, because both
-    # tiers run on k3s and are shipped from their own GHCR workflows. This job is kept for two
+    # tiers run on k3s and are shipped by the GHCR jobs at the bottom of this file. This job is kept
+    # for two
     # reasons — it holds the "take the runners back from an in-flight convergence run" step that the
     # rest of the push depends on for its runner budget, and a pushed Fly image is what makes the
     # documented rollback ("flip one word to true") a flip rather than a rebuild. It costs Fly
@@ -232,8 +251,8 @@ jobs:
                     #
                     # The three sites now run as pods on k3s (infra/kubernetes/web/) behind Caddy on
                     # k3s-worker-1, on domains this project actually owns: kinowo.net,
-                    # uk.showtimes.cc and de.showtimes.cc. `.github/workflows/build-web-image.yaml`
-                    # builds and rolls them. Leaving any of these `true` would make the next push to
+                    # uk.showtimes.cc and de.showtimes.cc. The `build-web` / `deploy-web` jobs at the
+                    # bottom of this file build and roll them. Leaving any of these `true` would make the next push to
                     # main deploy a SECOND copy of the site on Fly, serving the same databases from a
                     # host that no longer has the traffic — and, for `kinowo`, restart a machine that
                     # is supposed to be scaled to zero.
@@ -263,7 +282,8 @@ jobs:
                     # MOVED TO KUBERNETES 2026-08-29, and this leg is disabled rather than deleted.
                     #
                     # The PL worker now runs as a pod on k3s (infra/kubernetes/worker/), deployed by
-                    # .github/workflows/build-worker-image.yaml. Its Fly machine is STOPPED, not
+                    # the `build-worker` / `deploy-worker` jobs at the bottom of this file. Its Fly
+                    # machine is STOPPED, not
                     # destroyed, so `flyctl deploy` here would not merely be redundant -- it would
                     # START the machine again, and two workers would both hold change streams on
                     # mongo-1 and both re-project the read model. Leaving this `true` makes the next
@@ -506,3 +526,322 @@ jobs:
                   set -euo pipefail
                   echo "ci green for ${GITHUB_SHA:0:9} — dispatching Country convergence"
                   gh workflow run "Country convergence" --ref "${GITHUB_REF_NAME}"
+
+    # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
+    #
+    # These four jobs were two workflows of their own until they were folded in here
+    # (`build-web-image.yaml`, `build-worker-image.yaml`). They build the images the CLUSTER runs —
+    # the Fly `deploy` matrix above is disabled top to bottom, so THIS is the deploy that ships
+    # production.
+    #
+    # WHAT THE FOLD HAD TO PRESERVE, and the single most important property of the whole file: the
+    # two workflows carried DIFFERENT `on.push.paths` filters, and that difference is load-bearing.
+    # A web-only change must not rebuild and redeploy the worker, because deploying a worker
+    # restarts it and a restarted worker cold-boots into a scrape storm that drains the shared-CPU
+    # credit. That is the entire reason the worker's deploy is path-gated.
+    #
+    # `on.push.paths` is workflow-level, so one workflow cannot carry two filters. The gating is
+    # therefore per JOB: each tier hands its own path list to `.github/actions/changed-paths`, and
+    # everything downstream of that answer — the build steps, and the deploy job's `if:` — reads it.
+    # `K8sTierPathGatingSpec` runs the real matcher over the real lists and asserts a web-only
+    # change does not reach the worker. Keep the lists apart; a union quietly undoes all of this.
+    #
+    # ONE WIDENING THE FOLD COULD NOT AVOID: both lists name this file, because this file is now
+    # where both tiers' build steps live — so editing it redeploys BOTH tiers, where editing
+    # `build-web-image.yaml` used to leave the worker alone. A workflow edit restarting the worker
+    # is the same trade the old worker workflow made with its own filename; there is no sub-file
+    # granularity to be had.
+    #
+    # BOTH TIERS `needs: ci`, which the standalone workflows did not. They deployed to the cluster
+    # the moment their image built, tests or no tests — a push that failed ci still rolled a broken
+    # web image onto kinowo.net. It also keeps the runner budget intact: the account's 20 concurrent
+    # jobs are spoken for at t=0 by ci's 19 plus `build-image` (CiRunnerBudgetSpec), and a job that
+    # waits for ci takes a slot ci has already given back.
+    build-web:
+        needs: ci
+        runs-on: ubuntu-latest
+
+        permissions:
+            contents: read
+            # The whole reason this needs no new credential: the built-in GITHUB_TOKEN can push to
+            # GHCR.
+            packages: write
+
+        outputs:
+            changed: ${{ steps.changed.outputs.changed }}
+
+        steps:
+            # Full history, BLOBLESS — the changed-paths gate below diffs against the push's `before`
+            # commit, which a shallow checkout would not have. Same shape as the Fly deploy job's
+            # roll-back guard: commit topology and tree ids only, so no blob of history is fetched.
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+                  filter: blob:none
+
+            - name: Did this push touch the web tier?
+              id: changed
+              uses: ./.github/actions/changed-paths
+              with:
+                  # THE WEB TIER'S FILTER SET. Deliberately NOT the worker's — see the note above.
+                  patterns: |
+                      web/**
+                      common/**
+                      build.sbt
+                      project/**
+                      Dockerfile
+                      .github/workflows/main.yml
+                      .github/actions/changed-paths/**
+
+            - uses: actions/setup-java@v5
+              if: steps.changed.outputs.changed == 'true'
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+              if: steps.changed.outputs.changed == 'true'
+
+            - name: Stage the web distribution
+              if: steps.changed.outputs.changed == 'true'
+              # `web/stage` only: staging the worker as well would roughly double the sbt time for
+              # an artifact this job does not consume — `build-worker` stages its own.
+              run: sbt "web/stage"
+
+            - name: Place the staged distribution where the Dockerfile expects it
+              if: steps.changed.outputs.changed == 'true'
+              # The Dockerfile's context is whitelisted down to `stage/` alone (see .dockerignore),
+              # which is why this copy exists rather than the Dockerfile reaching into
+              # target/universal/stage: .dockerignore cannot reliably re-include a deep path whose
+              # parents are excluded by `*`.
+              run: rm -rf stage && cp -r web/target/universal/stage stage
+
+            - uses: docker/login-action@v3
+              if: steps.changed.outputs.changed == 'true'
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - uses: docker/setup-buildx-action@v3
+              if: steps.changed.outputs.changed == 'true'
+
+            - name: Build and push
+              if: steps.changed.outputs.changed == 'true'
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  # amd64 ONLY. The cluster is Hetzner x86_64; adding arm64 would double the build
+                  # for a platform nothing here runs, and the emulated leg is the slow one.
+                  platforms: linux/amd64
+                  push: true
+                  build-args: |
+                      BIN=web
+                      COMMIT_SHA=${{ github.sha }}
+                  # BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes
+                  # back on the exact build that was deployed; `latest` exists only so a
+                  # hand-applied manifest resolves to something. Never deploy `latest` — a pod that
+                  # restarts under it can come back on a different build with nothing recording
+                  # which.
+                  tags: |
+                      ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
+                      ghcr.io/${{ github.repository_owner }}/movies-web:latest
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    deploy-web:
+        # SEPARATE JOB, `needs: build-web`, so a failed build cannot deploy and a failed deploy is
+        # distinguishable from a failed build in the run list — the two have completely different
+        # fixes.
+        needs: build-web
+        runs-on: ubuntu-latest
+
+        # The web tier's path gate, at job level: `build-web` published the answer as an output, so
+        # a push that changed nothing web-shaped produces a skipped deploy rather than a rollout.
+        #
+        # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
+        # without putting it on production.
+        if: needs.build-web.outputs.changed == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+        # ONE DEPLOY AT A TIME, AND DO NOT CANCEL A RUNNING ONE — within the limits of the
+        # workflow-level group, which can still supersede this (see the concurrency note at the top).
+        #
+        # A GROUP OF ITS OWN, separate from the worker's: the two tiers are independent rollouts and
+        # sharing a group would make a web deploy wait behind a worker deploy for no reason.
+        concurrency:
+            group: deploy-web-k8s
+            cancel-in-progress: false
+
+        steps:
+            - name: Roll the new image onto k3s
+              # NO kubectl, NO kubeconfig, NO cluster credential in CI AT ALL — one ssh command whose
+              # payload is an image reference, against a key pinned to a forced command on
+              # monitoring-1 (infra/nix/modules/roles/k8s-deploy.nix). That endpoint decides which
+              # Deployments an image belongs to FROM THE REPOSITORY NAME, so `movies-web` rolls
+              # web-pl/-de/-uk/-us and nothing else; the same key cannot be talked into deploying
+              # anything not in its target list.
+              #
+              # THIS IS A ROLLING UPDATE OF THE ONLY USER-FACING TIER. The Deployments carry
+              # maxUnavailable: 0 with a readiness probe, so the replacement pod serves before the
+              # old one is terminated and the site does not go dark mid-deploy.
+              env:
+                  DEPLOY_KEY: ${{ secrets.K8S_DEPLOY_SSH_KEY }}
+              run: |
+                  set -euo pipefail
+
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/k8sdeploy
+                  chmod 600 ~/.ssh/k8sdeploy
+
+                  # accept-new, not `no`: the host key is pinned on first use within this ephemeral
+                  # runner and the connection is to a fixed address that terraform/primary_ips.tf
+                  # keeps stable.
+                  ssh -i ~/.ssh/k8sdeploy \
+                      -o BatchMode=yes \
+                      -o StrictHostKeyChecking=accept-new \
+                      -o ConnectTimeout=15 \
+                      k8sdeploy@2.28.52.210 \
+                      "ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}"
+
+    build-worker:
+        needs: ci
+        runs-on: ubuntu-latest
+
+        permissions:
+            contents: read
+            # The whole reason this needs no new credential.
+            packages: write
+
+        outputs:
+            changed: ${{ steps.changed.outputs.changed }}
+
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+                  filter: blob:none
+
+            - name: Did this push touch the worker tier?
+              id: changed
+              uses: ./.github/actions/changed-paths
+              with:
+                  # THE WORKER TIER'S FILTER SET. `worker/**` where the web's says `web/**`, and that
+                  # is the whole point: a web-only push must not reach this job's build, let alone
+                  # `deploy-worker`, because deploying a worker restarts it into a scrape storm.
+                  patterns: |
+                      worker/**
+                      common/**
+                      build.sbt
+                      project/**
+                      Dockerfile
+                      .github/workflows/main.yml
+                      .github/actions/changed-paths/**
+
+            - uses: actions/setup-java@v5
+              if: steps.changed.outputs.changed == 'true'
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+              if: steps.changed.outputs.changed == 'true'
+
+            - name: Stage the worker distribution
+              if: steps.changed.outputs.changed == 'true'
+              # `worker/stage` only, not `web/stage` — this job builds one image and staging the web
+              # app as well would roughly double the sbt time for an artifact nothing here consumes.
+              run: sbt "worker/stage"
+
+            - name: Place the staged distribution where the Dockerfile expects it
+              if: steps.changed.outputs.changed == 'true'
+              # The Dockerfile's context is whitelisted down to `stage/` alone (see .dockerignore),
+              # which is why this copy exists rather than the Dockerfile reaching into
+              # target/universal/stage: .dockerignore cannot reliably re-include a deep path whose
+              # parents are excluded by `*`.
+              run: rm -rf stage && cp -r worker/target/universal/stage stage
+
+            - uses: docker/login-action@v3
+              if: steps.changed.outputs.changed == 'true'
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - uses: docker/setup-buildx-action@v3
+              if: steps.changed.outputs.changed == 'true'
+
+            - name: Build and push
+              if: steps.changed.outputs.changed == 'true'
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  # amd64 ONLY. The cluster is Hetzner x86_64; adding arm64 would double the build
+                  # for a platform nothing here runs, and the emulated leg is the slow one.
+                  platforms: linux/amd64
+                  push: true
+                  build-args: |
+                      BIN=worker
+                      COMMIT_SHA=${{ github.sha }}
+                  # BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes
+                  # back on the exact build that was deployed; `latest` exists only so a
+                  # hand-applied manifest resolves to something. Never deploy `latest` — a pod that
+                  # restarts under it can come back on a different build with nothing recording
+                  # which.
+                  tags: |
+                      ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
+                      ghcr.io/${{ github.repository_owner }}/movies-worker:latest
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    deploy-worker:
+        # SEPARATE JOB, `needs: build-worker`, so a failed build cannot deploy and a failed deploy is
+        # distinguishable from a failed build in the run list — the two have completely different
+        # fixes.
+        needs: build-worker
+        runs-on: ubuntu-latest
+
+        # THE GATE THAT MATTERS. A restarted worker cold-boots into a scrape storm, so this job runs
+        # only when the push actually touched the worker's inputs — never because the web tier moved.
+        #
+        # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
+        # without putting it on production; separating that is the difference between "let me see if
+        # it compiles" and a deploy.
+        if: needs.build-worker.outputs.changed == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+        # ONE DEPLOY AT A TIME, AND DO NOT CANCEL A RUNNING ONE — within the limits of the
+        # workflow-level group, which can still supersede this (see the concurrency note at the top).
+        concurrency:
+            group: deploy-worker-k8s
+            cancel-in-progress: false
+
+        steps:
+            - name: Roll the new image onto k3s
+              # NO kubectl, NO kubeconfig, NO cluster credential in CI AT ALL. The whole interaction
+              # is one ssh command whose payload is an image reference, against a key pinned to a
+              # forced command on monitoring-1 (infra/nix/modules/roles/k8s-deploy.nix). That
+              # endpoint validates the reference against one allowed repository, patches one
+              # container in one Deployment, and waits for the rollout.
+              #
+              # The reason is that k3s writes exactly ONE credential and it is cluster-admin. Giving
+              # that to a GitHub runner would trade a worker rollout for every Secret in the cluster.
+              env:
+                  DEPLOY_KEY: ${{ secrets.K8S_DEPLOY_SSH_KEY }}
+              run: |
+                  set -euo pipefail
+
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/k8sdeploy
+                  chmod 600 ~/.ssh/k8sdeploy
+
+                  # accept-new, not `no`: the host key is pinned on first use within this ephemeral
+                  # runner and the connection is to a fixed address that terraform/primary_ips.tf
+                  # keeps stable. A known_hosts file checked into the repo would be one more thing to
+                  # rotate by hand after every `convert-host`, which regenerates the host key.
+                  ssh -i ~/.ssh/k8sdeploy \
+                      -o BatchMode=yes \
+                      -o StrictHostKeyChecking=accept-new \
+                      -o ConnectTimeout=15 \
+                      k8sdeploy@2.28.52.210 \
+                      "ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}"

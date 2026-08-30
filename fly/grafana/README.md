@@ -116,7 +116,7 @@ Confirm under **Alerting → Alert rules** that all 13 rules are `Normal`, and o
 rule's query in **Explore** to confirm it returns data.
 
 ### 6. Deploy markers (commit hash on the timeline)
-`.github/workflows/deploy.yml` posts a Grafana annotation with the commit
+`.github/workflows/main.yml` posts a Grafana annotation with the commit
 SHA + subject after every app deploy. Give it a path:
 1. In Grafana: **Administration → Service accounts → Add** (`ci-annotations`,
    role *Editor*) → **Add token** → copy it.

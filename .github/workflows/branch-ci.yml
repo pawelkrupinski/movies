@@ -1,6 +1,6 @@
 name: Branch CI
 
-# Runs the exact same build + test pipeline deploy.yml gates on — but
+# Runs the exact same build + test pipeline main.yml gates on — but
 # WITHOUT deploying — for every pull request. The Scala Steward
 # dependency-bump PRs (and any feature branch) are thereby confirmed to
 # compile and pass every layer before they can be merged, instead of

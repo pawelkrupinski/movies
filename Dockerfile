@@ -1,6 +1,6 @@
 # Single-stage runtime image. The Play `universal/stage` distribution is
 # produced by `sbt stage` in the GitHub Actions `test` job (see
-# .github/workflows/deploy.yml) and downloaded into a top-level `stage/`
+# .github/workflows/main.yml) and downloaded into a top-level `stage/`
 # directory before this image is built. `.dockerignore` whitelists exactly
 # that directory, so Fly's remote builder receives just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
@@ -27,7 +27,7 @@ ENV COMMIT_SHA=$COMMIT_SHA
 # Android/Grafana-only push must not restart the worker, since every restart
 # pays a cold freshness re-hydrate + scrape boot storm that drains the
 # shared-CPU credit. Only the worker leg passes a real value; web leaves it
-# `unknown`. See the deploy guard in .github/workflows/deploy.yml.
+# `unknown`. See the deploy guard in .github/workflows/main.yml.
 ARG WORKER_INPUT_HASH=unknown
 ENV WORKER_INPUT_HASH=$WORKER_INPUT_HASH
 ARG BIN=web

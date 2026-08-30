@@ -1,7 +1,7 @@
 # One-time setup for the `kinowo-worker` Fly app
 
 The read/write split deploys two Fly apps from one Dockerfile (see
-`.github/workflows/deploy.yml`): `kinowo` (serving) and `kinowo-worker`
+`.github/workflows/main.yml`): `kinowo` (serving) and `kinowo-worker`
 (scrape/enrich). CI already deploys both on every push to `main`, **but the
 worker app and its secrets must be created once, manually, before that first
 deploy** — `flyctl deploy` does not create an app or copy secrets.

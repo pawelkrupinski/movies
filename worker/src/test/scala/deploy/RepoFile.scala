@@ -58,7 +58,7 @@ object RepoFile {
 
   /** The cadence a country's worker ACTUALLY deploys with, in minutes.
    *
-   *  Read from its k3s overlay, which is the live deploy path — every `deploy.yml`
+   *  Read from its k3s overlay, which is the live deploy path — every `main.yml`
    *  Fly leg is `enabled: false`, and the newest country never had a fly toml. This
    *  is the only place a country's sweep rate exists: `Freshness.defaultScrapeTtl`
    *  reads the env var at runtime and `WorkerWiring` captures it once, so no

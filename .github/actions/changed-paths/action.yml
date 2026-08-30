@@ -1,0 +1,70 @@
+name: Changed paths
+description: |
+  Whether this push touched any path in a filter set — the per-JOB equivalent of `on.push.paths`.
+
+  `on.push.paths` is workflow-level, so a workflow that builds two independently-deployed tiers
+  cannot express one filter per tier: the union would rebuild and REDEPLOY the worker on a web-only
+  change, and a worker deploy restarts the worker into a cold scrape storm. That restart is the
+  whole reason the worker's deploy is path-gated at all, so the filters live here instead, one per
+  tier, read by the job that owns the tier.
+
+  The matching itself is `matches.sh` next door, so it can be tested — see the note there.
+
+inputs:
+  patterns:
+    description: >-
+      Newline-separated path patterns. `dir/**` matches anything under `dir/`; anything else is an
+      exact file path. A YAML block scalar can be pasted in as-is.
+    required: true
+  base:
+    description: The commit this push started from. Defaults to the push event's `before`.
+    required: false
+    default: ${{ github.event.before }}
+  head:
+    description: The commit this push landed on.
+    required: false
+    default: ${{ github.sha }}
+
+outputs:
+  changed:
+    description: '`true` if any changed path matched, `false` otherwise.'
+    value: ${{ steps.detect.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        PATTERNS: ${{ inputs.patterns }}
+        BASE: ${{ inputs.base }}
+        HEAD: ${{ inputs.head }}
+        EVENT: ${{ github.event_name }}
+      run: |
+        set -euo pipefail
+
+        # Anything that is not a push has no "before" to diff against — a workflow_dispatch is
+        # someone asking for this build explicitly, so give them all of it. The same for the
+        # all-zeros `before` of a first push to a new branch.
+        if [ "$EVENT" != "push" ] || [ -z "${BASE:-}" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+          echo "no push base to compare against (event=$EVENT base=${BASE:-unset}) — treating everything as changed"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # NO FAIL-OPEN AND NO FAIL-CLOSED HERE, deliberately: `set -e` lets a missing base commit
+        # fail the job. Failing open would restart the worker on a transient — the exact cost this
+        # gate exists to avoid — and failing closed would silently stop deploying a tier, which is
+        # how `kinowo-worker-de` once missed deploys for days. A red job is the only outcome
+        # somebody notices. The checkout in the calling job is `fetch-depth: 0`, so the base is
+        # there.
+        printf '%s\n' "$PATTERNS" > "$RUNNER_TEMP/changed-paths-patterns"
+        git diff --name-only "$BASE" "$HEAD" > "$RUNNER_TEMP/changed-paths-files"
+
+        echo "changed paths:"
+        sed 's/^/  /' "$RUNNER_TEMP/changed-paths-files"
+
+        changed=$("$GITHUB_ACTION_PATH/matches.sh" \
+            "$RUNNER_TEMP/changed-paths-patterns" < "$RUNNER_TEMP/changed-paths-files")
+        echo "matched the filter set: $changed"
+        echo "changed=$changed" >> "$GITHUB_OUTPUT"
