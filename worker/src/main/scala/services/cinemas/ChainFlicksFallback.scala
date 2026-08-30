@@ -1,6 +1,8 @@
 package services.cinemas
 
 import models._
+import services.cinemas.common.FlicksMarket
+import services.cinemas.us.RegalVenues
 
 /**
  * UK chain venues whose own-site scraper (Cineworld / Vue / Showcase / Everyman /
@@ -16,7 +18,16 @@ import models._
  * without being double-wired.
  */
 object ChainFlicksFallback {
-  val slugs: Map[Cinema, String] = Map(
+
+  /** Which Flicks MARKET a venue's fallback slug belongs to, alongside the slug.
+   *  The two ccTLDs are separate sites on separate Cloudflare zones, so a
+   *  fallback has to name which one it means — a US venue looked up on
+   *  `flicks.co.uk` would simply 404. */
+  case class FlicksFallback(market: FlicksMarket, slug: String)
+
+  /** The UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) and
+   *  their flicks.co.uk slugs. */
+  val ukSlugs: Map[Cinema, String] = Map(
     CineworldAldershot -> "cineworld-aldershot",
     CineworldAshford -> "cineworld-ashford",
     CineworldAshtonUnderLyne -> "cineworld-ashton-under-lyne",
@@ -361,4 +372,26 @@ object ChainFlicksFallback {
     OdeonNorthampton -> "odeon-northampton",
     OdeonNorwich -> "odeon-cinema-norwich",
   )
+
+  /** Regal's US venues and their flicks.us slugs. DERIVED rather than listed:
+   *  a US venue's Flicks slug and its key in [[RegalVenues.theatreCodeBySlug]]
+   *  are the same `data/us/venues.json` slug, so the fallback map is exactly
+   *  "every venue the Regal client is wired for, pointing back at the
+   *  aggregator it came from". Deriving it means the primary and the fallback
+   *  cannot drift apart — a venue added to or dropped from the Regal map moves
+   *  in both places at once.
+   *
+   *  The seven Regal venues absent from that map (locations Regal's own roster
+   *  no longer lists) are absent here too — they are catalogued under
+   *  `flicksUs(...)` as their PRIMARY, so they need no fallback entry. */
+  val usRegalSlugs: Map[Cinema, String] =
+    UsRoster.flicksSlugByCinema.collect {
+      case (cinema, slug) if RegalVenues.theatreCodeBySlug.contains(slug) => cinema -> slug
+    }
+
+  /** Every chain venue that keeps a Flicks aggregator fallback, with the market
+   *  its slug lives on. */
+  val slugs: Map[Cinema, FlicksFallback] =
+    ukSlugs.map { case (cinema, slug) => cinema -> FlicksFallback(FlicksMarket.UnitedKingdom, slug) } ++
+      usRegalSlugs.map { case (cinema, slug) => cinema -> FlicksFallback(FlicksMarket.UnitedStates, slug) }
 }

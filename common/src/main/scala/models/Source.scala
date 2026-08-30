@@ -58,7 +58,7 @@ object Source {
    *  on read). */
   val all: Seq[Source] = {
     val cinemasPrioritized = Multikino +: Cinema.all.filterNot(_ == Multikino)
-    cinemasPrioritized ++ Seq(CinemaCityChain, CineworldChain) ++ Seq(Tmdb, Imdb, Filmweb)
+    cinemasPrioritized ++ Seq(CinemaCityChain, CineworldChain, RegalChain) ++ Seq(Tmdb, Imdb, Filmweb)
   }
 
   /** Stable priority index for ordering source slots. Lower = preferred. */

@@ -58,10 +58,12 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
    *  fallback after the primary has been failing for 6h, so in steady state they
    *  cost the paced origin nothing. Derived rather than written out, so wiring a
    *  venue to a chain (or back to flicks) moves this number automatically.
-   *  (`ChainFlicksFallback.slugs` is what `CinemaScraperCatalog.flicksFallbackSlugs`
-   *  exposes; the catalog itself is a class needing live deps, so read the source.) */
+   *  (`ChainFlicksFallback.ukSlugs` is the UK half of what
+   *  `CinemaScraperCatalog.flicksFallbackSlugs` exposes — `slugs` now also carries
+   *  Regal's US venues, which are no business of a UK count; the catalog itself is
+   *  a class needing live deps, so read the source.) */
   private def FlicksPrimaryVenues =
-    Country.UnitedKingdom.cities.flatMap(_.cinemas).distinct.size - ChainFlicksFallback.slugs.size
+    Country.UnitedKingdom.cities.flatMap(_.cinemas).distinct.size - ChainFlicksFallback.ukSlugs.size
 
   /** flicks.co.uk requests one UK venue costs per sweep: the programme page
    *  `planChunks` reads its `data-date` list off, plus one day-page per advertised

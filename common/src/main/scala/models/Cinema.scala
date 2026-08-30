@@ -564,6 +564,13 @@ case object CinemaCityChain extends Cinema("Cinema City", "Cinema City")
 // slot instead of an arbitrary venue's. Not in `Cinema.all`, so no scraper/coverage
 // obligation; added to `Source.all` for priority + slot-key resolution.
 case object CineworldChain extends Cinema("Cineworld", "Cineworld")
+// Network-level detail source for Regal US, mirroring CineworldChain: the chain's
+// ~400 venues share one `detailGroup` ("regal"), so the per-film detail their
+// listing does NOT carry (runtime/rating/synopsis/cast/director, fetched from
+// `/api/Movies?hoCode=`) lands in this ONE synthetic slot instead of ~400 copies.
+// Not in `Cinema.all`, so no scraper/coverage obligation; added to `Source.all`
+// for priority + slot-key resolution.
+case object RegalChain extends Cinema("Regal", "Regal")
 
 
 // ── United Kingdom (Flicks-sourced) ──
@@ -1518,7 +1525,7 @@ object GermanRoster {
    *  "Cineworld" against the `CineworldChain` detail source — and both silently rebound a
    *  Polish/UK venue's showtimes to a German one. `SourceWireKeySpec` fails on any third. */
   private def claimedElsewhere: Set[String] =
-    (Cinema.polishAndUk.flatMap(_._2) ++ Seq(CinemaCityChain, CineworldChain)).map(_.displayName).toSet
+    (Cinema.polishAndUk.flatMap(_._2) ++ Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
 
   private val built: Seq[(GermanRegion, Seq[(GermanCinema, String)])] =
     GermanRosterData.regions.map { case (slug, name, lat, lon, cinemas) =>
@@ -1565,7 +1572,7 @@ object UsRoster {
    *  collision, and it is the qualified name that ends up on the wire. */
   private def claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
-      Seq(CinemaCityChain, CineworldChain)).map(_.displayName).toSet
+      Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
 
   /** Below this many cinemas a state stays FLAT even though its venues carry
    *  metros. Grouping buys nothing on a list short enough to read at a glance —

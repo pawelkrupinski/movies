@@ -521,6 +521,32 @@ object RealHttpFetch {
       minRequestInterval = Some(Duration.ofMillis(200)),
       paceKnob           = Some("KINOWO_FLICKS_US_PACE_MS"),
     ),
+    // Regal (www.regmovies.com) — the ~400 US venues moved off flicks.us onto the
+    // chain's own origin. It needs its own row for the same reason flicks.us does:
+    // rows match by host SUFFIX, so nothing above matches this host and without a
+    // row it would be entirely UNPACED.
+    //
+    // 500ms rather than flicks' 200ms, and the reason is that this client BATCHES.
+    // One request carries a whole batch of theatre codes (see `RegalVenues`), so a
+    // full sweep is ~555 requests rather than the ~24,000 the same venues cost one
+    // at a time — the pace no longer sets the sweep length, and at 2 req/s the
+    // whole chain's listing is fetched in ~5 minutes. With so little to gain from
+    // going faster, the interval is set where a shared origin is comfortable rather
+    // than at the edge of what it tolerates.
+    //
+    // That tolerance is NOT measured, unlike flicks': every probe of this origin
+    // goes through Zyte (below), so what we can observe is Zyte's pacing, not
+    // Regal's. Hence the knob — if this turns out to be needlessly slow, or if
+    // Regal starts throttling, it retunes from /admin/config without a redeploy.
+    //
+    // Note the pace gate sees the ORIGIN host even though the request physically
+    // leaves via Zyte, because the gate keys on the URL being fetched. That is the
+    // behaviour we want: it is Regal's origin we are being polite to.
+    HostPolicy(
+      Set("regmovies.com"),
+      minRequestInterval = Some(Duration.ofMillis(500)),
+      paceKnob           = Some("KINOWO_REGAL_PACE_MS"),
+    ),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted

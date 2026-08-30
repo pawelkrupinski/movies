@@ -21,7 +21,6 @@ import services.cinemas._
 import services.enrichment._
 import services.cinemas.common._
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient, MultikinoClient}
-import services.cinemas.common.{FlicksClient, FlicksMarket}
 import services.cinemas.uk.OdeonAuthHarvester
 
 import java.util.concurrent.ExecutorService
@@ -444,7 +443,8 @@ class WorkerWiring(
    *  own-site→Filmweb arrangement). Sourced from the catalogue so the same slug that
    *  used to be a flicks *catalogue* entry now feeds the fallback. Keyed by cinema so
    *  it applies whether the primary is a plain or a chunked chain scraper. */
-  protected def flicksFallbackSlugs: Map[Cinema, String] = cinemaScraperCatalog.flicksFallbackSlugs
+  protected def flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
+    cinemaScraperCatalog.flicksFallbackSlugs
 
   /** Wrap a scrape source with the outcome recorder + its fallback source:
    *   - a UK chain venue → flicks.co.uk as the aggregator fallback;
@@ -455,9 +455,11 @@ class WorkerWiring(
    *  (`publishScrape`) records uptime + falls back exactly like a live scrape. */
   private def recordingScraper(inner: CinemaScraper, eligible: Boolean): CinemaScraper =
     flicksFallbackSlugs.get(inner.cinema) match {
-      case Some(slug) =>
+      // The market comes from the map, not a constant: a Regal venue's fallback
+      // lives on flicks.us, and looking it up on flicks.co.uk would just 404.
+      case Some(ChainFlicksFallback.FlicksFallback(market, slug)) =>
         new SourceFallbackScraper(inner,
-          fallback     = () => Some(new FlicksClient(flicksFetch, slug, inner.cinema, FlicksMarket.UnitedKingdom)),
+          fallback     = () => Some(new FlicksClient(flicksFetch, slug, inner.cinema, market)),
           fallbackName = "Flicks",
           fallbackRef  = () => Some(slug),
           uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)

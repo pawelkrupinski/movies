@@ -6,6 +6,7 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, VueCinemas
 import services.cinemas.de.WebediaShowtimesClient
 import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket}
+import services.cinemas.us.{RegalClient, RegalVenues}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
 import services.movies.TitleNormalizer
 
@@ -1491,9 +1492,47 @@ class CinemaScraperCatalog(
   // UsRoster.flicksSlugByCinema. Same client and same residential egress as the
   // UK — only the market differs, which is what keeps the two markets' pace gates
   // and 429 back-offs independent (see FlicksMarket).
+  // Regal's ~400 US venues scrape their OWN origin (regmovies.com) instead of the
+  // paced flicks.us aggregator, which frees that much of the US sweep's shared
+  // budget for the other ~4,600 venues.
+  //
+  // Through the Mongo-backed chain cache wrapped around `zyteFetch`, and BOTH
+  // parts matter:
+  //   - Zyte, because Regal's Cloudflare edge 403s our datacenter IP, the Decodo
+  //     residential proxy AND the JVM client alike (verified 2026-08-30 across
+  //     every path, `/robots.txt` included). It is the biletyna/Kryterium shape,
+  //     not the flicks one — the proxy does not clear this block.
+  //   - the shared cache, because `RegalClient` asks for its whole BATCH of
+  //     theatre codes in one request, so the ~80 venues in a batch build the
+  //     identical URL and collapse to ONE upstream fetch per (batch, date),
+  //     across worker processes. That is what turns ~24,000 requests per sweep
+  //     into ~555 — and since every one of them is billed by Zyte, the request
+  //     count is a cost question, not just a rate one.
+  //
+  // 3h rather than the detail caches' 2-6h: this cache holds LISTINGS, so its TTL
+  // is how stale a venue's programme may be, and a Regal sweep at this pace takes
+  // ~5 minutes of gate time — far inside 3h, so one sweep still shares one fetch.
+  // A date re-fetched two or three times across a long cycle costs a few hundred
+  // requests against the 24,000 saved, so this biases to freshness.
+  val regalCacheTtl: FiniteDuration = 3.hours
+  private val regalHttp: HttpFetch = chainDetailCache("regal", zyteFetch, regalCacheTtl)
+
+  private def regal(theatreCode: String, cinema: Cinema): RegalClient =
+    new RegalClient(regalHttp, theatreCode, cinema, today)
+
   private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.UsRoster.regions.map { region =>
-      region.slug -> region.cinemas.map(c => flicksUs(models.UsRoster.flicksSlugByCinema(c), c))
+      region.slug -> region.cinemas.map { c =>
+        val slug = models.UsRoster.flicksSlugByCinema(c)
+        // Regal venues go to the chain client as PRIMARY (keeping flicks.us as
+        // their fallback via ChainFlicksFallback); everything else — including
+        // the seven Regal locations Regal's own roster no longer lists — stays
+        // on flicks.us as its only source.
+        RegalVenues.theatreCodeBySlug.get(slug) match {
+          case Some(theatreCode) => regal(theatreCode, c)
+          case None              => flicksUs(slug, c)
+        }
+      }
     }.toMap
 
   private val baseByCity: Map[String, Seq[CinemaScraper]] = Map(
@@ -1635,7 +1674,7 @@ class CinemaScraperCatalog(
    *  cinema to the flicks slug it used to be catalogued under, so `WorkerWiring` can
    *  build the fallback `FlicksClient` on demand. Populated by the chain-wiring step;
    *  empty until then (behaviour identical to the pre-chain flicks-primary catalogue). */
-  val flicksFallbackSlugs: Map[Cinema, String] = ChainFlicksFallback.slugs
+  val flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] = ChainFlicksFallback.slugs
 
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
    *  suppresses per-host uptime rows for these — each cinema's health is

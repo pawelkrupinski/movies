@@ -1,14 +1,15 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, UsRoster, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.CinemaScraperCatalog
+import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{FlicksClient, FlicksMarket}
 import services.cinemas.uk.CineworldClient
+import services.cinemas.us.RegalClient
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 
 import java.time.LocalDate
@@ -141,8 +142,30 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {
     val c = catalog()
     c.all.find(_.cinema == CineworldSheffield).value shouldBe a [CineworldClient]
-    c.flicksFallbackSlugs.get(CineworldSheffield) shouldBe Some("cineworld-sheffield")
-    c.flicksFallbackSlugs should have size 343   // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 102
+    c.flicksFallbackSlugs.get(CineworldSheffield).value.slug shouldBe "cineworld-sheffield"
+    // A UK venue's fallback must name the UK market — looking it up on flicks.us 404s.
+    c.flicksFallbackSlugs.get(CineworldSheffield).value.market shouldBe FlicksMarket.UnitedKingdom
+    // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 102 = 343 UK,
+    // plus Regal's 401 US venues.
+    ChainFlicksFallback.ukSlugs should have size 343
+    c.flicksFallbackSlugs should have size 343 + 401
+
+    // Regal's US venues are the same arrangement on the other market: own-site
+    // chain client as PRIMARY, flicks.US kept as the fallback. Named explicitly
+    // (not just covered by the loop below) so wiring them to some other chain
+    // client, or leaving them on the aggregator, fails here.
+    val northHollywood = UsRoster.flicksSlugByCinema
+      .collectFirst { case (cinema, "regal-north-hollywood") => cinema }.value
+    c.all.find(_.cinema == northHollywood).value shouldBe a [RegalClient]
+    c.flicksFallbackSlugs.get(northHollywood).value.slug shouldBe "regal-north-hollywood"
+    c.flicksFallbackSlugs.get(northHollywood).value.market shouldBe FlicksMarket.UnitedStates
+
+    // A Regal location Regal's own roster no longer lists keeps flicks.us as its
+    // PRIMARY, so it must NOT also carry a fallback entry.
+    val sonora = UsRoster.flicksSlugByCinema
+      .collectFirst { case (cinema, "regal-sonora") => cinema }.value
+    c.all.find(_.cinema == sonora).value shouldBe a [FlicksClient]
+    c.flicksFallbackSlugs.get(sonora) shouldBe None
     c.flicksFallbackSlugs.keys.foreach { cin =>
       val primary = c.all.find(_.cinema == cin).value
       primary should not be a [FlicksClient]      // moved off the aggregator…
