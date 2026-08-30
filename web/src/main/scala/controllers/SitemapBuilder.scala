@@ -20,12 +20,16 @@ import models.City
  */
 object SitemapBuilder {
 
-  /** @param base    this deployment's public BASE URL, no trailing slash —
-   *                 `https://kinowo.net` for a country that owns its domain,
-   *                 `https://showtimes.cc/uk` for one mounted under a country
-   *                 segment. Every `<loc>` hangs off it, so the mount point has
-   *                 to be part of it: a sitemap advertising `/kent/` on a
-   *                 deployment served at `/uk/kent/` is a file of 404s.
+  /** @param origin  this deployment's public ORIGIN, no path and no trailing
+   *                 slash (`https://kinowo.net`, `https://showtimes.cc`). The
+   *                 mount point is NOT part of it: each `<loc>` picks its own up
+   *                 from [[CityPath]] / [[FilmHref]] / `country.mountPath`, the
+   *                 same builders the pages use. Folding it into the origin
+   *                 instead is how this file once advertised
+   *                 `showtimes.cc/uk/uk/kent/movie/…` — the prefix added twice,
+   *                 once here and once by `FilmHref`.
+   *  @param country the country this deployment serves — the mount point for the
+   *                 landing URL, which belongs to no city
    *  @param entries each city paired with the films it's currently showing
    *  @param lastmod the read model's mtime as a W3C date, stamped on the URLs
    *                 whose body IS the read model — the city listings, plans and
@@ -34,21 +38,22 @@ object SitemapBuilder {
    *                 projection doesn't touch, and Google discards the lastmod
    *                 signal site-wide once it catches URLs claiming changes they
    *                 didn't make. */
-  def build(base: String, entries: Seq[(City, Seq[FilmSchedule])], lastmod: Option[String] = None): String = {
+  def build(origin: String, country: models.Country, entries: Seq[(City, Seq[FilmSchedule])],
+            lastmod: Option[String] = None): String = {
     val sb = new StringBuilder
     sb.append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
     sb.append("""<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">""").append('\n')
 
     def url(loc: String, stamped: Boolean = true): Unit = {
-      sb.append("  <url><loc>").append(escape(base + loc)).append("</loc>")
+      sb.append("  <url><loc>").append(escape(origin + loc)).append("</loc>")
       if (stamped) lastmod.foreach(m => sb.append("<lastmod>").append(m).append("</lastmod>"))
       sb.append("</url>\n")
     }
 
-    url("/", stamped = false)
+    url(country.mountPath, stamped = false)
     entries.foreach { case (city, films) =>
-      url(s"/${city.slug}/")
-      url(s"/${city.slug}/plan")
+      url(CityPath(city) + "/")
+      url(CityPath(city) + "/plan")
       // Distinct + sorted so the file is deterministic (stable across requests
       // and testable) regardless of the read model's iteration order.
       films.map(_.movie.title).distinct.sorted.foreach { title =>

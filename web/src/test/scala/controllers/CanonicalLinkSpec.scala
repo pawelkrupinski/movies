@@ -50,6 +50,19 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers {
     html should include("""<meta property="og:url"         content="https://kinowo.net/poznan/?date=tomorrow">""")
   }
 
+  // On the shared brand domain the whole app is MOUNTED under a country segment
+  // (`showtimes.cc/uk/…`), and Play strips that before route matching — so a URL
+  // assembled from the city slug alone silently loses it. A canonical tag is the
+  // worst place for that to happen: it is an instruction to search engines to
+  // index the OTHER address, and the other address 404s.
+  "a country sharing the brand domain" should "canonicalise under its mount point" in {
+    val uk   = TestMovieController.build(Nil, servingCountry = models.Country.UnitedKingdom)._1
+    val html = contentAsString(uk.index("kent")(
+      FakeRequest(GET, "/kent/").withHeaders(
+        "X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")))
+    canonicalOf(html) shouldBe Some("https://showtimes.cc/uk/kent/")
+  }
+
   "the film page" should "self-canonicalise to its own deep-link" in {
     val html = contentAsString(controller().filmBySlug("poznan", "testowy-film")(req("/poznan/movie/testowy-film")))
     canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/movie/testowy-film")

@@ -489,7 +489,7 @@ class MovieController( cc: ControllerComponents,
       // og:url keeps the filtered request URL (so a shared filtered link
       // previews the filter), but the canonical folds `/{city}/movies` and every
       // `?filter` variation back to the bare listing.
-      canonicalUrl    = PageMeta.origin(request) + s"/${city.slug}/",
+      canonicalUrl    = PageMeta.origin(request) + CityPath(city) + "/",
     )
   }
 
@@ -567,10 +567,11 @@ class MovieController( cc: ControllerComponents,
         val entries = servingCountry.cities.map(c => c -> movieControllerService.toSchedules(c))
         val lastmod = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
           .format(readModel.lastModified.atOffset(java.time.ZoneOffset.UTC))
-        // The BASE, not the bare origin: every `<loc>` hangs off the mount point
-        // this deployment is served at (`https://showtimes.cc/uk`), so a country
-        // sharing the brand domain doesn't advertise a file of 404s at the root.
-        SitemapBuilder.build(PageMeta.origin(request) + servingCountry.pathPrefix, entries, lastmod = Some(lastmod))
+        // The bare ORIGIN plus the country: every `<loc>` picks the mount point
+        // up from the city (or, for the landing, from the country) via the same
+        // builders the pages themselves use, so a country sharing the brand
+        // domain neither drops the prefix nor doubles it.
+        SitemapBuilder.build(PageMeta.origin(request), servingCountry, entries, lastmod = Some(lastmod))
       }
     Ok(body).as("application/xml; charset=utf-8")
       .withHeaders("Cache-Control" -> "public, max-age=3600")

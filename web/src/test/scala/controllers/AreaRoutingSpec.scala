@@ -63,7 +63,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   )._1
 
   private def req(path: String) =
-    FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "us.showtimes.cc")
+    FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
 
   // ── The metro's own listing ─────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   it should "title, describe and canonicalise itself by the metro" in {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include("<title>Cinema listings in Los Angeles")
-    html should include("""<link rel="canonical" href="https://us.showtimes.cc/los-angeles/"""")
+    html should include("""<link rel="canonical" href="https://showtimes.cc/us/los-angeles/"""")
   }
 
   it should "remember the metro as the city, so the bare / bounces back to it" in {
