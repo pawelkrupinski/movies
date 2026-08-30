@@ -44,7 +44,12 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // two-minute window — live in `AuthExchangeCodes` above the seam, so what this
   // spec exercises is the same policy production runs and only the persistence
   // differs. Returned alongside so a test can watch a code being spent.
-  private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
+  private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepository, AuthExchangeCodes) =
+    fixtureFor(models.Country.Poland, providers*)
+
+  /** As `fixture`, for a deployment serving `country` — the apex flows need a
+   *  controller that is Poland (the process mounted at `/`) finishing a UK flow. */
+  private def fixtureFor(country: models.Country, providers: OauthProvider*): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
     val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
     val ctl  = new AuthController(
@@ -52,6 +57,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       providers.map(p => p.name -> p).toMap,
       repository,
       codes,
+      country,
       clock = fixedClk
     )
     (ctl, repository, codes)
@@ -135,7 +141,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val provider2     = new FakeProvider("google", updatedProfile)
     val (ctl2, repository2) = (
       new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repository,
-        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), clock = fixedClk),
+        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland, clock = fixedClk),
       repository
     )
     val secondSession = session(ctl2.callback("google")(
@@ -441,7 +447,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val store      = new InMemoryAuthExchangeCodeStore
     def pod(): AuthController = new AuthController(
       Helpers.stubControllerComponents(), Map.empty, repository,
-      new AuthExchangeCodes(store, fixedClk), clock = fixedClk)
+      new AuthExchangeCodes(store, fixedClk), models.Country.Poland, clock = fixedClk)
 
     val poland = pod()
     val uk     = pod()
@@ -460,7 +466,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val store      = new InMemoryAuthExchangeCodeStore
     def pod(): AuthController = new AuthController(
       Helpers.stubControllerComponents(), Map.empty, repository,
-      new AuthExchangeCodes(store, fixedClk), clock = fixedClk)
+      new AuthExchangeCodes(store, fixedClk), models.Country.Poland, clock = fixedClk)
 
     val userId  = signedIn(repository, "alice@example.com")
     val handoff = pod().ssoStart()(

@@ -228,6 +228,35 @@ object Country {
    *  the Showtimes domain. Poland keeps its own brand on its own domain. */
   val apexBrandName: String = "Showtimes"
 
+  /** THE ONE ORIGIN EVERY OAUTH PROVIDER REDIRECTS BACK TO.
+   *
+   *  Google and Facebook each match `redirect_uri` byte-for-byte against a list
+   *  registered in their console, so the obvious shape — every deployment naming
+   *  its own address — costs one console entry per country per provider, and
+   *  makes "register two URLs by hand, in two consoles" a silent prerequisite for
+   *  launching a country. It is silent because nothing fails until a real person
+   *  tries to sign in on the new site.
+   *
+   *  So all four countries send the provider HERE, and the deployment mounted at
+   *  the apex ([[servesApex]]) either finishes the flow — when the country that
+   *  started it is on this same origin, so the browser is still sending the
+   *  cookie holding its CSRF state — or relays it, unchanged, to the one that
+   *  can. A country on its own domain is reached the second way.
+   *
+   *  The cost is a real dependency: the apex deployment is now in the path of
+   *  every sign-in, including Poland's own. That is the trade the single entry
+   *  buys, and it is why this is a constant rather than something each country
+   *  could quietly point elsewhere. */
+  val oauthCallbackOrigin: String = s"https://$apexHost"
+
+  /** The origins this project actually answers on. Used to tell a REAL request
+   *  from a local one: on a deployed origin the provider was handed
+   *  [[oauthCallbackOrigin]] and the relay applies, while a developer on
+   *  `http://localhost:9000` was handed their own address and must be left to
+   *  finish where they started. Derived from the countries rather than listed,
+   *  so a new deployment cannot be forgotten here. */
+  lazy val deployedOrigins: Set[String] = switchable.flatMap(_.webOrigin).toSet
+
   /** Is this request host the brand domain? Accepts the `www.` spelling and an
    *  explicit port so a direct hit still works where the proxy's redirect is not
    *  in front of it (local dev, a stale cache).

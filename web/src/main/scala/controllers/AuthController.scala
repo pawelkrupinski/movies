@@ -58,6 +58,11 @@ class AuthController(
   // One-shot codes for the two handoffs a session cookie cannot make: the
   // native apps' `kinowo://` deep link, and the cross-domain country switch.
   exchangeCodes:          AuthExchangeCodes,
+  // The country THIS deployment serves. A web process serves exactly one (see
+  // `Wiring.deploymentMessages`), so it is fixed at boot rather than derived per
+  // request: it is what a starting flow stamps into its `state`, and what tells
+  // a finishing one whether it is home or standing in for a sibling.
+  country:                models.Country,
   googleTokenValidator:   Option[GoogleTokenValidator] = None,
   facebookTokenValidator: Option[FacebookTokenValidator] = None,
   appleTokenValidator:    Option[AppleTokenValidator] = None,
@@ -77,7 +82,7 @@ class AuthController(
       case None =>
         NotFound(s"Provider not configured: $provider")
       case Some(p) =>
-        val state       = UUID.randomUUID().toString
+        val state       = AuthController.newState(country)
         val redirectUri = callbackUrl(provider, request)
         // Native iOS *and* Android clients pass `?platform=…`; both want the
         // callback to bounce back into the app via the `kinowo://` deep link
@@ -92,7 +97,56 @@ class AuthController(
     }
   }
 
+  /** Where the provider comes back to — ONE registered URL per provider for the
+   *  whole project, so this action runs on the apex deployment for flows that
+   *  started anywhere.
+   *
+   *  It answers one question before it does anything else: is the browser in
+   *  front of me still carrying the cookie that holds this flow's CSRF state? It
+   *  is exactly when the country that STARTED the flow is served by the origin
+   *  this request arrived on — the three countries under `showtimes.cc` share
+   *  one, `kinowo.net` is its own. When it is, finish here. When it is not,
+   *  hand the provider's own `code` and `state` straight on to the deployment
+   *  that can, unread and unexchanged.
+   *
+   *  Relaying rather than verifying a self-signed `state` is the whole point of
+   *  the shape. The check that survives is "the state in this URL equals the one
+   *  in YOUR cookie", which binds the callback to the browser that started the
+   *  flow; a state we merely signed ourselves would prove only that we issued
+   *  it, and would let an attacker finish a flow of their own in someone else's
+   *  browser. */
   def callback(provider: String): Action[AnyContent] = Action { request =>
+    relayTarget(provider, request) match {
+      case Some(target) =>
+        logger.info(s"Relaying the $provider callback on to $target — this flow started on another origin.")
+        Redirect(target)
+      case None =>
+        complete(provider, request)
+    }
+  }
+
+  /** The absolute callback URL this flow should have landed on, when that is NOT
+   *  here. `None` — finish it here — whenever the flow is at home on this
+   *  request's origin, whenever the `state` does not name a country (a flow
+   *  started before this shape existed, mid-deploy), and always off a deployed
+   *  origin, so a developer on localhost finishes where they started instead of
+   *  being thrown at production. */
+  private def relayTarget(provider: String, request: RequestHeader): Option[String] = {
+    val origin = ForwardedUrl.base(request)
+    for {
+      state <- request.getQueryString("state")
+      home  <- AuthController.stateCountry(state)
+      // ORIGIN decides — that is what the browser scopes a cookie to, and the
+      // whole question is whether this request still carries the flow's state.
+      if models.Country.deployedOrigins.contains(origin) && !home.webOrigin.contains(origin)
+      // BASE URL builds the address, because a country's callback lives under
+      // its mount point. Identical today for the only country this relays to,
+      // and not an assumption worth leaving buried.
+      base  <- home.webUrl
+    } yield base + AuthController.callbackPath(provider) + AuthController.relayQuery(request)
+  }
+
+  private def complete(provider: String, request: RequestHeader): Result = {
     val parsed = for {
       p             <- providers.get(provider).toRight(s"Unknown provider: $provider")
       code          <- request.getQueryString("code").toRight("Missing code")
@@ -129,11 +183,25 @@ class AuthController(
             if (request.session.get("mobileClient").contains("1")) {
               Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession)
             } else {
-              Redirect(routes.LandingController.index()).withSession(nextSession)
+              Redirect(landingFor(request)).withSession(nextSession)
             }
         }
     }
   }
+
+  /** Where a finished sign-in drops the visitor: the site they started on.
+   *
+   *  Usually this deployment's own landing, and expressed as a reverse route so
+   *  it keeps working off a deployed origin (a developer on localhost, a spec).
+   *  But the apex deployment finishes flows on behalf of its siblings — a `/uk`
+   *  sign-in is completed by the process mounted at `/` — and sending those
+   *  visitors to the country picker, or worse to Poland, would be a sign-in that
+   *  silently moved them to another country's repertoire. */
+  private def landingFor(request: RequestHeader): String =
+    request.getQueryString("state").flatMap(AuthController.stateCountry) match {
+      case Some(home) if home != country => home.webUrl.map(_ + "/").getOrElse(routes.LandingController.index().url)
+      case _                             => routes.LandingController.index().url
+    }
 
   def token(): Action[JsValue] = Action(parse.json) { request =>
     val body = request.body
@@ -302,17 +370,72 @@ class AuthController(
     }
   }
 
-  // Absolute callback URL the provider redirects back to. See `ForwardedUrl`
-  // for why we read the forwarded headers directly. The PATH comes from the
-  // reverse route rather than a literal so it carries this deployment's mount
-  // point (`showtimes.cc/uk/auth/google/callback`); the provider matches the
-  // redirect_uri byte-for-byte against its registered list, so a hand-written
-  // literal here is a `redirect_uri_mismatch` on every country but Poland.
+  /** The `redirect_uri` handed to the provider, and handed back at exchange —
+   *  the two have to be byte-identical or the exchange is a
+   *  `redirect_uri_mismatch`.
+   *
+   *  ONE per provider for the whole project: every deployed country names the
+   *  apex, so the consoles hold two URLs rather than two per country. Off a
+   *  deployed origin (localhost, a preview) it is the caller's own address
+   *  instead — nothing has registered the apex on their behalf, and pointing a
+   *  developer's sign-in at production would be worse than useless.
+   *
+   *  See `ForwardedUrl` for why the origin comes from the forwarded headers. */
   private def callbackUrl(provider: String, request: RequestHeader): String =
-    ForwardedUrl.base(request) + routes.AuthController.callback(provider).url
+    AuthController.callbackUrlFor(provider, ForwardedUrl.base(request))
 }
 
 object AuthController {
+
+  /** The `state` a flow starts with: a random nonce, and the code of the country
+   *  that started it.
+   *
+   *  The NONCE is the security half and is unchanged — it is compared against the
+   *  copy in the browser's own session cookie, so it still binds the callback to
+   *  the browser that began the flow. The country code is a routing hint and
+   *  nothing more: it is read only to pick one of the four deployments we ship,
+   *  never trusted as a URL, so a hand-edited `state` can send a callback to
+   *  another of our own countries and nowhere else. */
+  private[controllers] def newState(country: models.Country): String =
+    s"${UUID.randomUUID()}.${country.code}"
+
+  /** The country a `state` says started this flow, or `None` when it does not say
+   *  — a `state` minted before this shape existed, still in flight across a
+   *  deploy, or one somebody made up. Callers treat `None` as "finish it here",
+   *  which is what those flows did before and what a fabricated one deserves. */
+  private[controllers] def stateCountry(state: String): Option[models.Country] =
+    Some(state.lastIndexOf('.')).filter(_ >= 0)
+      .map(at => state.substring(at + 1))
+      .flatMap(models.Country.byCode)
+
+  /** The path the provider redirects to. Deliberately the ROOT path rather than
+   *  this deployment's mounted one: `showtimes.cc/auth/google/callback` is the
+   *  registered URL for every country, and the process that answers it is the one
+   *  mounted at `/`. `AuthControllerCallbackUrlSpec` pins it against the reverse
+   *  route of a root-mounted deployment so the literal cannot drift from the
+   *  routes file. */
+  private[controllers] def callbackPath(provider: String): String = s"/auth/$provider/callback"
+
+  /** The `redirect_uri` for a request that arrived on `requestOrigin` — the apex
+   *  on any origin we deploy, the caller's own address anywhere else. */
+  private[controllers] def callbackUrlFor(provider: String, requestOrigin: String): String =
+    (if (models.Country.deployedOrigins.contains(requestOrigin)) models.Country.oauthCallbackOrigin
+     else requestOrigin) + callbackPath(provider)
+
+  /** The provider's own query, forwarded verbatim to the deployment that can
+   *  finish the flow.
+   *
+   *  Everything is carried, not just `code` and `state`: a provider that comes
+   *  back with `error=access_denied` has no code, and the deployment holding the
+   *  session is the one that should say so. Re-encoded rather than passed as a
+   *  raw string so a value containing `&` cannot split into extra parameters. */
+  private[controllers] def relayQuery(request: RequestHeader): String =
+    request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) =>
+      values.map(value => s"${URLEncoder.encode(key, UTF_8)}=${URLEncoder.encode(value, UTF_8)}")
+    } match {
+      case Nil    => ""
+      case params => params.mkString("?", "&", "")
+    }
 
   /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
    *  match against a deployed country's own base URL (`Country.webUrl`), and

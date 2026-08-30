@@ -309,10 +309,16 @@ record, and the `webUrl` flip.
    the keys. Only a value genuinely specific to the new country would need adding,
    and the Secret is built from the repo-root `.env.local` and piped over SSH
    rather than passed as arguments, so no value ever reaches a process list.
-   **OAuth login still needs the new `<cc>.showtimes.cc` redirect registered in the
-   Google/Facebook consoles** (manual, provider-side; `AuthController.callbackUrl`
-   builds it from the request host, so no code names the domain) — the repertoire
-   works without it.
+   **OAuth login needs nothing either, and that is deliberate.** It used to need a
+   per-country redirect URI registered by hand in both the Google and Facebook
+   consoles — a manual, provider-side step that nothing in a deploy could check
+   and that failed silently until a real person tried to sign in on the new site.
+   Every country now hands the provider the ONE registered URL per provider
+   (`models.Country.oauthCallbackOrigin` + `/auth/<provider>/callback`), and the
+   deployment mounted at the apex either finishes the flow — when the new country
+   shares its origin, so the browser is still sending the cookie holding the CSRF
+   state — or relays it untouched to the deployment that can. A country added under
+   `showtimes.cc/<cc>` is the first case, so there is nothing to register.
 8. **Roll it out.** CI builds `ghcr.io/pawelkrupinski/movies-web:<sha>`; the new
    Deployment does not exist yet, so create it once with
    `infra/kubernetes/apply.sh web <cc>` and let CI pin builds after that. Never

@@ -342,7 +342,7 @@ trait Wiring {
   // renders from. The live row's details cell ships empty (lazily fetched on
   // expand), so no cinema-URL snapshot is needed.
   lazy val debugStreamController = new DebugStreamController(controllerComponents, debugCountries, environmentMode)(using materializer)
-  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
+  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, models.Country.fromEnv, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion)
   lazy val legalController   = new LegalController(controllerComponents)
