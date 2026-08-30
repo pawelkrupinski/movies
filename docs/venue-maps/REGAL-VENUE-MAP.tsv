@@ -1,0 +1,409 @@
+# Regal (regmovies.com) theatre code -> our Cinema display name.
+# Built from Regal's own roster (GET /api/theatres) matched to data/us/venues.json
+# by venue coordinates + name tokens, then cross-checked against the theatre slug
+# in https://www.regmovies.com/sitemap.xml (/theatres/<slug>-<code>). 394 of 396
+# geo matches agreed with the sitemap slug independently; the rest were confirmed
+# one by one. Recorded 2026-08-30.
+#
+# theatreCode	displayName	venueSlug	rosterName	city	state	ianaTimezone
+0252	Regal Aiken Mall	regal-aiken-mall	Regal Aiken Mall 8	Aiken	SC	US/Eastern
+0939	Regal Alamo Quarry San Antonio	regal-alamo-quarry-san-antonio	Regal Alamo Quarry Stadium 1	San Antonio	TX	US/Central
+0833	Regal Albany	regal-albany	Regal Albany 7 Cinemas	Albany	OR	US/Pacific
+0909	Regal Alderwood Lynnwood	regal-alderwood-lynnwood	Alderwood Stadium 7 & RPX	Lynnwood	WA	US/Pacific
+1933	Regal Aliante	regal-aliante	Aliante Stadium 16 & IMAX	North Las Vegas	NV	US/Pacific
+0680	Regal American Mall Lima	regal-american-mall-lima	Regal American Mall Stadium 12	Lima	OH	US/Eastern
+0392	Regal Arbor Place Douglasville	regal-arbor-place-douglasville	Arbor Place Stadium 18 & IMAX	Douglasville	GA	US/Eastern
+1730	Regal Arnot Mall Horseheads	regal-arnot-mall-horseheads	Regal Arnot Mall 10	Horseheads	NY	US/Eastern
+1812	Regal Arroyo Grande	regal-arroyo-grande	Regal Arroyo Grande Stadium 10	Arroyo Grande	CA	US/Pacific
+1346	Regal Atlantic Station	regal-atlantic-station	Atlantic Sta Stm 18 IMAX & RPX	Atlanta	GA	US/Eastern
+0688	Regal Atlas Park Glendale	regal-atlas-park-glendale	Regal Atlas Park Stadium 8	Glendale	NY	US/Eastern
+1823	Regal Auburn California	regal-auburn-california	Regal Auburn Stadium 10	Auburn	CA	US/Pacific
+0877	Regal Auburn Washington	regal-auburn-washington	Regal Auburn Stadium 17	Auburn	WA	US/Pacific
+1704	Regal Augusta	regal-augusta	Regal Augusta 10	Augusta	ME	US/Eastern
+0724	Regal Augusta Exchange	regal-augusta-exchange	Augusta Exchange Stm 20 & IMAX	Augusta	GA	US/Eastern
+1694	Regal Avalon Alpharetta	regal-avalon-alpharetta	Regal Avalon 12	Alpharetta	GA	US/Eastern
+0241	Regal Avenues Jacksonville	regal-avenues-jacksonville	Regal Avenues Stadium 20 & RPX	Jacksonville	FL	US/Eastern
+1731	Regal Aviation Mall Queensbury	regal-aviation-mall-queensbury	Regal Aviation Mall 9	Queensbury	NY	US/Eastern
+1850	Regal Azalea Square Summerville	regal-azalea-square-summerville	Azalea Square Stm 16 & RPX	Summerville	SC	US/Eastern
+0296	Regal Ballston Quarter Arlington	regal-ballston-quarter-arlington	Regal Ballston Quarter Stm 12	Arlington	VA	US/Eastern
+1671	Regal Barkley Village Bellingham	regal-barkley-village-bellingham	Barkley Vlg Stm 16 IMAX & RPX	Bellingham	WA	US/Pacific
+1335	Regal Battery Park	regal-battery-park	Regal Battery Park Stadium 11	New York	NY	US/Eastern
+0904	Regal Bella Bottega Redmond	regal-bella-bottega-redmond	Regal Bella Bottega Stadium 11	Redmond	WA	US/Pacific
+1713	Regal Bellingham	regal-bellingham	Regal Bellingham Stadium 14	Bellingham	MA	US/Eastern
+0432	Regal Belltower Fort Myers	regal-belltower-fort-myers	Regal Belltower Stadium 20	Ft Myers	FL	US/Eastern
+1469	Regal Benders Landing	regal-benders-landing	Regal Benders Landing 24	Spring	TX	US/Central
+1024	Regal Big Newport Beach	regal-big-newport-beach	Edwards Big Newport 6 & RPX	Newport Beach	CA	US/Pacific
+1892	Regal Biltmore Grande Stadium Asheville	regal-biltmore-grande-stadium-asheville	Biltmore Grande Stm 15 & RPX	Asheville	NC	US/Eastern
+1732	Regal Binghamton	regal-binghamton	Regal Binghamton Stadium 12	Binghamton	NY	US/Eastern
+1842	Regal Birkdale Huntersville	regal-birkdale-huntersville	Birkdale Stadium 16 & RPX	Huntersville	NC	US/Eastern
+1149	Regal Bistro at The Falls	regal-bistro-at-the-falls	Regal Bistro at The Falls	Miami	FL	US/Eastern
+1787	Regal Bolingbrook	regal-bolingbrook	Regal Bolingbrook Stadium 12	Bolingbrook	IL	US/Central
+0217	Regal Boone	regal-boone	Regal Boone Cinema 7	Boone	NC	US/Eastern
+0837	Regal Boulder Las Vegas	regal-boulder-las-vegas	Boulder Station Stadium 11	Las Vegas	NV	US/Pacific
+1525	Regal Bowling Green	regal-bowling-green	Regal Bowling Green Stadium 12	Bowling Green	KY	US/Central
+0509	Regal Brandywine Town Center	regal-brandywine-town-center	Brandywine Town Center 16	Wilmington	DE	US/Eastern
+1028	Regal Brea East	regal-brea-east	Edwards Brea Stadium East 12	Brea	CA	US/Pacific
+1419	Regal Bricktown Charleston	regal-bricktown-charleston	Regal Bricktown Charleston 10	Staten Island	NY	US/Eastern
+0652	Regal Bridgeport Village Tigard	regal-bridgeport-village-tigard	Bridgeport Stadium 18 & IMAX	Tigard	OR	US/Pacific
+1843	Regal Brier Creek Raleigh	regal-brier-creek-raleigh	Regal Brier Creek Stadium 14	Raleigh	NC	US/Eastern
+1762	Regal Broward Plantation	regal-broward-plantation	Broward Stadium 12 & RPX	Plantation	FL	US/Eastern
+0198	Regal Burlington	regal-burlington	Regal Burlington Stadium 20	Burlington	NJ	US/Eastern
+0219	Regal Butler Town Center Gainesville	regal-butler-town-center-gainesville	Regal Butler Town Center 14	Gainesville	FL	US/Eastern
+0698	Regal Canyon View Grand Junction	regal-canyon-view-grand-junction	Regal Canyon View Stadium 14	Grand Junction	CO	US/Mountain
+1778	Regal Carlsbad	regal-carlsbad	Regal Carlsbad 12	Carlsbad	CA	US/Pacific
+1420	Regal Carrollton	regal-carrollton	Carrollton 10	Carrollton	GA	US/Eastern
+0845	Regal Cascade Vancouver	regal-cascade-vancouver	Cascade Stm 16 IMAX & RPX	Vancouver	WA	US/Pacific
+1416	Regal Celebration Pointe	regal-celebration-pointe	Celebration Pointe 10 & RPX	Gainesville	FL	US/Eastern
+1734	Regal Champlain Cinemas Plattsburgh	regal-champlain-cinemas-plattsburgh	Champlain Centre Stadium 8	Plattsburgh	NY	US/Eastern
+1423	Regal Cherokee Woodstock	regal-cherokee-woodstock	Cherokee 16	Woodstock	GA	US/Eastern
+1885	Regal Cherrydale Grand Greenville	regal-cherrydale-grand-greenville	Regal Cherrydale Stadium 16	Greenville	SC	US/Eastern
+0765	Regal Cielo Vista San Antonio	regal-cielo-vista-san-antonio	Cielo Vista Stadium 18 & RPX	San Antonio	TX	US/Central
+1958	Regal Cinebarre Mountlake	regal-cinebarre-mountlake	Cinebarre Mountlake Terrace 8	Mountlake Terrace	WA	US/Pacific
+1463	Regal Cinebarre Palace Station	regal-cinebarre-palace-station	Cinebarre Palace Station 9	Las Vegas	NV	US/Pacific
+1462	Regal Cinebarre West Town Mall Knoxville	regal-cinebarre-west-town-mall-knoxville	Cinebarre West Town Mall 9	Knoxville	TN	US/Eastern
+0846	Regal Cinema 99 Vancouver	regal-cinema-99-vancouver	Regal Cinema 99 Stadium 11	Vancouver	WA	US/Pacific
+0120	Regal Cinema Tullahoma	regal-cinema-tullahoma	Regal Tullahoma 8	Tullahoma	TN	US/Central
+0206	Regal Citrus Cinemas Inverness	regal-citrus-cinemas-inverness	Regal Citrus Cinemas 6	Inverness	FL	US/Eastern
+0847	Regal City Center Vancouver	regal-city-center-vancouver	Regal City Center Stadium 12	Vancouver	WA	US/Pacific
+1789	Regal City North	regal-city-north	City North Stm 14 IMAX & RPX	Chicago	IL	US/Central
+1534	Regal Clarksville	regal-clarksville	Clarksville Stadium 16 & RPX	Clarksville	TN	US/Central
+1769	Regal Clifton Park	regal-clifton-park	Clifton Park Stadium 10 & RPX	Clifton Park	NY	US/Eastern
+0755	Regal Cobblestone Square Elyria	regal-cobblestone-square-elyria	Cobblestone Square Stm 20	Elyria	OH	US/Eastern
+0169	Regal Coldwater Crossing Fort Wayne	regal-coldwater-crossing-fort-wayne	Coldwater Crossing Stadium 14	Fort Wayne	IN	US/Eastern
+1923	Regal Colonie Center Albany	regal-colonie-center-albany	Colonie Center Stm 13 & RPX	Albany	NY	US/Eastern
+1621	Regal Columbia Stadium	regal-columbia-stadium	Columbia Stadium 14 & RPX	Columbia	MO	US/Central
+1887	Regal Columbiana Grande	regal-columbiana-grande	Columbiana Grande Stadium 14	Columbia	SC	US/Eastern
+0718	Regal Columbus Virginia Beach	regal-columbus-virginia-beach	Regal Columbus Stadium 12	Virginia Beach	VA	US/Eastern
+0705	Regal Commerce Center North Brunswick	regal-commerce-center-north-brunswick	Commerce Center Stm 18 & RPX	North Brunswick	NJ	US/Eastern
+1864	Regal Commonwealth	regal-commonwealth	Commonwealth Stadium 20 & IMAX	Midlothian	VA	US/Eastern
+1486	Regal Concourse	regal-concourse	Regal Concourse	Bronx	NY	US/Eastern
+1318	Regal Cortlandt Mohegan Lake	regal-cortlandt-mohegan-lake	Cortlandt Town Center Stm 11	Mohegan Lake	NY	US/Eastern
+0155	Regal Crocker Park	regal-crocker-park	Crocker Park Stadium 16 & IMAX	Westlake	OH	US/Eastern
+1737	Regal Crossgates	regal-crossgates	Crossgates Stadium 18 & IMAX	Albany	NY	US/Eastern
+0905	Regal Crossroads Bellevue	regal-crossroads-bellevue	Regal Crossroads Stadium 8	Bellevue	WA	US/Pacific
+1874	Regal Crossroads Cary	regal-crossroads-cary	Regal Crossroads Stm 20 & IMAX	Cary	NC	US/Eastern
+1426	Regal Crossroads Taylorsville	regal-crossroads-taylorsville	Regal Crossroads 14 & RPX	Taylorsville	UT	US/Mountain
+0621	Regal Crystal Lake Showplace	regal-crystal-lake-showplace	Crystal Lake Showplace Stm 16	Crystal Lake	IL	US/Central
+1913	Regal Culpeper Movies	regal-culpeper-movies	Regal Culpeper Stadium 4	Culpeper	VA	US/Eastern
+0244	Regal Cumberland Mall Vineland	regal-cumberland-mall-vineland	Cumberland Mall Stadium 14	Vineland	NJ	US/Eastern
+1474	Regal Dania Pointe	regal-dania-pointe	Regal Dania Point 4DX RPX &VIP	Dania Beach	FL	US/Eastern
+1814	Regal Davis Holiday	regal-davis-holiday	Regal Davis Holiday 6	Davis	CA	US/Pacific
+1422	Regal Dawsonville	regal-dawsonville	Dawson 10	Dawsonville	GA	US/Eastern
+0692	Regal Deer Park	regal-deer-park	Regal Deer Park IMAX	Deer Park	NY	US/Eastern
+1901	Regal Deerfield Towne Center Mason	regal-deerfield-towne-center-mason	Deerfield Twn Ctr Stm 16 & RPX	Mason	OH	US/Eastern
+1413	Regal Delta Shores Sacramento	regal-delta-shores-sacramento	Delta Shores 14 & IMAX	Sacramento	CA	US/Pacific
+1315	Regal Denver Pavilions	regal-denver-pavilions	Denver Pavilions Stm 15 & RPX	Denver	CO	US/Mountain
+1733	Regal Destiny Mall Syracuse	regal-destiny-mall-syracuse	Destiny USA Stm 19 IMAX & RPX	Syracuse	NY	US/Eastern
+1515	Regal Dickson City	regal-dickson-city	Dickson City Stadium 14 & IMAX	Dickson City	PA	US/Eastern
+0922	Regal Dimond Center	regal-dimond-center	Regal Dimond Center 9 Cinemas	Anchorage	AK	US/Alaska
+1828	Regal Dole Cannery	regal-dole-cannery	Dole Cannery Stm 18 IMAX & RPX	Honolulu	HI	US/Hawaii
+0385	Regal Downingtown Cinema	regal-downingtown-cinema	Downingtown Stadium 16 & IMAX	Downingtown	PA	US/Eastern
+0575	Regal Downtown Summerlin Las Vegas	regal-downtown-summerlin-las-vegas	Summerlin Luxury 5	Las Vegas	NV	US/Pacific
+0103	Regal Downtown West Knoxville	regal-downtown-west-knoxville	Downtown West Cinema 8	Knoxville	TN	US/Eastern
+1672	Regal Dulles Town Center	regal-dulles-town-center	Regal Dulles Town Center 10	Dulles	VA	US/Eastern
+0466	Regal Eagle Ridge Mall	regal-eagle-ridge-mall	Regal Eagle Ridge Mall 12	Lake Wales	FL	US/Eastern
+1738	Regal East Greenbush Rensselaer	regal-east-greenbush-rensselaer	Regal E. Greenbush 8	Rensselaer	NY	US/Eastern
+1138	Regal East Hampton	regal-east-hampton	UA East Hampton Cinema 6	East Hampton	NY	US/Eastern
+0501	Regal Eastview Victor	regal-eastview-victor	Regal Eastview Mall 13	Victor	NY	US/Eastern
+0232	Regal Edgmont Square	regal-edgmont-square	Regal Edgmont Square 10	Newtown Square	PA	US/Eastern
+1053	Regal Edwards Alhambra Renaissance	regal-edwards-alhambra-renaissance	Alhambra Renaissance 14 & IMAX	Alhambra	CA	US/Pacific
+1032	Regal Edwards Aliso Viejo	regal-edwards-aliso-viejo	Aliso Viejo Stadium 20 & IMAX	Aliso Viejo	CA	US/Pacific
+1031	Regal Edwards Bakersfield	regal-edwards-bakersfield	Edwards Bakersfield Stadium 14	Bakersfield	CA	US/Pacific
+1027	Regal Edwards Boise	regal-edwards-boise	Boise Stadium 22 & IMAX	Boise	ID	US/Mountain
+1009	Regal Edwards Camarillo	regal-edwards-camarillo	Camarillo Palace Stm 12 & IMAX	Camarillo	CA	US/Pacific
+1047	Regal Edwards Canyon Country	regal-edwards-canyon-country	Canyon Country Stadium 10	Santa Clarita	CA	US/Pacific
+1018	Regal Edwards Cerritos	regal-edwards-cerritos	Edwards Cerritos Stadium 10	Cerritos	CA	US/Pacific
+0665	Regal Edwards Corona Crossings	regal-edwards-corona-crossings	Corona Crossings Stm 18 & RPX	Corona	CA	US/Pacific
+1916	Regal Edwards Eastvale Gateway	regal-edwards-eastvale-gateway	Eastvale Gateway Stadium 14	Eastvale	CA	US/Pacific
+1046	Regal Edwards Fairfield	regal-edwards-fairfield	Fairfield Stadium 16 & IMAX	Fairfield	CA	US/Pacific
+1040	Regal Edwards Grand Teton	regal-edwards-grand-teton	Edwards Grand Teton Stadium 14	Ammon	ID	US/Mountain
+1052	Regal Edwards Houston Marq'E	regal-edwards-houston-marqe	Houston Marquee Stm 23 & IMAX	Houston	TX	US/Central
+1035	Regal Edwards Kaleidoscope	regal-edwards-kaleidoscope	Kaleidoscope Stadium 10	Mission Viejo	CA	US/Pacific
+1042	Regal Edwards Long Beach	regal-edwards-long-beach	Long Beach Stadium 26 & IMAX	Long Beach	CA	US/Pacific
+1039	Regal Edwards Nampa Spectrum	regal-edwards-nampa-spectrum	Nampa Spectrum 14	Nampa	ID	US/Mountain
+1026	Regal Edwards Ontario Palace	regal-edwards-ontario-palace	Ontario Palace 22 IMAX & RPX	Ontario	CA	US/Pacific
+1049	Regal Edwards Rancho San Diego	regal-edwards-rancho-san-diego	Rancho San Diego Stadium 15	El Cajon	CA	US/Pacific
+1030	Regal Edwards West Covina	regal-edwards-west-covina	Edwards West Covina Stadium 18	West Covina	CA	US/Pacific
+1807	Regal El Dorado Hills	regal-el-dorado-hills	El Dorado Stadium 14 & IMAX	El Dorado Hills	CA	US/Pacific
+0341	Regal Elmwood Center Buffalo	regal-elmwood-center-buffalo	Regal Elmwood Center 16	Buffalo	NY	US/Eastern
+1805	Regal Escondido	regal-escondido	Escondido Stadium 16 & IMAX	Escondido	CA	US/Pacific
+1412	Regal Essex Crossing New York	regal-essex-crossing-new-york	Regal Essex Crossing & RPX	New York	NY	US/Eastern
+0663	Regal Everett	regal-everett	Regal Everett Stadium 16 & RPX	Everett	WA	US/Pacific
+0850	Regal Evergreen Hillsboro	regal-evergreen-hillsboro	Evergreen Parkway Stm 13 & RPX	Hillsboro	OR	US/Pacific
+1275	Regal Fairfax Towne Center	regal-fairfax-towne-center	Fairfax Towne Center 10	Fairfax	VA	US/Eastern
+0389	Regal Fairfield Commons Beavercreek	regal-fairfield-commons-beavercreek	Fairfield Commons Stm 20 & RPX	Beavercreek	OH	US/Eastern
+1319	Regal Farmingdale	regal-farmingdale	UA Farmingdale Stm 10 & IMAX	Farmingdale	NY	US/Eastern
+1270	Regal Flintridge La Canada	regal-flintridge-la-canada	UA La Canada 8	La Canada	CA	US/Pacific
+1653	Regal Forum Rolla	regal-forum-rolla	Regal Forum 5	Rolla	MO	US/Central
+1317	Regal Fossil Creek Fort Worth	regal-fossil-creek-fort-worth	UA Fossil Creek Stadium 11	Ft Worth	TX	US/Central
+1869	Regal Fox Ashburn	regal-fox-ashburn	Regal Fox Stadium 16 & IMAX	Ashburn	VA	US/Eastern
+1655	Regal Fox Laramie	regal-fox-laramie	Regal Fox Theater 6	Laramie	WY	US/Mountain
+1728	Regal Fox Run Newington	regal-fox-run-newington	Regal Fox Run Stadium 15 & RPX	Newington	NH	US/Eastern
+0633	Regal Fox Tower Portland	regal-fox-tower-portland	Regal Fox Tower Stadium 10	Portland	OR	US/Pacific
+1845	Regal Franklin Square Gastonia	regal-franklin-square-gastonia	Regal Franklin Square Stadium	Gastonia	NC	US/Eastern
+0712	Regal Fredericksburg	regal-fredericksburg	Regal Fredericksburg 14 & IMAX	Fredericksburg	VA	US/Eastern
+1033	Regal Fresno Riverpark	regal-fresno-riverpark	Fresno Riverpark 19 & IMAX	Fresno	CA	US/Pacific
+1299	Regal Galaxy Indianapolis	regal-galaxy-indianapolis	UA Galaxy Stadium 14	Indianapolis	IN	US/Eastern
+1625	Regal Gallatin Valley	regal-gallatin-valley	Gallatin Valley Stadium 11	Bozeman	MT	US/Mountain
+1740	Regal Galleria Mall Poughkeepsie	regal-galleria-mall-poughkeepsie	Regal Galleria Mall Stadium 16	Poughkeepsie	NY	US/Eastern
+1551	Regal Gallery Place Washington	regal-gallery-place-washington	Regal Gallery Place Stadium 14	Washington	DC	US/Eastern
+0364	Regal Garden Grove	regal-garden-grove	Regal Garden Grove Stadium 16	Garden Grove	CA	US/Pacific
+0949	Regal Gateway Austin	regal-gateway-austin	Gateway Stadium 16 & IMAX	Austin	TX	US/Central
+1891	Regal Georgian	regal-georgian	Regal Georgian Stadium 14	Newnan	GA	US/Eastern
+1606	Regal Gilbert	regal-gilbert	Regal Gilbert Stadium 14	Gilbert	AZ	US/Arizona
+0601	Regal Goldstream	regal-goldstream	Goldstream Stadium 16 & IMAX	Fairbanks	AK	US/Alaska
+0115	Regal Grand Central Mall	regal-grand-central-mall	Regal Grand Central Mall 12	Vienna	WV	US/Eastern
+1480	Regal Grande Esplanade	regal-grande-esplanade	Grand Esplanade 14 & GPX	Kenner	LA	US/Central
+0513	Regal Green Hills Nashville	regal-green-hills-nashville	Regal Green Hills Stadium 16	Nashville	TN	US/Central
+1875	Regal Greensboro Grande	regal-greensboro-grande	Greensboro Grande Stm 16 & RPX	Greensboro	NC	US/Eastern
+1051	Regal Greenway Grand Palace Houston	regal-greenway-grand-palace-houston	Greenway Grand Pl Stm 24 & RPX	Houston	TX	US/Central
+1794	Regal Greenwood	regal-greenwood	Greenwood Stadium 14 & RPX	Greenwood	IN	US/Eastern
+1581	Regal Greenwood Mall	regal-greenwood-mall	Greenwood Mall Stadium 10	Bowling Green	KY	US/Central
+1424	Regal Griffin	regal-griffin	Griffin 10	Griffin	GA	US/Eastern
+1645	Regal Guam	regal-guam	Guam Megaplex 14	Tamuning	GU	Pacific/Guam
+0684	Regal Gulf Coast Fort Myer	regal-gulf-coast-fort-myer	Gulf Coast Stadium 16 & IMAX	Fort Myers	FL	US/Eastern
+0347	Regal Hacienda Crossings Dublin	regal-hacienda-crossings-dublin	Hacienda Stadium 20 IMAX & RPX	Dublin	CA	US/Pacific
+0370	Regal Hadley South Plainfield	regal-hadley-south-plainfield	Hadley Theatre Stadium 16	South Plainfield	NJ	US/Eastern
+0728	Regal Hamburg Pavilion Lexington	regal-hamburg-pavilion-lexington	Hamburg Pavilion 16 IMAX & RPX	Lexington	KY	US/Eastern
+1729	Regal Hamilton Commons	regal-hamilton-commons	Hamilton Commons Stadium 14	Mays Landing	NJ	US/Eastern
+1535	Regal Hamilton Mill Dacula	regal-hamilton-mill-dacula	Regal Hamilton Mill Stadium 14	Dacula	GA	US/Eastern
+0117	Regal Hamilton Place Chattanooga	regal-hamilton-place-chattanooga	Hamilton Place 8	Chattanooga	TN	US/Eastern
+1866	Regal Harbour View Grande Suffolk	regal-harbour-view-grande-suffolk	Harbour View Grande Stadium 16	Suffolk	VA	US/Eastern
+1748	Regal Harrisburg	regal-harrisburg	Regal Harrisburg Stadium 14	Harrisburg	PA	US/Eastern
+0735	Regal Harrisonburg	regal-harrisonburg	Regal Harrisonburg Stadium 14	Harrisonburg	VA	US/Eastern
+1749	Regal Hazleton	regal-hazleton	Regal Hazleton Stadium 10	Hazleton	PA	US/Eastern
+1643	Regal Heartland Early	regal-heartland-early	Regal Heartland Stadium 8	Early	TX	US/Central
+0853	Regal Hilltop Oregon City	regal-hilltop-oregon-city	Regal Hilltop 9 Cinema	Oregon City	OR	US/Pacific
+1816	Regal Holiday Stockton	regal-holiday-stockton	Stockton Holiday Cinema 8	Stockton	CA	US/Pacific
+1421	Regal Hollywood Gainesville	regal-hollywood-gainesville	Hollywood 15	Gainesville	GA	US/Eastern
+0488	Regal Hollywood Greenville	regal-hollywood-greenville	Hollywood Stm 20 Greenvl & RPX	Greenville	SC	US/Eastern
+1607	Regal Hollywood Merced	regal-hollywood-merced	Regal Hollywood Merced 13	Merced	CA	US/Pacific
+0465	Regal Hollywood Naples	regal-hollywood-naples	Regal Naples 4DX & IMAX	Naples	FL	US/Eastern
+0489	Regal Hollywood Nashville	regal-hollywood-nashville	Hollywood Stm 27 & RPX Nville	Nashville	TN	US/Central
+0483	Regal Hollywood Ocala	regal-hollywood-ocala	Hollywood Stm 16 & IMAX Ocala	Ocala	FL	US/Eastern
+0418	Regal Hollywood Port Richey	regal-hollywood-port-richey	Regal Hollywood 18 Port Richey	Port Richey	FL	US/Eastern
+0467	Regal Hollywood Sarasota	regal-hollywood-sarasota	Hollywood Stm 11 Sarasota	Sarasota	FL	US/Eastern
+1624	Regal Hollywood St. Joseph	regal-hollywood-st-joseph	Hollywood Stm 10 St. Joseph	Saint Joseph	MO	US/Central
+0164	Regal Hudson	regal-hudson	Regal Hudson Cinema 10	Hudson	OH	US/Eastern
+0581	Regal Huebner Oaks San Antonio	regal-huebner-oaks-san-antonio	Huebner Oaks Stadium 14 & RPX	San Antonio	TX	US/Central
+1711	Regal Hunt Valley	regal-hunt-valley	Regal Hunt Valley Stadium 12	Hunt Valley	MD	US/Eastern
+1863	Regal Hyattsville Royale	regal-hyattsville-royale	Hyattsville Royale Stadium 14	Hyattsville	MD	US/Eastern
+1717	Regal Independence Mall Kingston	regal-independence-mall-kingston	Independence Mall 14 & RPX	Kingston	MA	US/Eastern
+1417	Regal Independence Plaza Hamilton	regal-independence-plaza-hamilton	Regal Independence Plaza 12	Hamilton	NJ	US/Eastern
+1609	Regal Interquest Colorado Springs	regal-interquest-colorado-springs	Interquest Stadium 14 & RPX	Colorado Springs	CO	US/Mountain
+1010	Regal Irvine Spectrum	regal-irvine-spectrum	Irvine Spectrum 20 IMAX & RPX	Irvine	CA	US/Pacific
+1942	Regal Issaquah Highland	regal-issaquah-highland	Issaquah Stadium 12 IMAX & RPX	Issaquah	WA	US/Pacific
+0677	Regal Ithaca Mall Stadium	regal-ithaca-mall-stadium	Regal Ithaca Mall Stadium 14	Ithaca	NY	US/Eastern
+1808	Regal Jack London Oakland	regal-jack-london-oakland	Regal Jack London Stadium 9	Oakland	CA	US/Pacific
+1418	Regal Janss Marketplace	regal-janss-marketplace	Regal Janss Marketplace 9	Thousand Oaks	CA	US/Pacific
+1951	Regal Kapolei Commons	regal-kapolei-commons	Kapolei Commons 12	Kapolei	HI	US/Hawaii
+1830	Regal Keauhou	regal-keauhou	Regal Keauhou Stadium 7	Keauhou-Kona	HI	US/Hawaii
+0996	Regal Kendall Village Miami	regal-kendall-village-miami	Kendall Vlg Stm 16 IMAX & RPX	Miami	FL	US/Eastern
+0412	Regal Key West	regal-key-west	Regal Cinema Key West 6	Key West	FL	US/Eastern
+1636	Regal Killeen Stadium	regal-killeen-stadium	Regal Killeen Stadium 14	Killeen	TX	US/Central
+1329	Regal King Of Prussia	regal-king-of-prussia	REG King of Prussia 4DX & IMAX	King Of Prussia	PA	US/Eastern
+1865	Regal Kingstowne	regal-kingstowne	Kingstowne Stadium 16 & RPX	Alexandria	VA	US/Eastern
+0704	Regal La Habra	regal-la-habra	Regal La Habra Stadium 16	La Habra	CA	US/Pacific
+1484	Regal LA Live	regal-la-live	Regal LA Live	Los Angeles	CA	US/Pacific
+1012	Regal La Verne	regal-la-verne	Edwards La Verne Stadium 12	La Verne	CA	US/Pacific
+1286	Regal Laguna Village Sacramento	regal-laguna-village-sacramento	UA Laguna Village 12	Sacramento	CA	US/Pacific
+0887	Regal Lakewood	regal-lakewood	Lakewood Stadium 15 & RPX	Lakewood	WA	US/Pacific
+0596	Regal Lansing Mall	regal-lansing-mall	Lansing Mall Stadium 12 & RPX	Lansing	MI	US/Eastern
+0446	Regal Largo Mall	regal-largo-mall	Regal Largo Mall 8	Largo	FL	US/Eastern
+0563	Regal Laurel Town Center	regal-laurel-town-center	Regal Laurel Towne Centre 12	Laurel	MD	US/Eastern
+1200	Regal Lee Hills Leesville	regal-lee-hills-leesville	UA Lee Hills 6	Leesville	LA	US/Central
+0795	Regal Live Oak San Antonio	regal-live-oak-san-antonio	Live Oak Stadium 18 & RPX	Live Oak	TX	US/Central
+0807	Regal Lloyd Center Portland	regal-lloyd-center-portland	Regal Lloyd Center 10 & IMAX	Portland	OR	US/Pacific
+1441	Regal Lone Star Tomball	regal-lone-star-tomball	Regal Lone Star 19 IMAX & RPX	Tomball	TX	US/Central
+0355	Regal Longston Place Puyallup	regal-longston-place-puyallup	Longston Place Stadium 14	Puyallup	WA	US/Pacific
+0664	Regal Louisiana Boardwalk Bossier City	regal-louisiana-boardwalk-bossier-city	Louisiana Bdwalk Stm 14 & IMAX	Bossier City	LA	US/Central
+1348	Regal Lynbrook	regal-lynbrook	Lynbrook 13 & RPX	Lynbrook	NY	US/Eastern
+0339	Regal Magnolia Place Coral Springs	regal-magnolia-place-coral-springs	Magnolia Place Stadium 16	Coral Springs	FL	US/Eastern
+1862	Regal Majestic Silver Spring	regal-majestic-silver-spring	Majestic Stadium 20 & IMAX	Silver Spring	MD	US/Eastern
+0701	Regal Mall Of Georgia	regal-mall-of-georgia	Regal Mall of Georgia IMAX	Buford	GA	US/Eastern
+1754	Regal Manahawkin Cinemas	regal-manahawkin-cinemas	Regal Manahawkin 10	Manahawkin	NJ	US/Eastern
+1820	Regal Manchester Fresno	regal-manchester-fresno	Regal Manchester Stadium 16	Fresno	CA	US/Pacific
+1886	Regal Manchester Rock Hill	regal-manchester-rock-hill	Regal Manchester Stadium 14	Rock Hill	SC	US/Eastern
+0754	Regal Manor Cinema Lancaster	regal-manor-cinema-lancaster	Regal Manor Stadium 16	Lancaster	PA	US/Eastern
+1048	Regal Market Place Irvine	regal-market-place-irvine	Market Place Stadium 10	Irvine	CA	US/Pacific
+1433	Regal Marketplace at El Paseo	regal-marketplace-at-el-paseo	Regal Marketplace @ El Paseo	Fresno	CA	US/Pacific
+0673	Regal Martin Village Lacey	regal-martin-village-lacey	Martin Village Stm 16 & IMAX	Lacey	WA	US/Pacific
+0298	Regal Marysville	regal-marysville	Regal Marysville 14	Marysville	WA	US/Pacific
+1718	Regal Mashpee Commons	regal-mashpee-commons	Regal Mashpee Commons 6	Mashpee	MA	US/Eastern
+1512	Regal Massillon Great Escape	regal-massillon-great-escape	Regal Massillon Stadium 12	Massillon	OH	US/Eastern
+1614	Regal Maui Mall Kahului	regal-maui-mall-kahului	Regal Maui Mall Megaplex 12	Kahului	HI	US/Hawaii
+1873	Regal Mayfaire Wilmington	regal-mayfaire-wilmington	Regal Mayfaire Stm 16 & IMAX	Wilmington	NC	US/Eastern
+0541	Regal McCain Mall Little Rock	regal-mccain-mall-little-rock	McCain Mall Stadium 12 & RPX	North Little Rock	AR	US/Central
+1519	Regal McDonough	regal-mcdonough	Regal McDonough Stadium 16	McDonough	GA	US/Eastern
+0707	Regal Medina Stadium	regal-medina-stadium	Regal Medina Stadium 16	Medina	OH	US/Eastern
+0354	Regal Medlock Crossing Duluth	regal-medlock-crossing-duluth	Medlock Crossing Stm 18 & RPX	Duluth	GA	US/Eastern
+1931	Regal Meridian Seattle	regal-meridian-seattle	Regal Meridian 16	Seattle	WA	US/Pacific
+1007	Regal Metro Pointe Stadium Costa Mesa	regal-metro-pointe-stadium-costa-mesa	Metro Pointe Stadium 12	Costa Mesa	CA	US/Pacific
+1804	Regal Metro San Jacinto	regal-metro-san-jacinto	Regal San Jacinto Metro 12	San Jacinto	CA	US/Pacific
+0950	Regal Metropolitan Austin	regal-metropolitan-austin	Regal Metropolitan Stadium 14	Austin	TX	US/Central
+1467	Regal MGM Springfield	regal-mgm-springfield	MGM Springfield 7	Springfield	MA	US/Eastern
+1143	Regal UA Midway	regal-midway-stadium-forest-hills	UA Midway Stadium 9	Forest Hills	NY	US/Eastern
+1043	Regal Mira Mesa Stadium San Diego	regal-mira-mesa-stadium-san-diego	Mira Mesa Stm 18 & IMAX & RPX	San Diego	CA	US/Pacific
+1470	Regal Mission Marketplace Oceanside	regal-mission-marketplace-oceanside	Regal Mission Marketplace RPX	Oceanside	CA	US/Pacific
+1818	Regal Modesto	regal-modesto	Regal Modesto Stadium 10	Modesto	CA	US/Pacific
+1917	Regal Moorestown	regal-moorestown	Moorestown Mall Stm 12 & RPX	Moorestown	NJ	US/Eastern
+1037	Regal Mountain Village Ontario	regal-mountain-village-ontario	Ontario Mtn Village Stm 14	Ontario	CA	US/Pacific
+0855	Regal Movies On TV Hillsboro	regal-movies-on-tv-hillsboro	Regal Movies On TV Stadium 16	Hillsboro	OR	US/Pacific
+0558	Regal Nanuet	regal-nanuet	Regal Nanuet Stadium 12 & RPX	Nanuet	NY	US/Eastern
+0774	Regal Natomas Marketplace Sacramento	regal-natomas-marketplace-sacramento	Natomas MktPlace Stm 16 & RPX	Sacramento	CA	US/Pacific
+0671	Regal New River Valley Christiansburg	regal-new-river-valley-christiansburg	New River Valley Stm 14 & RPX	Christianburg	VA	US/Eastern
+0297	Regal New Roc City	regal-new-roc-city	New Roc City Stm 18 IMAX & RPX	New Rochelle	NY	US/Eastern
+1868	Regal New Town Williamsburg	regal-new-town-williamsburg	Regal New Town Stadium 12	Williamsburg	VA	US/Eastern
+1518	Regal Nitro	regal-nitro	Regal Nitro Stadium 12	Cross Lanes	WV	US/Eastern
+1523	Regal Noblesville	regal-noblesville	Regal Noblesville Stadium 10	Noblesville	IN	US/Eastern
+1846	Regal North Hills Raleigh	regal-north-hills-raleigh	Regal North Hills Stadium 14	Raleigh	NC	US/Eastern
+1438	Regal North Hollywood	regal-north-hollywood	Regal North Hollywood 4DX	Los Angeles	CA	US/Pacific
+0371	Regal Northampton Easton	regal-northampton-easton	Northampton Cinema 14 & RPX	Easton	PA	US/Eastern
+1889	Regal Northlake Village Lexington	regal-northlake-village-lexington	Regal Northlake Village 8	Lexington	SC	US/Eastern
+1622	Regal Northstar Joplin	regal-northstar-joplin	Regal Northstar Stadium 14	Joplin	MO	US/Central
+0883	Regal Northtown Mall Spokane	regal-northtown-mall-spokane	Northtown Mall Stadium 12	Spokane	WA	US/Pacific
+0940	Regal Northwoods San Antonio	regal-northwoods-san-antonio	Regal Northwoods Stadium 14	San Antonio	TX	US/Central
+1647	Regal Nu'uuli Place Twin	regal-nuuuli-place-twin	Nu'uuli Place Twin	Pago Pago	AS	
+0444	Regal Oakmont	regal-oakmont-bradenton	Regal Oakmont 8	Bradenton	FL	US/Eastern
+0708	Regal Oceanside	regal-oceanside	Regal Oceanside Stadium 16	Oceanside	CA	US/Pacific
+0758	Regal Old Mill Bend	regal-old-mill-bend	Old Mill Stadium 16 & IMAX	Bend	OR	US/Pacific
+0615	Regal Opry Mills Nashville	regal-opry-mills-nashville	Regal Opry Mills 4DX & IMAX	Nashville	TN	US/Central
+0380	Regal Oviedo Mall	regal-oviedo-mall	Regal Oviedo Mall Stadium 22	Oviedo	FL	US/Eastern
+1269	Regal Oxford Valley Langhorne	regal-oxford-valley-langhorne	UA Oxford Valley Stadium 14	Langhorne	PA	US/Eastern
+1870	Regal Palladium High Point	regal-palladium-high-point	Regal Palladium Stm 14 & IMAX	High Point	NC	US/Eastern
+1884	Regal Palmetto Grand Mt Pleasant	regal-palmetto-grand-mt-pleasant	Regal Palmetto Grande Stm 16	Mount Pleasant	SC	US/Eastern
+1914	Regal Park Place Pinellas Park	regal-park-place-pinellas-park	Park Place Stadium 16 & RPX	Pinellas Park	FL	US/Eastern
+0388	Regal Parkway Plaza El Cajon	regal-parkway-plaza-el-cajon	Parkway Plaza Stm 18 & IMAX	El Cajon	CA	US/Pacific
+1485	Regal Paseo Pasadena	regal-paseo-pasadena	Regal Paseo	Pasadena	CA	US/Pacific
+1613	Regal Pavilion Port Orange	regal-pavilion-port-orange	Pavilion Stadium 14 & RPX	Port Orange	FL	US/Eastern
+1827	Regal Pearl Highlands	regal-pearl-highlands	Pearl Highlands Stadium 12	Pearl City	HI	US/Hawaii
+0133	Regal Peoples Plaza	regal-peoples-plaza	Regal Peoples Plaza Stadium 17	Newark	DE	US/Eastern
+1309	Regal Perimeter Pointe Atlanta	regal-perimeter-pointe-atlanta	Perimeter Pointe Stadium 10	Atlanta	GA	US/Eastern
+0682	Regal Pinnacle Knoxville	regal-pinnacle-knoxville	Pinnacle Stadium 18 IMAX & RPX	Knoxville	TN	US/Eastern
+0656	Regal Pioneer Place Portland	regal-pioneer-place-portland	Regal Pioneer Place Stadium 6	Portland	OR	US/Pacific
+0234	Regal Plymouth Meeting	regal-plymouth-meeting	Regal Plymouth Meeting 10	Conshohocken	PA	US/Eastern
+1938	Regal Pointe Orlando	regal-pointe-orlando	Pointe Orlando Stm 20 & IMAX	Orlando	FL	US/Eastern
+0880	Regal Poulsbo	regal-poulsbo	Regal Poulsbo Stadium 10	Poulsbo	WA	US/Pacific
+1652	Regal Prince Kuhio	regal-prince-kuhio	Regal Prince Kuhio 9	Hilo	HI	US/Hawaii
+0748	Regal Promenade Rolling Hills Estates	regal-promenade-rolling-hills-estates	Regal Promenade Stadium 13	Rolling Hills Est	CA	US/Pacific
+1890	Regal Providence Mt Juliet	regal-providence-mt-juliet	Regal Providence Stm 14	Mt Juliet	TN	US/Central
+0700	Regal Quaker Crossing	regal-quaker-crossing	Quaker Crossing Stadium 18	Orchard Park	NY	US/Eastern
+0637	Regal Ranch Green Valley Henderson	regal-ranch-green-valley-henderson	Green Valley Ranch Stadium 10	Henderson	NV	US/Pacific
+0361	Regal Rancho Del Rey Chula Vista	regal-rancho-del-rey-chula-vista	Rancho Del Rey Stadium 16	Chula Vista	CA	US/Pacific
+1801	Regal Rancho Mirage	regal-rancho-mirage	Rancho Mirage Stm 16 & IMAX	Rancho Mirage	CA	US/Pacific
+0659	Regal Red Rock Stadium Las Vegas	regal-red-rock-stadium-las-vegas	Red Rock Stadium 16 & IMAX	Las Vegas	NV	US/Pacific
+1859	Regal Regency Panama City	regal-regency-panama-city	Regal Regency Stadium 11	Panama City	FL	US/Central
+1943	Regal River Point Sheridan	regal-river-point-sheridan	River Point Stadium 14 & RPX	Sheridan	CO	US/Mountain
+1995	Regal River Ridge Lynchburg	regal-river-ridge-lynchburg	Regal River Ridge Stadium 14	Lynchburg	VA	US/Eastern
+1806	Regal Riverside Plaza	regal-riverside-plaza	Riverside Plaza Stadium 16	Riverside	CA	US/Pacific
+0654	Regal Riverstone	regal-riverstone	Regal Riverstone Stadium 14	Coeur d'Alene	ID	US/Pacific
+0690	Regal Riviera Knoxville	regal-riviera-knoxville	Riviera Stadium 8	Knoxville	TN	US/Eastern
+0336	Regal Rockville Center	regal-rockville-center	Rockville Center Stadium 13	Rockville	MD	US/Eastern
+0632	Regal Ronkonkoma	regal-ronkonkoma	Regal Ronkonkoma Stadium 9	Ronkonkoma	NY	US/Eastern
+1860	Regal Royal Park Gainesville	regal-royal-park-gainesville	Regal Royal Park Stadium 16	Gainesville	FL	US/Eastern
+0351	Regal Royal Royal Palm Beach	regal-royal-royal-palm-beach	Royal Palm Beach Stm 18 & RPX	Royal Palm Beach	FL	US/Eastern
+0674	Regal Salisbury	regal-salisbury	Salisbury Stadium 16 & RPX	Salisbury	MD	US/Eastern
+1946	Regal Salmon Run Watertown	regal-salmon-run-watertown	Regal Salmon Run Stadium 12	Watertown	NY	US/Eastern
+1799	Regal San Bernardino	regal-san-bernardino	San Bernardino Stm 14 & RPX	San Bernardino	CA	US/Pacific
+1034	Regal San Marcos	regal-san-marcos	Edwards San Marcos Stadium 18	San Marcos	CA	US/Pacific
+1855	Regal Sandhill Columbia	regal-sandhill-columbia	Sandhill Stm 16 IMAX & RPX	Columbia	SC	US/Eastern
+1465	Regal Santa Fe	regal-santa-fe	Regal Santa Fe Place	Santa Fe	NM	US/Mountain
+1681	Regal Santa Maria Town Center	regal-santa-maria-town-center	Santa Maria Stadium 14 & RPX	Santa Maria	CA	US/Pacific
+1195	Regal Santa Rosa Mary Esther	regal-santa-rosa-mary-esther	UA Santa Rosa 10	Mary Esther	FL	US/Central
+0863	Regal Santiam Salem	regal-santiam-salem	Regal Santiam Stadium 11	Salem	OR	US/Pacific
+0442	Regal Sawgrass Sunrise	regal-sawgrass-sunrise	Sawgrass Stadium 23 & IMAX	Sunrise	FL	US/Eastern
+1665	Regal Secaucus Showplace	regal-secaucus-showplace	Regal Secaucus ShowPlace 14	Secaucus	NJ	US/Eastern
+1483	Regal Sherman Oaks	regal-sherman-oaks	Regal Sherman Oaks Galleria	Sherman Oaks	CA	US/Pacific
+0190	Regal Shiloh Crossing Avon	regal-shiloh-crossing-avon	Shiloh Crossing Stadium 18	Avon	IN	US/Eastern
+0730	Regal Short Pump	regal-short-pump	Short Pump Stadium 14 & IMAX	Richmond	VA	US/Eastern
+0391	Regal Simi Valley Civic Center	regal-simi-valley-civic-center	Civic Center Stadium 16 & IMAX	Simi Valley	CA	US/Pacific
+1517	Regal Simpsonville	regal-simpsonville	Simpsonville Stadium 14 & IMAX	Simpsonville	SC	US/Eastern
+1721	Regal Solomon Pond	regal-solomon-pond	Regal Solomon Pond Stadium 15	Marlborough	MA	US/Eastern
+1044	Regal South Gate	regal-south-gate	South Gate Stadium 20 & IMAX	South Gate	CA	US/Pacific
+0885	Regal South Hill Puyallup	regal-south-hill-puyallup	Regal South Hill Cinema 6	Puyallup	WA	US/Pacific
+0175	Regal South Youngstown	regal-south-youngstown	Regal Cinema South 10	Youngstown	OH	US/Eastern
+1610	Regal SouthGlenn Centennial	regal-southglenn-centennial	SouthGlenn Stadium 14	Centennial	CO	US/Mountain
+0683	Regal Southland Mall Miami	regal-southland-mall-miami	Southland Mall Stadium 16	Miami	FL	US/Eastern
+1902	Regal Southpark Mall Colonial Heights	regal-southpark-mall-colonial-heights	Southpark Mall Stadium 16	Colonial Heights	VA	US/Eastern
+1618	Regal Southwind Lawrence	regal-southwind-lawrence	Regal Southwind Stadium 12	Lawrence	KS	US/Central
+1888	Regal Spartan Spartanburg	regal-spartan-spartanburg	Regal Spartan Stadium 16	Spartanburg	SC	US/Eastern
+0895	Regal Spokane Valley	regal-spokane-valley	Spokane Valley Stadium 12	Spokane Valley	WA	US/Pacific
+1628	Regal Spotlight Norman	regal-spotlight-norman	Regal Spotlight Stadium 14	Norman	OK	US/Central
+0595	Regal Springfield Town Center	regal-springfield-town-center	Springfield Town Center 12	Springfield	VA	US/Eastern
+1639	Regal Star Beaumont	regal-star-beaumont	Regal Star Stadium 12	Beaumont	TX	US/Central
+0856	Regal Stark St Gresham	regal-stark-st-gresham	Regal Stark Street Stadium 10	Gresham	OR	US/Pacific
+1848	Regal Starlight Charlotte	regal-starlight-charlotte	Starlight Stm 14 - Charlotte	Charlotte	NC	US/Eastern
+1853	Regal Starlight Stdm Anderson	regal-starlight-stdm-anderson	Starlight Stm 14 - Anderson	Anderson	SC	US/Eastern
+1817	Regal Stockton City Centre	regal-stockton-city-centre	Stockton Cty Ctr Stm 16 & IMAX	Stockton	CA	US/Pacific
+0384	Regal Stonecrest at Piper Glen Charlotte	regal-stonecrest-at-piper-glen-charlotte	Regal Stonecrest 22 IMAX & RPX	Charlotte	NC	US/Eastern
+1969	Regal Stonefield	regal-stonefield	Stonefield Stadium 14 & IMAX	Charlottesville	VA	US/Eastern
+1464	Regal Stonestown Galleria	regal-stonestown-galleria	Regal Stonestown Galleria 12	San Francisco	CA	US/Pacific
+0235	Regal Strawbridge Virginia Beach	regal-strawbridge-virginia-beach	Strawbridge Marketplace Stm 12	Virginia Beach	VA	US/Eastern
+1926	Regal Streets Of Indian Lake	regal-streets-of-indian-lake	Str Of Indian Lk Stm 16 & IMAX	Hendersonville	TN	US/Central
+0838	Regal Sunset Station Henderson	regal-sunset-station-henderson	Sunset Station Stm 13 & IMAX	Henderson	NV	US/Pacific
+1854	Regal Swamp Fox	regal-swamp-fox	Regal Swamp Fox Stadium 14	Florence	SC	US/Eastern
+0330	Regal Tall Firs Bonney Lake	regal-tall-firs-bonney-lake	Regal Tall Firs 10	Bonneylake	WA	US/Pacific
+1472	Regal Tangram	regal-tangram	Regal Tangram 4DX	Flushing	NY	US/Eastern
+1045	Regal Temecula	regal-temecula	Temecula Stadium 15 & IMAX	Temecula	CA	US/Pacific
+1935	Regal The Landing Renton	regal-the-landing-renton	The Landing Stadium 14 & RPX	Renton	WA	US/Pacific
+0687	Regal The Loop Kissimmee	regal-the-loop-kissimmee	The Loop Stadium 16 & RPX	Kissimmee	FL	US/Eastern
+1937	Regal Thornton Place Seattle	regal-thornton-place-seattle	Thornton Place Stm 14 & IMAX	Seattle	WA	US/Pacific
+0599	Regal Three Rivers Kelso	regal-three-rivers-kelso	Three Rivers Mall 12 & RPX	Kelso	WA	US/Pacific
+1994	Regal Tikahtnu	regal-tikahtnu	Tikahtnu Stadium 16 IMAX & RPX	Anchorage	AK	US/Alaska
+1929	Regal Times Square New York	regal-times-square-new-york	Regal Times Square	New York	NY	US/Eastern
+0723	Regal Town Center Port Charlotte	regal-town-center-port-charlotte	Town Ctr Stm 16 Port Charlotte	Port Charlotte	FL	US/Eastern
+0294	Regal Transit Center Cinema	regal-transit-center-cinema	Transit Center Stm 18 & IMAX	Williamsville	NY	US/Eastern
+0731	Regal Treasure Coast Jensen Beach	regal-treasure-coast-jensen-beach	Treasure Coast Mall Stadium 16	Jensen Beach	FL	US/Eastern
+0760	Regal Trussville	regal-trussville	Regal Trussville Stadium 16	Birmingham	AL	US/Central
+1819	Regal Turlock	regal-turlock	Regal Turlock Stadium 14	Turlock	CA	US/Pacific
+1214	Regal UA 90 Lake City	regal-ua-90-lake-city	UA Cinema 90 6	Lake City	FL	US/Eastern
+1308	Regal UA Colorado Center Denver	regal-ua-colorado-center-denver	Colorado Center Stm 9 & IMAX	Denver	CO	US/Mountain
+1550	Regal UA Colorado Mills Lakewood	regal-ua-colorado-mills-lakewood	Colorado Mills 16 IMAX & RPX	Lakewood	CO	US/Mountain
+1307	Regal UA Cottonwood	regal-ua-cottonwood	UA Cottonwood Stadium 16	Albuquerque	NM	US/Mountain
+1306	Regal UA Galaxy Dallas	regal-ua-galaxy-dallas	UA Galaxy Theatre Stadium 10	Dallas	TX	US/Central
+1290	Regal UA Grant Plaza	regal-ua-grant-plaza	UA Grant Plaza 9	Philadelphia	PA	US/Eastern
+1333	Regal UA Kaufman Astoria	regal-ua-kaufman-astoria	Kaufman Astoria Stm 14 & RPX	Long Island City	NY	US/Eastern
+1314	Regal UA Main Street Cinema	regal-ua-main-street-cinema	UA Main Street Theatre 6	Manayunk	PA	US/Eastern
+1159	Regal UA Sheepshead Bay	regal-ua-sheepshead-bay	Sheepshead Stm 14 IMAX & RPX	Brooklyn	NY	US/Eastern
+1813	Regal Ukiah	regal-ukiah	Regal Ukiah Stadium 6	Ukiah	CA	US/Pacific
+1320	Regal Union Square New York	regal-union-square-new-york	Regal Union Square Stadium 14	New York	NY	US/Eastern
+1025	Regal University Town Center	regal-university-town-center	University Town Center 6	Irvine	CA	US/Pacific
+1038	Regal Valencia Stadium	regal-valencia-stadium	Valencia Stadium 12 & IMAX	Santa Clarita	CA	US/Pacific
+1908	Regal Valley Mall Hagerstown	regal-valley-mall-hagerstown	Regal Valley Mall Stadium 16	Hagerstown	MD	US/Eastern
+0670	Regal Valley River Eugene	regal-valley-river-eugene	Valley River Ctr Stm 15 & IMAX	Eugene	OR	US/Pacific
+1867	Regal Valley View Grande Roanoke	regal-valley-view-grande-roanoke	Valley View Grande Stadium 16	Roanoke	VA	US/Eastern
+1673	Regal Village at The Peaks Longmont	regal-village-at-the-peaks-longmont	Village At The Peaks 12 & RPX	Longmont	CO	US/Pacific
+0147	Regal Village Park Carmel	regal-village-park-carmel	Village Park Stadium 17	Carmel	IN	US/Eastern
+0165	Regal Virginia Center Glen Allen	regal-virginia-center-glen-allen	Regal Virginia Center Stadium	Glen Allen	VA	US/Eastern
+1675	Regal Virginia Gateway Gainesville	regal-virginia-gateway-gainesville	Virginia Gateway Stm 14 & RPX	Gainesville	VA	US/Eastern
+1821	Regal Visalia	regal-visalia	Regal Visalia Stadium 10	Visalia	CA	US/Pacific
+0675	Regal Walden Galleria Stadium	regal-walden-galleria-stadium	Walden Galleria Stm 16 & RPX	Buffalo	NY	US/Eastern
+1448	Regal Warren Broken Arrow	regal-warren-broken-arrow	Warren Broken Arrow 18	Broken Arrow	OK	US/Central
+1444	Regal Warren East	regal-warren-east	Warren East 20	Wichita	KS	US/Central
+1482	Regal Warren Midwest City	regal-warren-midwest-city	Regal Midwest City	Midwest City	OK	US/Central
+1447	Regal Warren Moore	regal-warren-moore	Warren Moore 17 & IMAX	Moore	OK	US/Central
+1443	Regal Warren West	regal-warren-west	Warren West 18 & IMAX	Wichita	KS	US/Central
+0379	Regal Warrington Crossing	regal-warrington-crossing	Warrington Stadium 22 & IMAX	Warrington	PA	US/Eastern
+1630	Regal Washington Park Bartlesville	regal-washington-park-bartlesville	Bartlesville Movies Stadium 8	Bartlesville	OK	US/Central
+1281	Regal Washington Township	regal-washington-township	UA Washington Township 14	Sewell	NJ	US/Eastern
+1703	Regal Waterford	regal-waterford	Regal Waterford 9	Waterford	CT	US/Eastern
+0734	Regal Waterford Lakes Orlando	regal-waterford-lakes-orlando	Waterford Lakes Stm 20 & IMAX	Orlando	FL	US/Eastern
+0542	Regal Waugh Chapel	regal-waugh-chapel	Waugh Chapel Stadium 12 & IMAX	Gambrills	MD	US/Eastern
+1793	Regal Webster Place Chicago	regal-webster-place-chicago	Regal Webster Place 11	Chicago	IL	US/Central
+1258	Regal Wekiva Apopka	regal-wekiva-apopka	Regal Wekiva Riverwalk 8	Apopka	FL	US/Eastern
+0395	Regal West Manchester York	regal-west-manchester-york	West Manchester Stadium 13	York	PA	US/Eastern
+1226	Regal West Tower Cinema Richmond	regal-west-tower-cinema-richmond	UA West Tower Cinemas 10	Richmond	VA	US/Eastern
+1204	Regal Westbrook Brookhaven	regal-westbrook-brookhaven	UA Westbrook 4	Brookhaven	MS	US/Central
+1273	Regal Westbury Stadium	regal-westbury-stadium	Westbury Stadium 12 IMAX & RPX	Westbury	NY	US/Eastern
+1936	Regal Westchester Commons Midlothian	regal-westchester-commons-midlothian	Westchester Commons Stm 16	Midlothian	VA	US/Eastern
+0709	Regal Westfork Plaza Pembroke Pines	regal-westfork-plaza-pembroke-pines	Regal Westfork Stadium 13	Pembroke Pines	FL	US/Eastern
+0953	Regal Westgate Austin	regal-westgate-austin	Regal Westgate Stadium 11	Austin	TX	US/Central
+1910	Regal Westview Frederick	regal-westview-frederick	Westview Stadium 16 & IMAX	Frederick	MD	US/Eastern
+1876	Regal White Oak Garner	regal-white-oak-garner	Regal White Oak Stadium 14	Garner	NC	US/Eastern
+1526	Regal Wilder	regal-wilder	Regal Wilder Stadium 14	Wilder	KY	US/Eastern
+0679	Regal Willamette Town Center Salem	regal-willamette-town-center-salem	Willamette Town Center 11	Salem	OR	US/Pacific
+0381	Regal Willoughby Commons	regal-willoughby-commons	Willoughby Commons Stm 16	Willoughby	OH	US/Eastern
+1829	Regal Windward Kaneohe	regal-windward-kaneohe	Regal Windward Stadium 10	Kaneohe	HI	US/Hawaii
+1992	Regal Winrock Albuquerque	regal-winrock-albuquerque	Winrock Stadium 16 IMAX & RPX	Albuquerque	NM	US/Mountain
+0721	Regal Winter Park Village	regal-winter-park-village	Winter Park Village 20 & RPX	Winter Park	FL	US/Eastern
+1430	Regal Yorba Linda	regal-yorba-linda	Regal Yorba Linda & IMAX	Yorba Linda	CA	US/Pacific
