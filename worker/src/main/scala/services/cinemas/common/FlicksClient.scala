@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.HttpFetch
+import tools.{HttpFetch, PersonName}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -40,7 +40,8 @@ import scala.util.Try
  * feeds, mirroring [[FilmwebShowtimesClient]]. One AJAX call per day. Each
  * session button carries a `data-eventjson` blob from which we lift the film's
  * numeric Flicks id (`content_id`, an `externalId`), its `content_cast`
- * (comma-separated) and `content_genre` (comma-separated); the film card also
+ * (comma-separated, and LOWERCASED by Flicks — see `PersonName`) and
+ * `content_genre` (comma-separated); the film card also
  * carries a `/trailer/` link. TMDB still enriches synopsis/year downstream.
  */
 class FlicksClient(
@@ -259,7 +260,12 @@ object FlicksClient {
           val eventJson = article.select(".times-calendar-times__button").asScala.iterator
             .map(_.attr("data-eventjson")).find(_.nonEmpty).getOrElse("")
           val contentId = ContentId.findFirstMatchIn(eventJson).map(_.group(1))
-          val cast      = ContentCast.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil)
+          // Flicks lowercases every cast name in the blob ("christoph waltz"), so
+          // the list is capitalised HERE rather than left for the write boundary:
+          // this client's output is also what the scrape archive and the fixture
+          // harness record, and a name stored lowercase renders lowercase.
+          val cast      = PersonName.capitalizedAll(
+            ContentCast.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil))
           val genres    = ContentGenre.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil)
           val trailer   = Option(article.selectFirst(""".cinema__trailer-wrap a[href^="/trailer/"]"""))
             .map(_.attr("href")).filter(_.nonEmpty)

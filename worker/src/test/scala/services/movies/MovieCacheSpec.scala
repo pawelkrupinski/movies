@@ -50,6 +50,33 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(key).get.data.values.head.countries shouldBe Seq("United Kingdom")
   }
 
+  // ── cast/director are cased for display at the scrape boundary ─────────────
+  //
+  // The corpus takes cast names from a dozen sources at once. Most send them
+  // properly cased (TMDB, IMDb, every Polish scraper); Cinema City SHOUTS them
+  // and Flicks lowercases them. `buildCinemaSlot` folds both extremes to the
+  // display spelling and must leave everything in between untouched.
+
+  it should "capitalise an all-lowercase scraped cast/director (Flicks)" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val key   = cache.recordCinemaScrape(KinoMuranow, Seq(cinemaMovie("Minions 3", KinoMuranow,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), None)),
+      cast      = Seq("christoph waltz", "pierre coffin", "joseph gordon-levitt"),
+      director  = Seq("pierre coffin")))).head._2
+    val slot  = cache.get(key).get.data.values.head
+    slot.cast     shouldBe Seq("Christoph Waltz", "Pierre Coffin", "Joseph Gordon-Levitt")
+    slot.director shouldBe Seq("Pierre Coffin")
+  }
+
+  it should "still title-case an ALL CAPS scraped cast, and leave a properly-cased one alone" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val key   = cache.recordCinemaScrape(KinoMuranow, Seq(cinemaMovie("Mortal Kombat II", KinoMuranow,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 8, 18, 0), None)),
+      cast      = Seq("KARL URBAN", "Ludwig van Beethoven", "Andie MacDowell")))).head._2
+    cache.get(key).get.data.values.head.cast shouldBe
+      Seq("Karl Urban", "Ludwig van Beethoven", "Andie MacDowell")
+  }
+
   it should "carry enriched detail forward when a listing-only cinema re-scrapes (no metadata-wipe flap)" in {
     // A listing-only cinema (arthouse: Muranów, Kinoteka…) scrapes title+showtimes
     // with no director/cast/etc; EnrichDetails fills those later. Pre-fix, the next

@@ -7,7 +7,7 @@ import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus, StagingNewcomerDiverted}
 import services.titlerules.TitleRuleKey
-import tools.{DaemonExecutors, Env, TextNormalization}
+import tools.{DaemonExecutors, Env, PersonName, TextNormalization}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
 import scala.util.Try
@@ -1617,8 +1617,9 @@ class CaffeineMovieCache(
    *      (`priorSlot` carry-forward); else a listing tick WIPES the enrichment;
    *    - year fallback (`effectiveYear`): keep the prior year when a tick drops it
    *      (Helios' REST year flakes), treating a dropped year as loss not a change;
-   *    - cast/director Title-Cased when ALL CAPS (Cinema City), runtime-zero
-   *      squashed to None, and country names canonicalised. */
+   *    - cast/director cased for display (`displayNames`: ALL CAPS down for
+   *      Cinema City, all-lowercase up for Flicks), runtime-zero squashed to
+   *      None, and country names canonicalised. */
   private def buildCinemaSlot(
     cm:            CinemaMovie,
     displayTitle:  String,
@@ -1648,9 +1649,9 @@ class CaffeineMovieCache(
       // tick doesn't WIPE the enrichment (which EnrichDetails then re-adds, flapping
       // the row + doubling its change-stream writes). A listing that DOES carry the
       // field still wins, matching FilmDetail.mergeInto's "fill only if empty" rule.
-      cast           = if (cm.cast.nonEmpty) StringPool.canonicalAll(cm.cast.map(TextNormalization.titleCaseIfAllCaps))
+      cast           = if (cm.cast.nonEmpty) displayNames(cm.cast)
                        else priorSlot.map(_.cast).getOrElse(Seq.empty),
-      director       = if (cm.director.nonEmpty) StringPool.canonicalAll(cm.director.map(TextNormalization.titleCaseIfAllCaps))
+      director       = if (cm.director.nonEmpty) displayNames(cm.director)
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
       runtimeMinutes = cm.movie.runtimeMinutes.filter(_ > 0).orElse(priorSlot.flatMap(_.runtimeMinutes)),
       releaseYear    = effectiveYear,
@@ -1682,6 +1683,21 @@ class CaffeineMovieCache(
       // fields above, so a tick that lacks it doesn't wipe a value the detail merge added.
       ageRating      = cm.ageRating.map(StringPool.canonical).orElse(priorSlot.flatMap(_.ageRating))
     )
+
+  /** Cast/crew names as the display layer needs them, for the two casings a
+   *  cinema source invents: SHOUTED credits are title-cased
+   *  ([[TextNormalization.titleCaseIfAllCaps]] — Cinema City's "KARL URBAN") and
+   *  all-lowercase ones are capitalised ([[PersonName]] — Flicks' Anglophone
+   *  venues emit `content_cast` as "christoph waltz"). The two rules are
+   *  disjoint by construction — each returns its input untouched unless the
+   *  string is entirely in the other's case — so a properly-cased name from
+   *  TMDB, IMDb or any of the Polish scrapers passes through both unchanged, and
+   *  the order they compose in doesn't matter.
+   *
+   *  Interned last, so the pool holds the canonical DISPLAY spelling rather than
+   *  a separate instance per source casing. */
+  private def displayNames(names: Seq[String]): Seq[String] =
+    StringPool.canonicalAll(names.map(TextNormalization.titleCaseIfAllCaps).map(PersonName.capitalized))
 
   /** If `primary` doesn't currently exist in the cache, look for an existing
    *  row that already knows `primary.cleanTitle` (via its `cinemaTitles`

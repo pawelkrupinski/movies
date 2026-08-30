@@ -53,7 +53,13 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val minions = slots.find(_.slug == "minions-3").value
     // content_cast is a 9-name comma list, split + trimmed.
     minions.cast should have size 9
-    minions.cast should contain("christoph waltz")
+    // Flicks emits the blob's names ENTIRELY LOWERCASE ("christoph waltz"), which
+    // is how they used to be stored and rendered. Capitalised at the parse
+    // boundary now, so the raw lowercase spelling must no longer survive.
+    minions.cast should contain("Christoph Waltz")
+    minions.cast should not contain "christoph waltz"
+    minions.cast should contain("Pierre Coffin")
+    minions.cast.foreach(name => name.headOption.map(_.isUpper) shouldBe Some(true))
     // content_genre "kids & family" — jsoup decodes the &amp;, one entry, no comma.
     minions.genres shouldBe Seq("kids & family")
     // A multi-genre film confirms the comma split.
