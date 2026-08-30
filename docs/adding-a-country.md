@@ -192,12 +192,20 @@ into a sibling's pod will OOM or throttle it.
    deploy:
 
    ```
-   mongosh "$MONGO_ROOT_URI"   # authSource=admin
-   db.getSiblingDB("admin").grantRolesToUser(
+   mongosh "$MONGO_ROOT_URI"   # tunnelled to mongo-1 on 127.0.0.1:27017, authSource=admin
+   db.getSiblingDB("kinowo").grantRolesToUser(
      "kinowo_app", [{ role: "readWrite", db: "kinowo_<cc>" }])
    ```
 
-   This bit the UK and German rollouts in exactly the same way, twice.
+   **`getSiblingDB("kinowo")`, not `admin`** — `kinowo_app` authenticates against
+   `authSource=kinowo`, so the user record lives in the `kinowo` database and a
+   grant issued against `admin` fails with "User kinowo_app@admin not found".
+   Check it with `db.getSiblingDB("kinowo").getUser("kinowo_app")`; the roles
+   should read `readWrite@kinowo, @kinowo_de, @kinowo_uk, @kinowo_us, …`.
+
+   This bit the UK and German rollouts in exactly the same way, and was still
+   missing for the US on 2026-08-30 — the failure is silent, so nothing reminds
+   you: both tiers boot, pass their health checks, and do nothing.
 3. **Add its scrape target** to `infra/nix/files/monitoring/scrape-kinowo-apps.yaml`
    (`10.20.0.12:<nodePort>`, labelled `country: <cc>`), and its Deployment name to
    `fleet.k8sDeploy.targets` in `infra/nix/modules/roles/k8s-deploy.nix` so CI can
@@ -238,6 +246,33 @@ record, and the `webUrl` flip.
    terminates TLS — k3s runs with traefik and servicelb disabled — so Caddy on the
    node *is* the ingress, and the pod's NodePort stays unreachable from outside
    (the firewall opens 22/80/443 and nothing else).
+
+   ⚠️ **MERGING THIS DOES NOT DEPLOY IT, AND NOTHING WILL DEPLOY IT FOR YOU.** CI
+   only STAGES NixOS closures (`nix-stage-closures.yaml` never activates), and
+   `fleet/auto-apply.nix` activates only changes that disturb no running unit. A
+   new vhost changes `caddy.service`, so auto-apply refuses it by design and logs:
+
+   ```
+   nixos-auto-apply: blocked (units_would_change): 1 systemd unit(s) differ, so this
+   switch would disturb running services: caddy.service.d/overrides.conf. Deploy it by hand.
+   ```
+
+   Until someone activates it the country's host has DNS and a running pod but no
+   vhost, so it answers with another site's certificate or a TLS error — and every
+   other check looks green. Activate on `k3s-worker-1` (`204.168.140.213`):
+
+   ```
+   S=$(readlink -f /var/lib/nixdeploy/staged-system)
+   grep -c '<cc>.showtimes.cc' $S/etc/caddy/caddy_config   # confirm you're activating the right closure
+   nix-env -p /nix/var/nix/profiles/system --set $S && $S/bin/switch-to-configuration switch
+   ```
+
+   This RESTARTS Caddy, which briefly interrupts TLS for **every** country's site,
+   not just the new one. It is seconds, and it is the accepted cost — but say so
+   out loud afterwards rather than letting an unexplained blip pass.
+
+   Check `journalctl -u nixos-auto-apply.service` for the classifier's verdict
+   before assuming a nix change landed.
 4. **A DNS A record at OVH**, `<cc>.showtimes.cc → 204.168.140.213`, **before** the
    first deploy. Caddy issues certificates over ACME HTTP-01, so a name that does
    not yet resolve fails issuance and the visitor gets a hard TLS error rather than
@@ -277,6 +312,26 @@ record, and the `webUrl` flip.
    `infra/kubernetes/apply.sh web <cc>` and let CI pin builds after that. Never
    plain `kubectl apply` — `apply.sh` exists to stop an apply reverting the pinned
    image to `:latest`.
+
+   **Pass the image ref explicitly on a first-ever apply**:
+   `apply.sh web <cc> ghcr.io/pawelkrupinski/movies-web:<sha>`. With no Deployment
+   to read a pin from, `apply.sh` correctly lets the manifest value stand — and
+   that value is the `:latest` PLACEHOLDER, which is not what you want a brand-new
+   country pinned to. Pick a `<sha>` you have confirmed contains the new country
+   (`git merge-base --is-ancestor <your-commit> <sha>`); on a busy day several
+   pushes land at once and CI cancels superseded builds, so the newest GREEN image
+   is often a later commit than yours.
+
+   **Two host-topology traps worth knowing before you debug anything:**
+   - `apply.sh` talks to the k3s API at `root@2.28.52.210`, which is
+     **`monitoring-1`** — the control plane, running Grafana's Caddy. The pods,
+     their NodePorts, and the PUBLIC Caddy all live on **`k3s-worker-1`**
+     (`204.168.140.213` / `10.20.0.12`). Curling a web NodePort from the API host
+     returns nothing for every country, including the ones serving perfectly.
+   - The app containers have **no `curl`**, so `kubectl exec … curl` fails with
+     `executable file not found`. Verify a new country from OUTSIDE
+     (`curl https://<cc>.showtimes.cc/`) or from its logs — `MongoConnection
+     connected to kinowo_<cc>` is the line that proves the grant in phase 3 worked.
 
 ## 5. Localization
 
@@ -413,7 +468,24 @@ of a role while rejecting another's, so this can't regress silently.
 ## 8. Ship
 
 Provision everything (phases 3–4) **before** merging, so the deploy legs have live
-targets. Merge to `main` → CI builds once and deploys every leg. Verify each new
+targets. If you cannot — the US was merged first, because its images had to exist
+before its Deployments could be pinned to them — then create the Deployments
+promptly afterwards and know what the gap looks like: `k8s-deploy.nix` names
+`worker-<cc>`/`web-<cc>` as roll targets from the moment it merges, so between
+merge and `apply.sh` CI is trying to roll Deployments that do not exist yet.
+
+**The order that actually works, and why each step precedes the next:**
+
+1. **Mongo grant** (phase 3) — nothing works without it and it fails silently.
+2. **DNS A record** (phase 4) — must resolve BEFORE Caddy tries ACME, or issuance
+   fails and Let's Encrypt rate-limits the failure.
+3. **Merge**, and wait for a GREEN image build whose SHA contains your commit.
+4. **`apply.sh worker <cc> <image>` and `apply.sh web <cc> <image>`** — explicit
+   image ref, per phase 4.8.
+5. **Activate the staged NixOS closure by hand** for the Caddy vhost (phase 4.3).
+   Auto-apply will NOT do this for you and the site is not reachable until it is
+   done — this is the step most likely to be forgotten, because every other
+   indicator is already green. Merge to `main` → CI builds once and deploys every leg. Verify each new
 machine is `started` + `/health` passing, the worker connected to `kinowo_<cc>`
 (hydrate logs), and the web app serves the repertoire. Watch the worker's
 credit/steal for the first warm window.
