@@ -521,32 +521,6 @@ object RealHttpFetch {
       minRequestInterval = Some(Duration.ofMillis(200)),
       paceKnob           = Some("KINOWO_FLICKS_US_PACE_MS"),
     ),
-    // Regal (www.regmovies.com) — the ~400 US venues moved off flicks.us onto the
-    // chain's own origin. It needs its own row for the same reason flicks.us does:
-    // rows match by host SUFFIX, so nothing above matches this host and without a
-    // row it would be entirely UNPACED.
-    //
-    // 500ms rather than flicks' 200ms, and the reason is that this client BATCHES.
-    // One request carries a whole batch of theatre codes (see `RegalVenues`), so a
-    // full sweep is ~555 requests rather than the ~24,000 the same venues cost one
-    // at a time — the pace no longer sets the sweep length, and at 2 req/s the
-    // whole chain's listing is fetched in ~5 minutes. With so little to gain from
-    // going faster, the interval is set where a shared origin is comfortable rather
-    // than at the edge of what it tolerates.
-    //
-    // That tolerance is NOT measured, unlike flicks': every probe of this origin
-    // goes through Zyte (below), so what we can observe is Zyte's pacing, not
-    // Regal's. Hence the knob — if this turns out to be needlessly slow, or if
-    // Regal starts throttling, it retunes from /admin/config without a redeploy.
-    //
-    // Note the pace gate sees the ORIGIN host even though the request physically
-    // leaves via Zyte, because the gate keys on the URL being fetched. That is the
-    // behaviour we want: it is Regal's origin we are being polite to.
-    HostPolicy(
-      Set("regmovies.com"),
-      minRequestInterval = Some(Duration.ofMillis(500)),
-      paceKnob           = Some("KINOWO_REGAL_PACE_MS"),
-    ),
 
     // ── US mid-tier chain origins ────────────────────────────────────────────
     // Each of the three rows below exists because rows match by host SUFFIX and
@@ -585,36 +559,6 @@ object RealHttpFetch {
       Set("landmarktheatres.com"),
       minRequestInterval = Some(Duration.ofMillis(500)),
       paceKnob           = Some("KINOWO_LANDMARK_PACE_MS"),
-    ),
-    // AMC Theatres — 519 US venues moved off flicks.us onto the chain's own
-    // origins (see `services.cinemas.us.AmcClient`). The suffix covers BOTH hosts the
-    // scrape touches, `www.amctheatres.com` (one venue page per scrape, for the
-    // day list) and `graph.amctheatres.com` (one GraphQL POST per advertised
-    // day), because `hostMatches` accepts a dotted sub-domain. They still pace
-    // INDEPENDENTLY — `RateLimitedHttpFetch` buckets by full hostname, not by
-    // policy row — which is what we want: the ~519 index GETs must not queue
-    // behind the ~47k day POSTs that carry the sweep.
-    //
-    // A row is not optional here. Policy rows match by host SUFFIX, so a host
-    // with none of its own is entirely UNPACED — the exact condition behind the
-    // UK's self-inflicted 429 storm, and this chain is 519 venues.
-    //
-    // 250ms is a DEFENSIVE default, not a measured ceiling — unlike the flicks
-    // rows above, nothing here is fitted to observed throttling. What is known
-    // (2026-08-30): ~30 probe requests across both hosts returned 200 with no
-    // 429/403 and no stalling, which establishes that the origin tolerates our
-    // access at all and nothing more. So this sits just under the flicks pace we
-    // DO have evidence for, on the reasoning that a national chain's own CDN has
-    // at least an aggregator's capacity. It is deliberately cheap to be wrong
-    // about: at 250ms the whole 519-venue sweep is ~3.3h, comfortably inside the
-    // US worker's 840-min cadence, so there is room to slow down without the
-    // sweep overrunning. Tune it against panel-14 of kinowo-worker-diag (throttle
-    // %) rather than assuming it holds; `KINOWO_AMC_PACE_MS` makes that a flip on
-    // `/admin/config` instead of a redeploy.
-    HostPolicy(
-      Set("amctheatres.com"),
-      minRequestInterval = Some(Duration.ofMillis(250)),
-      paceKnob           = Some("KINOWO_AMC_PACE_MS"),
     ),
   )
 

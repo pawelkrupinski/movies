@@ -147,25 +147,24 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     // A UK venue's fallback must name the UK market — looking it up on flicks.us 404s.
     c.flicksFallbackSlugs.get(CineworldSheffield).value.market shouldBe FlicksMarket.UnitedKingdom
     // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 102 = 343 UK,
-    // plus the US chain venues:
-    //   Regal 401 + AMC 519 + Alamo 40 + Landmark 26 + Showcase US 13 = 999.
+    // plus the US chain venues that are reachable without Zyte:
+    //   Alamo 40 + Landmark 26 + Showcase US 13 = 79.
     // Every one of them is own-site PRIMARY with flicks.us kept as the fallback, so
     // this total moves whenever a chain is added, dropped, or a venue map changes.
+    // AMC and Regal are NOT among them — see the US chain test below for why.
     ChainFlicksFallback.ukSlugs should have size 343
-    c.flicksFallbackSlugs should have size 343 + 999
+    c.flicksFallbackSlugs should have size 343 + 79
 
-    // Regal's US venues are the same arrangement on the other market: own-site
-    // chain client as PRIMARY, flicks.US kept as the fallback. Named explicitly
-    // (not just covered by the loop below) so wiring them to some other chain
-    // client, or leaving them on the aggregator, fails here.
+    // Regal stays ON the aggregator, and must NOT carry a fallback entry either —
+    // a flicks primary with a flicks fallback would just re-fetch the same URL on
+    // failure. See the US chain test below for why it is not own-site.
     val northHollywood = UsRoster.flicksSlugByCinema
       .collectFirst { case (cinema, "regal-north-hollywood") => cinema }.value
-    c.all.find(_.cinema == northHollywood).value shouldBe a [RegalClient]
-    c.flicksFallbackSlugs.get(northHollywood).value.slug shouldBe "regal-north-hollywood"
-    c.flicksFallbackSlugs.get(northHollywood).value.market shouldBe FlicksMarket.UnitedStates
+    c.all.find(_.cinema == northHollywood).value shouldBe a [FlicksClient]
+    c.flicksFallbackSlugs.get(northHollywood) shouldBe None
 
-    // A Regal location Regal's own roster no longer lists keeps flicks.us as its
-    // PRIMARY, so it must NOT also carry a fallback entry.
+    // A Regal location Regal's own roster no longer lists is on flicks.us for a
+    // second, independent reason, and carries no fallback entry either.
     val sonora = UsRoster.flicksSlugByCinema
       .collectFirst { case (cinema, "regal-sonora") => cinema }.value
     c.all.find(_.cinema == sonora).value shouldBe a [FlicksClient]
@@ -193,14 +192,24 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     primaryFor("Landmark Nuart Theatre") shouldBe a [GatsbyBoxOfficeClient]
     primaryFor("Showcase Legacy Place Dedham") shouldBe a [GatsbyBoxOfficeClient]
 
-    // AMC is the same arrangement at the largest scale — 519 of its 532 venues are
-    // own-site primary. The 13 AMC locations absent from AMC's own roster (closed
-    // or sold) must STAY on flicks.us: a chain map is not a licence to assume every
-    // venue bearing the brand is still served by it.
-    primaryFor("AMC Town Center 20") shouldBe a [AmcClient]
-    val amcPrimaries = c.all.count(_.isInstanceOf[AmcClient])
-    amcPrimaries shouldBe 519
+    // AMC is the exception: its origins are GEO-FENCED to the United States.
+    // www.amctheatres.com and graph.amctheatres.com answer 200 to a US IP and
+    // refuse every European one — measured 2026-08-30 from a Polish residential IP
+    // (403 Cloudflare on 29 of 29 sampled venues, `/robots.txt` included), from the
+    // Decodo pool (connection reset) and from Zyte's FI/DE/GB/PL pools, against 200
+    // on Zyte US. The worker egresses from Hetzner Helsinki, so `flicksFetch` — the
+    // Decodo residential path AmcClient was wired through — cannot reach it: in
+    // prod it produced 144 failures and ZERO usable scrapes before being reverted.
+    //
+    // Regal (www.regmovies.com) is geo-fenced the same way and fails on the same
+    // three paths. Zyte's default pool DOES clear it, which is how it was wired —
+    // but flicks.us already serves every one of these venues, so Zyte is a cost
+    // with an alternative rather than a last resort, and both chains sit on the
+    // aggregator until a US egress exists.
+    primaryFor("AMC Town Center 20") shouldBe a [FlicksClient]
     primaryFor("AMC CLASSIC Farmington 4") shouldBe a [FlicksClient]
+    c.all.count(_.isInstanceOf[AmcClient]) shouldBe 0
+    c.all.count(_.isInstanceOf[RegalClient]) shouldBe 0
 
     val usFallbacks = c.flicksFallbackSlugs.filter { case (cin, _) =>
       UsChainVenues.all.contains(cin.displayName)

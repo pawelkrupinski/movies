@@ -6,9 +6,8 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, VueCinemas
 import services.cinemas.de.WebediaShowtimesClient
 import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket}
-import services.cinemas.us.{RegalClient, RegalVenues}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
-import services.cinemas.us.{AlamoDrafthouseClient, AmcClient, AmcVenueMap, UsChainVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.movies.TitleNormalizer
 
 import java.time.{LocalDate, ZoneId}
@@ -444,22 +443,6 @@ class CinemaScraperCatalog(
 
   private def flicksIn(market: FlicksMarket, slug: String, cinema: Cinema): FlicksClient =
     new FlicksClient(flicksFetch, slug, cinema, market, today = Some(today))
-
-  // AMC Theatres — the catalogue PRIMARY for the 519 US venues AMC serves from
-  // its own origin, with flicks.us kept as the aggregator fallback (see
-  // `amcFlicksFallback` + `WorkerWiring.recordingScraper`).
-  //
-  // Through `flicksFetch`, NOT `http`, for the same reason Cineworld is: AMC sits
-  // behind Cloudflare and hard-blocks non-residential clients — every AMC host
-  // (www, graph and the legacy api) answered a probe from a plain datacenter/ISP
-  // egress with a Cloudflare "Sorry, you have been blocked" WAF page on
-  // 2026-08-30, while the same requests over a residential path returned 200. It
-  // is GET+POST but carries no cookie, so per-venue (default host+path)
-  // stickiness is right — nothing has to share an IP, and the per-date POSTs
-  // spread the sweep across the pool. A proxy that can't get through rolls to the
-  // flicks fallback, which is no worse than today.
-  private def amc(marketSlug: String, theatreSlug: String, cinema: Cinema): AmcClient =
-    new AmcClient(flicksFetch, marketSlug, theatreSlug, cinema, today = Some(today))
 
   // UK chain own-site clients — the catalogue PRIMARY for their venues, with
   // flicks.co.uk kept as the aggregator fallback (see [[ChainFlicksFallback]] +
@@ -1534,34 +1517,6 @@ class CinemaScraperCatalog(
     new GatsbyBoxOfficeClient(http, baseUrl, venue.theaterId, cinema,
       timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = today)
 
-  // Regal's ~400 US venues scrape their OWN origin (regmovies.com) instead of the
-  // paced flicks.us aggregator, which frees that much of the US sweep's shared
-  // budget for the other ~4,600 venues.
-  //
-  // Through the Mongo-backed chain cache wrapped around `zyteFetch`, and BOTH
-  // parts matter:
-  //   - Zyte, because Regal's Cloudflare edge 403s our datacenter IP, the Decodo
-  //     residential proxy AND the JVM client alike (verified 2026-08-30 across
-  //     every path, `/robots.txt` included). It is the biletyna/Kryterium shape,
-  //     not the flicks one — the proxy does not clear this block.
-  //   - the shared cache, because `RegalClient` asks for its whole BATCH of
-  //     theatre codes in one request, so the ~80 venues in a batch build the
-  //     identical URL and collapse to ONE upstream fetch per (batch, date),
-  //     across worker processes. That is what turns ~24,000 requests per sweep
-  //     into ~555 — and since every one of them is billed by Zyte, the request
-  //     count is a cost question, not just a rate one.
-  //
-  // 3h rather than the detail caches' 2-6h: this cache holds LISTINGS, so its TTL
-  // is how stale a venue's programme may be, and a Regal sweep at this pace takes
-  // ~5 minutes of gate time — far inside 3h, so one sweep still shares one fetch.
-  // A date re-fetched two or three times across a long cycle costs a few hundred
-  // requests against the 24,000 saved, so this biases to freshness.
-  val regalCacheTtl: FiniteDuration = 3.hours
-  private val regalHttp: HttpFetch = chainDetailCache("regal", zyteFetch, regalCacheTtl)
-
-  private def regal(theatreCode: String, cinema: Cinema): RegalClient =
-    new RegalClient(regalHttp, theatreCode, cinema, today)
-
   /** The chain-primary scraper for a US venue, or `None` when it stays on Flicks.
    *
    *  The mid-tier chains key off the venue's DISPLAY NAME (their own rosters name
@@ -1575,14 +1530,6 @@ class CinemaScraperCatalog(
     UsChainVenues.alamoDrafthouse.get(name).map(alamo(_, cinema))
       .orElse(UsChainVenues.showcaseUs.get(name).map(webedia(GatsbyBoxOfficeClient.ShowcaseUsBaseUrl, _, cinema)))
       .orElse(UsChainVenues.landmark.get(name).map(webedia(GatsbyBoxOfficeClient.LandmarkBaseUrl, _, cinema)))
-      .orElse(
-        models.UsRoster.flicksSlugByCinema.get(cinema)
-          .flatMap(RegalVenues.theatreCodeBySlug.get)
-          .map(regal(_, cinema)))
-      .orElse(
-        models.UsRoster.flicksSlugByCinema.get(cinema)
-          .flatMap(AmcVenueMap.byFlicksSlug.get)
-          .map { case (marketSlug, theatreSlug) => amc(marketSlug, theatreSlug, cinema) })
   }
 
   private val usBaseByCity: Map[String, Seq[CinemaScraper]] =

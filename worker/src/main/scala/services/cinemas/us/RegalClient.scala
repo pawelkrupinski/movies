@@ -9,8 +9,23 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /**
- * Regal Cinemas — the United States' largest chain (~400 venues), moved off the
- * `flicks.us` aggregator and onto Regal's own origin.
+ * Regal Cinemas — the United States' largest chain (~400 venues).
+ *
+ * ⚠ NOT WIRED. This client is complete and fixture-tested, but `www.regmovies.com`
+ * is GEO-FENCED to the United States and this worker egresses from Hetzner
+ * Helsinki. Measured 2026-08-30: 403 direct, 403 from every Decodo pool IP, and
+ * failure from Zyte's FI pool. Zyte's DEFAULT pool does clear it (200 on the real
+ * batch endpoint, three for three, `datesWithShows` present) and that is how it was
+ * originally wired — but flicks.us already serves every one of these venues, so
+ * Zyte here is a per-request cost with a working alternative rather than a last
+ * resort. `CinemaScraperCatalog` therefore leaves every Regal venue on flicks.us.
+ *
+ * Re-wire it the moment a US egress exists — that is the ONLY thing missing.
+ * Note the `detailCache-regal` Mongo collection is now orphaned; it carries a TTL
+ * and no reader, so it drains on its own.
+ *
+ * It was moved off the aggregator in the first place because every venue served
+ * from its chain origin is a venue removed from the shared flicks.us budget.
  *
  * Regal is Cineworld-owned, so the obvious first guess was that it serves the
  * same `quickbook` data API [[services.cinemas.uk.CineworldClient]] and Cinema

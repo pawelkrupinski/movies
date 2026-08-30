@@ -8,11 +8,27 @@ import java.time.{LocalDate, ZoneId}
 
 /**
  * AMC Theatres — the largest US chain (523 theatres on its own roster, 519 of
- * which we carry). Moved off the `flicks.us` aggregator and onto AMC's own
- * origins, because every venue served from its chain origin is a venue removed
- * from the shared flicks.us budget: that host throttles per Cloudflare ZONE at
- * ~3-5 req/s for our whole process no matter the egress IP, and the US roster
- * (5,031 venues) sits right at that ceiling.
+ * which we carry).
+ *
+ * ⚠ NOT WIRED. This client is complete and fixture-tested, but AMC's origins are
+ * GEO-FENCED to the United States and this worker egresses from Hetzner Helsinki,
+ * so it is currently unreachable and `CinemaScraperCatalog` leaves every AMC venue
+ * on `flicks.us`. Measured 2026-08-30: 403 Cloudflare from a Polish residential IP
+ * on 29 of 29 sampled venue pages (`/robots.txt` included), connection reset from
+ * every Decodo pool IP, failure from Zyte's FI/DE/GB/PL pools — and 200 from Zyte
+ * US on both `www` and `graph`. In prod it produced 144 failures and ZERO usable
+ * scrapes between the 09:20Z rollout and the revert; every AMC film on the site
+ * came, and still comes, from flicks.us.
+ *
+ * Re-wire it the moment a US egress exists — that is the ONLY thing missing.
+ * Routing it through `zyteFetch` the way [[RegalClient]] does is NOT the answer:
+ * Regal batches ~80 venues per request (~555 calls per sweep), while AMC's GraphQL
+ * takes a single `date` and would bill ~47k Zyte requests per sweep.
+ *
+ * It was moved off the aggregator in the first place because every venue served
+ * from its chain origin is a venue removed from the shared flicks.us budget: that
+ * host throttles per Cloudflare ZONE at ~3-5 req/s for our whole process no matter
+ * the egress IP, and the US roster (5,031 venues) sits right at that ceiling.
  *
  * TWO origins, because AMC splits the listing:
  *
