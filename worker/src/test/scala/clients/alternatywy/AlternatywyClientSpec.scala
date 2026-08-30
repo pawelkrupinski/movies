@@ -73,6 +73,24 @@ class AlternatywyClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     d.synopsis.value  should include("Finn")
   }
 
+  /** The same block, one line lower. Alternatywy prefixes a strand banner ("Skarby Teatru
+   *  Telewizji") above the credits on its cycle screenings, which pushes "reżyseria:" off
+   *  the first line — and the parser used to require the h2 to START with it, so it found
+   *  nothing at all: no director, no country, no year.
+   *
+   *  That silence is expensive. `Makbet` is a title TMDB holds six films under (1969,
+   *  2010, undated, 2024, plus two English "Macbeth"), and with no year and no director the
+   *  resolver has nothing to choose on. Production picked the 2010 stub — the wrong film —
+   *  and the row is stuck there. Andrzej Wajda + 1969 is exactly what tells them apart. */
+  it should "read the credits when a strand banner sits above them" in {
+    val d = client.fetchFilmDetail(
+      "https://alternatywy.art/makbet-skarby-teatru-telewizji-rezyseria-andrzej-wajda-polska-1969-" +
+      "spotkanie-z-magdalena-zawadzka-i-projekcja-spektaklu/").value
+    d.director    should contain("Andrzej Wajda")
+    d.countries   should contain("Polska")
+    d.releaseYear shouldBe Some(1969)
+  }
+
   it should "expose itself as a deferred DetailEnricher resolving TMDB from the listing" in {
     client                       shouldBe a[services.cinemas.common.DetailEnricher]
     client.detailGroup           shouldBe "kino-alternatywy"

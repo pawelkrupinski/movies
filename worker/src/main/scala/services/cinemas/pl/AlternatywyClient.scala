@@ -151,20 +151,36 @@ object AlternatywyClient {
 
   /** Parse a `/<slug>/` detail page into a [[FilmDetail]]. The synopsis prose is
    *  the post-content widget; the director + production countries/year sit in a
-   *  single `h2.elementor-heading-title` ("reżyseria: <dir> <br> <countries> <year>"). */
+   *  single `h2.elementor-heading-title` ("reżyseria: <dir> <br> <countries> <year>").
+   *
+   *  The credits are NOT always the first line of that heading. A cycle screening
+   *  prefixes its strand banner above them —
+   *
+   *    Skarby Teatru Telewizji <br> reżyseria: Andrzej Wajda <br> Polska 1969 <br> …
+   *
+   *  — and requiring the heading to START with "reżyseria" found nothing at all on
+   *  those pages: no director, no country, no year. That silence is expensive on
+   *  exactly the rows that can least afford it. Alternatywy's cycle programme is
+   *  retrospective, so its titles are the ambiguous ones: TMDB holds SIX films called
+   *  "Makbet" (1969, 2010, undated, 2024, and two English "Macbeth"), and with no
+   *  year and no director the resolver has nothing to choose on — production picked
+   *  the 2010 stub and the row stuck there. So find the LINE carrying the credit,
+   *  wherever it sits, and read the production meta off the line below IT rather than
+   *  off a fixed index. */
   private[cinemas] def parseDetail(html: String): FilmDetail = {
     val doc      = Jsoup.parse(html)
     val synopsis = Option(doc.selectFirst("div.elementor-widget-theme-post-content div.elementor-widget-container"))
       .map(el => ScraperParse.cleanSynopsis(el)).filter(_.length > 20)
-    val (director, countries, year) = doc.select("h2.elementor-heading-title").asScala
-      .find(_.text.trim.toLowerCase(Locale.ROOT).startsWith("reżyseria"))
-      .map { h2 =>
-        val lines    = h2.html.split("(?i)<br\\s*/?>").iterator.map(p => Jsoup.parse(p).text.trim).filter(_.nonEmpty).toSeq
-        val dir      = lines.headOption.map(_.replaceFirst("(?i)^reżyseria:?\\s*", ""))
-                         .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-        val (cs, yr) = lines.drop(1).headOption.map(ScraperParse.productionMeta).getOrElse((Nil, None))
-        (dir, cs, yr)
-      }.getOrElse((Seq.empty, Nil, None))
+    val credited = doc.select("h2.elementor-heading-title").asScala.iterator
+      .map(h2 => h2.html.split("(?i)<br\\s*/?>").iterator.map(p => Jsoup.parse(p).text.trim).filter(_.nonEmpty).toSeq)
+      .map(lines => (lines, lines.indexWhere(_.toLowerCase(Locale.ROOT).startsWith("reżyseria"))))
+      .find { case (_, at) => at >= 0 }
+    val (director, countries, year) = credited.map { case (lines, at) =>
+      val dir      = lines(at).replaceFirst("(?i)^reżyseria:?\\s*", "")
+                       .split(",").map(_.trim).filter(_.nonEmpty).toSeq
+      val (cs, yr) = lines.lift(at + 1).map(ScraperParse.productionMeta).getOrElse((Nil, None))
+      (dir, cs, yr)
+    }.getOrElse((Seq.empty, Nil, None))
     FilmDetail(synopsis = synopsis, director = director, countries = countries, releaseYear = year)
   }
 }
