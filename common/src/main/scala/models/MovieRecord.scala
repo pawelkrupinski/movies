@@ -427,13 +427,34 @@ case class MovieRecord(
       .flatMap(s => data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator)
 
   /** Longest non-empty cast list across all sources (ties broken by source
-   *  priority — see `synopsis`). */
+   *  priority — see `synopsis`), spelled the way TMDB spells the names it
+   *  carries.
+   *
+   *  The two halves answer different questions. WHICH names: the longest list,
+   *  which is usually a scraped one, because TMDB caps `fullDetails.cast` at a
+   *  top-N and a nine-name listing beats its five. HOW they are spelled: TMDB,
+   *  for every name it knows — otherwise we show a scraper's `Leonardo Dicaprio`
+   *  while holding `Leonardo DiCaprio` in a slot on the same record.
+   *  `tools.PersonName` cannot close that gap (no rule over the letters alone
+   *  knows about a capital inside a word), and the alignment neither adds,
+   *  drops, nor reorders a name. See [[tools.CreditSpelling]]. */
   def cast: Seq[String] =
-    prioritized.iterator.map(_._2.cast).filter(_.nonEmpty).toSeq.sortBy(-_.length).headOption.getOrElse(Seq.empty)
+    tools.CreditSpelling.alignedTo(
+      prioritized.iterator.map(_._2.cast).filter(_.nonEmpty).toSeq.sortBy(-_.length).headOption.getOrElse(Seq.empty),
+      slotCredits(Tmdb, _.cast))
 
-  /** First non-empty director list across sources in priority order. */
+  /** First non-empty director list across sources in priority order, spelled the
+   *  way TMDB spells it — same reasoning as [[cast]], and the same authority. A
+   *  cinema outranks TMDB here, so without this a venue's `Cecil B. Demille`
+   *  displays over the TMDB slot's `Cecil B. DeMille` sitting beside it. */
   def director: Seq[String] =
-    prioritized.iterator.map(_._2.director).find(_.nonEmpty).getOrElse(Seq.empty)
+    tools.CreditSpelling.alignedTo(
+      prioritized.iterator.map(_._2.director).find(_.nonEmpty).getOrElse(Seq.empty),
+      slotCredits(Tmdb, _.director))
+
+  /** One source slot's cast or director list, empty when the slot is absent. */
+  private def slotCredits(source: Source, credits: SourceData => Seq[String]): Seq[String] =
+    data.get(source).map(credits).getOrElse(Seq.empty)
 
   /** First non-None runtime across sources in priority order. */
   def runtimeMinutes: Option[Int] =

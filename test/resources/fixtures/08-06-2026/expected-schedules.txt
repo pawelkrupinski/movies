@@ -2583,7 +2583,7 @@ releaseYear:       2026
 countries:         USA, Polska
 posterUrl:         https://www.kinomalta.pl/wp-content/uploads/2026/05/ERUPCJA_B1_PL-po-zmniejszeniu-200x288.jpg
 synopsis.length:   845
-cast:              Lena Góra, Charli XCX, Will Madden, Jeremy O. Harris, Agata Trzebuchowska
+cast:              Lena Góra, Charli xcx, Will Madden, Jeremy O. Harris, Agata Trzebuchowska
 director:          Pete Ohs
 tmdbId:            1337592
 imdbId:            tt33712666
@@ -5452,7 +5452,7 @@ releaseYear:       2026
 countries:         USA
 posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7478S2R.jpg
 synopsis.length:   321
-cast:              KARL URBAN, ADELINE RUDOLPH, LEWIS TAN, JESSICA MCNAMEE, JOSH LAWSON, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, MARTYN FORD, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG
+cast:              Karl Urban, Adeline Rudolph, LEWIS TAN, Jessica McNamee, Josh Lawson, TADANOBU ASANO, MEHCAD BROOKS, LUDI LIN, DAMON HERRIMAN, TATI GABRIELLE, Martyn Ford, CHIN HAN, JOE TASLIM, HIROYUKI SANADA, DESMOND CHIAM, ANA THU NGUYEN, MAX HUANG
 director:          Simon McQuoid
 tmdbId:            931285
 imdbId:            tt17490712
@@ -7609,7 +7609,7 @@ countries:         Turcja, Rosja
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_delfinek_i_ja.jpg
 synopsis.length:   150
 cast:              Полина Авдеенко, Юлия Рудина, Юлия Зоркина, Александр Васильев, Борис Хасанов
-director:          Mohammad Kheirandish
+director:          Mohammad KheirAndish
 tmdbId:            1450374
 imdbId:            tt35624638
 originalTitle:     پسر دلفینی ۲
