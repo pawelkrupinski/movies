@@ -74,6 +74,25 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     caller should include("uses: ./.github/workflows/country-convergence-leg.yml")
   }
 
+  /** The recorder's CREDENTIAL, pinned for the same reason as its matrix.
+   *
+   *  `mongo-ci-read.nix` documents the `db.createUser` an operator runs on mongo-1 — the
+   *  role is explicit that it does NOT create the user itself — and that command names the
+   *  country databases one by one. It is therefore a third hand-maintained list of the
+   *  same countries, and it rotted exactly like the other two: the recorder's US leg
+   *  failed with `not authorized on kinowo_us` while the other three succeeded, because
+   *  the reader holds `read` on three databases and there are four.
+   *
+   *  A doc comment cannot grant anything, so this does not make the grant happen — it
+   *  makes the omission VISIBLE at the same moment the country is modelled, instead of
+   *  the day someone runs the recorder and reads a stack trace. */
+  it should "document a read grant for every country database the recorder must read" in {
+    val role = RepoFile.read("infra/nix/modules/roles/mongo-ci-read.nix")
+    val granted = """role:\s*"read",\s*db:\s*"(\w+)"""".r
+      .findAllMatchIn(role).map(_.group(1)).toSet
+    granted shouldBe Country.all.map(_.mongoDb).toSet
+  }
+
   /** The leg's INPUT, pinned in the same breath as the leg.
    *
    *  A convergence leg with no recorded corpus is not a failing leg — it is a leg that

@@ -119,7 +119,21 @@ in
             pwd: "<the sops value>",
             roles: [ { role: "read", db: "kinowo"    },
                      { role: "read", db: "kinowo_uk" },
-                     { role: "read", db: "kinowo_de" } ] })
+                     { role: "read", db: "kinowo_de" },
+                     { role: "read", db: "kinowo_us" } ] })
+
+        ONE ROLE PER COUNTRY, and the list has to grow with `Country.all`. It did not when
+        the United States was added, and the failure is quiet in the worst way: the other
+        three countries record fine, the US leg dies with `not authorized on kinowo_us`,
+        and the recorder — correctly — refuses to write a fixture from a read that failed,
+        so what you see is "read came back empty across all 5031 catalogue cinemas". An
+        already-created user is amended rather than recreated:
+
+          db.getSiblingDB("admin").grantRolesToUser(
+            "kinowo-ci-corpus", [ { role: "read", db: "kinowo_us" } ])
+
+        `ConvergenceLegWiringSpec` pins this list against `Country.all` so a missing grant
+        fails a test rather than a nightly job.
       '';
     };
 
