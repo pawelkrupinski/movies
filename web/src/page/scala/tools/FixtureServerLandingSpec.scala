@@ -28,7 +28,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
 
-  private val html = FixtureServerMain.landingHtml
+  private val html = FixtureServerMain.renderLanding()
 
   private val rows = """<li><a href="/([^/"]+)/">""".r
     .findAllMatchIn(html).map(_.group(1)).toList

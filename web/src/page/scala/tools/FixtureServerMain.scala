@@ -53,14 +53,13 @@ object FixtureServerMain {
    *  The COPY still comes from the default country, which is why those specs read
    *  Polish nouns off the pages they land on.
    *
-   *  HOISTED OUT OF `main` SO A SPEC CAN SEE IT. It was a local `val`, and the
-   *  only thing asserting the union was a Playwright spec several CI shards away
-   *  — so narrowing this to one country compiled, passed every Scala layer, and
-   *  turned up as a 30s browser timeout with no obvious cause. `FixtureServerLandingSpec`
-   *  now says it in seconds. Nothing here reads request state, so it is a plain
-   *  value rather than a step of `main`.
+   *  A METHOD, SO A SPEC CAN CALL IT. The union was asserted nowhere but a
+   *  Playwright spec several CI shards away, so narrowing it to one country
+   *  compiled, passed every Scala layer, and surfaced as a 30s browser timeout
+   *  with nothing in it naming a fixture server; `FixtureServerLandingSpec` now
+   *  says it in two seconds.
    */
-  private[tools] lazy val landingHtml: String =
+  private[tools] def renderLanding(): String =
     views.html.landing(models.Country.default, Some(City.all)).body
 
   def main(args: Array[String]): Unit = {
@@ -167,6 +166,8 @@ object FixtureServerMain {
       Option.when(c.hasAreaChooser)(sub.takeWhile(_ != '?')).collect {
         case s if s.startsWith("/") && s.endsWith("/") => s.stripPrefix("/").stripSuffix("/")
       }.filterNot(_.contains('/')).flatMap(c.areaBySlug)
+
+    val landingHtml: String = renderLanding()
 
     val routes: PartialFunction[String, String] = {
       // Bare `/` → the city-selection landing (hard-cut: not a repertoire page).

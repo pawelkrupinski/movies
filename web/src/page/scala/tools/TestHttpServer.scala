@@ -34,8 +34,30 @@ class TestHttpServer(
     java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
       java.time.ZonedDateTime.of(2026, 5, 17, 0, 0, 0, 0, java.time.ZoneOffset.UTC))
   private val server: HttpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+
+  // THE CLASSLOADER OF WHOEVER BUILT THIS SERVER, pinned onto every handler
+  // thread below. Under `sbt runMain` the application's classes and its
+  // `reference.conf` / `application.conf` are reachable only through sbt's own
+  // loader, which sbt installs as the CONTEXT classloader of the thread running
+  // `main` — and nowhere else. `com.sun.net.httpserver` starts its own threads,
+  // which inherit the JVM's system loader instead, so anything a route renders
+  // that reaches for configuration by the context loader finds an empty config.
+  //
+  // What that looks like is worth spelling out, because it is unrecognisable:
+  // the first render to touch `routes.Assets.versioned` (every page does, via
+  // `_favicon`) initialises Play's global `StaticAssetsMetadata`, which reads
+  // `Configuration` and throws `No configuration setting found for key 'play'`
+  // with the origin "system properties" — the tell that `ConfigFactory.load()`
+  // found no reference.conf at all. Every route then fails identically, whatever
+  // it renders. It stayed hidden for as long as it did because `main` happened
+  // to render one page eagerly before serving, warming that global on the right
+  // thread; making that render lazy removed the warm-up and took the whole
+  // browser and mobile suite down at once (2026-08-30).
+  private val ownerLoader: ClassLoader = Thread.currentThread.getContextClassLoader
+
   server.createContext("/", new HttpHandler {
     override def handle(exception: HttpExchange): Unit = {
+      Thread.currentThread.setContextClassLoader(ownerLoader)
       try {
         val path = exception.getRequestURI.getPath
         val rawQ = exception.getRequestURI.getRawQuery
@@ -99,6 +121,24 @@ class TestHttpServer(
             exception.sendResponseHeaders(404, -1)
           }
         }
+      } catch {
+        // A THROWING ROUTE USED TO LEAVE NO TRACE AT ALL, AND THAT COST HOURS.
+        // Without this, the exception propagates into `com.sun.net.httpserver`,
+        // which closes the connection with no headers written and logs the
+        // throwable to a JUL logger that is off by default. What the other side
+        // sees is `net::ERR_EMPTY_RESPONSE` (Playwright) or NSURLError -1011
+        // (the iOS harness), on EVERY route at once, while the fixture server's
+        // own log says "listening" and nothing else — so the whole browser and
+        // mobile suite goes red pointing at a server that looks healthy. Hit on
+        // 2026-08-30. The stack trace goes to stderr, which CI already uploads
+        // as the `fixture-server-log-*` artifact.
+        case t: Throwable =>
+          System.err.println(s"[TestHttpServer] route ${exception.getRequestURI} threw:")
+          t.printStackTrace()
+          // Best-effort: if headers are already sent this throws in turn, and
+          // the client gets the truncated body it was always going to get. The
+          // trace above is the part that matters.
+          try exception.sendResponseHeaders(500, -1) catch { case _: Throwable => () }
       } finally exception.close()
     }
   })
