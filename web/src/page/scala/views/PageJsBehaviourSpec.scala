@@ -2820,11 +2820,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Modal up, one checkbox per area, all pre-checked.
       page.evalBool("!!document.getElementById('area-picker-overlay')") shouldBe true
-      page.evalInt("document.querySelectorAll('#area-picker-overlay input[type=checkbox]').length") shouldBe 2
-      page.evalBool("[...document.querySelectorAll('#area-picker-overlay input[type=checkbox]')].every(c => c.checked)") shouldBe true
+      page.evalInt("document.querySelectorAll('#area-picker-overlay input[data-area-slug]').length") shouldBe 2
+      page.evalBool("[...document.querySelectorAll('#area-picker-overlay input[data-area-slug]')].every(c => c.checked)") shouldBe true
 
       // Uncheck the second area and confirm.
-      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[type=checkbox]');" +
+      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[data-area-slug]');" +
         " cbs[1].checked = false; document.querySelector('#area-picker-overlay button').click(); })()")
 
       // Dismissed; that area's cinemas disabled; choice remembered.
@@ -2836,6 +2836,55 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Re-invoking is a no-op now (already chosen).
       page.eval("maybeShowAreaPicker()")
       page.evalBool("!document.getElementById('area-picker-overlay')") shouldBe true
+    }
+  }
+
+  // The master row above the areas — the picker's counterpart of the Filtry
+  // panel's `#cinema-all`. Deselect-all is the one that earns it: a metro with
+  // five or eighteen areas is faster cleared and re-ticked than unticked one
+  // row at a time.
+  it should "select and deselect every area from the master row" in {
+    onPath("/") { page =>
+      page.eval(
+        "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
+        "window.CINEMA_AREAS = [" +
+        "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
+        "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
+        "localStorage.removeItem('areasChosen:' + CURRENT_CITY);" +
+        "localStorage.setItem('disabledCinemas','[]'); maybeShowAreaPicker();"
+      )
+      def areasChecked = page.evalInt(
+        "[...document.querySelectorAll('#area-picker-overlay input[data-area-slug]')].filter(c => c.checked).length")
+      def clickAll()   = page.eval(
+        "(() => { const a = document.getElementById('area-picker-all');" +
+        " a.checked = !a.checked; a.onchange(); })()")
+
+      // Starts all-checked, mirroring the pre-selected areas.
+      page.evalBool("document.getElementById('area-picker-all').checked") shouldBe true
+      areasChecked shouldBe 2
+
+      // Deselect all, then select all again.
+      clickAll()
+      areasChecked shouldBe 0
+      clickAll()
+      areasChecked shouldBe 2
+
+      // Unticking one area drops the master to indeterminate; re-ticking it
+      // restores the full check.
+      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[data-area-slug]');" +
+        " cbs[1].checked = false; cbs[1].onchange(); })()")
+      page.evalBool("document.getElementById('area-picker-all').checked") shouldBe false
+      page.evalBool("document.getElementById('area-picker-all').indeterminate") shouldBe true
+      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[data-area-slug]');" +
+        " cbs[1].checked = true; cbs[1].onchange(); })()")
+      page.evalBool("document.getElementById('area-picker-all').checked") shouldBe true
+      page.evalBool("document.getElementById('area-picker-all').indeterminate") shouldBe false
+
+      // Deselect-all then confirm disables every cinema in the city.
+      clickAll()
+      page.eval("document.querySelector('#area-picker-overlay button').click()")
+      page.evalInt("JSON.parse(localStorage.getItem('disabledCinemas')).length") shouldBe
+        page.evalInt("ALL_CINEMAS.length")
     }
   }
 

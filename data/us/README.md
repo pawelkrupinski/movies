@@ -149,6 +149,18 @@ name on the venue too (`sub_areas_for_metro`, grouped by `UsMetroSubAreas`).
 Those five are too big to browse as one list, and their districts are the places
 a local names: Manhattan, Brooklyn, The Bronx and Staten Island fall out of the
 venues' own `city` values, as do Santa Monica, Pasadena and Long Beach.
+
+San Francisco alone then folds its districts onto REGIONS (`SUB_AREA_REGIONS`),
+because it is the only one of the five that is not a city. Manhattan is inside
+New York; San Jose is not inside San Francisco, and listed by their dominant
+towns the Bay's eighteen districts read as if it were. They fold onto the five
+regions a local browses the Bay by — San Francisco, East Bay, South Bay, North
+Bay, Peninsula — over the districts the clustering already found, so the
+geography is unchanged and only the buckets are renamed. The table must cover a
+listed metro exhaustively: a re-harvest that clusters a district it has no
+region for kills the generator rather than showing a stray town beside "East
+Bay".
+
 Everything it does is a pure
 function of `venues.json` — same input, byte-identical output — so re-running it
 on an unchanged file is a no-op and the diff after a re-harvest is only what the

@@ -16,6 +16,7 @@ nav.allCinemas=Wszystkie kina
 nav.country=Kraj produkcji
 areaPicker.title=Wybierz okolice
 areaPicker.subtitle=Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić w Filtrach.
+areaPicker.all=Wszystkie okolice
 areaPicker.confirm=Pokaż repertuar
 nav.genre=Gatunek
 nav.director=Reżyseria

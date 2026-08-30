@@ -10,8 +10,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +37,11 @@ import pl.kinowo.ui.theme.TextSecondary
  * default). Unchecking an area excludes its cinemas via [onConfirm]. Shown once
  * per city (the caller gates on `areaPickerSeenCities`). Mirrors the web's and
  * iOS's first-visit area picker.
+ *
+ * A master row heads the list — select all / deselect all in one tri-state
+ * checkbox, the same control the web picker and iOS's sheet carry. A metro like
+ * the Bay Area has enough areas that "clear them all, then tick the one I want"
+ * is the fastest way through the dialog.
  */
 @Composable
 internal fun AreaPickerDialog(
@@ -43,6 +51,10 @@ internal fun AreaPickerDialog(
     // All areas pre-selected.
     var kept by remember { mutableStateOf(catalog.areas.map { it.slug }.toSet()) }
     fun toggle(slug: String) { kept = if (slug in kept) kept - slug else kept + slug }
+    val allKept = kept.size == catalog.areas.size
+    // Select all / deselect all. A tap on a partly-filled master row selects
+    // everything first — what a user reaching for it while some are ticked means.
+    fun toggleAll() { kept = if (allKept) emptySet() else catalog.areas.map { it.slug }.toSet() }
 
     AlertDialog(
         // Back / outside tap accepts the current (default-all) selection so the
@@ -59,6 +71,28 @@ internal fun AreaPickerDialog(
                     color = TextSecondary, fontSize = 13.sp,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { toggleAll() }
+                        .testTag("areapicker.all"),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TriStateCheckbox(
+                        state = when {
+                            allKept        -> ToggleableState.On
+                            kept.isEmpty() -> ToggleableState.Off
+                            else           -> ToggleableState.Indeterminate
+                        },
+                        onClick = { toggleAll() },
+                    )
+                    Text(
+                        stringResource(R.string.areapicker_all),
+                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                HorizontalDivider(Modifier.padding(bottom = 4.dp))
                 catalog.areas.forEach { area ->
                     Row(
                         Modifier

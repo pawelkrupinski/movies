@@ -38,3 +38,40 @@ struct CinemaArea: Codable, Hashable, Identifiable {
 
     var id: String { slug }
 }
+
+/// The area picker's checkbox state: which of a split city's areas are kept.
+/// Seeded to ALL of them (the pre-selected default), so tapping straight
+/// through the sheet shows everything.
+///
+/// Lives beside the catalog rather than as `@State` inside `AreaPickerSheet` so
+/// the select-all / deselect-all rules are testable under `swift test` — the
+/// sheet is SwiftUI and out of `KinowoCore`. Mirrors the web picker's master
+/// checkbox (`#area-picker-all` in `shared.js`) and Android's `AreaPickerDialog`.
+struct AreaSelection: Hashable {
+    /// The slugs currently checked.
+    private(set) var kept: Set<String>
+    /// Every area's slug, in the catalog's order — the universe `kept` is a
+    /// subset of, and what "select all" restores.
+    let all: [String]
+
+    init(areas: [CinemaArea]) {
+        all = areas.map(\.slug)
+        kept = Set(all)
+    }
+
+    /// Every area is kept — the master row's checked state.
+    var allKept: Bool { kept.count == all.count }
+    /// Some but not all — the master row's indeterminate/mixed state.
+    var partial: Bool { !kept.isEmpty && !allKept }
+
+    func isKept(_ slug: String) -> Bool { kept.contains(slug) }
+
+    mutating func toggle(_ slug: String) {
+        if kept.contains(slug) { kept.remove(slug) } else { kept.insert(slug) }
+    }
+
+    /// Select all / deselect all. A tap on a mixed master row selects
+    /// everything first — what a user reaching for it while some are ticked
+    /// means — which is what `!allKept` gives.
+    mutating func setAll(_ on: Bool) { kept = on ? Set(all) : [] }
+}

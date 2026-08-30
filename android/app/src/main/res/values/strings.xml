@@ -29,6 +29,7 @@
     <string name="areabar_all_cinemas">Wszystkie kina</string>
     <string name="areapicker_title">Wybierz okolice</string>
     <string name="areapicker_subtitle">Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić.</string>
+    <string name="areapicker_all">Wszystkie okolice</string>
     <string name="areapicker_confirm">Pokaż repertuar</string>
 
     <!-- Generic actions / chrome -->

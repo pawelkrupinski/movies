@@ -70,6 +70,7 @@ object JsLocale {
       "areaPicker"      -> Json.obj(
         "title"    -> messages("areaPicker.title"),
         "subtitle" -> messages("areaPicker.subtitle"),
+        "all"      -> messages("areaPicker.all"),
         "confirm"  -> messages("areaPicker.confirm"),
       ),
       "plural"          -> pluralRule,

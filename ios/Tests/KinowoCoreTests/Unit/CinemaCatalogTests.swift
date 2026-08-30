@@ -57,4 +57,54 @@ final class CinemaCatalogTests: XCTestCase {
         // Keep none → everything disabled.
         XCTAssertEqual(Set(catalog.cinemasToDisable(keepingAreas: [])), Set(catalog.cinemas))
     }
+
+    // ── AreaSelection — the picker's checkbox state ──────────────────────────
+
+    private var threeAreas: [CinemaArea] {
+        [CinemaArea(name: "San Francisco", slug: "san-francisco", cinemas: ["A"]),
+         CinemaArea(name: "East Bay", slug: "east-bay", cinemas: ["B", "C"]),
+         CinemaArea(name: "South Bay", slug: "south-bay", cinemas: ["D"])]
+    }
+
+    func testAreaSelectionStartsWithEveryAreaKept() {
+        let selection = AreaSelection(areas: threeAreas)
+        XCTAssertEqual(selection.kept, ["san-francisco", "east-bay", "south-bay"])
+        XCTAssertTrue(selection.allKept)
+        XCTAssertFalse(selection.partial)
+    }
+
+    func testAreaSelectionDeselectsAndSelectsEveryArea() {
+        var selection = AreaSelection(areas: threeAreas)
+
+        selection.setAll(false)
+        XCTAssertTrue(selection.kept.isEmpty)
+        XCTAssertFalse(selection.allKept)
+        XCTAssertFalse(selection.partial)   // empty is not mixed
+
+        selection.setAll(true)
+        XCTAssertEqual(selection.kept, Set(selection.all))
+        XCTAssertTrue(selection.allKept)
+    }
+
+    func testAreaSelectionIsPartialWhileSomeAreasAreDropped() {
+        var selection = AreaSelection(areas: threeAreas)
+        selection.toggle("east-bay")
+
+        XCTAssertFalse(selection.isKept("east-bay"))
+        XCTAssertFalse(selection.allKept)
+        XCTAssertTrue(selection.partial)
+
+        // Re-ticking the last one restores the full check.
+        selection.toggle("east-bay")
+        XCTAssertTrue(selection.allKept)
+        XCTAssertFalse(selection.partial)
+    }
+
+    func testDeselectAllThenConfirmDisablesEveryCinema() {
+        let catalog = CinemaCatalog(cinemas: ["A", "B", "C", "D"], areas: threeAreas)
+        var selection = AreaSelection(areas: catalog.areas)
+        selection.setAll(false)
+
+        XCTAssertEqual(Set(catalog.cinemasToDisable(keepingAreas: selection.kept)), Set(catalog.cinemas))
+    }
 }

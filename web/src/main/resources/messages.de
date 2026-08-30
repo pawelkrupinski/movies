@@ -12,6 +12,7 @@ nav.allCinemas=Alle Kinos
 nav.country=Land
 areaPicker.title=Wähle deine Regionen
 areaPicker.subtitle=Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit in den Filtern ändern.
+areaPicker.all=Alle Regionen
 areaPicker.confirm=Programm anzeigen
 nav.genre=Genre
 nav.director=Regie

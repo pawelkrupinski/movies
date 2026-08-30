@@ -29,6 +29,7 @@
     <string name="areabar_all_cinemas">All cinemas</string>
     <string name="areapicker_title">Choose your areas</string>
     <string name="areapicker_subtitle">Show cinemas only in the areas you pick. You can change this anytime.</string>
+    <string name="areapicker_all">All areas</string>
     <string name="areapicker_confirm">Show listings</string>
 
     <!-- Generic actions / chrome -->

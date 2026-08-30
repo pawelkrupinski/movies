@@ -18,6 +18,28 @@
     "Kopiuj" : {},
     "Reset" : {},
     "Skopiowano" : {},
+    "areapicker.all" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Regionen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All areas"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wszystkie okolice"
+          }
+        }
+      }
+    },
     "areapicker.confirm" : {
       "localizations" : {
         "de" : {

@@ -23,6 +23,16 @@ package models
  *  straight out of the data; for Los Angeles it is Santa Monica, Pasadena,
  *  Burbank, Long Beach. See `data/us/scripts/cluster_metros.py`.
  *
+ *  San Francisco is the one metro that then folds those districts onto REGIONS
+ *  (`cluster_metros.SUB_AREA_REGIONS`), because it is the one metro that is not
+ *  a city. Manhattan is inside New York and Pasadena is inside Los Angeles, but
+ *  San Jose is not inside San Francisco — listed by their dominant towns the
+ *  Bay's eighteen districts read as if it were. They fold onto the five regions
+ *  a local browses the Bay by instead: San Francisco, East Bay, South Bay,
+ *  North Bay, Peninsula. Still not a compass split — the fold is over the
+ *  districts the clustering already found, so the geography is unchanged and
+ *  only the buckets are renamed.
+ *
  *  This side is only the grouping. The clustering is the generator's, the label
  *  is carried per venue in `UsRosterData`, and the slug is re-derived from the
  *  label by `Slugify.stable` — the frozen fold clients persist an area under. */

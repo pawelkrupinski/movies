@@ -1209,6 +1209,14 @@
   // cinemas. Shown once per city (a localStorage flag), and never on a flat
   // city. Built entirely in JS so it adds nothing to the server-rendered HTML
   // and only exists when actually shown.
+  //
+  // A master row heads the list, the same control the Filtry cinema panel puts
+  // above `#cinema-list` (`#cinema-all` / `toggleAllCinemas`): checked flips
+  // every area on, unchecked flips every area off, indeterminate while only
+  // some are picked. One control rather than two buttons because a metro like
+  // the Bay Area has enough areas that "clear them all, then tick the one I
+  // want" is the fastest way through the sheet — and because it is the control
+  // this app already uses for exactly this job one screen over.
   function areaPickerKey() { return 'areasChosen:' + CURRENT_CITY; }
 
   function maybeShowAreaPicker() {
@@ -1238,15 +1246,30 @@
     modal.appendChild(title);
     modal.appendChild(sub);
 
+    const rowCss = 'display:flex;align-items:center;gap:.6rem;padding:.6rem .2rem;' +
+      'font-size:1.05rem;border-bottom:1px solid #23234d;cursor:pointer;';
+
+    const allLabel = document.createElement('label');
+    allLabel.style.cssText = rowCss + 'font-weight:600;';
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox';
+    allCb.checked = true;
+    allCb.id = 'area-picker-all';
+    const allName = document.createElement('span');
+    allName.textContent = loc.all || 'All areas';
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(allName);
+    modal.appendChild(allLabel);
+
     const boxes = [];
     areas.forEach(area => {
       const label = document.createElement('label');
-      label.style.cssText = 'display:flex;align-items:center;gap:.6rem;padding:.6rem .2rem;' +
-        'font-size:1.05rem;border-bottom:1px solid #23234d;cursor:pointer;';
+      label.style.cssText = rowCss;
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.checked = true;                                       // all pre-selected
       cb.dataset.areaSlug = area.slug;
+      cb.onchange = syncAreaPickerAll;
       const name = document.createElement('span');
       name.textContent = area.name;
       const count = document.createElement('span');
@@ -1258,6 +1281,21 @@
       modal.appendChild(label);
       boxes.push({ cb, area });
     });
+
+    // Select all / deselect all. A click on a partly-filled box reads
+    // `checked === true`, so it selects all first — what a user reaching for it
+    // while some are ticked means. `indeterminate` is cleared explicitly: the
+    // browser does that itself on a real click, but not when the state is set
+    // programmatically.
+    allCb.onchange = () => {
+      allCb.indeterminate = false;
+      boxes.forEach(({ cb }) => { cb.checked = allCb.checked; });
+    };
+    function syncAreaPickerAll() {
+      const picked = boxes.filter(({ cb }) => cb.checked).length;
+      allCb.checked = picked === boxes.length;
+      allCb.indeterminate = picked > 0 && picked < boxes.length;
+    }
 
     const btn = document.createElement('button');
     btn.style.cssText = 'margin-top:1.1rem;width:100%;padding:.8rem;font:inherit;font-size:1rem;' +

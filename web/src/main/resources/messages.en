@@ -12,6 +12,7 @@ nav.allCinemas=All cinemas
 nav.country=Country
 areaPicker.title=Choose your areas
 areaPicker.subtitle=Show cinemas only in the areas you pick. You can change this anytime in Filters.
+areaPicker.all=All areas
 areaPicker.confirm=Show listings
 nav.genre=Genre
 nav.director=Director

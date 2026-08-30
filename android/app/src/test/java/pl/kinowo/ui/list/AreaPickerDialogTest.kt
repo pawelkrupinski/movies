@@ -16,7 +16,8 @@ import pl.kinowo.model.CinemaCatalog
 /**
  * Off-device (Robolectric) Compose test for the first-visit area picker: all
  * areas start checked, so confirming immediately keeps everything; unchecking an
- * area drops it from the kept set the caller uses to exclude its cinemas.
+ * area drops it from the kept set the caller uses to exclude its cinemas; and
+ * the master row clears or restores every area in one tap.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -49,5 +50,34 @@ class AreaPickerDialogTest {
         compose.onNodeWithTag("areapicker.area.north").performClick()   // uncheck North
         compose.onNodeWithTag("areapicker.confirm").performClick()
         assertEquals(setOf("central"), kept)
+    }
+
+    @Test
+    fun masterRowDeselectsEveryArea() {
+        var kept: Set<String>? = null
+        compose.setContent { AreaPickerDialog(catalog) { kept = it } }
+        compose.onNodeWithTag("areapicker.all").performClick()          // all -> none
+        compose.onNodeWithTag("areapicker.confirm").performClick()
+        assertEquals(emptySet<String>(), kept)
+    }
+
+    @Test
+    fun masterRowReselectsEveryAreaAfterAClear() {
+        var kept: Set<String>? = null
+        compose.setContent { AreaPickerDialog(catalog) { kept = it } }
+        compose.onNodeWithTag("areapicker.all").performClick()          // all -> none
+        compose.onNodeWithTag("areapicker.all").performClick()          // none -> all
+        compose.onNodeWithTag("areapicker.confirm").performClick()
+        assertEquals(setOf("central", "north"), kept)
+    }
+
+    @Test
+    fun masterRowSelectsEveryAreaFromAMixedState() {
+        var kept: Set<String>? = null
+        compose.setContent { AreaPickerDialog(catalog) { kept = it } }
+        compose.onNodeWithTag("areapicker.area.north").performClick()   // mixed
+        compose.onNodeWithTag("areapicker.all").performClick()          // mixed -> all
+        compose.onNodeWithTag("areapicker.confirm").performClick()
+        assertEquals(setOf("central", "north"), kept)
     }
 }

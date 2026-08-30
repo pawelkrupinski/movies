@@ -104,6 +104,54 @@ SUB_AREA_NAMES = {
     ('San Francisco', 'East Palo Alto'): 'Palo Alto',
 }
 
+#: Metros whose districts fold AGAIN, into the named regions a local browses by.
+#: Keyed by (metro label, district label) so a region can never reach a
+#: same-named district in another metro; applied to the finished district labels
+#: rather than to the towns, so the clustering is unchanged and the fold is a
+#: pure relabelling of its output.
+#:
+#: Only the Bay Area needs it, and it needs it badly. Every other sub-divided
+#: metro is named after the place it centres on and its districts are places
+#: INSIDE that place: Manhattan and Brooklyn are New York, Santa Monica and
+#: Pasadena are Los Angeles. The San Francisco metro is not that shape — it is
+#: the whole Bay, and its districts are separate cities of their own. Listed by
+#: their dominant town, "San Francisco 16 / San Jose 10 / Oakland 9" reads as if
+#: San Jose were a neighbourhood of San Francisco, which no resident would say,
+#: and 18 town names is more list than the picker can be browsed as anyway. The
+#: Bay's own five regions are what a local actually names, so the districts fold
+#: onto them: San Francisco, the East Bay, the South Bay, the Peninsula, the
+#: North Bay.
+#:
+#: The fold is by district and not by radius because these regions are not
+#: radial — the East Bay is a 70 km strip along the water and the Bay itself
+#: sits in the middle of the metro, which is the same reason a compass split
+#: fails here (see `models.UsMetroSubAreas`). Grouping the districts the
+#: clustering already found keeps the geography and only renames the buckets.
+#:
+#: A metro listed here must be mapped EXHAUSTIVELY — `sub_areas_for_metro` dies
+#: on a district with no region — so a re-harvest that clusters a new district
+#: fails the generator instead of quietly showing "Berkeley" beside "East Bay".
+SUB_AREA_REGIONS = {
+    ('San Francisco', 'San Francisco'): 'San Francisco',
+    ('San Francisco', 'Brentwood'):     'East Bay',
+    ('San Francisco', 'Concord'):       'East Bay',
+    ('San Francisco', 'Fremont'):       'East Bay',
+    ('San Francisco', 'Hayward'):       'East Bay',
+    ('San Francisco', 'Livermore'):     'East Bay',
+    ('San Francisco', 'Moraga'):        'East Bay',
+    ('San Francisco', 'Oakland'):       'East Bay',
+    ('San Francisco', 'Richmond'):      'East Bay',
+    ('San Francisco', 'San Ramon'):     'East Bay',
+    ('San Francisco', 'Mountain View'): 'South Bay',
+    ('San Francisco', 'San Jose'):      'South Bay',
+    ('San Francisco', 'Santa Clara'):   'South Bay',
+    ('San Francisco', 'Palo Alto'):     'Peninsula',
+    ('San Francisco', 'San Mateo'):     'Peninsula',
+    ('San Francisco', 'Larkspur'):      'North Bay',
+    ('San Francisco', 'Novato'):        'North Bay',
+    ('San Francisco', 'Vallejo'):       'North Bay',
+}
+
 
 def haversine_km(a, b):
     """Great-circle km between two (lat, lon) pairs."""
@@ -292,17 +340,39 @@ def sub_areas_for_metro(metro, venues):
 
     Hub towns are distinct by construction, so labels are unique within the
     metro; this still checks their SLUGS, which is what a client persists.
+
+    A metro in [[SUB_AREA_REGIONS]] then folds those districts once more onto
+    the regions a local browses it by — the Bay Area's East Bay / South Bay /
+    Peninsula / North Bay rather than eighteen town names.
     """
     if len(venues) < MIN_VENUES_TO_SUBDIVIDE:
         return {}
     towns = _towns([dict(v, city=SUB_AREA_NAMES.get((metro, v['city']), v['city']))
                     for v in venues])
     assigned = _cluster(towns, SUB_RADIUS_KM, MIN_SUB_CLUSTER_VENUES, SUB_FOLD_RADIUS_KM)
+    assigned = _regions_for(metro, assigned)
     for slug, group in _by_slug(set(assigned.values())).items():
         if len(group) > 1:
             raise SystemExit(f"{metro}: sub-areas {sorted(group)} all slug to {slug!r}")
     return {v['slug']: assigned[town]
             for town, t in towns.items() for v in t['venues']}
+
+
+def _regions_for(metro, assigned):
+    """`assigned` with each district label replaced by its [[SUB_AREA_REGIONS]]
+    region, or unchanged for a metro the table does not list.
+
+    Exhaustive by construction: a listed metro that clusters a district the
+    table has no region for kills the generator, because half a metro folded is
+    worse than none — the picker would show four regions next to a stray town.
+    """
+    if not any(m == metro for m, _ in SUB_AREA_REGIONS):
+        return assigned
+    unmapped = sorted({d for d in assigned.values() if (metro, d) not in SUB_AREA_REGIONS})
+    if unmapped:
+        raise SystemExit(f"{metro}: districts {unmapped} have no SUB_AREA_REGIONS region "
+                         f"— add them to cluster_metros.SUB_AREA_REGIONS")
+    return {town: SUB_AREA_REGIONS[(metro, district)] for town, district in assigned.items()}
 
 
 def _by_slug(labels):
