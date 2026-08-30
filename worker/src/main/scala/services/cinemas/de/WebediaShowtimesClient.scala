@@ -3,7 +3,7 @@ package services.cinemas.de
 import tools.HttpFetch
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper}
+import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.util.Try
@@ -160,10 +160,26 @@ class WebediaShowtimesClient(
 
 object WebediaShowtimesClient {
 
-  /** Filmstarts' own booking calendar is a fixed 28-day window; cap the
-   *  discovered horizon a touch above it so an outlier date in the attribute
-   *  (or a future window bump) can't balloon the per-venue chunk fan-out. */
-  val MaxHorizonDays = 34
+  /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]].
+   *
+   *  Was 34, chosen as "a touch above" Filmstarts' own ~28-day booking calendar.
+   *  That reasoning is right about what Filmstarts advertises TODAY (a venue page
+   *  probed 2026-08-30 offered 7 dates reaching +21d, and the German corpus's
+   *  furthest screening sat at +28d) and wrong as a design: it is a per-client cap
+   *  of exactly the kind `ScrapeHorizon` exists to abolish. The day list still
+   *  comes from the venue page's own `data-showtimes-dates`, so this bound costs
+   *  NOTHING while the source stays short — it only stops mattering the day the
+   *  source's window grows, which the old comment itself anticipated ("or a future
+   *  window bump").
+   *
+   *  That day is the dangerous one, because the failure is silent and total:
+   *  `MovieCache`'s scrape-prune reads a film's absence from a listing as "it
+   *  stopped screening", so any film living only beyond the cap is deleted on
+   *  every COMPLETE scrape — no error, no failed fetch. That is precisely how the
+   *  UK lost its whole advance-sale programme on 2026-07-27, and Germany has no
+   *  aggregator fallback to have caught it. Sharing the one number is the cheap
+   *  insurance. */
+  val MaxHorizonDays = ScrapeHorizon.MaxDays
 
   def showtimesUrl(host: String, theaterId: String, date: LocalDate, page: Int): String =
     s"https://$host/_/showtimes/theater-$theaterId/d-$date/p-$page/"

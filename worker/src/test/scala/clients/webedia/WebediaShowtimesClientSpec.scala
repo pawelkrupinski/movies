@@ -149,19 +149,38 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     days shouldBe days.sorted
   }
 
-  it should "cap the discovered window at today+MaxHorizonDays" in {
-    // today set early enough that the page's last dates sit past the horizon cap.
+  // The bound is a SANITY valve, not a coverage cap — see `ScrapeHorizon`. Every day
+  // the venue page advertises is planned, however far out, because a day we do not
+  // fetch is a day whose films `MovieCache`'s scrape-prune then deletes as "no longer
+  // screening". The old per-client 34-day cap dropped everything past today+34 even
+  // though the source had named those days; that is the shape that cost the UK its
+  // entire advance-sale programme, and Germany has no aggregator fallback to notice.
+  it should "plan every advertised day, however far out, and bound only the absurd" in {
+    // today set early enough that the page's last dates sit past the OLD 34-day cap.
     val today  = LocalDate.of(2026, 7, 10)
-    val capStr = today.plusDays(WebediaShowtimesClient.MaxHorizonDays.toLong).toString  // 2026-08-13
     val client = new WebediaShowtimesClient(
       new ScriptedByUrl(_ => venuePage),
       "www.filmstarts.de", "A0263", venue,
       today = today)
 
     val days = client.planChunks()
-    all(days) should be <= capStr          // ISO dates order lexicographically
-    days should contain("2026-08-13")      // exactly at the cap — kept
-    days should not contain "2026-08-15"   // two days past the cap — dropped
+    days should contain("2026-08-13")      // was exactly at the old cap
+    days should contain("2026-08-15")      // +36d — DROPPED by the old cap, kept now
+    all(days) should be <= today.plusDays(WebediaShowtimesClient.MaxHorizonDays.toLong).toString
+  }
+
+  it should "still drop an absurd far-future date so one outlier can't balloon the fan-out" in {
+    // A garbage date is what the bound is actually for: the source naming a day two
+    // millennia out must not plan two millennia of chunk tasks.
+    val today   = LocalDate.of(2026, 7, 10)
+    val absurd  = today.plusYears(50).toString
+    val page    = s"""<section data-showtimes-dates="[&quot;2026-07-11&quot;,&quot;$absurd&quot;]"></section>"""
+    val client  = new WebediaShowtimesClient(
+      new ScriptedByUrl(_ => page), "www.filmstarts.de", "A0263", venue, today = today)
+
+    val days = client.planChunks()
+    days should contain("2026-07-11")
+    days should not contain absurd
   }
 
   it should "fail the scrape (no grid fallback) when the venue page can't be fetched" in {
