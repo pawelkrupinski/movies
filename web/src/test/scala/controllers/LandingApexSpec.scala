@@ -19,7 +19,8 @@ import play.api.test.{FakeRequest, Helpers}
  */
 class LandingApexSpec extends AnyFlatSpec with Matchers {
 
-  private val controller = new LandingController(Helpers.stubControllerComponents())
+  private val controller = new LandingController(
+    Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi))
 
   private def bodyOn(host: String): String =
     contentAsString(controller.index().apply(
@@ -65,11 +66,45 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     html should not include ("""class="country-list"""")
   }
 
-  it should "not treat a country subdomain of the apex as the apex" in {
-    // uk.showtimes.cc is a COUNTRY, not the front door. Matching it here would
-    // replace the UK site's homepage with a country picker.
-    val html = bodyOn("uk.showtimes.cc")
+  // Since the Showtimes countries moved under `showtimes.cc/{code}/`, the apex
+  // is also the host their OWN pages arrive on — so the host alone can no longer
+  // decide. A deployment mounted under a country segment must never answer the
+  // front door, or `showtimes.cc/uk/` replaces the UK homepage with a picker.
+  it should "not be answered by a deployment mounted under a country segment" in {
+    val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom)
+    val html = contentAsString(uk.index().apply(
+      FakeRequest("GET", "/").withHeaders("X-Forwarded-Host" -> "showtimes.cc")))
     html should include ("""<ul class="city-list"""")
     html should not include ("""class="country-list"""")
+  }
+
+  // The front door is BRAND chrome, not a country's site. It used to be English
+  // by accident (the apex sat on the UK pod); the deployment that can answer it
+  // now is the one mounted at the root, which is Poland — so the language is
+  // pinned rather than inherited, and a visitor to showtimes.cc is not asked
+  // "Wybierz kraj".
+  it should "speak the brand's language, not the serving deployment's" in {
+    // The implicit `Messages` this controller carries is Polish (the deployment
+    // that can answer the front door is the one at the root, i.e. Poland), so a
+    // picker that inherited it would read "Wybierz kraj" on showtimes.cc.
+    val html = bodyOn("showtimes.cc")
+    html should include ("""<html lang="en"""")
+    html should include ("Choose your country")
+    html should not include ("Wybierz")
+  }
+
+  "a returning visitor's city bounce" should "stay inside the deployment's mount point" in {
+    val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom)
+    val res = uk.index().apply(FakeRequest("GET", "/")
+      .withHeaders("X-Forwarded-Host" -> "showtimes.cc")
+      .withCookies(play.api.mvc.Cookie("city", "kent")))
+    redirectLocation(res) shouldBe Some("/uk/kent/")
+  }
+
+  it should "be unprefixed on the country that owns its domain" in {
+    val res = controller.index().apply(FakeRequest("GET", "/")
+      .withHeaders("X-Forwarded-Host" -> "kinowo.net")
+      .withCookies(play.api.mvc.Cookie("city", "poznan")))
+    redirectLocation(res) shouldBe Some("/poznan/")
   }
 }

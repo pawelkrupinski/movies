@@ -20,7 +20,7 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
     val html = views.html.debug(Seq.empty, titleNormalizer).body
     html should include ("""class="debug-nav-country"""")
     // The UK deployment's corpus debug page, on its own host.
-    html should include ("""value="https://uk.showtimes.cc/debug"""")
+    html should include ("""value="https://showtimes.cc/uk/debug"""")
   }
 
   it should "mark this deployment's own country as the selected option" in {
@@ -31,7 +31,7 @@ class DebugViewCountrySwitchSpec extends AnyFlatSpec with Matchers {
 
   "cadence navbar" should "keep the switcher pointed at the cadence page, not the corpus page" in {
     val html = views.html.cadence(Seq.empty, java.time.Instant.EPOCH).body
-    html should include ("""value="https://uk.showtimes.cc/debug/cadence"""")
+    html should include ("""value="https://showtimes.cc/uk/debug/cadence"""")
   }
 
   // Locally in Dev the wiring builds per-country debug stacks and passes

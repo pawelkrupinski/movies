@@ -656,8 +656,8 @@
     );
     const slug = SLUG_BY_TITLE.get(movie);
     return slug
-      ? '/' + CURRENT_CITY + '/film/' + slug
-      : '/' + CURRENT_CITY + '/film?title=' + encodeURIComponent(movie);
+      ? '@{city.country.pathPrefix}/' + CURRENT_CITY + '/film/' + slug
+      : '@{city.country.pathPrefix}/' + CURRENT_CITY + '/film?title=' + encodeURIComponent(movie);
   }
 
   function renderPlanMovieBlock(movie, candidates) {

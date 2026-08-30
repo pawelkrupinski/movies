@@ -43,4 +43,17 @@ class FilmHrefSpec extends AnyFlatSpec with Matchers {
     FilmHref.legacy("Diabeł ubiera się u Prady 2", Poznan) shouldBe
       "/poznan/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202"
   }
+
+  /** A country that shares `showtimes.cc` with its siblings is served one
+   *  segment down, so every link it renders has to start there. The prefix comes
+   *  off the CITY's country rather than the process environment: it is the same
+   *  fact read from the thing the URL is already scoped by, and it keeps the
+   *  addressing rule true for every country at once instead of only the one this
+   *  JVM happens to be configured as. */
+  "a city in a country mounted under a country segment" should "carry that segment in every form of the link" in {
+    val kent = models.Country.UnitedKingdom.cities.find(_.slug == "kent").get
+    FilmHref("Belle", kent) shouldBe "/uk/kent/film/belle"
+    FilmHref.legacy("!!!", kent) shouldBe "/uk/kent/film?title=%21%21%21"
+    FilmHref.ogImage("Belle")(using kent) shouldBe "/uk/kent/film/og-image?title=Belle"
+  }
 }

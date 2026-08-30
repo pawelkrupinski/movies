@@ -12,28 +12,26 @@
   leaving only the kinowo:// custom URL scheme in Info.plist, which needs no
   paid account.)
 
-  The AASA is served on every country deployment at
+  The AASA is served at each PUBLIC HOST's root,
   https://<host>/.well-known/apple-app-site-association — one identical file
-  (same app ID, same path patterns) across kinowo.net / uk.showtimes.cc /
-  de.showtimes.cc / us.showtimes.cc, since they all run the same web binary +
-  resources.
+  (same app ID, same path patterns) on kinowo.net and showtimes.cc, since they
+  run the same web binary + resources. There are only two hosts now: the three
+  Showtimes countries share showtimes.cc and are told apart by a leading path
+  segment (showtimes.cc/uk/...), not by a subdomain, so the file's path patterns
+  carry both shapes and the domain list carries neither uk. nor de. nor us.
 -->
 <dict>
 	<!-- Universal Links: the OS fetches https://<host>/.well-known/
 	     apple-app-site-association for each associated domain and routes matching
 	     links (city, film, copy-to-clipboard filter links) into the app via
-	     onOpenURL. One entry per country deployment (PL/UK/DE/US) — mirror the hosts
-	     in DeepLink.webHosts and Country.all. -->
+	     onOpenURL. One entry per public HOST — two, not four, since the Showtimes
+	     countries share showtimes.cc. Mirror DeepLink.webHosts. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:kinowo.net</string>
-		<string>applinks:uk.showtimes.cc</string>
-		<string>applinks:de.showtimes.cc</string>
-		<string>applinks:us.showtimes.cc</string>
+		<string>applinks:showtimes.cc</string>
 		<string>webcredentials:kinowo.net</string>
-		<string>webcredentials:uk.showtimes.cc</string>
-		<string>webcredentials:de.showtimes.cc</string>
-		<string>webcredentials:us.showtimes.cc</string>
+		<string>webcredentials:showtimes.cc</string>
 	</array>
 </dict>
 </plist>

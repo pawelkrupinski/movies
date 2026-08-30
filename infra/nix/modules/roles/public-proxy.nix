@@ -15,13 +15,16 @@
 #                  a tunnel. For those the answer remains
 #                  `ssh -N -L <port>:10.20.0.11:<port> root@<host>`, which needs no open port.
 #
-#   k3s-worker-1   the PRODUCT: kinowo.net, uk.showtimes.cc, de.showtimes.cc and the showtimes.cc
-#                  apex. These are meant to be public, they authenticate their own admin pages, and
-#                  they proxy to NodePorts on 127.0.0.1 because the pods run on that same host.
+#   k3s-worker-1   the PRODUCT: kinowo.net, the showtimes.cc apex, and the per-country path
+#                  prefixes beneath it. These are meant to be public, they authenticate their own
+#                  admin pages, and they proxy to NodePorts on 127.0.0.1 because the pods run on
+#                  that same host.
 #
 # WHY MULTIPLE VHOSTS RATHER THAN ONE. This module used to take a single `hostName`/`upstream`
-# pair, which was right while the fleet published exactly one thing. The product needs four names
-# on one host, so the option is an attrset keyed by public hostname. The alternative -- an ingress
+# pair, which was right while the fleet published exactly one thing. The product needs several
+# names on one host, so the option is an attrset keyed by public hostname -- and, since the
+# Showtimes countries share a name and are told apart by a path segment, one of those keys fans
+# out again over `pathUpstreams`. The alternative -- an ingress
 # controller plus cert-manager inside k3s -- buys Kubernetes-native Ingress objects at the cost of
 # two more controllers and a LoadBalancer story on a cluster that has servicelb disabled, to do
 # what fifteen lines of Caddy already do here.
@@ -74,6 +77,29 @@ in
             '';
           };
 
+          pathUpstreams = lib.mkOption {
+            type = lib.types.attrsOf lib.types.str;
+            default = { };
+            description = ''
+              Upstreams for PATH PREFIXES of this vhost, keyed by the prefix (`"/uk"`), for a name
+              that fronts several independent deployments instead of one. Each becomes a terminal
+              Caddy `handle` matching the prefix and everything under it, and `upstream` /
+              `redirectTo` become the fallback for whatever no prefix claimed — wrapped in a
+              `handle` of its own so the precedence is written down rather than inferred from
+              Caddy's directive order.
+
+              This exists because the Showtimes countries share one domain and are told apart by a
+              leading path segment (`showtimes.cc/uk/…`), each still its own pod against its own
+              database. The alternative — one pod serving four countries — would mean one process
+              against four databases.
+
+              A bare prefix with no trailing slash (`/uk`) is redirected to `/uk/`: the app is
+              MOUNTED at `/uk/` (`play.http.context`), so `/uk` matches no route and would 404 on
+              the one URL a person is most likely to type.
+            '';
+            example = { "/uk" = "127.0.0.1:30912"; };
+          };
+
           redirectTo = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
@@ -110,12 +136,33 @@ in
       # Caddy rather than nginx, for one reason that matters on a fleet nobody watches daily: it
       # obtains and RENEWS every certificate itself, with no timer to forget, no reload hook to get
       # wrong, and no separate acme.sh state to go stale. The config below is the entire deployment.
-      virtualHosts = lib.mapAttrs (host: v: {
+      virtualHosts = lib.mapAttrs (host: v:
+        let
+          # One terminal `handle` per path prefix, plus the bare-prefix redirect that keeps
+          # `https://showtimes.cc/uk` (no trailing slash) working against an app mounted at
+          # `/uk/`. Emitted in the attrset's own (sorted) order; the prefixes are disjoint, so
+          # the order is irrelevant beyond being deterministic.
+          pathBlocks = lib.concatStringsSep "\n" (lib.mapAttrsToList (prefix: upstream: ''
+            redir ${prefix} ${prefix}/ permanent
+            handle ${prefix}/* {
+              reverse_proxy ${upstream}
+            }
+          '') v.pathUpstreams);
+
+          fallback = if v.redirectTo != null
+            then ''redir https://${v.redirectTo}{uri} permanent''
+            else ''reverse_proxy ${v.upstream}'';
+        in {
         extraConfig = ''
           ${v.extraConfig}
-          ${if v.redirectTo != null
-            then ''redir https://${v.redirectTo}{uri} permanent''
-            else ''reverse_proxy ${v.upstream}''}
+          ${if v.pathUpstreams == { }
+            then fallback
+            else ''
+              ${pathBlocks}
+              handle {
+                ${fallback}
+              }
+            ''}
 
           # HSTS. Deliberately modest -- one week, no preload, no includeSubDomains. Preload is a
           # one-way door (removal takes months and ships with the browser), and includeSubDomains

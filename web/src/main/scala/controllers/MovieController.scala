@@ -453,10 +453,14 @@ class MovieController( cc: ControllerComponents,
     }
 
   // Persist the viewed city so the bare `/` landing can bounce a returning
-  // visitor straight to it. Readable by JS (httpOnly = false) so the client
-  // can also honour it; long-lived; path "/" so it rides every request.
+  // visitor straight to it. Readable by JS (httpOnly = false) so the client can
+  // also honour it; long-lived; scoped to the deployment's MOUNT POINT so it
+  // rides every request of this country's site and none of a neighbour's — on
+  // the shared brand domain a cookie at "/" would be sent to (and overwritten
+  // by) `/de` and `/us`, bouncing a UK visitor's landing to a city that country
+  // does not serve.
   private def cityCookie(city: City): Cookie =
-    Cookie("city", city.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false)
+    Cookie("city", city.slug, maxAge = Some(60 * 60 * 24 * 365), path = city.country.mountPath, httpOnly = false)
 
   // The metro chosen inside a chooser city, remembered exactly as `cityCookie`
   // remembers the city — same lifetime, same path, same JS-readability — so
@@ -467,7 +471,7 @@ class MovieController( cc: ControllerComponents,
   private def areaCookieName(city: City): String = s"area_${city.slug}"
 
   private def areaCookie(city: City, area: models.CinemaAreaGroup): Cookie =
-    Cookie(areaCookieName(city), area.area.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false)
+    Cookie(areaCookieName(city), area.area.slug, maxAge = Some(60 * 60 * 24 * 365), path = city.country.mountPath, httpOnly = false)
 
   /** The metro this visitor last chose in `city`, if it is still one of its
    *  areas. `areaBySlug` is what makes a stale cookie harmless: the US roster is
@@ -542,6 +546,17 @@ class MovieController( cc: ControllerComponents,
     )
   }
 
+  // NOT PREFIXED WITH THE DEPLOYMENT'S MOUNT POINT, and deliberately the only
+  // URL builder in the app that isn't. Every other one prepends
+  // `city.country.pathPrefix` (or goes through a reverse route) so a country
+  // sharing the brand domain addresses itself correctly — `showtimes.cc/us/…`,
+  // not `showtimes.cc/…`. This one is left alone because the whole
+  // `/{city}/{area}/` level is being restructured concurrently (metros are
+  // becoming the addressable unit), and prefixing half of it — this helper but
+  // not the chooser's own `<a href>`s in `areas.scala.html` — would be worse
+  // than leaving the layer consistently unprefixed for that change to fix in
+  // one piece. Whatever replaces it MUST carry `city.country.pathPrefix`, or
+  // the US chooser links and canonicalises to URLs that 404.
   private def areaPath(city: City, area: Option[models.CinemaAreaGroup]): String =
     area.fold(s"/${city.slug}/")(g => s"/${city.slug}/${g.area.slug}/")
 
@@ -645,39 +660,25 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  // robots.txt — link-preview scrapers (Facebook's `facebookexternalhit` in
-  // particular) treat a 404 here as "site not crawlable" and surface that as a
-  // generic 403 to the debugger UI, so we keep the permissive `Allow: /`. The
-  // `/*/og-image` + `/*/film/og-image` PNG endpoints are deliberately NOT
-  // disallowed — Facebook honours robots.txt when fetching `og:image`, so
-  // blocking them would break every share preview. We only fence off the
-  // operational / API / auth noise that has no business in a search index, and
-  // advertise the sitemap so crawlers discover every city + film URL.
-  //
-  // `/{city}/filmy` — the browse facets — is fenced off too, for crawl budget
-  // rather than secrecy: a city listing links ~480 of them off its genre pills,
-  // each one a thin filtered slice of a corpus the film deep-links already
-  // cover. Crawling them costs a young domain's budget several hundred fetches
-  // per city and returns nothing indexable, so `SitemapBuilder` omits them and
-  // this keeps a crawler from finding them anyway. The film pages carrying the
-  // actual long-tail stay crawlable.
+  // robots.txt — see `RobotsTxt` for what goes in it and why. The one decision
+  // that lives here is WHICH of its two shapes this request wants: the brand
+  // front door speaks for every country mounted under the apex, a country's own
+  // site only for itself. The `/*/og-image` + `/*/film/og-image` PNG endpoints
+  // are deliberately NOT disallowed — Facebook honours robots.txt when fetching
+  // `og:image`, so blocking them would break every share preview.
   def robotsTxt: Action[AnyContent] = Action { request =>
     val body =
-      s"""User-agent: *
-         |Allow: /
-         |Disallow: /debug
-         |Disallow: /admin
-         |Disallow: /tasks
-         |Disallow: /uptime
-         |Disallow: /auth/
-         |Disallow: /*/api/
-         |Disallow: /*/debug/
-         |Disallow: /*/filmy
-         |
-         |Sitemap: ${PageMeta.origin(request)}/sitemap.xml
-         |""".stripMargin
+      if (servingCountry.servesApex(PageMeta.host(request))) RobotsTxt.frontDoor(mountedUnderApex)
+      else RobotsTxt.forCountry(PageMeta.origin(request) + servingCountry.pathPrefix, servingCountry)
     Ok(body).as("text/plain; charset=utf-8")
   }
+
+  /** The countries that share the brand domain, and so the ones the front door's
+   *  `robots.txt` and `sitemap.xml` have to speak for: a crawler reads both only
+   *  at a host's ROOT, which none of them owns. Poland is excluded by having no
+   *  path prefix — it is a different host with a root of its own. */
+  private def mountedUnderApex: Seq[models.Country] =
+    models.Country.switchable.filter(_.pathPrefix.nonEmpty)
 
   /** `sitemap.xml` — the full crawl map: landing, every city listing + plan, and
    *  every film each city is currently showing. Built from the warm read model
@@ -690,10 +691,17 @@ class MovieController( cc: ControllerComponents,
     // (those pages render empty on this host, so crawling them is pure waste). Each
     // country's own deployment sitemaps its own cities. Same scope the landing +
     // navbar use (`Country.fromEnv`).
-    val entries = servingCountry.cities.map(c => c -> movieControllerService.toSchedules(c))
-    val lastmod = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
-      .format(readModel.lastModified.atOffset(java.time.ZoneOffset.UTC))
-    val body = SitemapBuilder.build(PageMeta.origin(request), entries, lastmod = Some(lastmod))
+    val body =
+      if (servingCountry.servesApex(PageMeta.host(request))) SitemapBuilder.index(mountedUnderApex)
+      else {
+        val entries = servingCountry.cities.map(c => c -> movieControllerService.toSchedules(c))
+        val lastmod = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+          .format(readModel.lastModified.atOffset(java.time.ZoneOffset.UTC))
+        // The BASE, not the bare origin: every `<loc>` hangs off the mount point
+        // this deployment is served at (`https://showtimes.cc/uk`), so a country
+        // sharing the brand domain doesn't advertise a file of 404s at the root.
+        SitemapBuilder.build(PageMeta.origin(request) + servingCountry.pathPrefix, entries, lastmod = Some(lastmod))
+      }
     Ok(body).as("application/xml; charset=utf-8")
       .withHeaders("Cache-Control" -> "public, max-age=3600")
   }

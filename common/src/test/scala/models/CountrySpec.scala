@@ -209,9 +209,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.switchable shouldBe
       Seq(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates)
     Country.Poland.webUrl shouldBe Some("https://kinowo.net")
-    Country.UnitedKingdom.webUrl shouldBe Some("https://uk.showtimes.cc")
-    Country.Germany.webUrl shouldBe Some("https://de.showtimes.cc")
-    Country.UnitedStates.webUrl shouldBe Some("https://us.showtimes.cc")
+    Country.UnitedKingdom.webUrl shouldBe Some("https://showtimes.cc/uk")
+    Country.Germany.webUrl shouldBe Some("https://showtimes.cc/de")
+    Country.UnitedStates.webUrl shouldBe Some("https://showtimes.cc/us")
     // Being switchable is the ONE flag that adds a country to the navbar
     // <select>, the debug ?country= switcher and the /api/catalog mobile
     // endpoint — all three iterate this, so nothing else enumerates them.
@@ -229,10 +229,10 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // (og-home-uk.png) instead of Poland's kinowo.net / og-home.png.
     Country.Poland.ogOrigin shouldBe "https://kinowo.net"
     Country.Poland.homeOgImage shouldBe "og-home.png"                    // the default keeps the unsuffixed asset
-    Country.UnitedKingdom.ogOrigin shouldBe "https://uk.showtimes.cc"
+    Country.UnitedKingdom.ogOrigin shouldBe "https://showtimes.cc/uk"
     Country.UnitedKingdom.homeOgImage shouldBe "og-home-uk.png"
-    // Germany previews off its own host, with a per-code montage name.
-    Country.Germany.ogOrigin shouldBe "https://de.showtimes.cc"
+    // Germany previews off its own base, with a per-code montage name.
+    Country.Germany.ogOrigin shouldBe "https://showtimes.cc/de"
     Country.Germany.homeOgImage shouldBe "og-home-de.png"
   }
 
@@ -240,24 +240,60 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // Drawn into every Open Graph PNG. It used to be the literal "kinowo.fly.dev"
     // in the renderer, so UK and German cards advertised the Polish host.
     Country.Poland.shareHost shouldBe "kinowo.net"
-    Country.UnitedKingdom.shareHost shouldBe "uk.showtimes.cc"
-    Country.Germany.shareHost shouldBe "de.showtimes.cc"
+    Country.UnitedKingdom.shareHost shouldBe "showtimes.cc/uk"
+    Country.Germany.shareHost shouldBe "showtimes.cc/de"
     Country.all.foreach(c => c.shareHost should not startWith "http")
   }
 
-  "Country.servesApex" should "recognise the brand front door but never a country's own host" in {
-    Country.servesApex("showtimes.cc") shouldBe true
-    Country.servesApex("www.showtimes.cc") shouldBe true
-    Country.servesApex("SHOWTIMES.CC") shouldBe true
-    Country.servesApex("showtimes.cc:9000") shouldBe true
-    // The countries themselves are NOT the front door — matching these would
-    // replace each site's homepage with a country picker.
-    Country.servesApex("uk.showtimes.cc") shouldBe false
-    Country.servesApex("de.showtimes.cc") shouldBe false
-    Country.servesApex("kinowo.net") shouldBe false
-    Country.servesApex("localhost") shouldBe false
+  "Country.isApexHost" should "recognise the brand domain, in every spelling, and nothing else" in {
+    Country.isApexHost("showtimes.cc") shouldBe true
+    Country.isApexHost("www.showtimes.cc") shouldBe true
+    Country.isApexHost("SHOWTIMES.CC") shouldBe true
+    Country.isApexHost("showtimes.cc:9000") shouldBe true
+    Country.isApexHost("kinowo.net") shouldBe false
+    Country.isApexHost("localhost") shouldBe false
     // A lookalike domain that merely ENDS with the apex must not match.
-    Country.servesApex("notshowtimes.cc") shouldBe false
+    Country.isApexHost("notshowtimes.cc") shouldBe false
+  }
+
+  "Country.servesApex" should "be answered only by the deployment mounted at the root" in {
+    // The brand domain is now ALSO the host every Showtimes country's own pages
+    // arrive on (`showtimes.cc/uk/kent/`), so the host alone no longer says
+    // "front door". Only the country mounted at `/` has a `/` that isn't
+    // already a country's landing — matching on the UK deployment would replace
+    // its homepage with a country picker.
+    Country.Poland.servesApex("showtimes.cc") shouldBe true
+    Country.Poland.servesApex("www.showtimes.cc") shouldBe true
+    Country.Poland.servesApex("showtimes.cc:9000") shouldBe true
+    Country.UnitedKingdom.servesApex("showtimes.cc") shouldBe false
+    Country.Germany.servesApex("showtimes.cc") shouldBe false
+    Country.UnitedStates.servesApex("showtimes.cc") shouldBe false
+    // A country's own domain is never the front door either.
+    Country.Poland.servesApex("kinowo.net") shouldBe false
+  }
+
+  "A country's mount point" should "be the root for the country that owns its domain and a code segment for the rest" in {
+    // ONE setting drives Play's `play.http.context`, the session/flash cookie
+    // paths and every reverse route; the four deployments differ only here.
+    Country.Poland.pathPrefix shouldBe ""
+    Country.Poland.mountPath shouldBe "/"
+    Country.UnitedKingdom.pathPrefix shouldBe "/uk"
+    Country.UnitedKingdom.mountPath shouldBe "/uk/"
+    Country.Germany.mountPath shouldBe "/de/"
+    Country.UnitedStates.mountPath shouldBe "/us/"
+    // The origin is the bare host — the prefix is the only thing that differs
+    // between the three Showtimes countries.
+    Country.UnitedKingdom.webOrigin shouldBe Some("https://showtimes.cc")
+    Country.Germany.webOrigin shouldBe Some("https://showtimes.cc")
+    Country.UnitedStates.webOrigin shouldBe Some("https://showtimes.cc")
+    Country.Poland.webOrigin shouldBe Some("https://kinowo.net")
+    // Every mount point is absolute and slash-terminated: Play rejects a
+    // context that does not start with "/", and the trailing slash is what
+    // keeps the landing at `/uk/` rather than `/uk`.
+    Country.all.foreach { c =>
+      c.mountPath should (startWith("/") and endWith("/"))
+      c.pathPrefix should not endWith "/"
+    }
   }
 
   "Country.resolvedDbName" should "prefer an explicit MONGODB_DB over the country default" in {

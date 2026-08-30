@@ -71,7 +71,7 @@
 
     async function load() {
       try {
-        const r = await fetch("/admin/config/data", { headers: { "Accept": "application/json" } });
+        const r = await fetch("@routes.EnvConfigController.data()", { headers: { "Accept": "application/json" } });
         if (!r.ok) { setStatus("load failed (" + r.status + ")", "err"); return; }
         const j = await r.json();
         render(j.rows);

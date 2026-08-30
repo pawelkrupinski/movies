@@ -57,13 +57,47 @@ sealed abstract class Country(
   val language:       Locale,          // UI language + collation locale
   val mongoDb:        String,          // database name on the shared cluster
   val filmwebEnabled: Boolean,         // is the Filmweb rating/fallback path wired for this country?
-  val webUrl:         Option[String],  // public web host of this country's deployment (scheme+host, no trailing slash); None = not deployed yet
+  val webOrigin:      Option[String],  // public ORIGIN of this country's deployment (scheme+host, no path, no trailing slash); None = not deployed yet
+  val pathPrefix:     String,          // where the deployment is MOUNTED on that origin: "" on its own domain, "/uk" when it shares one
   val brandName:      String,          // customer-facing app name: "Kinowo" in PL, "Showtimes" elsewhere (the Polish coinage means nothing abroad)
   val placeKind:      PlaceKind,       // what this country's [[City]] objects are called on screen: cities in PL/UK/DE, states in the US
 ) {
   /** The cities this country serves. Authoritative per-country list; [[City.all]]
    *  is the union across every country. */
   def cities: Seq[City]
+
+  /** Public BASE URL of this country's site: origin + [[pathPrefix]], no
+   *  trailing slash. `https://kinowo.net` for the country that owns a domain,
+   *  `https://showtimes.cc/uk` for one that shares the brand domain with its
+   *  siblings.
+   *
+   *  THE ONE THING TO APPEND A PATH TO. Everything that links AT a country —
+   *  the navbar's country switcher, the front-door picker, share links, the
+   *  Open Graph origin, the `/api/catalog` payload both mobile apps build every
+   *  request on — reads this, so a country moving host or mount point moves all
+   *  of them together. */
+  def webUrl: Option[String] = webOrigin.map(_ + pathPrefix)
+
+  /** Where THIS deployment's router is mounted (`play.http.context`): `"/"` for
+   *  a country on its own domain, `"/uk/"` for one under a path prefix.
+   *
+   *  Trailing slash on purpose. Play's generated router matches the bare `/`
+   *  route as the prefix verbatim (`PathPattern(List(StaticPart(prefix)))`), so
+   *  a prefix of `"/uk"` would put the landing at `/uk` and every other page at
+   *  `/uk/…`; with `"/uk/"` the landing is `/uk/` and the reverse routes emit
+   *  the same shape a country at the root does, one segment deeper. */
+  def mountPath: String = if (pathPrefix.isEmpty) "/" else s"$pathPrefix/"
+
+  /** Does THIS deployment answer the brand FRONT DOOR for `host`?
+   *
+   *  Two conditions, and the second is the one the subdomain era did not need:
+   *  the host has to be the bare apex ([[Country.isApexHost]]), AND this
+   *  deployment has to be mounted at the root. Since the Showtimes countries
+   *  moved under `showtimes.cc/{code}/`, the apex is ALSO the host every one of
+   *  their own pages arrives on — a host check alone would replace the UK
+   *  site's homepage with a country picker. The country mounted at `/` is the
+   *  only one whose `/` is not already a country's landing. */
+  def servesApex(host: String): Boolean = pathPrefix.isEmpty && Country.isApexHost(host)
 
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
 
@@ -83,7 +117,7 @@ sealed abstract class Country(
    *  rather than dangling. (All modelled countries are currently deployed.) */
   def ogOrigin: String = webUrl.getOrElse(Country.default.webUrl.get)
 
-  /** This country's public host with no scheme -- `kinowo.net`, `uk.showtimes.cc`.
+  /** This country's public base with no scheme -- `kinowo.net`, `showtimes.cc/uk`.
    *  For the places that DISPLAY the domain rather than link to it: the footer
    *  drawn into every Open Graph card. Derived from [[ogOrigin]] so a domain move
    *  updates the rendered cards with everything else, which the literal it
@@ -108,7 +142,10 @@ object Country {
     // byte-identical — do NOT rename this to `kinowo_pl`.
     mongoDb        = "kinowo",
     filmwebEnabled = true,
-    webUrl         = Some("https://kinowo.net"),
+    // Poland owns its domain outright, so it is mounted at the root and its URLs
+    // are byte-identical to the ones it has always served.
+    webOrigin      = Some("https://kinowo.net"),
+    pathPrefix     = "",
     brandName      = "Kinowo",
     placeKind      = PlaceKind.City,
   ) {
@@ -124,7 +161,8 @@ object Country {
     language       = Locale.forLanguageTag("en-GB"),
     mongoDb        = "kinowo_uk",
     filmwebEnabled = false,
-    webUrl         = Some("https://uk.showtimes.cc"),
+    webOrigin      = Some("https://showtimes.cc"),
+    pathPrefix     = "/uk",
     brandName      = "Showtimes",
     // Counties and regions, not cities — but they read as "city" today and
     // re-wording live UK copy is a decision of its own.
@@ -143,7 +181,8 @@ object Country {
     language       = Locale.forLanguageTag("de-DE"),
     mongoDb        = "kinowo_de",
     filmwebEnabled = false,
-    webUrl         = Some("https://de.showtimes.cc"),
+    webOrigin      = Some("https://showtimes.cc"),
+    pathPrefix     = "/de",
     brandName      = "Showtimes",
     // Regions rather than cities, same caveat as the UK's.
     placeKind      = PlaceKind.City,
@@ -170,7 +209,8 @@ object Country {
     language       = Locale.forLanguageTag("en-US"),
     mongoDb        = "kinowo_us",
     filmwebEnabled = false,
-    webUrl         = Some("https://us.showtimes.cc"),
+    webOrigin      = Some("https://showtimes.cc"),
+    pathPrefix     = "/us",
     brandName      = "Showtimes",
     // The one country whose "city" is a whole state or territory — the reason
     // [[PlaceKind]] exists at all.
@@ -191,27 +231,32 @@ object Country {
    *  deployment host ([[Country.webUrl]] defined), in [[all]] order (Poland,
    *  UK, Germany, US). The country `<select>` renders only when this holds more than
    *  one entry. */
-  val switchable: Seq[Country] = all.filter(_.webUrl.isDefined)
+  val switchable: Seq[Country] = all.filter(_.webOrigin.isDefined)
 
   /** THE BRAND FRONT DOOR: the bare domain that fronts several countries rather
-   *  than serving one. `uk.showtimes.cc` and `de.showtimes.cc` are countries;
-   *  `showtimes.cc` itself is this — a picker listing every deployed country,
+   *  than serving one. `showtimes.cc/uk` and `showtimes.cc/de` are countries;
+   *  `showtimes.cc/` itself is this — a picker listing every deployed country,
    *  Poland included, even though Poland answers on its own domain.
    *
-   *  It is a HOST check rather than a deployment of its own, deliberately: every
-   *  web process renders the same picker for this host, so whichever country's
-   *  deployment the proxy happens to send the apex to answers it identically and
-   *  there is no fourth thing to keep running. */
+   *  It is a check on the REQUEST rather than a deployment of its own,
+   *  deliberately: there is no fourth thing to keep running, the proxy simply
+   *  points the apex root at a deployment that is mounted there. Since the
+   *  Showtimes countries share this host, that can only be the country on its
+   *  own domain — see [[Country.servesApex]]. */
   val apexHost: String = "showtimes.cc"
 
   /** The brand named on the front door — the non-Polish brand, since the apex is
    *  the Showtimes domain. Poland keeps its own brand on its own domain. */
   val apexBrandName: String = "Showtimes"
 
-  /** Is this request host the front door rather than a country's own site?
-   *  Accepts the `www.` spelling and an explicit port so a direct hit still works
-   *  where the proxy's redirect is not in front of it (local dev, a stale cache). */
-  def servesApex(host: String): Boolean =
+  /** Is this request host the brand domain? Accepts the `www.` spelling and an
+   *  explicit port so a direct hit still works where the proxy's redirect is not
+   *  in front of it (local dev, a stale cache).
+   *
+   *  Being the brand domain is NOT on its own being the front door — every
+   *  Showtimes country now serves off it too. [[Country.servesApex]] is the
+   *  question callers want. */
+  def isApexHost(host: String): Boolean =
     host.toLowerCase.takeWhile(_ != ':').stripPrefix("www.") == apexHost
 
   def byCode(code: String): Option[Country] =
@@ -219,8 +264,15 @@ object Country {
 
   /** Which country a city belongs to. Every [[City]] is in exactly one
    *  country's [[cities]] list, so this is unambiguous; falls back to
-   *  [[default]] for a city not yet grouped (shouldn't happen). */
-  def of(city: City): Country = all.find(_.cities.contains(city)).getOrElse(default)
+   *  [[default]] for a city not yet grouped (shouldn't happen).
+   *
+   *  Indexed rather than scanned: this is on the path of every film link a page
+   *  renders (each one asks its city for the deployment's URL prefix), and the
+   *  scan it replaces walked all four countries' city lists per call. */
+  def of(city: City): Country = byCity.getOrElse(city, default)
+
+  private lazy val byCity: Map[City, Country] =
+    all.flatMap(c => c.cities.map(_ -> c)).toMap
 
   /** The country THIS process serves, from `KINOWO_COUNTRY` (default: Poland).
    *  A web deployment resolves it once at boot; the worker uses [[all]] instead. */

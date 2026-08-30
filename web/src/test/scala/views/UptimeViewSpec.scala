@@ -106,8 +106,8 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
   // (`DebugViewCountrySwitchSpec`).
   "the uptime header" should "offer a switch to another country's uptime page on that country's host" in {
     html should include ("""class="country-switch"""")
-    html should include ("""value="https://uk.showtimes.cc/uptime"""")
-    html should include ("""value="https://de.showtimes.cc/uptime"""")
+    html should include ("""value="https://showtimes.cc/uk/uptime"""")
+    html should include ("""value="https://showtimes.cc/de/uptime"""")
   }
 
   it should "mark this deployment's own country as the selected option" in {
@@ -122,7 +122,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
       current = models.Country.UnitedKingdom).body
 
     out should include ("<title>Uptime — Showtimes</title>")
-    out should include ("""value="https://uk.showtimes.cc/uptime" selected""")
+    out should include ("""value="https://showtimes.cc/uk/uptime" selected""")
     out should not include ("""value="https://kinowo.net/uptime" selected""")
   }
 

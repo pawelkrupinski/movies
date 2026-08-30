@@ -133,7 +133,7 @@ object OgCardRenderer {
    *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
    *  None (text-only card for films with no poster). `host` is the bare domain
    *  drawn in the footer — passed in rather than hardcoded so a UK card says
-   *  `uk.showtimes.cc`, which the literal it replaced did not. `director` (a
+   *  `showtimes.cc/uk`, which the literal it replaced did not. `director` (a
    *  pre-joined "Name, Name" string) and `synopsis` fill the space below the
    *  ratings — both optional, each omitted when absent. */
   def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],

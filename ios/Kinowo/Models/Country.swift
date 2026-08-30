@@ -25,8 +25,12 @@ struct Country: Codable, Hashable {
     let code: String
     /// Human-readable label for the country picker.
     let displayName: String
-    /// Scheme + host of this country's web deployment; the base every
-    /// repertoire/details/auth request is built on.
+    /// BASE URL of this country's web deployment — scheme + host for a country
+    /// that owns its domain (`https://kinowo.net`), plus a country segment for
+    /// one that shares the brand domain with its siblings
+    /// (`https://showtimes.cc/uk`). Every repertoire/details/auth request is
+    /// built on it by appending `/{city}/api/...`, so the segment rides along
+    /// with no call site knowing it is there.
     let baseURL: URL
     /// BCP-47 primary language subtag forced as the app language when selected.
     let languageCode: String
@@ -60,21 +64,21 @@ struct Country: Codable, Hashable {
         Country(
             code: "uk",
             displayName: "United Kingdom",
-            baseURL: URL(string: "https://uk.showtimes.cc")!,
+            baseURL: URL(string: "https://showtimes.cc/uk")!,
             languageCode: "en",
             timeZone: TimeZone(identifier: "Europe/London") ?? warsawZone
         ),
         Country(
             code: "de",
             displayName: "Deutschland",
-            baseURL: URL(string: "https://de.showtimes.cc")!,
+            baseURL: URL(string: "https://showtimes.cc/de")!,
             languageCode: "de",
             timeZone: TimeZone(identifier: "Europe/Berlin") ?? warsawZone
         ),
         Country(
             code: "us",
             displayName: "United States",
-            baseURL: URL(string: "https://us.showtimes.cc")!,
+            baseURL: URL(string: "https://showtimes.cc/us")!,
             languageCode: "en",
             // The US spans six zones, so no single one is "the country's". This
             // nominal Eastern value only matters in the window before the

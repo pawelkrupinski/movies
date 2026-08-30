@@ -96,18 +96,20 @@ jobs:
             # Screenshot every live city page and compose its card into
             # web/src/main/assets/img/og-{slug}.png. Hits the public prod site —
             # no Mongo/Fly secrets needed. ~5s/city. KINOWO_COUNTRY picks the
-            # brand/language and the host screenshotted (its own webUrl).
+            # brand/language and the base URL screenshotted (its own webUrl, path prefix included).
             - name: Regenerate per-city Poland cards from live prod
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: pl
               run: sbt "web/PageTest/runMain tools.OgCardGenerator"
 
-            # The UK cards off uk.showtimes.cc — English overlay ("Showtimes
+            # The UK cards off showtimes.cc/uk — English overlay ("Showtimes
             # / Cinema listings in {city}"), 79 regions. Same generator, same
             # asset dir; UK slugs don't collide with PL slugs.
             #
-            # RE-ENABLED 2026-08-29, when the UK deployment came back on uk.showtimes.cc.
+            # RE-ENABLED 2026-08-29, when the UK deployment came back (then on uk.showtimes.cc;
+            # it now answers under the showtimes.cc/uk path prefix, which `Country.ogOrigin`
+            # already carries, so the generator needed no change).
             # It was disabled on 2026-08-02 with the shutdown, and could not simply be left
             # running: `Country.ogOrigin` falls back to the DEPLOYED host for an undeployed
             # country, so this leg would not have failed loudly against a dead host — it would

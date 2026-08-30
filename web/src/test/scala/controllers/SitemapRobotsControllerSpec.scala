@@ -78,13 +78,57 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   it should "advertise the per-area listings of a city whose index is a chooser" in {
     val us   = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedStates)._1
     val body = contentAsString(us.sitemap(req("/sitemap.xml")))
-    body should include("<loc>https://kinowo.net/california/</loc>")
-    body should include("<loc>https://kinowo.net/california/los-angeles/</loc>")
-    body should include("<loc>https://kinowo.net/california/san-francisco/</loc>")
+    body should include("<loc>https://kinowo.net/us/california/</loc>")
+    body should include("<loc>https://kinowo.net/us/california/los-angeles/</loc>")
+    body should include("<loc>https://kinowo.net/us/california/san-francisco/</loc>")
     // A split city BELOW the chooser threshold has no area URLs to advertise…
     body should not include "/alaska/anchorage/"
     // …and neither does a flat one.
-    body should include("<loc>https://kinowo.net/alaska/</loc>")
+    body should include("<loc>https://kinowo.net/us/alaska/</loc>")
+  }
+
+  /** A country that shares `showtimes.cc` is served one segment down, so every
+   *  `<loc>` has to carry that segment — a sitemap advertising `/kent/` on a
+   *  deployment reachable at `/uk/kent/` is a file of 404s, and it is the one
+   *  file a crawler trusts to enumerate the site. */
+  it should "hang every URL off the mount point on a country sharing the brand domain" in {
+    val uk = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedKingdom)._1
+    val body = contentAsString(uk.sitemap(
+      FakeRequest(GET, "/sitemap.xml")
+        .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")))
+    body should include("<loc>https://showtimes.cc/uk/</loc>")
+    body should include("<loc>https://showtimes.cc/uk/kent/</loc>")
+    body should not include "<loc>https://showtimes.cc/kent/</loc>"
+  }
+
+  /** The brand front door owns the apex ROOT, which is the only `robots.txt` and
+   *  `sitemap.xml` a crawler will ever fetch for `showtimes.cc` — the countries
+   *  mounted beneath it have no host root of their own. Answered by the
+   *  deployment mounted at `/`, which is the one on its own domain. */
+  private def apexReq(path: String) =
+    FakeRequest(GET, path)
+      .withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
+
+  "the front door's sitemap.xml" should "be an index of the countries mounted under the apex" in {
+    val body = contentAsString(controller().sitemap(apexReq("/sitemap.xml")))
+    body should include("<sitemapindex")
+    body should include("<loc>https://showtimes.cc/uk/sitemap.xml</loc>")
+    body should include("<loc>https://showtimes.cc/de/sitemap.xml</loc>")
+    body should include("<loc>https://showtimes.cc/us/sitemap.xml</loc>")
+    // Poland is a different host with a root sitemap of its own, and this
+    // deployment's own cities have no business being crawled off the apex.
+    body should not include "kinowo.net"
+    body should not include "/poznan/"
+  }
+
+  "the front door's robots.txt" should "point at each mounted country's sitemap and fence off its noise" in {
+    val body = contentAsString(controller().robotsTxt(apexReq("/robots.txt")))
+    body should include("Sitemap: https://showtimes.cc/uk/sitemap.xml")
+    body should include("Sitemap: https://showtimes.cc/de/sitemap.xml")
+    body should include("Disallow: /uk/debug")
+    body should include("Disallow: /us/*/filmy")
+    // The apex is not Poland's front page, so it must not advertise Poland's.
+    body should not include "kinowo.net"
   }
 
   it should "scope to this deployment's country, not the global City.all" in {

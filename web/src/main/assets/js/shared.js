@@ -69,21 +69,36 @@
     if (typeof applyFilters === 'function') applyFilters();
   }
 
+  // Where THIS deployment is mounted: '' for a country that owns its domain
+  // (`kinowo.net/poznan/…`), '/uk' for one that shares the brand domain
+  // (`showtimes.cc/uk/kent/…`). Read off the current path — every page this file
+  // runs on is `{mount}/{city}/…` — rather than emitted as a server-rendered
+  // constant, so one asset URL serves every country and the browser parses it
+  // once. Falls back to the root if the path somehow doesn't name the city.
+  function mountPrefix() {
+    var marker = '/' + CURRENT_CITY + '/';
+    var at = window.location.pathname.indexOf(marker);
+    return at < 0 ? '' : window.location.pathname.slice(0, at);
+  }
+
   // City picker (Filtry → Miasto) changed — remember the choice so the bare
   // `/` landing bounces here next time, then navigate to the chosen city's
   // repertoire root. A full navigation (not a view-swap) because the whole
   // corpus changes. No-op when the value is the current city.
   function onCityChange(slug) {
     if (!slug || slug === CURRENT_CITY) return;
-    document.cookie = 'city=' + slug + ';path=/;max-age=' + (60 * 60 * 24 * 365);
-    window.location.href = '/' + slug + '/';
+    var prefix = mountPrefix();
+    document.cookie = 'city=' + slug + ';path=' + (prefix || '') + '/;max-age=' + (60 * 60 * 24 * 365);
+    window.location.href = prefix + '/' + slug + '/';
   }
   window.onCityChange = onCityChange;
 
   // Country switcher (Filtry → Kraj) changed — each country is its own web
-  // deployment on a distinct host, so switch by NAVIGATING to that host's root
-  // (its city-chooser lands the visitor, since cities differ per country). Full
-  // navigation, not a view-swap. `url` is the chosen deployment's scheme+host.
+  // deployment behind its own base URL, so switch by NAVIGATING there (its
+  // city-chooser lands the visitor, since cities differ per country). Full
+  // navigation, not a view-swap. `url` is the chosen deployment's base URL
+  // (`Country.webUrl`): scheme + host for a country that owns its domain, plus a
+  // country segment for one that shares the brand domain.
   function onCountryChange(url) {
     if (!url) return;
     window.location.href = url + '/';
@@ -1783,7 +1798,7 @@
 
   function pushStateToServer(opts) {
     _serverSyncTimer = 0;
-    fetch('/api/me/state', {
+    fetch(mountPrefix() + '/api/me/state', {
       method:  'PUT',
       headers: { 'Content-Type': 'application/json' },
       // `keepalive` lets the request outlive an unloading document so the
@@ -1822,7 +1837,7 @@
       return;
     }
     try {
-      const resp = await fetch('/api/me/state', { headers: { 'Accept': 'application/json' } });
+      const resp = await fetch(mountPrefix() + '/api/me/state', { headers: { 'Accept': 'application/json' } });
       if (!resp.ok) return;
       const remote     = await resp.json();
       const firstSync  = localStorage.getItem(SERVER_SYNCED_KEY) !== '1';
@@ -1974,9 +1989,14 @@
   }
   window.bootView = bootView;
 
-  // Every page is under `/{city}/…`. CURRENT_CITY is the global from
-  // `_sharedJsConfig`.
-  const CITY_BASE = '/' + CURRENT_CITY;
+  // Every page is under `{mount}/{city}/…`, where the mount point is empty for a
+  // country that owns its domain (`kinowo.net/poznan/`) and a country segment
+  // for one that shares the brand domain (`showtimes.cc/uk/kent/`). CURRENT_CITY
+  // is the global from `_sharedJsConfig`; the mount point is read off the
+  // CURRENT PATH rather than a second server-rendered constant, so this file
+  // stays identical for every deployment (one URL, one parse, one bytecode cache
+  // — the reason it was externalised at all).
+  const CITY_BASE = mountPrefix() + '/' + CURRENT_CITY;
   // ── Day carousel: swipe / arrows / keys / dropdown all slide ────────────────
   //
   // The films grid is the centre column of a three-column carousel
@@ -2553,9 +2573,9 @@
       pending = [];
       try {
         if (navigator.sendBeacon) {
-          navigator.sendBeacon('/uptime/img-event', new Blob([body], { type: 'application/json' }));
+          navigator.sendBeacon(mountPrefix() + '/uptime/img-event', new Blob([body], { type: 'application/json' }));
         } else {
-          fetch('/uptime/img-event', { method: 'POST', body: body, headers: { 'Content-Type': 'application/json' }, keepalive: true });
+          fetch(mountPrefix() + '/uptime/img-event', { method: 'POST', body: body, headers: { 'Content-Type': 'application/json' }, keepalive: true });
         }
       } catch (e) { /* tracker must never throw into page code */ }
     }

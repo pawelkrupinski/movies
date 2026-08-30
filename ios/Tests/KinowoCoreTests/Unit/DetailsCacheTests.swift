@@ -4,7 +4,7 @@ import XCTest
 final class DetailsCacheTests: XCTestCase {
 
     private let poland = URL(string: "https://kinowo.net")!
-    private let germany = URL(string: "https://de.showtimes.cc")!
+    private let germany = URL(string: "https://showtimes.cc/de")!
 
     override func tearDown() {
         DetailsCache.save([], deployment: poland, city: "", lastModified: nil)

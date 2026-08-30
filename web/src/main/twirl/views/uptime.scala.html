@@ -369,7 +369,7 @@
     // ── SSE live updates ────────────────────────────────────────────────
     // Each frame is a BATCH of updates (the server coalesces a poll's changes
     // into one frame), so one parse + one pass applies them all.
-    var es = new EventSource('/uptime/stream');
+    var es = new EventSource('@routes.UptimeController.stream()');
     es.onmessage = function(ev) {
       var batch = JSON.parse(ev.data);
       batch.forEach(applyUpdate);

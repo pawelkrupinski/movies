@@ -114,7 +114,7 @@ class AuthController(
               AuthController.pendingExchangeCodes.put(code, user.id)
               Redirect(s"kinowo://auth-done?code=$code").withSession(nextSession)
             } else {
-              Redirect("/").withSession(nextSession)
+              Redirect(routes.LandingController.index()).withSession(nextSession)
             }
         }
     }
@@ -185,7 +185,7 @@ class AuthController(
   }
 
   def logout(): Action[AnyContent] = Action { request =>
-    Redirect("/").withSession(request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp")
+    Redirect(routes.LandingController.index()).withSession(request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp")
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {
@@ -242,10 +242,14 @@ class AuthController(
     }
   }
 
-  // Absolute callback URL the provider redirects back to. See
-  // `ForwardedUrl` for why we read the forwarded headers directly.
+  // Absolute callback URL the provider redirects back to. See `ForwardedUrl`
+  // for why we read the forwarded headers directly. The PATH comes from the
+  // reverse route rather than a literal so it carries this deployment's mount
+  // point (`showtimes.cc/uk/auth/google/callback`); the provider matches the
+  // redirect_uri byte-for-byte against its registered list, so a hand-written
+  // literal here is a `redirect_uri_mismatch` on every country but Poland.
   private def callbackUrl(provider: String, request: RequestHeader): String =
-    ForwardedUrl.base(request) + s"/auth/$provider/callback"
+    ForwardedUrl.base(request) + routes.AuthController.callback(provider).url
 }
 
 object AuthController {

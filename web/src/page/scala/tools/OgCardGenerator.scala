@@ -38,11 +38,12 @@ import javax.imageio.ImageIO
  *
  * The `home` target renders this country's landing montage — `og-home.png` for
  * Poland, `og-home-{code}.png` elsewhere (e.g. an English `og-home-uk.png`
- * screenshot off uk.showtimes.cc). It screenshots the country's primary
+ * screenshot off showtimes.cc/uk). It screenshots the country's primary
  * city (its first [[Country.cities]], or `KINOWO_OG_HOME_CITY`).
  *
- * Env: `KINOWO_COUNTRY` (default `pl`) — which country's brand/language/host to
- * render; `KINOWO_OG_BASE` (default: that country's own host) — the site to
+ * Env: `KINOWO_COUNTRY` (default `pl`) — which country's brand/language/base
+ * URL to render; `KINOWO_OG_BASE` (default: that country's own base URL, which
+ * for a country sharing the brand domain carries its path prefix) — the site to
  * screenshot; `KINOWO_OG_OUT` (default `web/src/main/assets/img`) — output dir;
  * `KINOWO_OG_HOME_CITY` — override the city screenshotted for the `home` card.
  * Chrome is located via `Chrome.findExecutable()` (same `CDP_BROWSER_BIN`

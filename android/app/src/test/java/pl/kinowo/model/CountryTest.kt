@@ -24,7 +24,7 @@ class CountryTest {
         val uk = Country.byCode("uk")
         assertEquals("uk", uk.code)
         assertEquals("United Kingdom", uk.displayName)
-        assertEquals("https://uk.showtimes.cc", uk.baseUrl)
+        assertEquals("https://showtimes.cc/uk", uk.baseUrl)
         assertEquals("en", uk.languageTag)
     }
 
@@ -33,7 +33,7 @@ class CountryTest {
         val us = Country.byCode("us")
         assertEquals("us", us.code)
         assertEquals("United States", us.displayName)
-        assertEquals("https://us.showtimes.cc", us.baseUrl)
+        assertEquals("https://showtimes.cc/us", us.baseUrl)
         // The US ships no bundle of its own — it reuses the English one.
         assertEquals("en", us.languageTag)
     }
@@ -79,7 +79,7 @@ class CountryTest {
     fun countryDtoDecodesTimezoneWithWarsawFallback() {
         assertEquals(
             ZoneId.of("Europe/London"),
-            CountryDto("uk", "United Kingdom", "https://uk.showtimes.cc", "en", "Europe/London").toCountry().zoneId,
+            CountryDto("uk", "United Kingdom", "https://showtimes.cc/uk", "en", "Europe/London").toCountry().zoneId,
         )
         // An older seed / a server predating the field: no timezone → Warsaw.
         assertEquals(
@@ -89,7 +89,7 @@ class CountryTest {
         // The catalog's US zone (its first region's) wins over the registry's.
         assertEquals(
             ZoneId.of("America/Chicago"),
-            CountryDto("us", "United States", "https://us.showtimes.cc", "en", "America/Chicago")
+            CountryDto("us", "United States", "https://showtimes.cc/us", "en", "America/Chicago")
                 .toCountry().zoneId,
         )
     }

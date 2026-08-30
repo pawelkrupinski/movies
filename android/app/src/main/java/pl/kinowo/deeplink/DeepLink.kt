@@ -10,9 +10,9 @@ import java.net.URLDecoder
 /**
  * A parsed deep link into the app — the Android counterpart of iOS `DeepLink`.
  *
- * The grammar mirrors the web URLs one-for-one so the SAME links — on any
- * country deployment (`kinowo.net`, `uk.showtimes.cc`,
- * `de.showtimes.cc`, `us.showtimes.cc`) — open the app via App Links, including the
+ * The grammar mirrors the web URLs one-for-one so the SAME links — on either
+ * public host (`kinowo.net`, and `showtimes.cc` where the country is a leading
+ * path segment) — open the app via App Links, including the
  * copy-to-clipboard filter links, whose query string decodes back into
  * [DeepLinkFilters]. The `kinowo://` custom scheme is accepted too (host = city
  * slug).
@@ -20,7 +20,8 @@ import java.net.URLDecoder
  *   https://kinowo.net/poznan/                       → city
  *   https://kinowo.net/poznan/?dim=2D&genre=Komedia   → city + filters
  *   https://kinowo.net/poznan/film?title=Oppenheimer  → city + film detail
- *   https://uk.showtimes.cc/london/                  → city (UK deployment)
+ *   https://showtimes.cc/uk/london/                   → city (UK deployment)
+ *   https://showtimes.cc/us/california/film/dune      → film (US deployment)
  *   kinowo://poznan/                                      → city (custom scheme)
  *   kinowo://poznan/film?title=Oppenheimer                → film (custom scheme)
  *
@@ -40,15 +41,23 @@ data class DeepLink(
     val filters: DeepLinkFilters,
 ) {
     companion object {
-        // Every country deployment's host — a link on any of them opens the app.
-        // Mirrors the base-URL hosts of `Country.all` (PL/UK/DE/US); keep in sync
-        // when a country is added, alongside the AndroidManifest App Link filter.
+        // Every public HOST the site answers on — a link on any of them opens the
+        // app. Two, not four: Poland owns kinowo.net, and the three Showtimes
+        // countries share showtimes.cc, told apart by a leading path segment
+        // rather than a subdomain. Mirrors the base-URL hosts of `Country.all`;
+        // keep in sync when a country is added, alongside the AndroidManifest
+        // App Link filter.
         private val WEB_HOSTS = setOf(
             "kinowo.net", "www.kinowo.net",
-            "uk.showtimes.cc",
-            "de.showtimes.cc",
-            "us.showtimes.cc",
+            "showtimes.cc", "www.showtimes.cc",
         )
+
+        /** Leading path segments that name a COUNTRY rather than a city, on a
+         *  host several countries share (`showtimes.cc/uk/kent/`). Dropped
+         *  before the city is read, and only when the segment isn't itself a
+         *  known city. Mirrors the non-empty `Country.pathPrefix`es on the
+         *  server. */
+        private val COUNTRY_PATH_SEGMENTS = setOf("uk", "de", "us")
         /** Reserved custom-scheme host (the OAuth callback) — never a city. */
         private val RESERVED_SCHEME_HOSTS = setOf("auth-done")
 
@@ -91,7 +100,10 @@ data class DeepLink(
             when (scheme) {
                 "https", "http" -> {
                     if (host !in WEB_HOSTS) return null
-                    val segments = pathSegments(uri.rawPath)
+                    val raw = pathSegments(uri.rawPath)
+                    val segments =
+                        if (raw.firstOrNull() in COUNTRY_PATH_SEGMENTS && raw.firstOrNull() !in knownCitySlugs) raw.drop(1)
+                        else raw
                     city = segments.firstOrNull() ?: return null
                     trailing = segments.drop(1)
                 }

@@ -69,7 +69,7 @@
      another page on this app — same-origin referrers carry the back
      URL verbatim so query-string filter state (`?date=2026-05-30`,
      `?cinema=Multikino`, etc.) survives the round-trip. *@
-  <a id="back-link" href="/@city.slug/" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">@messages("back.films")</span></a>
+  <a id="back-link" href="@routes.MovieController.index(city.slug)" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">@messages("back.films")</span></a>
   <div>
     @currentUser match {
       case Some(user) => {
@@ -80,7 +80,7 @@
           }
           <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
           <div class="auth-dropdown" id="auth-dropdown">
-            <form method="post" action="/auth/logout" class="auth-logout-form">
+            <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
               <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
             </form>
           </div>
@@ -164,7 +164,7 @@
     if (url.origin !== window.location.origin) return;
     // Strip the leading `/{city}/` prefix so the label map (which keys on the
     // in-city path) matches regardless of which city the referrer was on.
-    var cityPrefix = '/@city.slug';
+    var cityPrefix = '@{city.country.pathPrefix}/@city.slug';
     var p = url.pathname;
     if (p === cityPrefix || p === cityPrefix + '/') p = '/';
     else if (p.indexOf(cityPrefix + '/') === 0)     p = p.slice(cityPrefix.length);

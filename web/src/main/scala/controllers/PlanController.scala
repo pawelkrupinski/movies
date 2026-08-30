@@ -73,7 +73,7 @@ class PlanController(
           devMode, user, oauthProviders,
           pageUrl = PageMeta.canonicalUrl(request),
           fbAppId = PageMeta.fbAppId,
-        )).withCookies(Cookie("city", c.slug, maxAge = Some(60 * 60 * 24 * 365), path = "/", httpOnly = false))
+        )).withCookies(Cookie("city", c.slug, maxAge = Some(60 * 60 * 24 * 365), path = c.country.mountPath, httpOnly = false))
     }
   }
 

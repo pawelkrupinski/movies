@@ -48,14 +48,14 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
   "the UK landing preview" should "point og:image + twitter:image at the English home card on the UK host" in {
     if (envCountryForced) cancel("KINOWO_COUNTRY is set in the environment; property override can't take effect")
     val html = renderUk()
-    html should include ("""<meta property="og:image"       content="https://uk.showtimes.cc/assets/img/og-home-uk.png">""")
-    html should include ("""<meta name="twitter:image"       content="https://uk.showtimes.cc/assets/img/og-home-uk.png">""")
+    html should include ("""<meta property="og:image"       content="https://showtimes.cc/uk/assets/img/og-home-uk.png">""")
+    html should include ("""<meta name="twitter:image"       content="https://showtimes.cc/uk/assets/img/og-home-uk.png">""")
   }
 
   it should "carry the UK host as og:url and the Showtimes brand, in English" in {
     if (envCountryForced) cancel("KINOWO_COUNTRY is set in the environment; property override can't take effect")
     val html = renderUk()
-    html should include ("""<meta property="og:url"         content="https://uk.showtimes.cc/">""")
+    html should include ("""<meta property="og:url"         content="https://showtimes.cc/uk/">""")
     html should include ("""<meta property="og:site_name"   content="Showtimes">""")
     html should include ("""<meta property="og:title"       content="Showtimes — cinema listings in your city">""")
   }

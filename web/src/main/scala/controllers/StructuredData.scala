@@ -44,7 +44,7 @@ object StructuredData {
   /** Landing page: identify the site + publisher so Google can attach a
    *  knowledge-panel / sitelinks to the brand. Everything is the DEPLOYMENT's:
    *  its brand, its own host (so the UK site self-identifies as
-   *  uk.showtimes.cc, not kinowo.net), its home montage, and its
+   *  showtimes.cc/uk, not kinowo.net), its home montage, and its
    *  language's landing copy (reusing the `landing.ogDescription` message rather
    *  than a second, drift-prone Polish literal). */
   def landing()(implicit messages: play.api.i18n.Messages): String = {

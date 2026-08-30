@@ -3,9 +3,11 @@ package modules
 import controllers.{AssetsComponents, TruncationTolerantHttpErrorHandler}
 import play.api.ApplicationLoader.Context
 import play.api.http.{HttpErrorConfig, HttpErrorHandler}
-import play.api.mvc.EssentialFilter
+import play.api.mvc.{EssentialFilter, Handler}
 import play.api.routing.Router
+import play.api.routing.sird._
 import play.api._
+import models.Country
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import play.filters.gzip.GzipFilterComponents
@@ -39,7 +41,65 @@ class AppLoader extends ApplicationLoader {
     val adjusted = context.copy(environment = context.environment.copy(mode = mode))
     LoggerConfigurator(adjusted.environment.classLoader)
       .foreach(_.configure(adjusted.environment))
-    new AppComponents(adjusted).application
+    new AppComponents(AppLoader.mountedAt(adjusted, Country.fromEnv)).application
+  }
+}
+
+object AppLoader {
+
+  /** Mount the whole application at its country's [[models.Country.mountPath]].
+   *
+   *  WHY THIS EXISTS. Three of the four deployments now share one domain and
+   *  are told apart by a path segment — `showtimes.cc/uk/kent/`, not
+   *  `uk.showtimes.cc/kent/` — while Poland keeps `kinowo.net/poznan/` at the
+   *  root. One process still serves exactly one country against one database;
+   *  only the address moved. `play.http.context` is Play's own name for that
+   *  address, and setting it does BOTH halves of the job: the router matches
+   *  incoming paths under the prefix, and every reverse route emits it (the
+   *  generated `withPrefix` publishes it to `router.RoutesPrefix`, which every
+   *  `controllers.routes.*` reverse controller reads).
+   *
+   *  It is written into the configuration here, from the country, rather than
+   *  spelled out per Kubernetes overlay: `KINOWO_COUNTRY` already selects the
+   *  database, the language and the city list, and the mount point is one more
+   *  thing that follows from it. A literal per overlay is a fourth place to get
+   *  the same fact wrong.
+   *
+   *  The session and flash cookie PATHS come along, because on a shared domain
+   *  a cookie left at `/` is a cookie the neighbouring countries send and
+   *  overwrite — one login or one remembered city would leak across `/uk` and
+   *  `/de`. Play defaults both to `${play.http.context}` in `reference.conf`,
+   *  but that substitution resolves when the file is parsed, so overriding the
+   *  context alone would leave them behind at `/`. */
+  /** The two endpoints that must answer at the HOST ROOT no matter where the
+   *  application is mounted, layered IN FRONT of the mounted router.
+   *
+   *  Everything else about this deployment moved one segment down, and that is
+   *  the point — but these two are not fetched by a browser following a link.
+   *  `/health` is hit by the kubelet on the POD's own address (startup,
+   *  readiness and liveness probes in `infra/kubernetes/web/base/all.yaml`), and
+   *  `/metrics` by a Prometheus that runs outside the cluster and scrapes
+   *  `10.20.0.12:<nodePort>/metrics` directly. Neither goes through Caddy, so
+   *  neither ever sees the country prefix, and mounting them under it would
+   *  crashloop every non-Polish pod and blank its metrics — the two failures
+   *  that look like an outage rather than a routing change.
+   *
+   *  Layered unconditionally rather than only for a prefixed country, so there
+   *  is ONE routing shape to reason about: at the root the mounted router serves
+   *  the same two paths through the same actions, and the overlay is a no-op. */
+  private[modules] def rootOperationalRoutes(health: => Handler, metrics: => Handler): Router =
+    Router.from {
+      case GET(p"/health")  => health
+      case GET(p"/metrics") => metrics
+    }
+
+  private[modules] def mountedAt(context: Context, country: Country): Context = {
+    val mountPath = country.mountPath
+    context.copy(initialConfiguration = Configuration(
+      "play.http.context"      -> mountPath,
+      "play.http.session.path" -> mountPath,
+      "play.http.flash.path"   -> mountPath,
+    ).withFallback(context.initialConfiguration))
   }
 }
 
@@ -85,7 +145,15 @@ class AppComponents(context: Context)
     Some(router)
   )
 
-  lazy val router: Router = new Routes(httpErrorHandler, landingController, wellKnownController, movieController, planController, catalogController, clientSupportController, debugStreamController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, facebookDataDeletionController, envConfigController, assets)
+  // `.withPrefix` rather than the plain constructor: compile-time DI skips
+  // Play's `RoutesProvider`, which is what applies `play.http.context` under
+  // runtime DI. Calling it here is also what publishes the prefix to
+  // `router.RoutesPrefix`, so every reverse route (`controllers.routes.*`, the
+  // asset URLs in every template) emits the deployment's mount point too.
+  lazy val router: Router =
+    AppLoader.rootOperationalRoutes(healthController.check, metricsController.metrics)
+      .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, planController, catalogController, clientSupportController, debugStreamController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, facebookDataDeletionController, envConfigController, assets)
+        .withPrefix(httpConfiguration.context))
 
   start()
 

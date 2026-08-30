@@ -107,26 +107,48 @@ class DeepLinkTest {
         assertNull(DeepLink.parse("https://kinowo.net/poznan/film?title=")!!.filmTitle)
     }
 
-    @Test fun ukDeploymentHostOpensInApp() {
-        val dl = DeepLink.parse("https://uk.showtimes.cc/london/film?title=Wicked")!!
+    @Test fun ukCountrySegmentOpensInApp() {
+        val dl = DeepLink.parse("https://showtimes.cc/uk/london/film?title=Wicked")!!
         assertEquals("london", dl.citySlug)
         assertEquals("Wicked", dl.filmTitle)
     }
 
-    @Test fun deDeploymentHostOpensInApp() {
+    @Test fun deCountrySegmentOpensInApp() {
         // No German city ships in the compile-time `Cities.all` fallback (they
         // arrive via the live catalog), so pass the slug set the ViewModel hands
         // in at runtime (`countryCatalog.value.cities`) — as `handleDeepLink` does.
-        val dl = DeepLink.parse("https://de.showtimes.cc/berlin/", setOf("berlin"))!!
+        val dl = DeepLink.parse("https://showtimes.cc/de/berlin/", setOf("berlin"))!!
         assertEquals("berlin", dl.citySlug)
     }
 
-    @Test fun usDeploymentHostOpensInApp() {
+    @Test fun usCountrySegmentOpensInApp() {
         // Like Germany's, the US regions arrive via the live catalog rather than
         // the compile-time `Cities.all`, so pass the runtime slug set.
-        val dl = DeepLink.parse("https://us.showtimes.cc/california/film/wicked", setOf("california"))!!
+        val dl = DeepLink.parse("https://showtimes.cc/us/california/film/wicked", setOf("california"))!!
         assertEquals("california", dl.citySlug)
         assertEquals("wicked", dl.filmSlug)
+    }
+
+    /** The subdomains the Showtimes countries used to answer on are gone — they
+     *  stop serving outright rather than redirecting, so a link to one must not
+     *  be claimed by the app either. */
+    @Test fun retiredCountrySubdomainIsRejected() {
+        assertNull(DeepLink.parse("https://uk.showtimes.cc/london/"))
+        assertNull(DeepLink.parse("https://de.showtimes.cc/berlin/", setOf("berlin")))
+    }
+
+    /** The country segment is dropped only when it ISN'T also a known city, so
+     *  a one-segment link keeps its city. */
+    @Test fun countrySegmentStrippingLeavesAOneSegmentLinkAlone() {
+        val dl = DeepLink.parse("https://kinowo.net/poznan/film/oppenheimer")!!
+        assertEquals("poznan", dl.citySlug)
+        assertEquals("oppenheimer", dl.filmSlug)
+        assertEquals("us", DeepLink.parse("https://showtimes.cc/us/", setOf("us"))!!.citySlug)
+    }
+
+    /** `showtimes.cc/` is the country picker: no city, nothing to open. */
+    @Test fun frontDoorIsNotACityLink() {
+        assertNull(DeepLink.parse("https://showtimes.cc/"))
     }
 
     // MARK: scalar filters

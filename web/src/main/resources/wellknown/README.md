@@ -7,10 +7,16 @@ Served by `controllers.WellKnownController` at:
 
 These let `https://<host>/...` links (including the copy-to-clipboard filter
 links) open the native apps instead of the browser. The same web binary +
-resources deploy to every country, so this identical AASA is served on all three
-deployments — `kinowo.net` (PL), `uk.showtimes.cc` (UK),
-`de.showtimes.cc` (DE) — and one app ID (`CQ4YC43YDM.dev.kinowo.Kinowo`)
-claims links on all of them.
+resources deploy to every country, so this identical AASA is served by every
+deployment, and one app ID (`CQ4YC43YDM.dev.kinowo.Kinowo`) claims links on all
+of them.
+
+There are only TWO public hosts to claim: `kinowo.net` (Poland, at the root) and
+`showtimes.cc`, which the other countries share behind a leading path segment
+(`showtimes.cc/uk/kent/`). The mobile OSes only ever fetch these files from a
+HOST ROOT, so the copy served at `showtimes.cc/.well-known/…` has to speak for
+every country under it — which is why the path patterns come in pairs, the same
+rule once at `/{city}/…` and once at `/{country}/{city}/…`.
 
 ## iOS Universal Links need a PAID Apple Developer account
 

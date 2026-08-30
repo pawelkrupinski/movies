@@ -9,10 +9,10 @@
   }
 }
 <nav class="debug-nav">
-  <a href="/debug"           class="@if(active == "corpus"){is-active}">Korpus</a>
-  <a href="/debug/readmodel" class="@if(active == "readmodel"){is-active}">Read cache</a>
-  <a href="/debug/cadence"   class="@if(active == "cadence"){is-active}">Cadence</a>
-  <a href="/@city.slug/"     class="debug-nav-out">Filmy ↗</a>
+  <a href="@routes.MovieController.debug()"           class="@if(active == "corpus"){is-active}">Korpus</a>
+  <a href="@routes.MovieController.debugReadModel()" class="@if(active == "readmodel"){is-active}">Read cache</a>
+  <a href="@routes.MovieController.cadence()"   class="@if(active == "cadence"){is-active}">Cadence</a>
+  <a href="@routes.MovieController.index(city.slug)"     class="debug-nav-out">Filmy ↗</a>
 
   @* Country dimension. Every debug view is scoped to ONE country's Mongo db, so
      the corpus / read-cache / cadence numbers are that country's (`current`).

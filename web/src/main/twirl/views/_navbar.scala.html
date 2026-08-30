@@ -30,7 +30,7 @@
     <span class="fw-bold fs-5">🎬<span class="navbar-title"> @messages("brand.title", city.labels.nominative)</span></span>
     <div class="d-flex gap-1 align-items-center">
       @if(devMode) {
-        <a href="/debug" class="nav-tab nav-tab-debug">Debug</a>
+        <a href="@routes.MovieController.debug()" class="nav-tab nav-tab-debug">Debug</a>
       }@area.map { g =>
         <a id="change-area" href="@controllers.AreaChooserHref(city)" title="@messages("areas.change")"
            style="display:inline-flex; align-items:baseline; gap:.4rem; white-space:nowrap; text-decoration:none; color:#c9c9ec; background:#1a1a3a; border:1px solid #3a3a6e; border-radius:999px; padding:.15rem .65rem; font-size:.85rem">
@@ -263,7 +263,7 @@
             @* Logout route is `+ nocsrf` (form post from a third-party
                page can only log a user OUT, not in — same-origin policy
                protects against state changes any further than that).   *@
-            <form method="post" action="/auth/logout" class="auth-logout-form">
+            <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
               <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
             </form>
           </div>

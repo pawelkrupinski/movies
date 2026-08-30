@@ -81,7 +81,7 @@
     <p class="city-empty" id="city-empty">@messages(country.placeKind.messageKey("landing.noCity"))</p>
     <ul class="city-list" id="city-list">
       @for(c <- places.getOrElse(country.allSorted)) {
-        <li><a href="/@c.slug/">@c.labels.nominative</a></li>
+        <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
       }
     </ul>
     <p class="locating" id="locating"></p>
@@ -158,9 +158,12 @@
           var c = nearestWithin100km(pos.coords.latitude, pos.coords.longitude);
           if (c) {
             done = true;
-            // Remember the choice so the next visit skips this screen.
-            document.cookie = 'city=' + c.slug + ';path=/;max-age=' + (60 * 60 * 24 * 365);
-            window.location.replace('/' + c.slug + '/');
+            // Remember the choice so the next visit skips this screen. Scoped to
+            // the deployment's mount point, like every cookie the server sets:
+            // on the shared brand domain a `path=/` cookie is one the sibling
+            // countries also receive and overwrite.
+            document.cookie = 'city=' + c.slug + ';path=@country.mountPath;max-age=' + (60 * 60 * 24 * 365);
+            window.location.replace('@{country.pathPrefix}/' + c.slug + '/');
           } else {
             finish('@messages(country.placeKind.messageKey("landing.noNearby"))');
           }

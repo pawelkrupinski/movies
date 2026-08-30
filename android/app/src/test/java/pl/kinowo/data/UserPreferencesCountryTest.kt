@@ -42,7 +42,7 @@ class UserPreferencesCountryTest {
         prefs.setCountryCode("us")
         assertEquals("us", prefs.blockingCountryCode())
         val us = Country.byCode(prefs.blockingCountryCode())
-        assertEquals("https://us.showtimes.cc", us.baseUrl)
+        assertEquals("https://showtimes.cc/us", us.baseUrl)
         assertEquals("en", us.languageTag)
     }
 }

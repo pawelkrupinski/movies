@@ -2,9 +2,9 @@ import Foundation
 
 /// A parsed deep link into the app.
 ///
-/// The grammar mirrors the web URLs one-for-one so the SAME links — on any
-/// country deployment (`kinowo.net`, `uk.showtimes.cc`,
-/// `de.showtimes.cc`, `us.showtimes.cc`) — open the app via Universal Links, including the
+/// The grammar mirrors the web URLs one-for-one so the SAME links — on either
+/// public host (`kinowo.net`, and `showtimes.cc` where the country is a leading
+/// path segment) — open the app via Universal Links, including the
 /// copy-to-clipboard filter links, whose query string we decode back into
 /// `DeepLinkFilters`. The `kinowo://` custom scheme is accepted too (host =
 /// city slug), so an internal or fallback link works without the
@@ -14,7 +14,8 @@ import Foundation
 ///   https://kinowo.net/poznan/?dim=2D&genre=Komedia → city + filters
 ///   https://kinowo.net/poznan/film/oppenheimer      → city + film detail
 ///   https://kinowo.net/poznan/film?title=Oppenheimer → the same, legacy form
-///   https://uk.showtimes.cc/london/                → city (UK deployment)
+///   https://showtimes.cc/uk/london/                 → city (UK deployment)
+///   https://showtimes.cc/us/california/film/dune    → film (US deployment)
 ///   kinowo://poznan/                                    → city (custom scheme)
 ///   kinowo://poznan/film/oppenheimer                    → film (custom scheme)
 ///
@@ -31,16 +32,23 @@ struct DeepLink: Equatable {
     let filmSlug: String?
     let filters: DeepLinkFilters
 
-    /// Every country deployment's host — a link on any of them opens the app.
-    /// Mirrors the `baseURL` hosts of `Country.all` (PL/UK/DE/US); keep in sync
-    /// when a country is added. (`Country` lives in a different SPM target, so
-    /// this can't derive from `Country.all` directly.)
+    /// Every public HOST the site answers on — a link on any of them opens the
+    /// app. Two, not four: Poland owns kinowo.net, and the three Showtimes
+    /// countries share showtimes.cc, told apart by a leading path segment rather
+    /// than a subdomain. Mirrors the `baseURL` hosts of `Country.all`; keep in
+    /// sync when a country is added. (`Country` lives in a different SPM target,
+    /// so this can't derive from `Country.all` directly.)
     static let webHosts: Set<String> = [
         "kinowo.net", "www.kinowo.net",
-        "uk.showtimes.cc",
-        "de.showtimes.cc",
-        "us.showtimes.cc",
+        "showtimes.cc", "www.showtimes.cc",
     ]
+
+    /// Leading path segments that name a COUNTRY rather than a city, on a host
+    /// several countries share (`showtimes.cc/uk/kent/`). Dropped before the
+    /// city is read, and only when the segment isn't itself a known city — so a
+    /// country whose city list ever gained a slug like "us" still resolves.
+    /// Mirrors the non-empty `Country.pathPrefix`es on the server.
+    static let countryPathSegments: Set<String> = ["uk", "de", "us"]
     /// Reserved custom-scheme host already used for the OAuth callback — never a
     /// city, so never a navigation deep link.
     static let reservedSchemeHosts: Set<String> = ["auth-done"]
@@ -63,7 +71,11 @@ struct DeepLink: Equatable {
         switch scheme {
         case "https", "http":
             guard let host = components.host?.lowercased(), webHosts.contains(host) else { return nil }
-            let segments = pathSegments(components.path)
+            var segments = pathSegments(components.path)
+            if let first = segments.first,
+               countryPathSegments.contains(first), !knownCitySlugs.contains(first) {
+                segments = Array(segments.dropFirst())
+            }
             guard let first = segments.first else { return nil }
             city = first
             trailing = Array(segments.dropFirst())

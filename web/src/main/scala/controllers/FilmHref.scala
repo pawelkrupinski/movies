@@ -32,7 +32,18 @@ object FilmHref {
 
   @targetName("applyForCity")
   def apply(title: String, city: City): String =
-    slugOf(title).fold(legacy(title, city))(slug => s"/${city.slug}/film/$slug")
+    slugOf(title).fold(legacy(title, city))(slug => s"${prefix(city)}/${city.slug}/film/$slug")
+
+  /** Where the deployment serving `city` is MOUNTED — empty for a country that
+   *  owns its domain (`kinowo.net/poznan/…`), a country segment for one that
+   *  shares the brand domain (`showtimes.cc/uk/kent/…`).
+   *
+   *  Taken from the CITY rather than from the router's published prefix or the
+   *  process environment, because it is the same fact read from the one thing
+   *  these URLs are already scoped by: a deployment only ever links to cities of
+   *  the country it serves, so the city's country IS the mount point, and the
+   *  addressing rule stays pure and testable for every country at once. */
+  private def prefix(city: City): String = city.country.pathPrefix
 
   /** The title's URL slug, or `None` when it folds to nothing addressable (a
    *  title that is entirely punctuation, or in a script the fold doesn't cover).
@@ -44,7 +55,7 @@ object FilmHref {
    *  minted before the switch keep resolving, and still the only address for a
    *  title with no usable slug. */
   def legacy(title: String, city: City): String =
-    s"/${city.slug}/film?title=${encodeTitle(title)}"
+    s"${prefix(city)}/${city.slug}/film?title=${encodeTitle(title)}"
 
   /** The server-rendered Open Graph card image (1200×630 PNG) for a film,
    *  emitted as `og:image` / `twitter:image`. Stays on the `%20`-encoded query
@@ -53,7 +64,7 @@ object FilmHref {
    *  keeping the URL stable means the previews Facebook and friends have
    *  already cached don't all miss at once. */
   def ogImage(title: String)(implicit city: City): String =
-    s"/${city.slug}/film/og-image?title=${encodeTitle(title)}"
+    s"${prefix(city)}/${city.slug}/film/og-image?title=${encodeTitle(title)}"
 
   // `URLEncoder.encode` is form-urlencoded (spaces → `+`). Browsers accept
   // both in query strings, but some link-preview scrapers (Facebook's among

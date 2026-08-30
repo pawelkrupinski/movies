@@ -16,8 +16,23 @@
           { "/": "/.well-known/*", "exclude": true },
           { "/": "/*/og-image", "exclude": true },
           { "/": "/*/film/og-image", "exclude": true },
+
+          { "/": "/*/auth/*", "exclude": true, "comment": "The same operational paths one segment down, for a country served under a country prefix (showtimes.cc/uk/…). One file is served at every host root, so it has to speak for both shapes." },
+          { "/": "/*/*/api/*", "exclude": true },
+          { "/": "/*/debug*", "exclude": true },
+          { "/": "/*/admin/*", "exclude": true },
+          { "/": "/*/uptime*", "exclude": true },
+          { "/": "/*/tasks*", "exclude": true },
+          { "/": "/*/metrics", "exclude": true },
+          { "/": "/*/health", "exclude": true },
+          { "/": "/*/.well-known/*", "exclude": true },
+          { "/": "/*/*/og-image", "exclude": true },
+          { "/": "/*/*/film/og-image", "exclude": true },
+
           { "/": "/*/film", "comment": "film detail" },
-          { "/": "/*/", "comment": "city repertoire listing (with optional filter query)" }
+          { "/": "/*/", "comment": "city repertoire listing (with optional filter query)" },
+          { "/": "/*/*/film", "comment": "film detail under a country prefix" },
+          { "/": "/*/*/", "comment": "city repertoire listing under a country prefix" }
         ]
       }
     ]

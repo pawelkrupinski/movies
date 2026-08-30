@@ -85,9 +85,13 @@ ordering — several of the steps below are only safe in one sequence.
 - **OAuth redirect URIs.** `AuthController.callbackUrl` builds the callback from
   the REQUEST host, so no code names a domain — but Google and Facebook both
   reject an unregistered `redirect_uri`. Register
-  `https://{kinowo.net,uk.showtimes.cc,de.showtimes.cc}/auth/{google,facebook}/callback`
+  `https://kinowo.net/auth/{google,facebook}/callback` and
+  `https://showtimes.cc/{uk,de,us}/auth/{google,facebook}/callback`
   in each console, or login fails with `redirect_uri_mismatch` on the new hosts
-  while continuing to work on the old ones.
+  while continuing to work on the old ones. (The path carries the country now:
+  each non-Polish deployment is MOUNTED under its country segment, and
+  `callbackUrl` builds the path from the reverse route, so the registered URI has
+  to include it.)
 - **Universal Links / App Links.** `ios/Kinowo/Kinowo.entitlements` and
   `android/app/src/main/AndroidManifest.xml` name the new hosts, and the
   `.well-known/` files are served by the app itself — but an INSTALLED app keeps

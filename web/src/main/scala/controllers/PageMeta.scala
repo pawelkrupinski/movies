@@ -19,7 +19,12 @@ import play.api.mvc.RequestHeader
 object PageMeta {
 
   /** `https://kinowo.net/?date=tomorrow` for a typical prod request.
-   *  `canonicalUrl(request) == origin(request) + request.uri`. */
+   *  `canonicalUrl(request) == origin(request) + request.uri`.
+   *
+   *  Needs no knowledge of the deployment's mount point, even though three of
+   *  the four now have one: `request.uri` is the path AS RECEIVED, and Play's
+   *  `play.http.context` only affects which routes that path matches, not the
+   *  RequestHeader — so `showtimes.cc/uk/kent/` canonicalises to itself. */
   def canonicalUrl(request: RequestHeader): String =
     origin(request) + request.uri
 
@@ -37,10 +42,13 @@ object PageMeta {
     s"$proto://${host(request)}"
   }
 
-  /** The public host this request arrived on — `kinowo.net`, `uk.showtimes.cc`,
-   *  or the bare `showtimes.cc` apex. The proxy's `X-Forwarded-Host` wins over
-   *  the container-local `Host`, which is what makes host-dependent routing
-   *  (the apex country picker) work behind Caddy at all. */
+  /** The public host this request arrived on — `kinowo.net`, or `showtimes.cc`
+   *  whether it is the brand front door or a country served under it
+   *  (`showtimes.cc/uk/…`). The proxy's `X-Forwarded-Host` wins over the
+   *  container-local `Host`, which is what makes the front-door check work
+   *  behind Caddy at all — though the host alone no longer decides it, since
+   *  every Showtimes country's own pages arrive on that same host (see
+   *  `models.Country.servesApex`). */
   def host(request: RequestHeader): String =
     request.headers.get("X-Forwarded-Host").getOrElse(request.host)
 

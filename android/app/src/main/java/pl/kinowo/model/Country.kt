@@ -51,21 +51,21 @@ data class Country(
             Country(
                 code = "uk",
                 displayName = "United Kingdom",
-                baseUrl = "https://uk.showtimes.cc",
+                baseUrl = "https://showtimes.cc/uk",
                 languageTag = "en",
                 zoneId = ZoneId.of("Europe/London"),
             ),
             Country(
                 code = "de",
                 displayName = "Deutschland",
-                baseUrl = "https://de.showtimes.cc",
+                baseUrl = "https://showtimes.cc/de",
                 languageTag = "de",
                 zoneId = ZoneId.of("Europe/Berlin"),
             ),
             Country(
                 code = "us",
                 displayName = "United States",
-                baseUrl = "https://us.showtimes.cc",
+                baseUrl = "https://showtimes.cc/us",
                 languageTag = "en",
                 // The US spans six zones, so no single one is "the country's".
                 // This nominal Eastern value only matters in the window before

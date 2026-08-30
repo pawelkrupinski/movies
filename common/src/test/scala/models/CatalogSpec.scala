@@ -17,8 +17,8 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
   "Catalog.json" should "list every deployed country, keyed by the server country code" in {
     val j = Catalog.json
     j should include("""{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo","timezone":"Europe/Warsaw"}""")
-    j should include("""{"code":"uk","name":"United Kingdom","baseUrl":"https://uk.showtimes.cc","language":"en","brand":"Showtimes","timezone":"Europe/London"}""")
-    j should include("""{"code":"de","name":"Deutschland","baseUrl":"https://de.showtimes.cc","language":"de","brand":"Showtimes","timezone":"Europe/Berlin"}""")
+    j should include("""{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes.cc/uk","language":"en","brand":"Showtimes","timezone":"Europe/London"}""")
+    j should include("""{"code":"de","name":"Deutschland","baseUrl":"https://showtimes.cc/de","language":"de","brand":"Showtimes","timezone":"Europe/Berlin"}""")
   }
 
   it should "carry each deployed country's local IANA timezone" in {

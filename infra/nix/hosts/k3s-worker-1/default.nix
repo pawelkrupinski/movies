@@ -82,32 +82,42 @@
     enable = true;
     acmeEmail = "pawel@bitcashier.io";
     vhosts = {
-      # Poland, on its own domain and its own brand.
+      # Poland, on its own domain and its own brand. Mounted at the root, so its URLs are the ones
+      # it has always served, byte for byte.
       "kinowo.net".upstream = "127.0.0.1:30910";
       "www.kinowo.net".redirectTo = "kinowo.net";
 
-      # The Showtimes countries, one subdomain each.
-      "uk.showtimes.cc".upstream = "127.0.0.1:30912";
-      "de.showtimes.cc".upstream = "127.0.0.1:30911";
-      "us.showtimes.cc".upstream = "127.0.0.1:30913";
-
-      # THE BARE APEX IS THE BRAND FRONT DOOR, not a deployment of its own: the app renders a country
-      # picker (Poland included) whenever the request Host is the apex, so any country's pods answer
-      # it identically — see models.Country.servesApex. It is pointed at the UK deployment only
-      # because the picker is English-language chrome; nothing about the page is UK-specific.
+      # THE SHOWTIMES COUNTRIES SHARE ONE DOMAIN AND ARE TOLD APART BY A PATH SEGMENT.
       #
-      # ONLY `/` IS THE FRONT DOOR, and everything else redirects, because the app's host check
-      # gates the LANDING alone. Without this, showtimes.cc/london/ would serve the UK repertoire
-      # from a second hostname — and since the canonical link and og:url are built from the request
-      # host, every UK page would self-canonicalise on two domains and the apex would advertise its
-      # own sitemap. That is textbook duplicate content, and it splits the ranking of the site it
-      # is supposed to be a door into.
+      # They used to have a subdomain each (uk./de./us.showtimes.cc). Those names now serve
+      # NOTHING — no vhost, no certificate, no redirect, deliberately: a redirect map is a second
+      # source of truth for where each country lives, and the apps are store-release-gated anyway,
+      # so the cut is clean rather than half-migrated.
+      #
+      # Each prefix still reaches its OWN pod against its OWN database (KINOWO_COUNTRY per overlay
+      # in infra/kubernetes/web/overlays); one pod serving four countries would mean one process
+      # against four databases. The app mounts itself at the matching prefix
+      # (`play.http.context`, derived from models.Country.mountPath) so every URL it emits —
+      # reverse routes, canonical link, og:url, sitemap, cookie paths — carries the segment, and
+      # nothing here rewrites paths.
+      #
+      # THE BARE APEX IS THE BRAND FRONT DOOR, not a deployment of its own: the app renders a
+      # country picker (Poland included) when the request Host is the apex AND the deployment
+      # answering is mounted at `/` — see models.Country.servesApex. That is why the fallback
+      # points at POLAND's pod rather than the UK's: it is the only one whose `/` is not already a
+      # country's own landing. The picker is rendered in English regardless of which deployment
+      # serves it, so nothing about that pick is Polish.
+      #
+      # The fallback also carries the apex ROOT files a crawler and the mobile OSes only ever fetch
+      # from a host's root — /robots.txt, /sitemap.xml, /.well-known/* — which the app answers with
+      # front-door variants (a sitemap INDEX of the three mounted countries, not Poland's cities).
       "showtimes.cc" = {
-        upstream = "127.0.0.1:30912";
-        extraConfig = ''
-          @notRoot not path /
-          redir @notRoot https://uk.showtimes.cc{uri} permanent
-        '';
+        upstream = "127.0.0.1:30910";
+        pathUpstreams = {
+          "/uk" = "127.0.0.1:30912";
+          "/de" = "127.0.0.1:30911";
+          "/us" = "127.0.0.1:30913";
+        };
       };
       "www.showtimes.cc".redirectTo = "showtimes.cc";
     };

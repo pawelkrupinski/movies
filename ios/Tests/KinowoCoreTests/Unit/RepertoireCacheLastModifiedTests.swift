@@ -4,7 +4,7 @@ import XCTest
 final class RepertoireCacheLastModifiedTests: XCTestCase {
 
     private let poland = URL(string: "https://kinowo.net")!
-    private let germany = URL(string: "https://de.showtimes.cc")!
+    private let germany = URL(string: "https://showtimes.cc/de")!
 
     override func tearDown() {
         // Reset the bound meta so cases don't leak into one another.

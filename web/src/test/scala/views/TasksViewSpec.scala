@@ -15,8 +15,8 @@ class TasksViewSpec extends AnyFlatSpec with Matchers {
 
   "the tasks header" should "offer a switch to another country's task queue on that country's host" in {
     html should include ("""class="country-switch"""")
-    html should include ("""value="https://uk.showtimes.cc/tasks"""")
-    html should include ("""value="https://de.showtimes.cc/tasks"""")
+    html should include ("""value="https://showtimes.cc/uk/tasks"""")
+    html should include ("""value="https://showtimes.cc/de/tasks"""")
   }
 
   it should "point the switcher at /tasks, not another admin page" in {
@@ -37,7 +37,7 @@ class TasksViewSpec extends AnyFlatSpec with Matchers {
     val out = views.html.tasks(current = models.Country.Germany).body
 
     out should include ("<title>Tasks — Showtimes</title>")
-    out should include ("""value="https://de.showtimes.cc/tasks" selected""")
+    out should include ("""value="https://showtimes.cc/de/tasks" selected""")
     out should not include ("""value="https://kinowo.net/tasks" selected""")
   }
 }

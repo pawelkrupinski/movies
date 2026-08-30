@@ -20,7 +20,12 @@ import models.City
  */
 object SitemapBuilder {
 
-  /** @param origin  scheme + host, no trailing slash (`https://kinowo.net`)
+  /** @param base    this deployment's public BASE URL, no trailing slash —
+   *                 `https://kinowo.net` for a country that owns its domain,
+   *                 `https://showtimes.cc/uk` for one mounted under a country
+   *                 segment. Every `<loc>` hangs off it, so the mount point has
+   *                 to be part of it: a sitemap advertising `/kent/` on a
+   *                 deployment served at `/uk/kent/` is a file of 404s.
    *  @param entries each city paired with the films it's currently showing
    *  @param lastmod the read model's mtime as a W3C date, stamped on the URLs
    *                 whose body IS the read model — the city listings, plans and
@@ -29,13 +34,13 @@ object SitemapBuilder {
    *                 projection doesn't touch, and Google discards the lastmod
    *                 signal site-wide once it catches URLs claiming changes they
    *                 didn't make. */
-  def build(origin: String, entries: Seq[(City, Seq[FilmSchedule])], lastmod: Option[String] = None): String = {
+  def build(base: String, entries: Seq[(City, Seq[FilmSchedule])], lastmod: Option[String] = None): String = {
     val sb = new StringBuilder
     sb.append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
     sb.append("""<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">""").append('\n')
 
     def url(loc: String, stamped: Boolean = true): Unit = {
-      sb.append("  <url><loc>").append(escape(origin + loc)).append("</loc>")
+      sb.append("  <url><loc>").append(escape(base + loc)).append("</loc>")
       if (stamped) lastmod.foreach(m => sb.append("<lastmod>").append(m).append("</lastmod>"))
       sb.append("</url>\n")
     }
@@ -57,6 +62,27 @@ object SitemapBuilder {
     }
 
     sb.append("</urlset>\n")
+    sb.toString
+  }
+
+  /** The BRAND FRONT DOOR's `sitemap.xml`: a sitemap INDEX naming each country
+   *  mounted under the apex, not a URL list of its own.
+   *
+   *  A crawler only ever reads `sitemap.xml` at a HOST's root, and the apex's
+   *  root belongs to the country picker rather than to any one country — so the
+   *  three Showtimes countries under `showtimes.cc/{code}/` have no other way to
+   *  be discovered from the domain they actually live on. Poland is left out on
+   *  purpose: it is a different host with its own root sitemap, and listing a
+   *  cross-domain `<loc>` here would be ignored anyway — which is why the
+   *  callers pass the countries mounted under a path prefix, and only those. */
+  def index(countries: Seq[models.Country]): String = {
+    val sb = new StringBuilder
+    sb.append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
+    sb.append("""<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">""").append('\n')
+    countries.flatMap(_.webUrl).foreach { base =>
+      sb.append("  <sitemap><loc>").append(escape(base + "/sitemap.xml")).append("</loc></sitemap>\n")
+    }
+    sb.append("</sitemapindex>\n")
     sb.toString
   }
 

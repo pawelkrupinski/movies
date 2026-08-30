@@ -85,29 +85,56 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertNil(parse("mailto:hi@kinowo.net"))
     }
 
-    // MARK: per-country deployment hosts
+    // MARK: the shared brand host, where the country is a PATH segment
 
-    func testUKDeploymentHostOpensInApp() {
-        let dl = parse("https://uk.showtimes.cc/london/film?title=Wicked")
+    func testUKCountrySegmentOpensInApp() {
+        let dl = parse("https://showtimes.cc/uk/london/film?title=Wicked")
         XCTAssertEqual(dl?.citySlug, "london")
         XCTAssertEqual(dl?.filmTitle, "Wicked")
     }
 
-    func testDEDeploymentHostOpensInApp() {
+    func testDECountrySegmentOpensInApp() {
         // No German city ships in the compile-time `City.all` fallback (they
         // arrive via the live catalog), so pass the slug set the app hands in at
         // runtime (`catalog.allSlugs`) — the same call `handleDeepLink` makes.
-        let dl = DeepLink.parse(URL(string: "https://de.showtimes.cc/berlin/")!, knownCitySlugs: ["berlin"])
+        let dl = DeepLink.parse(URL(string: "https://showtimes.cc/de/berlin/")!, knownCitySlugs: ["berlin"])
         XCTAssertEqual(dl?.citySlug, "berlin")
     }
 
-    func testUSDeploymentHostOpensInApp() {
+    func testUSCountrySegmentOpensInApp() {
         // Like Germany's, the US regions arrive via the live catalog rather than
         // the compile-time `City.all`, so pass the runtime slug set.
-        let dl = DeepLink.parse(URL(string: "https://us.showtimes.cc/california/film/wicked")!,
+        let dl = DeepLink.parse(URL(string: "https://showtimes.cc/us/california/film/wicked")!,
                                 knownCitySlugs: ["california"])
         XCTAssertEqual(dl?.citySlug, "california")
         XCTAssertEqual(dl?.filmSlug, "wicked")
+    }
+
+    /// The subdomains the Showtimes countries used to answer on are gone — they
+    /// stop serving outright rather than redirecting, so a link to one must not
+    /// be claimed by the app either (the browser is what shows the failure).
+    func testRetiredCountrySubdomainIsRejected() {
+        XCTAssertNil(parse("https://uk.showtimes.cc/london/"))
+        XCTAssertNil(DeepLink.parse(URL(string: "https://de.showtimes.cc/berlin/")!,
+                                    knownCitySlugs: ["berlin"]))
+    }
+
+    /// The country segment is dropped only when it ISN'T also a city the build
+    /// knows, so a country whose roster ever gained such a slug still resolves —
+    /// and Poland's own one-segment links can't lose their city to a
+    /// coincidence.
+    func testCountrySegmentStrippingLeavesAOneSegmentLinkAlone() {
+        let dl = parse("https://kinowo.net/poznan/film/oppenheimer")
+        XCTAssertEqual(dl?.citySlug, "poznan")
+        XCTAssertEqual(dl?.filmSlug, "oppenheimer")
+
+        let asCity = DeepLink.parse(URL(string: "https://showtimes.cc/us/")!, knownCitySlugs: ["us"])
+        XCTAssertEqual(asCity?.citySlug, "us")
+    }
+
+    func testFrontDoorIsNotACityLink() {
+        // `showtimes.cc/` is the country picker: no city, nothing to open.
+        XCTAssertNil(parse("https://showtimes.cc/"))
     }
 
     func testEmptyTitleParamIsNoFilm() {

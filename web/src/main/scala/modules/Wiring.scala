@@ -163,7 +163,7 @@ trait Wiring {
   // View-rendering controllers take the deployment's fixed `Messages`
   // (`deploymentMessages`, implicit above) so their Twirl views resolve
   // `@messages("…")` in the country's language.
-  lazy val landingController = new LandingController(controllerComponents)
+  lazy val landingController = new LandingController(controllerComponents, models.Country.fromEnv)
   lazy val gzippedResponseCache = new GzippedResponseCache
   // Fetches + composites the per-film Open Graph share card. Its own poster
   // fetch (not the scraper's httoFetch) so slow cinema origins get a generous
