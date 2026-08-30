@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: superfly/flyctl-actions/setup-flyctl@v1
       - name: Deploy kinowo-grafana
         # Run from fly/grafana so the build context is that dir and the
         # Dockerfile's `COPY provisioning` resolves (config defaults to ./fly.toml).

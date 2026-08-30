@@ -61,7 +61,7 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
    */
   it should "install flyctl only on a leg that actually deploys" in {
     val lines = job("deploy").linesIterator.toVector
-    val at    = lines.indexWhere(_.trim == "- uses: superfly/flyctl-actions/setup-flyctl@master")
+    val at    = lines.indexWhere(_.trim.startsWith("- uses: superfly/flyctl-actions/setup-flyctl@"))
     at should be >= 0
 
     val neighbours = Seq(lines(at - 1), lines(at + 1)).map(_.trim)

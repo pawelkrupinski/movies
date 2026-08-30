@@ -172,7 +172,7 @@ jobs:
                   done
                   echo "worker_hash=$(printf '%s' "$hash" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - uses: superfly/flyctl-actions/setup-flyctl@v1
 
             # `--build-only --push --remote-only` builds on Fly's builder and
             # pushes to `registry.fly.io/<app>:<sha>` without touching a single
@@ -328,7 +328,7 @@ jobs:
             # and no annotation (a runner glitch — the five sibling legs installed
             # fine), reddening the whole workflow over a tool nothing was going to
             # use. (DeployParallelismConfigSpec)
-            - uses: superfly/flyctl-actions/setup-flyctl@master
+            - uses: superfly/flyctl-actions/setup-flyctl@v1
               if: matrix.enabled
 
             # Decide whether this app actually needs a deploy. Two skip reasons,
